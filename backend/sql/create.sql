@@ -8,7 +8,7 @@ CREATE TABLE Agendamentos (
 
     profissional VARCHAR(150) NOT NULL,
 
-    data_hora_agendamento TIMESTAMP NOT NULL,
+    data_hora_agendamento DATETIME NOT NULL,
 
     data_hora_request TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
