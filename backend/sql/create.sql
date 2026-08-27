@@ -1,6 +1,6 @@
 CREATE TABLE Agendamentos (
-    id BIGSERIAL PRIMARY KEY, -- AUTO_INCREMENT no MySQL
-
+    id BIGSERIAL PRIMARY KEY, 
+    
     cpf VARCHAR(11) NOT NULL,
     nome VARCHAR(150) NOT NULL,
 
@@ -18,3 +18,6 @@ CREATE TABLE Agendamentos (
 
     CONSTRAINT chk_status CHECK (status IN ('AGENDADO', 'CANCELADO', 'ATENDIDO'))
 );
+
+CREATE INDEX idx_agendamento_cpf ON Agendamentos(cpf);
+CREATE INDEX idx_agendamento_data ON Agendamentos(data_hora_agendamento);
