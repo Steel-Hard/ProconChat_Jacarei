@@ -8,6 +8,7 @@ describe("AppError subclasses", () => {
         const error = new BadRequestError("invalid input")
 
         expect(error).toBeInstanceOf(Error)
+        expect(error.name).toBe("BadRequestError")
         expect(error.message).toBe("invalid input")
         expect(error.statusCode).toBe(400)
         expect(error.code).toBe("BAD_REQUEST")

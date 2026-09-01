@@ -1,4 +1,4 @@
-import express from "express"
+import express, { NextFunction, Request, Response } from "express"
 import request from "supertest"
 import { describe, it, expect, vi, afterEach } from "vitest"
 import errorHandler from "./errorHandler.middleware"
@@ -37,5 +37,17 @@ describe("errorHandler", () => {
         expect(response.body).toEqual({
             error: { code: "INTERNAL_SERVER_ERROR", message: "Internal Server Error" },
         })
+    })
+
+    it("delegates to next without touching the response when headers were already sent", () => {
+        const res = { headersSent: true, status: vi.fn(), json: vi.fn() } as unknown as Response
+        const next: NextFunction = vi.fn()
+        const error = new Error("resposta ja enviada")
+
+        errorHandler(error, {} as Request, res, next)
+
+        expect(next).toHaveBeenCalledWith(error)
+        expect(res.status).not.toHaveBeenCalled()
+        expect(res.json).not.toHaveBeenCalled()
     })
 })
