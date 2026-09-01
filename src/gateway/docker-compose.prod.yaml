@@ -1,0 +1,92 @@
+version: '3.9'
+
+services:
+  # Database PostgreSQL
+  postgres:
+    container_name: evolution_postgres
+    image: postgres:15-alpine
+    restart: always
+    networks:
+      - evolution-net
+    environment:
+      POSTGRES_DB: evolution
+      POSTGRES_USER: ${POSTGRES_USER:-evolution}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_in_production}
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=1000"
+      - "-c"
+      - "shared_buffers=256MB"
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-evolution}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Cache Redis
+  redis:
+    container_name: evolution_redis
+    image: redis:7-alpine
+    restart: always
+    networks:
+      - evolution-net
+    command: >
+      redis-server 
+      --port 6379 
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD:-change_me_in_production}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Evolution API
+  evolution-api:
+    container_name: evolution_api
+    image: evoapicloud/evolution-api:v2.1.1
+    restart: always
+    networks:
+      - evolution-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # Variáveis customizadas
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_in_production}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_me_in_production}
+    env_file:
+      - .env
+    ports:
+      - "${API_PORT:-8080}:8080"
+    volumes:
+      - evolution_instances:/evolution/instances
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  evolution_instances:
+    driver: local
+
+networks:
+  evolution-net:
+    name: evolution-net
+    driver: bridge
