@@ -1,5 +1,7 @@
 # ProconChat Jacareí
 
+Guia específico para validar a Evolution API e o backend: [README2.md](README2.md).
+
 # Chatbot para Orientação ao Consumidor via WhatsApp
 
 <div align="center">
