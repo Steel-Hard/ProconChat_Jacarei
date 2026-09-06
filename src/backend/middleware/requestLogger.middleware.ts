@@ -5,11 +5,12 @@ function requestLoggerMiddleware(req: Request, res: Response, next: NextFunction
     const requestId = randomUUID()
     res.setHeader("X-Request-Id", requestId)
     const startTimestamp = Date.now()
+    const requestUrl = req.originalUrl.split("?")[0]
     res.on("finish", () => {
         const durationMs = Date.now() - startTimestamp
         console.log(JSON.stringify({
             method: req.method,
-            url: req.originalUrl,
+            url: requestUrl,
             status: res.statusCode,
             durationMs,
             requestId,
