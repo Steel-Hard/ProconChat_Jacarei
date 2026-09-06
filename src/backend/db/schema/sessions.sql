@@ -14,3 +14,9 @@ CREATE TABLE Sessions (
 
 CREATE INDEX idx_sessions_phone_hash ON Sessions(phone_hash);
 CREATE INDEX idx_sessions_code ON Sessions(session_code);
+
+-- Garante uma unica conversa ativa por telefone e torna o webhook idempotente
+-- quando a Evolution repetir a entrega de um evento.
+CREATE UNIQUE INDEX uniq_sessions_phone_in_progress
+ON Sessions(phone_hash)
+WHERE status = 'IN_PROGRESS';
