@@ -36,4 +36,16 @@ describe("requestLoggerMiddleware", () => {
         expect(loggedPayload.requestId).toBe(response.headers["x-request-id"])
         expect(typeof loggedPayload.durationMs).toBe("number")
     })
+
+    it("does not log query string values", async () => {
+        const consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => undefined)
+        const app = buildApp()
+
+        await request(app).get("/ping?token=sensitive-value")
+        await new Promise((resolve) => setTimeout(resolve, 10))
+
+        const loggedPayload = JSON.parse(consoleLogSpy.mock.calls[0]?.[0] as string)
+        expect(loggedPayload.url).toBe("/ping")
+        expect(consoleLogSpy.mock.calls[0]?.[0]).not.toContain("sensitive-value")
+    })
 })
