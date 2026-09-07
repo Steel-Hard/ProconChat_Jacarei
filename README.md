@@ -148,8 +148,8 @@ informações conforme a LGPD.
 |  RNF03  | LGPD                   |        Garantir tratamento adequado e proteção das informações dos usuários.        | ⚪ Pendente |
 |  RNF04  | Caráter Orientativo   |        Informar explicitamente que as respostas não substituem atendimento formal        | ⚪ Pendente |
 |  RNF05  | Transparência LLM     |      Identificar claramente respostas geradas com auxílio de modelos de linguagem.      | ⚪ Pendente |
-|  RNF06  | Docker                 |                      Garantir a execução da aplicação em Docker                      | ⚪ Pendente |
-|  RNF07  | Documentação         |         Documentar instalação e requisitos necessários de hardware e software.         | ⚪ Pendente |
+|  RNF06  | Docker                 |                      Garantir a execução da aplicação em Docker                      | 🟢 Concluído |
+|  RNF07  | Documentação         |         Documentar instalação e requisitos necessários de hardware e software.         | 🟢 Concluído |
 |  RNF08  | Boas Práticas         | Adotar metodologia ágil, CI/CD, versionamento, testes e documentação técnica mínima. | ⚪ Pendente |
 
 ---
@@ -198,26 +198,43 @@ com base nos requisitos e fluxos decisórios fornecidos pelo PROCON.
 
 ## ⚙️ Instalação
 
-As instruções de instalação serão adicionadas conforme a arquitetura e
-as tecnologias do projeto forem definidas.
+### Pré-requisitos
 
-A documentação deverá incluir:
+- [Docker](https://docs.docker.com/get-docker/) e Docker Compose v2 (`docker compose`, sem hífen);
+- Nenhuma outra dependência de host é necessária — Node.js, PostgreSQL, Redis e o
+  modelo de linguagem rodam todos dentro dos containers.
 
-1. Pré-requisitos de hardware e software;
-2. Clonagem do repositório;
-3. Configuração das variáveis de ambiente;
-4. Configuração da integração com o WhatsApp ou ambiente simulado;
-5. Configuração do modelo de linguagem local, caso utilizado;
-6. Inicialização dos containers Docker;
-7. Execução da aplicação.
-
-Exemplo inicial:
+### Passo a passo
 
 ```bash
 git clone <URL_DO_REPOSITORIO>
 cd <NOME_DO_REPOSITORIO>
+cp .env.example .env   # ajuste os valores se necessário; os defaults servem para desenvolvimento
 docker compose up --build
 ```
+
+Isso sobe, com um único comando, todo o ambiente do MVP:
+
+| Serviço         | Papel                                                              | Porta padrão (host) |
+| --------------- | ------------------------------------------------------------------- | :------------------: |
+| `postgres`      | Banco de dados (persistência via volume `postgres_data`)           |    `127.0.0.1:5433`    |
+| `migrate`       | Aplica as migrations e encerra (`node-pg-migrate`)                  |           —           |
+| `backend`       | API/orquestrador (Motor de Decisão, Scheduler)                     |    `127.0.0.1:3000`    |
+| `redis`         | Cache/fila usado pela Evolution API                                |         `6379`         |
+| `evolution-api` | Integração com o WhatsApp (Evolution API)                         |         `8080`         |
+| `gateway`       | Gateway WhatsApp — recebe o webhook e fala com o `backend`         |         `3001`         |
+| `ollama`        | LLM local (modelo definido por `LLM_MODEL` no `.env`)               |           —           |
+| `llm-pull`      | Baixa o modelo do Ollama e encerra                                  |           —           |
+
+Todas as variáveis sensíveis (senhas, tokens, segredos) vêm do `.env` — nunca
+hardcoded no `compose.yaml`. Veja `.env.example` para a lista completa.
+
+### Documentação detalhada por serviço
+
+- [`.docs/database/migrations.md`](.docs/database/migrations.md) — schema, migrations e como resetar o banco.
+- [`src/backend/README.md`](src/backend/README.md) — rodar o backend fora do Docker, rotas disponíveis, testes.
+- [`src/gateway/README.md`](src/gateway/README.md) — subir e validar a Evolution API + Gateway WhatsApp.
+- [`.docs/llm/contrato.md`](.docs/llm/contrato.md) — contrato de entrada/saída do serviço LLM.
 
 ---
 
