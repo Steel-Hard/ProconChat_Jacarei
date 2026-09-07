@@ -37,6 +37,9 @@ Copie `.env.example` para `.env` e preencha:
 
 ## Como rodar
 
+Para subir PostgreSQL com migrations automáticas e backend via Docker Compose,
+consulte o [guia do banco de dados](../../.docs/database/migrations.md).
+
 ```bash
 npm install
 npm run dev     # sobe o servidor em modo desenvolvimento (nodemon + ts-node)
