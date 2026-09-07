@@ -1,3 +1,4 @@
+-- Up Migration
 CREATE TYPE session_status AS ENUM ('IN_PROGRESS', 'FINISHED', 'ABANDONED');
 
 CREATE TABLE Sessions (
@@ -14,3 +15,7 @@ CREATE TABLE Sessions (
 
 CREATE INDEX idx_sessions_phone_hash ON Sessions(phone_hash);
 CREATE INDEX idx_sessions_code ON Sessions(session_code);
+
+-- Down Migration
+DROP TABLE Sessions;
+DROP TYPE session_status;
