@@ -3,8 +3,10 @@
 Este diretório contém o `CREATE TABLE` de cada tabela do modelo de dados, um arquivo por
 tabela, conforme desenhado em [`.docs/database/database.md`](../../../../.docs/database/database.md).
 
-Nenhum desses arquivos foi aplicado a um banco real ainda, e não há ferramenta de migration
-decidida — isso é escopo da issue #11 (Banco de Dados — aplicar schema, migrations, Docker).
+O histórico executável está em `../migrations`, usando node-pg-migrate. Estes arquivos
+preservam a referência do desenho original da #9; mudanças futuras devem ser novas
+migrations. Consulte [o guia de execução](../../../../.docs/database/migrations.md)
+para subir PostgreSQL, aplicar o schema e validar em Docker (issue #11).
 
 Ordem válida de execução, respeitando as foreign keys:
 
