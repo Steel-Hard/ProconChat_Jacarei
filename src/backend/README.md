@@ -10,7 +10,6 @@ Backend do chatbot de orientação ao consumidor via WhatsApp (PROCON Jacareí).
 - `controllers/` — recebe a requisição HTTP, valida entrada básica, chama o service e formata a resposta (envelope `{ data }` ou erro via `next(error)`). Não acessa o banco diretamente.
 - `services/` — contém a lógica de negócio de cada recurso, sem depender do objeto `Request`/`Response` do Express.
 - `repositories/` — contratos e adaptadores de persistência; concentra o SQL e isola os services do PostgreSQL.
-- `gateways/` — contratos e adaptadores de serviços externos, como o envio de mensagens pela Evolution API.
 - `errors/` — hierarquia de erros da aplicação: `AppError` (abstrata) e subclasses por status HTTP (`BadRequestError`, `NotFoundError`, `InternalServerError`). Lançar/`next()` uma dessas classes é o jeito padrão de sinalizar um erro esperado.
 - `middleware/` — middlewares do Express: `requestLogger.middleware.ts` (log estruturado por requisição) e `errorHandler.middleware.ts` (converte qualquer erro numa resposta JSON padronizada).
 - `types/` — DTOs e formatos de resposta compartilhados (`successResponse.types.ts`, `errorResponse.types.ts`, tipos específicos de cada recurso).
@@ -30,10 +29,7 @@ Copie `.env.example` para `.env` e preencha:
 | `DB_URL` | Sim | String de conexão do PostgreSQL (`pg`). O servidor falha na inicialização com uma mensagem clara se ela não estiver definida. |
 | `PORT` | Não (padrão `3000`) | Porta em que o servidor Express escuta. |
 | `PHONE_HASH_SECRET` | Sim | Segredo HMAC usado para que o telefone nunca seja persistido em texto puro. |
-| `EVOLUTION_API_URL` | Para envio | URL interna ou externa da Evolution API. |
-| `EVOLUTION_API_KEY` | Para envio | Chave enviada no header `apikey` da Evolution API. |
-| `EVOLUTION_WEBHOOK_TOKEN` | Sim | Token da URL interna usado para autenticar webhooks recebidos. |
-| `EVOLUTION_AUTO_REPLY_ENABLED` | Não (padrão `false`) | Envia uma saudação apenas ao abrir uma sessão nova. Deixe desligado até integrar o motor de decisão. |
+| `GATEWAY_INTERNAL_TOKEN` | Sim | Token esperado no header `X-Internal-Token` das chamadas do Gateway WhatsApp (`src/gateway/`) a `POST /api/v1/whatsapp/sessions`. |
 
 ## Como rodar
 
@@ -57,5 +53,6 @@ docker compose --profile test run --rm --build backend-tests
 
 `GET /health` responde `200` com `{ "data": { "status": "ok" } }` e não depende do banco de dados — serve como healthcheck de infraestrutura (Docker, load balancer) e como exemplo do padrão de código para copiar em novos recursos.
 
-`POST /api/v1/webhooks/evolution` recebe eventos `messages.upsert`, ignora grupos e mensagens
-enviadas pelo próprio bot, cria ou reutiliza uma sessão e guarda somente o HMAC do telefone.
+`POST /api/v1/whatsapp/sessions` recebe `{ phone, text?, providerInstance? }` do Gateway WhatsApp
+(`src/gateway/`), autenticado pelo header `X-Internal-Token`, e cria ou reutiliza uma sessão
+guardando somente o HMAC do telefone (nunca o número em texto puro).

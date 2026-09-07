@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from "vitest"
+import { BackendClient } from "../clients/backend.client"
 import { MessageGateway } from "../gateways/evolution.gateway"
-import { SessionRepository } from "../repositories/session.repository"
 import { createEvolutionWebhookService } from "./evolutionWebhook.service"
 
 const payload = {
@@ -17,15 +17,14 @@ const payload = {
 }
 
 describe("Evolution webhook service", () => {
-    const findOrCreateActive = vi.fn()
+    const createWhatsappSession = vi.fn()
     const sendText = vi.fn()
-    const sessions: SessionRepository = { findOrCreateActive }
+    const backend: BackendClient = { createWhatsappSession }
     const messages: MessageGateway = { sendText }
-    const processEvolutionWebhook = createEvolutionWebhookService({ sessions, messages })
+    const processEvolutionWebhook = createEvolutionWebhookService({ backend, messages })
 
     beforeEach(() => {
         vi.clearAllMocks()
-        process.env.PHONE_HASH_SECRET = "test-secret"
         process.env.EVOLUTION_AUTO_REPLY_ENABLED = "false"
     })
 
@@ -34,7 +33,7 @@ describe("Evolution webhook service", () => {
             status: "ignored",
             reason: "unsupported_event",
         })
-        expect(findOrCreateActive).not.toHaveBeenCalled()
+        expect(createWhatsappSession).not.toHaveBeenCalled()
     })
 
     test("ignora mensagens enviadas pelo proprio bot", async () => {
@@ -44,11 +43,11 @@ describe("Evolution webhook service", () => {
                 data: { ...payload.data, key: { ...payload.data.key, fromMe: true } },
             }),
         ).resolves.toEqual({ status: "ignored", reason: "outgoing_message" })
-        expect(findOrCreateActive).not.toHaveBeenCalled()
+        expect(createWhatsappSession).not.toHaveBeenCalled()
     })
 
-    test("cria sessao sem persistir o telefone em texto puro", async () => {
-        findOrCreateActive.mockResolvedValueOnce({ id: "42", created: true })
+    test("chama o backend com o telefone sem hash e sem o sufixo do jid", async () => {
+        createWhatsappSession.mockResolvedValueOnce({ sessionId: "42", newSession: true })
 
         await expect(processEvolutionWebhook(payload)).resolves.toEqual({
             status: "processed",
@@ -56,26 +55,28 @@ describe("Evolution webhook service", () => {
             newSession: true,
         })
 
-        const phoneHash = findOrCreateActive.mock.calls[0]?.[0]
-        expect(phoneHash).toMatch(/^[a-f0-9]{64}$/)
-        expect(phoneHash).not.toContain("5511999999999")
+        expect(createWhatsappSession).toHaveBeenCalledWith({
+            phone: "5511999999999",
+            text: "Preciso de orientacao",
+            providerInstance: "procon",
+        })
         expect(sendText).not.toHaveBeenCalled()
     })
 
     test("reutiliza uma sessao ativa", async () => {
-        findOrCreateActive.mockResolvedValueOnce({ id: "42", created: false })
+        createWhatsappSession.mockResolvedValueOnce({ sessionId: "42", newSession: false })
 
         await expect(processEvolutionWebhook(payload)).resolves.toEqual({
             status: "processed",
             sessionId: "42",
             newSession: false,
         })
-        expect(findOrCreateActive).toHaveBeenCalledOnce()
+        expect(createWhatsappSession).toHaveBeenCalledOnce()
     })
 
     test("envia saudacao apenas para uma sessao nova e quando habilitado", async () => {
         process.env.EVOLUTION_AUTO_REPLY_ENABLED = "true"
-        findOrCreateActive.mockResolvedValueOnce({ id: "42", created: true })
+        createWhatsappSession.mockResolvedValueOnce({ sessionId: "42", newSession: true })
 
         await processEvolutionWebhook(payload)
 
