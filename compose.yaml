@@ -124,6 +124,11 @@ services:
     restart: unless-stopped
     volumes:
       - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   llm-pull:
     image: ollama/ollama:latest
@@ -133,7 +138,8 @@ services:
       OLLAMA_HOST: ollama:11434
     entrypoint: ["sh", "-c", "ollama pull ${LLM_MODEL:-llama3.2:3b}"]
     depends_on:
-      - ollama
+      ollama:
+        condition: service_healthy
     restart: "no"
 
 volumes:
