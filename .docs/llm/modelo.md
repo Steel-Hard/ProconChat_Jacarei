@@ -71,3 +71,16 @@ Métricas devolvidas pelo Ollama:
 `eval_count` (tokens gerados na resposta): 200. Isso equivale a aproximadamente 6,3 tokens/segundo em CPU.
 
 **Avaliação:** o tempo de resposta (~32 segundos para uma resposta completa) é alto para um chatbot que precisa responder em tempo real dentro de uma conversa de WhatsApp — está abaixo da faixa de 8 a 15 tokens/segundo estimada inicialmente para CPU, provavelmente por limitação de CPU/paralelismo do ambiente onde o teste foi rodado (sem GPU). Não é bloqueante para fechar a #7 (que pede o container funcional e o contrato documentado, não uma SLA de performance — ver `spec.md`), mas fica registrado como nota para a #15: ao integrar de verdade, avaliar streaming de resposta, um modelo menor, ou execução com GPU antes de expor isso como parte crítica do fluxo em tempo real.
+
+## Teste com `num_predict` limitado e `keep_alive`
+
+Repeti o mesmo prompt (categoria "Direito de Arrependimento") passando `"options": {"num_predict": 100}` e `"keep_alive": "10m"`, com uma chamada de aquecimento anterior (prompt trivial) para o modelo já estar carregado na memória.
+
+| Campo | Sem limite (modelo frio) | `num_predict: 100` (modelo aquecido) |
+|---|---|---|
+| `total_duration` | ~38,35 s | ~23,55 s |
+| `load_duration` | ~4,95 s | ~0,001 s |
+| `eval_duration` | ~23,35 s (159 tokens) | ~14,96 s (100 tokens) |
+| tokens/s | ~6,8 | ~6,7 |
+
+**Conclusão:** a velocidade de geração por token não muda (~6,7-6,8 tokens/s neste ambiente CPU) — os dois ganhos vêm de: (1) `keep_alive` elimina o custo de recarregar o modelo a cada chamada (~5s por chamada), puro ganho sem tradeoff, desde que o container tenha memória suficiente pra manter o modelo residente; (2) `num_predict` reduz o tempo proporcionalmente aos tokens gerados — cortar de 159 para 100 tokens (~37% menos) reduziu o `eval_duration` em proporção equivalente (~36%). O tradeoff é que a resposta pode ser cortada no meio da frase (`done_reason: "length"`, observado neste teste) — calibrar o valor pelo tamanho típico de resposta esperado, ou instruir o prompt a responder de forma mais concisa, evita esse corte. GPU continua sendo o único ganho que muda a taxa de tokens/s em si, não só o total de tokens processados.
