@@ -7,7 +7,7 @@ vi.mock("../services/evolutionWebhook.service", () => ({
     processEvolutionWebhook: vi.fn(),
 }))
 
-describe("POST /api/v1/webhooks/evolution", () => {
+describe("POST /webhooks/evolution", () => {
     beforeEach(() => vi.clearAllMocks())
 
     test("confirma o recebimento com 202", async () => {
@@ -18,7 +18,7 @@ describe("POST /api/v1/webhooks/evolution", () => {
         })
 
         const response = await request(app)
-            .post("/api/v1/webhooks/evolution?token=test-only-webhook-token")
+            .post("/webhooks/evolution?token=test-only-webhook-token")
             .send({ event: "messages.upsert", instance: "procon", data: {} })
 
         expect(response.status).toBe(202)
@@ -29,7 +29,7 @@ describe("POST /api/v1/webhooks/evolution", () => {
 
     test("recusa webhook sem o token configurado", async () => {
         const response = await request(app)
-            .post("/api/v1/webhooks/evolution")
+            .post("/webhooks/evolution")
             .send({ event: "messages.upsert" })
 
         expect(response.status).toBe(401)
