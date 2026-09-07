@@ -51,6 +51,16 @@ export class MockMotorDecisaoRepository implements IMotorDecisaoRepository {
             requires_in_person: false,
             out_of_scope: false,
             active: false
+        },
+        {
+            id: 5,
+            category_id: 99,
+            question: "Pergunta órfã?",
+            legal_basis: null,
+            answer: "N/A",
+            requires_in_person: false,
+            out_of_scope: false,
+            active: true
         }
     ]
 
