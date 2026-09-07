@@ -5,13 +5,16 @@ describe("validateEnv", () => {
     let originalDbUrl: string | undefined
     let originalPhoneHashSecret: string | undefined
     let originalWebhookToken: string | undefined
+    let originalGatewayInternalToken: string | undefined
 
     beforeEach(() => {
         originalDbUrl = process.env.DB_URL
         originalPhoneHashSecret = process.env.PHONE_HASH_SECRET
         originalWebhookToken = process.env.EVOLUTION_WEBHOOK_TOKEN
+        originalGatewayInternalToken = process.env.GATEWAY_INTERNAL_TOKEN
         process.env.PHONE_HASH_SECRET = "test-secret"
         process.env.EVOLUTION_WEBHOOK_TOKEN = "test-webhook-token"
+        process.env.GATEWAY_INTERNAL_TOKEN = "test-internal-token"
     })
 
     afterEach(() => {
@@ -29,6 +32,11 @@ describe("validateEnv", () => {
             delete process.env.EVOLUTION_WEBHOOK_TOKEN
         } else {
             process.env.EVOLUTION_WEBHOOK_TOKEN = originalWebhookToken
+        }
+        if (originalGatewayInternalToken === undefined) {
+            delete process.env.GATEWAY_INTERNAL_TOKEN
+        } else {
+            process.env.GATEWAY_INTERNAL_TOKEN = originalGatewayInternalToken
         }
         vi.restoreAllMocks()
     })
@@ -74,5 +82,16 @@ describe("validateEnv", () => {
 
         expect(exitSpy).toHaveBeenCalledWith(1)
         expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("EVOLUTION_WEBHOOK_TOKEN"))
+    })
+
+    it("exits with code 1 when GATEWAY_INTERNAL_TOKEN is missing", () => {
+        delete process.env.GATEWAY_INTERNAL_TOKEN
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never)
+        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+        validateEnv()
+
+        expect(exitSpy).toHaveBeenCalledWith(1)
+        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("GATEWAY_INTERNAL_TOKEN"))
     })
 })

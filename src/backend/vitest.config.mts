@@ -8,6 +8,7 @@ export default defineConfig({
             DB_URL: "postgres://test:test@localhost:5432/proconchat_test",
             PHONE_HASH_SECRET: "test-only-phone-hash-secret",
             EVOLUTION_WEBHOOK_TOKEN: "test-only-webhook-token",
+            GATEWAY_INTERNAL_TOKEN: "test-only-internal-token",
         },
     },
 })

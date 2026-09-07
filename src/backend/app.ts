@@ -8,6 +8,7 @@ import errorHandler from "./middleware/errorHandler.middleware"
 import NotFoundError from "./errors/NotFoundError"
 import healthRoutes from "./routes/health.routes"
 import evolutionWebhookRoutes from "./routes/evolutionWebhook.routes"
+import whatsappSessionRoutes from "./routes/whatsappSession.routes"
 
 dotenv.config({ quiet: true })
 
@@ -22,6 +23,7 @@ app.use(requestLoggerMiddleware)
 
 app.use("/health", healthRoutes)
 app.use("/api/v1/webhooks/evolution", evolutionWebhookRoutes)
+app.use("/api/v1/whatsapp/sessions", whatsappSessionRoutes)
 
 app.use("/", (_req: Request, _res: Response, next: NextFunction) =>
     next(new NotFoundError("Route not found")),

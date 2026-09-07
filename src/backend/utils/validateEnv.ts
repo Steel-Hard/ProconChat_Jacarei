@@ -1,4 +1,9 @@
-const requiredEnvVars = ["DB_URL", "PHONE_HASH_SECRET", "EVOLUTION_WEBHOOK_TOKEN"]
+const requiredEnvVars = [
+    "DB_URL",
+    "PHONE_HASH_SECRET",
+    "EVOLUTION_WEBHOOK_TOKEN",
+    "GATEWAY_INTERNAL_TOKEN",
+]
 
 export default function validateEnv(): void {
     const missingEnvVars = requiredEnvVars.filter((envVar) => !process.env[envVar])
