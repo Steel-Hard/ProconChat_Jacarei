@@ -54,4 +54,20 @@ O servidor interno do Ollama disponibiliza duas APIs paralelas na porta 11434: a
 
 ## Resultado do teste real de prompt
 
-Ver seção adicionada ao final deste documento após a validação (T4 de `tasks.md`).
+Ambiente: CPU (sem GPU disponível no container, ~9.7 GiB de RAM reportados pelo Ollama como memória de inferência disponível). Modelo `llama3.2:3b` já baixado pelo serviço `llm-pull`.
+
+Prompt enviado a `POST http://ollama:11434/api/generate` com `"stream": false`, seguindo o contrato descrito em `.docs/llm/contrato.md`: instrução de reescrita de um `RespostaFinalOutput` de exemplo (categoria "Vício/Defeito de Produto ou Serviço") em um parágrafo natural e empático.
+
+Resposta obtida foi um texto coerente em português, fiel aos fatos e à base legal fornecidos, sem inventar informação nova.
+
+Métricas devolvidas pelo Ollama:
+
+| Campo | Valor (ns) | Valor (s) |
+|---|---|---|
+| `total_duration` | 31.956.837.552 | ~31,96 s |
+| `prompt_eval_duration` | 141.712.000 | ~0,14 s |
+| `eval_duration` | 31.809.138.000 | ~31,81 s |
+
+`eval_count` (tokens gerados na resposta): 200. Isso equivale a aproximadamente 6,3 tokens/segundo em CPU.
+
+**Avaliação:** o tempo de resposta (~32 segundos para uma resposta completa) é alto para um chatbot que precisa responder em tempo real dentro de uma conversa de WhatsApp — está abaixo da faixa de 8 a 15 tokens/segundo estimada inicialmente para CPU, provavelmente por limitação de CPU/paralelismo do ambiente onde o teste foi rodado (sem GPU). Não é bloqueante para fechar a #7 (que pede o container funcional e o contrato documentado, não uma SLA de performance — ver `spec.md`), mas fica registrado como nota para a #15: ao integrar de verdade, avaliar streaming de resposta, um modelo menor, ou execução com GPU antes de expor isso como parte crítica do fluxo em tempo real.
