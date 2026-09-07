@@ -1,28 +1,17 @@
-import { IMotorDecisaoRepository } from "./motorDecisao.repository"
+import { IMotorDecisaoRepository } from "../repositories/motorDecisao.repository.interface"
 import { RespostaFinalOutput, Categoria, Pergunta } from "../types/motorDecisao.types"
 
 export class MotorDecisaoService {
     constructor(private readonly repository: IMotorDecisaoRepository) {}
 
-    /**
-     * 1. Ao receber uma sessão nova, retorna a lista de categorias ativas disponíveis.
-     */
     async iniciarSessao(): Promise<Categoria[]> {
         return this.repository.getCategoriasAtivas()
     }
 
-    /**
-     * 2. Ao receber a escolha de uma categoria, retorna as perguntas ativas daquela categoria.
-     */
     async escolherCategoria(categoriaId: number): Promise<Pergunta[]> {
         return this.repository.getPerguntasAtivasPorCategoria(categoriaId)
     }
 
-    /**
-     * 3, 4 e 5. Ao receber a escolha de uma pergunta, monta a resposta final:
-     * pergunta, base legal, resposta, documentos necessários e sinalizadores
-     * de fora de escopo e atendimento presencial.
-     */
     async processarPergunta(perguntaId: number): Promise<RespostaFinalOutput> {
         const pergunta = await this.repository.getPerguntaById(perguntaId)
         if (!pergunta) {
@@ -34,7 +23,6 @@ export class MotorDecisaoService {
             throw new Error("Categoria não encontrada.")
         }
 
-        // Regra 4: Se marcada como fora de escopo, retorna resposta indicando claramente
         if (pergunta.out_of_scope) {
             return {
                 categoria: categoria.title,
@@ -49,7 +37,6 @@ export class MotorDecisaoService {
 
         const documentos = await this.repository.getDocumentosPorPergunta(perguntaId)
 
-        // Regras 3 e 5: Retorno final estruturado e sinalizador de presencial
         return {
             categoria: categoria.title,
             pergunta: pergunta.question,

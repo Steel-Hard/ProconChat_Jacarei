@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest"
 import { MotorDecisaoService } from "./motorDecisao.service"
-import { MockMotorDecisaoRepository } from "./motorDecisao.repository"
+import { MockMotorDecisaoRepository } from "../repositories/motorDecisaoMock.repository"
 
 describe("MotorDecisaoService", () => {
     let service: MotorDecisaoService

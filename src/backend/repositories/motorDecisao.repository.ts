@@ -1,6 +1,6 @@
 import getPool from "../db/connection"
 import { Categoria, Pergunta, DocumentoNecessario } from "../types/motorDecisao.types"
-import { IMotorDecisaoRepository } from "./motorDecisao.repository"
+import { IMotorDecisaoRepository } from "./motorDecisao.repository.interface"
 
 export class PgMotorDecisaoRepository implements IMotorDecisaoRepository {
     private pool = getPool()
