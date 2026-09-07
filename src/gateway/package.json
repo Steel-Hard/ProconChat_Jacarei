@@ -1,18 +1,13 @@
 {
-    "name": "proconchat-backend",
+    "name": "proconchat-gateway",
     "version": "1.0.0",
-    "description": "Backend do ProconChat (chatbot de orientação ao consumidor via WhatsApp) — Express + TypeScript.",
+    "description": "Gateway WhatsApp do ProconChat (Evolution API) — Express + TypeScript.",
     "main": "dist/index.js",
     "scripts": {
         "dev": "nodemon --watch . --ignore dist --ignore node_modules --ext ts --exec \"ts-node index.ts\"",
         "build": "tsc -p tsconfig.json --outDir dist",
         "start": "node dist/index.js",
-        "test": "vitest run",
-        "test:integration": "vitest run --config vitest.integration.config.mts",
-        "test:db": "node db/verify-migrations.cjs",
-        "db:migrate": "node-pg-migrate up --database-url-var DB_URL --migrations-dir db/migrations",
-        "db:rollback": "node-pg-migrate down --database-url-var DB_URL --migrations-dir db/migrations",
-        "db:migration:create": "node-pg-migrate create --migration-file-language sql --migrations-dir db/migrations"
+        "test": "vitest run"
     },
     "author": "",
     "license": "MIT",
@@ -23,15 +18,12 @@
         "cors": "^2.8.5",
         "dotenv": "^17.2.3",
         "express": "^5.2.1",
-        "helmet": "^8.3.0",
-        "node-pg-migrate": "8.0.4",
-        "pg": "^8.16.4"
+        "helmet": "^8.3.0"
     },
     "devDependencies": {
         "@types/cors": "^2.8.19",
         "@types/express": "^5.0.6",
         "@types/node": "^22.5.4",
-        "@types/pg": "^8.15.6",
         "@types/supertest": "^7.2.1",
         "nodemon": "^3.1.10",
         "supertest": "^7.2.2",

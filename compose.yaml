@@ -36,12 +36,90 @@ services:
     environment:
       DB_URL: postgresql://${POSTGRES_USER:-proconchat}:${POSTGRES_PASSWORD:-proconchat_dev}@postgres:5432/proconchat
       PORT: 3000
+      PHONE_HASH_SECRET: ${PHONE_HASH_SECRET:-development-only-secret}
+      GATEWAY_INTERNAL_TOKEN: ${GATEWAY_INTERNAL_TOKEN:-development-internal-token}
     ports:
       - "127.0.0.1:${BACKEND_PORT:-3000}:3000"
     depends_on:
       migrate:
         condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_dev}
+    command: ["sh", "-c", "exec redis-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\""]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  evolution-api:
+    image: evoapicloud/evolution-api:v2.1.1
+    restart: unless-stopped
+    environment:
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:-development-api-key}
+      DATABASE_ENABLED: "true"
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://${POSTGRES_USER:-proconchat}:${POSTGRES_PASSWORD:-proconchat_dev}@postgres:5432/proconchat?schema=evolution
+      DATABASE_CONNECTION_CLIENT_NAME: evolution_exchange
+      DATABASE_SAVE_DATA_INSTANCE: "true"
+      DATABASE_SAVE_DATA_NEW_MESSAGE: "true"
+      DATABASE_SAVE_MESSAGE_UPDATE: "true"
+      DATABASE_SAVE_DATA_CONTACTS: "true"
+      DATABASE_SAVE_DATA_CHATS: "true"
+      DATABASE_SAVE_DATA_LABELS: "true"
+      DATABASE_SAVE_DATA_HISTORIC: "true"
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: redis://:${REDIS_PASSWORD:-redis_dev}@redis:6379/6
+      CACHE_REDIS_PREFIX_KEY: evolution
+      CACHE_REDIS_SAVE_INSTANCES: "false"
+      CACHE_LOCAL_ENABLED: "false"
+      WEBHOOK_GLOBAL_ENABLED: "true"
+      WEBHOOK_GLOBAL_URL: http://gateway:${GATEWAY_PORT:-3001}/webhooks/evolution?token=${EVOLUTION_WEBHOOK_TOKEN:-development-webhook-token}
+      WEBHOOK_GLOBAL_WEBHOOK_BY_EVENTS: "false"
+      WEBHOOK_EVENTS_MESSAGES_UPSERT: "true"
+    ports:
+      - "${EVOLUTION_API_PORT:-8080}:8080"
+    volumes:
+      - evolution_instances:/evolution/instances
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  gateway:
+    build:
+      context: ./src/gateway
+    restart: unless-stopped
+    environment:
+      PORT: ${GATEWAY_PORT:-3001}
+      EVOLUTION_API_URL: http://evolution-api:8080
+      EVOLUTION_API_KEY: ${EVOLUTION_API_KEY:-development-api-key}
+      EVOLUTION_WEBHOOK_TOKEN: ${EVOLUTION_WEBHOOK_TOKEN:-development-webhook-token}
+      EVOLUTION_AUTO_REPLY_ENABLED: ${EVOLUTION_AUTO_REPLY_ENABLED:-false}
+      BACKEND_INTERNAL_URL: http://backend:3000
+      GATEWAY_INTERNAL_TOKEN: ${GATEWAY_INTERNAL_TOKEN:-development-internal-token}
+    ports:
+      - "${GATEWAY_PORT:-3001}:3001"
+    depends_on:
+      backend:
+        condition: service_healthy
 
 volumes:
   postgres_data:
+  redis_data:
+  evolution_instances:
