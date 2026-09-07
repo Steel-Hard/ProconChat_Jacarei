@@ -12,7 +12,9 @@ arquivo [`compose.yaml`](../../compose.yaml) na raiz é a fonte única de config
 - `redis` (porta `6379`);
 - `evolution-api` (porta `8080`);
 - `backend` (porta `3000`);
-- `gateway` (porta `3001`).
+- `gateway` (porta `3001`);
+- `ollama` (sem porta pública mapeada, só acessível pela rede interna do compose) e `llm-pull`
+  (baixa o modelo `LLM_MODEL` — padrão `llama3.2:3b` — e sai).
 
 O PostgreSQL é compartilhado no mesmo servidor, mas os dados ficam separados: o backend usa o
 schema `public` e a Evolution usa o schema `evolution`. A Evolution encaminha eventos
@@ -38,9 +40,9 @@ docker compose ps
 
 No PowerShell, use `Copy-Item .env.example .env` no lugar de `cp`.
 
-Devem aparecer cinco serviços: `postgres`, `redis`, `evolution-api`, `backend`, `gateway` (mais o
-`migrate`, que roda uma vez e sai com código `0`). `postgres`, `redis`, `backend` e `gateway`
-aparecem como `healthy`; `evolution-api` aparece como `Up`.
+Devem aparecer sete serviços: `postgres`, `redis`, `evolution-api`, `backend`, `gateway`, `ollama`
+(mais o `migrate` e o `llm-pull`, que rodam uma vez e saem com código `0`). `postgres`, `redis`,
+`backend`, `gateway` e `ollama` aparecem como `healthy`; `evolution-api` aparece como `Up`.
 
 Troque as chaves e senhas do `.env` antes de qualquer ambiente compartilhado. As credenciais do
 PostgreSQL são aplicadas na criação inicial do volume — não altere só a senha depois que o banco já
