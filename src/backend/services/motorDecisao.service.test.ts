@@ -74,4 +74,10 @@ describe("MotorDecisaoService", () => {
             "Pergunta não encontrada."
         )
     })
+
+    it("deve lançar erro se a categoria da pergunta não for encontrada", async () => {
+        await expect(service.processarPergunta(5)).rejects.toThrow(
+            "Categoria não encontrada."
+        )
+    })
 })
