@@ -1,6 +1,7 @@
 # ProconChat Jacareí
 
-Guia específico para validar a Evolution API e o backend: [README2.md](README2.md).
+Guia específico para subir e validar a Evolution API, o Gateway WhatsApp e o backend:
+[`src/gateway/README.md`](src/gateway/README.md).
 
 # Chatbot para Orientação ao Consumidor via WhatsApp
 
