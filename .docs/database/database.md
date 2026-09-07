@@ -124,7 +124,18 @@ CREATE TABLE Sessions (
 
 CREATE INDEX idx_sessions_phone_hash ON Sessions(phone_hash);
 CREATE INDEX idx_sessions_code ON Sessions(session_code);
+
+-- Índice adicionado pela migration `08` (#4), não pelo CREATE TABLE original da #9:
+CREATE UNIQUE INDEX uniq_sessions_phone_in_progress
+ON Sessions(phone_hash)
+WHERE status = 'IN_PROGRESS';
 ```
+
+`uniq_sessions_phone_in_progress` garante uma única sessão `IN_PROGRESS` por telefone e torna
+idempotente a criação de sessão pelo endpoint `POST /api/v1/whatsapp/sessions` — entregas repetidas
+do mesmo evento do Gateway WhatsApp reaproveitam a mesma sessão em vez de duplicar. Ele existe como
+`db/migrations/08_add_sessions_active_unique_index.sql`, não como parte do `db/schema/sessions.sql`
+de referência (ver `.docs/database/migrations.md`: mudanças de schema são sempre migrations novas).
 
 `phone_hash` sozinho não é suficiente para conformidade total — a política de retenção/anonimização
 (RNF09, ainda a formalizar) deve definir por quanto tempo a sessão é mantida e quando o hash é descartado.
