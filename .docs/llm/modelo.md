@@ -1,0 +1,86 @@
+# Modelo escolhido: Llama 3.2 3B (Q4_K_M), servido via Ollama
+
+O Ollama é o runtime que carrega o modelo inteiro na memória para garantir respostas rápidas. O modelo é o **Llama 3.2**, na variante de 3B (3 bilhões de parâmetros), com quantização Q4_K_M (precisão de 4 bits), o que reduz drasticamente o peso original do modelo sem perder inteligência relevante.
+
+## Requisitos e consumo
+
+| Recurso           | Apenas em CPU (RAM) | Com Placa de Vídeo (VRAM) |
+|------------------|-------------|--------------|
+| Consumo do Modelo | ~2.0 GB             | ~2.0 GB                   |
+| Folga para Contexto (Janela de Chat) | + 1.0 GB a 1.5 GB | + 1.0 GB a 1.5 GB |
+| Mínimo Recomendado no PC | 8 GB de RAM | 4 GB de VRAM (Ex: GTX 1650 / RTX 3050) |
+
+Em disco, o modelo ocupa em torno de 2 GB.
+
+Se você tiver GPU (NVIDIA/AMD): o modelo roda na VRAM. A resposta será instantânea (30 a 50+ tokens por segundo).
+
+Se você rodar em CPU: o modelo roda na RAM. A resposta será aceitável (8 a 15 tokens por segundo), o que ainda é perfeitamente usável para uma conversa em tempo real.
+
+## Por que ele é o ideal para este chatbot
+
+1. **Janela de contexto grande (128k)**: suporta até 128.000 tokens de histórico, permitindo lembrar de conversas longas, ler documentos inteiros ou manter regras complexas de atendimento sem "esquecer" o que foi dito no início do chat.
+
+2. **Excelente suporte ao português**: diferente de modelos antigos que traduziam o pensamento do inglês (gerando frases robóticas), o Llama 3.2 foi treinado nativamente com grandes volumes de dados em português. Entende gírias, contextos culturais e escreve de forma natural e fluida.
+
+3. **Capacidade de RAG (Retrieval-Augmented Generation)**: por ter 3 bilhões de parâmetros, é rápido o suficiente para analisar textos injetados em tempo real. É possível conectar uma base de dados ao prompt e o modelo responde estritamente com base nas informações fornecidas. Essa capacidade não é implementada nesta spec (fora de escopo — ver `spec.md` da `servico-llm`), mas é um motivo relevante da escolha.
+
+4. **Custo zero e privacidade total**: ao rodar em Docker localmente ou no servidor próprio, não é necessário pagar por token utilizado (como na API da OpenAI) e os dados dos usuários nunca saem da infraestrutura própria, atendendo RP05/RNF03 (LGPD).
+
+## Endpoints do servidor Ollama (referência geral)
+
+O servidor interno do Ollama disponibiliza duas APIs paralelas na porta 11434: a API nativa do Ollama e a API de compatibilidade da OpenAI. Abaixo estão os principais endpoints, divididos por utilidade.
+
+### Conversação e geração
+
+- `POST /api/chat` (nativo) ou `/v1/chat/completions` (padrão OpenAI): ideal para chatbots — recebe uma lista com histórico de mensagens (`system`, `user`, `assistant`) e mantém o contexto da conversa.
+- `POST /api/generate` (nativo) ou `/v1/completions` (padrão OpenAI): geração de texto simples a partir de um único prompt textual, sem gerenciar histórico de chat automaticamente. É o endpoint usado pelo contrato deste projeto (ver `.docs/llm/contrato.md`).
+
+### Vetorização (embeddings)
+
+- `POST /api/embed` (nativo) ou `/v1/embeddings` (padrão OpenAI): transforma um texto em um vetor numérico. Útil para RAG, fora de escopo desta spec.
+
+### Gerenciamento de modelos
+
+- `POST /api/pull`: faz o download de um modelo do registro do Ollama. Usado pelo serviço `llm-pull` do `compose.yaml`.
+- `GET /api/tags` ou `/v1/models`: lista os modelos já baixados e disponíveis localmente.
+- `POST /api/show`: retorna informações detalhadas sobre um modelo específico (arquitetura, janela de contexto, quantização).
+- `DELETE /api/delete`: remove um modelo do disco.
+
+### Diagnóstico e infraestrutura
+
+- `GET /`: retorna o texto `Ollama is running`. É o teste mais simples para garantir que o serviço está online.
+- `POST /api/copy`: duplica um modelo local criando um novo nome/tag.
+- `POST /api/ps`: mostra quais modelos estão carregados na memória neste momento e quanta memória estão consumindo.
+
+## Resultado do teste real de prompt
+
+Ambiente: CPU (sem GPU disponível no container, ~9.7 GiB de RAM reportados pelo Ollama como memória de inferência disponível). Modelo `llama3.2:3b` já baixado pelo serviço `llm-pull`.
+
+Prompt enviado a `POST http://ollama:11434/api/generate` com `"stream": false`, seguindo o contrato descrito em `.docs/llm/contrato.md`: instrução de reescrita de um `RespostaFinalOutput` de exemplo (categoria "Vício/Defeito de Produto ou Serviço") em um parágrafo natural e empático.
+
+Resposta obtida foi um texto coerente em português, fiel aos fatos e à base legal fornecidos, sem inventar informação nova.
+
+Métricas devolvidas pelo Ollama:
+
+| Campo | Valor (ns) | Valor (s) |
+|---|---|---|
+| `total_duration` | 31.956.837.552 | ~31,96 s |
+| `prompt_eval_duration` | 141.712.000 | ~0,14 s |
+| `eval_duration` | 31.809.138.000 | ~31,81 s |
+
+`eval_count` (tokens gerados na resposta): 200. Isso equivale a aproximadamente 6,3 tokens/segundo em CPU.
+
+**Avaliação:** o tempo de resposta (~32 segundos para uma resposta completa) é alto para um chatbot que precisa responder em tempo real dentro de uma conversa de WhatsApp — está abaixo da faixa de 8 a 15 tokens/segundo estimada inicialmente para CPU, provavelmente por limitação de CPU/paralelismo do ambiente onde o teste foi rodado (sem GPU). Não é bloqueante para fechar a #7 (que pede o container funcional e o contrato documentado, não uma SLA de performance — ver `spec.md`), mas fica registrado como nota para a #15: ao integrar de verdade, avaliar streaming de resposta, um modelo menor, ou execução com GPU antes de expor isso como parte crítica do fluxo em tempo real.
+
+## Teste com `num_predict` limitado e `keep_alive`
+
+Repeti o mesmo prompt (categoria "Direito de Arrependimento") passando `"options": {"num_predict": 100}` e `"keep_alive": "10m"`, com uma chamada de aquecimento anterior (prompt trivial) para o modelo já estar carregado na memória.
+
+| Campo | Sem limite (modelo frio) | `num_predict: 100` (modelo aquecido) |
+|---|---|---|
+| `total_duration` | ~38,35 s | ~23,55 s |
+| `load_duration` | ~4,95 s | ~0,001 s |
+| `eval_duration` | ~23,35 s (159 tokens) | ~14,96 s (100 tokens) |
+| tokens/s | ~6,8 | ~6,7 |
+
+**Conclusão:** a velocidade de geração por token não muda (~6,7-6,8 tokens/s neste ambiente CPU) — os dois ganhos vêm de: (1) `keep_alive` elimina o custo de recarregar o modelo a cada chamada (~5s por chamada), puro ganho sem tradeoff, desde que o container tenha memória suficiente pra manter o modelo residente; (2) `num_predict` reduz o tempo proporcionalmente aos tokens gerados — cortar de 159 para 100 tokens (~37% menos) reduziu o `eval_duration` em proporção equivalente (~36%). O tradeoff é que a resposta pode ser cortada no meio da frase (`done_reason: "length"`, observado neste teste) — calibrar o valor pelo tamanho típico de resposta esperado, ou instruir o prompt a responder de forma mais concisa, evita esse corte. GPU continua sendo o único ganho que muda a taxa de tokens/s em si, não só o total de tokens processados.
