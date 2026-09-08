@@ -12,7 +12,8 @@
         "test:db": "node db/verify-migrations.cjs",
         "db:migrate": "node-pg-migrate up --database-url-var DB_URL --migrations-dir db/migrations",
         "db:rollback": "node-pg-migrate down --database-url-var DB_URL --migrations-dir db/migrations",
-        "db:migration:create": "node-pg-migrate create --migration-file-language sql --migrations-dir db/migrations"
+        "db:migration:create": "node-pg-migrate create --migration-file-language sql --migrations-dir db/migrations",
+        "db:seed": "ts-node db/seeds/run.ts"
     },
     "author": "",
     "license": "MIT",
