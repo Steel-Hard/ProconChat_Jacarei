@@ -1,9 +1,6 @@
 import { Categoria, Pergunta, DocumentoNecessario } from "../types/motorDecisao.types"
 import { IMotorDecisaoRepository } from "./motorDecisao.repository.interface"
 
-// TODO(#12): revisar se este mock ainda é necessário depois que o banco for
-// populado com conteúdo real — substituir os fixtures abaixo por dados reais
-// do FAQ do PROCON caso os testes passem a rodar contra o schema seedado.
 export class MockMotorDecisaoRepository implements IMotorDecisaoRepository {
     private categorias: Categoria[] = [
         { id: 1, title: "Direito de Arrependimento", active: true },

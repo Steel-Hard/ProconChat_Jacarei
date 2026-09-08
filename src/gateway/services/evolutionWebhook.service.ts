@@ -54,7 +54,7 @@ export function createEvolutionWebhookService({
             providerInstance: payload.instance,
         })
 
-        if (session.newSession && process.env.EVOLUTION_AUTO_REPLY_ENABLED === "true") {
+        if (session.reply?.text && process.env.EVOLUTION_AUTO_REPLY_ENABLED === "true") {
             if (!payload.instance) {
                 throw new Error("Evolution webhook did not include an instance")
             }
@@ -62,11 +62,16 @@ export function createEvolutionWebhookService({
             await messages.sendText({
                 instance: payload.instance,
                 number: phone,
-                text: "Ola! Sou o assistente virtual do Procon Jacarei. Como posso orientar voce?",
+                text: session.reply.text,
             })
         }
 
-        return { status: "processed", sessionId: session.sessionId, newSession: session.newSession }
+        return {
+            status: "processed",
+            sessionId: session.sessionId,
+            newSession: session.newSession,
+            reply: session.reply,
+        }
     }
 }
 

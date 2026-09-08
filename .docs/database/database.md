@@ -129,6 +129,13 @@ CREATE INDEX idx_sessions_code ON Sessions(session_code);
 CREATE UNIQUE INDEX uniq_sessions_phone_in_progress
 ON Sessions(phone_hash)
 WHERE status = 'IN_PROGRESS';
+
+-- Colunas adicionadas pela migration `09` (#14), não pelo CREATE TABLE original da #9:
+CREATE TYPE session_step AS ENUM ('AWAITING_CATEGORY', 'AWAITING_QUESTION', 'FINISHED');
+
+ALTER TABLE Sessions
+    ADD COLUMN current_step session_step NOT NULL DEFAULT 'AWAITING_CATEGORY',
+    ADD COLUMN current_category_id BIGINT REFERENCES Categories(id);
 ```
 
 `uniq_sessions_phone_in_progress` garante uma única sessão `IN_PROGRESS` por telefone e torna
@@ -136,6 +143,14 @@ idempotente a criação de sessão pelo endpoint `POST /api/v1/whatsapp/sessions
 do mesmo evento do Gateway WhatsApp reaproveitam a mesma sessão em vez de duplicar. Ele existe como
 `db/migrations/08_add_sessions_active_unique_index.sql`, não como parte do `db/schema/sessions.sql`
 de referência (ver `.docs/database/migrations.md`: mudanças de schema são sempre migrations novas).
+
+`current_step` e `current_category_id` guardam o estado de navegação da conversa dentro do Motor
+de Decisão (stateless por design — ver `motorDecisao.service.ts`): a cada mensagem recebida pelo
+Gateway, o Backend usa essas colunas para saber se a sessão está aguardando escolha de categoria
+(`AWAITING_CATEGORY`, estado inicial) ou de pergunta (`AWAITING_QUESTION`, após `current_category_id`
+ser preenchido), até a sessão chegar a uma resposta final e ser marcada `status = 'FINISHED'`. Elas
+existem como `db/migrations/09_add_sessions_navigation_state.sql` (#14), pelo mesmo motivo da nota
+acima sobre migration `08`.
 
 `phone_hash` sozinho não é suficiente para conformidade total — a política de retenção/anonimização
 (RNF09, ainda a formalizar) deve definir por quanto tempo a sessão é mantida e quando o hash é descartado.
