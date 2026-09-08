@@ -7,6 +7,7 @@ export interface WhatsappSessionRequest {
 export interface WhatsappSessionResponse {
     sessionId: string
     newSession: boolean
+    reply: { text: string; step: string }
 }
 
 export interface BackendClient {

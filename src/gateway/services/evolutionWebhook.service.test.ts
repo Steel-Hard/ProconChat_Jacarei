@@ -47,12 +47,17 @@ describe("Evolution webhook service", () => {
     })
 
     test("chama o backend com o telefone sem hash e sem o sufixo do jid", async () => {
-        createWhatsappSession.mockResolvedValueOnce({ sessionId: "42", newSession: true })
+        createWhatsappSession.mockResolvedValueOnce({
+            sessionId: "42",
+            newSession: true,
+            reply: { text: "Escolha uma categoria", step: "AWAITING_CATEGORY" },
+        })
 
         await expect(processEvolutionWebhook(payload)).resolves.toEqual({
             status: "processed",
             sessionId: "42",
             newSession: true,
+            reply: { text: "Escolha uma categoria", step: "AWAITING_CATEGORY" },
         })
 
         expect(createWhatsappSession).toHaveBeenCalledWith({
@@ -64,26 +69,48 @@ describe("Evolution webhook service", () => {
     })
 
     test("reutiliza uma sessao ativa", async () => {
-        createWhatsappSession.mockResolvedValueOnce({ sessionId: "42", newSession: false })
+        createWhatsappSession.mockResolvedValueOnce({
+            sessionId: "42",
+            newSession: false,
+            reply: { text: "Escolha uma pergunta", step: "AWAITING_QUESTION" },
+        })
 
         await expect(processEvolutionWebhook(payload)).resolves.toEqual({
             status: "processed",
             sessionId: "42",
             newSession: false,
+            reply: { text: "Escolha uma pergunta", step: "AWAITING_QUESTION" },
         })
         expect(createWhatsappSession).toHaveBeenCalledOnce()
     })
 
-    test("envia saudacao apenas para uma sessao nova e quando habilitado", async () => {
+    test("envia a resposta do backend quando ha texto e o auto-reply esta habilitado", async () => {
         process.env.EVOLUTION_AUTO_REPLY_ENABLED = "true"
-        createWhatsappSession.mockResolvedValueOnce({ sessionId: "42", newSession: true })
+        createWhatsappSession.mockResolvedValueOnce({
+            sessionId: "42",
+            newSession: true,
+            reply: { text: "Escolha uma categoria digitando o numero", step: "AWAITING_CATEGORY" },
+        })
 
         await processEvolutionWebhook(payload)
 
         expect(sendText).toHaveBeenCalledWith({
             instance: "procon",
             number: "5511999999999",
-            text: expect.stringContaining("Procon Jacarei"),
+            text: "Escolha uma categoria digitando o numero",
         })
+    })
+
+    test("nao envia resposta quando o auto-reply esta desabilitado mesmo com reply.text presente", async () => {
+        process.env.EVOLUTION_AUTO_REPLY_ENABLED = "false"
+        createWhatsappSession.mockResolvedValueOnce({
+            sessionId: "42",
+            newSession: true,
+            reply: { text: "Escolha uma categoria digitando o numero", step: "AWAITING_CATEGORY" },
+        })
+
+        await processEvolutionWebhook(payload)
+
+        expect(sendText).not.toHaveBeenCalled()
     })
 })

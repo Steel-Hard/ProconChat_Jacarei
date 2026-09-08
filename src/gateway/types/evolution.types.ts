@@ -23,4 +23,9 @@ export interface EvolutionWebhookPayload {
 
 export type EvolutionWebhookResult =
     | { status: "ignored"; reason: string }
-    | { status: "processed"; sessionId: string; newSession: boolean }
+    | {
+          status: "processed"
+          sessionId: string
+          newSession: boolean
+          reply: { text: string; step: string }
+      }
