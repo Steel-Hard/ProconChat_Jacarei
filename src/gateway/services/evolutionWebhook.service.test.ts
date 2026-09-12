@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest"
 import { BackendClient } from "../clients/backend.client"
 import { MessageGateway } from "../gateways/evolution.gateway"
-import { createEvolutionWebhookService } from "./evolutionWebhook.service"
+import { createEvolutionWebhookService, defaultMessageDeduplicator } from "./evolutionWebhook.service"
 
 const payload = {
     event: "messages.upsert",
@@ -25,7 +25,29 @@ describe("Evolution webhook service", () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
+        defaultMessageDeduplicator.clear()
         process.env.EVOLUTION_AUTO_REPLY_ENABLED = "false"
+    })
+
+    test("ignora mensagens duplicadas com o mesmo id", async () => {
+        createWhatsappSession.mockResolvedValueOnce({
+            sessionId: "42",
+            newSession: true,
+            reply: { text: "Escolha uma categoria", step: "AWAITING_CATEGORY" },
+        })
+
+        await expect(processEvolutionWebhook(payload)).resolves.toEqual({
+            status: "processed",
+            sessionId: "42",
+            newSession: true,
+            reply: { text: "Escolha uma categoria", step: "AWAITING_CATEGORY" },
+        })
+
+        await expect(processEvolutionWebhook(payload)).resolves.toEqual({
+            status: "ignored",
+            reason: "duplicate_message",
+        })
+        expect(createWhatsappSession).toHaveBeenCalledOnce()
     })
 
     test("ignora eventos que nao representam nova mensagem", async () => {

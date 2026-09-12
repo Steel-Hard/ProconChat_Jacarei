@@ -71,12 +71,19 @@ export const sessionRepository: SessionRepository = {
 
     async updateNavigationState(sessionId: string, state: NavigationState): Promise<void> {
         const pool = getPool()
-        await pool.query(
+
+        const result = await pool.query(
             `UPDATE Sessions
-             SET current_step = $1, current_category_id = $2
-             WHERE id = $3`,
+             SET current_step = $1,
+                 current_category_id = $2
+             WHERE id = $3
+               AND status = 'IN_PROGRESS'`,
             [state.currentStep, state.currentCategoryId, sessionId],
         )
+
+        if (result.rowCount !== 1) {
+            throw new Error("Conversation session was changed or finished")
+        }
     },
 
     async finish(sessionId: string): Promise<void> {
