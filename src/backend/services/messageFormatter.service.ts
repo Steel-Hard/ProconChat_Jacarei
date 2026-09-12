@@ -10,10 +10,16 @@ function formatarLista(itens: string[]): string {
 }
 
 export function formatarListaCategorias(categorias: Categoria[]): string {
+    if (categorias.length === 0) {
+        return "Olá! Sou o assistente virtual do PROCON Jacareí. Nosso catálogo de orientações está em atualização no momento. Por favor, tente novamente em instantes."
+    }
     return `${SAUDACAO}\n${formatarLista(categorias.map((c) => c.title))}`
 }
 
 export function formatarErroCategoria(categorias: Categoria[]): string {
+    if (categorias.length === 0) {
+        return "Nosso catálogo de orientações está em atualização no momento. Por favor, tente novamente em instantes."
+    }
     return `${ERRO_PREFIXO}\n${formatarLista(categorias.map((c) => c.title))}`
 }
 
