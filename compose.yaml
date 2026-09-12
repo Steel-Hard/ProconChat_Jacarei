@@ -21,12 +21,25 @@ services:
   migrate:
     build:
       context: ./src/backend
-      target: migrations
+      target: runtime
     environment:
       DB_URL: postgresql://${POSTGRES_USER:-proconchat}:${POSTGRES_PASSWORD:-proconchat_dev}@postgres:5432/proconchat
+    command: ["npm", "run", "db:migrate"]
     depends_on:
       postgres:
         condition: service_healthy
+    restart: "no"
+
+  seed:
+    build:
+      context: ./src/backend
+      target: runtime
+    environment:
+      DB_URL: postgresql://${POSTGRES_USER:-proconchat}:${POSTGRES_PASSWORD:-proconchat_dev}@postgres:5432/proconchat
+    command: ["node", "dist/db/seeds/run.js"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     restart: "no"
 
   backend:
@@ -44,7 +57,7 @@ services:
     ports:
       - "127.0.0.1:${BACKEND_PORT:-3000}:3000"
     depends_on:
-      migrate:
+      seed:
         condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
