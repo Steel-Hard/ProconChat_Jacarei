@@ -70,10 +70,15 @@ services:
       retries: 10
 
   evolution-api:
-    image: evoapicloud/evolution-api:v2.1.1
+    image: evoapicloud/evolution-api:v2.3.7
     restart: unless-stopped
     environment:
+      SERVER_URL: http://localhost:${EVOLUTION_API_PORT:-8080}
       AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:-development-api-key}
+      DEL_INSTANCE: "false"
+      CONFIG_SESSION_PHONE_CLIENT: ProconChat
+      CONFIG_SESSION_PHONE_VERSION: ${CONFIG_SESSION_PHONE_VERSION:-2.3000.1033893291}
+      NODE_OPTIONS: "--dns-result-order=ipv4first"
       DATABASE_ENABLED: "true"
       DATABASE_PROVIDER: postgresql
       DATABASE_CONNECTION_URI: postgresql://${POSTGRES_USER:-proconchat}:${POSTGRES_PASSWORD:-proconchat_dev}@postgres:5432/proconchat?schema=evolution
@@ -81,15 +86,15 @@ services:
       DATABASE_SAVE_DATA_INSTANCE: "true"
       DATABASE_SAVE_DATA_NEW_MESSAGE: "true"
       DATABASE_SAVE_MESSAGE_UPDATE: "true"
-      DATABASE_SAVE_DATA_CONTACTS: "true"
-      DATABASE_SAVE_DATA_CHATS: "true"
-      DATABASE_SAVE_DATA_LABELS: "true"
-      DATABASE_SAVE_DATA_HISTORIC: "true"
+      DATABASE_SAVE_DATA_CONTACTS: "false"
+      DATABASE_SAVE_DATA_CHATS: "false"
+      DATABASE_SAVE_DATA_LABELS: "false"
+      DATABASE_SAVE_DATA_HISTORIC: "false"
       CACHE_REDIS_ENABLED: "true"
       CACHE_REDIS_URI: redis://:${REDIS_PASSWORD:-redis_dev}@redis:6379/6
       CACHE_REDIS_PREFIX_KEY: evolution
       CACHE_REDIS_SAVE_INSTANCES: "false"
-      CACHE_LOCAL_ENABLED: "false"
+      CACHE_LOCAL_ENABLED: "true"
       WEBHOOK_GLOBAL_ENABLED: "true"
       WEBHOOK_GLOBAL_URL: http://gateway:${GATEWAY_PORT:-3001}/webhooks/evolution?token=${EVOLUTION_WEBHOOK_TOKEN:-development-webhook-token}
       WEBHOOK_GLOBAL_WEBHOOK_BY_EVENTS: "false"
