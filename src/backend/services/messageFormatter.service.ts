@@ -1,9 +1,12 @@
 import { Categoria, Pergunta, RespostaFinalOutput } from "../types/motorDecisao.types"
 
 const SAUDACAO =
-    "Olá! Sou o assistente virtual do PROCON Jacareí. Escolha uma das opções abaixo digitando o número correspondente:"
+    "Olá! Sou o assistente virtual do PROCON Jacareí. As orientações abaixo têm caráter informativo. Escolha uma das opções abaixo digitando o número correspondente:"
 
 const ERRO_PREFIXO = "Não entendi. Digite o número de uma das opções abaixo:"
+
+export const AVISO_NAO_VINCULANTE =
+    "Esta é uma orientação automatizada de caráter informativo. Ela não é vinculante e não substitui o atendimento jurídico ou administrativo formal do PROCON Jacareí."
 
 function formatarLista(itens: string[]): string {
     return itens.map((item, index) => `${index + 1}. ${item}`).join("\n")
@@ -59,5 +62,5 @@ export function formatarRespostaFinal(resposta: RespostaFinalOutput): string {
         )
     }
 
-    return linhas.join("\n")
+    return `${linhas.join("\n")}\n\n${AVISO_NAO_VINCULANTE}`
 }
