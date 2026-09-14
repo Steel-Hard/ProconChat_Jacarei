@@ -122,9 +122,13 @@ informações conforme a LGPD.
 
 | Sprint |  Início  |    Fim    |     Status     |          📉 Burndown Chart          | Sprint Backlog/Review |
 | :----: | :--------: | :--------: | :-------------: | :----------------------------------: | :-------------------: |
-|   1   | 10/08/2026 | 14/09/2026 | 🟡 Em andamento | [Ver Gráfico](assets/burndown_1.png) | [Ver](docs/sprint1.md) |
+|   1   | 10/08/2026 | 14/09/2026 | 🟢 Concluída | [Ver tabela](.docs/sprint1/entrega-sprint1.md#9-burndown-da-sprint-1) | [Ver](.docs/sprint1/entrega-sprint1.md) |
 |   2   | 15/09/2026 | 19/10/2026 |   ⚪ Pendente   | [Ver Gráfico](assets/burndown_2.png) | [Ver](docs/sprint2.md) |
 |   3   | 20/10/2026 | 23/11/2026 |   ⚪ Pendente   | [Ver Gráfico](assets/burndown_3.png) | [Ver](docs/sprint3.md) |
+
+> O burndown da Sprint 1 está documentado como tabelas (issues por data de abertura/fechamento) em
+> [`.docs/sprint1/entrega-sprint1.md`](.docs/sprint1/entrega-sprint1.md) — ainda não existe um gráfico
+> de imagem gerado para `assets/burndown_1.png`.
 
 ---
 
@@ -132,25 +136,28 @@ informações conforme a LGPD.
 
 | Número | Recurso Funcional         |                                  Síntese do Requisito                                  |   Status   |
 | :-----: | ------------------------- | :--------------------------------------------------------------------------------------: | :---------: |
-|  RF01  | Integração com WhatsApp |         Permitir a integração do usuário por meio de um chatbot no WhatsApp.         | ⚪ Pendente |
-|  RF02  | Tabela de Decisões       |       Apresentar opções de resposta com base nos fluxos fornecidos pelo PROCON.       | ⚪ Pendente |
-|  RF03  | Fluxos Decisórios        |       Apresentar perguntas e alternativas de maneira sequencial e compreensível.       | ⚪ Pendente |
-|  RF04  | Resposta Orientadora      |      Gerar ao final do fluxo um resumo do caso e os próximos passos recomendados.      | ⚪ Pendente |
-|  RF05  | Complemento com LLM       | Permitir geração textual explicativa por LLM dentro dos limites definidos pelo PROCON. | ⚪ Pendente |
+|  RF01  | Integração com WhatsApp |         Permitir a integração do usuário por meio de um chatbot no WhatsApp.         | 🟢 Concluído |
+|  RF02  | Tabela de Decisões       |       Apresentar opções de resposta com base nos fluxos fornecidos pelo PROCON.       | 🟢 Concluído |
+|  RF03  | Fluxos Decisórios        |       Apresentar perguntas e alternativas de maneira sequencial e compreensível.       | 🟢 Concluído |
+|  RF04  | Resposta Orientadora      |      Gerar ao final do fluxo um resumo do caso e os próximos passos recomendados.      | 🟢 Concluído |
+|  RF05  | Complemento com LLM       | Permitir geração textual explicativa por LLM dentro dos limites definidos pelo PROCON. | 🟡 Parcial |
 |  RF06  | Registro de Interações  |       Registrar interaçõies para análise posterior dos fluxos mais utilizados.       | ⚪ Pendente |
 |  RF07  | Agendamento Presencial    |       Realizar agendamento quando o chatbot não solucionar a dúvida do cidadão.       | ⚪ Pendente |
 |  RF08  | Gerenciamento Web         |       Disponibilizar interface web para gerenciamento dos atendimentos agendados.       | ⚪ Pendente |
 
 | Número | Recurso Não-Funcional |                                   Síntese do Requisito                                   |   Status   |
 | :-----: | ---------------------- | :---------------------------------------------------------------------------------------: | :---------: |
-|  RNF01  | Usabilidade            |            Utilizar linguagem clara, objetiva e acessível ao público geral.            | ⚪ Pendente |
+|  RNF01  | Usabilidade            |            Utilizar linguagem clara, objetiva e acessível ao público geral.            | 🟡 Parcial |
 |  RNF02  | Disponibilidade        | Garantir alta disponibilidade e tempo de resposta adequado para conversas em tempo real. | ⚪ Pendente |
-|  RNF03  | LGPD                   |        Garantir tratamento adequado e proteção das informações dos usuários.        | ⚪ Pendente |
-|  RNF04  | Caráter Orientativo   |        Informar explicitamente que as respostas não substituem atendimento formal        | ⚪ Pendente |
+|  RNF03  | LGPD                   |        Garantir tratamento adequado e proteção das informações dos usuários.        | 🟢 Concluído |
+|  RNF04  | Caráter Orientativo   |        Informar explicitamente que as respostas não substituem atendimento formal        | 🟢 Concluído |
 |  RNF05  | Transparência LLM     |      Identificar claramente respostas geradas com auxílio de modelos de linguagem.      | ⚪ Pendente |
 |  RNF06  | Docker                 |                      Garantir a execução da aplicação em Docker                      | 🟢 Concluído |
 |  RNF07  | Documentação         |         Documentar instalação e requisitos necessários de hardware e software.         | 🟢 Concluído |
-|  RNF08  | Boas Práticas         | Adotar metodologia ágil, CI/CD, versionamento, testes e documentação técnica mínima. | ⚪ Pendente |
+|  RNF08  | Boas Práticas         | Adotar metodologia ágil, CI/CD, versionamento, testes e documentação técnica mínima. | 🟡 Parcial |
+
+> Detalhamento completo do que foi entregue, testado e do que ficou pendente/em risco em
+> [`.docs/sprint1/entrega-sprint1.md`](.docs/sprint1/entrega-sprint1.md) (seções 8, 11 e 12).
 
 ---
 
@@ -244,9 +251,9 @@ hardcoded no `compose.yaml`. Veja `.env.example` para a lista completa.
 | :----------------------------------: | :-----------: | :--------------------------------------------: |
 | Maurício Oliveira Medeiros Cepinho | Product Owner |     [GitHub](https://github.com/maucepinho)     |
 | Cláudio dos Santos Siqueira Júnior |   Dev Team   |    [GitHub](https://github.com/claudsaints)    |
-|        Lucas Roque Alvim Cruz        | Scrum Master |     [GitHub](https://github.com/lucasroqe)     |
+|        Lucas Roque Alvim Cruz        |   Dev Team   |     [GitHub](https://github.com/lucasroqe)     |
 |           Nícolas Aquino           |   Dev Team   |      [GitHub](https://github.com/Nickaqui)      |
-|        Luiz Felipe dos Santos        |   Dev Team   |    [GitHub](https://github.com/felipe-sant)    |
+|        Luiz Felipe dos Santos        | Scrum Master |    [GitHub](https://github.com/felipe-sant)    |
 |  Vitor Francisco de Azevedo Zonzini  |   Dev Team   |      [GitHub](https://github.com/frevisto)      |
 |      Victor Hugo Dantas Carbajo      |   Dev Team   | [GitHub](https://github.com/Victor-Carbajo-DSM) |
 
