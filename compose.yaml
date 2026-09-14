@@ -169,3 +169,14 @@ volumes:
   redis_data:
   evolution_instances:
   ollama_data:
+
+
+
+#
+#
+#TIPS: RESET CONTEINERS BUILD
+#docker compose build --no-cache migrate seed
+#docker compose run --rm migrate
+#docker compose run --rm seed
+#docker compose up -d backend gateway
+
