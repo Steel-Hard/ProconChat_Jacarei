@@ -8,6 +8,13 @@ async function run(): Promise<void> {
     try {
         await client.query("BEGIN")
 
+        await client.query(`
+  UPDATE sessions
+  SET current_category_id = NULL,
+      current_step = 'AWAITING_CATEGORY'
+  WHERE current_category_id IS NOT NULL
+`);
+
         const titles = proconFaqSeed.map((category) => category.title)
 
         await client.query(
