@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest"
 import { Categoria, Pergunta, RespostaFinalOutput } from "../types/motorDecisao.types"
 import {
+    AVISO_NAO_VINCULANTE,
     formatarCategoriaSemPerguntas,
     formatarErroCategoria,
     formatarErroPergunta,
@@ -104,5 +105,48 @@ describe("messageFormatter.service", () => {
         const texto = formatarRespostaFinal({ ...respostaBase, requer_presencial: true })
 
         expect(texto).toContain("presencial")
+    })
+
+    test("formatarRespostaFinal inclui o aviso de carater nao vinculante quando requer_presencial e falso", () => {
+        const texto = formatarRespostaFinal(respostaBase)
+
+        expect(texto).toContain(AVISO_NAO_VINCULANTE)
+    })
+
+    test("formatarRespostaFinal inclui o aviso de carater nao vinculante quando requer_presencial e verdadeiro", () => {
+        const texto = formatarRespostaFinal({ ...respostaBase, requer_presencial: true })
+
+        expect(texto).toContain(AVISO_NAO_VINCULANTE)
+    })
+
+    test("formatarListaCategorias menciona o carater informativo na saudacao de abertura", () => {
+        const texto = formatarListaCategorias(categorias)
+
+        expect(texto).toContain("caráter informativo")
+        expect(texto).not.toContain(AVISO_NAO_VINCULANTE)
+    })
+
+    test("formatarListaPerguntas nao repete o aviso de carater nao vinculante", () => {
+        const texto = formatarListaPerguntas(perguntas)
+
+        expect(texto).not.toContain(AVISO_NAO_VINCULANTE)
+    })
+
+    test("formatarErroCategoria nao repete o aviso de carater nao vinculante", () => {
+        const texto = formatarErroCategoria(categorias)
+
+        expect(texto).not.toContain(AVISO_NAO_VINCULANTE)
+    })
+
+    test("formatarErroPergunta nao repete o aviso de carater nao vinculante", () => {
+        const texto = formatarErroPergunta(perguntas)
+
+        expect(texto).not.toContain(AVISO_NAO_VINCULANTE)
+    })
+
+    test("formatarCategoriaSemPerguntas nao repete o aviso de carater nao vinculante", () => {
+        const texto = formatarCategoriaSemPerguntas()
+
+        expect(texto).not.toContain(AVISO_NAO_VINCULANTE)
     })
 })
