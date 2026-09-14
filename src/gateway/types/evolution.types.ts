@@ -11,13 +11,18 @@ export interface EvolutionMessageContent {
     imageMessage?: { caption?: string }
 }
 
+export interface EvolutionMessageEnvelope {
+    key?: EvolutionMessageKey
+    message?: EvolutionMessageContent
+    pushName?: string
+    messageTimestamp?: number | string
+}
+
 export interface EvolutionWebhookPayload {
     event?: string
     instance?: string
-    data?: {
-        key?: EvolutionMessageKey
-        message?: EvolutionMessageContent
-        pushName?: string
+    data?: EvolutionMessageEnvelope & {
+        messages?: EvolutionMessageEnvelope[]
     }
 }
 
