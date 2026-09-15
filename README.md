@@ -1,4 +1,7 @@
-# Desafio 6DSM - 2026-2(1)
+# ProconChat Jacareí
+
+Guia específico para subir e validar a Evolution API, o Gateway WhatsApp e o backend:
+[`src/gateway/README.md`](src/gateway/README.md).
 
 # Chatbot para Orientação ao Consumidor via WhatsApp
 
@@ -13,11 +16,11 @@
 </h1>
 </div>
 
-------------------------------------------------------------------------
+---
 
 ## 📝 Descrição
 
-O **Desafio 6DSM - 2026-2(1)** é um projeto acadêmico desenvolvido no 6º
+O **ProconChat Jacareí** é um projeto acadêmico desenvolvido no 6º
 semestre do curso de Desenvolvimento de Software Multiplataforma da
 **FATEC Jacareí**, em parceria com o **PROCON --- Fundação de Proteção e
 Defesa do Consumidor de Jacareí-SP**.
@@ -47,28 +50,28 @@ o sistema deverá possibilitar o **agendamento de atendimento
 presencial**, orientando também sobre possíveis documentos necessários
 para a consulta.
 
-------------------------------------------------------------------------
+---
 
 ## 🎯 Objetivos
 
 O projeto busca:
 
--   Ampliar o acesso dos cidadãos às informações fornecidas pelo PROCON;
--   Reduzir a demanda causada por dúvidas e perguntas recorrentes;
--   Orientar o consumidor sem exigir, inicialmente, seu deslocamento até
-    a unidade do PROCON;
--   Conduzir o usuário por fluxos decisórios previamente definidos;
--   Fornecer respostas claras, objetivas e acessíveis;
--   Permitir o agendamento presencial quando a orientação automatizada
-    não for suficiente;
--   Disponibilizar uma interface web para gerenciamento dos atendimentos
-    agendados;
--   Registrar as interações para permitir análise posterior dos fluxos
-    mais utilizados;
--   Respeitar os princípios e requisitos da **LGPD** durante o
-    tratamento das informações dos usuários.
+- Ampliar o acesso dos cidadãos às informações fornecidas pelo PROCON;
+- Reduzir a demanda causada por dúvidas e perguntas recorrentes;
+- Orientar o consumidor sem exigir, inicialmente, seu deslocamento até
+  a unidade do PROCON;
+- Conduzir o usuário por fluxos decisórios previamente definidos;
+- Fornecer respostas claras, objetivas e acessíveis;
+- Permitir o agendamento presencial quando a orientação automatizada
+  não for suficiente;
+- Disponibilizar uma interface web para gerenciamento dos atendimentos
+  agendados;
+- Registrar as interações para permitir análise posterior dos fluxos
+  mais utilizados;
+- Respeitar os princípios e requisitos da **LGPD** durante o
+  tratamento das informações dos usuários.
 
-------------------------------------------------------------------------
+---
 
 ## 🛠️ Tecnologias
 
@@ -113,75 +116,84 @@ complementar a geração textual das orientações.
 gratuitas, devido às restrições de custo e à necessidade de proteção das
 informações conforme a LGPD.
 
-------------------------------------------------------------------------
+---
 
 ## 🔄 Scrum
-| Sprint                                    | Início     | Fim        | Status           | 📉 Burndown Chart                                        | Sprint Backlog/Review  |
-|:-----------------------------------------:|:----------:|:----------:|:----------------:|:---------------------------------------------------------:|:-----------------:|
-| 1 | 10/08/2026 | 14/09/2026 | 🟡 Em andamento    | [Ver Gráfico](assets/burndown_1.png) |  [Ver](docs/sprint1.md) |
-| 2 | 15/09/2026 | 19/10/2026 | ⚪ Pendente  | [Ver Gráfico](assets/burndown_2.png) |  [Ver](docs/sprint2.md) |
-| 3 | 20/10/2026 | 23/11/2026 | ⚪ Pendente | [Ver Gráfico](assets/burndown_3.png) |  [Ver](docs/sprint3.md) |
 
-------------------------------------------------------------------------
+| Sprint |  Início  |    Fim    |     Status     |          📉 Burndown Chart          | Sprint Backlog/Review |
+| :----: | :--------: | :--------: | :-------------: | :----------------------------------: | :-------------------: |
+|   1   | 10/08/2026 | 14/09/2026 | 🟢 Concluída | [Ver tabela](.docs/sprint1/entrega-sprint1.md#9-burndown-da-sprint-1) | [Ver](.docs/sprint1/entrega-sprint1.md) |
+|   2   | 15/09/2026 | 19/10/2026 |   ⚪ Pendente   | [Ver Gráfico](assets/burndown_2.png) | [Ver](docs/sprint2.md) |
+|   3   | 20/10/2026 | 23/11/2026 |   ⚪ Pendente   | [Ver Gráfico](assets/burndown_3.png) | [Ver](docs/sprint3.md) |
+
+> O burndown da Sprint 1 está documentado como tabelas (issues por data de abertura/fechamento) em
+> [`.docs/sprint1/entrega-sprint1.md`](.docs/sprint1/entrega-sprint1.md) — ainda não existe um gráfico
+> de imagem gerado para `assets/burndown_1.png`.
+
+---
+
 ## 📋 Product Backlog
-| Número | Recurso Funcional           | Síntese do Requisito                                         | Status          |
-|:------:|-----------------------------|:------------------------------------------------------------:|:---------------:|
-|  RF01  | Integração com WhatsApp           | Permitir a integração do usuário por meio de um chatbot no WhatsApp.                      | ⚪ <br> Pendente |
-|  RF02  | Tabela de Decisões        | Apresentar opções de resposta com base nos fluxos fornecidos pelo PROCON.              | ⚪ <br> Pendente |
-|  RF03  | Fluxos Decisórios      | Apresentar perguntas e alternativas de maneira sequencial e compreensível.          | ⚪ <br> Pendente |
-|  RF04  | Resposta Orientadora    | Gerar ao final do fluxo um resumo do caso e os próximos passos recomendados.               | ⚪ <br> Pendente |
-|  RF05  | Complemento com LLM   | Permitir geração textual explicativa por LLM dentro dos limites definidos pelo PROCON.               | ⚪ <br> Pendente |
-|  RF06  | Registro de Interações    | Registrar interaçõies para análise posterior dos fluxos mais utilizados.               | ⚪ <br> Pendente |
-|  RF07  | Agendamento Presencial    | Realizar agendamento quando o chatbot não solucionar a dúvida do cidadão.               | ⚪ <br> Pendente |
-|  RF08  | Gerenciamento Web    | Disponibilizar interface web para gerenciamento dos atendimentos agendados.               | ⚪ <br> Pendente |
 
-| Número  | Recurso Não-Funcional       | Síntese do Requisito                                         | Status          |
-|:-------:|-----------------------------|:------------------------------------------------------------:|:---------------:|
-|  RNF01  | Usabilidade              | Utilizar linguagem clara, objetiva e acessível ao público geral.               | ⚪ <br> Pendente |
-|  RNF02  | Disponibilidade        | Garantir alta disponibilidade e tempo de resposta adequado para conversas em tempo real.             | ⚪ <br> Pendente |
-|  RNF03  | LGPD        | Garantir tratamento adequado e proteção das informações dos usuários.               | ⚪ <br> Pendente |
-|  RNF04  | Caráter Orientativo        | Informar explicitamente que as respostas não substituem atendimento formal               | ⚪ <br> Pendente |
-|  RNF05  | Transparência LLM        | Identificar claramente respostas geradas com auxílio de modelos de linguagem.               | ⚪ <br> Pendente |
-|  RNF06  | Docker        | Garantir a execução da aplicação em Docker               | ⚪ <br> Pendente |
-|  RNF07  | Documentação        | Documentar instalação e requisitos necessários de hardware e software.               | ⚪ <br> Pendente |
-|  RNF08  | Boas Práticas       | Adotar metodologia ágil, CI/CD, versionamento, testes e documentação técnica mínima.               | ⚪ <br> Pendente |
-------------------------------------------------------------------------
+| Número | Recurso Funcional         |                                  Síntese do Requisito                                  |   Status   |
+| :-----: | ------------------------- | :--------------------------------------------------------------------------------------: | :---------: |
+|  RF01  | Integração com WhatsApp |         Permitir a integração do usuário por meio de um chatbot no WhatsApp.         | 🟢 Concluído |
+|  RF02  | Tabela de Decisões       |       Apresentar opções de resposta com base nos fluxos fornecidos pelo PROCON.       | 🟢 Concluído |
+|  RF03  | Fluxos Decisórios        |       Apresentar perguntas e alternativas de maneira sequencial e compreensível.       | 🟢 Concluído |
+|  RF04  | Resposta Orientadora      |      Gerar ao final do fluxo um resumo do caso e os próximos passos recomendados.      | 🟢 Concluído |
+|  RF05  | Complemento com LLM       | Permitir geração textual explicativa por LLM dentro dos limites definidos pelo PROCON. | 🟡 Parcial |
+|  RF06  | Registro de Interações  |       Registrar interaçõies para análise posterior dos fluxos mais utilizados.       | ⚪ Pendente |
+|  RF07  | Agendamento Presencial    |       Realizar agendamento quando o chatbot não solucionar a dúvida do cidadão.       | ⚪ Pendente |
+|  RF08  | Gerenciamento Web         |       Disponibilizar interface web para gerenciamento dos atendimentos agendados.       | ⚪ Pendente |
 
+| Número | Recurso Não-Funcional |                                   Síntese do Requisito                                   |   Status   |
+| :-----: | ---------------------- | :---------------------------------------------------------------------------------------: | :---------: |
+|  RNF01  | Usabilidade            |            Utilizar linguagem clara, objetiva e acessível ao público geral.            | 🟡 Parcial |
+|  RNF02  | Disponibilidade        | Garantir alta disponibilidade e tempo de resposta adequado para conversas em tempo real. | ⚪ Pendente |
+|  RNF03  | LGPD                   |        Garantir tratamento adequado e proteção das informações dos usuários.        | 🟢 Concluído |
+|  RNF04  | Caráter Orientativo   |        Informar explicitamente que as respostas não substituem atendimento formal        | 🟢 Concluído |
+|  RNF05  | Transparência LLM     |      Identificar claramente respostas geradas com auxílio de modelos de linguagem.      | ⚪ Pendente |
+|  RNF06  | Docker                 |                      Garantir a execução da aplicação em Docker                      | 🟢 Concluído |
+|  RNF07  | Documentação         |         Documentar instalação e requisitos necessários de hardware e software.         | 🟢 Concluído |
+|  RNF08  | Boas Práticas         | Adotar metodologia ágil, CI/CD, versionamento, testes e documentação técnica mínima. | 🟡 Parcial |
 
+> Detalhamento completo do que foi entregue, testado e do que ficou pendente/em risco em
+> [`.docs/sprint1/entrega-sprint1.md`](.docs/sprint1/entrega-sprint1.md) (seções 8, 11 e 12).
+
+---
 
 ## 🔒 Restrições do Projeto
 
--   A integração com o WhatsApp deverá ocorrer preferencialmente pela
-    **WhatsApp Business Platform (Cloud API)**;
--   Poderão ser utilizados ambientes de teste ou soluções simuladas para
-    fins acadêmicos;
--   O back-end deverá utilizar tecnologia compatível com aplicações web
-    modernas, como Node.js ou Python;
--   A arquitetura deverá ser modular, separando:
-    -   lógica do chatbot;
-    -   gestão dos fluxos decisórios;
-    -   integração com modelos de linguagem;
--   O escopo deverá ser compatível com o período disponível para
-    desenvolvimento durante o semestre;
--   **APIs externas de LLM não poderão ser utilizadas**, mesmo quando
-    gratuitas;
--   O tratamento de dados deverá observar os requisitos da **LGPD**.
+- A integração com o WhatsApp deverá ocorrer preferencialmente pela
+  **WhatsApp Business Platform (Cloud API)**;
+- Poderão ser utilizados ambientes de teste ou soluções simuladas para
+  fins acadêmicos;
+- O back-end deverá utilizar tecnologia compatível com aplicações web
+  modernas, como Node.js ou Python;
+- A arquitetura deverá ser modular, separando:
+  - lógica do chatbot;
+  - gestão dos fluxos decisórios;
+  - integração com modelos de linguagem;
+- O escopo deverá ser compatível com o período disponível para
+  desenvolvimento durante o semestre;
+- **APIs externas de LLM não poderão ser utilizadas**, mesmo quando
+  gratuitas;
+- O tratamento de dados deverá observar os requisitos da **LGPD**.
 
-------------------------------------------------------------------------
+---
 
 ## ✅ Definition of Done
 
 Uma entrega será considerada concluída quando:
 
--   Os requisitos e critérios definidos para a funcionalidade forem
-    atendidos;
--   O código estiver versionado no repositório do projeto;
--   A funcionalidade estiver integrada ao restante da aplicação;
--   Os testes aplicáveis tiverem sido executados;
--   A documentação relacionada estiver atualizada;
--   A entrega estiver disponível em ambiente Docker quando aplicável.
+- Os requisitos e critérios definidos para a funcionalidade forem
+  atendidos;
+- O código estiver versionado no repositório do projeto;
+- A funcionalidade estiver integrada ao restante da aplicação;
+- Os testes aplicáveis tiverem sido executados;
+- A documentação relacionada estiver atualizada;
+- A entrega estiver disponível em ambiente Docker quando aplicável.
 
-------------------------------------------------------------------------
+---
 
 ## 📖 User Stories
 
@@ -189,44 +201,61 @@ As **User Stories** e seus respectivos critérios de aceitação serão
 definidos e refinados pela equipe durante o planejamento das Sprints,
 com base nos requisitos e fluxos decisórios fornecidos pelo PROCON.
 
-------------------------------------------------------------------------
+---
 
 ## ⚙️ Instalação
 
-As instruções de instalação serão adicionadas conforme a arquitetura e
-as tecnologias do projeto forem definidas.
+### Pré-requisitos
 
-A documentação deverá incluir:
+- [Docker](https://docs.docker.com/get-docker/) e Docker Compose v2 (`docker compose`, sem hífen);
+- Nenhuma outra dependência de host é necessária — Node.js, PostgreSQL, Redis e o
+  modelo de linguagem rodam todos dentro dos containers.
 
-1.  Pré-requisitos de hardware e software;
-2.  Clonagem do repositório;
-3.  Configuração das variáveis de ambiente;
-4.  Configuração da integração com o WhatsApp ou ambiente simulado;
-5.  Configuração do modelo de linguagem local, caso utilizado;
-6.  Inicialização dos containers Docker;
-7.  Execução da aplicação.
+### Passo a passo
 
-Exemplo inicial:
-
-``` bash
+```bash
 git clone <URL_DO_REPOSITORIO>
 cd <NOME_DO_REPOSITORIO>
+cp .env.example .env   # ajuste os valores se necessário; os defaults servem para desenvolvimento
 docker compose up --build
 ```
 
-------------------------------------------------------------------------
+Isso sobe, com um único comando, todo o ambiente do MVP:
+
+| Serviço         | Papel                                                              | Porta padrão (host) |
+| --------------- | ------------------------------------------------------------------- | :------------------: |
+| `postgres`      | Banco de dados (persistência via volume `postgres_data`)           |    `127.0.0.1:5433`    |
+| `migrate`       | Aplica as migrations e encerra (`node-pg-migrate`)                  |           —           |
+| `backend`       | API/orquestrador (Motor de Decisão, Scheduler)                     |    `127.0.0.1:3000`    |
+| `redis`         | Cache/fila usado pela Evolution API                                |         `6379`         |
+| `evolution-api` | Integração com o WhatsApp (Evolution API)                         |         `8080`         |
+| `gateway`       | Gateway WhatsApp — recebe o webhook e fala com o `backend`         |         `3001`         |
+| `ollama`        | LLM local (modelo definido por `LLM_MODEL` no `.env`)               |           —           |
+| `llm-pull`      | Baixa o modelo do Ollama e encerra                                  |           —           |
+
+Todas as variáveis sensíveis (senhas, tokens, segredos) vêm do `.env` — nunca
+hardcoded no `compose.yaml`. Veja `.env.example` para a lista completa.
+
+### Documentação detalhada por serviço
+
+- [`.docs/database/migrations.md`](.docs/database/migrations.md) — schema, migrations e como resetar o banco.
+- [`src/backend/README.md`](src/backend/README.md) — rodar o backend fora do Docker, rotas disponíveis, testes.
+- [`src/gateway/README.md`](src/gateway/README.md) — subir e validar a Evolution API + Gateway WhatsApp.
+- [`.docs/llm/contrato.md`](.docs/llm/contrato.md) — contrato de entrada/saída do serviço LLM.
+
+---
 
 ## 👨‍💻 Dev Team
 
-| Nome                               | Função              | GitHub                                          |
-|:----------------------------------:|:-------------------:|:-----------------------------------------------:|
-| Maurício Oliveira Medeiros Cepinho                     | Product Owner       | [GitHub](https://github.com/maucepinho)           |
-| Cláudio dos Santos Siqueira Júnior |  Dev Team     | [GitHub](https://github.com/claudsaints)        |
-| Lucas Roque Alvim Cruz             | Scrum Master| [GitHub](https://github.com/lucasroqe)          |
-| Nícolas Aquino    | Dev Team  | [GitHub](https://github.com/Nickaqui)         |
-| Luiz Felipe dos Santos             | Dev Team  | [GitHub](https://github.com/felipe-sant)      |
-| Vitor Francisco de Azevedo Zonzini |Dev Team     | [GitHub](https://github.com/frevisto)           |
-| Victor Hugo Dantas Carbajo         | Dev Team | [GitHub](https://github.com/Victor-Carbajo-DSM) |
+|                 Nome                 |   Função   |                     GitHub                     |
+| :----------------------------------: | :-----------: | :--------------------------------------------: |
+| Maurício Oliveira Medeiros Cepinho | Product Owner |     [GitHub](https://github.com/maucepinho)     |
+| Cláudio dos Santos Siqueira Júnior |   Dev Team   |    [GitHub](https://github.com/claudsaints)    |
+|        Lucas Roque Alvim Cruz        |   Dev Team   |     [GitHub](https://github.com/lucasroqe)     |
+|           Nícolas Aquino           |   Dev Team   |      [GitHub](https://github.com/Nickaqui)      |
+|        Luiz Felipe dos Santos        | Scrum Master |    [GitHub](https://github.com/felipe-sant)    |
+|  Vitor Francisco de Azevedo Zonzini  |   Dev Team   |      [GitHub](https://github.com/frevisto)      |
+|      Victor Hugo Dantas Carbajo      |   Dev Team   | [GitHub](https://github.com/Victor-Carbajo-DSM) |
 
 ## 🤝 Parceiro
 
@@ -236,7 +265,7 @@ Projeto desenvolvido como parte da metodologia de **Aprendizagem Baseada
 em Projetos (ABP)** do 6º semestre de Desenvolvimento de Software
 Multiplataforma da **FATEC Jacareí**.
 
-------------------------------------------------------------------------
+---
 
 ## 📌 Convenções de Commit
 
@@ -247,7 +276,7 @@ Sugestão de referência:
 
 [Padrões de Commits](https://github.com/iuricode/padroes-de-commits)
 
-------------------------------------------------------------------------
+---
 
 ## 📄 Licença
 

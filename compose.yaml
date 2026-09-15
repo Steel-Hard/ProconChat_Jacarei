@@ -1,0 +1,182 @@
+name: proconchat
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: proconchat
+      POSTGRES_USER: ${POSTGRES_USER:-proconchat}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-proconchat_dev}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: ./src/backend
+      target: runtime
+    environment:
+      DB_URL: postgresql://${POSTGRES_USER:-proconchat}:${POSTGRES_PASSWORD:-proconchat_dev}@postgres:5432/proconchat
+    command: ["npm", "run", "db:migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  seed:
+    build:
+      context: ./src/backend
+      target: runtime
+    environment:
+      DB_URL: postgresql://${POSTGRES_USER:-proconchat}:${POSTGRES_PASSWORD:-proconchat_dev}@postgres:5432/proconchat
+    command: ["node", "dist/db/seeds/run.js"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
+  backend:
+    build:
+      context: ./src/backend
+      target: runtime
+    environment:
+      DB_URL: postgresql://${POSTGRES_USER:-proconchat}:${POSTGRES_PASSWORD:-proconchat_dev}@postgres:5432/proconchat
+      PORT: 3000
+      PHONE_HASH_SECRET: ${PHONE_HASH_SECRET:-development-only-secret}
+      GATEWAY_INTERNAL_TOKEN: ${GATEWAY_INTERNAL_TOKEN:-development-internal-token}
+      OLLAMA_URL: http://ollama:11434
+      LLM_MODEL: ${LLM_MODEL:-llama3.2:3b}
+      LLM_TIMEOUT_MS: ${LLM_TIMEOUT_MS:-20000}
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-3000}:3000"
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_dev}
+    command: ["sh", "-c", "exec redis-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\""]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  evolution-api:
+    image: evoapicloud/evolution-api:v2.3.7
+    restart: unless-stopped
+    environment:
+      SERVER_URL: http://localhost:${EVOLUTION_API_PORT:-8080}
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:-development-api-key}
+      DEL_INSTANCE: "false"
+      CONFIG_SESSION_PHONE_CLIENT: ProconChat
+      CONFIG_SESSION_PHONE_VERSION: ${CONFIG_SESSION_PHONE_VERSION:-2.3000.1033893291}
+      NODE_OPTIONS: "--dns-result-order=ipv4first"
+      DATABASE_ENABLED: "true"
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://${POSTGRES_USER:-proconchat}:${POSTGRES_PASSWORD:-proconchat_dev}@postgres:5432/proconchat?schema=evolution
+      DATABASE_CONNECTION_CLIENT_NAME: evolution_exchange
+      DATABASE_SAVE_DATA_INSTANCE: "true"
+      DATABASE_SAVE_DATA_NEW_MESSAGE: "true"
+      DATABASE_SAVE_MESSAGE_UPDATE: "true"
+      DATABASE_SAVE_DATA_CONTACTS: "false"
+      DATABASE_SAVE_DATA_CHATS: "false"
+      DATABASE_SAVE_DATA_LABELS: "false"
+      DATABASE_SAVE_DATA_HISTORIC: "false"
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: redis://:${REDIS_PASSWORD:-redis_dev}@redis:6379/6
+      CACHE_REDIS_PREFIX_KEY: evolution
+      CACHE_REDIS_SAVE_INSTANCES: "false"
+      CACHE_LOCAL_ENABLED: "true"
+      WEBHOOK_GLOBAL_ENABLED: "true"
+      WEBHOOK_GLOBAL_URL: http://gateway:${GATEWAY_PORT:-3001}/webhooks/evolution?token=${EVOLUTION_WEBHOOK_TOKEN:-development-webhook-token}
+      WEBHOOK_GLOBAL_WEBHOOK_BY_EVENTS: "false"
+      WEBHOOK_EVENTS_MESSAGES_UPSERT: "true"
+    ports:
+      - "${EVOLUTION_API_PORT:-8080}:8080"
+    volumes:
+      - evolution_instances:/evolution/instances
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  gateway:
+    build:
+      context: ./src/gateway
+    restart: unless-stopped
+    environment:
+      PORT: ${GATEWAY_PORT:-3001}
+      EVOLUTION_API_URL: http://evolution-api:8080
+      EVOLUTION_API_KEY: ${EVOLUTION_API_KEY:-development-api-key}
+      EVOLUTION_WEBHOOK_TOKEN: ${EVOLUTION_WEBHOOK_TOKEN:-development-webhook-token}
+      EVOLUTION_AUTO_REPLY_ENABLED: ${EVOLUTION_AUTO_REPLY_ENABLED:-false}
+      EVOLUTION_MESSAGE_MAX_AGE_SECONDS: ${EVOLUTION_MESSAGE_MAX_AGE_SECONDS:-300}
+      BACKEND_INTERNAL_URL: http://backend:3000
+      GATEWAY_INTERNAL_TOKEN: ${GATEWAY_INTERNAL_TOKEN:-development-internal-token}
+    ports:
+      - "${GATEWAY_PORT:-3001}:3001"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  llm-pull:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      OLLAMA_HOST: ollama:11434
+    entrypoint: ["sh", "-c", "ollama pull ${LLM_MODEL:-llama3.2:3b}"]
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: "no"
+
+volumes:
+  postgres_data:
+  redis_data:
+  evolution_instances:
+  ollama_data:
+
+
+
+#
+#
+#TIPS: RESET CONTEINERS BUILD
+#docker compose build --no-cache migrate seed
+#docker compose run --rm migrate
+#docker compose run --rm seed
+#docker compose up -d backend gateway
+

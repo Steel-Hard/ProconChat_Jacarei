@@ -1,0 +1,243 @@
+import { beforeEach, describe, expect, test, vi } from "vitest"
+import { BackendClient } from "../clients/backend.client"
+import { MessageGateway } from "../gateways/evolution.gateway"
+import { createEvolutionWebhookService, defaultMessageDeduplicator } from "./evolutionWebhook.service"
+
+const payload = {
+    event: "messages.upsert",
+    instance: "procon",
+    data: {
+        key: {
+            remoteJid: "5511999999999@s.whatsapp.net",
+            fromMe: false,
+            id: "message-id",
+        },
+        message: { conversation: "Preciso de orientacao" },
+    },
+}
+
+describe("Evolution webhook service", () => {
+    const createWhatsappSession = vi.fn()
+    const sendText = vi.fn()
+    const backend: BackendClient = { createWhatsappSession }
+    const messages: MessageGateway = { sendText }
+    const processEvolutionWebhook = createEvolutionWebhookService({ backend, messages })
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        defaultMessageDeduplicator.clear()
+        process.env.EVOLUTION_AUTO_REPLY_ENABLED = "false"
+        delete process.env.EVOLUTION_MESSAGE_MAX_AGE_SECONDS
+    })
+
+    test("ignora mensagens duplicadas com o mesmo id", async () => {
+        createWhatsappSession.mockResolvedValueOnce({
+            sessionId: "42",
+            newSession: true,
+            reply: { text: "Escolha uma categoria", step: "AWAITING_CATEGORY" },
+        })
+
+        await expect(processEvolutionWebhook(payload)).resolves.toEqual({
+            status: "processed",
+            sessionId: "42",
+            newSession: true,
+            reply: { text: "Escolha uma categoria", step: "AWAITING_CATEGORY" },
+        })
+
+        await expect(processEvolutionWebhook(payload)).resolves.toEqual({
+            status: "ignored",
+            reason: "duplicate_message",
+        })
+        expect(createWhatsappSession).toHaveBeenCalledOnce()
+    })
+
+    test("ignora eventos que nao representam nova mensagem", async () => {
+        await expect(processEvolutionWebhook({ event: "connection.update" })).resolves.toEqual({
+            status: "ignored",
+            reason: "unsupported_event",
+        })
+        expect(createWhatsappSession).not.toHaveBeenCalled()
+    })
+
+    test("ignora mensagens enviadas pelo proprio bot", async () => {
+        await expect(
+            processEvolutionWebhook({
+                ...payload,
+                data: { ...payload.data, key: { ...payload.data.key, fromMe: true } },
+            }),
+        ).resolves.toEqual({ status: "ignored", reason: "outgoing_message" })
+        expect(createWhatsappSession).not.toHaveBeenCalled()
+    })
+
+    test("chama o backend com o telefone sem hash e sem o sufixo do jid", async () => {
+        createWhatsappSession.mockResolvedValueOnce({
+            sessionId: "42",
+            newSession: true,
+            reply: { text: "Escolha uma categoria", step: "AWAITING_CATEGORY" },
+        })
+
+        await expect(processEvolutionWebhook(payload)).resolves.toEqual({
+            status: "processed",
+            sessionId: "42",
+            newSession: true,
+            reply: { text: "Escolha uma categoria", step: "AWAITING_CATEGORY" },
+        })
+
+        expect(createWhatsappSession).toHaveBeenCalledWith({
+            phone: "5511999999999",
+            text: "Preciso de orientacao",
+            providerInstance: "procon",
+        })
+        expect(sendText).not.toHaveBeenCalled()
+    })
+
+    test("reutiliza uma sessao ativa", async () => {
+        createWhatsappSession.mockResolvedValueOnce({
+            sessionId: "42",
+            newSession: false,
+            reply: { text: "Escolha uma pergunta", step: "AWAITING_QUESTION" },
+        })
+
+        await expect(processEvolutionWebhook(payload)).resolves.toEqual({
+            status: "processed",
+            sessionId: "42",
+            newSession: false,
+            reply: { text: "Escolha uma pergunta", step: "AWAITING_QUESTION" },
+        })
+        expect(createWhatsappSession).toHaveBeenCalledOnce()
+    })
+
+    test("envia a resposta do backend quando ha texto e o auto-reply esta habilitado", async () => {
+        process.env.EVOLUTION_AUTO_REPLY_ENABLED = "true"
+        createWhatsappSession.mockResolvedValueOnce({
+            sessionId: "42",
+            newSession: true,
+            reply: { text: "Escolha uma categoria digitando o numero", step: "AWAITING_CATEGORY" },
+        })
+
+        await processEvolutionWebhook(payload)
+
+        expect(sendText).toHaveBeenCalledWith({
+            instance: "procon",
+            number: "5511999999999",
+            text: "Escolha uma categoria digitando o numero",
+        })
+    })
+
+    test("nao envia resposta quando o auto-reply esta desabilitado mesmo com reply.text presente", async () => {
+        process.env.EVOLUTION_AUTO_REPLY_ENABLED = "false"
+        createWhatsappSession.mockResolvedValueOnce({
+            sessionId: "42",
+            newSession: true,
+            reply: { text: "Escolha uma categoria digitando o numero", step: "AWAITING_CATEGORY" },
+        })
+
+        await processEvolutionWebhook(payload)
+
+        expect(sendText).not.toHaveBeenCalled()
+    })
+
+    test.each(["messages.upsert", "messages.update", "messages.edited", "messages.set"])(
+        "processa mensagem entregue pelo evento %s",
+        async (event) => {
+            createWhatsappSession.mockResolvedValueOnce({
+                sessionId: "42",
+                newSession: true,
+                reply: { text: "Escolha uma categoria", step: "AWAITING_CATEGORY" },
+            })
+
+            await expect(processEvolutionWebhook({ ...payload, event })).resolves.toEqual({
+                status: "processed",
+                sessionId: "42",
+                newSession: true,
+                reply: { text: "Escolha uma categoria", step: "AWAITING_CATEGORY" },
+            })
+        },
+    )
+
+    test("processa a mesma mensagem apenas uma vez quando chega por upsert e depois por edited", async () => {
+        createWhatsappSession.mockResolvedValue({
+            sessionId: "42",
+            newSession: true,
+            reply: { text: "Escolha uma categoria", step: "AWAITING_CATEGORY" },
+        })
+
+        await processEvolutionWebhook({ ...payload, event: "messages.upsert" })
+        await expect(processEvolutionWebhook({ ...payload, event: "messages.edited" })).resolves.toEqual({
+            status: "ignored",
+            reason: "duplicate_message",
+        })
+
+        expect(createWhatsappSession).toHaveBeenCalledOnce()
+    })
+
+    test("ignora mensagem mais antiga que a janela maxima configurada", async () => {
+        process.env.EVOLUTION_MESSAGE_MAX_AGE_SECONDS = "300"
+        const oneHourAgoInSeconds = Math.floor(Date.now() / 1000) - 60 * 60
+
+        await expect(
+            processEvolutionWebhook({
+                ...payload,
+                data: { ...payload.data, messageTimestamp: oneHourAgoInSeconds },
+            }),
+        ).resolves.toEqual({ status: "ignored", reason: "stale_message" })
+
+        expect(createWhatsappSession).not.toHaveBeenCalled()
+    })
+
+    test("processa mensagem sem messageTimestamp normalmente", async () => {
+        createWhatsappSession.mockResolvedValueOnce({
+            sessionId: "42",
+            newSession: true,
+            reply: { text: "Escolha uma categoria", step: "AWAITING_CATEGORY" },
+        })
+
+        await expect(processEvolutionWebhook(payload)).resolves.toEqual({
+            status: "processed",
+            sessionId: "42",
+            newSession: true,
+            reply: { text: "Escolha uma categoria", step: "AWAITING_CATEGORY" },
+        })
+    })
+
+    test("processa os itens validos de um payload messages.set com data.messages[]", async () => {
+        createWhatsappSession.mockResolvedValue({
+            sessionId: "42",
+            newSession: true,
+            reply: { text: "Escolha uma categoria", step: "AWAITING_CATEGORY" },
+        })
+
+        const result = await processEvolutionWebhook({
+            event: "messages.set",
+            instance: "procon",
+            data: {
+                messages: [
+                    {
+                        key: { remoteJid: "5511999999999@s.whatsapp.net", fromMe: false, id: "msg-1" },
+                        message: { conversation: "ola" },
+                    },
+                    {
+                        key: { remoteJid: "5511999999999@g.us", fromMe: false, id: "msg-2" },
+                        message: { conversation: "mensagem de grupo" },
+                    },
+                    {
+                        key: { remoteJid: "5511999999999@s.whatsapp.net", fromMe: false, id: "msg-3" },
+                        message: {},
+                    },
+                    {
+                        key: { remoteJid: "5511999999999@s.whatsapp.net", fromMe: false, id: "msg-4" },
+                        message: { conversation: "2" },
+                    },
+                ],
+            },
+        })
+
+        expect(createWhatsappSession).toHaveBeenCalledTimes(2)
+        expect(result).toEqual({
+            status: "processed",
+            sessionId: "42",
+            newSession: true,
+            reply: { text: "Escolha uma categoria", step: "AWAITING_CATEGORY" },
+        })
+    })
+})
