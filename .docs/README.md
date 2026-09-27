@@ -7,6 +7,7 @@ Chatbot de orientação ao consumidor via WhatsApp, desenvolvido para o PROCON d
 1. [`desafio/desafio-6dsm-2026-2.md`](desafio/desafio-6dsm-2026-2.md): o que o PROCON e a Fatec pediram (RF, RNF e RP).
 2. [`desafio/rastreabilidade.md`](desafio/rastreabilidade.md): como cada requisito é atendido hoje, o que falta e os riscos.
 3. [`decisoes/`](decisoes/): as decisões de produto e arquitetura, com o porquê de cada uma. **Quando uma decisão contradiz outro documento, vale a decisão.**
+4. [`regras/`](regras/): como cada tela do painel funciona, escrito para qualquer pessoa entender.
 
 ## Pastas
 
@@ -14,6 +15,7 @@ Chatbot de orientação ao consumidor via WhatsApp, desenvolvido para o PROCON d
 |---|---|---|
 | [`desafio/`](desafio/) | Documento oficial do desafio e rastreabilidade dos requisitos | Atual |
 | [`decisoes/`](decisoes/) | Registros de decisão, um por arquivo | Atual |
+| [`regras/`](regras/) | Regras de cada tela do painel: o que mostra, quem acessa, o que dá para fazer e o que não existe de propósito | Atual |
 | [`architecture/`](architecture/) | Arquitetura (componentes, relações, fluxo) | ⚠️ Parcialmente superada por [003](decisoes/003-migracao-whatsapp-cloud-api.md) e [004](decisoes/004-contas-e-permissoes-granulares.md) |
 | [`database/`](database/) | Modelo de dados, migrations e o FAQ real do PROCON (`Dúvidas Frequentes.odt`) | ⚠️ Não inclui as tabelas novas decididas na Sprint 2 |
 | [`llm/`](llm/) | Contrato e escolha do modelo do serviço de LLM | Atual |
