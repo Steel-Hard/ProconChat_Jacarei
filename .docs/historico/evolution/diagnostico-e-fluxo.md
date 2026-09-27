@@ -1,5 +1,7 @@
 # Diagnóstico Evolution API, Gateway e Fluxo de Atendimento (ProconChat)
 
+> **Documento histórico.** Diagnóstico específico da Evolution API, que será substituída pela WhatsApp Cloud API oficial. Ver [`../../decisoes/003-migracao-whatsapp-cloud-api.md`](../../decisoes/003-migracao-whatsapp-cloud-api.md). Mantido como registro do que foi investigado na Sprint 1.
+
 Este documento reúne o diagnóstico técnico completo da integração entre a Evolution API (WhatsApp), o Gateway, o Backend do ProconChat e a IA (Ollama / LLM), cobrindo a resolução de problemas de pareamento, disparo de mensagens e navegação do bot.
 
 ---
