@@ -1,5 +1,7 @@
 # Modelo de Banco de Dados — Chatbot de Orientação ao Consumidor
 
+> **Atenção:** este documento descreve o schema da Sprint 1. As tabelas e colunas decididas na Sprint 2 (agendamento, permissões, configuração da agenda, eventos e desfechos) estão em [`../decisoes/`](../decisoes/) e serão incorporadas aqui junto com as migrations correspondentes. Antes de mexer no banco, leia também o SQL atual em `src/backend/db/schema/`.
+
 > Reflete a arquitetura em [`architecture.md`](../architecture/architecture.md) —
 > persistência única em PostgreSQL, compartilhada entre chatbot e admin.
 >

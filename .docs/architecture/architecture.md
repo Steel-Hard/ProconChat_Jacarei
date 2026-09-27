@@ -1,5 +1,7 @@
 # Arquitetura — Chatbot de Orientação ao Consumidor (PROCON Jacareí)
 
+> **Atenção:** partes deste documento foram superadas por decisões da Sprint 2. A integração com o WhatsApp passa a ser a **Cloud API oficial** ([`../decisoes/003`](../decisoes/003-migracao-whatsapp-cloud-api.md)), e o acesso ao painel passa a ter **conta Admin e permissões granulares**, substituindo o RF12 de perfil único ([`../decisoes/004`](../decisoes/004-contas-e-permissoes-granulares.md)). Quando houver conflito, valem os registros em [`../decisoes/`](../decisoes/).
+
 ## Visão geral
 
 ```mermaid

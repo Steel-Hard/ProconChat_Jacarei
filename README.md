@@ -122,13 +122,12 @@ informações conforme a LGPD.
 
 | Sprint |  Início  |    Fim    |     Status     |          📉 Burndown Chart          | Sprint Backlog/Review |
 | :----: | :--------: | :--------: | :-------------: | :----------------------------------: | :-------------------: |
-|   1   | 10/08/2026 | 14/09/2026 | 🟢 Concluída | [Ver tabela](.docs/sprint1/entrega-sprint1.md#9-burndown-da-sprint-1) | [Ver](.docs/sprint1/entrega-sprint1.md) |
+|   1   | 10/08/2026 | 14/09/2026 | 🟢 Concluída | [Ver Gráfico](.docs/sprints/sprint1/burndown.svg) | [Ver](.docs/sprints/sprint1/README.md) |
 |   2   | 15/09/2026 | 19/10/2026 |   ⚪ Pendente   | [Ver Gráfico](assets/burndown_2.png) | [Ver](docs/sprint2.md) |
 |   3   | 20/10/2026 | 23/11/2026 |   ⚪ Pendente   | [Ver Gráfico](assets/burndown_3.png) | [Ver](docs/sprint3.md) |
 
-> O burndown da Sprint 1 está documentado como tabelas (issues por data de abertura/fechamento) em
-> [`.docs/sprint1/entrega-sprint1.md`](.docs/sprint1/entrega-sprint1.md) — ainda não existe um gráfico
-> de imagem gerado para `assets/burndown_1.png`.
+> O gráfico e as tabelas de origem do burndown da Sprint 1 estão em
+> [`.docs/sprints/sprint1/05-burndown.md`](.docs/sprints/sprint1/05-burndown.md).
 
 ---
 
@@ -156,8 +155,9 @@ informações conforme a LGPD.
 |  RNF07  | Documentação         |         Documentar instalação e requisitos necessários de hardware e software.         | 🟢 Concluído |
 |  RNF08  | Boas Práticas         | Adotar metodologia ágil, CI/CD, versionamento, testes e documentação técnica mínima. | 🟡 Parcial |
 
-> Detalhamento completo do que foi entregue, testado e do que ficou pendente/em risco em
-> [`.docs/sprint1/entrega-sprint1.md`](.docs/sprint1/entrega-sprint1.md) (seções 8, 11 e 12).
+> Detalhamento completo do que foi entregue, testado e do que ficou pendente/em risco no
+> [fechamento da Sprint 1](.docs/sprints/sprint1/README.md): [issues e PRs](.docs/sprints/sprint1/04-issues-e-prs.md),
+> [entregas de 14/09](.docs/sprints/sprint1/06-entregas-14-09.md) e [riscos](.docs/sprints/sprint1/07-riscos-e-proximos-passos.md).
 
 ---
 
