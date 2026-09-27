@@ -37,5 +37,9 @@ Além disso, o sistema passou a precisar **enviar mensagens ao cidadão fora da 
 - **O Gateway precisa de uma camada de provedor.** O webhook da Cloud API é diferente: tem o `GET` de verificação e a assinatura HMAC com o App Secret.
 - **Continuam no `.env`:** conexão com o banco, `PHONE_HASH_SECRET`, token interno Gateway ↔ Backend, **chave-mestra de criptografia** e a URL pública do sistema.
 - **Custo:** conversas iniciadas pelo cidadão são gratuitas; mensagens de modelo fora da janela de 24h (lembrete, cancelamento) são cobradas pela Meta. Ver [005](005-mensagens-ao-cidadao.md).
-- **É preciso uma conta Meta Business e um número dedicado.** Isso depende do PROCON e pode levar tempo, então deve ser tratado cedo.
+- **Número usado durante o desenvolvimento e na entrega:** um número comprado pelo time só para testes, registrado numa conta Meta do próprio time. O projeto não depende do PROCON para funcionar. Cuidados:
+  - o número registrado na Cloud API deixa de funcionar no aplicativo WhatsApp comum;
+  - sem verificação de empresa, o limite diário de conversas iniciadas pela empresa é baixo (centenas), o que basta para testes e demonstração;
+  - o nome exibido e os modelos de mensagem passam por aprovação da Meta, então devem ser cadastrados logo no início da migração.
+- **Passagem para o PROCON:** depois das sprints, o PROCON cria a própria conta Meta, registra o próprio número e troca as credenciais **pela tela de WhatsApp**, sem mexer no servidor. Para isso, a entrega precisa de um **guia de passagem** (criar a conta, registrar o número, gerar o token permanente, cadastrar os modelos, configurar a tela), que também atende o RNF07.
 - Os documentos em [`../historico/evolution/`](../historico/evolution/) passam a ser só registro histórico.

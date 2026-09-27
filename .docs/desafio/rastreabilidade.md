@@ -39,7 +39,7 @@ Revisão feita em 27/09/2026, no início da Sprint 2 (15/09 a 19/10/2026). A ent
 | **RNF04** Caráter orientativo | ✅ Implementado (PR #43), texto único em todo o sistema | — |
 | **RNF05** Identificar o que é gerado por IA | ⚠️ Desenhado | Implementar junto com o RF05 |
 | **RNF06** Docker | ✅ | Adicionar o container do front; remover Evolution e Redis na migração |
-| **RNF07** Instalação e requisitos de hardware/software | ✅ Para o estado atual | Atualizar após a migração: configuração na Meta, chave-mestra, `.env` reduzido, front-end |
+| **RNF07** Instalação e requisitos de hardware/software | ✅ Para o estado atual | Atualizar após a migração: chave-mestra, `.env` reduzido, front-end. Escrever o **guia de passagem para o PROCON** (conta Meta, número próprio, token permanente, modelos de mensagem, tela de WhatsApp), já que durante as sprints o sistema roda com o número de testes do time ([003](../decisoes/003-migracao-whatsapp-cloud-api.md)) |
 | **RNF08** Práticas modernas (ágil, CI/CD, testes, docs) | ❌ **CI/CD não existe** | Pipeline de CI rodando os testes em cada PR. É o único ❌ que não depende de funcionalidade e deveria entrar na Sprint 2. Teste end-to-end do fluxo mínimo (#18) |
 
 ## Restrições de projeto
