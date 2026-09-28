@@ -142,3 +142,154 @@ ALTER TABLE Sessions
 
 CREATE INDEX idx_sessions_last_interaction ON Sessions(last_interaction_at) WHERE status = 'IN_PROGRESS';
 CREATE INDEX idx_sessions_started_at ON Sessions(started_at);
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM Appointments) THEN
+        RAISE EXCEPTION 'A migration 11_sprint2_schema recria a tabela Appointments, mas ela tem linhas. Apague os agendamentos de teste (DELETE FROM Appointments) e rode a migration de novo.';
+    END IF;
+END
+$$;
+
+DROP TABLE Appointments;
+DROP TYPE appointment_status;
+
+CREATE TYPE appointment_status AS ENUM ('PENDING', 'CONFIRMED', 'ATTENDED', 'NO_SHOW', 'CANCELED');
+CREATE TYPE appointment_reason AS ENUM ('REQUIRES_IN_PERSON', 'NOT_RESOLVED');
+
+CREATE TABLE Appointments (
+    id BIGSERIAL PRIMARY KEY,
+    appointment_code UUID NOT NULL DEFAULT gen_random_uuid(),
+
+    session_id BIGINT NOT NULL REFERENCES Sessions(id),
+    question_id BIGINT NOT NULL REFERENCES Questions(id),
+    reason appointment_reason NOT NULL,
+
+    name VARCHAR(150) NOT NULL,
+    cpf_hash VARCHAR(64) NOT NULL,
+    cpf_masked VARCHAR(14) NOT NULL,
+    phone_encrypted TEXT,
+    by_representative BOOLEAN NOT NULL DEFAULT FALSE,
+    documents_sent JSONB NOT NULL,
+
+    appointment_datetime TIMESTAMPTZ NOT NULL,
+    rescheduled_from TIMESTAMPTZ,
+    off_grid BOOLEAN NOT NULL DEFAULT FALSE,
+
+    status appointment_status NOT NULL DEFAULT 'PENDING',
+    assigned_user_id BIGINT REFERENCES Users(id),
+
+    request_datetime TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT uniq_appointments_code UNIQUE (appointment_code),
+    CONSTRAINT chk_appointments_cpf_hash CHECK (cpf_hash ~ '^[0-9a-f]{64}$'),
+    CONSTRAINT chk_appointments_cpf_masked CHECK (cpf_masked ~ '^\*{3}\.[0-9]{3}\.[0-9]{3}-\*{2}$'),
+    CONSTRAINT chk_appointments_phone_encrypted CHECK (phone_encrypted IS NULL OR phone_encrypted ~ '^v1:[A-Za-z0-9+/]+={0,2}:[A-Za-z0-9+/]+={0,2}:[A-Za-z0-9+/]+={0,2}$'),
+    CONSTRAINT chk_appointments_documents_sent CHECK (
+        jsonb_typeof(documents_sent) = 'object'
+        AND jsonb_typeof(documents_sent -> 'group') = 'array'
+        AND jsonb_typeof(documents_sent -> 'question') = 'array'
+    ),
+    CONSTRAINT chk_appointments_pending_unassigned CHECK (status <> 'PENDING' OR assigned_user_id IS NULL),
+    CONSTRAINT chk_appointments_confirmed_assigned CHECK (status NOT IN ('CONFIRMED', 'ATTENDED', 'NO_SHOW') OR assigned_user_id IS NOT NULL)
+);
+
+CREATE INDEX idx_appointments_cpf_hash ON Appointments(cpf_hash);
+CREATE INDEX idx_appointments_status_datetime ON Appointments(status, appointment_datetime);
+CREATE INDEX idx_appointments_datetime_active ON Appointments(appointment_datetime) WHERE status IN ('PENDING', 'CONFIRMED');
+CREATE INDEX idx_appointments_assigned ON Appointments(assigned_user_id);
+CREATE INDEX idx_appointments_session ON Appointments(session_id);
+CREATE INDEX idx_appointments_question ON Appointments(question_id);
+
+CREATE UNIQUE INDEX uniq_appointments_active
+    ON Appointments(cpf_hash, appointment_datetime)
+    WHERE status IN ('PENDING', 'CONFIRMED');
+
+DROP TABLE Interactions;
+
+CREATE TYPE conversation_event_type AS ENUM (
+    'STARTED',
+    'CATEGORY_CHOSEN',
+    'QUESTION_CHOSEN',
+    'ANSWER_SENT',
+    'RESOLVED_ANSWERED',
+    'SCHEDULE_OFFERED',
+    'NO_SLOT',
+    'SCHEDULE_DECLINED',
+    'ATTENDEE_CHOSEN',
+    'PHONE_NOTICE_SHOWN',
+    'APPOINTMENT_CREATED',
+    'APPOINTMENT_CONSULTED',
+    'APPOINTMENT_RESCHEDULED',
+    'APPOINTMENT_CANCELED',
+    'ABANDONED'
+);
+
+CREATE TABLE ConversationEvents (
+    id BIGSERIAL PRIMARY KEY,
+    session_id BIGINT NOT NULL REFERENCES Sessions(id) ON DELETE CASCADE,
+    type conversation_event_type NOT NULL,
+    category_id BIGINT REFERENCES Categories(id),
+    question_id BIGINT REFERENCES Questions(id),
+    appointment_id BIGINT REFERENCES Appointments(id),
+    data JSONB NOT NULL DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_conversation_events_data_object CHECK (jsonb_typeof(data) = 'object')
+);
+
+CREATE INDEX idx_conversation_events_session ON ConversationEvents(session_id, created_at);
+CREATE INDEX idx_conversation_events_type_date ON ConversationEvents(type, created_at);
+CREATE INDEX idx_conversation_events_category ON ConversationEvents(category_id);
+CREATE INDEX idx_conversation_events_question ON ConversationEvents(question_id);
+CREATE INDEX idx_conversation_events_appointment ON ConversationEvents(appointment_id);
+
+CREATE TABLE AppointmentNotes (
+    id BIGSERIAL PRIMARY KEY,
+    appointment_id BIGINT NOT NULL REFERENCES Appointments(id),
+    author_user_id BIGINT NOT NULL REFERENCES Users(id),
+    text TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_appointment_notes_text CHECK (char_length(btrim(text)) > 0)
+);
+
+CREATE INDEX idx_appointment_notes_appointment ON AppointmentNotes(appointment_id, created_at);
+
+CREATE FUNCTION reject_appointment_note_change() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+    RAISE EXCEPTION 'AppointmentNotes são imutáveis';
+END;
+$$;
+
+CREATE TRIGGER trg_appointment_notes_immutable
+    BEFORE UPDATE OR DELETE ON AppointmentNotes
+    FOR EACH ROW EXECUTE FUNCTION reject_appointment_note_change();
+
+CREATE TYPE appointment_event_type AS ENUM (
+    'CREATED',
+    'CLAIMED',
+    'ASSIGNED',
+    'RESCHEDULED',
+    'BACK_TO_PENDING',
+    'ATTENDED',
+    'NO_SHOW',
+    'RECORD_CORRECTED',
+    'CANCELED_BY_CITIZEN',
+    'CANCELED_BY_STAFF',
+    'CITIZEN_NOTIFIED',
+    'CITIZEN_NOTIFICATION_FAILED',
+    'REMINDER_SENT',
+    'KEPT_OFF_GRID'
+);
+
+CREATE TABLE AppointmentEvents (
+    id BIGSERIAL PRIMARY KEY,
+    appointment_id BIGINT NOT NULL REFERENCES Appointments(id),
+    type appointment_event_type NOT NULL,
+    actor_user_id BIGINT REFERENCES Users(id),
+    data JSONB NOT NULL DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_appointment_events_data_object CHECK (jsonb_typeof(data) = 'object')
+);
+
+CREATE INDEX idx_appointment_events_appointment ON AppointmentEvents(appointment_id, created_at);
