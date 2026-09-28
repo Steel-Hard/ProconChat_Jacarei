@@ -1,14 +1,20 @@
 export interface FaqQuestionSeed {
+    seedKey: string
     question: string
+    shortTitle: string
+    shortDescription?: string
     legalBasis: string | null
     answer: string
     requiresInPerson: boolean
     outOfScope?: boolean
+    llmAllowed?: boolean
     requiredDocuments: string[]
 }
 
 export interface FaqCategorySeed {
+    seedKey: string
     title: string
+    shortTitle: string
     description: string
     questions: FaqQuestionSeed[]
 }
