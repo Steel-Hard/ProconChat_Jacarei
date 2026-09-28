@@ -1,7 +1,7 @@
 # ProconChat Jacareí
 
-Guia específico para subir e validar a Evolution API, o Gateway WhatsApp e o backend:
-[`src/gateway/README.md`](src/gateway/README.md).
+Documentação do projeto: [`.docs/README.md`](.docs/README.md) (requisitos, decisões, regras das telas,
+arquitetura, banco e protótipo do painel).
 
 # Chatbot para Orientação ao Consumidor via WhatsApp
 
@@ -75,46 +75,16 @@ O projeto busca:
 
 ## 🛠️ Tecnologias
 
-As tecnologias definitivas do projeto ainda serão definidas pela equipe
-durante o desenvolvimento.
+| Camada | Tecnologia | Estado |
+|---|---|---|
+| Backend e Gateway | Node.js + TypeScript (Express), Vitest | Implementado |
+| Banco | PostgreSQL 15, migrations com `node-pg-migrate` | Implementado |
+| LLM | Ollama + `llama3.2:3b`, local (RP05: nenhuma API externa de LLM) | Serviço implementado; ligado ao fluxo na Sprint 3 |
+| WhatsApp | Evolution API na Sprint 1 → **WhatsApp Cloud API** oficial (migração na Sprint 2) | Em migração |
+| Painel web | React 19 + Vite + TypeScript, a partir do `template-react` | Sprint 2 |
+| Infraestrutura | Docker Compose, GitHub Actions (CI/CD), VM na nuvem com HTTPS | Docker implementado; CI/CD na Sprint 2 |
 
-### Integração
-
-![WhatsApp](https://img.shields.io/badge/WhatsApp_Business-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)
-
-A integração deverá ser realizada preferencialmente por meio da
-**WhatsApp Business Platform (Cloud API)**. Para fins acadêmicos,
-poderão ser utilizadas alternativas gratuitas, ambientes de teste ou
-soluções simuladas que reproduzam o fluxo de comunicação.
-
-### Backend
-
-O back-end deverá utilizar tecnologias compatíveis com aplicações web
-modernas, como:
-
-![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
-![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
-
-> A tecnologia utilizada pelo grupo será definida posteriormente.
-
-### Infraestrutura & Ferramentas
-
-![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
-![Git](https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white)
-![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)
-
-O sistema deverá obrigatoriamente executar em **Docker** e adotar
-práticas modernas de desenvolvimento, incluindo versionamento de código,
-testes, documentação técnica e integração/entrega contínua (**CI/CD**).
-
-### Modelo de Linguagem
-
-O projeto poderá utilizar um **LLM local** exclusivamente para
-complementar a geração textual das orientações.
-
-**Não deverão ser utilizadas APIs externas de LLM**, mesmo que
-gratuitas, devido às restrições de custo e à necessidade de proteção das
-informações conforme a LGPD.
+Detalhes em [`.docs/architecture/architecture.md`](.docs/architecture/architecture.md).
 
 ---
 
@@ -122,13 +92,12 @@ informações conforme a LGPD.
 
 | Sprint |  Início  |    Fim    |     Status     |          📉 Burndown Chart          | Sprint Backlog/Review |
 | :----: | :--------: | :--------: | :-------------: | :----------------------------------: | :-------------------: |
-|   1   | 10/08/2026 | 14/09/2026 | 🟢 Concluída | [Ver tabela](.docs/sprint1/entrega-sprint1.md#9-burndown-da-sprint-1) | [Ver](.docs/sprint1/entrega-sprint1.md) |
+|   1   | 10/08/2026 | 14/09/2026 | 🟢 Concluída | [Ver Gráfico](.docs/sprints/sprint1/burndown.svg) | [Ver](.docs/sprints/sprint1/README.md) |
 |   2   | 15/09/2026 | 19/10/2026 |   ⚪ Pendente   | [Ver Gráfico](assets/burndown_2.png) | [Ver](docs/sprint2.md) |
 |   3   | 20/10/2026 | 23/11/2026 |   ⚪ Pendente   | [Ver Gráfico](assets/burndown_3.png) | [Ver](docs/sprint3.md) |
 
-> O burndown da Sprint 1 está documentado como tabelas (issues por data de abertura/fechamento) em
-> [`.docs/sprint1/entrega-sprint1.md`](.docs/sprint1/entrega-sprint1.md) — ainda não existe um gráfico
-> de imagem gerado para `assets/burndown_1.png`.
+> O gráfico e as tabelas de origem do burndown da Sprint 1 estão em
+> [`.docs/sprints/sprint1/05-burndown.md`](.docs/sprints/sprint1/05-burndown.md).
 
 ---
 
@@ -156,8 +125,9 @@ informações conforme a LGPD.
 |  RNF07  | Documentação         |         Documentar instalação e requisitos necessários de hardware e software.         | 🟢 Concluído |
 |  RNF08  | Boas Práticas         | Adotar metodologia ágil, CI/CD, versionamento, testes e documentação técnica mínima. | 🟡 Parcial |
 
-> Detalhamento completo do que foi entregue, testado e do que ficou pendente/em risco em
-> [`.docs/sprint1/entrega-sprint1.md`](.docs/sprint1/entrega-sprint1.md) (seções 8, 11 e 12).
+> Detalhamento completo do que foi entregue, testado e do que ficou pendente/em risco no
+> [fechamento da Sprint 1](.docs/sprints/sprint1/README.md): [issues e PRs](.docs/sprints/sprint1/04-issues-e-prs.md),
+> [entregas de 14/09](.docs/sprints/sprint1/06-entregas-14-09.md) e [riscos](.docs/sprints/sprint1/07-riscos-e-proximos-passos.md).
 
 ---
 
@@ -236,12 +206,17 @@ Isso sobe, com um único comando, todo o ambiente do MVP:
 Todas as variáveis sensíveis (senhas, tokens, segredos) vêm do `.env` — nunca
 hardcoded no `compose.yaml`. Veja `.env.example` para a lista completa.
 
+> **Em migração:** a Evolution API e o Redis serão removidos quando o Gateway passar para a WhatsApp
+> Cloud API (Sprint 2, [decisão 003](.docs/decisoes/003-migracao-whatsapp-cloud-api.md)). As instruções
+> abaixo valem para o estado atual de `develop`.
+
 ### Documentação detalhada por serviço
 
 - [`.docs/database/migrations.md`](.docs/database/migrations.md) — schema, migrations e como resetar o banco.
 - [`src/backend/README.md`](src/backend/README.md) — rodar o backend fora do Docker, rotas disponíveis, testes.
 - [`src/gateway/README.md`](src/gateway/README.md) — subir e validar a Evolution API + Gateway WhatsApp.
 - [`.docs/llm/contrato.md`](.docs/llm/contrato.md) — contrato de entrada/saída do serviço LLM.
+- [`.docs/README.md`](.docs/README.md) — índice de toda a documentação: requisitos, decisões, regras das telas e protótipo.
 
 ---
 
@@ -249,13 +224,13 @@ hardcoded no `compose.yaml`. Veja `.env.example` para a lista completa.
 
 |                 Nome                 |   Função   |                     GitHub                     |
 | :----------------------------------: | :-----------: | :--------------------------------------------: |
-| Maurício Oliveira Medeiros Cepinho | Product Owner |     [GitHub](https://github.com/maucepinho)     |
 | Cláudio dos Santos Siqueira Júnior |   Dev Team   |    [GitHub](https://github.com/claudsaints)    |
 |        Lucas Roque Alvim Cruz        |   Dev Team   |     [GitHub](https://github.com/lucasroqe)     |
-|           Nícolas Aquino           |   Dev Team   |      [GitHub](https://github.com/Nickaqui)      |
 |        Luiz Felipe dos Santos        | Scrum Master |    [GitHub](https://github.com/felipe-sant)    |
-|  Vitor Francisco de Azevedo Zonzini  |   Dev Team   |      [GitHub](https://github.com/frevisto)      |
+| Maurício Oliveira Medeiros Cepinho | Product Owner |     [GitHub](https://github.com/maucepinho)     |
+|           Nícolas Aquino           |   Dev Team   |      [GitHub](https://github.com/Nickaqui)      |
 |      Victor Hugo Dantas Carbajo      |   Dev Team   | [GitHub](https://github.com/Victor-Carbajo-DSM) |
+|  Vitor Francisco de Azevedo Zonzini  |   Dev Team   |      [GitHub](https://github.com/frevisto)      |
 
 ## 🤝 Parceiro
 

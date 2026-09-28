@@ -1,5 +1,7 @@
 # Fluxo de conversa, deduplicação e controle de estado
 
+> **Documento histórico.** Análise de deduplicação e concorrência feita sobre os eventos da Evolution API. Os princípios (deduplicar por id de mensagem, uma mensagem por vez por telefone) continuam válidos para a Cloud API; os detalhes de eventos da Evolution, não. Ver [`../../decisoes/003-migracao-whatsapp-cloud-api.md`](../../decisoes/003-migracao-whatsapp-cloud-api.md).
+
 ## 1. Problemas identificados
 
 ### Mensagens duplicadas

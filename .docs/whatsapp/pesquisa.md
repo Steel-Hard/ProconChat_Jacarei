@@ -114,6 +114,6 @@ tentativa.
 ## Referências
 
 - [Documentação da Evolution API — instalação via Docker](https://docs.evolutionfoundation.com.br/evolution-api/install/docker)
-- [`.docs/desafio-6dsm-2026-2.md`](../desafio-6dsm-2026-2.md) — RP01
+- [`.docs/desafio/desafio-6dsm-2026-2.md`](../desafio/desafio-6dsm-2026-2.md) — RP01
 - [`.docs/.tasks/features/extrair-gateway-whatsapp/`](../.tasks/features/extrair-gateway-whatsapp/) — plano de extração do Gateway para app própria (issue #4)
 - Issue [#3](https://github.com/Steel-Hard/ProconChat_Jacarei/issues/3) (comentário original de Vitor Francisco) e PR [#29](https://github.com/Steel-Hard/ProconChat_Jacarei/pull/29) (implementação, Lucas Roque)
