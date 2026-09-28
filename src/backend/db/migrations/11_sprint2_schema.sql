@@ -374,3 +374,155 @@ CREATE TABLE WhatsAppSettings (
     CONSTRAINT chk_whatsapp_settings_access_token_encrypted CHECK (access_token_encrypted IS NULL OR access_token_encrypted ~ '^v1:[A-Za-z0-9+/]+={0,2}:[A-Za-z0-9+/]+={0,2}:[A-Za-z0-9+/]+={0,2}$'),
     CONSTRAINT chk_whatsapp_settings_app_secret_encrypted CHECK (app_secret_encrypted IS NULL OR app_secret_encrypted ~ '^v1:[A-Za-z0-9+/]+={0,2}:[A-Za-z0-9+/]+={0,2}:[A-Za-z0-9+/]+={0,2}$')
 );
+
+-- Down Migration
+DROP TABLE WhatsAppSettings;
+
+DROP TABLE AttendanceDocuments;
+DROP TYPE attendee_group;
+
+DROP TABLE BlockedDates;
+DROP TABLE ScheduleRanges;
+DROP TABLE ScheduleSettings;
+
+DROP TABLE AppointmentEvents;
+DROP TYPE appointment_event_type;
+
+DROP TRIGGER trg_appointment_notes_immutable ON AppointmentNotes;
+DROP TABLE AppointmentNotes;
+DROP FUNCTION reject_appointment_note_change();
+
+DROP TABLE ConversationEvents;
+DROP TYPE conversation_event_type;
+
+CREATE TABLE Interactions (
+    id BIGSERIAL PRIMARY KEY,
+    session_id BIGINT NOT NULL REFERENCES Sessions(id),
+    category_id BIGINT REFERENCES Categories(id),
+    question_id BIGINT REFERENCES Questions(id),
+
+    answered_via_llm BOOLEAN NOT NULL DEFAULT FALSE,
+    llm_answer_text TEXT,
+
+    ended_in_appointment BOOLEAN NOT NULL DEFAULT FALSE,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_interactions_session ON Interactions(session_id);
+CREATE INDEX idx_interactions_category ON Interactions(category_id);
+CREATE INDEX idx_interactions_question ON Interactions(question_id);
+
+DROP TABLE Appointments;
+DROP TYPE appointment_reason;
+DROP TYPE appointment_status;
+
+CREATE TYPE appointment_status AS ENUM ('SCHEDULED', 'CANCELED', 'ATTENDED');
+
+CREATE TABLE Appointments (
+    id BIGSERIAL PRIMARY KEY,
+    appointment_code UUID NOT NULL DEFAULT gen_random_uuid(),
+
+    cpf_hash VARCHAR(64) NOT NULL,
+    name VARCHAR(150) NOT NULL,
+
+    appointment_reason TEXT NOT NULL,
+
+    professional VARCHAR(50) NOT NULL CHECK (professional IN ('LAWYER', 'ATTENDANT')),
+
+    appointment_datetime TIMESTAMPTZ NOT NULL,
+    request_datetime TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    status appointment_status NOT NULL DEFAULT 'SCHEDULED',
+
+    notes TEXT
+);
+
+CREATE INDEX idx_appointments_cpf_hash ON Appointments(cpf_hash);
+CREATE INDEX idx_appointments_code ON Appointments(appointment_code);
+CREATE INDEX idx_appointments_datetime ON Appointments(appointment_datetime);
+
+CREATE UNIQUE INDEX uniq_appointments_active
+ON Appointments(cpf_hash, appointment_datetime)
+WHERE status = 'SCHEDULED';
+
+DROP INDEX idx_sessions_started_at;
+DROP INDEX idx_sessions_last_interaction;
+
+ALTER TABLE Sessions
+    DROP CONSTRAINT chk_sessions_draft_cpf,
+    DROP CONSTRAINT chk_sessions_draft_keys,
+    DROP CONSTRAINT chk_sessions_draft_object,
+    DROP CONSTRAINT chk_sessions_draft_only_in_progress,
+    DROP CONSTRAINT chk_sessions_list_page,
+    DROP CONSTRAINT chk_sessions_abandoned_step,
+    DROP CONSTRAINT chk_sessions_outcome_abandoned,
+    DROP CONSTRAINT chk_sessions_outcome_in_progress;
+
+ALTER TABLE Sessions
+    DROP COLUMN draft,
+    DROP COLUMN list_page,
+    DROP COLUMN current_question_id,
+    DROP COLUMN last_interaction_at,
+    DROP COLUMN abandoned_at_step,
+    DROP COLUMN outcome;
+
+DROP TYPE session_outcome;
+
+UPDATE Sessions
+SET current_step = CASE WHEN status = 'IN_PROGRESS' THEN 'AWAITING_CATEGORY'::session_step ELSE 'FINISHED'::session_step END
+WHERE current_step NOT IN ('AWAITING_CATEGORY', 'AWAITING_QUESTION', 'FINISHED');
+
+ALTER TABLE Sessions ALTER COLUMN current_step DROP DEFAULT;
+
+ALTER TYPE session_step RENAME TO session_step_old;
+
+CREATE TYPE session_step AS ENUM ('AWAITING_CATEGORY', 'AWAITING_QUESTION', 'FINISHED');
+
+ALTER TABLE Sessions
+    ALTER COLUMN current_step TYPE session_step USING current_step::text::session_step;
+
+ALTER TABLE Sessions ALTER COLUMN current_step SET DEFAULT 'AWAITING_CATEGORY';
+
+DROP TYPE session_step_old;
+
+DROP INDEX idx_questions_category_position;
+DROP INDEX idx_categories_position;
+
+ALTER TABLE RequiredDocuments
+    DROP CONSTRAINT chk_required_documents_position,
+    DROP COLUMN position;
+
+ALTER TABLE Questions
+    DROP CONSTRAINT uniq_questions_seed_key,
+    DROP CONSTRAINT chk_questions_answer_length,
+    DROP CONSTRAINT chk_questions_out_of_scope_no_llm,
+    DROP CONSTRAINT chk_questions_in_person_xor_out_of_scope,
+    DROP CONSTRAINT chk_questions_position,
+    DROP CONSTRAINT chk_questions_short_description_length,
+    DROP CONSTRAINT chk_questions_short_title_length,
+    DROP COLUMN updated_by,
+    DROP COLUMN seed_key,
+    DROP COLUMN llm_allowed,
+    DROP COLUMN position,
+    DROP COLUMN short_description,
+    DROP COLUMN short_title;
+
+ALTER TABLE Categories
+    DROP CONSTRAINT uniq_categories_seed_key,
+    DROP CONSTRAINT chk_categories_position,
+    DROP CONSTRAINT chk_categories_short_title_length,
+    DROP COLUMN updated_by,
+    DROP COLUMN seed_key,
+    DROP COLUMN position,
+    DROP COLUMN short_title;
+
+DROP INDEX uniq_users_single_admin;
+
+ALTER TABLE Users
+    DROP CONSTRAINT chk_users_session_version,
+    DROP COLUMN session_version,
+    DROP COLUMN last_login_at,
+    DROP COLUMN is_admin;
+
+DROP EXTENSION IF EXISTS unaccent;
