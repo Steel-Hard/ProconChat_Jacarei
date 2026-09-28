@@ -135,16 +135,18 @@ async function withDatabase(admin, baseUrl, fn) {
 
 function checkMigrationFile() {
     const files = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql'));
-    assert.equal(files.length, 11);
-    const sql = fs.readFileSync(path.join(migrationsDir, '11_sprint2_schema.sql'), 'utf8');
-    assert.doesNotMatch(sql, /add\s+value/i);
-    assert.match(sql, /^-- Up Migration/);
-    assert.match(sql, /\n-- Down Migration\n/);
+    assert.equal(files.length, 12);
+    for (const file of ['11_sprint2_schema.sql', '12_short_text_checks.sql']) {
+        const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+        assert.doesNotMatch(sql, /add\s+value/i, file);
+        assert.match(sql, /^-- Up Migration/, file);
+        assert.match(sql, /\n-- Down Migration\n/, file);
+    }
 }
 
 async function checkFreshSchema(db) {
     assert.deepEqual(await tableNames(db), expectedTables);
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 11);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
     for (const [name, values] of Object.entries(expectedEnums)) {
         assert.deepEqual(await enumValues(db, name), values, name);
     }
@@ -168,10 +170,17 @@ async function checkConstraints(db) {
     await rejects(db, 'INSERT INTO categories(title, short_title) VALUES ($1, $2)', ['C', 'x'.repeat(25)], '23514');
     await rejects(db, 'INSERT INTO categories(title) VALUES ($1)', ['C'], '23502');
     await db.query('INSERT INTO categories(title, short_title) VALUES ($1, $2)', ['C24', 'x'.repeat(24)]);
+    await rejects(db, 'INSERT INTO categories(title, short_title) VALUES ($1, $2)', ['C', ' Garantias'], '23514');
+    await rejects(db, 'INSERT INTO categories(title, short_title) VALUES ($1, $2)', ['C', 'Garantias '], '23514');
 
     const insertQuestion = 'INSERT INTO questions(category_id, question, answer, short_title, short_description, requires_in_person, out_of_scope, llm_allowed) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id';
     const question = (await db.query(insertQuestion, [category, 'Q', 'A', 'Q', 'd'.repeat(72), true, false, true])).rows[0].id;
     await rejects(db, insertQuestion, [category, 'Q', 'A', 'x'.repeat(25), null, false, false, true], '23514');
+    await rejects(db, insertQuestion, [category, 'Q', 'A', ' Garantias', null, false, false, true], '23514');
+    await rejects(db, insertQuestion, [category, 'Q', 'A', 'Garantias ', null, false, false, true], '23514');
+    await rejects(db, insertQuestion, [category, 'Q', 'A', 'Q', ' x', false, false, true], '23514');
+    await rejects(db, insertQuestion, [category, 'Q', 'A', 'Q', 'x ', false, false, true], '23514');
+    await db.query(insertQuestion, [category, 'Q', 'A', 'x'.repeat(24), null, false, false, true]);
     await rejects(db, insertQuestion, [category, 'Q', 'A', null, null, false, false, true], '23502');
     await rejects(db, insertQuestion, [category, 'Q', 'A', 'Q', 'd'.repeat(73), false, false, true], '23514');
     await rejects(db, insertQuestion, [category, 'Q', 'A', 'Q', '   ', false, false, true], '23514');
@@ -278,6 +287,11 @@ async function checkConstraints(db) {
 
 async function checkRollback(db, url) {
     mustMigrate(url, 'down', '1');
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 11);
+    const category = (await db.query("INSERT INTO categories(title, short_title) VALUES ('Old check', ' Garantias') RETURNING id")).rows[0].id;
+    await db.query("INSERT INTO questions(category_id, question, answer, short_title, short_description) VALUES ($1, 'Q', 'A', 'Garantias ', ' x')", [category]);
+    await rejects(db, 'INSERT INTO categories(title, short_title) VALUES ($1, $2)', ['C', 'x'.repeat(25)], '23514');
+    mustMigrate(url, 'down', '1');
     assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 10);
     assert.deepEqual(await tableNames(db), [
         'appointments', 'categories', 'interactions', 'pgmigrations', 'questions', 'requireddocuments', 'sessions', 'users',
@@ -291,9 +305,9 @@ async function checkRollback(db, url) {
     assert.equal(await count(db, "SELECT 1 FROM sessions WHERE phone_hash = 's3' AND current_step = 'FINISHED'"), 1);
     assert.equal(await count(db, "SELECT 1 FROM pg_extension WHERE extname = 'unaccent'"), 0);
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 11);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
     assert.deepEqual(await tableNames(db), expectedTables);
-    mustMigrate(url, 'down', '11');
+    mustMigrate(url, 'down', '12');
     assert.deepEqual(await tableNames(db), ['pgmigrations']);
     assert.equal(await count(db, "SELECT 1 FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace WHERE n.nspname = 'public' AND t.typtype = 'e'"), 0);
     mustMigrate(url, 'up');
@@ -324,7 +338,7 @@ async function checkUpgradeWithSeed(db, url) {
     await db.query("INSERT INTO sessions(phone_hash, status, current_step, current_category_id, started_at, ended_at) VALUES ('abandoned', 'ABANDONED', 'AWAITING_QUESTION', $1, '2030-01-01T10:00:00Z', '2030-01-01T10:40:00Z')", [category]);
 
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 11);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
     assert.deepEqual(await snapshotContent(db), before);
 
     const outOfScope = before.questions.find(q => q.out_of_scope).id;
@@ -367,7 +381,21 @@ async function checkNonEmptyAppointmentsGuard(db, url) {
     assert.deepEqual(await enumValues(db, 'session_step'), ['AWAITING_CATEGORY', 'AWAITING_QUESTION', 'FINISHED']);
     await db.query('DELETE FROM appointments');
     mustMigrate(url, 'up');
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
+}
+
+async function checkShortTextNormalization(db, url) {
+    mustMigrate(url, 'up', '11');
     assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 11);
+    const category = (await db.query("INSERT INTO categories(title, short_title) VALUES ('Abc', 'Abc ') RETURNING id")).rows[0].id;
+    const question = (await db.query("INSERT INTO questions(category_id, question, answer, short_title, short_description) VALUES ($1, 'Q', 'A', ' Pergunta ', ' Descrição ') RETURNING id", [category])).rows[0].id;
+    mustMigrate(url, 'up');
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
+    assert.equal((await db.query('SELECT short_title FROM categories WHERE id = $1', [category])).rows[0].short_title, 'Abc');
+    assert.deepEqual((await db.query('SELECT short_title, short_description FROM questions WHERE id = $1', [question])).rows[0], { short_title: 'Pergunta', short_description: 'Descrição' });
+    mustMigrate(url, 'down', '1');
+    mustMigrate(url, 'up');
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
 }
 
 async function main() {
@@ -380,7 +408,7 @@ async function main() {
             mustMigrate(url, 'up');
             await checkFreshSchema(db);
             mustMigrate(url, 'up');
-            assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 11);
+            assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
             await checkConstraints(db);
             await checkRollback(db, url);
         });
@@ -389,6 +417,8 @@ async function main() {
         console.log('OK: upgrade from version 10 with seed and sessions, seed rerun');
         await withDatabase(admin, process.env.DB_TEST_URL, checkNonEmptyAppointmentsGuard);
         console.log('OK: guard aborts on non-empty Appointments without applying anything');
+        await withDatabase(admin, process.env.DB_TEST_URL, checkShortTextNormalization);
+        console.log('OK: migration 12 trims short texts saved under version 11, rollback and reapply');
     } finally {
         await admin.end();
     }
