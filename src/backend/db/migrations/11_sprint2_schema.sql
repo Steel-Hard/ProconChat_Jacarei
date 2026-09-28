@@ -293,3 +293,84 @@ CREATE TABLE AppointmentEvents (
 );
 
 CREATE INDEX idx_appointment_events_appointment ON AppointmentEvents(appointment_id, created_at);
+
+CREATE TABLE ScheduleSettings (
+    id SMALLINT PRIMARY KEY DEFAULT 1,
+    slot_minutes SMALLINT NOT NULL,
+    seats_per_slot SMALLINT NOT NULL,
+    window_days SMALLINT NOT NULL,
+    min_notice_days SMALLINT NOT NULL,
+    wait_alert_days SMALLINT NOT NULL,
+    unit_address TEXT NOT NULL,
+    unit_address_complement TEXT,
+    reminder_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    reminder_hours SMALLINT NOT NULL DEFAULT 24,
+    updated_by BIGINT REFERENCES Users(id),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_schedule_settings_singleton CHECK (id = 1),
+    CONSTRAINT chk_schedule_settings_slot_minutes CHECK (slot_minutes IN (20, 30, 40, 60)),
+    CONSTRAINT chk_schedule_settings_seats CHECK (seats_per_slot BETWEEN 1 AND 20),
+    CONSTRAINT chk_schedule_settings_window CHECK (window_days BETWEEN 1 AND 180),
+    CONSTRAINT chk_schedule_settings_min_notice CHECK (min_notice_days IN (0, 1, 2, 3, 5)),
+    CONSTRAINT chk_schedule_settings_wait_alert CHECK (wait_alert_days BETWEEN 1 AND 60),
+    CONSTRAINT chk_schedule_settings_reminder_hours CHECK (reminder_hours IN (2, 6, 12, 24, 48)),
+    CONSTRAINT chk_schedule_settings_address CHECK (char_length(btrim(unit_address)) > 0)
+);
+
+CREATE TABLE ScheduleRanges (
+    id BIGSERIAL PRIMARY KEY,
+    weekday SMALLINT NOT NULL,
+    slot_index SMALLINT NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    CONSTRAINT chk_schedule_ranges_weekday CHECK (weekday BETWEEN 0 AND 6),
+    CONSTRAINT chk_schedule_ranges_slot_index CHECK (slot_index BETWEEN 1 AND 3),
+    CONSTRAINT chk_schedule_ranges_order CHECK (end_time > start_time),
+    CONSTRAINT uniq_schedule_ranges_weekday_slot UNIQUE (weekday, slot_index)
+);
+
+CREATE TABLE BlockedDates (
+    id BIGSERIAL PRIMARY KEY,
+    date DATE NOT NULL,
+    start_time TIME,
+    end_time TIME,
+    description VARCHAR(150) NOT NULL,
+    CONSTRAINT chk_blocked_dates_period CHECK (
+        (start_time IS NULL AND end_time IS NULL)
+        OR (start_time IS NOT NULL AND end_time IS NOT NULL AND end_time > start_time)
+    ),
+    CONSTRAINT chk_blocked_dates_description CHECK (char_length(btrim(description)) > 0)
+);
+
+CREATE INDEX idx_blocked_dates_date ON BlockedDates(date);
+
+CREATE TYPE attendee_group AS ENUM ('HOLDER', 'REPRESENTATIVE');
+
+CREATE TABLE AttendanceDocuments (
+    id BIGSERIAL PRIMARY KEY,
+    attendee_group attendee_group NOT NULL,
+    description VARCHAR(255) NOT NULL,
+    position INT NOT NULL DEFAULT 0,
+    CONSTRAINT chk_attendance_documents_description CHECK (char_length(btrim(description)) > 0),
+    CONSTRAINT chk_attendance_documents_position CHECK (position >= 0)
+);
+
+CREATE INDEX idx_attendance_documents_group_position ON AttendanceDocuments(attendee_group, position, id);
+
+CREATE TABLE WhatsAppSettings (
+    id SMALLINT PRIMARY KEY DEFAULT 1,
+    phone_number_id VARCHAR(40),
+    business_account_id VARCHAR(40),
+    access_token_encrypted TEXT,
+    app_secret_encrypted TEXT,
+    verify_token VARCHAR(64) NOT NULL,
+    auto_reply_paused BOOLEAN NOT NULL DEFAULT FALSE,
+    credentials_checked_at TIMESTAMPTZ,
+    credentials_valid BOOLEAN,
+    last_webhook_event_at TIMESTAMPTZ,
+    updated_by BIGINT REFERENCES Users(id),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_whatsapp_settings_singleton CHECK (id = 1),
+    CONSTRAINT chk_whatsapp_settings_access_token_encrypted CHECK (access_token_encrypted IS NULL OR access_token_encrypted ~ '^v1:[A-Za-z0-9+/]+={0,2}:[A-Za-z0-9+/]+={0,2}:[A-Za-z0-9+/]+={0,2}$'),
+    CONSTRAINT chk_whatsapp_settings_app_secret_encrypted CHECK (app_secret_encrypted IS NULL OR app_secret_encrypted ~ '^v1:[A-Za-z0-9+/]+={0,2}:[A-Za-z0-9+/]+={0,2}:[A-Za-z0-9+/]+={0,2}$')
+);
