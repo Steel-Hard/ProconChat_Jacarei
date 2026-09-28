@@ -1,5 +1,11 @@
 import getPool from "../connection"
-import proconFaqSeed from "./data/procon-faq.data"
+import { seedInitialConfig } from "./config.seed"
+import { seedContent, SeedRowCounts } from "./content.seed"
+
+const SEED_LOCK_KEY = 61061
+
+const describeCounts = (label: string, counts: SeedRowCounts): string =>
+    `${label}: ${counts.inserted} inseridas, ${counts.updated} atualizadas, ${counts.kept} mantidas`
 
 async function run(): Promise<void> {
     const pool = getPool()
@@ -7,72 +13,18 @@ async function run(): Promise<void> {
 
     try {
         await client.query("BEGIN")
+        await client.query("SELECT pg_advisory_xact_lock($1)", [SEED_LOCK_KEY])
 
-        await client.query(`
-  UPDATE sessions
-  SET current_category_id = NULL,
-      current_step = 'AWAITING_CATEGORY'
-  WHERE current_category_id IS NOT NULL
-`);
-
-        const titles = proconFaqSeed.map((category) => category.title)
-
-        await client.query(
-            `DELETE FROM RequiredDocuments
-             WHERE question_id IN (
-                 SELECT id FROM Questions
-                 WHERE category_id IN (SELECT id FROM Categories WHERE title = ANY($1::text[]))
-             )`,
-            [titles]
-        )
-        await client.query(
-            `DELETE FROM Questions
-             WHERE category_id IN (SELECT id FROM Categories WHERE title = ANY($1::text[]))`,
-            [titles]
-        )
-        await client.query("DELETE FROM Categories WHERE title = ANY($1::text[])", [titles])
-
-        for (const category of proconFaqSeed) {
-            const categoryResult = await client.query<{ id: number }>(
-                "INSERT INTO Categories (title, short_title, description, active) VALUES ($1::text, btrim(left($1::text, 24)), $2, true) RETURNING id",
-                [category.title, category.description]
-            )
-            const categoryId = categoryResult.rows[0]?.id
-            if (!categoryId) {
-                throw new Error(`Falha ao inserir a categoria "${category.title}"`)
-            }
-
-            for (const question of category.questions) {
-                const questionResult = await client.query<{ id: number }>(
-                    `INSERT INTO Questions
-                        (category_id, question, short_title, legal_basis, answer, requires_in_person, out_of_scope, llm_allowed, active)
-                     VALUES ($1, $2, btrim(left($2, 24)), $3, $4, $5, $6, NOT $6, true)
-                     RETURNING id`,
-                    [
-                        categoryId,
-                        question.question,
-                        question.legalBasis,
-                        question.answer,
-                        question.requiresInPerson,
-                        question.outOfScope ?? false,
-                    ]
-                )
-                const questionId = questionResult.rows[0]?.id
-                if (!questionId) {
-                    throw new Error(`Falha ao inserir a pergunta "${question.question}"`)
-                }
-
-                for (const document of question.requiredDocuments) {
-                    await client.query(
-                        "INSERT INTO RequiredDocuments (question_id, description) VALUES ($1, $2)",
-                        [questionId, document]
-                    )
-                }
-            }
-        }
+        const content = await seedContent(client)
+        const config = await seedInitialConfig(client)
 
         await client.query("COMMIT")
-        console.log("Seed concluído: 7 categorias / 47 perguntas do FAQ do PROCON carregadas.")
+
+        const configMessage =
+            config === "created" ? "configuração inicial criada" : "configuração inicial já existe, mantida"
+        console.log(
+            `Seed concluído. ${describeCounts("Categorias", content.categories)}. ${describeCounts("Perguntas", content.questions)}. Agenda e documentos: ${configMessage}.`
+        )
     } catch (error) {
         await client.query("ROLLBACK")
         throw error
