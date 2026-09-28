@@ -12,17 +12,21 @@ numerados sozinhos ainda precisariam de histórico, transações e locking.
 Referências: [ferramenta](https://github.com/salsita/node-pg-migrate/tree/v8.0.4),
 [CLI](https://salsita.github.io/node-pg-migrate/cli).
 
-As sete migrations em `src/backend/db/migrations` contêm uma cópia versionada do
-SQL aprovado: Users, Categories, Questions, RequiredDocuments, Sessions,
-Interactions e Appointments. Os nomes sem aspas são convertidos para minúsculas
-pelo PostgreSQL (por exemplo, `RequiredDocuments` vira `requireddocuments`).
-Cada migration tem `Up Migration` e `Down Migration`, incluindo remoção dos enums.
+Existem 11 migrations em `src/backend/db/migrations`: `01` a `07` criam as
+tabelas da Sprint 1, `08`, `09` e `010` ajustam `Sessions`, e
+`11_sprint2_schema.sql` é o schema da Sprint 2 (#52). O que cada uma faz está
+em [`database.md`](database.md#histórico-das-migrations). Os nomes sem aspas
+são convertidos para minúsculas pelo PostgreSQL (por exemplo,
+`RequiredDocuments` vira `requireddocuments`). Cada migration tem
+`Up Migration` e `Down Migration`, incluindo remoção dos enums.
 
-Os arquivos usam prefixos sequenciais `01` a `07`, em ordem de dependência.
-O node-pg-migrate 8 aceita essa ordenação numérica, mas imprime
+**Numeração.** O node-pg-migrate 8 ordena os arquivos pelo **prefixo lido como
+número**, não como texto: `010_alter_sessions.sql` é a versão 10, e um arquivo
+`10_...` empataria com ela. Por isso a migration da Sprint 2 é a `11_`, e a
+**próxima livre é `12_`**. Não renomeie a `010`: ela já está registrada com esse
+nome em `pgmigrations` nos bancos existentes. O executor imprime
 `Can't determine timestamp for 01` (e os demais prefixos), pois seu formato
-padrão é timestamp. Esse aviso não impede a execução; a sequência foi validada
-com o teste real de migrations.
+padrão é timestamp. Esse aviso não impede a execução.
 
 ## Subir em ambiente limpo
 
@@ -69,18 +73,21 @@ npm run db:migrate
 ```
 
 O comando gera um timestamp: antes de aplicar o arquivo, substitua esse prefixo
-pelo próximo número disponível (`08`, `09`, `10` etc.), sem repetir números.
+pelo próximo número disponível (hoje `12_`), sem repetir números.
 Preencha os blocos up/down do arquivo gerado. Nunca edite uma migration já
-aplicada em ambiente compartilhado: adicione uma nova versão. `db/schema` é a
-referência do desenho original; o histórico executável está em `db/migrations`.
+aplicada em ambiente compartilhado: adicione uma nova versão. `db/schema` tem o
+`CREATE TABLE` consolidado de cada tabela no estado atual, e deve ser atualizado
+junto com a migration; o histórico executável está em `db/migrations`.
 
 Em Docker, após obter migrations novas:
 
 ```sh
-docker compose build migrate backend
-docker compose run --rm migrate
-docker compose up -d backend
+docker compose build migrate seed backend
+docker compose up -d
 ```
+
+O serviço `migrate` aplica só as versões pendentes, e o `seed` roda de novo em
+todo `up`.
 
 Reexecutar `db:migrate` preserva tabelas e dados já existentes. `docker compose down`
 também preserva o volume; não acrescente `-v` se quiser manter seus dados.
@@ -117,20 +124,72 @@ $env:DB_TEST_URL='postgresql://proconchat:proconchat_dev@localhost:5433/proconch
 npm run test:db
 ```
 
-O teste cria um banco temporário com nome aleatório e o remove ao terminar;
-não limpa o banco informado. Verifica criação das sete tabelas, chaves
-estrangeiras, UUIDs, enums, unicidade de agendamento ativo, repetição sem perda
-de dados e rollback completo seguido de reaplicação.
+O teste cria bancos temporários com nome aleatório e os remove ao terminar;
+não limpa o banco informado. Ele cobre três cenários:
 
-Validação local realizada em 06/09/2026: build TypeScript e 14 testes aprovados;
-teste real de migrations aprovado; Compose iniciado com volume novo, migration
-encerrada com código 0 e `/health` respondendo 200. Após `down` e `up`, o histórico
-de versões (inclusive datas de execução) permaneceu igual e o executor informou
-`No migrations to run!`. Ambiente de verificação: projeto
-`proconchat-issue11-check`, PostgreSQL na porta 55433 e backend na 53011.
+- **Do zero:** `up` aplica as 11 migrations; as tabelas públicas são exatamente
+  as do schema atual (`interactions` não existe); cada enum tem os valores
+  esperados (`appointment_status` 5, `session_outcome` 8, `session_step` 12);
+  `users.session_version` é `integer not null default 0`; `short_title` é
+  `NOT NULL` e `short_description` é anulável; `unaccent` funciona. Um segundo
+  `up` não muda nada. Depois, cada constraint da migration `11` é exercitada
+  com um caso inválido (código `23514` para `CHECK`, `23505` para unicidade,
+  `23502` para `NOT NULL`, `P0001` para o trigger de `AppointmentNotes`) e um
+  válido. Por fim, `down 1` volta à versão 10 (`interactions` de volta,
+  `appointment_status` com 3 valores, etapas novas mapeadas), `up` reaplica,
+  `down 11` deixa só `pgmigrations` e `up` reaplica tudo.
+- **Sobre a versão 10 com o conteúdo do seed:** `up 10`, carga dos dados de
+  `db/seeds/data` com as colunas da versão 10, sessões `IN_PROGRESS`,
+  `FINISHED` e `ABANDONED`, e então o `up` restante. Confere que as 7
+  categorias, as 47 perguntas e os documentos continuam com os mesmos ids e
+  textos, o backfill de `short_title`, `llm_allowed`, `position`, `outcome`,
+  `abandoned_at_step` e `last_interaction_at`, e que `current_step` foi
+  preservado. Depois roda o seed real (`db/seeds/run.ts`) duas vezes.
+- **Guarda de `Appointments`:** num banco na versão 10 com uma linha em
+  `appointments`, o `up` falha com a mensagem da guarda e a versão continua 10,
+  sem nada aplicado.
 
-## Próximas migrations (Sprint 2)
+Para comparar o rollback com a versão 10 à mão, aplique `up` e `down 1` num
+banco, só `up 10` em outro, e compare os `pg_dump --schema-only` com `diff`.
 
-O schema planejado para as Sprints 2 e 3 está na Parte 2 de [`database.md`](database.md). As migrations novas seguem a numeração a partir de `10_`, sempre como arquivos novos: nunca editar uma migration já aplicada.
+## Enums: recrie o tipo, não use `ADD VALUE`
 
-**Cuidado com enums:** no PostgreSQL, um valor adicionado com `ALTER TYPE ... ADD VALUE` não pode ser **usado** na mesma transação em que foi criado, e o `node-pg-migrate` aplica o lote de migrations pendentes numa única transação. Por isso, coloque a adição de valores de enum numa migration própria e só use os valores novos (em `DEFAULT`, `CHECK`, índices parciais ou `UPDATE`) em migrations seguintes, rodadas em outra execução, ou use a opção de transação por migration do `node-pg-migrate`. Teste sempre subindo do zero **e** sobre um banco já existente.
+No PostgreSQL, um valor adicionado com `ALTER TYPE ... ADD VALUE` a um tipo que
+já existia **não pode ser usado na mesma transação** em que foi adicionado. E o
+CLI do node-pg-migrate roda com `--single-transaction` ligado por padrão: todas
+as migrations pendentes de uma execução vão para **uma só transação**
+(`BEGIN` → todas → `COMMIT`). Migrations em `.sql` não conseguem sair dela
+(`pgm.noTransaction()` só existe em migrations JavaScript).
+
+Por isso, **separar o `ADD VALUE` numa migration própria não resolve**: num banco
+que recebe as duas na mesma execução (o caso de todo `docker compose up` num
+volume novo), o valor adicionado na primeira e usado na segunda continua na
+mesma transação, e a migration falha. Desligar `--single-transaction` também não
+é o caminho: uma falha no meio deixaria o banco pela metade.
+
+O padrão adotado (migration `11`) é **recriar o tipo**, o que funciona dentro da
+transação, porque valores de um tipo criado com `CREATE TYPE` podem ser usados
+na mesma transação:
+
+```sql
+ALTER TABLE Sessions ALTER COLUMN current_step DROP DEFAULT;
+ALTER TYPE session_step RENAME TO session_step_old;
+CREATE TYPE session_step AS ENUM ('AWAITING_CATEGORY', 'AWAITING_QUESTION', 'NOVO_VALOR', 'FINISHED');
+ALTER TABLE Sessions ALTER COLUMN current_step TYPE session_step USING current_step::text::session_step;
+ALTER TABLE Sessions ALTER COLUMN current_step SET DEFAULT 'AWAITING_CATEGORY';
+DROP TYPE session_step_old;
+```
+
+Repita o `ALTER COLUMN ... USING` para **cada coluna** que usa o tipo (por
+exemplo, `Sessions.abandoned_at_step` também é `session_step`), e retire antes os
+`DEFAULT`, índices parciais ou `CHECK` que citem valores do tipo antigo,
+recriando-os depois. No `Down`, mapeie os valores que deixam de existir antes de
+trocar o tipo de volta. Se a tabela estiver vazia e mudar quase toda, recriá-la
+(`DROP TABLE`, `DROP TYPE`, `CREATE TYPE`, `CREATE TABLE`) é mais simples, como
+a `11` fez com `Appointments`, protegida por uma guarda que aborta se houver
+linhas.
+
+A migration `11` já inclui os valores que a Sprint 3 vai precisar
+(`AWAITING_RETURN_CHOICE`, `AWAITING_CANCEL_CONFIRMATION`, eventos de remarcação,
+cancelamento, lembrete e aviso), para evitar mexer nesses enums logo depois.
+Teste sempre subindo do zero **e** sobre um banco já existente.
