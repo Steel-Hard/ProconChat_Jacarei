@@ -1,5 +1,7 @@
 # Guia de evolução: bot, atendente e mensagens WhatsApp
 
+> **Documento histórico — proposta não adotada.** A transferência da conversa para um atendente humano (modos `BOT_ACTIVE`/`HUMAN_ACTIVE` etc.) não faz parte do escopo do projeto e não está no documento do desafio. O fluxo adotado é 100% guiado pelo chatbot, e quando a dúvida não se resolve o cidadão é encaminhado para **agendamento presencial** (RF07). Ver [`../decisoes/011-atendimento-humano-no-chat-nao-adotado.md`](../decisoes/011-atendimento-humano-no-chat-nao-adotado.md).
+
 ## 1. Objetivo
 
 O sistema deve permitir que o bot converse automaticamente até que:

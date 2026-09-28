@@ -1,5 +1,7 @@
 # Guia da aplicação ProconChat
 
+> **Documento histórico.** Descreve a aplicação como estava na Sprint 1 (Evolution API, fluxo categoria → pergunta sem agendamento). Várias partes foram superadas pelas decisões em [`../decisoes/`](../decisoes/). Para o estado atual, comece pelo [`../README.md`](../README.md).
+
 ## 1. Visão geral
 
 O sistema é um chatbot integrado ao WhatsApp por meio da Evolution API.

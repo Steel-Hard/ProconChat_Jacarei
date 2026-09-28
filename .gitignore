@@ -430,3 +430,6 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Rascunhos locais (planejamento de tasks antes de virarem issues)
+.temp/
