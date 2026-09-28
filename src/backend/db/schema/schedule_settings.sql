@@ -1,0 +1,22 @@
+CREATE TABLE ScheduleSettings (
+    id SMALLINT PRIMARY KEY DEFAULT 1,
+    slot_minutes SMALLINT NOT NULL,
+    seats_per_slot SMALLINT NOT NULL,
+    window_days SMALLINT NOT NULL,
+    min_notice_days SMALLINT NOT NULL,
+    wait_alert_days SMALLINT NOT NULL,
+    unit_address TEXT NOT NULL,
+    unit_address_complement TEXT,
+    reminder_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    reminder_hours SMALLINT NOT NULL DEFAULT 24,
+    updated_by BIGINT REFERENCES Users(id),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_schedule_settings_singleton CHECK (id = 1),
+    CONSTRAINT chk_schedule_settings_slot_minutes CHECK (slot_minutes IN (20, 30, 40, 60)),
+    CONSTRAINT chk_schedule_settings_seats CHECK (seats_per_slot BETWEEN 1 AND 20),
+    CONSTRAINT chk_schedule_settings_window CHECK (window_days BETWEEN 1 AND 180),
+    CONSTRAINT chk_schedule_settings_min_notice CHECK (min_notice_days IN (0, 1, 2, 3, 5)),
+    CONSTRAINT chk_schedule_settings_wait_alert CHECK (wait_alert_days BETWEEN 1 AND 60),
+    CONSTRAINT chk_schedule_settings_reminder_hours CHECK (reminder_hours IN (2, 6, 12, 24, 48)),
+    CONSTRAINT chk_schedule_settings_address CHECK (char_length(btrim(unit_address)) > 0)
+);
