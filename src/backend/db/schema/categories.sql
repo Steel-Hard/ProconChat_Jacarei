@@ -9,7 +9,7 @@ CREATE TABLE Categories (
     position INT NOT NULL DEFAULT 0,
     seed_key VARCHAR(80),
     updated_by BIGINT REFERENCES Users(id),
-    CONSTRAINT chk_categories_short_title_length CHECK (char_length(btrim(short_title)) BETWEEN 1 AND 24),
+    CONSTRAINT chk_categories_short_title_length CHECK (char_length(short_title) BETWEEN 1 AND 24 AND short_title = btrim(short_title)),
     CONSTRAINT chk_categories_position CHECK (position >= 0),
     CONSTRAINT uniq_categories_seed_key UNIQUE (seed_key)
 );
