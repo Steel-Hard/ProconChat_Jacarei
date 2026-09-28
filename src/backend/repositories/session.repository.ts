@@ -90,7 +90,7 @@ export const sessionRepository: SessionRepository = {
         const pool = getPool()
         await pool.query(
             `UPDATE Sessions
-             SET status = 'FINISHED', ended_at = now(), current_step = 'FINISHED'
+             SET status = 'FINISHED', outcome = 'RESOLVED', ended_at = now(), last_interaction_at = now(), current_step = 'FINISHED'
              WHERE id = $1`,
             [sessionId],
         )
