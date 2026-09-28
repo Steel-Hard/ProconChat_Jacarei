@@ -2,7 +2,7 @@
 
 Esta pasta descreve, tela por tela, **o que o painel administrativo do ProconChat mostra, o que cada pessoa pode fazer e por quê**. O texto é escrito para qualquer pessoa entender, sem precisar ler código: desenvolvedores, a equipe do PROCON e quem for avaliar o projeto.
 
-A referência visual é o protótipo navegável aprovado no Claude Design ("ProconChat Painel navegável"). Quando o protótipo e este texto divergirem, **vale este texto**. Quando este texto divergir de um registro em [`../decisoes/`](../decisoes/), **vale a decisão**, e este texto deve ser corrigido.
+A referência visual é o protótipo navegável aprovado no Claude Design, copiado para [`../prototipo/`](../prototipo/) (veja lá como abrir). Quando o protótipo e este texto divergirem, **vale este texto**. Quando este texto divergir de um registro em [`../decisoes/`](../decisoes/), **vale a decisão**, e este texto deve ser corrigido.
 
 ## Como cada arquivo está organizado
 
