@@ -12,9 +12,10 @@ numerados sozinhos ainda precisariam de histórico, transações e locking.
 Referências: [ferramenta](https://github.com/salsita/node-pg-migrate/tree/v8.0.4),
 [CLI](https://salsita.github.io/node-pg-migrate/cli).
 
-Existem 11 migrations em `src/backend/db/migrations`: `01` a `07` criam as
-tabelas da Sprint 1, `08`, `09` e `010` ajustam `Sessions`, e
-`11_sprint2_schema.sql` é o schema da Sprint 2 (#52). O que cada uma faz está
+Existem 12 migrations em `src/backend/db/migrations`: `01` a `07` criam as
+tabelas da Sprint 1, `08`, `09` e `010` ajustam `Sessions`,
+`11_sprint2_schema.sql` é o schema da Sprint 2 (#52) e
+`12_short_text_checks.sql` ajusta o limite dos títulos curtos (#61). O que cada uma faz está
 em [`database.md`](database.md#histórico-das-migrations). Os nomes sem aspas
 são convertidos para minúsculas pelo PostgreSQL (por exemplo,
 `RequiredDocuments` vira `requireddocuments`). Cada migration tem
@@ -23,7 +24,7 @@ são convertidos para minúsculas pelo PostgreSQL (por exemplo,
 **Numeração.** O node-pg-migrate 8 ordena os arquivos pelo **prefixo lido como
 número**, não como texto: `010_alter_sessions.sql` é a versão 10, e um arquivo
 `10_...` empataria com ela. Por isso a migration da Sprint 2 é a `11_`, e a
-**próxima livre é `12_`**. Não renomeie a `010`: ela já está registrada com esse
+**próxima livre é `13_`**. Não renomeie a `010`: ela já está registrada com esse
 nome em `pgmigrations` nos bancos existentes. O executor imprime
 `Can't determine timestamp for 01` (e os demais prefixos), pois seu formato
 padrão é timestamp. Esse aviso não impede a execução.
@@ -73,7 +74,7 @@ npm run db:migrate
 ```
 
 O comando gera um timestamp: antes de aplicar o arquivo, substitua esse prefixo
-pelo próximo número disponível (hoje `12_`), sem repetir números.
+pelo próximo número disponível (hoje `13_`), sem repetir números.
 Preencha os blocos up/down do arquivo gerado. Nunca edite uma migration já
 aplicada em ambiente compartilhado: adicione uma nova versão. `db/schema` tem o
 `CREATE TABLE` consolidado de cada tabela no estado atual, e deve ser atualizado
@@ -87,7 +88,9 @@ docker compose up -d
 ```
 
 O serviço `migrate` aplica só as versões pendentes, e o `seed` roda de novo em
-todo `up`.
+todo `up`. O seed é não destrutivo: insere o conteúdo que falta, atualiza pelo
+`seed_key` só as linhas que o painel não editou, nunca apaga, e cria a
+configuração inicial só uma vez (ver `src/backend/db/seeds/README.md`).
 
 Reexecutar `db:migrate` preserva tabelas e dados já existentes. `docker compose down`
 também preserva o volume; não acrescente `-v` se quiser manter seus dados.
@@ -125,9 +128,9 @@ npm run test:db
 ```
 
 O teste cria bancos temporários com nome aleatório e os remove ao terminar;
-não limpa o banco informado. Ele cobre três cenários:
+não limpa o banco informado. Ele cobre estes cenários:
 
-- **Do zero:** `up` aplica as 11 migrations; as tabelas públicas são exatamente
+- **Do zero:** `up` aplica as 12 migrations; as tabelas públicas são exatamente
   as do schema atual (`interactions` não existe); cada enum tem os valores
   esperados (`appointment_status` 5, `session_outcome` 8, `session_step` 12);
   `users.session_version` é `integer not null default 0`; `short_title` é
@@ -136,8 +139,11 @@ não limpa o banco informado. Ele cobre três cenários:
   com um caso inválido (código `23514` para `CHECK`, `23505` para unicidade,
   `23502` para `NOT NULL`, `P0001` para o trigger de `AppointmentNotes`) e um
   válido. Por fim, `down 1` volta à versão 10 (`interactions` de volta,
-  `appointment_status` com 3 valores, etapas novas mapeadas), `up` reaplica,
-  `down 11` deixa só `pgmigrations` e `up` reaplica tudo.
+  `appointment_status` com 3 valores, etapas novas mapeadas), em dois passos:
+  o primeiro `down 1` desfaz só a `12` (os `CHECK` de tamanho voltam a aceitar
+  espaço nas pontas) e o segundo desfaz a `11`. Depois `up` reaplica,
+  `down 12` deixa só `pgmigrations` e `up` reaplica tudo. Os `CHECK` da `12`
+  recusam título curto com espaço nas pontas ou com 25 caracteres e aceitam 24.
 - **Sobre a versão 10 com o conteúdo do seed:** `up 10`, carga dos dados de
   `db/seeds/data` com as colunas da versão 10, sessões `IN_PROGRESS`,
   `FINISHED` e `ABANDONED`, e então o `up` restante. Confere que as 7
@@ -148,6 +154,14 @@ não limpa o banco informado. Ele cobre três cenários:
 - **Guarda de `Appointments`:** num banco na versão 10 com uma linha em
   `appointments`, o `up` falha com a mensagem da guarda e a versão continua 10,
   sem nada aplicado.
+- **Normalização da `12`:** um título e uma descrição curta com espaço nas
+  pontas, gravados na versão 11, ficam aparados depois do `up`.
+- **Seed:** do zero (7 categorias, 47 perguntas, títulos, ordem, `llm_allowed`,
+  documentos e configuração inicial iguais aos arquivos de dados, `BlockedDates`
+  vazia); idempotência (retrato completo das tabelas semeadas igual depois da
+  segunda execução); backfill do `seed_key` num banco com o conteúdo antigo,
+  eventos e sessões (ids, eventos e sessões intactos); linhas editadas ou
+  criadas pelo painel preservadas; configuração alterada não sobrescrita.
 
 Para comparar o rollback com a versão 10 à mão, aplique `up` e `down 1` num
 banco, só `up 10` em outro, e compare os `pg_dump --schema-only` com `diff`.
