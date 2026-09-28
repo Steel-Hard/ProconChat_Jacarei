@@ -187,8 +187,8 @@ CREATE TABLE Appointments (
     CONSTRAINT chk_appointments_phone_encrypted CHECK (phone_encrypted IS NULL OR phone_encrypted ~ '^v1:[A-Za-z0-9+/]+={0,2}:[A-Za-z0-9+/]+={0,2}:[A-Za-z0-9+/]+={0,2}$'),
     CONSTRAINT chk_appointments_documents_sent CHECK (
         jsonb_typeof(documents_sent) = 'object'
-        AND jsonb_typeof(documents_sent -> 'group') = 'array'
-        AND jsonb_typeof(documents_sent -> 'question') = 'array'
+        AND jsonb_typeof(documents_sent -> 'group') IS NOT DISTINCT FROM 'array'
+        AND jsonb_typeof(documents_sent -> 'question') IS NOT DISTINCT FROM 'array'
     ),
     CONSTRAINT chk_appointments_pending_unassigned CHECK (status <> 'PENDING' OR assigned_user_id IS NULL),
     CONSTRAINT chk_appointments_confirmed_assigned CHECK (status NOT IN ('CONFIRMED', 'ATTENDED', 'NO_SHOW') OR assigned_user_id IS NOT NULL)
