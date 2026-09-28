@@ -34,7 +34,7 @@ async function run(): Promise<void> {
 
         for (const category of proconFaqSeed) {
             const categoryResult = await client.query<{ id: number }>(
-                "INSERT INTO Categories (title, description, active) VALUES ($1, $2, true) RETURNING id",
+                "INSERT INTO Categories (title, short_title, description, active) VALUES ($1::text, btrim(left($1::text, 24)), $2, true) RETURNING id",
                 [category.title, category.description]
             )
             const categoryId = categoryResult.rows[0]?.id
@@ -45,8 +45,8 @@ async function run(): Promise<void> {
             for (const question of category.questions) {
                 const questionResult = await client.query<{ id: number }>(
                     `INSERT INTO Questions
-                        (category_id, question, legal_basis, answer, requires_in_person, out_of_scope, active)
-                     VALUES ($1, $2, $3, $4, $5, $6, true)
+                        (category_id, question, short_title, legal_basis, answer, requires_in_person, out_of_scope, llm_allowed, active)
+                     VALUES ($1, $2, btrim(left($2, 24)), $3, $4, $5, $6, NOT $6, true)
                      RETURNING id`,
                     [
                         categoryId,
