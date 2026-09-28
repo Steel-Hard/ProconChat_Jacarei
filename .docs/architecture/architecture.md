@@ -1,99 +1,163 @@
-# Arquitetura — Chatbot de Orientação ao Consumidor (PROCON Jacareí)
+# Arquitetura — ProconChat Jacareí
+
+> Atualizado em 27/09/2026, depois da revisão do protótipo do painel. Este documento descreve a arquitetura **alvo da entrega (23/11/2026)** e marca o que já está implementado. As decisões que levaram a ela estão em [`../decisoes/`](../decisoes/); as regras de cada tela, em [`../regras/`](../regras/).
+
+**Legenda de estado:** ✅ implementado em `develop` · 🟡 planejado para a Sprint 2 · 🟠 planejado para a Sprint 3.
 
 ## Visão geral
 
 ```mermaid
 flowchart LR
-    subgraph compose["Docker Compose (RNF06)"]
-        Gateway["Gateway WhatsApp"]
-        Admin["Interface Web Admin"]
+    Cidadao(["Cidadão<br/>WhatsApp"])
+    Equipe(["Equipe do PROCON<br/>navegador"])
+    Meta["WhatsApp Cloud API<br/>(Meta)"]
 
-        subgraph Backend["Backend API (orquestrador)"]
+    subgraph vm["VM de produção · Docker Compose (RNF06)"]
+        Proxy["Proxy HTTPS<br/>(Caddy)"]
+        Front["Frontend<br/>painel React"]
+        Gateway["Gateway WhatsApp"]
+
+        subgraph Backend["Backend API"]
             direction TB
-            MotorDecisao["Motor de Decisão (módulo interno)"]
-            Scheduler["Scheduler / Agendamento (módulo interno)"]
+            Conversa["Conversa<br/>(fluxo do bot)"]
+            Motor["Motor de Decisão"]
+            Agenda["Agenda e agendamentos"]
+            Avisos["Mensagens ao cidadão"]
+            Painel["API do painel<br/>+ autenticação e permissões"]
+            Registro["Registro de eventos"]
         end
 
-        LLM["LLM Service (Ollama)"]
+        LLM["LLM Service<br/>(Ollama, local)"]
         DB[("PostgreSQL")]
-
-        Gateway <--> Backend
-        Admin <--> Backend
-        Backend --> LLM
-        Backend --> DB
     end
+
+    Cidadao <--> Meta
+    Meta -- "webhook HTTPS<br/>(assinado)" --> Proxy
+    Proxy --> Gateway
+    Gateway -- "envio" --> Meta
+    Equipe --> Proxy
+    Proxy --> Front
+    Proxy --> Painel
+    Gateway <-- "HTTP interno<br/>(token)" --> Conversa
+    Backend --> LLM
+    Backend --> DB
 ```
 
-## Camadas do sistema
+O LLM Service só recebe chamadas do Backend e não tem acesso ao banco nem à sessão: ele **não tem como** decidir o fluxo (RP05). O Gateway não tem acesso ao banco nem aos segredos de hash: o tratamento de dados pessoais fica concentrado no Backend (RNF03).
 
-Não são serviços 1:1 — são responsabilidades separadas conforme RP03 (modularidade).
+## Componentes
 
-1. **Gateway WhatsApp** — canal de entrada/saída de mensagens com o cidadão.
-2. **Interface Web Admin** — painel autenticado da equipe do Procon (login único, sem perfis diferenciados — RF12).
-3. **Backend API (orquestrador)** — contém internamente, como módulos de código (não containers separados):
-   - **Motor de Decisão** — lê categorias/perguntas do banco e decide a navegação do fluxo.
-   - **Scheduler / Agendamento** — aciona quando o fluxo não resolve a dúvida (RF07).
-4. **Serviço de LLM** — container separado (Ollama + modelo local), usado **só** para gerar o texto explicativo final, nunca para decidir o fluxo.
-5. **Banco de dados (PostgreSQL)** — persistência única, compartilhada entre chatbot e admin.
+| Componente | Papel | Container | Estado |
+|---|---|---|---|
+| **Gateway WhatsApp** | Recebe o webhook da Meta, valida a assinatura, deduplica e repassa ao Backend; envia as mensagens pedidas pelo Backend (texto, lista, botões, modelos); repassa os status de entrega | `gateway` | ✅ com Evolution API · 🟡 migração para a Cloud API (S2-04) |
+| **Backend API** | Orquestrador: conversa, Motor de Decisão, agenda, mensagens ao cidadão, registro de eventos, API do painel, autenticação e permissões | `backend` | ✅ parcial (sessão + Motor de Decisão) · 🟡🟠 demais módulos |
+| **Frontend (painel)** | Painel da equipe do PROCON (RF08), a partir do `template-react` | `frontend` (nginx) | 🟡 S2-10 |
+| **LLM Service** | Ollama com `llama3.2:3b`; gera só o texto complementar (RF05) | `ollama` + `llm-pull` | ✅ serviço pronto · 🟠 ligado ao fluxo (S3-05) |
+| **PostgreSQL** | Persistência única | `postgres` (+ `migrate`, `seed`) | ✅ · 🟡 schema da Sprint 2 (S2-03) |
+| **Proxy HTTPS** | Certificado e roteamento para painel, API e webhook | `caddy` | 🟡 S2-02 |
+| ~~Evolution API + Redis~~ | Integração não oficial usada na Sprint 1 | `evolution-api`, `redis` | Saem na migração (S2-04). Ver [decisão 003](../decisoes/003-migracao-whatsapp-cloud-api.md) |
 
-## Por que o Motor de Decisão fica dentro do Backend
+### Módulos do Backend
 
-- É leve, síncrono, só lê dados do banco — não há custo computacional que justifique isolar.
-- Evita latência extra de chamada de rede a cada mensagem.
-- O RP03 pede modularidade lógica (organização do código), não necessariamente infraestrutura separada.
-- Só o LLM Service compensa isolamento por ter peso diferente (modelo carregado em memória).
+Não são containers separados: são módulos de código, organizados no padrão Controller → Service → Repository. O RP03 pede modularidade **lógica**; só o LLM justifica um container próprio, porque carrega um modelo inteiro em memória.
+
+| Módulo | Responsabilidade | Estado |
+|---|---|---|
+| **Conversa** | Máquina de estados do bot: saudação, listas, "resolveu?", agendamento, retorno, timeout de 30 minutos, pausa | ✅ parcial · 🟡 S2-06, S2-07, S2-11 |
+| **Motor de Decisão** | Lê categorias e perguntas do banco e monta as opções e a resposta final. Não guarda estado | ✅ · 🟡 paginação e categoria oculta (S2-06) |
+| **Agenda** | Calcula horários livres a partir da configuração; cria, remarca e cancela agendamentos; controla vagas com concorrência | 🟡 S2-07, S2-11 |
+| **Mensagens ao cidadão** | Monta os textos fixos (confirmação, pausa) e os modelos (cancelamento, lembrete); registra falhas de envio | 🟡 S2-07 · 🟠 S3-06 |
+| **Registro de eventos** | Grava cada passo da conversa e o desfecho da sessão | 🟡 S2-08 |
+| **API do painel** | Agendamentos, conteúdo, configuração, usuários, relatórios, configuração do WhatsApp | 🟡 S2-05, S2-12 · 🟠 S3 |
+| **Autenticação e permissões** | Login, sessão, `requirePermission` com 8 permissões; na Sprint 2 só a conta Admin | 🟡 S2-09 · 🟠 S3-01 |
+| **LLM** | Cliente do Ollama com fallback; envio do complemento com rótulo | ✅ cliente · 🟠 S3-05 |
+
+## Fluxos principais
+
+### Mensagem do cidadão
+
+```mermaid
+sequenceDiagram
+    participant C as Cidadão
+    participant M as Meta (Cloud API)
+    participant G as Gateway
+    participant B as Backend
+    participant L as LLM (opcional)
+
+    C->>M: mensagem ou toque numa opção
+    M->>G: POST /webhook (assinado com App Secret)
+    G->>G: valida assinatura, deduplica, fila por telefone
+    G->>B: repassa (telefone, texto ou ID da opção)
+    B->>B: sessão pelo hash do telefone, estado da conversa
+    B->>B: Motor de Decisão monta a próxima etapa
+    B-->>G: resposta (texto, lista ou botões)
+    G->>M: envia
+    M->>C: entrega
+    opt pergunta com IA permitida (Sprint 3)
+        B->>L: resposta oficial estruturada
+        L-->>B: texto complementar
+        B-->>G: complemento com "Gerado com auxílio de IA"
+    end
+    M->>G: status (entregue / falhou)
+    G->>B: status, gravado se falhou
+```
+
+### Mensagem iniciada pelo sistema
+
+Aviso de cancelamento pela equipe (🟠 S3-06) e lembrete (bônus). O Backend decifra o telefone guardado no agendamento e pede ao Gateway o envio de um **modelo aprovado pela Meta**, porque fora da janela de 24h não se pode enviar texto livre. Ver [decisão 005](../decisoes/005-mensagens-ao-cidadao.md).
+
+### Configuração do WhatsApp
+
+As credenciais da Cloud API ficam no banco, **criptografadas com uma chave-mestra do `.env`**, e são editadas pela tela de WhatsApp (só Admin). O Gateway busca a configuração no Backend por um endpoint interno, guarda em cache e recarrega quando o Admin salva. Assim o PROCON troca o número sem mexer no servidor.
+
+## Infraestrutura e entrega
+
+| Ambiente | Onde | WhatsApp |
+|---|---|---|
+| **Desenvolvimento** | Máquina de cada pessoa (`docker compose up`) + túnel HTTPS | App de teste próprio na Meta, com o número de teste gratuito da Meta |
+| **Produção / demonstração** | VM na nuvem com pelo menos 8 GB de RAM (por causa do Ollama) | Número de teste comprado pelo time; depois das sprints, o número do PROCON |
+
+- **CI** (🟡 S2-01): GitHub Actions roda build, lint e testes de cada app em todo PR. O CI verde é obrigatório para o merge.
+- **CD** (🟡 S2-02): merge em `main` gera as imagens no GitHub Container Registry e atualiza a VM por SSH (`docker compose pull && up -d`). As migrations rodam pelo serviço `migrate`.
+- **Segredos:** GitHub Secrets e `.env` só na VM. Continuam no `.env`: banco, `PHONE_HASH_SECRET`, token interno Gateway ↔ Backend, chave-mestra de criptografia e URL pública.
+
+## Segurança e dados pessoais
+
+- **Telefone:** nas sessões, só o hash (`phone_hash`); nos agendamentos, criptografado e apagado quando o agendamento termina. Nunca aparece no painel.
+- **CPF:** hash + versão mascarada. O CPF completo nunca é exibido.
+- **Texto digitado pelo cidadão:** não é gravado.
+- **Webhook:** só aceita eventos com assinatura válida da Meta.
+- **Painel:** toda rota exige sessão e a permissão correspondente, validadas no servidor. As regras contra escalada de privilégio estão na [decisão 004](../decisoes/004-contas-e-permissoes-granulares.md).
+- Detalhes: [decisão 002](../decisoes/002-lgpd-dados-pessoais.md).
 
 ## Stack
 
-- **Backend:** Node.js + TypeScript — decisão já tomada e implementada na #5 (branch
-  `feat/5-backend-base`, status `implementada`), não mais uma alternativa em aberto frente a
-  Python (FastAPI).
-- **Banco:** PostgreSQL.
-- **LLM local:** Ollama + modelo pequeno (Llama 3.1 8B / Phi-3 / Mistral 7B).
-- **WhatsApp:** WhatsApp Cloud API ou simulador acadêmico (RP01).
-- **Admin:** React ou server-rendered simples.
-- **Orquestração:** Docker Compose (RNF06).
+| Camada | Tecnologia |
+|---|---|
+| Backend e Gateway | Node.js + TypeScript, Express, Vitest |
+| Frontend | React 19 + Vite + TypeScript, React Router, Vitest + Testing Library, oxlint + prettier (a partir do `template-react`) |
+| Banco | PostgreSQL 15, migrations com `node-pg-migrate` |
+| LLM | Ollama + `llama3.2:3b` (local; RP05) |
+| WhatsApp | WhatsApp Cloud API (Meta) |
+| Infra | Docker Compose, Caddy, GitHub Actions, GitHub Container Registry, VM na nuvem |
 
-## Fluxo de uma conversa
+## Modelo de dados
 
-1. Usuário manda mensagem → Gateway recebe via webhook.
-2. Gateway repassa ao Backend, que identifica a sessão.
-3. Backend consulta o Motor de Decisão → retorna opções do nó atual.
-4. Repete até o fim do fluxo.
-5. No nó final: Backend monta resumo estruturado → LLM Service só "traduz" isso em texto natural (RF05).
-6. Se não resolveu: aciona o Scheduler, cria agendamento (RF07).
-7. Toda interação é logada localmente no banco (RF06) — não depende do histórico do WhatsApp.
+Ver [`../database/database.md`](../database/database.md): o schema atual e o planejado para as Sprints 2 e 3.
 
-## Modelo de dados planejado
+## Como a arquitetura atende aos requisitos
 
-O schema completo (tabelas, colunas, diagrama de entidades e `CREATE TABLE` de cada uma) vive em
-[`.docs/database/database.md`](../database/database.md), que é a fonte de verdade para o modelo de
-dados. Em resumo: `Categorias` e `Perguntas` sustentam o fluxo guiado do Motor de Decisão,
-`DocumentosNecessarios` lista o que o cidadão precisa levar num atendimento presencial,
-`Usuarios`/`Sessoes` identificam quem está conversando (com telefone tratado como hash, não em
-texto puro — ver seção seguinte), `Interacoes` registra o histórico de cada conversa, e
-`Agendamentos` cobre o acionamento presencial (RF07).
-
-## Como esta arquitetura atende aos requisitos
-
-- **RP05/RF05 (LLM não decide o fluxo):** no diagrama acima, o LLM Service não tem nenhuma
-  conexão de volta ao Gateway, ao Admin, ao PostgreSQL, nem recebe estado de sessão — a única seta
-  que chega até ele parte do Backend, já com o resumo estruturado que o Motor de Decisão (módulo
-  interno do Backend) decidiu. O LLM Service só recebe esse resumo e devolve texto explicativo; ele
-  não tem acesso a categorias/perguntas do banco nem à sessão do usuário para poder decidir para
-  onde a conversa vai.
-- **RNF06 (Docker):** todos os componentes do diagrama — Gateway WhatsApp, Interface Web Admin,
-  Backend API, LLM Service e PostgreSQL — estão desenhados dentro do agrupamento
-  `Docker Compose (RNF06)`, ou seja, cada um sobe como serviço do mesmo `docker-compose.yml`
-  (a definição do arquivo de compose em si é escopo da #6, não desta spec).
-- **RNF03 (LGPD / dado de telefone):** o número de telefone do cidadão nunca é persistido em texto
-  puro — a tabela `Sessoes` (ver `.docs/database/database.md`) guarda `telefone_hash`, não o
-  telefone bruto. Como `Sessoes` fica no PostgreSQL único (compartilhado entre Backend e Admin), a
-  proteção do dado se dá na camada de persistência, antes de qualquer consulta pelo Admin.
-
-## Restrições relevantes
-
-- **RP05:** proibido usar APIs externas de LLM (custo + LGPD) — o LLM deve ser local.
-- **RNF03:** conformidade com a LGPD.
-- **RNF04/RNF05:** toda resposta final deve deixar explícito seu caráter orientativo (não vinculante) e sinalizar o que foi gerado por LLM.
-
+| Requisito | Como |
+|---|---|
+| RF01, RP01 | Cloud API oficial pelo Gateway |
+| RF02, RF03 | Motor de Decisão e Conversa, com listas e botões tocáveis (a escolha chega como ID, não como texto interpretado) |
+| RF04, RNF04 | Resposta final montada no Backend com "O que fazer agora" e o aviso de texto único |
+| RF05, RNF05, RP05 | LLM local, chamado só pelo Backend, sem acesso ao banco; complemento sempre rotulado |
+| RF06 | Registro de eventos e desfechos; relatórios agregados |
+| RF07 | Módulos Agenda e Mensagens ao cidadão |
+| RF08 | Frontend + API do painel com permissões |
+| RNF02 | Resposta oficial não espera o LLM; `restart` e healthchecks; Cloud API em vez de automação não oficial |
+| RNF03 | Seção "Segurança e dados pessoais" |
+| RNF06 | Tudo no Docker Compose |
+| RNF08 | CI em todo PR e CD a cada merge em `main` |
+| RP03 | Gateway, Backend e LLM separados; módulos internos no Backend |

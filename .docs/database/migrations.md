@@ -128,3 +128,9 @@ encerrada com código 0 e `/health` respondendo 200. Após `down` e `up`, o hist
 de versões (inclusive datas de execução) permaneceu igual e o executor informou
 `No migrations to run!`. Ambiente de verificação: projeto
 `proconchat-issue11-check`, PostgreSQL na porta 55433 e backend na 53011.
+
+## Próximas migrations (Sprint 2)
+
+O schema planejado para as Sprints 2 e 3 está na Parte 2 de [`database.md`](database.md). As migrations novas seguem a numeração a partir de `10_`, sempre como arquivos novos: nunca editar uma migration já aplicada.
+
+**Cuidado com enums:** no PostgreSQL, um valor adicionado com `ALTER TYPE ... ADD VALUE` não pode ser **usado** na mesma transação em que foi criado, e o `node-pg-migrate` aplica o lote de migrations pendentes numa única transação. Por isso, coloque a adição de valores de enum numa migration própria e só use os valores novos (em `DEFAULT`, `CHECK`, índices parciais ou `UPDATE`) em migrations seguintes, rodadas em outra execução, ou use a opção de transação por migration do `node-pg-migrate`. Teste sempre subindo do zero **e** sobre um banco já existente.
