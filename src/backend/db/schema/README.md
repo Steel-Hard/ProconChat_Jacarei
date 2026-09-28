@@ -4,8 +4,8 @@ Este diretório contém o `CREATE TABLE` consolidado de cada tabela do modelo de
 por tabela, com os seus tipos, constraints e índices, conforme descrito em
 [`.docs/database/database.md`](../../../../.docs/database/database.md).
 
-Os arquivos refletem o **estado atual** do schema, depois da migration `11_sprint2_schema.sql`
-(issue #52). Eles servem para leitura: o histórico executável está em `../migrations`, aplicado
+Os arquivos refletem o **estado atual** do schema, depois da migration `12_short_text_checks.sql`
+(issue #61). Eles servem para leitura: o histórico executável está em `../migrations`, aplicado
 com node-pg-migrate. Toda mudança de schema entra como uma migration nova, e o arquivo da tabela
 aqui é atualizado junto. Consulte [o guia de migrations](../../../../.docs/database/migrations.md)
 para subir o PostgreSQL, aplicar as migrations e validar.
