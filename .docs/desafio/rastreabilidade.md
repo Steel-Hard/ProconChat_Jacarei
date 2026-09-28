@@ -64,11 +64,8 @@ Proposta de corte, a validar com o grupo antes de criar as tasks:
 | **Importante** | Relatórios básicos (desfechos, categorias, resultado dos agendamentos); Sessões; Dashboard; LLM no fluxo com rótulo; lembrete | RF05, RF06 (análise), RNF05 |
 | **Desejável** | Exportação PDF e Excel; mapa de calor; modal de conflitos de agenda; outras conversas do mesmo número; auditoria detalhada; bloqueio por período | — |
 
-## Documentação a atualizar
+## Documentação
 
-| Documento | Situação |
-|---|---|
-| [`../architecture/architecture.md`](../architecture/architecture.md) | Descreve a Evolution API e o perfil único de acesso (RF12). Superado por [003](../decisoes/003-migracao-whatsapp-cloud-api.md) e [004](../decisoes/004-contas-e-permissoes-granulares.md) |
-| [`../database/database.md`](../database/database.md) | Não inclui as tabelas e colunas novas de [002](../decisoes/002-lgpd-dados-pessoais.md), [004](../decisoes/004-contas-e-permissoes-granulares.md), [006](../decisoes/006-ciclo-de-vida-do-agendamento.md), [007](../decisoes/007-agenda-configuravel.md), [008](../decisoes/008-fluxo-da-conversa-e-desfechos.md) e [010](../decisoes/010-registro-de-interacoes-e-relatorios.md). Deve ser atualizado junto com as migrations |
-| `.claude/CLAUDE.md` (local) | Cita o RF12 como perfil único, a Evolution e o `EVOLUTION_AUTO_REPLY_ENABLED` |
-| `README.md` da raiz | Instruções de instalação ainda com a Evolution. Atualizar após a migração |
+Atualizada em 27/09/2026 com as decisões da Sprint 2: [`../architecture/architecture.md`](../architecture/architecture.md) (arquitetura atual e alvo), [`../database/database.md`](../database/database.md) (schema atual e planejado), [`../regras/`](../regras/) (regras das telas) e [`../prototipo/`](../prototipo/) (protótipo aprovado).
+
+Ainda a atualizar quando a migração para a Cloud API for concluída: as instruções de instalação do `README.md` da raiz e o `src/gateway/README.md` (ainda descrevem a Evolution API).

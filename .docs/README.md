@@ -16,8 +16,9 @@ Chatbot de orientação ao consumidor via WhatsApp, desenvolvido para o PROCON d
 | [`desafio/`](desafio/) | Documento oficial do desafio e rastreabilidade dos requisitos | Atual |
 | [`decisoes/`](decisoes/) | Registros de decisão, um por arquivo | Atual |
 | [`regras/`](regras/) | Regras de cada tela do painel: o que mostra, quem acessa, o que dá para fazer e o que não existe de propósito | Atual |
-| [`architecture/`](architecture/) | Arquitetura (componentes, relações, fluxo) | ⚠️ Parcialmente superada por [003](decisoes/003-migracao-whatsapp-cloud-api.md) e [004](decisoes/004-contas-e-permissoes-granulares.md) |
-| [`database/`](database/) | Modelo de dados, migrations e o FAQ real do PROCON (`Dúvidas Frequentes.odt`) | ⚠️ Não inclui as tabelas novas decididas na Sprint 2 |
+| [`prototipo/`](prototipo/) | Protótipo navegável do painel, aprovado no Claude Design (referência visual) | Atual |
+| [`architecture/`](architecture/) | Arquitetura: componentes, módulos do backend, fluxos, infraestrutura e segurança (estado atual e alvo da entrega) | Atual |
+| [`database/`](database/) | Modelo de dados (schema atual e planejado), migrations e o FAQ real do PROCON (`Dúvidas Frequentes.odt`) | Atual |
 | [`llm/`](llm/) | Contrato e escolha do modelo do serviço de LLM | Atual |
 | [`whatsapp/`](whatsapp/) | Pesquisa de integração com o WhatsApp (issue #3) | Atual como pesquisa; a decisão final está em [003](decisoes/003-migracao-whatsapp-cloud-api.md) |
 | [`sprints/`](sprints/) | Documentos de fechamento de cada sprint | Atual |
