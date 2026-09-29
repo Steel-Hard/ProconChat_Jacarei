@@ -1,0 +1,26 @@
+[
+    {
+        "id": "b3f1c2a0-1e4d-4a6b-9c3f-1a2b3c4d5e6f",
+        "name": "Integração com Slack",
+        "active": true,
+        "createdAt": "2024-01-15T09:30:00.000Z"
+    },
+    {
+        "id": "d4a2e3b1-2f5e-4b7c-8d4a-2b3c4d5e6f7a",
+        "name": "Exportação de relatórios em PDF",
+        "active": true,
+        "createdAt": "2024-03-22T14:05:00.000Z"
+    },
+    {
+        "id": "e5b3f4c2-3a6f-4c8d-9e5b-3c4d5e6f7a8b",
+        "name": "Sincronização com Google Calendar",
+        "active": false,
+        "createdAt": "2023-11-08T18:45:00.000Z"
+    },
+    {
+        "id": "f6c4a5d3-4b7a-4d9e-af6c-4d5e6f7a8b9c",
+        "name": "Webhook de notificações de pedido",
+        "active": true,
+        "createdAt": "2024-06-30T11:20:00.000Z"
+    }
+]
