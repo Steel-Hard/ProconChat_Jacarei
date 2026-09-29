@@ -1,0 +1,21 @@
+{
+    "$schema": "./node_modules/oxlint/configuration_schema.json",
+    "plugins": ["typescript", "react", "jsx-a11y", "import", "unicorn", "oxc"],
+    "categories": {
+        "correctness": "error",
+        "suspicious": "error"
+    },
+    "rules": {
+        "typescript/no-explicit-any": "error",
+        "import/no-namespace": "error",
+        "react/react-in-jsx-scope": "off",
+        "import/no-unassigned-import": [
+            "error",
+            { "allow": ["**/*.css", "@testing-library/jest-dom/vitest"] }
+        ],
+        "import/no-relative-parent-imports": "error"
+    },
+    "env": {
+        "builtin": true
+    }
+}
