@@ -14,7 +14,7 @@ function ErrorPage() {
                     <h1>Ocorreu um erro inesperado.</h1>
                     <p>{error instanceof Error ? error.message : "Erro desconhecido."}</p>
                     <p>
-                        <Link to={ROUTES.home}>Vá para a página inicial.</Link>
+                        <Link to={ROUTES.dashboard}>Vá para a página inicial.</Link>
                     </p>
                 </div>
             </main>

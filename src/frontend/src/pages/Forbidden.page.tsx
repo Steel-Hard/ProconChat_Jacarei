@@ -6,13 +6,16 @@ function ForbiddenPage() {
     return (
         <>
             <title>Acesso negado.</title>
-            <meta name="description" content="Você não tem permissão para acessar esta página." />
+            <meta
+                name="description"
+                content="Você não tem sessão ativa ou permissão para acessar esta página."
+            />
             <main className={css.main}>
                 <div>
                     <h1>Acesso negado.</h1>
-                    <p>Você não tem permissão para acessar esta página.</p>
+                    <p>Você não tem sessão ativa ou permissão para acessar esta página.</p>
                     <p>
-                        <Link to={ROUTES.home}>Vá para a página inicial.</Link>
+                        <Link to={ROUTES.login}>Entrar no painel.</Link>
                     </p>
                 </div>
             </main>

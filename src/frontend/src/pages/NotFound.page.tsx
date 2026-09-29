@@ -11,7 +11,7 @@ function NotFoundPage() {
                 <div>
                     <h1>404 - Not Found</h1>
                     <p>
-                        <Link to={ROUTES.home}>Vá para a página inicial.</Link>
+                        <Link to={ROUTES.dashboard}>Vá para a página inicial.</Link>
                     </p>
                 </div>
             </main>
