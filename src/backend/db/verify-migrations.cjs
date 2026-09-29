@@ -519,6 +519,17 @@ async function checkSeedBackfillWithHistory(db, url) {
     await db.query("INSERT INTO sessions(phone_hash, status, outcome, current_step, current_category_id, current_question_id) VALUES ('backfill-finished', 'FINISHED', 'RESOLVED', 'FINISHED', $1, $2)", [category, question]);
     await db.query("INSERT INTO sessions(phone_hash, status, outcome, current_step, abandoned_at_step, current_category_id, list_page) VALUES ('backfill-abandoned', 'ABANDONED', 'ABANDONED', 'AWAITING_QUESTION', 'AWAITING_QUESTION', $1, 2)", [category]);
     await db.query("INSERT INTO conversationevents(session_id, type, category_id, question_id) VALUES ($1, 'QUESTION_CHOSEN', $2, $3)", [inProgress, category, question]);
+    await db.query('UPDATE categories SET position = 6 - position');
+    await db.query(`UPDATE questions q SET position = c.n - 1 - q.position
+        FROM (SELECT category_id, count(*)::int AS n FROM questions GROUP BY category_id) c
+        WHERE c.category_id = q.category_id`);
+    const expectedPositions = {
+        categories: Object.fromEntries(faq.map((c, position) => [c.title, position])),
+        questions: Object.fromEntries(faq.flatMap(c => c.questions.map((q, position) => [q.question, position]))),
+    };
+    const positionsOf = async table => Object.fromEntries((await db.query(`SELECT ${table === 'categories' ? 'title' : 'question'} AS k, position FROM ${table}`)).rows.map(r => [r.k, r.position]));
+    assert.notDeepEqual(await positionsOf('categories'), expectedPositions.categories);
+    assert.notDeepEqual(await positionsOf('questions'), expectedPositions.questions);
     const sessionsBefore = await rowsAsJson(db, 'sessions');
     const eventsBefore = await rowsAsJson(db, 'conversationevents');
 
@@ -527,6 +538,8 @@ async function checkSeedBackfillWithHistory(db, url) {
     assert.match(output, /Perguntas: 0 inseridas, 47 atualizadas, 0 mantidas/);
     assert.deepEqual(Object.fromEntries((await db.query('SELECT title, id FROM categories')).rows.map(r => [r.title, r.id])), categoryIds);
     assert.deepEqual(Object.fromEntries((await db.query('SELECT question, id FROM questions')).rows.map(r => [r.question, r.id])), questionIds);
+    assert.deepEqual(await positionsOf('categories'), expectedPositions.categories);
+    assert.deepEqual(await positionsOf('questions'), expectedPositions.questions);
     await assertSeededContent(db);
     assert.deepEqual(await rowsAsJson(db, 'sessions'), sessionsBefore);
     assert.deepEqual(await rowsAsJson(db, 'conversationevents'), eventsBefore);
@@ -556,6 +569,36 @@ async function checkSeedKeepsPanelEdits(db, url) {
     assert.deepEqual(await snapshot(), before);
     assert.equal(await count(db, 'SELECT 1 FROM categories'), 8);
     assert.equal(await count(db, 'SELECT 1 FROM questions'), 47);
+}
+
+async function checkSeedRestoresRequiredDocuments(db, url) {
+    mustMigrate(url, 'up');
+    mustSeed(url);
+    const { faq } = seedData();
+    const findQuestion = key => faq.flatMap(c => c.questions).find(q => q.seedKey === key);
+    const seeded = findQuestion('contrato.cancelar-plano-telefone');
+    assert.ok(seeded.requiredDocuments.length >= 4);
+    const documentsOf = async id => (await db.query('SELECT description, position FROM requireddocuments WHERE question_id = $1 ORDER BY position, id', [id])).rows;
+    const scramble = async id => {
+        await db.query('DELETE FROM requireddocuments WHERE question_id = $1 AND position = 3', [id]);
+        await db.query("UPDATE requireddocuments SET description = 'Texto trocado' WHERE question_id = $1 AND position = 0", [id]);
+        await db.query('UPDATE requireddocuments SET position = 3 - position WHERE question_id = $1 AND position IN (1, 2)', [id]);
+        await db.query("INSERT INTO requireddocuments(question_id, description, position) VALUES ($1, 'Documento extra', 9)", [id]);
+    };
+
+    const question = (await db.query("SELECT id FROM questions WHERE seed_key = 'contrato.cancelar-plano-telefone'")).rows[0].id;
+    await scramble(question);
+    assert.notDeepEqual(await documentsOf(question), seeded.requiredDocuments.map((description, position) => ({ description, position })));
+
+    const user = (await db.query("INSERT INTO users(name, email, password_hash) VALUES ('Equipe', 'equipe@test', 'x') RETURNING id")).rows[0].id;
+    const edited = (await db.query("UPDATE questions SET updated_by = $1 WHERE seed_key = 'contrato.contrato-nao-entregue' RETURNING id", [user])).rows[0].id;
+    await scramble(edited);
+    const editedBefore = (await db.query('SELECT row_to_json(d)::text AS r FROM requireddocuments d WHERE question_id = $1 ORDER BY id', [edited])).rows;
+
+    const output = mustSeed(url);
+    assert.deepEqual(await documentsOf(question), seeded.requiredDocuments.map((description, position) => ({ description, position })));
+    assert.match(output, /Perguntas: 0 inseridas, 1 atualizadas, 46 mantidas/);
+    assert.deepEqual((await db.query('SELECT row_to_json(d)::text AS r FROM requireddocuments d WHERE question_id = $1 ORDER BY id', [edited])).rows, editedBefore);
 }
 
 async function checkSeedKeepsConfig(db, url) {
@@ -602,6 +645,8 @@ async function main() {
         console.log('OK: seed backfills seed_key keeping ids, events and sessions');
         await withDatabase(admin, process.env.DB_TEST_URL, checkSeedKeepsPanelEdits);
         console.log('OK: seed keeps rows edited or created by the panel');
+        await withDatabase(admin, process.env.DB_TEST_URL, checkSeedRestoresRequiredDocuments);
+        console.log('OK: seed rewrites changed required documents only for questions not edited by the panel');
         await withDatabase(admin, process.env.DB_TEST_URL, checkSeedKeepsConfig);
         console.log('OK: seed never overwrites the initial config');
     } finally {
