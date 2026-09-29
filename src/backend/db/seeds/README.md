@@ -86,6 +86,20 @@ reaproveitada. Textos podem mudar em PRs futuros sem perder o casamento.
 **`updated_by` marca a edição pelo painel:** ao salvar uma categoria ou pergunta, a #63 grava
 `updated_by`, e o seed deixa a linha (e os documentos úteis dela) em paz.
 
+**Regra para a #63: toda alteração pelo painel grava `updated_by`** na categoria ou pergunta
+afetada, não só a edição do formulário. Isso inclui:
+
+- **reordenar a lista** (↑↓): a reordenação muda a `position` de várias linhas, e **todas as
+  linhas renumeradas** precisam receber `updated_by`, não só a que foi movida;
+- **ligar ou desligar "Permitir complemento por IA"** (`llm_allowed`);
+- **alterar só os documentos úteis** de uma pergunta: o `updated_by` vai na própria pergunta, já
+  que `RequiredDocuments` não tem essa coluna.
+
+Sem o `updated_by`, o seed trata a linha como dele, e o próximo `docker compose up` ou deploy
+desfaz a alteração (volta `position`, `llm_allowed`, títulos e documentos úteis para os valores do
+arquivo). `active` é a exceção: o seed só o grava no `INSERT`, então ativar ou desativar pelo
+painel nunca é desfeito, mesmo sem `updated_by`.
+
 **Execuções simultâneas:** tudo roda numa única transação, com `pg_advisory_xact_lock` logo
 depois do `BEGIN`. Qualquer erro faz `ROLLBACK` e o processo sai com código diferente de 0.
 
