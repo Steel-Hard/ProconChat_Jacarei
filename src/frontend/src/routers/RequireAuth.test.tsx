@@ -1,31 +1,31 @@
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it } from "vitest"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { render, screen } from "@testing-library/react"
 import RequireAuth from "@/routers/RequireAuth"
-import { useAuth } from "@/hooks/useAuth"
 import { ROUTES } from "@/routers/paths"
-
-vi.mock("@/hooks/useAuth", () => ({ useAuth: vi.fn() }))
+import { clearToken, setToken } from "@/services/session.service"
 
 function renderWithAuth() {
     const router = createMemoryRouter(
         [
             {
                 element: <RequireAuth />,
-                children: [{ path: ROUTES.protectedExample, element: <p>Conteúdo protegido</p> }]
+                children: [{ path: ROUTES.appointments, element: <p>Conteúdo protegido</p> }]
             },
             { path: ROUTES.forbidden, element: <p>Bloqueado</p> }
         ],
-        { initialEntries: [ROUTES.protectedExample] }
+        { initialEntries: [ROUTES.appointments] }
     )
 
     return render(<RouterProvider router={router} />)
 }
 
 describe("RequireAuth", () => {
-    it("redireciona para a rota de bloqueio quando não autenticado", async () => {
-        vi.mocked(useAuth).mockReturnValue({ isAuthenticated: false })
+    afterEach(() => {
+        clearToken()
+    })
 
+    it("redireciona para a rota de bloqueio quando não autenticado", async () => {
         renderWithAuth()
 
         expect(await screen.findByText("Bloqueado")).toBeInTheDocument()
@@ -33,7 +33,7 @@ describe("RequireAuth", () => {
     })
 
     it("renderiza o conteúdo protegido quando autenticado", () => {
-        vi.mocked(useAuth).mockReturnValue({ isAuthenticated: true })
+        setToken("abc")
 
         renderWithAuth()
 

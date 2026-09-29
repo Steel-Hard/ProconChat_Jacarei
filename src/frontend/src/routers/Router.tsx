@@ -1,66 +1,46 @@
-import { lazy, Suspense, useState } from "react"
+import { lazy, Suspense, useState, type ReactNode } from "react"
 import { createBrowserRouter, RouterProvider, type RouteObject } from "react-router-dom"
-import MainLayout from "@/layouts/Main.layout"
+import RootLayout from "@/layouts/Root.layout"
 import ErrorPage from "@/pages/Error.page"
 import RequireAuth from "@/routers/RequireAuth"
 import { ROUTES } from "@/routers/paths"
 
-const Home = lazy(() => import("@/pages/Home.page"))
-const NotFound = lazy(() => import("@/pages/NotFound.page"))
-const ProtectedExample = lazy(() => import("@/pages/ProtectedExample.page"))
+const UnderConstruction = lazy(() => import("@/pages/UnderConstruction.page"))
+const Login = lazy(() => import("@/pages/Login.page"))
 const Forbidden = lazy(() => import("@/pages/Forbidden.page"))
-const ExampleList = lazy(() => import("@/pages/ExampleList.page"))
+const NotFound = lazy(() => import("@/pages/NotFound.page"))
+
+function withSuspense(element: ReactNode) {
+    return <Suspense fallback={<p>Carregando...</p>}>{element}</Suspense>
+}
+
+function underConstruction(path: string, title: string): RouteObject {
+    return { path, element: withSuspense(<UnderConstruction title={title} />) }
+}
 
 export const routes: RouteObject[] = [
     {
-        element: <MainLayout />,
+        element: <RootLayout />,
         errorElement: <ErrorPage />,
         children: [
-            {
-                path: ROUTES.home,
-                element: (
-                    <Suspense fallback={<p>Carregando...</p>}>
-                        <Home />
-                    </Suspense>
-                )
-            },
-            {
-                path: ROUTES.forbidden,
-                element: (
-                    <Suspense fallback={<p>Carregando...</p>}>
-                        <Forbidden />
-                    </Suspense>
-                )
-            },
-            {
-                path: ROUTES.examples,
-                element: (
-                    <Suspense fallback={<p>Carregando...</p>}>
-                        <ExampleList />
-                    </Suspense>
-                )
-            },
+            { path: ROUTES.login, element: withSuspense(<Login />) },
             {
                 element: <RequireAuth />,
                 children: [
-                    {
-                        path: ROUTES.protectedExample,
-                        element: (
-                            <Suspense fallback={<p>Carregando...</p>}>
-                                <ProtectedExample />
-                            </Suspense>
-                        )
-                    }
+                    underConstruction(ROUTES.dashboard, "Painel"),
+                    underConstruction(ROUTES.appointments, "Agendamentos"),
+                    underConstruction(ROUTES.appointmentDetail, "Detalhe do agendamento"),
+                    underConstruction(ROUTES.reports, "Relatórios"),
+                    underConstruction(ROUTES.content, "Conteúdo"),
+                    underConstruction(ROUTES.sessions, "Sessões"),
+                    underConstruction(ROUTES.schedule, "Horários"),
+                    underConstruction(ROUTES.documents, "Documentos"),
+                    underConstruction(ROUTES.users, "Usuários"),
+                    underConstruction(ROUTES.whatsapp, "WhatsApp")
                 ]
             },
-            {
-                path: ROUTES.notFound,
-                element: (
-                    <Suspense fallback={<p>Carregando...</p>}>
-                        <NotFound />
-                    </Suspense>
-                )
-            }
+            { path: ROUTES.forbidden, element: withSuspense(<Forbidden />) },
+            { path: ROUTES.notFound, element: withSuspense(<NotFound />) }
         ]
     }
 ]

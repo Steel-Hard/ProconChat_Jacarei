@@ -1,32 +1,59 @@
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it } from "vitest"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { routes } from "@/routers/Router"
 import { ROUTES } from "@/routers/paths"
-import { get } from "@/services/http.service"
-import type { ExampleEntity } from "@/types/example.types"
-
-vi.mock("@/services/http.service", () => ({ get: vi.fn() }))
+import { clearToken, setToken } from "@/services/session.service"
 
 function renderRoutes(initialEntries: string[]) {
     const router = createMemoryRouter(routes, { initialEntries })
     return render(<RouterProvider router={router} />)
 }
 
+const protectedRoutes: Array<[string, string]> = [
+    [ROUTES.dashboard, "Painel"],
+    [ROUTES.appointments, "Agendamentos"],
+    ["/agendamentos/1", "Detalhe do agendamento"],
+    [ROUTES.reports, "Relatórios"],
+    [ROUTES.content, "Conteúdo"],
+    [ROUTES.sessions, "Sessões"],
+    [ROUTES.schedule, "Horários"],
+    [ROUTES.documents, "Documentos"],
+    [ROUTES.users, "Usuários"],
+    [ROUTES.whatsapp, "WhatsApp"]
+]
+
 describe("routes", () => {
+    afterEach(() => {
+        clearToken()
+    })
+
     it("mostra o fallback de carregamento antes da página lazy resolver", () => {
-        renderRoutes(["/"])
+        renderRoutes([ROUTES.login])
 
         expect(screen.getByText("Carregando...")).toBeInTheDocument()
     })
 
-    it("renderiza o header e o footer do MainLayout ao redor da página em uma rota válida", async () => {
-        renderRoutes(["/"])
+    it("renderiza a tela de entrada sem sessão", async () => {
+        renderRoutes([ROUTES.login])
 
-        expect(await screen.findByRole("heading", { name: "Hello World!" })).toBeInTheDocument()
-        expect(screen.getByRole("banner")).toBeInTheDocument()
-        expect(screen.getByRole("contentinfo")).toBeInTheDocument()
+        expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument()
+    })
+
+    it.each(protectedRoutes)("renderiza %s com sessão", async (path, title) => {
+        setToken("abc")
+
+        renderRoutes([path])
+
+        expect(await screen.findByRole("heading", { name: title })).toBeInTheDocument()
+        expect(screen.getByText("Em construção.")).toBeInTheDocument()
+    })
+
+    it.each(protectedRoutes)("redireciona %s sem sessão para o acesso negado", async (path) => {
+        renderRoutes([path])
+
+        expect(await screen.findByRole("heading", { name: "Acesso negado." })).toBeInTheDocument()
     })
 
     it("renderiza a página de NotFound em uma rota inexistente", async () => {
@@ -35,37 +62,22 @@ describe("routes", () => {
         expect(await screen.findByRole("heading", { name: "404 - Not Found" })).toBeInTheDocument()
     })
 
-    it("navega da NotFound para a Home ao clicar no link, sem full reload", async () => {
+    it("navega da NotFound para o painel ao clicar no link", async () => {
+        setToken("abc")
         renderRoutes(["/rota-que-nao-existe"])
 
-        await screen.findByRole("link", { name: "Vá para a página inicial." })
-        userEvent.click(screen.getByRole("link", { name: "Vá para a página inicial." }))
+        await userEvent.click(
+            await screen.findByRole("link", { name: "Vá para a página inicial." })
+        )
 
-        expect(await screen.findByRole("heading", { name: "Hello World!" })).toBeInTheDocument()
+        expect(await screen.findByRole("heading", { name: "Painel" })).toBeInTheDocument()
     })
 
-    it("redireciona para a página de acesso negado ao acessar a rota protegida sem autenticação", async () => {
-        renderRoutes([ROUTES.protectedExample])
+    it("leva da página de acesso negado para a tela de entrada", async () => {
+        renderRoutes([ROUTES.forbidden])
 
-        expect(await screen.findByRole("heading", { name: "Acesso negado." })).toBeInTheDocument()
-        expect(
-            screen.queryByText("Você só vê isso se estiver autenticado.")
-        ).not.toBeInTheDocument()
-    })
+        await userEvent.click(await screen.findByRole("link", { name: "Entrar no painel." }))
 
-    it("renderiza a página de exemplos integrados dentro do MainLayout na rota /exemplos", async () => {
-        const entities: ExampleEntity[] = [
-            { id: "1", name: "Exemplo um", active: true, createdAt: "2026-01-10T12:00:00.000Z" }
-        ]
-        vi.mocked(get).mockResolvedValue(entities)
-
-        renderRoutes([ROUTES.examples])
-
-        expect(
-            await screen.findByRole("heading", { name: "Exemplos integrados" })
-        ).toBeInTheDocument()
-        expect(await screen.findByText("Exemplo um")).toBeInTheDocument()
-        expect(screen.getByRole("banner")).toBeInTheDocument()
-        expect(screen.getByRole("contentinfo")).toBeInTheDocument()
+        expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument()
     })
 })
