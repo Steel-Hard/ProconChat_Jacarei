@@ -102,7 +102,7 @@ function createPhoneLock() {
 export function createConversationFlowService({
   sessions,
   motor,
-  hashPhone,
+  hashPhone: hashPhoneOf,
 }: ConversationFlowDependencies): (
   input: ConversationFlowInput,
 ) => Promise<ConversationFlowResult> {
@@ -237,7 +237,7 @@ export function createConversationFlowService({
     phone,
     text,
   }: ConversationFlowInput): Promise<ConversationFlowResult> {
-    const session = await sessions.findOrCreateActive(hashPhone(phone));
+    const session = await sessions.findOrCreateActive(hashPhoneOf(phone));
 
     if (session.created || session.currentStep === "FINISHED") {
       return startOver(session.id, session.created);

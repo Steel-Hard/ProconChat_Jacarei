@@ -1,0 +1,28 @@
+:root {
+    --bg-page: #ffffff;
+    --text-body: #202020;
+    --text-link: #483d8b;
+    --space-4: 1rem;
+    --font-body: system-ui, sans-serif;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg-page);
+    color: var(--text-body);
+    font-family: var(--font-body);
+    line-height: 1.5;
+}
+
+a {
+    color: var(--text-link);
+}
+
+main {
+    min-height: 100dvh;
+}

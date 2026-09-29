@@ -66,6 +66,18 @@ services:
       retries: 10
     restart: unless-stopped
 
+  frontend:
+    build:
+      context: ./src/frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:${BACKEND_PORT:-3000}}
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-8081}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
   redis:
     image: redis:7-alpine
     restart: unless-stopped

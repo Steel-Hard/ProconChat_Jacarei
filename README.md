@@ -1,5 +1,7 @@
 # ProconChat Jacareí
 
+[![CI](https://github.com/Steel-Hard/ProconChat_Jacarei/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/Steel-Hard/ProconChat_Jacarei/actions/workflows/ci.yml)
+
 Documentação do projeto: [`.docs/README.md`](.docs/README.md) (requisitos, decisões, regras das telas,
 arquitetura, banco e protótipo do painel).
 
