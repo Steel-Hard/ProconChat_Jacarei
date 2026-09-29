@@ -25,7 +25,7 @@ Não há limite mínimo nem relatório de cobertura.
 
 ## Variáveis de ambiente
 
-- `VITE_API_URL`: URL base do Backend (padrão de desenvolvimento em `.env.example`: `http://localhost:3000`). O Vite embute o valor no build, então mudar a variável exige rebuild da imagem.
+- `VITE_API_URL`: URL base do Backend (padrão de desenvolvimento em `.env.example`: `http://localhost:3000`). O Vite embute o valor no build, então mudar a variável exige rebuild da imagem. O `.env.example` fixa `VITE_API_URL=http://localhost:3000`, o que sobrepõe o padrão do `compose.yaml` (`http://localhost:${BACKEND_PORT:-3000}`): ao mudar `BACKEND_PORT` no `.env`, ajuste `VITE_API_URL` para a mesma porta, senão o build embute a URL errada.
 
 ## Estrutura de `src/`
 
@@ -49,6 +49,7 @@ Não há limite mínimo nem relatório de cobertura.
 - O token de acesso fica apenas em memória (`session.service.ts`); nunca em `localStorage`, `sessionStorage` ou cookie legível por JavaScript. Recarregar a página perde o token, e a renovação virá do cookie httpOnly de refresh.
 - O cliente HTTP envia `credentials: "include"` e `Authorization: Bearer <token>` quando há token. Em 401, se houver um refresher registrado com `setTokenRefresher`, ele é chamado uma vez e a requisição é repetida uma única vez; sem refresher, ou se o refresh falhar, o token é limpo e o callback de `onUnauthorized` é chamado.
 - Nota para #57/#84: `credentials: "include"` exige que o Backend responda CORS com origem explícita e `Access-Control-Allow-Credentials` (o `cors()` aberto de hoje não serve) e que o cookie tenha `SameSite` compatível com a origem do painel. Detalhes no comentário da issue #57.
+- Todo 401 limpa o token e chama `onUnauthorized`, inclusive o 401 de credencial errada em `POST /login`. A tela de login (#84) deve tratar o `HttpError` antes do callback global, ou o redirecionamento de `onUnauthorized` entra em loop.
 
 ## Docker
 
