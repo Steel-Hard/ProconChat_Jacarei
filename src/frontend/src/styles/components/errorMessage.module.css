@@ -1,0 +1,6 @@
+.error {
+    color: var(--error-ink);
+    background-color: var(--error-surface);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius);
+}
