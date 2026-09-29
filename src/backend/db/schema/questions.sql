@@ -22,8 +22,8 @@ CREATE TABLE Questions (
     seed_key VARCHAR(80),
     updated_by BIGINT REFERENCES Users(id),
 
-    CONSTRAINT chk_questions_short_title_length CHECK (char_length(btrim(short_title)) BETWEEN 1 AND 24),
-    CONSTRAINT chk_questions_short_description_length CHECK (short_description IS NULL OR char_length(btrim(short_description)) BETWEEN 1 AND 72),
+    CONSTRAINT chk_questions_short_title_length CHECK (char_length(short_title) BETWEEN 1 AND 24 AND short_title = btrim(short_title)),
+    CONSTRAINT chk_questions_short_description_length CHECK (short_description IS NULL OR (char_length(short_description) BETWEEN 1 AND 72 AND short_description = btrim(short_description))),
     CONSTRAINT chk_questions_position CHECK (position >= 0),
     CONSTRAINT chk_questions_in_person_xor_out_of_scope CHECK (NOT (requires_in_person AND out_of_scope)),
     CONSTRAINT chk_questions_out_of_scope_no_llm CHECK (NOT (out_of_scope AND llm_allowed)),
