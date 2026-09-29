@@ -63,11 +63,19 @@ function mustSeed(url) {
     const result = run([require.resolve('ts-node/dist/bin.js'), 'db/seeds/run.ts'], url);
     assert.equal(result.status, 0, result.error?.message || result.stderr || result.stdout);
     assert.match(result.stdout, /Seed concluído/);
+    return result.stdout;
+}
+
+function seedData() {
+    require('ts-node').register({ transpileOnly: true });
+    return {
+        faq: require('./seeds/data/procon-faq.data').default,
+        config: require('./seeds/data/configuracao-inicial.data').default,
+    };
 }
 
 async function seedVersion10(db) {
-    require('ts-node').register({ transpileOnly: true });
-    const seed = require('./seeds/data/procon-faq.data').default;
+    const seed = seedData().faq;
     for (const category of seed) {
         const categoryId = (await db.query(
             'INSERT INTO Categories (title, description, active) VALUES ($1, $2, true) RETURNING id',
@@ -135,16 +143,18 @@ async function withDatabase(admin, baseUrl, fn) {
 
 function checkMigrationFile() {
     const files = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql'));
-    assert.equal(files.length, 11);
-    const sql = fs.readFileSync(path.join(migrationsDir, '11_sprint2_schema.sql'), 'utf8');
-    assert.doesNotMatch(sql, /add\s+value/i);
-    assert.match(sql, /^-- Up Migration/);
-    assert.match(sql, /\n-- Down Migration\n/);
+    assert.equal(files.length, 12);
+    for (const file of ['11_sprint2_schema.sql', '12_short_text_checks.sql']) {
+        const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+        assert.doesNotMatch(sql, /add\s+value/i, file);
+        assert.match(sql, /^-- Up Migration/, file);
+        assert.match(sql, /\n-- Down Migration\n/, file);
+    }
 }
 
 async function checkFreshSchema(db) {
     assert.deepEqual(await tableNames(db), expectedTables);
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 11);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
     for (const [name, values] of Object.entries(expectedEnums)) {
         assert.deepEqual(await enumValues(db, name), values, name);
     }
@@ -168,10 +178,17 @@ async function checkConstraints(db) {
     await rejects(db, 'INSERT INTO categories(title, short_title) VALUES ($1, $2)', ['C', 'x'.repeat(25)], '23514');
     await rejects(db, 'INSERT INTO categories(title) VALUES ($1)', ['C'], '23502');
     await db.query('INSERT INTO categories(title, short_title) VALUES ($1, $2)', ['C24', 'x'.repeat(24)]);
+    await rejects(db, 'INSERT INTO categories(title, short_title) VALUES ($1, $2)', ['C', ' Garantias'], '23514');
+    await rejects(db, 'INSERT INTO categories(title, short_title) VALUES ($1, $2)', ['C', 'Garantias '], '23514');
 
     const insertQuestion = 'INSERT INTO questions(category_id, question, answer, short_title, short_description, requires_in_person, out_of_scope, llm_allowed) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id';
     const question = (await db.query(insertQuestion, [category, 'Q', 'A', 'Q', 'd'.repeat(72), true, false, true])).rows[0].id;
     await rejects(db, insertQuestion, [category, 'Q', 'A', 'x'.repeat(25), null, false, false, true], '23514');
+    await rejects(db, insertQuestion, [category, 'Q', 'A', ' Garantias', null, false, false, true], '23514');
+    await rejects(db, insertQuestion, [category, 'Q', 'A', 'Garantias ', null, false, false, true], '23514');
+    await rejects(db, insertQuestion, [category, 'Q', 'A', 'Q', ' x', false, false, true], '23514');
+    await rejects(db, insertQuestion, [category, 'Q', 'A', 'Q', 'x ', false, false, true], '23514');
+    await db.query(insertQuestion, [category, 'Q', 'A', 'x'.repeat(24), null, false, false, true]);
     await rejects(db, insertQuestion, [category, 'Q', 'A', null, null, false, false, true], '23502');
     await rejects(db, insertQuestion, [category, 'Q', 'A', 'Q', 'd'.repeat(73), false, false, true], '23514');
     await rejects(db, insertQuestion, [category, 'Q', 'A', 'Q', '   ', false, false, true], '23514');
@@ -278,6 +295,11 @@ async function checkConstraints(db) {
 
 async function checkRollback(db, url) {
     mustMigrate(url, 'down', '1');
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 11);
+    const category = (await db.query("INSERT INTO categories(title, short_title) VALUES ('Old check', ' Garantias') RETURNING id")).rows[0].id;
+    await db.query("INSERT INTO questions(category_id, question, answer, short_title, short_description) VALUES ($1, 'Q', 'A', 'Garantias ', ' x')", [category]);
+    await rejects(db, 'INSERT INTO categories(title, short_title) VALUES ($1, $2)', ['C', 'x'.repeat(25)], '23514');
+    mustMigrate(url, 'down', '1');
     assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 10);
     assert.deepEqual(await tableNames(db), [
         'appointments', 'categories', 'interactions', 'pgmigrations', 'questions', 'requireddocuments', 'sessions', 'users',
@@ -291,9 +313,9 @@ async function checkRollback(db, url) {
     assert.equal(await count(db, "SELECT 1 FROM sessions WHERE phone_hash = 's3' AND current_step = 'FINISHED'"), 1);
     assert.equal(await count(db, "SELECT 1 FROM pg_extension WHERE extname = 'unaccent'"), 0);
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 11);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
     assert.deepEqual(await tableNames(db), expectedTables);
-    mustMigrate(url, 'down', '11');
+    mustMigrate(url, 'down', '12');
     assert.deepEqual(await tableNames(db), ['pgmigrations']);
     assert.equal(await count(db, "SELECT 1 FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace WHERE n.nspname = 'public' AND t.typtype = 'e'"), 0);
     mustMigrate(url, 'up');
@@ -324,7 +346,7 @@ async function checkUpgradeWithSeed(db, url) {
     await db.query("INSERT INTO sessions(phone_hash, status, current_step, current_category_id, started_at, ended_at) VALUES ('abandoned', 'ABANDONED', 'AWAITING_QUESTION', $1, '2030-01-01T10:00:00Z', '2030-01-01T10:40:00Z')", [category]);
 
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 11);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
     assert.deepEqual(await snapshotContent(db), before);
 
     const outOfScope = before.questions.find(q => q.out_of_scope).id;
@@ -367,7 +389,231 @@ async function checkNonEmptyAppointmentsGuard(db, url) {
     assert.deepEqual(await enumValues(db, 'session_step'), ['AWAITING_CATEGORY', 'AWAITING_QUESTION', 'FINISHED']);
     await db.query('DELETE FROM appointments');
     mustMigrate(url, 'up');
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
+}
+
+async function checkShortTextNormalization(db, url) {
+    mustMigrate(url, 'up', '11');
     assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 11);
+    const category = (await db.query("INSERT INTO categories(title, short_title) VALUES ('Abc', 'Abc ') RETURNING id")).rows[0].id;
+    const question = (await db.query("INSERT INTO questions(category_id, question, answer, short_title, short_description) VALUES ($1, 'Q', 'A', ' Pergunta ', ' Descrição ') RETURNING id", [category])).rows[0].id;
+    mustMigrate(url, 'up');
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
+    assert.equal((await db.query('SELECT short_title FROM categories WHERE id = $1', [category])).rows[0].short_title, 'Abc');
+    assert.deepEqual((await db.query('SELECT short_title, short_description FROM questions WHERE id = $1', [question])).rows[0], { short_title: 'Pergunta', short_description: 'Descrição' });
+    mustMigrate(url, 'down', '1');
+    mustMigrate(url, 'up');
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
+}
+
+async function rowsAsJson(db, table) {
+    return (await db.query(`SELECT row_to_json(t)::text AS r FROM ${table} t ORDER BY id`)).rows.map(r => r.r);
+}
+
+const seededTables = [
+    'categories', 'questions', 'requireddocuments', 'schedulesettings', 'scheduleranges', 'blockeddates', 'attendancedocuments',
+];
+
+async function snapshotSeededTables(db) {
+    const snapshot = {};
+    for (const table of seededTables) {
+        snapshot[table] = await rowsAsJson(db, table);
+    }
+    return snapshot;
+}
+
+async function assertSeededContent(db) {
+    const { faq } = seedData();
+    assert.equal(await count(db, 'SELECT 1 FROM categories'), 7);
+    assert.equal(await count(db, 'SELECT 1 FROM questions'), 47);
+    assert.equal(await count(db, 'SELECT 1 FROM categories WHERE seed_key IS NULL'), 0);
+    assert.equal(await count(db, 'SELECT 1 FROM questions WHERE seed_key IS NULL'), 0);
+    for (const [categoryPosition, category] of faq.entries()) {
+        const row = (await db.query('SELECT id, title, short_title, description, position FROM categories WHERE seed_key = $1', [category.seedKey])).rows[0];
+        assert.ok(row, category.seedKey);
+        assert.deepEqual(
+            { title: row.title, short_title: row.short_title, description: row.description, position: row.position },
+            { title: category.title, short_title: category.shortTitle, description: category.description, position: categoryPosition },
+            category.seedKey,
+        );
+        for (const [questionPosition, question] of category.questions.entries()) {
+            const q = (await db.query(
+                'SELECT id, category_id, question, short_title, short_description, position, llm_allowed, out_of_scope FROM questions WHERE seed_key = $1',
+                [question.seedKey],
+            )).rows[0];
+            assert.ok(q, question.seedKey);
+            assert.deepEqual(
+                { category_id: q.category_id, question: q.question, short_title: q.short_title, short_description: q.short_description, position: q.position, llm_allowed: q.llm_allowed },
+                { category_id: row.id, question: question.question, short_title: question.shortTitle, short_description: question.shortDescription ?? null, position: questionPosition, llm_allowed: !(question.outOfScope ?? false) },
+                question.seedKey,
+            );
+            const documents = (await db.query('SELECT description, position FROM requireddocuments WHERE question_id = $1 ORDER BY position, id', [q.id])).rows;
+            assert.deepEqual(documents, question.requiredDocuments.map((description, position) => ({ description, position })), question.seedKey);
+        }
+    }
+    assert.deepEqual((await db.query('SELECT seed_key FROM questions WHERE NOT llm_allowed')).rows, [{ seed_key: 'outros.direito-imobiliario' }]);
+    assert.equal(await count(db, 'SELECT 1 FROM categories WHERE char_length(short_title) > 24 OR short_title <> btrim(short_title)'), 0);
+    assert.equal(await count(db, 'SELECT 1 FROM questions WHERE char_length(short_title) > 24 OR short_title <> btrim(short_title) OR char_length(short_description) > 72 OR short_description <> btrim(short_description)'), 0);
+}
+
+async function assertInitialConfig(db) {
+    const { config } = seedData();
+    const settings = (await db.query('SELECT slot_minutes, seats_per_slot, window_days, min_notice_days, wait_alert_days, unit_address, unit_address_complement, reminder_enabled, reminder_hours, updated_by FROM schedulesettings')).rows;
+    assert.deepEqual(settings, [{
+        slot_minutes: config.slotMinutes, seats_per_slot: config.seatsPerSlot, window_days: config.windowDays,
+        min_notice_days: config.minNoticeDays, wait_alert_days: config.waitAlertDays, unit_address: config.unitAddress,
+        unit_address_complement: config.unitAddressComplement, reminder_enabled: false, reminder_hours: config.reminderHours, updated_by: null,
+    }]);
+    assert.equal(settings[0].unit_address, 'Avenida Capitão Joaquim Pinheiro do Prado, 222 - Centro, Jacareí - SP, CEP 12327-160');
+    const ranges = (await db.query("SELECT weekday, slot_index, to_char(start_time, 'HH24:MI') AS start_time, to_char(end_time, 'HH24:MI') AS end_time FROM scheduleranges ORDER BY weekday, slot_index")).rows;
+    assert.equal(ranges.length, 10);
+    assert.deepEqual(ranges, config.scheduleRanges.map(r => ({ weekday: r.weekday, slot_index: r.slotIndex, start_time: r.startTime, end_time: r.endTime })));
+    assert.equal(await count(db, 'SELECT 1 FROM blockeddates'), 0);
+    const documents = async group => (await db.query('SELECT description, position FROM attendancedocuments WHERE attendee_group = $1 ORDER BY position, id', [group])).rows;
+    assert.deepEqual(await documents('HOLDER'), config.attendanceDocuments.holder.map((description, position) => ({ description, position })));
+    assert.deepEqual(await documents('REPRESENTATIVE'), config.attendanceDocuments.representative.map((description, position) => ({ description, position })));
+    assert.equal((await documents('HOLDER')).length, 4);
+    assert.equal((await documents('REPRESENTATIVE')).length, 4);
+}
+
+async function checkSeedFromScratch(db, url) {
+    mustMigrate(url, 'up');
+    const output = mustSeed(url);
+    assert.match(output, /Categorias: 7 inseridas, 0 atualizadas, 0 mantidas/);
+    assert.match(output, /Perguntas: 47 inseridas, 0 atualizadas, 0 mantidas/);
+    assert.match(output, /configuração inicial criada/);
+    await assertSeededContent(db);
+    await assertInitialConfig(db);
+}
+
+async function checkSeedIdempotence(db, url) {
+    mustMigrate(url, 'up');
+    mustSeed(url);
+    const before = await snapshotSeededTables(db);
+    const output = mustSeed(url);
+    assert.match(output, /Categorias: 0 inseridas, 0 atualizadas, 7 mantidas/);
+    assert.match(output, /Perguntas: 0 inseridas, 0 atualizadas, 47 mantidas/);
+    assert.match(output, /configuração inicial já existe, mantida/);
+    assert.deepEqual(await snapshotSeededTables(db), before);
+}
+
+async function checkSeedBackfillWithHistory(db, url) {
+    mustMigrate(url, 'up', '10');
+    await seedVersion10(db);
+    mustMigrate(url, 'up');
+    assert.equal(await count(db, 'SELECT 1 FROM categories WHERE seed_key IS NOT NULL'), 0);
+    assert.equal(await count(db, 'SELECT 1 FROM questions WHERE seed_key IS NOT NULL'), 0);
+    assert.equal(await count(db, 'SELECT 1 FROM questions WHERE short_title <> btrim(left(question, 24))'), 0);
+    const categoryIds = Object.fromEntries((await db.query('SELECT title, id FROM categories')).rows.map(r => [r.title, r.id]));
+    const questionIds = Object.fromEntries((await db.query('SELECT question, id FROM questions')).rows.map(r => [r.question, r.id]));
+
+    const { faq } = seedData();
+    const garantias = faq.find(c => c.seedKey === 'garantias');
+    const category = categoryIds[garantias.title];
+    const question = questionIds[garantias.questions[0].question];
+    const draft = { by_representative: false, holder_name: 'Maria', cpf_masked: '***.456.789-**' };
+    const inProgress = (await db.query(
+        "INSERT INTO sessions(phone_hash, current_step, current_category_id, current_question_id, list_page, draft) VALUES ('backfill-in-progress', 'AWAITING_HOLDER_NAME', $1, $2, 2, $3) RETURNING id",
+        [category, question, draft],
+    )).rows[0].id;
+    await db.query("INSERT INTO sessions(phone_hash, status, outcome, current_step, current_category_id, current_question_id) VALUES ('backfill-finished', 'FINISHED', 'RESOLVED', 'FINISHED', $1, $2)", [category, question]);
+    await db.query("INSERT INTO sessions(phone_hash, status, outcome, current_step, abandoned_at_step, current_category_id, list_page) VALUES ('backfill-abandoned', 'ABANDONED', 'ABANDONED', 'AWAITING_QUESTION', 'AWAITING_QUESTION', $1, 2)", [category]);
+    await db.query("INSERT INTO conversationevents(session_id, type, category_id, question_id) VALUES ($1, 'QUESTION_CHOSEN', $2, $3)", [inProgress, category, question]);
+    await db.query('UPDATE categories SET position = 6 - position');
+    await db.query(`UPDATE questions q SET position = c.n - 1 - q.position
+        FROM (SELECT category_id, count(*)::int AS n FROM questions GROUP BY category_id) c
+        WHERE c.category_id = q.category_id`);
+    const expectedPositions = {
+        categories: Object.fromEntries(faq.map((c, position) => [c.title, position])),
+        questions: Object.fromEntries(faq.flatMap(c => c.questions.map((q, position) => [q.question, position]))),
+    };
+    const positionsOf = async table => Object.fromEntries((await db.query(`SELECT ${table === 'categories' ? 'title' : 'question'} AS k, position FROM ${table}`)).rows.map(r => [r.k, r.position]));
+    assert.notDeepEqual(await positionsOf('categories'), expectedPositions.categories);
+    assert.notDeepEqual(await positionsOf('questions'), expectedPositions.questions);
+    const sessionsBefore = await rowsAsJson(db, 'sessions');
+    const eventsBefore = await rowsAsJson(db, 'conversationevents');
+
+    const output = mustSeed(url);
+    assert.match(output, /Categorias: 0 inseridas, 7 atualizadas, 0 mantidas/);
+    assert.match(output, /Perguntas: 0 inseridas, 47 atualizadas, 0 mantidas/);
+    assert.deepEqual(Object.fromEntries((await db.query('SELECT title, id FROM categories')).rows.map(r => [r.title, r.id])), categoryIds);
+    assert.deepEqual(Object.fromEntries((await db.query('SELECT question, id FROM questions')).rows.map(r => [r.question, r.id])), questionIds);
+    assert.deepEqual(await positionsOf('categories'), expectedPositions.categories);
+    assert.deepEqual(await positionsOf('questions'), expectedPositions.questions);
+    await assertSeededContent(db);
+    assert.deepEqual(await rowsAsJson(db, 'sessions'), sessionsBefore);
+    assert.deepEqual(await rowsAsJson(db, 'conversationevents'), eventsBefore);
+
+    const snapshot = await snapshotSeededTables(db);
+    mustSeed(url);
+    assert.deepEqual(await snapshotSeededTables(db), snapshot);
+}
+
+async function checkSeedKeepsPanelEdits(db, url) {
+    mustMigrate(url, 'up');
+    mustSeed(url);
+    const user = (await db.query("INSERT INTO users(name, email, password_hash) VALUES ('Equipe', 'equipe@test', 'x') RETURNING id")).rows[0].id;
+    const question = (await db.query("UPDATE questions SET updated_by = $1, short_title = 'Editado no painel', updated_at = '2030-01-01T10:00:00Z' WHERE seed_key = 'contrato.fidelidade' RETURNING id", [user])).rows[0].id;
+    await db.query('DELETE FROM requireddocuments WHERE question_id = $1', [question]);
+    await db.query("INSERT INTO requireddocuments(question_id, description, position) VALUES ($1, 'Documento do painel', 0)", [question]);
+    const panelCategory = (await db.query("INSERT INTO categories(title, short_title, position) VALUES ('Categoria do painel', 'Do painel', 7) RETURNING id")).rows[0].id;
+    const editedCategory = (await db.query("UPDATE categories SET updated_by = $1, short_title = 'Garantias editada' WHERE seed_key = 'garantias' RETURNING id", [user])).rows[0].id;
+    const snapshot = async () => ({
+        question: (await db.query('SELECT row_to_json(q)::text AS r FROM questions q WHERE id = $1', [question])).rows,
+        documents: (await db.query('SELECT row_to_json(d)::text AS r FROM requireddocuments d WHERE question_id = $1 ORDER BY id', [question])).rows,
+        categories: (await db.query('SELECT row_to_json(c)::text AS r FROM categories c WHERE id = ANY($1::bigint[]) ORDER BY id', [[panelCategory, editedCategory]])).rows,
+    });
+    const before = await snapshot();
+    const output = mustSeed(url);
+    assert.match(output, /Categorias: 0 inseridas, 0 atualizadas, 7 mantidas/);
+    assert.deepEqual(await snapshot(), before);
+    assert.equal(await count(db, 'SELECT 1 FROM categories'), 8);
+    assert.equal(await count(db, 'SELECT 1 FROM questions'), 47);
+}
+
+async function checkSeedRestoresRequiredDocuments(db, url) {
+    mustMigrate(url, 'up');
+    mustSeed(url);
+    const { faq } = seedData();
+    const findQuestion = key => faq.flatMap(c => c.questions).find(q => q.seedKey === key);
+    const seeded = findQuestion('contrato.cancelar-plano-telefone');
+    assert.ok(seeded.requiredDocuments.length >= 4);
+    const documentsOf = async id => (await db.query('SELECT description, position FROM requireddocuments WHERE question_id = $1 ORDER BY position, id', [id])).rows;
+    const scramble = async id => {
+        await db.query('DELETE FROM requireddocuments WHERE question_id = $1 AND position = 3', [id]);
+        await db.query("UPDATE requireddocuments SET description = 'Texto trocado' WHERE question_id = $1 AND position = 0", [id]);
+        await db.query('UPDATE requireddocuments SET position = 3 - position WHERE question_id = $1 AND position IN (1, 2)', [id]);
+        await db.query("INSERT INTO requireddocuments(question_id, description, position) VALUES ($1, 'Documento extra', 9)", [id]);
+    };
+
+    const question = (await db.query("SELECT id FROM questions WHERE seed_key = 'contrato.cancelar-plano-telefone'")).rows[0].id;
+    await scramble(question);
+    assert.notDeepEqual(await documentsOf(question), seeded.requiredDocuments.map((description, position) => ({ description, position })));
+
+    const user = (await db.query("INSERT INTO users(name, email, password_hash) VALUES ('Equipe', 'equipe@test', 'x') RETURNING id")).rows[0].id;
+    const edited = (await db.query("UPDATE questions SET updated_by = $1 WHERE seed_key = 'contrato.contrato-nao-entregue' RETURNING id", [user])).rows[0].id;
+    await scramble(edited);
+    const editedBefore = (await db.query('SELECT row_to_json(d)::text AS r FROM requireddocuments d WHERE question_id = $1 ORDER BY id', [edited])).rows;
+
+    const output = mustSeed(url);
+    assert.deepEqual(await documentsOf(question), seeded.requiredDocuments.map((description, position) => ({ description, position })));
+    assert.match(output, /Perguntas: 0 inseridas, 1 atualizadas, 46 mantidas/);
+    assert.deepEqual((await db.query('SELECT row_to_json(d)::text AS r FROM requireddocuments d WHERE question_id = $1 ORDER BY id', [edited])).rows, editedBefore);
+}
+
+async function checkSeedKeepsConfig(db, url) {
+    mustMigrate(url, 'up');
+    mustSeed(url);
+    await db.query("UPDATE schedulesettings SET seats_per_slot = 5, unit_address = 'Rua Alterada, 10' WHERE id = 1");
+    await db.query('DELETE FROM scheduleranges WHERE weekday = 5 AND slot_index = 2');
+    await db.query("DELETE FROM attendancedocuments WHERE attendee_group = 'REPRESENTATIVE'");
+    const before = await snapshotSeededTables(db);
+    const output = mustSeed(url);
+    assert.match(output, /configuração inicial já existe, mantida/);
+    assert.deepEqual(await snapshotSeededTables(db), before);
+    assert.deepEqual((await db.query('SELECT seats_per_slot, unit_address FROM schedulesettings')).rows, [{ seats_per_slot: 5, unit_address: 'Rua Alterada, 10' }]);
+    assert.equal(await count(db, 'SELECT 1 FROM scheduleranges'), 9);
+    assert.equal(await count(db, "SELECT 1 FROM attendancedocuments WHERE attendee_group = 'REPRESENTATIVE'"), 0);
 }
 
 async function main() {
@@ -380,7 +626,7 @@ async function main() {
             mustMigrate(url, 'up');
             await checkFreshSchema(db);
             mustMigrate(url, 'up');
-            assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 11);
+            assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
             await checkConstraints(db);
             await checkRollback(db, url);
         });
@@ -389,6 +635,20 @@ async function main() {
         console.log('OK: upgrade from version 10 with seed and sessions, seed rerun');
         await withDatabase(admin, process.env.DB_TEST_URL, checkNonEmptyAppointmentsGuard);
         console.log('OK: guard aborts on non-empty Appointments without applying anything');
+        await withDatabase(admin, process.env.DB_TEST_URL, checkShortTextNormalization);
+        console.log('OK: migration 12 trims short texts saved under version 11, rollback and reapply');
+        await withDatabase(admin, process.env.DB_TEST_URL, checkSeedFromScratch);
+        console.log('OK: seed from scratch loads content, titles, order and initial config');
+        await withDatabase(admin, process.env.DB_TEST_URL, checkSeedIdempotence);
+        console.log('OK: second seed run changes nothing');
+        await withDatabase(admin, process.env.DB_TEST_URL, checkSeedBackfillWithHistory);
+        console.log('OK: seed backfills seed_key keeping ids, events and sessions');
+        await withDatabase(admin, process.env.DB_TEST_URL, checkSeedKeepsPanelEdits);
+        console.log('OK: seed keeps rows edited or created by the panel');
+        await withDatabase(admin, process.env.DB_TEST_URL, checkSeedRestoresRequiredDocuments);
+        console.log('OK: seed rewrites changed required documents only for questions not edited by the panel');
+        await withDatabase(admin, process.env.DB_TEST_URL, checkSeedKeepsConfig);
+        console.log('OK: seed never overwrites the initial config');
     } finally {
         await admin.end();
     }

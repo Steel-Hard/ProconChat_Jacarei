@@ -11,9 +11,9 @@ const proconFaqSeed: FaqCategorySeed[] = [
     cobrancaDescontoIndevido,
     contrato,
     direitoDeArrependimento,
-    cumprimentoDeOfertaPreco,
     vicioDefeito,
     garantias,
+    cumprimentoDeOfertaPreco,
     outrosProcedimentosGerais,
 ]
 

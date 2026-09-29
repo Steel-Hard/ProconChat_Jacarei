@@ -3,7 +3,7 @@
 > Persistência única em PostgreSQL, compartilhada entre o chatbot e o painel ([`../architecture/architecture.md`](../architecture/architecture.md)).
 >
 > Este documento tem duas partes:
-> 1. **[Schema atual](#parte-1--schema-atual-implementado)**: o que existe depois das migrations `01` a `09`, `010` e `11` (a `11_sprint2_schema.sql` é o schema da Sprint 2, issue #52).
+> 1. **[Schema atual](#parte-1--schema-atual-implementado)**: o que existe depois das migrations `01` a `09`, `010`, `11` e `12` (a `11_sprint2_schema.sql` é o schema da Sprint 2, issue #52; a `12_short_text_checks.sql` ajusta o limite dos títulos curtos, issue #61).
 > 2. **[Schema planejado](#parte-2--schema-planejado-sprint-3)**: o que ainda falta criar, com a issue de cada parte.
 >
 > Antes de mexer no banco, leia também o SQL em `src/backend/db/schema/` e as convenções em [`migrations.md`](migrations.md): **toda mudança é uma migration nova**, nunca edição de migration antiga.
@@ -23,6 +23,7 @@
 | `09` | Estado de navegação da sessão (`current_step`, `current_category_id`) |
 | `010` | `current_category_id` com `ON DELETE SET NULL`, para o seed conseguir apagar categorias. O prefixo é lido como número: `010` é a versão 10 |
 | `11` | Schema da Sprint 2 (#52): conta Admin, títulos curtos e ordem do conteúdo, desfecho e rascunho da sessão, `ConversationEvents` no lugar de `Interactions`, `Appointments` recriada com o ciclo de vida novo, observações e histórico do agendamento, agenda, documentos de atendimento e configuração do WhatsApp |
+| `12` | Títulos e descrições curtas medidos como gravados, sem espaço nas pontas (#61): apara os valores que já existiam e troca os três `CHECK` de tamanho, com os mesmos nomes |
 
 ### Diagrama
 
@@ -80,7 +81,7 @@ CREATE UNIQUE INDEX uniq_users_single_admin ON Users(is_admin) WHERE is_admin;
 
 ### Categories — [decisões 001](../decisoes/001-fluxo-guiado-por-categorias.md) e [009](../decisoes/009-complemento-por-llm.md)
 
-Categorias do fluxo guiado (7 no seed atual). `active` permite desativar sem excluir.
+Categorias do fluxo guiado (7 carregadas pelo seed). `active` permite desativar sem excluir.
 
 ```sql
 CREATE TABLE Categories (
@@ -94,7 +95,7 @@ CREATE TABLE Categories (
     position INT NOT NULL DEFAULT 0,
     seed_key VARCHAR(80),
     updated_by BIGINT REFERENCES Users(id),
-    CONSTRAINT chk_categories_short_title_length CHECK (char_length(btrim(short_title)) BETWEEN 1 AND 24),
+    CONSTRAINT chk_categories_short_title_length CHECK (char_length(short_title) BETWEEN 1 AND 24 AND short_title = btrim(short_title)),
     CONSTRAINT chk_categories_position CHECK (position >= 0),
     CONSTRAINT uniq_categories_seed_key UNIQUE (seed_key)
 );
@@ -105,7 +106,7 @@ CREATE INDEX idx_categories_position ON Categories(position, id);
 
 ### Questions
 
-Um item do FAQ do PROCON dentro de uma categoria (47 no seed atual).
+Um item do FAQ do PROCON dentro de uma categoria (47 carregados pelo seed).
 
 ```sql
 CREATE TABLE Questions (
@@ -132,8 +133,8 @@ CREATE TABLE Questions (
     seed_key VARCHAR(80),
     updated_by BIGINT REFERENCES Users(id),
 
-    CONSTRAINT chk_questions_short_title_length CHECK (char_length(btrim(short_title)) BETWEEN 1 AND 24),
-    CONSTRAINT chk_questions_short_description_length CHECK (short_description IS NULL OR char_length(btrim(short_description)) BETWEEN 1 AND 72),
+    CONSTRAINT chk_questions_short_title_length CHECK (char_length(short_title) BETWEEN 1 AND 24 AND short_title = btrim(short_title)),
+    CONSTRAINT chk_questions_short_description_length CHECK (short_description IS NULL OR (char_length(short_description) BETWEEN 1 AND 72 AND short_description = btrim(short_description))),
     CONSTRAINT chk_questions_position CHECK (position >= 0),
     CONSTRAINT chk_questions_in_person_xor_out_of_scope CHECK (NOT (requires_in_person AND out_of_scope)),
     CONSTRAINT chk_questions_out_of_scope_no_llm CHECK (NOT (out_of_scope AND llm_allowed)),
@@ -164,13 +165,13 @@ CREATE INDEX idx_required_documents_question ON RequiredDocuments(question_id);
 
 **Regras do conteúdo garantidas pelo banco:**
 
-- **Títulos curtos** (`short_title`) são o texto das listas do WhatsApp: obrigatórios, de 1 a 24 caracteres (sem contar espaços nas pontas). São `TEXT` com o limite no `CHECK`. A migration `11` preencheu um valor provisório (`btrim(left(título, 24))`, às vezes cortado no meio da palavra), que a #61 refina só com `UPDATE`, sem migration nova.
-- **Descrição curta** (`short_description`) é opcional e, quando preenchida, tem de 1 a 72 caracteres.
+- **Títulos curtos** (`short_title`) são o texto das listas do WhatsApp: obrigatórios, de 1 a 24 caracteres **contados como gravados**, sem espaço nas pontas (migration `12`). São `TEXT` com o limite no `CHECK`. A migration `11` preencheu um valor provisório (`btrim(left(título, 24))`), substituído pelos títulos definitivos do seed da #61. O `btrim` do `CHECK` só remove espaços: tabulação e quebra de linha nas pontas ficam a cargo do teste de dados do seed e da API da #63.
+- **Descrição curta** (`short_description`) é opcional e, quando preenchida, tem de 1 a 72 caracteres, com a mesma regra de espaço nas pontas do título curto.
 - Uma pergunta **não pode ser presencial e fora do escopo** ao mesmo tempo (`chk_questions_in_person_xor_out_of_scope`).
 - **Fora do escopo nunca usa IA** (`chk_questions_out_of_scope_no_llm`): `llm_allowed` tem que ser `false` quando `out_of_scope` é `true`.
 - A **resposta** tem no máximo 3.000 caracteres.
 - **Ordem:** listas ordenadas por `position, id`. `position` não é `UNIQUE`, para a reordenação não precisar de constraint adiável.
-- **`seed_key`** é a chave estável que a #61 usa para tornar o seed idempotente e não destrutivo (inserir o que falta e atualizar pela chave, em vez de apagar e recriar). Fica `NULL` nas linhas criadas pelo painel.
+- **`seed_key`** é a chave estável do seed (#61): ele insere o que falta e atualiza pela chave, sem nunca apagar, preservando os ids. Numa linha antiga sem chave, a primeira execução grava a chave casando o texto exato (`title` nas categorias, `category_id` + `question` nas perguntas). O seed só atualiza linhas com `updated_by` `NULL`: quando o painel (#63) grava `updated_by`, a linha deixa de ser tocada. Fica `NULL` nas linhas criadas pelo painel. Uma chave nunca é renomeada nem reaproveitada. Detalhes em `src/backend/db/seeds/README.md`.
 - **Categoria "oculta"** (ativa, mas sem nenhuma pergunta ativa) é regra de consulta, não coluna.
 - Conteúdo não é apagado (decisão 001): as FKs de `ConversationEvents` e `Appointments` para `Categories`/`Questions` não têm cascade, então apagar uma pergunta com histórico falha.
 
@@ -297,7 +298,7 @@ A correspondência entre etapa e os 6 nomes de abandono dos Relatórios é da ap
 - `abandoned_at_step` é obrigatória quando o desfecho é `ABANDONED`, e proibida nos demais.
 - `list_page` (página da lista no WhatsApp) é ≥ 1.
 - `last_interaction_at` sustenta o **timeout de 30 minutos**, com o índice parcial `idx_sessions_last_interaction` só nas sessões em andamento.
-- `current_category_id` e `current_question_id` usam `ON DELETE SET NULL` (migration `010` e `11`), porque o seed atual apaga e recria o conteúdo.
+- `current_category_id` e `current_question_id` usam `ON DELETE SET NULL` (migration `010` e `11`). Isso vem do seed antigo, que apagava as categorias; desde a #61 o seed não apaga conteúdo e não mexe em `Sessions`.
 
 **`draft`**: dados temporários entre as etapas do agendamento. Regras:
 
@@ -568,7 +569,7 @@ CREATE TABLE BlockedDates (
 CREATE INDEX idx_blocked_dates_date ON BlockedDates(date);
 ```
 
-- **`ScheduleSettings` tem linha única** (`id = 1`), criada pelo seed da #61; a migration não a insere porque o endereço real ainda não é conhecido. Sem ela, a #56 trata a agenda como "não configurada" (sem horários). Os `CHECK` limitam cada campo aos valores da tela (duração de 20, 30, 40 ou 60 minutos; 1 a 20 vagas; janela de 1 a 180 dias; antecedência de 0, 1, 2, 3 ou 5 dias; alerta de espera de 1 a 60 dias; lembrete 2, 6, 12, 24 ou 48 horas antes).
+- **`ScheduleSettings` tem linha única** (`id = 1`), criada pelo seed da #61 **uma única vez**, com os valores de `db/seeds/data/configuracao-inicial.data.ts` (junto com a grade de `ScheduleRanges` e as listas de `AttendanceDocuments`); a migration não a insere. Se a linha já existe, o seed não toca em nenhuma das três tabelas, e o que o PROCON alterar sobrevive a todo deploy. O seed não insere nada em `BlockedDates` (feriados ficam para a tela de Horários, #64). Sem ela, a #56 trata a agenda como "não configurada" (sem horários). Os `CHECK` limitam cada campo aos valores da tela (duração de 20, 30, 40 ou 60 minutos; 1 a 20 vagas; janela de 1 a 180 dias; antecedência de 0, 1, 2, 3 ou 5 dias; alerta de espera de 1 a 60 dias; lembrete 2, 6, 12, 24 ou 48 horas antes).
 - `updated_by`/`updated_at` de `ScheduleSettings` servem ao "Última alteração por … em …" da tela inteira de Horários: grade e bloqueios são salvos juntos.
 - **Grade semanal:** `weekday` 0 = domingo … 6 = sábado. `slot_index` 1..3 com `UNIQUE (weekday, slot_index)` garante **até 3 faixas por dia**. Dia "desligado" = dia sem faixas. O fim da faixa tem que ser depois do início.
 - **Bloqueio:** período com os dois horários preenchidos (fim depois do início) ou dia inteiro com os dois `NULL`.
