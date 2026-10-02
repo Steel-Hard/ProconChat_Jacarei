@@ -178,6 +178,89 @@ curl http://localhost:3000/health
 curl http://localhost:3001/health
 ```
 
+## 11. WhatsApp Cloud API (`/webhooks/whatsapp`)
+
+O gateway também recebe eventos da WhatsApp Cloud API oficial (issue #53, decisão 003). A Evolution
+continua funcionando em paralelo até a issue #82. O caminho é:
+
+Meta → `GET`/`POST /webhooks/whatsapp` neste Gateway → `POST /api/v1/whatsapp/sessions` no Backend →
+resposta enviada pela Graph API (`https://graph.facebook.com/<versão>/<WHATSAPP_PHONE_NUMBER_ID>/messages`).
+
+- `GET /webhooks/whatsapp`: verificação da Meta. Com `hub.mode=subscribe` e `hub.verify_token` igual a
+  `WHATSAPP_VERIFY_TOKEN`, responde `200` em `text/plain` com o `hub.challenge`. Qualquer outro caso
+  responde `403 FORBIDDEN`.
+- `POST /webhooks/whatsapp`: eventos. O cabeçalho `X-Hub-Signature-256` precisa ser
+  `sha256=` + HMAC-SHA256 do corpo cru com `WHATSAPP_APP_SECRET`. Sem assinatura ou com assinatura
+  errada: `401 UNAUTHORIZED`, nada é processado. Corpo assinado que não é JSON: `400 BAD_REQUEST`.
+- Mensagens de texto vão ao Backend como `{ phone, text }`; toques em lista ou botão vão como
+  `{ phone, optionId }`. Eventos de status, outros números, outros campos, mensagens repetidas (mesmo
+  `wamid`), mensagens com mais de 5 minutos e tipos sem texto (áudio, imagem etc.) são ignorados com um
+  log JSON que tem só `reason` e `messageId`, nunca telefone, texto ou token.
+- As mensagens do mesmo telefone são processadas em fila: a resposta inteira de uma mensagem é enviada
+  antes de a próxima ser repassada ao Backend.
+- O Backend pode devolver `reply.messages` com itens `text`, `list` (até 10 linhas, título ≤ 24,
+  descrição ≤ 72, `buttonText` ≤ 20, corpo ≤ 4096) ou `buttons` (até 3, título ≤ 20, corpo ≤ 1024).
+  Sem `reply.messages`, o Gateway envia `reply.text` como texto (corpo ≤ 4096). Mensagem fora dos limites
+  não é enviada, dividida nem truncada: fica no log como `invalid_outgoing_message`.
+
+### Túnel HTTPS para o teste
+
+A Meta só chama URL HTTPS pública. Até existir a URL do time (issue #51), cada dev usa um túnel
+apontando para a porta do gateway, por exemplo:
+
+```bash
+ngrok http 3001
+cloudflared tunnel --url http://localhost:3001
+```
+
+No app da Meta, em **WhatsApp → Configuração → Webhook**, informe `https://<túnel>/webhooks/whatsapp`
+como URL de callback e o valor de `WHATSAPP_VERIFY_TOKEN` em "Verificar token". Depois de "Verificar e
+salvar", assine o campo `messages`. O número de teste da Meta só entrega a até 5 destinatários
+cadastrados no app.
+
+### Teste manual com `curl`
+
+Verificação (deve imprimir `123`):
+
+```bash
+curl -s "http://localhost:3001/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=$WHATSAPP_VERIFY_TOKEN&hub.challenge=123"
+```
+
+Evento assinado (use o mesmo `WHATSAPP_APP_SECRET` e `WHATSAPP_PHONE_NUMBER_ID` do gateway; com os
+defaults do Compose são `development-app-secret` e `development-phone-number-id`):
+
+```bash
+BODY='{"object":"whatsapp_business_account","entry":[{"id":"0","changes":[{"field":"messages","value":{"messaging_product":"whatsapp","metadata":{"phone_number_id":"development-phone-number-id"},"messages":[{"id":"wamid.manual-1","from":"5500000000999","type":"text","text":{"body":"oi"}}]}}]}]}'
+SIGNATURE="sha256=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$WHATSAPP_APP_SECRET" | sed 's/^.* //')"
+curl -s -X POST http://localhost:3001/webhooks/whatsapp \
+  -H "Content-Type: application/json" \
+  -H "X-Hub-Signature-256: $SIGNATURE" \
+  -d "$BODY"
+```
+
+Resultado esperado: `{"data":{"results":[{"status":"processed","messageId":"wamid.manual-1"}]}}` e uma
+sessão criada no Backend. O envio da resposta falha sem credenciais reais (`send_failed` no log), o que
+não muda o `200`. Repetir o comando devolve `duplicate_message`. Sem o cabeçalho `X-Hub-Signature-256`,
+a resposta é `401`.
+
+### Token de acesso permanente
+
+O token temporário do painel de desenvolvedor expira em 24 h. Para testar e operar, use um token de
+usuário do sistema sem expiração:
+
+1. No Meta Business Suite, abrir **Configurações do negócio → Usuários → Usuários do sistema** e clicar
+   em **Adicionar**.
+2. Dar um nome (ex.: `proconchat-gateway`) e escolher o papel **Administrador**.
+3. Com o usuário selecionado, clicar em **Atribuir ativos**: em **Apps**, escolher o app de teste e dar
+   controle total; em **Contas do WhatsApp**, escolher a conta do WhatsApp Business do app e dar
+   controle total. Salvar.
+4. Clicar em **Gerar novo token**, escolher o app, definir a validade como **Nunca** e marcar as
+   permissões `whatsapp_business_messaging` e `whatsapp_business_management`.
+5. Gerar e copiar o token (ele só aparece uma vez).
+6. Colar em `WHATSAPP_ACCESS_TOKEN` no `.env` da raiz (nunca em arquivo versionado) e recriar o
+   gateway: `docker compose up -d --build gateway`.
+7. Conferir enviando uma mensagem ao número de teste a partir de um destinatário cadastrado.
+
 ## O que o teste manual (passos 5 e 6) comprova
 
 Valida:
