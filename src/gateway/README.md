@@ -49,6 +49,22 @@ PostgreSQL são aplicadas na criação inicial do volume — não altere só a s
 tiver dados. A resposta automática fica desligada por padrão (`EVOLUTION_AUTO_REPLY_ENABLED=false`)
 até o motor de decisão ser conectado ao webhook.
 
+### Variáveis da WhatsApp Cloud API
+
+O webhook `/webhooks/whatsapp` usa as variáveis abaixo, lidas do `.env` da raiz. Sem elas no
+`.env`, o `compose.yaml` aplica defaults de desenvolvimento e o gateway sobe sem app da Meta (os
+envios falham até as credenciais reais serem configuradas).
+
+| Variável | Obrigatória | Descrição |
+|---|---|---|
+| `WHATSAPP_PHONE_NUMBER_ID` | sim | ID do número no app da Meta (**WhatsApp → Configuração da API**). Eventos de outro número são ignorados |
+| `WHATSAPP_ACCESS_TOKEN` | sim | Token usado no envio pela Graph API. Use um **token de usuário do sistema sem expiração** (seção "Token de acesso permanente"); o token temporário do painel expira em 24 h |
+| `WHATSAPP_APP_SECRET` | sim | Chave secreta do app (**Configurações do app → Básico**), usada para validar `X-Hub-Signature-256` |
+| `WHATSAPP_VERIFY_TOKEN` | sim | Segredo escolhido pelo time e repetido no campo "Verificar token" do webhook na Meta |
+| `WHATSAPP_GRAPH_API_VERSION` | não | Versão da Graph API usada no envio. Padrão: `v26.0` |
+
+Nenhuma dessas variáveis aparece em log. Os segredos ficam só no `.env`, nunca em arquivo versionado.
+
 ## 2. Endereços locais
 
 - Backend: http://localhost:3000 (`GET /health`)
