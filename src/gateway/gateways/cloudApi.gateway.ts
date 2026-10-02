@@ -8,6 +8,7 @@ import {
     CloudApiOutgoingBody,
     CloudApiWebhookPayload,
 } from "../types/cloudApi.types"
+import { readWhatsAppConfigFromEnv } from "../utils/whatsappConfig"
 
 const SIGNATURE_PATTERN = /^sha256=([0-9a-f]{64})$/i
 const SEND_TIMEOUT_MS = 10_000
@@ -220,3 +221,5 @@ export function createCloudApiProvider({
         },
     }
 }
+
+export const cloudApiProvider = createCloudApiProvider({ getConfig: readWhatsAppConfigFromEnv })
