@@ -11,6 +11,11 @@ export default defineConfig({
             EVOLUTION_AUTO_REPLY_ENABLED: "false",
             BACKEND_INTERNAL_URL: "http://backend:3000",
             GATEWAY_INTERNAL_TOKEN: "test-only-internal-token",
+            WHATSAPP_PHONE_NUMBER_ID: "100000000000001",
+            WHATSAPP_ACCESS_TOKEN: "test-only-access-token",
+            WHATSAPP_APP_SECRET: "test-only-app-secret",
+            WHATSAPP_VERIFY_TOKEN: "test-only-verify-token",
+            WHATSAPP_GRAPH_API_VERSION: "v26.0",
         },
     },
 })
