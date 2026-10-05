@@ -5,7 +5,8 @@ export class MockMotorDecisaoRepository implements IMotorDecisaoRepository {
     private categorias: Categoria[] = [
         { id: 1, title: "Direito de Arrependimento", active: true },
         { id: 2, title: "Garantia e Defeitos", active: true },
-        { id: 3, title: "Categoria Inativa", active: false }
+        { id: 3, title: "Categoria Inativa", active: false },
+        { id: 4, title: "Categoria Sem Perguntas Ativas", active: true },
     ]
 
     private perguntas: Pergunta[] = [
@@ -17,7 +18,7 @@ export class MockMotorDecisaoRepository implements IMotorDecisaoRepository {
             answer: "Sim, em compras online você tem até 7 dias corridos após o recebimento para desistir.",
             requires_in_person: false,
             out_of_scope: false,
-            active: true
+            active: true,
         },
         {
             id: 2,
@@ -27,7 +28,7 @@ export class MockMotorDecisaoRepository implements IMotorDecisaoRepository {
             answer: "",
             requires_in_person: false,
             out_of_scope: true,
-            active: true
+            active: true,
         },
         {
             id: 3,
@@ -37,7 +38,7 @@ export class MockMotorDecisaoRepository implements IMotorDecisaoRepository {
             answer: "Procure a assistência técnica autorizada. Se não resolverem em 30 dias, você pode exigir a troca.",
             requires_in_person: true,
             out_of_scope: false,
-            active: true
+            active: true,
         },
         {
             id: 4,
@@ -47,7 +48,7 @@ export class MockMotorDecisaoRepository implements IMotorDecisaoRepository {
             answer: "N/A",
             requires_in_person: false,
             out_of_scope: false,
-            active: false
+            active: false,
         },
         {
             id: 5,
@@ -57,19 +58,31 @@ export class MockMotorDecisaoRepository implements IMotorDecisaoRepository {
             answer: "N/A",
             requires_in_person: false,
             out_of_scope: false,
-            active: true
-        }
+            active: true,
+        },
+        {
+            id: 6,
+            category_id: 4,
+            question: "Pergunta inativa de categoria 4?",
+            legal_basis: null,
+            answer: "N/A",
+            requires_in_person: false,
+            out_of_scope: false,
+            active: false,
+        },
     ]
 
     private documentos: DocumentoNecessario[] = [
         { id: 1, question_id: 1, description: "Nota fiscal" },
         { id: 2, question_id: 1, description: "Comprovante de pagamento" },
         { id: 3, question_id: 3, description: "Nota fiscal" },
-        { id: 4, question_id: 3, description: "Ordem de serviço da assistência" }
+        { id: 4, question_id: 3, description: "Ordem de serviço da assistência" },
     ]
 
     async getCategoriasAtivas(): Promise<Categoria[]> {
-        return this.categorias.filter((c) => c.active)
+        return this.categorias.filter(
+            (c) => c.active && this.perguntas.some((p) => p.category_id === c.id && p.active),
+        )
     }
 
     async getPerguntasAtivasPorCategoria(categoriaId: number): Promise<Pergunta[]> {
