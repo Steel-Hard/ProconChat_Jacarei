@@ -7,6 +7,11 @@ export type SessionStep =
     | "AWAITING_RESOLVED"
     | "AWAITING_SCHEDULE_OFFER"
     | "AWAITING_ATTENDEE"
+    | "AWAITING_HOLDER_NAME"
+    | "AWAITING_HOLDER_CPF"
+    | "AWAITING_SLOT"
+    | "AWAITING_RETURN_CHOICE"
+    | "AWAITING_CANCEL_CONFIRMATION"
     | "FINISHED"
 
 export type SessionOutcome =
@@ -19,6 +24,14 @@ export type SessionOutcome =
     | "MANAGED_APPOINTMENT"
     | "ABANDONED"
 
+export interface SessionDraft {
+    by_representative?: boolean
+    holder_name?: string
+    cpf_hash?: string
+    cpf_masked?: string
+    target_appointment_id?: number | string
+}
+
 export interface ActiveSession {
     id: string
     created: boolean
@@ -26,6 +39,7 @@ export interface ActiveSession {
     currentCategoryId: string | null
     currentQuestionId: string | null
     listPage: number
+    draft?: SessionDraft | null
 }
 
 export interface NavigationState {
@@ -33,6 +47,7 @@ export interface NavigationState {
     currentCategoryId?: string | null
     currentQuestionId?: string | null
     listPage?: number
+    draft?: SessionDraft | null
 }
 
 export interface SessionRepository {
@@ -51,6 +66,7 @@ export const sessionRepository: SessionRepository = {
              SET status = 'ABANDONED',
                  outcome = 'ABANDONED',
                  abandoned_at_step = current_step,
+                 draft = NULL,
                  ended_at = now()
              WHERE phone_hash = $1
                AND status = 'IN_PROGRESS'
@@ -64,11 +80,12 @@ export const sessionRepository: SessionRepository = {
             current_category_id: string | null
             current_question_id: string | null
             list_page: number
+            draft: SessionDraft | null
         }>(
             `INSERT INTO Sessions (phone_hash)
              VALUES ($1)
              ON CONFLICT (phone_hash) WHERE status = 'IN_PROGRESS' DO NOTHING
-             RETURNING id, current_step, current_category_id, current_question_id, list_page`,
+             RETURNING id, current_step, current_category_id, current_question_id, list_page, draft`,
             [phoneHash],
         )
 
@@ -81,6 +98,7 @@ export const sessionRepository: SessionRepository = {
                 currentCategoryId: created.current_category_id,
                 currentQuestionId: created.current_question_id,
                 listPage: created.list_page,
+                draft: created.draft,
             }
         }
 
@@ -90,11 +108,12 @@ export const sessionRepository: SessionRepository = {
             current_category_id: string | null
             current_question_id: string | null
             list_page: number
+            draft: SessionDraft | null
         }>(
             `UPDATE Sessions
              SET last_interaction_at = now()
              WHERE phone_hash = $1 AND status = 'IN_PROGRESS'
-             RETURNING id, current_step, current_category_id, current_question_id, list_page`,
+             RETURNING id, current_step, current_category_id, current_question_id, list_page, draft`,
             [phoneHash],
         )
 
@@ -110,11 +129,15 @@ export const sessionRepository: SessionRepository = {
             currentCategoryId: session.current_category_id,
             currentQuestionId: session.current_question_id,
             listPage: session.list_page,
+            draft: session.draft,
         }
     },
 
     async updateNavigationState(sessionId: string, state: NavigationState): Promise<void> {
         const pool = getPool()
+
+        const hasDraftUpdate = state.draft !== undefined
+        const draftJson = state.draft ? JSON.stringify(state.draft) : null
 
         const result = await pool.query(
             `UPDATE Sessions
@@ -122,14 +145,17 @@ export const sessionRepository: SessionRepository = {
                  current_category_id = COALESCE($2, current_category_id),
                  current_question_id = COALESCE($3, current_question_id),
                  list_page = COALESCE($4, list_page),
+                 draft = CASE WHEN $5::boolean THEN $6::jsonb ELSE draft END,
                  last_interaction_at = now()
-             WHERE id = $5
+             WHERE id = $7
                AND status = 'IN_PROGRESS'`,
             [
                 state.currentStep,
                 state.currentCategoryId ?? null,
                 state.currentQuestionId ?? null,
                 state.listPage ?? null,
+                hasDraftUpdate,
+                draftJson,
                 sessionId,
             ],
         )
@@ -147,7 +173,8 @@ export const sessionRepository: SessionRepository = {
                  outcome = $2,
                  ended_at = now(),
                  last_interaction_at = now(),
-                 current_step = 'FINISHED'
+                 current_step = 'FINISHED',
+                 draft = NULL
              WHERE id = $1`,
             [sessionId, outcome],
         )

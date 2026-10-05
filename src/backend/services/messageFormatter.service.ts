@@ -1,4 +1,5 @@
 import { Categoria, Pergunta, RespostaFinalOutput } from "../types/motorDecisao.types"
+import { AvailableSlot } from "../types/schedule.types"
 
 export const SAUDACAO =
     "Olá! Sou o assistente virtual do PROCON Jacareí. As orientações abaixo têm caráter informativo e não substituem o atendimento formal. Para o atendimento, protegemos seus dados conforme a LGPD.\n\nEscolha uma das opções abaixo digitando o número correspondente:"
@@ -28,6 +29,48 @@ export const RESPOSTA_RECUSA_AGENDAMENTO =
 
 export const RESPOSTA_INICIO_AGENDAMENTO =
     "Vamos iniciar o agendamento presencial. Quem irá comparecer ao atendimento?\n1. Eu mesmo\n2. Um representante"
+
+export const ERRO_ATTENDEE =
+    "Não entendi. Por favor, escolha quem comparecerá digitando o número:\n1. Eu mesmo\n2. Um representante"
+
+export const PROMPT_NOME =
+    "Por favor, digite o nome completo do titular do atendimento:"
+
+export const ERRO_NOME =
+    "Por favor, digite um nome válido (entre 2 e 150 caracteres):"
+
+export const PROMPT_CPF =
+    "Agora, digite o CPF do titular (somente os 11 números ou com pontos e traço):"
+
+export const ERRO_CPF =
+    "CPF inválido. Por favor, digite um CPF válido com 11 dígitos:"
+
+export const MENSAGEM_SEM_HORARIOS =
+    "No momento não há horários disponíveis para agendamento presencial na janela de atendimento. Por favor, tente novamente mais tarde."
+
+export const ERRO_SLOT_OCUPADO =
+    "O horário selecionado acabou de ser preenchido por outro atendimento. Por favor, escolha outro horário disponível:"
+
+export const ERRO_DUPLICATE_APPOINTMENT =
+    "Você já possui um agendamento ativo para este mesmo horário. Por favor, escolha outro horário disponível:"
+
+export const PROMPT_SLOTS =
+    "Escolha um dos horários disponíveis para o atendimento presencial:"
+
+export const ERRO_SLOTS =
+    "Não entendi. Por favor, escolha um dos horários digitando o número:"
+
+export interface ConfirmacaoAgendamentoInput {
+    protocol: string
+    quando: string
+    unitAddress: string
+    unitAddressComplement?: string | null
+    byRepresentative: boolean
+    groupDocuments: string[]
+    questionDocuments: string[]
+    reminderEnabled: boolean
+    reminderHours: number
+}
 
 export interface PaginatedResult<T> {
     itensPagina: T[]
@@ -111,7 +154,7 @@ export function paginarItens<T>(itens: T[], paginaSolicitada: number = 1): Pagin
     }
 }
 
-function formatarListaPaginada(
+export function formatarListaPaginada(
     paginacao: PaginatedResult<string>,
 ): string {
     const linhas: string[] = []
@@ -185,6 +228,80 @@ export function formatarErroPergunta(
 
 export function formatarCategoriaSemPerguntas(): string {
     return "No momento não há perguntas cadastradas para essa categoria. Digite o número de outra categoria."
+}
+
+export function formatarListaSlots(
+    slots: AvailableSlot[],
+    pagina: number = 1,
+): string {
+    if (slots.length === 0) {
+        return MENSAGEM_SEM_HORARIOS
+    }
+
+    const formatados = slots.map((s) => s.formatted)
+    const paginacao = paginarItens(formatados, pagina)
+    const listaFormatada = formatarListaPaginada(paginacao)
+
+    return `${PROMPT_SLOTS}\n${listaFormatada}`
+}
+
+export function formatarErroSlot(
+    slots: AvailableSlot[],
+    pagina: number = 1,
+): string {
+    if (slots.length === 0) {
+        return MENSAGEM_SEM_HORARIOS
+    }
+
+    const formatados = slots.map((s) => s.formatted)
+    const paginacao = paginarItens(formatados, pagina)
+    const listaFormatada = formatarListaPaginada(paginacao)
+
+    return `${ERRO_SLOTS}\n${listaFormatada}`
+}
+
+export function formatarConfirmacaoAgendamento(input: ConfirmacaoAgendamentoInput): string {
+    const linhas: string[] = [
+        "Agendamento realizado",
+        `Protocolo: ${input.protocol}`,
+        `Data e hora: ${input.quando}`,
+    ]
+
+    const endereco =
+        input.unitAddress.trim() +
+        (input.unitAddressComplement?.trim() ? ` (${input.unitAddressComplement.trim()})` : "")
+    linhas.push(`Endereço: ${endereco}`)
+
+    if (input.groupDocuments.length > 0) {
+        linhas.push("")
+        const tituloGrupo = input.byRepresentative
+            ? "A pessoa que comparecer em seu nome deve levar:"
+            : "Leve ao atendimento:"
+        linhas.push(tituloGrupo)
+        for (const doc of input.groupDocuments) {
+            linhas.push(`• ${doc}`)
+        }
+    }
+
+    if (input.questionDocuments.length > 0) {
+        linhas.push("")
+        linhas.push("Documentos úteis para esta dúvida:")
+        for (const doc of input.questionDocuments) {
+            linhas.push(`• ${doc}`)
+        }
+    }
+
+    linhas.push("")
+    const horasTexto = input.reminderHours === 1 ? "1 hora" : `${input.reminderHours} horas`
+    const avisoTexto = input.reminderEnabled
+        ? `Você receberá neste número avisos sobre este agendamento, como um lembrete ${horasTexto} antes do atendimento e o aviso em caso de cancelamento.`
+        : "Você receberá neste número avisos sobre este agendamento, como o aviso em caso de cancelamento."
+    linhas.push(avisoTexto)
+
+    linhas.push("")
+    linhas.push("Se precisar remarcar ou cancelar, responda a esta mensagem.")
+
+    return linhas.join("\n")
 }
 
 export function formatarRespostaFinal(resposta: RespostaFinalOutput): string {

@@ -3,10 +3,12 @@ import { Categoria, Pergunta, RespostaFinalOutput } from "../types/motorDecisao.
 import {
     AVISO_NAO_VINCULANTE,
     formatarCategoriaSemPerguntas,
+    formatarConfirmacaoAgendamento,
     formatarErroCategoria,
     formatarErroPergunta,
     formatarListaCategorias,
     formatarListaPerguntas,
+    formatarListaSlots,
     formatarRespostaFinal,
     paginarItens,
 } from "./messageFormatter.service"
@@ -203,6 +205,75 @@ describe("messageFormatter.service", () => {
             expect(p4.itensPagina.length).toBe(5)
             expect(p4.opcaoAnterior).toBe(6)
             expect(p4.temProxima).toBe(false)
+        })
+    })
+
+    describe("Formatação de Agendamento (#56)", () => {
+        test("formatarListaSlots formata slots disponíveis com paginação", () => {
+            const slots = [
+                {
+                    datetime: new Date("2026-10-06T08:00:00-03:00"),
+                    dateStr: "2026-10-06",
+                    timeStr: "08:00",
+                    formatted: "Terça-feira, 06/10 às 08:00",
+                    remainingSeats: 2,
+                },
+                {
+                    datetime: new Date("2026-10-06T08:30:00-03:00"),
+                    dateStr: "2026-10-06",
+                    timeStr: "08:30",
+                    formatted: "Terça-feira, 06/10 às 08:30",
+                    remainingSeats: 1,
+                },
+            ]
+
+            const texto = formatarListaSlots(slots, 1)
+            expect(texto).toContain("1. Terça-feira, 06/10 às 08:00")
+            expect(texto).toContain("2. Terça-feira, 06/10 às 08:30")
+        })
+
+        test("formatarConfirmacaoAgendamento gera mensagem completa com documentos, endereco e avisos", () => {
+            const texto = formatarConfirmacaoAgendamento({
+                protocol: "A3F9C21B",
+                quando: "quarta-feira, 07/10 às 09:30",
+                unitAddress: "Rua do Procon, 100",
+                unitAddressComplement: "Centro",
+                byRepresentative: false,
+                groupDocuments: ["RG", "CPF"],
+                questionDocuments: ["Contrato"],
+                reminderEnabled: true,
+                reminderHours: 24,
+            })
+
+            expect(texto).toContain("Agendamento realizado")
+            expect(texto).toContain("Protocolo: A3F9C21B")
+            expect(texto).toContain("Data e hora: quarta-feira, 07/10 às 09:30")
+            expect(texto).toContain("Endereço: Rua do Procon, 100 (Centro)")
+            expect(texto).toContain("Leve ao atendimento:")
+            expect(texto).toContain("• RG")
+            expect(texto).toContain("• CPF")
+            expect(texto).toContain("Documentos úteis para esta dúvida:")
+            expect(texto).toContain("• Contrato")
+            expect(texto).toContain("lembrete 24 horas antes do atendimento e o aviso em caso de cancelamento")
+            expect(texto).toContain("Se precisar remarcar ou cancelar, responda a esta mensagem.")
+        })
+
+        test("formatarConfirmacaoAgendamento quando representante comparece", () => {
+            const texto = formatarConfirmacaoAgendamento({
+                protocol: "A3F9C21B",
+                quando: "quarta-feira, 07/10 às 09:30",
+                unitAddress: "Rua do Procon, 100",
+                byRepresentative: true,
+                groupDocuments: ["Procuração"],
+                questionDocuments: [],
+                reminderEnabled: false,
+                reminderHours: 24,
+            })
+
+            expect(texto).toContain("A pessoa que comparecer em seu nome deve levar:")
+            expect(texto).toContain("• Procuração")
+            expect(texto).not.toContain("Documentos úteis para esta dúvida:")
+            expect(texto).toContain("como o aviso em caso de cancelamento")
         })
     })
 })

@@ -1,6 +1,8 @@
 import { hashPhone } from "./whatsappSession.service"
 import {
+  ActiveSession,
   sessionRepository,
+  SessionDraft,
   SessionRepository,
   SessionStep,
 } from "../repositories/session.repository"
@@ -12,21 +14,40 @@ import {
   RespostaFinalOutput,
 } from "../types/motorDecisao.types"
 import {
+  ERRO_ATTENDEE,
+  ERRO_CPF,
+  ERRO_DUPLICATE_APPOINTMENT,
+  ERRO_NOME,
   ERRO_OFERTA_AGENDAMENTO,
   ERRO_RESOLVIDA,
+  ERRO_SLOT_OCUPADO,
   formatarCategoriaSemPerguntas,
+  formatarConfirmacaoAgendamento,
   formatarErroCategoria,
   formatarErroPergunta,
+  formatarErroSlot,
   formatarListaCategorias,
   formatarListaPerguntas,
+  formatarListaSlots,
   formatarRespostaFinal,
+  MENSAGEM_SEM_HORARIOS,
   OFERTA_AGENDAMENTO,
   paginarItens,
   PERGUNTA_RESOLVIDA,
+  PROMPT_CPF,
+  PROMPT_NOME,
   RESPOSTA_INICIO_AGENDAMENTO,
   RESPOSTA_RECUSA_AGENDAMENTO,
   RESPOSTA_RESOLVIDA_SIM,
 } from "./messageFormatter.service"
+import { cleanCpf, hashCpf, maskCpf, validateCpf } from "../utils/cpf.utils"
+import {
+  AvailableSlot,
+  BookAppointmentInput,
+  BookAppointmentResult,
+} from "../types/schedule.types"
+import { ScheduleService } from "./schedule.service"
+import { PgScheduleRepository } from "../repositories/schedule.repository"
 
 export interface ConversationFlowInput {
   phone: string
@@ -50,9 +71,15 @@ export interface MotorDecisao {
   processarPergunta(perguntaId: number): Promise<RespostaFinalOutput>
 }
 
+export interface ScheduleProvider {
+  getAvailableSlots(now?: Date): Promise<AvailableSlot[]>
+  bookSlot(input: BookAppointmentInput): Promise<BookAppointmentResult>
+}
+
 interface ConversationFlowDependencies {
   sessions: SessionRepository
   motor: MotorDecisao
+  schedule: ScheduleProvider
   hashPhone: (phone: string) => string
 }
 
@@ -105,6 +132,7 @@ function createPhoneLock() {
 export function createConversationFlowService({
   sessions,
   motor,
+  schedule,
   hashPhone: hashPhoneOf,
 }: ConversationFlowDependencies): (
   input: ConversationFlowInput,
@@ -122,6 +150,7 @@ export function createConversationFlowService({
       currentCategoryId: null,
       currentQuestionId: null,
       listPage: 1,
+      draft: null,
     })
 
     return {
@@ -461,6 +490,307 @@ export function createConversationFlowService({
     }
   }
 
+  async function handleAwaitingAttendee(
+    sessionId: string,
+    draft: SessionDraft | null | undefined,
+    text: string | undefined,
+  ): Promise<ConversationFlowResult> {
+    const trimmed = text?.trim()
+
+    if (trimmed !== "1" && trimmed !== "2") {
+      return {
+        sessionId,
+        newSession: false,
+        reply: {
+          text: ERRO_ATTENDEE,
+          step: "AWAITING_ATTENDEE",
+        },
+      }
+    }
+
+    const byRepresentative = trimmed === "2"
+    await sessions.updateNavigationState(sessionId, {
+      currentStep: "AWAITING_HOLDER_NAME",
+      draft: {
+        ...draft,
+        by_representative: byRepresentative,
+      },
+    })
+
+    return {
+      sessionId,
+      newSession: false,
+      reply: {
+        text: PROMPT_NOME,
+        step: "AWAITING_HOLDER_NAME",
+      },
+    }
+  }
+
+  async function handleAwaitingHolderName(
+    sessionId: string,
+    draft: SessionDraft | null | undefined,
+    text: string | undefined,
+  ): Promise<ConversationFlowResult> {
+    const name = text?.trim()
+
+    if (!name || name.length < 2 || name.length > 150) {
+      return {
+        sessionId,
+        newSession: false,
+        reply: {
+          text: ERRO_NOME,
+          step: "AWAITING_HOLDER_NAME",
+        },
+      }
+    }
+
+    await sessions.updateNavigationState(sessionId, {
+      currentStep: "AWAITING_HOLDER_CPF",
+      draft: {
+        ...draft,
+        holder_name: name,
+      },
+    })
+
+    return {
+      sessionId,
+      newSession: false,
+      reply: {
+        text: PROMPT_CPF,
+        step: "AWAITING_HOLDER_CPF",
+      },
+    }
+  }
+
+  async function handleAwaitingHolderCpf(
+    sessionId: string,
+    draft: SessionDraft | null | undefined,
+    text: string | undefined,
+  ): Promise<ConversationFlowResult> {
+    if (!validateCpf(text)) {
+      return {
+        sessionId,
+        newSession: false,
+        reply: {
+          text: ERRO_CPF,
+          step: "AWAITING_HOLDER_CPF",
+        },
+      }
+    }
+
+    const cleaned = cleanCpf(text!)
+    const cpfHash = hashCpf(cleaned)
+    const cpfMasked = maskCpf(cleaned)
+
+    const updatedDraft: SessionDraft = {
+      ...draft,
+      cpf_hash: cpfHash,
+      cpf_masked: cpfMasked,
+    }
+
+    // Busca horários livres para agendamento
+    const slots = await schedule.getAvailableSlots()
+
+    if (slots.length === 0) {
+      // Agenda lotada / sem horário disponível na janela (Decisão 008, outcome NO_SLOT)
+      await sessions.finish(sessionId, "NO_SLOT")
+      return {
+        sessionId,
+        newSession: false,
+        reply: {
+          text: MENSAGEM_SEM_HORARIOS,
+          step: "FINISHED",
+        },
+      }
+    }
+
+    await sessions.updateNavigationState(sessionId, {
+      currentStep: "AWAITING_SLOT",
+      listPage: 1,
+      draft: updatedDraft,
+    })
+
+    return {
+      sessionId,
+      newSession: false,
+      reply: {
+        text: formatarListaSlots(slots, 1),
+        step: "AWAITING_SLOT",
+      },
+    }
+  }
+
+  async function handleAwaitingSlot(
+    session: ActiveSession,
+    phone: string,
+    text: string | undefined,
+  ): Promise<ConversationFlowResult> {
+    const slots = await schedule.getAvailableSlots()
+
+    if (slots.length === 0) {
+      await sessions.finish(session.id, "NO_SLOT")
+      return {
+        sessionId: session.id,
+        newSession: false,
+        reply: {
+          text: MENSAGEM_SEM_HORARIOS,
+          step: "FINISHED",
+        },
+      }
+    }
+
+    const currentPage = session.listPage || 1
+    const paginacao = paginarItens(slots, currentPage)
+    const escolha = parseOption(text)
+
+    if (escolha === null) {
+      return {
+        sessionId: session.id,
+        newSession: false,
+        reply: {
+          text: formatarErroSlot(slots, paginacao.paginaAtual),
+          step: "AWAITING_SLOT",
+        },
+      }
+    }
+
+    // Navegação: Ver mais opções
+    if (paginacao.opcaoProxima !== undefined && escolha === paginacao.opcaoProxima) {
+      const nextPage = paginacao.paginaAtual + 1
+      await sessions.updateNavigationState(session.id, {
+        currentStep: "AWAITING_SLOT",
+        listPage: nextPage,
+      })
+      return {
+        sessionId: session.id,
+        newSession: false,
+        reply: {
+          text: formatarListaSlots(slots, nextPage),
+          step: "AWAITING_SLOT",
+        },
+      }
+    }
+
+    // Navegação: Voltar opções
+    if (paginacao.opcaoAnterior !== undefined && escolha === paginacao.opcaoAnterior) {
+      const prevPage = paginacao.paginaAtual - 1
+      await sessions.updateNavigationState(session.id, {
+        currentStep: "AWAITING_SLOT",
+        listPage: prevPage,
+      })
+      return {
+        sessionId: session.id,
+        newSession: false,
+        reply: {
+          text: formatarListaSlots(slots, prevPage),
+          step: "AWAITING_SLOT",
+        },
+      }
+    }
+
+    // Escolha de um slot na página atual
+    if (escolha < 1 || escolha > paginacao.itensPagina.length) {
+      return {
+        sessionId: session.id,
+        newSession: false,
+        reply: {
+          text: formatarErroSlot(slots, paginacao.paginaAtual),
+          step: "AWAITING_SLOT",
+        },
+      }
+    }
+
+    const chosenSlot = paginacao.itensPagina[escolha - 1]
+    if (!chosenSlot) {
+      return {
+        sessionId: session.id,
+        newSession: false,
+        reply: {
+          text: formatarErroSlot(slots, paginacao.paginaAtual),
+          step: "AWAITING_SLOT",
+        },
+      }
+    }
+
+    const questionId = Number(session.currentQuestionId ?? 1)
+    const perguntaResp = await motor.processarPergunta(questionId)
+    const reason = perguntaResp.requer_presencial
+      ? "REQUIRES_IN_PERSON"
+      : "NOT_RESOLVED"
+
+    try {
+      const bookResult = await schedule.bookSlot({
+        sessionId: session.id,
+        questionId,
+        reason,
+        name: session.draft?.holder_name ?? "Cidadão",
+        cpfHash: session.draft?.cpf_hash ?? "",
+        cpfMasked: session.draft?.cpf_masked ?? "",
+        phone,
+        byRepresentative: session.draft?.by_representative ?? false,
+        appointmentDatetime: chosenSlot.datetime,
+      })
+
+      const confirmationText = formatarConfirmacaoAgendamento({
+        protocol: bookResult.protocol,
+        quando: chosenSlot.formatted,
+        unitAddress: bookResult.unitAddress,
+        unitAddressComplement: bookResult.unitAddressComplement,
+        byRepresentative: session.draft?.by_representative ?? false,
+        groupDocuments: bookResult.documentsSent.group,
+        questionDocuments: bookResult.documentsSent.question,
+        reminderEnabled: bookResult.reminderEnabled,
+        reminderHours: bookResult.reminderHours,
+      })
+
+      return {
+        sessionId: session.id,
+        newSession: false,
+        reply: {
+          text: confirmationText,
+          step: "FINISHED",
+        },
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message === "SLOT_FULL") {
+        const updatedSlots = await schedule.getAvailableSlots()
+        if (updatedSlots.length === 0) {
+          await sessions.finish(session.id, "NO_SLOT")
+          return {
+            sessionId: session.id,
+            newSession: false,
+            reply: {
+              text: MENSAGEM_SEM_HORARIOS,
+              step: "FINISHED",
+            },
+          }
+        }
+        return {
+          sessionId: session.id,
+          newSession: false,
+          reply: {
+            text: `${ERRO_SLOT_OCUPADO}\n${formatarListaSlots(updatedSlots, 1)}`,
+            step: "AWAITING_SLOT",
+          },
+        }
+      }
+
+      if (err instanceof Error && err.message === "DUPLICATE_APPOINTMENT") {
+        return {
+          sessionId: session.id,
+          newSession: false,
+          reply: {
+            text: `${ERRO_DUPLICATE_APPOINTMENT}\n${formatarListaSlots(slots, currentPage)}`,
+            step: "AWAITING_SLOT",
+          },
+        }
+      }
+
+      throw err
+    }
+  }
+
   async function processMessage({
     phone,
     text,
@@ -494,6 +824,26 @@ export function createConversationFlowService({
       return handleAwaitingScheduleOffer(session.id, text)
     }
 
+    if (session.currentStep === "AWAITING_ATTENDEE") {
+      return handleAwaitingAttendee(session.id, session.draft, text)
+    }
+
+    if (session.currentStep === "AWAITING_HOLDER_NAME") {
+      return handleAwaitingHolderName(session.id, session.draft, text)
+    }
+
+    if (session.currentStep === "AWAITING_HOLDER_CPF") {
+      return handleAwaitingHolderCpf(
+        session.id,
+        session.draft,
+        text,
+      )
+    }
+
+    if (session.currentStep === "AWAITING_SLOT") {
+      return handleAwaitingSlot(session, phone, text)
+    }
+
     // Se estiver em outro step futuro ou inesperado, recomeça
     return startOver(session.id, false)
   }
@@ -512,5 +862,6 @@ export function createConversationFlowService({
 export const processIncomingMessage = createConversationFlowService({
   sessions: sessionRepository,
   motor: new MotorDecisaoService(new PgMotorDecisaoRepository()),
+  schedule: new ScheduleService(new PgScheduleRepository()),
   hashPhone,
 })
