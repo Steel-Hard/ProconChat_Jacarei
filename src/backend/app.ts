@@ -8,6 +8,7 @@ import errorHandler from "./middleware/errorHandler.middleware"
 import NotFoundError from "./errors/NotFoundError"
 import healthRoutes from "./routes/health.routes"
 import whatsappSessionRoutes from "./routes/whatsappSession.routes"
+import appointmentRoutes from "./routes/appointment.routes"
 
 dotenv.config({ quiet: true })
 
@@ -22,6 +23,7 @@ app.use(requestLoggerMiddleware)
 
 app.use("/health", healthRoutes)
 app.use("/api/v1/whatsapp/sessions", whatsappSessionRoutes)
+app.use("/api/v1/appointments", appointmentRoutes)
 
 app.use("/", (_req: Request, _res: Response, next: NextFunction) =>
     next(new NotFoundError("Route not found")),
