@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest"
 import { MockAppointmentRepository } from "../repositories/appointmentMock.repository"
 import { AppointmentService } from "./appointment.service"
+import { toLocalDateString } from "../utils/date.utils"
 
 describe("appointment.service", () => {
   let repository: MockAppointmentRepository
@@ -195,9 +196,9 @@ describe("appointment.service", () => {
 
   describe("markNoShow (Marcar como não compareceu)", () => {
     it("marca como não compareceu com sucesso quando o horário já passou", async () => {
-      // ID 7 é hoje às 08:00 (já passou)
-      const now = new Date()
-      now.setHours(12, 0, 0, 0)
+      // ID 7 é hoje às 08:00 (já passou em relação a 12:00)
+      const todayStr = toLocalDateString()
+      const now = new Date(`${todayStr}T12:00:00-03:00`)
       const result = await service.markNoShow(7, 42, now)
       expect(result.status).toBe("NO_SHOW")
 
@@ -206,8 +207,8 @@ describe("appointment.service", () => {
     })
 
     it("num pendente, assume automaticamente para quem clicou", async () => {
-      const now = new Date()
-      now.setHours(12, 0, 0, 0)
+      const todayStr = toLocalDateString()
+      const now = new Date(`${todayStr}T12:00:00-03:00`)
       const result = await service.markNoShow(7, 42, now)
       expect(result.assigned_user_id).toBe("42")
 
@@ -218,9 +219,9 @@ describe("appointment.service", () => {
     })
 
     it("recusa marcar como não compareceu se o horário ainda não passou", async () => {
-      // ID 8 é hoje às 23:59 (futuro)
-      const now = new Date()
-      now.setHours(10, 0, 0, 0)
+      // ID 8 é hoje às 23:59 (futuro em relação a 10:00)
+      const todayStr = toLocalDateString()
+      const now = new Date(`${todayStr}T10:00:00-03:00`)
       await expect(service.markNoShow(8, 42, now)).rejects.toThrow(
         "Disponível apenas após o horário do agendamento",
       )

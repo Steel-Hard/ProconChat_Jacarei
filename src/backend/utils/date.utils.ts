@@ -7,16 +7,25 @@ export function parseDate(value: string | Date): Date {
 }
 
 /**
- * Retorna string YYYY-MM-DD no horário de Brasília (UTC-3)
+ * Retorna string YYYY-MM-DD no horário de Brasília (UTC-3 / America/Sao_Paulo),
+ * independente do fuso horário configurado no servidor/SO (ex: runners UTC no CI).
  */
 export function toLocalDateString(date: Date = new Date()): string {
-  // Ajuste para UTC-3 (São Paulo)
-  const spOffsetMs = -3 * 60 * 60 * 1000
-  const spDate = new Date(date.getTime() + date.getTimezoneOffset() * 60 * 1000 + spOffsetMs)
-  const year = spDate.getFullYear()
-  const month = String(spDate.getMonth() + 1).padStart(2, "0")
-  const day = String(spDate.getDate()).padStart(2, "0")
-  return `${year}-${month}-${day}`
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date)
+}
+
+/**
+ * Adiciona ou subtrai dias de uma data em formato YYYY-MM-DD no fuso de São Paulo
+ */
+export function addDaysToDateString(dateStr: string, days: number): string {
+  const d = new Date(`${dateStr}T12:00:00-03:00`)
+  d.setDate(d.getDate() + days)
+  return toLocalDateString(d)
 }
 
 /**
@@ -46,12 +55,12 @@ export function getTodayBounds(now: Date = new Date()): { start: Date; end: Date
 }
 
 /**
- * Retorna início e fim da semana corrente (de domingo a sábado) no horário local
+ * Retorna início e fim da semana corrente (de domingo a sábado) no horário local de São Paulo
  */
 export function getThisWeekBounds(now: Date = new Date()): { start: Date; end: Date } {
   const dateStr = toLocalDateString(now)
   const baseDate = new Date(`${dateStr}T12:00:00-03:00`)
-  const dayOfWeek = baseDate.getDay() // 0 = Sunday
+  const dayOfWeek = baseDate.getDay() // 0 = Domingo
 
   const startDate = new Date(baseDate.getTime() - dayOfWeek * 24 * 60 * 60 * 1000)
   const endDate = new Date(baseDate.getTime() + (6 - dayOfWeek) * 24 * 60 * 60 * 1000)

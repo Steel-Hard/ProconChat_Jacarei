@@ -10,9 +10,11 @@ import {
 } from "../types/appointment.types"
 import { hashCpf } from "../utils/cpf.utils"
 import {
+  addDaysToDateString,
   getThisWeekBounds,
   getTodayBounds,
   isDatetimePast,
+  toLocalDateString,
 } from "../utils/date.utils"
 import { IAppointmentRepository } from "./appointment.repository.interface"
 
@@ -99,37 +101,38 @@ export class MockAppointmentRepository implements IAppointmentRepository {
 
   private seedDefaultFixtures(): void {
     const baseDate = new Date()
+    const todayStr = toLocalDateString(baseDate)
+
+    const yesterdayStr = addDaysToDateString(todayStr, -1)
+    const threeDaysAgoStr = addDaysToDateString(todayStr, -3)
+    const fourDaysAgoStr = addDaysToDateString(todayStr, -4)
+    const tomorrowStr = addDaysToDateString(todayStr, 1)
+    const afterTomorrowStr = addDaysToDateString(todayStr, 2)
+    const canceledStr = addDaysToDateString(todayStr, 3)
 
     // 1. Futuro amanhã (Pendente)
-    const tomorrow = new Date(baseDate.getTime() + 24 * 60 * 60 * 1000)
-    tomorrow.setHours(10, 0, 0, 0)
+    const tomorrow = new Date(`${tomorrowStr}T10:00:00-03:00`)
 
     // 2. Futuro depois de amanhã (Confirmado)
-    const afterTomorrow = new Date(baseDate.getTime() + 48 * 60 * 60 * 1000)
-    afterTomorrow.setHours(14, 0, 0, 0)
+    const afterTomorrow = new Date(`${afterTomorrowStr}T14:00:00-03:00`)
 
     // 3. Passado ontem (Aguardando registro)
-    const yesterday = new Date(baseDate.getTime() - 24 * 60 * 60 * 1000)
-    yesterday.setHours(9, 0, 0, 0)
+    const yesterday = new Date(`${yesterdayStr}T09:00:00-03:00`)
 
     // 4. Passado 3 dias atrás (Atendido)
-    const threeDaysAgo = new Date(baseDate.getTime() - 3 * 24 * 60 * 60 * 1000)
-    threeDaysAgo.setHours(11, 0, 0, 0)
+    const threeDaysAgo = new Date(`${threeDaysAgoStr}T11:00:00-03:00`)
 
     // 5. Passado 4 dias atrás (Não compareceu)
-    const fourDaysAgo = new Date(baseDate.getTime() - 4 * 24 * 60 * 60 * 1000)
-    fourDaysAgo.setHours(15, 0, 0, 0)
+    const fourDaysAgo = new Date(`${fourDaysAgoStr}T15:00:00-03:00`)
 
-    // 6. Cancelado
-    const canceledDate = new Date(baseDate.getTime() + 72 * 60 * 60 * 1000)
+    // 6. Cancelado (+3 dias)
+    const canceledDate = new Date(`${canceledStr}T16:00:00-03:00`)
 
-    // 7. Hoje cedo (Pendente, horário já passou)
-    const todayEarly = new Date(baseDate.getTime())
-    todayEarly.setHours(8, 0, 0, 0)
+    // 7. Hoje cedo (Pendente, hoje às 08:00 no fuso de SP)
+    const todayEarly = new Date(`${todayStr}T08:00:00-03:00`)
 
-    // 8. Hoje tarde (Pendente, horário ainda não passou)
-    const todayLate = new Date(baseDate.getTime())
-    todayLate.setHours(23, 59, 0, 0)
+    // 8. Hoje tarde (Pendente, hoje às 23:59 no fuso de SP)
+    const todayLate = new Date(`${todayStr}T23:59:00-03:00`)
 
     this.appointments = [
       {
