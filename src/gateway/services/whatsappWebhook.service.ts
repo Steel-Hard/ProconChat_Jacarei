@@ -6,6 +6,7 @@ import { IncomingMessage, OutgoingMessage } from "../types/message.types"
 import { WhatsappMessageResult, WhatsappWebhookResult } from "../types/whatsappWebhook.types"
 import { MemoryMessageDeduplicator, MessageDeduplicator } from "./messageDeduplicator"
 import { createPhoneQueue, PhoneQueue } from "./phoneQueue"
+import { messageRef } from "../utils/messageRef"
 
 const MESSAGE_MAX_AGE_MS = 300_000
 
@@ -23,7 +24,7 @@ function log(reason: string, messageId?: string, detail?: string): void {
         JSON.stringify({
             event: "whatsapp_cloud_api",
             reason,
-            messageId,
+            messageRef: messageId === undefined ? undefined : messageRef(messageId),
             detail,
             timestamp: new Date().toISOString(),
         }),

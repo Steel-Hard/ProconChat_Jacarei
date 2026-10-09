@@ -6,6 +6,7 @@ import { IncomingMessage, OutgoingMessage } from "../types/message.types"
 import { MemoryMessageDeduplicator } from "./messageDeduplicator"
 import { createPhoneQueue } from "./phoneQueue"
 import { createWhatsappWebhookService } from "./whatsappWebhook.service"
+import { messageRef } from "../utils/messageRef"
 
 const NOW = Date.parse("2026-10-02T12:00:00Z")
 const PHONE = "5500000000001"
@@ -264,7 +265,8 @@ describe("WhatsApp webhook service", () => {
         expect(createWhatsappSession).toHaveBeenCalledOnce()
         const output = loggedOutput()
         expect(output).toContain("send_failed")
-        expect(output).toContain("wamid.1")
+        expect(output).toContain(messageRef("wamid.1"))
+        expect(output).not.toContain("wamid.1")
         expect(output).not.toContain(PHONE)
         expect(output).not.toContain(CITIZEN_TEXT)
     })
@@ -322,5 +324,46 @@ describe("WhatsApp webhook service", () => {
         expect(output).toContain("duplicate_message")
         expect(output).not.toContain(PHONE)
         expect(output).not.toContain(CITIZEN_TEXT)
+    })
+
+    test("registra so o messageRef e nunca o wamid em claro em nenhum evento de log", async () => {
+        const phoneWamid = (suffix: string) => `wamid.HBgNNTUwMDAwMDAwMDAxFQIAEhgS${suffix}AA==`
+        const processedId = phoneWamid("QUFBQUFBQUFBQUFBQUFB")
+        const staleId = phoneWamid("QkJCQkJCQkJCQkJCQkJC")
+        const invalidId = phoneWamid("Q0NDQ0NDQ0NDQ0NDQ0ND")
+        const statusId = phoneWamid("RERERERERERERERERERE")
+        const unsupportedId = phoneWamid("RUVFRUVFRUVFRUVFRUVF")
+        parseIncoming.mockReturnValueOnce({
+            messages: [
+                { id: processedId, from: PHONE, timestampMs: NOW - 1000, text: "oi" },
+                { id: staleId, from: PHONE, timestampMs: NOW - 400_000, text: "oi" },
+            ],
+            ignored: [
+                { reason: "status_update", messageId: statusId },
+                { reason: "unsupported_message", messageId: unsupportedId },
+            ],
+        })
+        parseIncoming.mockReturnValueOnce(incoming({ id: processedId, from: PHONE, text: "oi" }))
+        parseIncoming.mockReturnValueOnce(incoming({ id: invalidId, from: PHONE, text: "oi" }))
+        createWhatsappSession.mockResolvedValueOnce(reply())
+        createWhatsappSession.mockResolvedValueOnce(reply({ messages: [{ type: "buttons", text: "x", buttons: [] }] }))
+        send.mockRejectedValueOnce(new Error("Cloud API returned HTTP 500"))
+        send.mockRejectedValueOnce(new OutgoingMessageValidationError("invalid_button_count"))
+        const handle = service()
+
+        await handle({})
+        await handle({})
+        await handle({})
+
+        const output = loggedOutput()
+        for (const reason of ["send_failed", "stale_message", "status_update", "unsupported_message", "duplicate_message", "invalid_outgoing_message"]) {
+            expect(output).toContain(reason)
+        }
+        for (const id of [processedId, staleId, invalidId, statusId, unsupportedId]) {
+            expect(output).not.toContain(id)
+            expect(output).toContain(messageRef(id))
+        }
+        expect(output).not.toContain("HBgNNTUwMDAwMDAwMDAx")
+        expect(output).not.toContain("messageId")
     })
 })
