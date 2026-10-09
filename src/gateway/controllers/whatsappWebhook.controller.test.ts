@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
 import { Request, Response } from "express"
 import { beforeEach, describe, expect, test, vi } from "vitest"
-import { receiveWhatsappWebhook, verifyWhatsappWebhook } from "./whatsappWebhook.controller"
+import { handleRawBodyError, receiveWhatsappWebhook, verifyWhatsappWebhook } from "./whatsappWebhook.controller"
 import { processWhatsappWebhook } from "../services/whatsappWebhook.service"
 
 vi.mock("../services/whatsappWebhook.service", () => ({
@@ -114,5 +114,42 @@ describe("whatsappWebhook controller", () => {
 
         expect(timingSafeEqual).not.toHaveBeenCalled()
         expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 403, code: "FORBIDDEN" }))
+    })
+})
+
+describe("handleRawBodyError", () => {
+    function bodyParserError(status: number, type: string): Error {
+        return Object.assign(new Error(type), { status, statusCode: status, type, expose: true })
+    }
+
+    function handled(error: unknown): unknown {
+        const next = vi.fn()
+        handleRawBodyError(error, {} as Request, buildResponse(), next)
+        return next.mock.calls[0]?.[0]
+    }
+
+    test("mantem o 413 como PAYLOAD_TOO_LARGE", () => {
+        const result = handled(bodyParserError(413, "entity.too.large"))
+
+        expect(result).toMatchObject({ statusCode: 413, code: "PAYLOAD_TOO_LARGE" })
+    })
+
+    test.each([
+        [400, "request.aborted"],
+        [415, "encoding.unsupported"],
+        [400, "request.size.invalid"],
+        [415, "charset.unsupported"],
+    ])("converte o erro %i %s do corpo cru em 400 BAD_REQUEST", (status, type) => {
+        const result = handled(bodyParserError(status, type))
+
+        expect(result).toMatchObject({ statusCode: 400, code: "BAD_REQUEST" })
+    })
+
+    test("repassa sem mudar erros que nao sao 4xx", () => {
+        const internal = bodyParserError(500, "stream.not.readable")
+        const plain = new Error("falha")
+
+        expect(handled(internal)).toBe(internal)
+        expect(handled(plain)).toBe(plain)
     })
 })
