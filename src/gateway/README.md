@@ -195,7 +195,12 @@ resposta enviada pela Graph API (`https://graph.facebook.com/<versão>/<WHATSAPP
 - Mensagens de texto vão ao Backend como `{ phone, text }`; toques em lista ou botão vão como
   `{ phone, optionId }`. Eventos de status, outros números, outros campos, mensagens repetidas (mesmo
   `wamid`), mensagens com mais de 5 minutos e tipos sem texto (áudio, imagem etc.) são ignorados com um
-  log JSON que tem só `reason` e `messageId`, nunca telefone, texto ou token.
+  log JSON que tem só `reason` e `messageRef`, nunca telefone, texto ou token.
+- O `wamid` da Meta carrega o telefone em base64, por isso nunca aparece em log. Os logs da Cloud API
+  usam `messageRef`: os 16 primeiros caracteres hex do SHA-256 do `wamid`, estável para a mesma mensagem
+  e só serve para correlacionar eventos. Para achar a linha de uma mensagem conhecida:
+  `printf '%s' "<wamid>" | sha256sum | cut -c1-16`. A resposta HTTP do webhook vai só para a Meta e
+  continua com o `messageId`.
 - As mensagens do mesmo telefone são processadas em fila: a resposta inteira de uma mensagem é enviada
   antes de a próxima ser repassada ao Backend.
 - O Backend pode devolver `reply.messages` com itens `text`, `list` (até 10 linhas, título ≤ 24,
