@@ -122,6 +122,37 @@ describe("POST /webhooks/whatsapp", () => {
         expect(processWhatsappWebhook).not.toHaveBeenCalled()
     })
 
+    test.each([
+        ["com 64 zeros", `sha256=${"0".repeat(64)}`],
+        ["sem o prefixo sha256=", "0".repeat(64)],
+        ["com tamanho diferente", "sha256=abcd"],
+        ["com caracteres que nao sao hexadecimais", `sha256=${"z".repeat(64)}`],
+    ])("responde 401 sem chamar o service quando a assinatura vem %s", async (_descricao, signature) => {
+        const response = await request(app)
+            .post("/webhooks/whatsapp")
+            .set("Content-Type", "application/json")
+            .set("X-Hub-Signature-256", signature)
+            .send(JSON.stringify(payload))
+
+        expect(response.status).toBe(401)
+        expect(response.body.error.code).toBe("UNAUTHORIZED")
+        expect(processWhatsappWebhook).not.toHaveBeenCalled()
+    })
+
+    test("recusa a assinatura feita com outro App Secret", async () => {
+        const body = JSON.stringify(payload)
+        const foreign = `sha256=${createHmac("sha256", "outro-segredo").update(body).digest("hex")}`
+
+        const response = await request(app)
+            .post("/webhooks/whatsapp")
+            .set("Content-Type", "application/json")
+            .set("X-Hub-Signature-256", foreign)
+            .send(body)
+
+        expect(response.status).toBe(401)
+        expect(processWhatsappWebhook).not.toHaveBeenCalled()
+    })
+
     test("recusa o mesmo JSON reformatado, o que prova o uso do corpo cru", async () => {
         const signedBody = JSON.stringify(payload)
         const reformatted = JSON.stringify(payload, null, 2)
