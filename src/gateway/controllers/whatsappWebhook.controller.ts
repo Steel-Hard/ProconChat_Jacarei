@@ -71,6 +71,14 @@ export function handleRawBodyError(
     _res: Response,
     next: NextFunction,
 ): void {
-    const type = (error as { type?: unknown } | null)?.type
-    next(type === "entity.too.large" ? new PayloadTooLargeError("Payload too large") : error)
+    const { type, status } = (error ?? {}) as { type?: unknown; status?: unknown }
+    if (type === "entity.too.large" || status === 413) {
+        next(new PayloadTooLargeError("Payload too large"))
+        return
+    }
+    if (typeof status === "number" && status >= 400 && status <= 499) {
+        next(new BadRequestError("Invalid request body"))
+        return
+    }
+    next(error)
 }

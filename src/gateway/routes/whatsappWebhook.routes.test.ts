@@ -210,4 +210,19 @@ describe("POST /webhooks/whatsapp", () => {
         expect(response.body.error.code).toBe("PAYLOAD_TOO_LARGE")
         expect(processWhatsappWebhook).not.toHaveBeenCalled()
     })
+
+    test("responde 400 BAD_REQUEST sem processar quando a codificacao do corpo nao e suportada", async () => {
+        const body = JSON.stringify(payload)
+
+        const response = await request(app)
+            .post("/webhooks/whatsapp")
+            .set("Content-Type", "application/json")
+            .set("Content-Encoding", "x-desconhecida")
+            .set("X-Hub-Signature-256", sign(body))
+            .send(body)
+
+        expect(response.status).toBe(400)
+        expect(response.body.error.code).toBe("BAD_REQUEST")
+        expect(processWhatsappWebhook).not.toHaveBeenCalled()
+    })
 })
