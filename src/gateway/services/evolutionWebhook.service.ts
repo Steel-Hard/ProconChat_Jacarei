@@ -5,6 +5,7 @@ import {
     EvolutionWebhookPayload,
     EvolutionWebhookResult,
 } from "../types/evolution.types"
+import { MemoryMessageDeduplicator, MessageDeduplicator } from "./messageDeduplicator"
 
 const SUPPORTED_MESSAGE_EVENTS = [
     "messages.upsert",
@@ -16,43 +17,10 @@ const SUPPORTED_MESSAGE_EVENTS = [
 const DEFAULT_MESSAGE_MAX_AGE_SECONDS = 300
 const MIN_DEDUPLICATOR_TTL_MS = getMessageMaxAgeMs()
 
-export class MemoryMessageDeduplicator {
-    private readonly cache = new Map<string, number>()
-    private readonly ttlMs: number
+export { MemoryMessageDeduplicator }
+export type { MessageDeduplicator }
 
-    constructor(ttlMs = MIN_DEDUPLICATOR_TTL_MS) {
-        this.ttlMs = ttlMs
-    }
-
-    isDuplicate(id: string): boolean {
-        const now = Date.now()
-        const timestamp = this.cache.get(id)
-        if (timestamp && now - timestamp < this.ttlMs) {
-            return true
-        }
-        this.cache.set(id, now)
-
-        if (this.cache.size > 1000) {
-            for (const [key, time] of this.cache.entries()) {
-                if (now - time >= this.ttlMs) {
-                    this.cache.delete(key)
-                }
-            }
-        }
-        return false
-    }
-
-    clear(): void {
-        this.cache.clear()
-    }
-}
-
-export const defaultMessageDeduplicator = new MemoryMessageDeduplicator()
-
-export interface MessageDeduplicator {
-    isDuplicate(id: string): boolean
-    clear?(): void
-}
+export const defaultMessageDeduplicator = new MemoryMessageDeduplicator(MIN_DEDUPLICATOR_TTL_MS)
 
 interface EvolutionWebhookDependencies {
     backend: BackendClient

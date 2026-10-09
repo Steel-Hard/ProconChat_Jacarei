@@ -147,6 +147,11 @@ services:
       EVOLUTION_MESSAGE_MAX_AGE_SECONDS: ${EVOLUTION_MESSAGE_MAX_AGE_SECONDS:-300}
       BACKEND_INTERNAL_URL: http://backend:3000
       GATEWAY_INTERNAL_TOKEN: ${GATEWAY_INTERNAL_TOKEN:-development-internal-token}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-development-phone-number-id}
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-development-access-token}
+      WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET:-development-app-secret}
+      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-development-verify-token}
+      WHATSAPP_GRAPH_API_VERSION: ${WHATSAPP_GRAPH_API_VERSION:-v26.0}
     ports:
       - "${GATEWAY_PORT:-3001}:3001"
     depends_on:

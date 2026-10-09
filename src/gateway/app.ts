@@ -8,6 +8,7 @@ import errorHandler from "./middleware/errorHandler.middleware"
 import NotFoundError from "./errors/NotFoundError"
 import healthRoutes from "./routes/health.routes"
 import evolutionWebhookRoutes from "./routes/evolutionWebhook.routes"
+import whatsappWebhookRoutes from "./routes/whatsappWebhook.routes"
 
 dotenv.config({ quiet: true })
 
@@ -17,8 +18,9 @@ const app = express()
 
 app.use(helmet())
 app.use(cors())
-app.use(express.json())
 app.use(requestLoggerMiddleware)
+app.use("/webhooks/whatsapp", whatsappWebhookRoutes)
+app.use(express.json())
 
 app.use("/health", healthRoutes)
 app.use("/webhooks/evolution", evolutionWebhookRoutes)
