@@ -243,6 +243,35 @@ sessão criada no Backend. O envio da resposta falha sem credenciais reais (`sen
 não muda o `200`. Repetir o comando devolve `duplicate_message`. Sem o cabeçalho `X-Hub-Signature-256`,
 a resposta é `401`.
 
+### Validação com número real e diagnóstico de entrega
+
+O número de teste da Meta recebe mensagens e aceita os envios, mas enquanto o portfólio do negócio não
+tiver a verificação de empresa (erro `141010`), toda entrega para número brasileiro termina com status
+`failed` e código `130497` ("Business account is restricted from messaging users in this country").
+Por isso, a validação manual usa um número real registrado na conta do WhatsApp Business (status
+`CONNECTED`), com o `WHATSAPP_PHONE_NUMBER_ID` dele no `.env`.
+
+O gateway ainda descarta os eventos de status (`status_update` no log, sem o código de erro); o registro
+de `sent`/`delivered`/`read`/`failed` vem na issue #88. Até lá, quando a resposta não chega ao celular:
+
+1. Conferir a saúde do número (o token vem do `.env`, sem imprimir o valor):
+
+   ```bash
+   curl -s -G "https://graph.facebook.com/$WHATSAPP_GRAPH_API_VERSION/$WHATSAPP_PHONE_NUMBER_ID" \
+     --data-urlencode "fields=health_status" \
+     -H "Authorization: Bearer $WHATSAPP_ACCESS_TOKEN"
+   ```
+
+   A resposta traz `can_send_message` (`AVAILABLE`, `LIMITED` ou `BLOCKED`) no geral e para cada entidade
+   (número, conta do WhatsApp Business, negócio, app), com `errors[].error_code` explicando a limitação
+   (ex.: `141010`, empresa não verificada). `LIMITED` ou `BLOCKED` não impede necessariamente a resposta
+   dentro da janela de 24 h: compare com o status real da mensagem (passo 2).
+2. Ver o payload de status no painel do app: em **WhatsApp → Configuração → Webhook**, abrir
+   "Verifique webhooks de teste" (ou o log de eventos do webhook) e ler o evento `statuses` da mensagem
+   enviada. Um `status: "failed"` traz `errors[].code` e `errors[].title` (ex.: `130497`).
+3. No gateway, `send_failed` no log indica recusa da Graph API no envio (o `detail` mostra só o status
+   HTTP). Envio aceito que não chega ao celular aparece só no status, como nos passos acima.
+
 ### Token de acesso permanente
 
 O token temporário do painel de desenvolvedor expira em 24 h. Para testar e operar, use um token de
