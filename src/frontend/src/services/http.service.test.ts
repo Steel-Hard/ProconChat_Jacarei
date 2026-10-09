@@ -49,6 +49,15 @@ describe("http.service", () => {
         expect(headersOf(0)["Content-Type"]).toBeUndefined()
     })
 
+    it("usa caminho relativo quando VITE_API_URL está vazia", async () => {
+        vi.stubEnv("VITE_API_URL", "")
+        fetchMock.mockResolvedValue(jsonResponse(200, {}))
+
+        await get("/api/v1/x")
+
+        expect(fetchMock).toHaveBeenCalledWith("/api/v1/x", expect.anything())
+    })
+
     it("envia o token como Bearer quando há sessão", async () => {
         setToken("abc")
         fetchMock.mockResolvedValue(jsonResponse(200, {}))
