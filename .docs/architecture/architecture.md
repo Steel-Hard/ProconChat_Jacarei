@@ -54,7 +54,7 @@ O LLM Service só recebe chamadas do Backend e não tem acesso ao banco nem à s
 | **Frontend (painel)** | Painel da equipe do PROCON (RF08), a partir do `template-react` | `frontend` (nginx) | 🟡 S2-10 |
 | **LLM Service** | Ollama com `llama3.2:3b`; gera só o texto complementar (RF05) | `ollama` + `llm-pull` | ✅ serviço pronto · 🟠 ligado ao fluxo (S3-05) |
 | **PostgreSQL** | Persistência única | `postgres` (+ `migrate`, `seed`) | ✅ · 🟡 schema da Sprint 2 (S2-03) |
-| **Proxy HTTPS** | Certificado e roteamento para painel, API e webhook | `caddy` | 🟡 S2-02 |
+| **Proxy HTTPS** | Certificado e roteamento para painel, API e webhook; bloqueia a rota interna `/api/v1/whatsapp/sessions` | `caddy` | ✅ (`compose.prod.yaml`, `deploy/Caddyfile`) |
 | ~~Evolution API + Redis~~ | Integração não oficial usada na Sprint 1 | `evolution-api`, `redis` | Saem na migração (S2-04). Ver [decisão 003](../decisoes/003-migracao-whatsapp-cloud-api.md) |
 
 ### Módulos do Backend
@@ -115,11 +115,11 @@ As credenciais da Cloud API ficam no banco, **criptografadas com uma chave-mestr
 | Ambiente | Onde | WhatsApp |
 |---|---|---|
 | **Desenvolvimento** | Máquina de cada pessoa (`docker compose up`) + túnel HTTPS | App de teste próprio na Meta, com o número de teste gratuito da Meta |
-| **Produção / demonstração** | VM na nuvem com pelo menos 8 GB de RAM (por causa do Ollama) | Número de teste comprado pelo time; depois das sprints, o número do PROCON |
+| **Produção / demonstração** | VM Oracle Cloud Ampere A1 (arm64) em São Paulo, com `compose.prod.yaml`: `caddy`, `postgres`, `migrate`, `seed`, `backend`, `gateway`, `frontend`, `ollama` e `llm-pull`. Sem Evolution e Redis | Número real da equipe; depois das sprints, o número do PROCON |
 
 - **CI** (🟡 S2-01): GitHub Actions roda build, lint e testes de cada app em todo PR. O CI verde é obrigatório para o merge.
-- **CD** (🟡 S2-02): merge em `main` gera as imagens no GitHub Container Registry e atualiza a VM por SSH (`docker compose pull && up -d`). As migrations rodam pelo serviço `migrate`.
-- **Segredos:** GitHub Secrets e `.env` só na VM. Continuam no `.env`: banco, `PHONE_HASH_SECRET`, token interno Gateway ↔ Backend, chave-mestra de criptografia e URL pública.
+- **CD** (✅ #51): push com CI verde na branch de `DEPLOY_BRANCH` (hoje `develop`; `main` no fim do semestre) gera as imagens no GitHub Container Registry e atualiza a VM por SSH com `deploy/deploy.sh <sha>`. As migrations rodam pelo serviço `migrate`. Operação, rollback e backup: [`infra/deploy.md`](../infra/deploy.md).
+- **Segredos:** no GitHub, só os de acesso SSH (environment `production`); os da aplicação ficam no `.env` da VM. Continuam no `.env`: banco, `PHONE_HASH_SECRET`, token interno Gateway ↔ Backend, chave-mestra de criptografia e URL pública.
 
 ## Segurança e dados pessoais
 
