@@ -1,13 +1,16 @@
+import { OutgoingMessage } from "../types/message.types"
+
 export interface WhatsappSessionRequest {
     phone: string
     text?: string
+    optionId?: string
     providerInstance?: string
 }
 
 export interface WhatsappSessionResponse {
     sessionId: string
     newSession: boolean
-    reply: { text: string; step: string }
+    reply: { text: string; step: string; messages?: OutgoingMessage[] }
 }
 
 export interface BackendClient {

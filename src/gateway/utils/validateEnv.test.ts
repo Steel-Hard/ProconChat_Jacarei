@@ -76,3 +76,57 @@ describe("validateEnv", () => {
         expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("GATEWAY_INTERNAL_TOKEN"))
     })
 })
+
+describe("validateEnv com as variaveis da Cloud API", () => {
+    const whatsappVars = [
+        "WHATSAPP_PHONE_NUMBER_ID",
+        "WHATSAPP_ACCESS_TOKEN",
+        "WHATSAPP_APP_SECRET",
+        "WHATSAPP_VERIFY_TOKEN",
+    ]
+    let originals: Record<string, string | undefined> = {}
+
+    beforeEach(() => {
+        originals = Object.fromEntries(whatsappVars.map((name) => [name, process.env[name]]))
+        for (const name of whatsappVars) {
+            process.env[name] = `test-${name.toLowerCase()}`
+        }
+    })
+
+    afterEach(() => {
+        for (const name of whatsappVars) {
+            const original = originals[name]
+            if (original === undefined) {
+                delete process.env[name]
+            } else {
+                process.env[name] = original
+            }
+        }
+        vi.restoreAllMocks()
+    })
+
+    it.each(whatsappVars)("encerra com codigo 1 quando falta %s", (name) => {
+        delete process.env[name]
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never)
+        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+        validateEnv()
+
+        expect(exitSpy).toHaveBeenCalledWith(1)
+        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining(name))
+    })
+
+    it("nao exige WHATSAPP_GRAPH_API_VERSION", () => {
+        const original = process.env.WHATSAPP_GRAPH_API_VERSION
+        delete process.env.WHATSAPP_GRAPH_API_VERSION
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never)
+        vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+        validateEnv()
+
+        expect(exitSpy).not.toHaveBeenCalled()
+        if (original !== undefined) {
+            process.env.WHATSAPP_GRAPH_API_VERSION = original
+        }
+    })
+})
