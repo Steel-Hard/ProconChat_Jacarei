@@ -1,0 +1,19 @@
+{$SITE_ADDRESS} {
+	encode zstd gzip
+
+	handle /api/v1/whatsapp/sessions* {
+		respond 404
+	}
+
+	handle /webhooks/whatsapp* {
+		reverse_proxy gateway:3001
+	}
+
+	handle /api/* {
+		reverse_proxy backend:3000
+	}
+
+	handle {
+		reverse_proxy frontend:80
+	}
+}
