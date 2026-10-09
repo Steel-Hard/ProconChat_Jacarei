@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto"
 import { NextFunction, Request, Response } from "express"
 import { cloudApiProvider } from "../gateways/cloudApi.gateway"
 import { processWhatsappWebhook } from "../services/whatsappWebhook.service"
@@ -12,13 +13,25 @@ function queryString(req: Request, name: string): string | undefined {
     return typeof value === "string" && value !== "" ? value : undefined
 }
 
+function matchesVerifyToken(received: string | undefined, expected: string): boolean {
+    if (!received || !expected) {
+        return false
+    }
+    const receivedBuffer = Buffer.from(received)
+    const expectedBuffer = Buffer.from(expected)
+    if (receivedBuffer.length !== expectedBuffer.length) {
+        return false
+    }
+    return timingSafeEqual(receivedBuffer, expectedBuffer)
+}
+
 export function verifyWhatsappWebhook(req: Request, res: Response, next: NextFunction): void {
     const mode = queryString(req, "hub.mode")
     const token = queryString(req, "hub.verify_token")
     const challenge = queryString(req, "hub.challenge")
     const { verifyToken } = readWhatsAppConfigFromEnv()
 
-    if (mode !== "subscribe" || !token || !verifyToken || token !== verifyToken || !challenge) {
+    if (mode !== "subscribe" || !challenge || !matchesVerifyToken(token, verifyToken)) {
         next(new ForbiddenError("Invalid webhook verification"))
         return
     }

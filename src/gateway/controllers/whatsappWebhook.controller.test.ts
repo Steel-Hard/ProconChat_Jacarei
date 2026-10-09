@@ -1,4 +1,4 @@
-import { createHmac } from "node:crypto"
+import { createHmac, timingSafeEqual } from "node:crypto"
 import { Request, Response } from "express"
 import { beforeEach, describe, expect, test, vi } from "vitest"
 import { receiveWhatsappWebhook, verifyWhatsappWebhook } from "./whatsappWebhook.controller"
@@ -7,6 +7,17 @@ import { processWhatsappWebhook } from "../services/whatsappWebhook.service"
 vi.mock("../services/whatsappWebhook.service", () => ({
     processWhatsappWebhook: vi.fn(),
 }))
+
+vi.mock("node:crypto", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("node:crypto")>()
+    return { ...actual, timingSafeEqual: vi.fn(actual.timingSafeEqual) }
+})
+
+function verificationRequest(token: string): Request {
+    return {
+        query: { "hub.mode": "subscribe", "hub.verify_token": token, "hub.challenge": "abc" },
+    } as unknown as Request
+}
 
 function buildResponse(): Response {
     const res = {} as Response
@@ -69,5 +80,39 @@ describe("whatsappWebhook controller", () => {
         expect(res.status).toHaveBeenCalledWith(200)
         expect(res.json).toHaveBeenCalledWith({ data: { results: [] } })
         expect(next).not.toHaveBeenCalled()
+    })
+
+    test("compara o verify token em tempo constante", () => {
+        const res = buildResponse()
+        const next = vi.fn()
+
+        verifyWhatsappWebhook(verificationRequest("test-only-verify-token"), res, next)
+
+        expect(timingSafeEqual).toHaveBeenCalledWith(
+            Buffer.from("test-only-verify-token"),
+            Buffer.from("test-only-verify-token"),
+        )
+        expect(res.send).toHaveBeenCalledWith("abc")
+    })
+
+    test("recusa com 403 o verify token de mesmo tamanho e conteudo diferente", () => {
+        const res = buildResponse()
+        const next = vi.fn()
+
+        verifyWhatsappWebhook(verificationRequest("test-only-verify-tokeX"), res, next)
+
+        expect(timingSafeEqual).toHaveBeenCalled()
+        expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 403, code: "FORBIDDEN" }))
+        expect(res.send).not.toHaveBeenCalled()
+    })
+
+    test("recusa com 403 o verify token de outro tamanho sem chamar timingSafeEqual", () => {
+        const res = buildResponse()
+        const next = vi.fn()
+
+        expect(() => verifyWhatsappWebhook(verificationRequest("curto"), res, next)).not.toThrow()
+
+        expect(timingSafeEqual).not.toHaveBeenCalled()
+        expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 403, code: "FORBIDDEN" }))
     })
 })
