@@ -1,0 +1,19 @@
+export const PERMISSION_KEYS = [
+    "appointments.view",
+    "appointments.manage",
+    "content.manage",
+    "schedule.configure",
+    "documents.configure",
+    "sessions.view",
+    "reports.view",
+    "users.manage"
+] as const
+
+export type PermissionKey = (typeof PERMISSION_KEYS)[number]
+
+export type PanelAccount = {
+    name: string
+    email: string
+    isAdmin: boolean
+    permissions: PermissionKey[]
+}
