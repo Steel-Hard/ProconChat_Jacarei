@@ -4,7 +4,6 @@ export interface WhatsappSessionRequest {
     phone: string
     text?: string
     optionId?: string
-    providerInstance?: string
 }
 
 export interface WhatsappSessionResponse {
