@@ -44,6 +44,7 @@
 }
 
 .menuButton::before {
+    content: "☰";
     content: "☰" / "";
 }
 
@@ -65,6 +66,7 @@
 }
 
 .separator::before {
+    content: "/";
     content: "/" / "";
 }
 

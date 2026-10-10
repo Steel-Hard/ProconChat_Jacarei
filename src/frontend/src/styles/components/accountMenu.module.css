@@ -60,6 +60,7 @@
 }
 
 .trigger::after {
+    content: "▾";
     content: "▾" / "";
     margin-left: 0.3em;
 }
