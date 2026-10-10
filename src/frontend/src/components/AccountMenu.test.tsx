@@ -23,6 +23,7 @@ describe("AccountMenu", () => {
     it("mostra o selo ADMIN só para o Admin", () => {
         const { rerender } = render(<AccountMenu account={admin} />)
         expect(screen.getByText("ADMIN")).toBeInTheDocument()
+        expect(screen.getByText("ADMIN").parentElement?.textContent).toBe("Ana Paula Souza ADMIN")
 
         rerender(<AccountMenu account={{ ...admin, name: "Bruno", isAdmin: false }} />)
 

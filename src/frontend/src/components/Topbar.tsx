@@ -41,7 +41,7 @@ function Topbar({
                         aria-controls={menuControls}
                         onClick={onOpenMenu}
                     >
-                        ☰ Menu
+                        <span aria-hidden="true">☰</span> Menu
                     </button>
                 ) : null}
                 <nav aria-label="Trilha" className={css.trail}>

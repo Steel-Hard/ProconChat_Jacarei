@@ -74,11 +74,11 @@ describe("Topbar", () => {
     it("mostra o botão Menu só quando pedido e avisa ao clicar", () => {
         const onOpenMenu = vi.fn()
         const { unmount } = renderTopbar({ showMenuButton: false })
-        expect(screen.queryByRole("button", { name: "☰ Menu" })).not.toBeInTheDocument()
+        expect(screen.queryByRole("button", { name: "Menu" })).not.toBeInTheDocument()
         unmount()
 
         renderTopbar({ showMenuButton: true, onOpenMenu })
-        const button = screen.getByRole("button", { name: "☰ Menu" })
+        const button = screen.getByRole("button", { name: "Menu" })
         expect(button).toHaveAttribute("aria-expanded", "false")
         expect(button).toHaveAttribute("aria-controls", "menu-principal")
 

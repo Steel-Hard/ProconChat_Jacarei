@@ -31,7 +31,7 @@ async function renderPanel(path: string = ROUTES.dashboard) {
 async function openDrawer() {
     mockMatchMedia(1024)
     await renderPanel()
-    userEvent.click(screen.getByRole("button", { name: "☰ Menu" }))
+    userEvent.click(screen.getByRole("button", { name: "Menu" }))
     expect(screen.getByRole("link", { name: "Sessões" })).toBeInTheDocument()
 }
 
@@ -75,14 +75,14 @@ describe("PanelLayout", { timeout: 15000 }, () => {
 
         await renderPanel()
 
-        expect(screen.queryByRole("button", { name: "☰ Menu" })).not.toBeInTheDocument()
+        expect(screen.queryByRole("button", { name: "Menu" })).not.toBeInTheDocument()
         expect(screen.getByRole("link", { name: "Sessões" })).toBeInTheDocument()
     })
 
     it("mostra o botão Menu e esconde o menu em tela estreita até abrir", async () => {
         mockMatchMedia(1024)
         await renderPanel()
-        const button = screen.getByRole("button", { name: "☰ Menu" })
+        const button = screen.getByRole("button", { name: "Menu" })
         expect(button).toHaveAttribute("aria-expanded", "false")
         expect(screen.queryByRole("link", { name: "Sessões" })).not.toBeInTheDocument()
 
@@ -109,7 +109,7 @@ describe("PanelLayout", { timeout: 15000 }, () => {
         userEvent.click(screen.getByRole("presentation"))
 
         expect(screen.queryByRole("link", { name: "Sessões" })).not.toBeInTheDocument()
-        expect(screen.getByRole("button", { name: "☰ Menu" })).toHaveFocus()
+        expect(screen.getByRole("button", { name: "Menu" })).toHaveFocus()
     })
 
     it("fecha a gaveta com Esc", async () => {
@@ -118,7 +118,7 @@ describe("PanelLayout", { timeout: 15000 }, () => {
         userEvent.keyboard("{esc}")
 
         expect(screen.queryByRole("link", { name: "Sessões" })).not.toBeInTheDocument()
-        expect(screen.getByRole("button", { name: "☰ Menu" })).toHaveFocus()
+        expect(screen.getByRole("button", { name: "Menu" })).toHaveFocus()
     })
 
     it("fecha a gaveta ao clicar num link", async () => {
@@ -138,11 +138,11 @@ describe("PanelLayout", { timeout: 15000 }, () => {
         act(() => setViewportWidth(1300))
 
         expect(screen.queryByRole("presentation")).not.toBeInTheDocument()
-        expect(screen.queryByRole("button", { name: "☰ Menu" })).not.toBeInTheDocument()
+        expect(screen.queryByRole("button", { name: "Menu" })).not.toBeInTheDocument()
 
         act(() => setViewportWidth(1024))
 
-        expect(screen.getByRole("button", { name: "☰ Menu" })).toHaveAttribute(
+        expect(screen.getByRole("button", { name: "Menu" })).toHaveAttribute(
             "aria-expanded",
             "false"
         )

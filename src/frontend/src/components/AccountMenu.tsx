@@ -70,7 +70,12 @@ function AccountMenu({ account, onChangePassword, onLogout }: AccountMenuProps) 
             <span className={css.identity}>
                 <span className={css.name}>
                     {account.name}
-                    {account.isAdmin ? <span className={css.admin}>ADMIN</span> : null}
+                    {account.isAdmin ? (
+                        <>
+                            {" "}
+                            <span className={css.admin}>ADMIN</span>
+                        </>
+                    ) : null}
                 </span>
                 {showEmail ? <span className={css.email}>{account.email}</span> : null}
             </span>
