@@ -10,9 +10,9 @@ Guia do ambiente de produção (issue #51). Ele cobre a criação da VM, o deplo
   - `/api/v1/whatsapp/sessions` responde 404 (rota interna entre gateway e backend);
   - `/api/*` para o `backend`;
   - o resto para o `frontend` (painel).
-- O Postgres, o Ollama, o `/health` dos serviços e `/webhooks/evolution` não são acessíveis de fora.
+- O Postgres, o Ollama e o `/health` dos serviços não são acessíveis de fora.
 - O painel é gerado sem `VITE_API_URL` e chama a API no mesmo endereço (`/api/v1/...`). A mesma imagem serve para qualquer domínio.
-- Evolution e Redis não existem em produção (saem do código na #82).
+- Evolution e Redis saíram do projeto na #82.
 - A cada push na branch de deploy (`DEPLOY_BRANCH`, hoje `develop`) com CI verde, o workflow `deploy.yml` gera as imagens, publica no GHCR e roda `deploy/deploy.sh` na VM por SSH.
 
 Arquivos no repositório:
@@ -224,7 +224,6 @@ O `.env` fica só em `/opt/proconchat/.env`, com dono `deploy` e permissão `600
 | `POSTGRES_PASSWORD` | Senha do banco. **Nunca muda depois do primeiro deploy**: ela só vale na criação do volume |
 | `PHONE_HASH_SECRET` | Segredo do HMAC do telefone. **Nunca muda depois do primeiro deploy**: trocar faz as sessões existentes deixarem de ser encontradas |
 | `GATEWAY_INTERNAL_TOKEN` | Token entre gateway e backend |
-| `EVOLUTION_WEBHOOK_TOKEN` | Valor aleatório. O gateway ainda exige a variável até a #82, mas a rota não é exposta |
 | `WHATSAPP_PHONE_NUMBER_ID` | ID do número da equipe no app da Meta |
 | `WHATSAPP_ACCESS_TOKEN` | Token **permanente** de usuário do sistema (README do gateway, "Token de acesso permanente"). O temporário expira em 24 h |
 | `WHATSAPP_APP_SECRET` | Chave secreta do app da Meta |
