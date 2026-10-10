@@ -210,15 +210,19 @@ resposta enviada pela Graph API (`https://graph.facebook.com/<versão>/<WHATSAPP
 
 ### Túnel HTTPS para o teste
 
-A Meta só chama URL HTTPS pública. Até existir a URL do time (issue #51), cada dev usa um túnel
-apontando para a porta do gateway, por exemplo:
+O número da equipe aponta para a produção, que acompanha `develop` (issue #51,
+[`.docs/infra/deploy.md`](../../.docs/infra/deploy.md)). O WhatsApp real com esse número é testado lá,
+depois do merge. Localmente, teste o webhook com `curl` assinado (próxima seção).
+
+O túnel fica só para quem usa um app de teste próprio na Meta, porque a Meta só chama URL HTTPS pública.
+Aponte o túnel para a porta do gateway, por exemplo:
 
 ```bash
 ngrok http 3001
 cloudflared tunnel --url http://localhost:3001
 ```
 
-No app da Meta, em **WhatsApp → Configuração → Webhook**, informe `https://<túnel>/webhooks/whatsapp`
+No seu app de teste, em **WhatsApp → Configuração → Webhook**, informe `https://<túnel>/webhooks/whatsapp`
 como URL de callback e o valor de `WHATSAPP_VERIFY_TOKEN` em "Verificar token". Depois de "Verificar e
 salvar", assine o campo `messages`. O número de teste da Meta só entrega a até 5 destinatários
 cadastrados no app.
