@@ -32,7 +32,7 @@ describe("canAccess", () => {
     it("omite o grupo Operação quando a conta só tem Conteúdo", () => {
         const groups = visibleNavGroups(account(["content.manage"]))
 
-        expect(groups.map((group) => group.label)).toEqual(["Chatbot"])
+        expect(groups.map((group) => group.key)).toEqual(["chatbot"])
         expect(canAccess(account(["content.manage"]), "dashboard")).toBe(false)
     })
 })

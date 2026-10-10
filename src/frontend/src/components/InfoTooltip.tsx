@@ -6,6 +6,7 @@ import {
     type MouseEvent,
     type PointerEvent
 } from "react"
+import { useTranslation } from "react-i18next"
 import css from "@/styles/components/infoTooltip.module.css"
 
 type InfoTooltipProps = {
@@ -13,7 +14,8 @@ type InfoTooltipProps = {
     label?: string
 }
 
-function InfoTooltip({ text, label = "Mais informações" }: InfoTooltipProps) {
+function InfoTooltip({ text, label }: InfoTooltipProps) {
+    const { t } = useTranslation()
     const tooltipId = useId()
     const [open, setOpen] = useState(false)
     const press = useRef<{ pointerType: string; wasOpen: boolean } | null>(null)
@@ -62,7 +64,7 @@ function InfoTooltip({ text, label = "Mais informações" }: InfoTooltipProps) {
             <button
                 type="button"
                 className={css.trigger}
-                aria-label={label}
+                aria-label={label ?? t("infoTooltip.label")}
                 aria-describedby={open ? tooltipId : undefined}
                 onPointerEnter={handlePointerEnter}
                 onPointerLeave={handlePointerLeave}

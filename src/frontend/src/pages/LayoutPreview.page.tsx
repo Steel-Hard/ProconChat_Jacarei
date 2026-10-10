@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import ConfirmDialog from "@/components/ConfirmDialog"
 import EmptyState from "@/components/EmptyState"
 import InfoTooltip from "@/components/InfoTooltip"
@@ -10,23 +11,22 @@ import useLayoutPreview from "@/pages/hooks/useLayoutPreview"
 import css from "@/styles/pages/layoutPreview.module.css"
 
 function LayoutPreviewPage() {
+    const { t } = useTranslation("layoutPreview")
     const preview = useLayoutPreview()
     const danger = preview.dialogTone === "danger"
 
     return (
         <>
-            <title>Prévia do layout - ProconChat</title>
+            <title>{t("meta.title")}</title>
             <div className={css.page}>
                 <div className={css.header}>
                     <div>
-                        <h1 className={css.title}>Prévia do layout</h1>
-                        <p className={css.subtitle}>
-                            Exemplos dos componentes compartilhados do painel.
-                        </p>
+                        <h1 className={css.title}>{t("heading")}</h1>
+                        <p className={css.subtitle}>{t("subtitle")}</p>
                         <LastChangeNote change={preview.lastChange} />
                     </div>
                     <UnsavedChangesBar
-                        changes={preview.changes}
+                        changes={preview.changes.map((change) => t(`changes.${change}`))}
                         saving={preview.saving}
                         onDiscard={preview.discardChanges}
                         onSave={preview.saveChanges}
@@ -35,14 +35,14 @@ function LayoutPreviewPage() {
 
                 <section className={css.card} aria-labelledby="preview-status">
                     <h2 id="preview-status" className={css.cardTitle}>
-                        Status de agendamento
+                        {t("status.appointment")}
                     </h2>
                     <div className={css.row}>
                         {APPOINTMENT_STATUS_ORDER.map((status) => (
                             <StatusBadge key={status} kind="appointment" status={status} />
                         ))}
                     </div>
-                    <h2 className={css.cardTitle}>Desfecho de conversa</h2>
+                    <h2 className={css.cardTitle}>{t("status.outcome")}</h2>
                     <div className={css.row}>
                         {CONVERSATION_OUTCOME_ORDER.map((status) => (
                             <StatusBadge key={status} kind="outcome" status={status} />
@@ -52,49 +52,47 @@ function LayoutPreviewPage() {
 
                 <section className={css.card} aria-labelledby="preview-actions">
                     <h2 id="preview-actions" className={css.cardTitle}>
-                        Ações
+                        {t("actions.heading")}
                     </h2>
                     <div className={css.row}>
                         <span className={css.inline}>
-                            Mensagens recebidas
-                            <InfoTooltip text="Quantidade de mensagens recebidas pelo chatbot nas últimas 24 horas." />
+                            {t("actions.messages")}
+                            <InfoTooltip text={t("actions.messagesTooltip")} />
                         </span>
                         <button
                             type="button"
                             className={css.button}
                             onClick={() => preview.openDialog("primary")}
                         >
-                            Abrir confirmação
+                            {t("actions.openDialog")}
                         </button>
                         <button
                             type="button"
                             className={css.button}
                             onClick={() => preview.openDialog("danger")}
                         >
-                            Abrir confirmação de perigo
+                            {t("actions.openDangerDialog")}
                         </button>
                         <button
                             type="button"
                             className={css.button}
-                            onClick={() =>
-                                preview.showToast("Agendamento A3F9C21B assumido por você.")
-                            }
+                            onClick={() => preview.showToast(t("toasts.assumed"))}
                         >
-                            Mostrar toast
+                            {t("actions.showToast")}
                         </button>
                         <button type="button" className={css.button} onClick={preview.resetChanges}>
-                            Recriar alterações
+                            {t("actions.resetChanges")}
                         </button>
                     </div>
                 </section>
 
-                <section className={css.card} aria-label="Estado vazio">
+                <section className={css.card} aria-label={t("empty.region")}>
                     <EmptyState
-                        title="Nenhum agendamento pendente"
-                        description="Todos os agendamentos criados pelo chatbot já têm responsável."
+                        title={t("empty.title")}
+                        description={t("empty.description")}
                         action={{
-                            label: "Atualizar lista",
-                            onClick: () => preview.showToast("Lista atualizada.")
+                            label: t("empty.action"),
+                            onClick: () => preview.showToast(t("toasts.listUpdated"))
                         }}
                     />
                 </section>
@@ -103,13 +101,11 @@ function LayoutPreviewPage() {
             <ConfirmDialog
                 open={preview.dialogTone !== null}
                 tone={danger ? "danger" : "primary"}
-                title={danger ? "Cancelar o agendamento A3F9C21B?" : "Assumir o agendamento?"}
+                title={danger ? t("dialog.dangerTitle") : t("dialog.primaryTitle")}
                 description={
-                    danger
-                        ? "O horário volta a ficar disponível no chatbot e o cidadão é avisado pelo WhatsApp."
-                        : "Você passa a ser o responsável por este agendamento."
+                    danger ? t("dialog.dangerDescription") : t("dialog.primaryDescription")
                 }
-                confirmLabel={danger ? "Cancelar e avisar o cidadão" : "Assumir"}
+                confirmLabel={danger ? t("dialog.dangerConfirm") : t("dialog.primaryConfirm")}
                 onConfirm={preview.confirmDialog}
                 onCancel={preview.closeDialog}
             />

@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react"
+import { Trans, useTranslation } from "react-i18next"
 import useShowAccountEmail from "@/hooks/useShowAccountEmail"
 import type PanelAccount from "@/types/account/PanelAccount.types"
 import css from "@/styles/components/accountMenu.module.css"
@@ -11,6 +12,7 @@ type AccountMenuProps = {
 }
 
 function AccountMenu({ account, onChangePassword, onLogout }: AccountMenuProps) {
+    const { t } = useTranslation()
     const menuId = useId()
     const [open, setOpen] = useState(false)
     const container = useRef<HTMLDivElement>(null)
@@ -57,13 +59,16 @@ function AccountMenu({ account, onChangePassword, onLogout }: AccountMenuProps) 
             </span>
             <span className={css.identity}>
                 <span className={css.name}>
-                    {account.name}
                     {account.isAdmin ? (
-                        <>
-                            {" "}
-                            <span className={css.admin}>ADMIN</span>
-                        </>
-                    ) : null}
+                        <Trans
+                            t={t}
+                            i18nKey="accountMenu.nameWithAdmin"
+                            values={{ name: account.name }}
+                            components={{ badge: <span className={css.admin} /> }}
+                        />
+                    ) : (
+                        account.name
+                    )}
                 </span>
                 {showEmail ? <span className={css.email}>{account.email}</span> : null}
             </span>
@@ -76,11 +81,11 @@ function AccountMenu({ account, onChangePassword, onLogout }: AccountMenuProps) 
                     aria-controls={open ? menuId : undefined}
                     onClick={() => setOpen((value) => !value)}
                 >
-                    Minha conta <span aria-hidden="true">▾</span>
+                    {t("accountMenu.trigger")}
                 </button>
             ) : null}
             {open ? (
-                <ul id={menuId} aria-label="Minha conta" className={css.menu}>
+                <ul id={menuId} aria-label={t("accountMenu.options")} className={css.menu}>
                     {onChangePassword ? (
                         <li>
                             <button
@@ -88,7 +93,7 @@ function AccountMenu({ account, onChangePassword, onLogout }: AccountMenuProps) 
                                 className={css.item}
                                 onClick={() => choose(onChangePassword)}
                             >
-                                Alterar minha senha
+                                {t("accountMenu.changePassword")}
                             </button>
                         </li>
                     ) : null}
@@ -99,7 +104,7 @@ function AccountMenu({ account, onChangePassword, onLogout }: AccountMenuProps) 
                                 className={`${css.item} ${css.logout}`}
                                 onClick={() => choose(onLogout)}
                             >
-                                Sair
+                                {t("accountMenu.logout")}
                             </button>
                         </li>
                     ) : null}

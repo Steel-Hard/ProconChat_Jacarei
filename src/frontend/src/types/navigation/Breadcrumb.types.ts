@@ -1,7 +1,10 @@
+import type NavGroupKey from "@/types/navigation/NavGroupKey.types"
+import type NavKey from "@/types/navigation/NavKey.types"
+
 type Breadcrumb = {
-    group: string
-    parent?: { label: string; path: string }
-    title: string
+    group: NavGroupKey
+    parent?: { key: NavKey; path: string }
+    page: NavKey | "appointmentDetail"
 }
 
 export default Breadcrumb

@@ -3,47 +3,27 @@ import type NavGroup from "@/types/navigation/NavGroup.types"
 
 const NAV_GROUPS: NavGroup[] = [
     {
-        label: "Operação",
+        key: "operation",
         items: [
-            { key: "dashboard", path: ROUTES.dashboard, label: "Dashboard", title: "Dashboard" },
-            {
-                key: "appointments",
-                path: ROUTES.appointments,
-                label: "Agendamentos",
-                title: "Agendamentos"
-            },
-            { key: "reports", path: ROUTES.reports, label: "Relatórios", title: "Relatórios" }
+            { key: "dashboard", path: ROUTES.dashboard },
+            { key: "appointments", path: ROUTES.appointments },
+            { key: "reports", path: ROUTES.reports }
         ]
     },
     {
-        label: "Chatbot",
+        key: "chatbot",
         items: [
-            {
-                key: "content",
-                path: ROUTES.content,
-                label: "Conteúdo",
-                title: "Conteúdo do chatbot"
-            },
-            { key: "sessions", path: ROUTES.sessions, label: "Sessões", title: "Sessões" }
+            { key: "content", path: ROUTES.content },
+            { key: "sessions", path: ROUTES.sessions }
         ]
     },
     {
-        label: "Configurações",
+        key: "settings",
         items: [
-            {
-                key: "schedule",
-                path: ROUTES.schedule,
-                label: "Horários de atendimento",
-                title: "Horários de atendimento"
-            },
-            {
-                key: "documents",
-                path: ROUTES.documents,
-                label: "Documentos",
-                title: "Documentos para atendimento"
-            },
-            { key: "users", path: ROUTES.users, label: "Usuários", title: "Usuários" },
-            { key: "whatsapp", path: ROUTES.whatsapp, label: "WhatsApp", title: "WhatsApp" }
+            { key: "schedule", path: ROUTES.schedule },
+            { key: "documents", path: ROUTES.documents },
+            { key: "users", path: ROUTES.users },
+            { key: "whatsapp", path: ROUTES.whatsapp }
         ]
     }
 ]

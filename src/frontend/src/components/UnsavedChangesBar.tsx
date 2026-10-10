@@ -6,6 +6,7 @@ import {
     type MouseEvent,
     type PointerEvent
 } from "react"
+import { useTranslation } from "react-i18next"
 import css from "@/styles/components/unsavedChangesBar.module.css"
 
 type UnsavedChangesBarProps = {
@@ -21,14 +22,14 @@ function UnsavedChangesBar({
     onDiscard,
     onSave,
     saving = false,
-    saveLabel = "Salvar alterações"
+    saveLabel
 }: UnsavedChangesBarProps) {
+    const { t } = useTranslation()
     const listId = useId()
     const [listOpen, setListOpen] = useState(false)
     const press = useRef<{ pointerType: string; wasOpen: boolean } | null>(null)
     const count = changes.length
     const hasChanges = count > 0
-    const summary = count === 1 ? "1 alteração não salva" : `${count} alterações não salvas`
 
     function handlePointerDown(event: PointerEvent<HTMLButtonElement>) {
         press.current = { pointerType: event.pointerType, wasOpen: listOpen }
@@ -74,11 +75,11 @@ function UnsavedChangesBar({
                             onClick={handleClick}
                             onKeyDown={handleKeyDown}
                         >
-                            {summary}
+                            {t("unsavedChangesBar.summary", { count })}
                         </button>
                         {listOpen ? (
                             <span id={listId} role="tooltip" className={css.bubble}>
-                                {`Pendentes: ${changes.join("; ")}`}
+                                {t("unsavedChangesBar.pending", { list: changes.join("; ") })}
                             </span>
                         ) : null}
                     </span>
@@ -88,7 +89,7 @@ function UnsavedChangesBar({
                         disabled={saving}
                         onClick={onDiscard}
                     >
-                        Descartar
+                        {t("unsavedChangesBar.discard")}
                     </button>
                 </>
             ) : null}
@@ -99,7 +100,7 @@ function UnsavedChangesBar({
                 aria-busy={saving || undefined}
                 onClick={onSave}
             >
-                {saveLabel}
+                {saveLabel ?? t("unsavedChangesBar.save")}
             </button>
         </div>
     )

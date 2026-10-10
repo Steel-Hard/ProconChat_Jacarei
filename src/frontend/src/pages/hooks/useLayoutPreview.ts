@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 import type LastChange from "@/types/settings/LastChange.types"
 import useToast from "@/hooks/useToast"
 import accountSlice from "@/store/slices/account.slice"
@@ -18,14 +19,17 @@ const PREVIEW_CHANGE: LastChange = {
     changedAt: "2026-09-15T14:30:00-03:00"
 }
 
-const PREVIEW_CHANGES = ["Duração do atendimento", "Vagas por horário"]
+const PREVIEW_CHANGES: PreviewChange[] = ["duration", "slots"]
 
 type DialogTone = "primary" | "danger"
 
+type PreviewChange = "duration" | "slots"
+
 function useLayoutPreview() {
+    const { t } = useTranslation("layoutPreview")
     const { showToast } = useToast()
     const [dialogTone, setDialogTone] = useState<DialogTone | null>(null)
-    const [changes, setChanges] = useState<string[]>(PREVIEW_CHANGES)
+    const [changes, setChanges] = useState<PreviewChange[]>(PREVIEW_CHANGES)
     const [saving, setSaving] = useState(false)
     const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -65,12 +69,12 @@ function useLayoutPreview() {
 
     function confirmDialog() {
         setDialogTone(null)
-        showToast("Ação confirmada.")
+        showToast(t("toasts.confirmed"))
     }
 
     function discardChanges() {
         setChanges([])
-        showToast("Alterações descartadas.")
+        showToast(t("toasts.discarded"))
     }
 
     function saveChanges() {
@@ -83,7 +87,7 @@ function useLayoutPreview() {
             saveTimer.current = null
             setSaving(false)
             setChanges([])
-            showToast("Alterações salvas.")
+            showToast(t("toasts.saved"))
         }, 600)
     }
 

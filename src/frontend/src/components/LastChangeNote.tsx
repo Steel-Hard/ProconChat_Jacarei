@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import type LastChange from "@/types/settings/LastChange.types"
 import formatDate from "@/utils/formatDate"
 import css from "@/styles/components/lastChangeNote.module.css"
@@ -7,6 +8,8 @@ type LastChangeNoteProps = {
 }
 
 function LastChangeNote({ change }: LastChangeNoteProps) {
+    const { t } = useTranslation()
+
     if (change === null) {
         return null
     }
@@ -18,7 +21,9 @@ function LastChangeNote({ change }: LastChangeNoteProps) {
     }
 
     return (
-        <p className={css.note}>{`Última alteração por ${change.changedBy.trim()} em ${date}`}</p>
+        <p className={css.note}>
+            {t("lastChangeNote.text", { name: change.changedBy.trim(), date })}
+        </p>
     )
 }
 

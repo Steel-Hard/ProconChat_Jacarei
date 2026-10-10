@@ -1,9 +1,10 @@
-import { useId } from "react"
-import { Link, useLocation } from "react-router-dom"
-import type NavBadges from "@/types/navigation/NavBadges.types"
+import { useTranslation } from "react-i18next"
+import { useLocation } from "react-router-dom"
+import SidebarGroup from "@/components/SidebarGroup"
 import activeNavKey from "@/navigation/activeNavKey"
 import visibleNavGroups from "@/navigation/visibleNavGroups"
 import type PanelAccount from "@/types/account/PanelAccount.types"
+import type NavBadges from "@/types/navigation/NavBadges.types"
 import css from "@/styles/components/sidebar.module.css"
 
 type SidebarProps = {
@@ -14,64 +15,28 @@ type SidebarProps = {
 }
 
 function Sidebar({ account, badges, onNavigate, id }: SidebarProps) {
+    const { t } = useTranslation()
     const { pathname } = useLocation()
-    const groupIdPrefix = useId()
     const activeKey = activeNavKey(pathname)
-    const groups = visibleNavGroups(account)
 
     return (
-        <nav id={id} aria-label="Menu principal" className={css.sidebar}>
+        <nav id={id} aria-label={t("sidebar.label")} className={css.sidebar}>
             <div className={css.brand}>
-                <p className={css.brandName}>ProconChat</p>
-                <p className={css.brandSub}>Jacareí · Painel interno</p>
+                <p className={css.brandName}>{t("sidebar.brand")}</p>
+                <p className={css.brandSub}>{t("sidebar.subtitle")}</p>
             </div>
             <div className={css.groups}>
-                {groups.map((group, index) => {
-                    const labelId = `${groupIdPrefix}-${index}`
-
-                    return (
-                        <div key={group.label} className={css.group}>
-                            <p id={labelId} className={css.groupLabel}>
-                                {group.label}
-                            </p>
-                            <ul aria-labelledby={labelId} className={css.items}>
-                                {group.items.map((item) => {
-                                    const active = item.key === activeKey
-                                    const badge = badges[item.key]
-                                    const showBadge = badge !== undefined && badge.count > 0
-
-                                    return (
-                                        <li key={item.key}>
-                                            <Link
-                                                to={item.path}
-                                                className={
-                                                    active ? `${css.link} ${css.active}` : css.link
-                                                }
-                                                aria-current={active ? "page" : undefined}
-                                                onClick={onNavigate}
-                                            >
-                                                <span>{item.label}</span>
-                                                {showBadge ? (
-                                                    <>
-                                                        {" "}
-                                                        <span className={css.count}>
-                                                            {badge.count}
-                                                        </span>{" "}
-                                                        <span className={css.visuallyHidden}>
-                                                            {badge.label}
-                                                        </span>
-                                                    </>
-                                                ) : null}
-                                            </Link>
-                                        </li>
-                                    )
-                                })}
-                            </ul>
-                        </div>
-                    )
-                })}
+                {visibleNavGroups(account).map((group) => (
+                    <SidebarGroup
+                        key={group.key}
+                        group={group}
+                        activeKey={activeKey}
+                        badges={badges}
+                        onNavigate={onNavigate}
+                    />
+                ))}
             </div>
-            <p className={css.footer}>Uso exclusivo de servidores do PROCON Jacareí.</p>
+            <p className={css.footer}>{t("sidebar.footer")}</p>
         </nav>
     )
 }

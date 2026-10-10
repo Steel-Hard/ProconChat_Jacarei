@@ -16,17 +16,17 @@ describe("visibleNavGroups", () => {
     it("mostra os 9 itens nos 3 grupos para o Admin", () => {
         const groups = visibleNavGroups(account([], true))
 
-        expect(groups.map((group) => group.label)).toEqual(["Operação", "Chatbot", "Configurações"])
-        expect(groups.flatMap((group) => group.items.map((item) => item.label))).toEqual([
-            "Dashboard",
-            "Agendamentos",
-            "Relatórios",
-            "Conteúdo",
-            "Sessões",
-            "Horários de atendimento",
-            "Documentos",
-            "Usuários",
-            "WhatsApp"
+        expect(groups.map((group) => group.key)).toEqual(["operation", "chatbot", "settings"])
+        expect(groups.flatMap((group) => group.items.map((item) => item.key))).toEqual([
+            "dashboard",
+            "appointments",
+            "reports",
+            "content",
+            "sessions",
+            "schedule",
+            "documents",
+            "users",
+            "whatsapp"
         ])
     })
 

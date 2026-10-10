@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type MouseEvent, type ReactNode } from "react"
+import { useTranslation } from "react-i18next"
 import css from "@/styles/components/confirmDialog.module.css"
 
 const FOCUSABLE_SELECTOR =
@@ -24,13 +25,14 @@ function ConfirmDialog({
     description,
     children,
     confirmLabel,
-    cancelLabel = "Voltar",
+    cancelLabel,
     tone = "primary",
     confirmDisabled = false,
     busy = false,
     onConfirm,
     onCancel
 }: ConfirmDialogProps) {
+    const { t } = useTranslation()
     const titleId = useId()
     const descriptionId = useId()
     const cancelRef = useRef<HTMLButtonElement>(null)
@@ -132,7 +134,7 @@ function ConfirmDialog({
                 {children}
                 <div className={css.actions}>
                     <button ref={cancelRef} type="button" className={css.cancel} onClick={onCancel}>
-                        {cancelLabel}
+                        {cancelLabel ?? t("confirmDialog.cancel")}
                     </button>
                     <button
                         type="button"

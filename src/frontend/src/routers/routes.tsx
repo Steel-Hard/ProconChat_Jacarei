@@ -5,6 +5,7 @@ import RootLayout from "@/layouts/Root.layout"
 import ErrorPage from "@/pages/Error.page"
 import RequireAuth from "@/routers/RequireAuth"
 import ROUTES from "@/routers/paths"
+import type UnderConstructionTitle from "@/types/pages/UnderConstructionTitle.types"
 
 const UnderConstruction = lazy(() => import("@/pages/UnderConstruction.page"))
 const Login = lazy(() => import("@/pages/Login.page"))
@@ -26,8 +27,8 @@ function previewRoutes(): RouteObject[] {
     ]
 }
 
-function underConstruction(path: string, title: string): RouteObject {
-    return { path, element: <UnderConstruction title={title} /> }
+function underConstruction(path: string, titleKey: UnderConstructionTitle): RouteObject {
+    return { path, element: <UnderConstruction titleKey={titleKey} /> }
 }
 
 const routes: RouteObject[] = [
@@ -42,16 +43,16 @@ const routes: RouteObject[] = [
                     {
                         element: <PanelLayout />,
                         children: [
-                            underConstruction(ROUTES.dashboard, "Painel"),
-                            underConstruction(ROUTES.appointments, "Agendamentos"),
-                            underConstruction(ROUTES.appointmentDetail, "Detalhe do agendamento"),
-                            underConstruction(ROUTES.reports, "Relatórios"),
-                            underConstruction(ROUTES.content, "Conteúdo"),
-                            underConstruction(ROUTES.sessions, "Sessões"),
-                            underConstruction(ROUTES.schedule, "Horários"),
-                            underConstruction(ROUTES.documents, "Documentos"),
-                            underConstruction(ROUTES.users, "Usuários"),
-                            underConstruction(ROUTES.whatsapp, "WhatsApp")
+                            underConstruction(ROUTES.dashboard, "dashboard"),
+                            underConstruction(ROUTES.appointments, "appointments"),
+                            underConstruction(ROUTES.appointmentDetail, "appointmentDetail"),
+                            underConstruction(ROUTES.reports, "reports"),
+                            underConstruction(ROUTES.content, "content"),
+                            underConstruction(ROUTES.sessions, "sessions"),
+                            underConstruction(ROUTES.schedule, "schedule"),
+                            underConstruction(ROUTES.documents, "documents"),
+                            underConstruction(ROUTES.users, "users"),
+                            underConstruction(ROUTES.whatsapp, "whatsapp")
                         ]
                     }
                 ]

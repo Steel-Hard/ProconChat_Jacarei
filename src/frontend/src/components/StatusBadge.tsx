@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import APPOINTMENT_STATUS from "@/status/appointmentStatusStyles"
 import CONVERSATION_OUTCOME from "@/status/conversationOutcomeStyles"
 import type AppointmentStatus from "@/types/status/AppointmentStatus.types"
@@ -9,6 +10,7 @@ type StatusBadgeProps =
     | { kind: "outcome"; status: ConversationOutcome }
 
 function StatusBadge(props: StatusBadgeProps) {
+    const { t } = useTranslation()
     const style =
         props.kind === "appointment"
             ? APPOINTMENT_STATUS[props.status]
@@ -16,7 +18,9 @@ function StatusBadge(props: StatusBadgeProps) {
 
     return (
         <span className={css.badge} style={{ backgroundColor: style.bg, color: style.fg }}>
-            {style.label}
+            {props.kind === "appointment"
+                ? t(`status.appointment.${props.status}`)
+                : t(`status.outcome.${props.status}`)}
         </span>
     )
 }

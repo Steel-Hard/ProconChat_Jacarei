@@ -59,6 +59,11 @@
     cursor: pointer;
 }
 
+.trigger::after {
+    content: "▾" / "";
+    margin-left: 0.3em;
+}
+
 .trigger:hover {
     background: var(--bg-page);
 }

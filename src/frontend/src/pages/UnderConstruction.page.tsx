@@ -1,18 +1,23 @@
+import { useTranslation } from "react-i18next"
+import type UnderConstructionTitle from "@/types/pages/UnderConstructionTitle.types"
 import css from "@/styles/pages/underConstruction.module.css"
 
 type UnderConstructionPageProps = {
-    title: string
+    titleKey: UnderConstructionTitle
 }
 
-function UnderConstructionPage({ title }: UnderConstructionPageProps) {
+function UnderConstructionPage({ titleKey }: UnderConstructionPageProps) {
+    const { t } = useTranslation("underConstruction")
+    const title = t(`titles.${titleKey}`)
+
     return (
         <>
-            <title>{`${title} - ProconChat`}</title>
-            <meta name="description" content={`Tela de ${title} em construção.`} />
+            <title>{t("meta.title", { title })}</title>
+            <meta name="description" content={t("meta.description", { title })} />
             <section className={css.main}>
                 <div>
                     <h1>{title}</h1>
-                    <p>Em construção.</p>
+                    <p>{t("notice")}</p>
                 </div>
             </section>
         </>

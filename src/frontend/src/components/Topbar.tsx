@@ -1,4 +1,5 @@
 import type { Ref } from "react"
+import { useTranslation } from "react-i18next"
 import { Link, useLocation } from "react-router-dom"
 import AccountMenu from "@/components/AccountMenu"
 import breadcrumbFor from "@/navigation/breadcrumbFor"
@@ -26,6 +27,7 @@ function Topbar({
     onChangePassword,
     onLogout
 }: TopbarProps) {
+    const { t } = useTranslation()
     const { pathname } = useLocation()
     const crumb = breadcrumbFor(pathname)
 
@@ -41,28 +43,26 @@ function Topbar({
                         aria-controls={menuControls}
                         onClick={onOpenMenu}
                     >
-                        <span aria-hidden="true">☰</span> Menu
+                        {t("topbar.menu")}
                     </button>
                 ) : null}
-                <nav aria-label="Trilha" className={css.trail}>
+                <nav aria-label={t("topbar.trail")} className={css.trail}>
                     {crumb ? (
                         <>
-                            <span>{crumb.group}</span>
+                            <span>{t(`navigation.groups.${crumb.group}`)}</span>
                             {crumb.parent ? (
                                 <>
-                                    <span className={css.separator} aria-hidden="true">
-                                        /
-                                    </span>
+                                    <span className={css.separator} aria-hidden="true" />
                                     <Link to={crumb.parent.path} className={css.parent}>
-                                        {crumb.parent.label}
+                                        {t(`navigation.items.${crumb.parent.key}.title`)}
                                     </Link>
                                 </>
                             ) : null}
-                            <span className={css.separator} aria-hidden="true">
-                                /
-                            </span>
+                            <span className={css.separator} aria-hidden="true" />
                             <span className={css.current} aria-current="page">
-                                {crumb.title}
+                                {crumb.page === "appointmentDetail"
+                                    ? t("navigation.appointmentDetail")
+                                    : t(`navigation.items.${crumb.page}.title`)}
                             </span>
                         </>
                     ) : null}
