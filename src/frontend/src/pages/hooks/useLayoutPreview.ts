@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import type { LastChange } from "@/components/LastChangeNote"
 import { useToast } from "@/hooks/useToast"
-import { clearAccount, setAccount } from "@/services/account.service"
+import { clearAccount, getAccount, setAccount } from "@/services/account.service"
 import type { PanelAccount } from "@/types/account"
 
 const PREVIEW_ACCOUNT: PanelAccount = {
@@ -25,14 +25,29 @@ export function useLayoutPreview() {
     const [dialogTone, setDialogTone] = useState<DialogTone | null>(null)
     const [changes, setChanges] = useState<string[]>(PREVIEW_CHANGES)
     const [saving, setSaving] = useState(false)
+    const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     useEffect(() => {
+        const previous = getAccount()
         setAccount(PREVIEW_ACCOUNT)
 
         return () => {
-            clearAccount()
+            if (previous === null) {
+                clearAccount()
+            } else {
+                setAccount(previous)
+            }
         }
     }, [])
+
+    useEffect(
+        () => () => {
+            if (saveTimer.current !== null) {
+                clearTimeout(saveTimer.current)
+            }
+        },
+        []
+    )
 
     function openDialog(tone: DialogTone) {
         setDialogTone(tone)
@@ -53,8 +68,13 @@ export function useLayoutPreview() {
     }
 
     function saveChanges() {
+        if (saveTimer.current !== null) {
+            clearTimeout(saveTimer.current)
+        }
+
         setSaving(true)
-        setTimeout(() => {
+        saveTimer.current = setTimeout(() => {
+            saveTimer.current = null
             setSaving(false)
             setChanges([])
             showToast("Alterações salvas.")
