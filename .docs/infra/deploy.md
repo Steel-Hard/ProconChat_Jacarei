@@ -310,16 +310,24 @@ O workflow `.github/workflows/deploy.yml` roda em todo push para `develop` e `ma
 2. **build:** com o CI verde, gera as três imagens para `DEPLOY_PLATFORM` num runner nativo e publica `ghcr.io/steel-hard/proconchat-<app>:<sha>`.
 3. **deploy:** no environment `production`, copia `compose.prod.yaml` e `deploy/` para `/opt/proconchat` por `scp` e roda `/opt/proconchat/deploy/deploy.sh <sha>` por SSH.
 
-Push numa branch diferente de `DEPLOY_BRANCH`, CI falho ou PR não geram imagem nem deploy. Os deploys usam o grupo de concorrência `deploy-production`: um deploy em andamento nunca é cancelado, e o próximo espera. Se chegarem vários enquanto um roda, só o mais recente fica na fila.
+Push numa branch diferente de `DEPLOY_BRANCH`, CI falho ou PR não geram imagem nem deploy. O job `deploy` usa o grupo de concorrência `deploy-production`: um deploy em andamento nunca é cancelado, e o próximo espera. Se chegarem vários enquanto um roda, só o mais recente fica na fila. Como a fila vale só para o job `deploy`, uma execução cujos jobs são pulados (por exemplo, push em `main` com `DEPLOY_BRANCH=develop`) não entra nela nem cancela um deploy pendente.
 
 O `deploy.sh <tag>`:
 
-1. baixa as imagens da tag (`docker compose pull`);
+1. baixa só as imagens que ainda não existem na VM (`docker compose pull --policy missing`). Uma tag nova sempre falta e é baixada; como as tags são SHAs imutáveis, uma tag que já está na VM não muda. `postgres:15-alpine` e `caddy:2-alpine` não são atualizados sozinhos depois do primeiro `pull`. Para pegar correções dessas imagens, rode antes de um deploy:
+
+   ```bash
+   cd /opt/proconchat
+   export IMAGE_TAG="$(tail -n 1 releases.log | cut -d' ' -f2)"
+   docker compose -f compose.prod.yaml pull postgres caddy
+   ./deploy/deploy.sh "$IMAGE_TAG"
+   ```
+
 2. recria os serviços com `IMAGE_TAG=<tag>` (`up -d --remove-orphans`). O `migrate` aplica as migrations novas e o `seed` roda antes do `backend`; se o `migrate` falhar, o `backend` novo não sobe;
 3. espera `backend` e `gateway` ficarem `healthy` (até `DEPLOY_WAIT_TIMEOUT`, padrão 300 s). Não espera o `llm-pull`;
 4. confere pelo endereço público que `/` responde 200 e `/webhooks/whatsapp` responde 403, com até 12 tentativas;
 5. registra `<data UTC> <tag>` em `/opt/proconchat/releases.log`;
-6. remove as imagens sem uso (`docker image prune -f`).
+6. remove as imagens sem container que foram criadas há mais de uma semana (`docker image prune -af --filter "until=168h"`). Imagens em uso nunca são removidas, e as da última semana ficam para um rollback rápido; uma tag mais antiga é baixada de novo do GHCR.
 
 Qualquer falha sai com código diferente de 0, e o job fica vermelho. Sem tag, ele sai com código 2 sem mexer nos containers.
 
@@ -380,18 +388,21 @@ tail -n 5 /opt/proconchat/releases.log
 
 Quando o `deploy.yml` estiver em `main` (branch padrão do repositório), o rollback também pode ser feito em **Actions → Deploy → Run workflow**, com o campo `image_tag` preenchido com o SHA anterior. Com `image_tag`, o CI e o build são pulados e só o deploy roda. Antes disso o botão não aparece, porque o GitHub só mostra o `workflow_dispatch` de workflows que estão na branch padrão.
 
-**Migrations não voltam no rollback.** O schema continua o da versão mais nova. O rollback de código só é seguro se a migration nova for compatível com o código anterior. Desfazer a última migration é manual e precisa de backup antes:
+**Migrations não voltam no rollback.** O schema continua o da versão mais nova. O rollback de código só é seguro se a migration nova for compatível com o código anterior. Desfazer a última migration é manual, precisa de backup antes e roda com a tag **nova**, a que ainda está no ar, porque só a imagem nova tem o arquivo da migration a desfazer. Só depois volte o código:
 
 ```bash
 cd /opt/proconchat
 export IMAGE_TAG="$(tail -n 1 releases.log | cut -d' ' -f2)"
 ./deploy/backup.sh
 docker compose -f compose.prod.yaml run --rm migrate npm run db:rollback
+./deploy/deploy.sh <sha-anterior>
 ```
+
+O rollback usa o `compose.prod.yaml` e o `deploy/` atuais com as imagens da tag anterior. Se o rollback atravessar uma mudança nesses arquivos, copie a versão deles da tag anterior antes.
 
 ## Backup e restauração
 
-`deploy/backup.sh` roda `pg_dump -Fc` dentro do container `postgres` e grava `/opt/proconchat/backups/proconchat-AAAA-MM-DD.dump` com permissão `600`. O arquivo só recebe o nome final se o `pg_dump` terminar sem erro. Depois apaga os dumps mais antigos que `BACKUP_RETENTION_DAYS` (padrão 7).
+`deploy/backup.sh` roda `pg_dump -Fc` dentro do container `postgres` e grava `/opt/proconchat/backups/proconchat-AAAA-MM-DD.dump` com permissão `600`. O arquivo só recebe o nome final se o `pg_dump` terminar sem erro. Depois apaga os dumps com `BACKUP_RETENTION_DAYS` dias ou mais (padrão 7), mantendo exatamente os dumps dos últimos N dias: com o padrão, o de hoje e os 6 anteriores.
 
 Agendar no `cron` do usuário `deploy`, uma vez por dia:
 
@@ -411,7 +422,7 @@ Conferir no dia seguinte:
 ls -l /opt/proconchat/backups/
 ```
 
-**Retenção e LGPD.** O dump contém o telefone criptografado dos agendamentos, o hash do telefone das sessões e o CPF em hash e mascarado. Com 7 dias de retenção, um telefone apagado ao fim do agendamento (decisão 002) sobrevive no máximo 7 dias nos backups. Isso faz parte da política de retenção, e o restante dela é da #69.
+**Retenção e LGPD.** O dump contém o telefone criptografado dos agendamentos, o hash do telefone das sessões e o CPF em hash e mascarado. Com 7 dias de retenção, um telefone apagado ao fim do agendamento (decisão 002) sobrevive menos de 7 dias nos backups: o dump mais antigo é apagado quando completa 7 dias. Isso faz parte da política de retenção, e o restante dela é da #69.
 
 **Não há cópia fora da VM.** Os dumps ficam só no disco da VM. Perder a VM ou a conta AWS (por exemplo, no fim do crédito) perde também os backups. A cópia externa (por exemplo, um bucket S3) ficou para depois.
 

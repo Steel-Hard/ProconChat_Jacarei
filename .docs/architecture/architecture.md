@@ -159,5 +159,5 @@ Ver [`../database/database.md`](../database/database.md): o schema atual e o pla
 | RNF02 | Resposta oficial não espera o LLM; `restart` e healthchecks; Cloud API em vez de automação não oficial |
 | RNF03 | Seção "Segurança e dados pessoais" |
 | RNF06 | Tudo no Docker Compose |
-| RNF08 | CI em todo PR e CD a cada merge em `main` |
+| RNF08 | CI em todo PR e CD a cada push com CI verde na branch de `DEPLOY_BRANCH` (`develop` durante o semestre, `main` no fim) |
 | RP03 | Gateway, Backend e LLM separados; módulos internos no Backend |
