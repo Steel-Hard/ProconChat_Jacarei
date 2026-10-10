@@ -2,25 +2,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import validateEnv from "./validateEnv"
 
 describe("validateEnv", () => {
-    let originalWebhookToken: string | undefined
     let originalBackendInternalUrl: string | undefined
     let originalGatewayInternalToken: string | undefined
 
     beforeEach(() => {
-        originalWebhookToken = process.env.EVOLUTION_WEBHOOK_TOKEN
         originalBackendInternalUrl = process.env.BACKEND_INTERNAL_URL
         originalGatewayInternalToken = process.env.GATEWAY_INTERNAL_TOKEN
-        process.env.EVOLUTION_WEBHOOK_TOKEN = "test-webhook-token"
         process.env.BACKEND_INTERNAL_URL = "http://backend:3000"
         process.env.GATEWAY_INTERNAL_TOKEN = "test-internal-token"
     })
 
     afterEach(() => {
-        if (originalWebhookToken === undefined) {
-            delete process.env.EVOLUTION_WEBHOOK_TOKEN
-        } else {
-            process.env.EVOLUTION_WEBHOOK_TOKEN = originalWebhookToken
-        }
         if (originalBackendInternalUrl === undefined) {
             delete process.env.BACKEND_INTERNAL_URL
         } else {
@@ -41,17 +33,6 @@ describe("validateEnv", () => {
         validateEnv()
 
         expect(exitSpy).not.toHaveBeenCalled()
-    })
-
-    it("exits with code 1 when EVOLUTION_WEBHOOK_TOKEN is missing", () => {
-        delete process.env.EVOLUTION_WEBHOOK_TOKEN
-        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never)
-        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
-
-        validateEnv()
-
-        expect(exitSpy).toHaveBeenCalledWith(1)
-        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("EVOLUTION_WEBHOOK_TOKEN"))
     })
 
     it("exits with code 1 when BACKEND_INTERNAL_URL is missing", () => {
@@ -128,5 +109,35 @@ describe("validateEnv com as variaveis da Cloud API", () => {
         if (original !== undefined) {
             process.env.WHATSAPP_GRAPH_API_VERSION = original
         }
+    })
+})
+
+describe("validateEnv com o ambiente minimo", () => {
+    let originalEnv: NodeJS.ProcessEnv
+
+    beforeEach(() => {
+        originalEnv = process.env
+        process.env = {
+            BACKEND_INTERNAL_URL: "http://backend:3000",
+            GATEWAY_INTERNAL_TOKEN: "test-internal-token",
+            WHATSAPP_PHONE_NUMBER_ID: "100000000000001",
+            WHATSAPP_ACCESS_TOKEN: "test-access-token",
+            WHATSAPP_APP_SECRET: "test-app-secret",
+            WHATSAPP_VERIFY_TOKEN: "test-verify-token",
+        }
+    })
+
+    afterEach(() => {
+        process.env = originalEnv
+        vi.restoreAllMocks()
+    })
+
+    it("nao encerra com o ambiente reduzido as seis variaveis obrigatorias", () => {
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never)
+        vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+        validateEnv()
+
+        expect(exitSpy).not.toHaveBeenCalled()
     })
 })
