@@ -1,5 +1,10 @@
 import "@testing-library/jest-dom/vitest"
 import { cleanup } from "@testing-library/react"
-import { afterEach } from "vitest"
+import { afterEach, beforeEach } from "vitest"
+import { mockMatchMedia } from "@/test/mockMatchMedia"
+
+beforeEach(() => {
+    mockMatchMedia(1440)
+})
 
 afterEach(cleanup)
