@@ -1,6 +1,7 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 import { fireEvent, screen } from "@testing-library/react"
 import ToastProvider from "@/components/ToastProvider"
+import registerLayoutPreviewNamespace from "@/i18n/registerLayoutPreviewNamespace"
 import useLayoutPreview from "@/pages/hooks/useLayoutPreview"
 import renderWithStore from "@/testUtils/renderWithStore"
 import type PanelAccount from "@/types/account/PanelAccount.types"
@@ -32,6 +33,10 @@ function renderPreview(account: PanelAccount | null) {
 }
 
 describe("useLayoutPreview", () => {
+    beforeAll(() => {
+        registerLayoutPreviewNamespace()
+    })
+
     afterEach(() => {
         vi.useRealTimers()
     })

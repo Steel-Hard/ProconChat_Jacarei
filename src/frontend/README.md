@@ -58,7 +58,7 @@ O CI (`.github/workflows/ci.yml`) roda `format:check`, `lint`, `build` e `test:r
 
 ## Idioma
 
-Só pt-BR (`SUPPORTED_LANGUAGES = ["pt-BR"]`, fallback `pt-BR`). A estrutura do template continua: detecção por `?lng=`, escolha salva e navegador, com qualquer variante `pt-*` resolvida para `pt-BR` e o resto caindo no fallback. A única escrita em `localStorage` é a do idioma escolhido (`proconchat:language`), que não é dado pessoal. Novo namespace entra em `src/locales/pt-BR/`, em `src/i18n/resources.ts` e no `ns` de `src/i18n/i18n.ts`. `src/types/i18next.d.ts` tipa as chaves: chave inexistente não compila.
+Só pt-BR (`SUPPORTED_LANGUAGES = ["pt-BR"]`, fallback `pt-BR`). A estrutura do template continua: detecção por `?lng=`, escolha salva e navegador, com qualquer variante `pt-*` resolvida para `pt-BR` e o resto caindo no fallback. A única escrita em `localStorage` é a do idioma escolhido (`proconchat:language`), que não é dado pessoal. Novo namespace entra em `src/locales/pt-BR/`, em `src/i18n/resources.ts` e no `ns` de `src/i18n/i18n.ts`. `src/types/i18next.d.ts` tipa as chaves: chave inexistente não compila. O namespace `layoutPreview` é exceção: fica fora de `resources.ts` e do `ns`, entra no tipo pelo `i18next.d.ts` e é registrado por `src/i18n/registerLayoutPreviewNamespace.ts` só quando a rota `/dev/layout` carrega, para os textos da prévia não irem para o build de produção.
 
 ## Estado global
 
@@ -89,7 +89,7 @@ Toda rota protegida é renderizada dentro do `PanelLayout`: menu lateral (`Sideb
     - `ToastProvider` + `useToast()`: aviso temporário (2600 ms), um por vez.
     - `UnsavedChangesBar`: "N alterações não salvas", lista de pendentes ao passar o mouse, focar ou tocar, "Descartar" e "Salvar alterações".
     - `LastChangeNote`: "Última alteração por [nome] em [data]". Recebe `{ changedBy, changedAt }`, com `changedAt` em ISO 8601 com fuso, e mostra a data em dd/mm/aaaa no fuso de Brasília por `utils/formatDate.ts`. Sem alteração ou com data inválida, não mostra nada. O `formatDate` também aceita data sem hora (`AAAA-MM-DD`, como uma coluna `DATE`) e a formata como está, sem conversão de fuso.
-- Prévia: com `npm run dev`, a rota `/dev/layout` mostra o layout com uma conta Admin de exemplo e um exemplo de cada componente. Ela só existe em desenvolvimento e não entra no build de produção.
+- Prévia: com `npm run dev`, a rota `/dev/layout` mostra o layout com uma conta Admin de exemplo e um exemplo de cada componente. Ela só existe em desenvolvimento e não entra no build de produção, nem os textos dela.
 
 ## Fontes
 

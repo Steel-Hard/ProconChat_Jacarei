@@ -17,7 +17,13 @@ function previewRoutes(): RouteObject[] {
         return []
     }
 
-    const LayoutPreview = lazy(() => import("@/pages/LayoutPreview.page"))
+    const LayoutPreview = lazy(async () => {
+        const { default: registerLayoutPreviewNamespace } =
+            await import("@/i18n/registerLayoutPreviewNamespace")
+        registerLayoutPreviewNamespace()
+
+        return import("@/pages/LayoutPreview.page")
+    })
 
     return [
         {
