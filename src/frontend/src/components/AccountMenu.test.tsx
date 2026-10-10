@@ -88,4 +88,15 @@ describe("AccountMenu", () => {
 
         expect(screen.queryByRole("menu")).not.toBeInTheDocument()
     })
+
+    it("usa iniciais em maiúsculas para nomes digitados em minúsculas", () => {
+        const { rerender } = render(
+            <AccountMenu account={{ ...admin, name: "bruno" }} onLogout={vi.fn()} />
+        )
+        expect(screen.getByText("B")).toBeInTheDocument()
+
+        rerender(<AccountMenu account={{ ...admin, name: "ana paula souza" }} onLogout={vi.fn()} />)
+
+        expect(screen.getByText("AS")).toBeInTheDocument()
+    })
 })

@@ -155,4 +155,16 @@ describe("PanelLayout", { timeout: 15000 }, () => {
             screen.queryByRole("menuitem", { name: "Alterar minha senha" })
         ).not.toBeInTheDocument()
     })
+
+    it("não mostra links nem o bloco de conta quando não há conta", async () => {
+        setToken("abc")
+        const router = createMemoryRouter(routes, { initialEntries: [ROUTES.dashboard] })
+
+        render(<RouterProvider router={router} />)
+        await screen.findByText("Em construção.", {}, { timeout: LAZY_TIMEOUT_MS })
+
+        expect(screen.getByRole("navigation", { name: "Menu principal" })).toBeInTheDocument()
+        expect(screen.queryAllByRole("link")).toHaveLength(0)
+        expect(screen.queryByRole("button", { name: "Minha conta" })).not.toBeInTheDocument()
+    })
 })

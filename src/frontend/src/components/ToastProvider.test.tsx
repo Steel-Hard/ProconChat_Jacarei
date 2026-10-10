@@ -101,4 +101,18 @@ describe("ToastProvider", () => {
             "useToast precisa estar dentro de ToastProvider"
         )
     })
+
+    it("limpa o temporizador ao desmontar com toast pendente", () => {
+        const { unmount } = render(
+            <ToastProvider>
+                <ToastTrigger />
+            </ToastProvider>
+        )
+        click("Primeiro")
+        expect(vi.getTimerCount()).toBe(1)
+
+        unmount()
+
+        expect(vi.getTimerCount()).toBe(0)
+    })
 })
