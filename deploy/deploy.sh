@@ -15,7 +15,7 @@ compose=(docker compose -f compose.prod.yaml)
 
 env_value() {
     if [ -f .env ]; then
-        grep -E "^$1=" .env | tail -n 1 | cut -d= -f2- | tr -d "\"'"
+        { grep -E "^$1=" .env || true; } | tail -n 1 | cut -d= -f2- | tr -d "\"'"
     fi
 }
 
