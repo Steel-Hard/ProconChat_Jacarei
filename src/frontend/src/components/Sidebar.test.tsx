@@ -122,11 +122,12 @@ describe("Sidebar", () => {
         expect(screen.getByRole("link", { name: "Sessões" })).toHaveTextContent(/^Sessões$/)
     })
 
-    it("avisa a navegação ao clicar num link", () => {
+    it("avisa a navegação ao clicar num link", async () => {
+        const user = userEvent.setup()
         const onNavigate = vi.fn()
         renderSidebar({ onNavigate })
 
-        userEvent.click(screen.getByRole("link", { name: "Relatórios" }))
+        await user.click(screen.getByRole("link", { name: "Relatórios" }))
 
         expect(onNavigate).toHaveBeenCalledTimes(1)
     })

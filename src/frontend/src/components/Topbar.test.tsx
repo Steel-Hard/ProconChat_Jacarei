@@ -71,7 +71,8 @@ describe("Topbar", () => {
         expect(within(trail).queryByRole("link")).not.toBeInTheDocument()
     })
 
-    it("mostra o botão Menu só quando pedido e avisa ao clicar", () => {
+    it("mostra o botão Menu só quando pedido e avisa ao clicar", async () => {
+        const user = userEvent.setup()
         const onOpenMenu = vi.fn()
         const { unmount } = renderTopbar({ showMenuButton: false })
         expect(screen.queryByRole("button", { name: "Menu" })).not.toBeInTheDocument()
@@ -82,7 +83,7 @@ describe("Topbar", () => {
         expect(button).toHaveAttribute("aria-expanded", "false")
         expect(button).toHaveAttribute("aria-controls", "menu-principal")
 
-        userEvent.click(button)
+        await user.click(button)
 
         expect(onOpenMenu).toHaveBeenCalledTimes(1)
     })

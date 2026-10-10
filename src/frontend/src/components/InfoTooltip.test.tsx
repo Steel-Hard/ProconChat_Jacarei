@@ -20,26 +20,28 @@ describe("InfoTooltip", () => {
         expect(screen.queryByRole("tooltip")).not.toBeInTheDocument()
     })
 
-    it("mostra o balão ao passar o mouse e esconde ao sair", () => {
+    it("mostra o balão ao passar o mouse e esconde ao sair", async () => {
+        const user = userEvent.setup()
         render(<InfoTooltip text={text} />)
         const button = screen.getByRole("button", { name: "Mais informações" })
 
-        userEvent.hover(button)
+        await user.hover(button)
         const tooltip = screen.getByRole("tooltip")
         expect(tooltip).toHaveTextContent(text)
         expect(button).toHaveAttribute("aria-describedby", tooltip.id)
 
-        userEvent.unhover(button)
+        await user.unhover(button)
         expect(screen.queryByRole("tooltip")).not.toBeInTheDocument()
     })
 
-    it("mostra o balão ao receber foco e esconde com Esc", () => {
+    it("mostra o balão ao receber foco e esconde com Esc", async () => {
+        const user = userEvent.setup()
         render(<InfoTooltip text={text} />)
 
-        userEvent.tab()
+        await user.tab()
         expect(screen.getByRole("tooltip")).toHaveTextContent(text)
 
-        userEvent.keyboard("{esc}")
+        await user.keyboard("{Escape}")
         expect(screen.queryByRole("tooltip")).not.toBeInTheDocument()
     })
 
@@ -54,26 +56,28 @@ describe("InfoTooltip", () => {
         expect(screen.queryByRole("tooltip")).not.toBeInTheDocument()
     })
 
-    it("mantém o balão aberto ao clicar com o mouse", () => {
+    it("mantém o balão aberto ao clicar com o mouse", async () => {
+        const user = userEvent.setup()
         render(<InfoTooltip text={text} />)
         const button = screen.getByRole("button", { name: "Mais informações" })
 
-        userEvent.click(button)
+        await user.click(button)
         expect(screen.getByRole("tooltip")).toHaveTextContent(text)
 
-        userEvent.click(button)
+        await user.click(button)
         expect(screen.getByRole("tooltip")).toHaveTextContent(text)
     })
 
-    it("alterna o balão com Enter pelo teclado", () => {
+    it("alterna o balão com Enter pelo teclado", async () => {
+        const user = userEvent.setup()
         render(<InfoTooltip text={text} />)
-        userEvent.tab()
+        await user.tab()
         expect(screen.getByRole("tooltip")).toBeInTheDocument()
 
-        userEvent.keyboard("{enter}")
+        await user.keyboard("{Enter}")
         expect(screen.queryByRole("tooltip")).not.toBeInTheDocument()
 
-        userEvent.keyboard("{enter}")
+        await user.keyboard("{Enter}")
         expect(screen.getByRole("tooltip")).toBeInTheDocument()
     })
 

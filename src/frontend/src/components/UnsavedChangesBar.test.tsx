@@ -48,27 +48,29 @@ describe("UnsavedChangesBar", () => {
         expect(screen.getByText("3 alterações não salvas")).toBeInTheDocument()
     })
 
-    it("mostra a lista de pendentes ao passar o mouse e ao focar o aviso", () => {
+    it("mostra a lista de pendentes ao passar o mouse e ao focar o aviso", async () => {
+        const user = userEvent.setup()
         renderBar(["Duração", "Vagas", "Janela"])
         const chip = screen.getByText("3 alterações não salvas")
 
-        userEvent.hover(chip)
+        await user.hover(chip)
         expect(screen.getByRole("tooltip")).toHaveTextContent("Pendentes: Duração; Vagas; Janela")
         expect(chip).toHaveAccessibleDescription("Pendentes: Duração; Vagas; Janela")
 
-        userEvent.unhover(chip)
+        await user.unhover(chip)
         expect(screen.queryByRole("tooltip")).not.toBeInTheDocument()
 
-        userEvent.tab()
+        await user.tab()
         expect(chip).toHaveFocus()
         expect(screen.getByRole("tooltip")).toHaveTextContent("Pendentes: Duração; Vagas; Janela")
     })
 
-    it("chama onDiscard em Descartar e onSave em Salvar alterações", () => {
+    it("chama onDiscard em Descartar e onSave em Salvar alterações", async () => {
+        const user = userEvent.setup()
         const { onDiscard, onSave } = renderBar(["Duração"])
 
-        userEvent.click(screen.getByRole("button", { name: "Descartar" }))
-        userEvent.click(screen.getByRole("button", { name: "Salvar alterações" }))
+        await user.click(screen.getByRole("button", { name: "Descartar" }))
+        await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
 
         expect(onDiscard).toHaveBeenCalledTimes(1)
         expect(onSave).toHaveBeenCalledTimes(1)
@@ -92,15 +94,16 @@ describe("UnsavedChangesBar", () => {
         expect(screen.queryByRole("tooltip")).not.toBeInTheDocument()
     })
 
-    it("alterna a lista de pendentes com Enter pelo teclado", () => {
+    it("alterna a lista de pendentes com Enter pelo teclado", async () => {
+        const user = userEvent.setup()
         renderBar(["Duração", "Vagas"])
-        userEvent.tab()
+        await user.tab()
         expect(screen.getByRole("tooltip")).toBeInTheDocument()
 
-        userEvent.keyboard("{enter}")
+        await user.keyboard("{Enter}")
         expect(screen.queryByRole("tooltip")).not.toBeInTheDocument()
 
-        userEvent.keyboard("{enter}")
+        await user.keyboard("{Enter}")
         expect(screen.getByRole("tooltip")).toBeInTheDocument()
     })
 })

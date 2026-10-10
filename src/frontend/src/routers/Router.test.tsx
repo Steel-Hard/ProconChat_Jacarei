@@ -63,20 +63,20 @@ describe("routes", () => {
     })
 
     it("navega da NotFound para o painel ao clicar no link", async () => {
+        const user = userEvent.setup()
         setToken("abc")
         renderRoutes(["/rota-que-nao-existe"])
 
-        await userEvent.click(
-            await screen.findByRole("link", { name: "Vá para a página inicial." })
-        )
+        await user.click(await screen.findByRole("link", { name: "Vá para a página inicial." }))
 
         expect(await screen.findByRole("heading", { name: "Painel" })).toBeInTheDocument()
     })
 
     it("leva da página de acesso negado para a tela de entrada", async () => {
+        const user = userEvent.setup()
         renderRoutes([ROUTES.forbidden])
 
-        await userEvent.click(await screen.findByRole("link", { name: "Entrar no painel." }))
+        await user.click(await screen.findByRole("link", { name: "Entrar no painel." }))
 
         expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument()
     })

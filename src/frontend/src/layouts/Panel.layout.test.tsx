@@ -1,6 +1,6 @@
 import { afterEach, beforeAll, describe, expect, it } from "vitest"
 import { act, render, screen } from "@testing-library/react"
-import userEvent from "@testing-library/user-event"
+import userEvent, { type UserEvent } from "@testing-library/user-event"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { routes } from "@/routers/Router"
 import { ROUTES } from "@/routers/paths"
@@ -28,10 +28,10 @@ async function renderPanel(path: string = ROUTES.dashboard) {
     await screen.findByText("Em construção.", {}, { timeout: LAZY_TIMEOUT_MS })
 }
 
-async function openDrawer() {
+async function openDrawer(user: UserEvent) {
     mockMatchMedia(1024)
     await renderPanel()
-    userEvent.click(screen.getByRole("button", { name: "Menu" }))
+    await user.click(screen.getByRole("button", { name: "Menu" }))
     expect(screen.getByRole("link", { name: "Sessões" })).toBeInTheDocument()
 }
 
@@ -56,9 +56,10 @@ describe("PanelLayout", { timeout: 15000 }, () => {
     })
 
     it("navega pelo menu sem sair do layout", async () => {
+        const user = userEvent.setup()
         await renderPanel()
 
-        userEvent.click(screen.getByRole("link", { name: "Sessões" }))
+        await user.click(screen.getByRole("link", { name: "Sessões" }))
 
         expect(
             await screen.findByRole("heading", { name: "Sessões" }, { timeout: LAZY_TIMEOUT_MS })
@@ -80,51 +81,56 @@ describe("PanelLayout", { timeout: 15000 }, () => {
     })
 
     it("mostra o botão Menu e esconde o menu em tela estreita até abrir", async () => {
+        const user = userEvent.setup()
         mockMatchMedia(1024)
         await renderPanel()
         const button = screen.getByRole("button", { name: "Menu" })
         expect(button).toHaveAttribute("aria-expanded", "false")
         expect(screen.queryByRole("link", { name: "Sessões" })).not.toBeInTheDocument()
 
-        userEvent.click(button)
+        await user.click(button)
 
         expect(button).toHaveAttribute("aria-expanded", "true")
         expect(screen.getByRole("link", { name: "Sessões" })).toBeInTheDocument()
     })
 
     it("leva o foco ao menu ao abrir a gaveta e tira o fundo do foco", async () => {
-        await openDrawer()
+        const user = userEvent.setup()
+        await openDrawer(user)
 
         expect(screen.getByRole("link", { name: "Dashboard" })).toHaveFocus()
         expect(screen.getByRole("banner").parentElement).toHaveAttribute("inert")
 
-        userEvent.keyboard("{esc}")
+        await user.keyboard("{Escape}")
 
         expect(screen.getByRole("banner").parentElement).not.toHaveAttribute("inert")
     })
 
     it("fecha a gaveta ao clicar na sobreposição", async () => {
-        await openDrawer()
+        const user = userEvent.setup()
+        await openDrawer(user)
 
-        userEvent.click(screen.getByRole("presentation"))
+        await user.click(screen.getByRole("presentation"))
 
         expect(screen.queryByRole("link", { name: "Sessões" })).not.toBeInTheDocument()
         expect(screen.getByRole("button", { name: "Menu" })).toHaveFocus()
     })
 
     it("fecha a gaveta com Esc", async () => {
-        await openDrawer()
+        const user = userEvent.setup()
+        await openDrawer(user)
 
-        userEvent.keyboard("{esc}")
+        await user.keyboard("{Escape}")
 
         expect(screen.queryByRole("link", { name: "Sessões" })).not.toBeInTheDocument()
         expect(screen.getByRole("button", { name: "Menu" })).toHaveFocus()
     })
 
     it("fecha a gaveta ao clicar num link", async () => {
-        await openDrawer()
+        const user = userEvent.setup()
+        await openDrawer(user)
 
-        userEvent.click(screen.getByRole("link", { name: "Sessões" }))
+        await user.click(screen.getByRole("link", { name: "Sessões" }))
 
         expect(
             await screen.findByRole("heading", { name: "Sessões" }, { timeout: LAZY_TIMEOUT_MS })
@@ -133,7 +139,8 @@ describe("PanelLayout", { timeout: 15000 }, () => {
     })
 
     it("fecha a gaveta quando a tela passa a ser larga", async () => {
-        await openDrawer()
+        const user = userEvent.setup()
+        await openDrawer(user)
 
         act(() => setViewportWidth(1300))
 
@@ -150,10 +157,11 @@ describe("PanelLayout", { timeout: 15000 }, () => {
     })
 
     it("sai limpando o token e a conta e leva para o acesso negado", async () => {
+        const user = userEvent.setup()
         await renderPanel()
 
-        userEvent.click(screen.getByRole("button", { name: "Minha conta" }))
-        userEvent.click(screen.getByRole("button", { name: "Sair" }))
+        await user.click(screen.getByRole("button", { name: "Minha conta" }))
+        await user.click(screen.getByRole("button", { name: "Sair" }))
 
         expect(
             await screen.findByRole(

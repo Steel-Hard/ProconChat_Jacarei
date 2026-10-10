@@ -17,11 +17,12 @@ describe("EmptyState", () => {
         expect(screen.queryByRole("heading")).not.toBeInTheDocument()
     })
 
-    it("mostra a ação e chama onClick ao clicar", () => {
+    it("mostra a ação e chama onClick ao clicar", async () => {
+        const user = userEvent.setup()
         const onClick = vi.fn()
         render(<EmptyState title="Nada por aqui" action={{ label: "Limpar filtros", onClick }} />)
 
-        userEvent.click(screen.getByRole("button", { name: "Limpar filtros" }))
+        await user.click(screen.getByRole("button", { name: "Limpar filtros" }))
 
         expect(onClick).toHaveBeenCalledTimes(1)
     })

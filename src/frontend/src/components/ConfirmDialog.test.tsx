@@ -62,40 +62,44 @@ describe("ConfirmDialog", () => {
         ).toBeInTheDocument()
     })
 
-    it("chama onConfirm uma vez ao confirmar", () => {
+    it("chama onConfirm uma vez ao confirmar", async () => {
+        const user = userEvent.setup()
         const props = renderDialog()
 
-        userEvent.click(screen.getByRole("button", { name: "Cancelar e avisar o cidadão" }))
+        await user.click(screen.getByRole("button", { name: "Cancelar e avisar o cidadão" }))
 
         expect(props.onConfirm).toHaveBeenCalledTimes(1)
         expect(props.onCancel).not.toHaveBeenCalled()
     })
 
-    it("chama onCancel ao clicar em Voltar", () => {
+    it("chama onCancel ao clicar em Voltar", async () => {
+        const user = userEvent.setup()
         const props = renderDialog()
 
-        userEvent.click(screen.getByRole("button", { name: "Voltar" }))
+        await user.click(screen.getByRole("button", { name: "Voltar" }))
 
         expect(props.onCancel).toHaveBeenCalledTimes(1)
         expect(props.onConfirm).not.toHaveBeenCalled()
     })
 
-    it("chama onCancel ao apertar Esc", () => {
+    it("chama onCancel ao apertar Esc", async () => {
+        const user = userEvent.setup()
         const props = renderDialog()
 
-        userEvent.keyboard("{esc}")
+        await user.keyboard("{Escape}")
 
         expect(props.onCancel).toHaveBeenCalledTimes(1)
         expect(props.onConfirm).not.toHaveBeenCalled()
     })
 
-    it("chama onCancel ao clicar na sobreposição e não ao clicar dentro da caixa", () => {
+    it("chama onCancel ao clicar na sobreposição e não ao clicar dentro da caixa", async () => {
+        const user = userEvent.setup()
         const props = renderDialog()
 
-        userEvent.click(screen.getByText("O horário volta a ficar disponível no chatbot."))
+        await user.click(screen.getByText("O horário volta a ficar disponível no chatbot."))
         expect(props.onCancel).not.toHaveBeenCalled()
 
-        userEvent.click(screen.getByRole("presentation"))
+        await user.click(screen.getByRole("presentation"))
         expect(props.onCancel).toHaveBeenCalledTimes(1)
         expect(props.onConfirm).not.toHaveBeenCalled()
     })
@@ -109,32 +113,34 @@ describe("ConfirmDialog", () => {
         expect(screen.getByRole("button", { name: "Cancelar e avisar o cidadão" })).toBeDisabled()
     })
 
-    it("leva o foco para Voltar ao abrir e devolve ao botão que abriu ao fechar", () => {
+    it("leva o foco para Voltar ao abrir e devolve ao botão que abriu ao fechar", async () => {
+        const user = userEvent.setup()
         render(<DialogHarness />)
         const opener = screen.getByRole("button", { name: "Abrir modal" })
 
-        userEvent.click(opener)
+        await user.click(opener)
         expect(screen.getByRole("button", { name: "Voltar" })).toHaveFocus()
 
-        userEvent.click(screen.getByRole("button", { name: "Voltar" }))
+        await user.click(screen.getByRole("button", { name: "Voltar" }))
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
         expect(opener).toHaveFocus()
     })
 
-    it("mantém o foco dentro do modal com Tab e Shift+Tab", () => {
+    it("mantém o foco dentro do modal com Tab e Shift+Tab", async () => {
+        const user = userEvent.setup()
         render(<DialogHarness />)
-        userEvent.click(screen.getByRole("button", { name: "Abrir modal" }))
+        await user.click(screen.getByRole("button", { name: "Abrir modal" }))
         const back = screen.getByRole("button", { name: "Voltar" })
         const confirm = screen.getByRole("button", { name: "Confirmar" })
         expect(back).toHaveFocus()
 
-        userEvent.tab()
+        await user.tab()
         expect(confirm).toHaveFocus()
 
-        userEvent.tab()
+        await user.tab()
         expect(back).toHaveFocus()
 
-        userEvent.tab({ shift: true })
+        await user.tab({ shift: true })
         expect(confirm).toHaveFocus()
     })
 })

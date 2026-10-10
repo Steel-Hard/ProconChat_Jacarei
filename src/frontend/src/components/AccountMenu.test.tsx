@@ -43,12 +43,13 @@ describe("AccountMenu", () => {
         expect(screen.getByText("ana@exemplo.gov.br")).toBeInTheDocument()
     })
 
-    it("abre o menu e mostra só as opções com ação", () => {
+    it("abre o menu e mostra só as opções com ação", async () => {
+        const user = userEvent.setup()
         render(<AccountMenu account={admin} onLogout={vi.fn()} />)
         const trigger = screen.getByRole("button", { name: "Minha conta" })
         expect(trigger).toHaveAttribute("aria-expanded", "false")
 
-        userEvent.click(trigger)
+        await user.click(trigger)
 
         expect(trigger).toHaveAttribute("aria-expanded", "true")
         const options = screen.getByRole("list", { name: "Minha conta" })
@@ -61,40 +62,43 @@ describe("AccountMenu", () => {
         expect(screen.queryByRole("menu")).not.toBeInTheDocument()
     })
 
-    it("chama onLogout e fecha o menu ao escolher Sair", () => {
+    it("chama onLogout e fecha o menu ao escolher Sair", async () => {
+        const user = userEvent.setup()
         const onLogout = vi.fn()
         render(<AccountMenu account={admin} onChangePassword={vi.fn()} onLogout={onLogout} />)
-        userEvent.click(screen.getByRole("button", { name: "Minha conta" }))
+        await user.click(screen.getByRole("button", { name: "Minha conta" }))
         expect(screen.getByRole("button", { name: "Alterar minha senha" })).toBeInTheDocument()
 
-        userEvent.click(screen.getByRole("button", { name: "Sair" }))
+        await user.click(screen.getByRole("button", { name: "Sair" }))
 
         expect(onLogout).toHaveBeenCalledTimes(1)
         expect(screen.queryByRole("list", { name: "Minha conta" })).not.toBeInTheDocument()
     })
 
-    it("fecha o menu com Esc e devolve o foco ao botão Minha conta", () => {
+    it("fecha o menu com Esc e devolve o foco ao botão Minha conta", async () => {
+        const user = userEvent.setup()
         render(<AccountMenu account={admin} onLogout={vi.fn()} />)
         const trigger = screen.getByRole("button", { name: "Minha conta" })
-        userEvent.click(trigger)
+        await user.click(trigger)
         screen.getByRole("button", { name: "Sair" }).focus()
 
-        userEvent.keyboard("{esc}")
+        await user.keyboard("{Escape}")
 
         expect(trigger).toHaveFocus()
         expect(screen.queryByRole("list", { name: "Minha conta" })).not.toBeInTheDocument()
     })
 
-    it("fecha o menu ao clicar fora", () => {
+    it("fecha o menu ao clicar fora", async () => {
+        const user = userEvent.setup()
         render(
             <>
                 <p>Fora do menu</p>
                 <AccountMenu account={admin} onLogout={vi.fn()} />
             </>
         )
-        userEvent.click(screen.getByRole("button", { name: "Minha conta" }))
+        await user.click(screen.getByRole("button", { name: "Minha conta" }))
 
-        userEvent.click(screen.getByText("Fora do menu"))
+        await user.click(screen.getByText("Fora do menu"))
 
         expect(screen.queryByRole("list", { name: "Minha conta" })).not.toBeInTheDocument()
     })
