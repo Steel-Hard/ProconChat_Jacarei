@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest"
 import { act, renderHook } from "@testing-library/react"
 import { useAuth } from "@/hooks/useAuth"
-import { clearToken, setToken } from "@/services/session.service"
+import clearToken from "@/services/session/clearToken"
+import setToken from "@/services/session/setToken"
 
 describe("useAuth", () => {
     afterEach(() => {

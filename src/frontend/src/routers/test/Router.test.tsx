@@ -4,7 +4,8 @@ import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { routes } from "@/routers/Router"
 import { ROUTES } from "@/routers/paths"
-import { clearToken, setToken } from "@/services/session.service"
+import clearToken from "@/services/session/clearToken"
+import setToken from "@/services/session/setToken"
 
 function renderRoutes(initialEntries: string[]) {
     const router = createMemoryRouter(routes, { initialEntries })

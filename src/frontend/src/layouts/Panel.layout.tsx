@@ -7,7 +7,7 @@ import { useAccount } from "@/hooks/useAccount"
 import { useIsDocked } from "@/hooks/useMediaQuery"
 import { useNavBadges } from "@/hooks/useNavBadges"
 import { clearAccount } from "@/services/account.service"
-import { clearToken } from "@/services/session.service"
+import clearToken from "@/services/session/clearToken"
 import css from "@/styles/layouts/panel.module.css"
 
 function handleLogout() {
