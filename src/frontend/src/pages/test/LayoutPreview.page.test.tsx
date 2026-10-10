@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { screen } from "@testing-library/react"
 import { createMemoryRouter, RouterProvider, type RouteObject } from "react-router-dom"
-import { clearAccount } from "@/services/account.service"
 
 const PREVIEW_PATH = "/dev/layout"
 const LAZY_TIMEOUT_MS = 4000
@@ -12,7 +11,6 @@ function hasPath(routes: RouteObject[], path: string): boolean {
 
 describe("LayoutPreviewPage", { timeout: 15000 }, () => {
     afterEach(() => {
-        clearAccount()
         vi.unstubAllEnvs()
         vi.resetModules()
     })
@@ -20,9 +18,10 @@ describe("LayoutPreviewPage", { timeout: 15000 }, () => {
     it("mostra um exemplo de cada componente dentro do layout em desenvolvimento", async () => {
         await import("@/pages/LayoutPreview.page")
         const { routes } = await import("@/routers/Router")
+        const { default: renderWithStore } = await import("@/testUtils/renderWithStore")
         const router = createMemoryRouter(routes, { initialEntries: [PREVIEW_PATH] })
 
-        render(<RouterProvider router={router} />)
+        renderWithStore(<RouterProvider router={router} />)
 
         expect(
             await screen.findByRole(

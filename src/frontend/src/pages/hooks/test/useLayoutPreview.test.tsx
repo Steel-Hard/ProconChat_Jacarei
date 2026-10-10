@@ -1,9 +1,8 @@
-import type { ReactNode } from "react"
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { act, renderHook } from "@testing-library/react"
+import { fireEvent, screen } from "@testing-library/react"
 import ToastProvider from "@/components/ToastProvider"
 import { useLayoutPreview } from "@/pages/hooks/useLayoutPreview"
-import { clearAccount, getAccount, setAccount } from "@/services/account.service"
+import renderWithStore from "@/testUtils/renderWithStore"
 import type { PanelAccount } from "@/types/account"
 
 const realAccount: PanelAccount = {
@@ -13,32 +12,52 @@ const realAccount: PanelAccount = {
     permissions: ["sessions.view"]
 }
 
-function wrapper({ children }: { children: ReactNode }) {
-    return <ToastProvider>{children}</ToastProvider>
+function PreviewProbe() {
+    const preview = useLayoutPreview()
+
+    return (
+        <button type="button" onClick={preview.saveChanges}>
+            Salvar
+        </button>
+    )
+}
+
+function renderPreview(account: PanelAccount | null) {
+    return renderWithStore(
+        <ToastProvider>
+            <PreviewProbe />
+        </ToastProvider>,
+        { preloadedState: { account: { current: account } } }
+    )
 }
 
 describe("useLayoutPreview", () => {
     afterEach(() => {
-        clearAccount()
         vi.useRealTimers()
     })
 
     it("restaura a conta anterior ao sair da prévia", () => {
-        setAccount(realAccount)
-
-        const { unmount } = renderHook(() => useLayoutPreview(), { wrapper })
-        expect(getAccount()?.name).toBe("Mariana Couto")
+        const { store, unmount } = renderPreview(realAccount)
+        expect(store.getState().account.current?.name).toBe("Mariana Couto")
 
         unmount()
 
-        expect(getAccount()).toEqual(realAccount)
+        expect(store.getState().account.current).toEqual(realAccount)
+    })
+
+    it("limpa a conta de exemplo ao sair quando não havia conta", () => {
+        const { store, unmount } = renderPreview(null)
+
+        unmount()
+
+        expect(store.getState().account.current).toBeNull()
     })
 
     it("limpa o temporizador do salvamento ao desmontar", () => {
         vi.useFakeTimers()
-        const { result, unmount } = renderHook(() => useLayoutPreview(), { wrapper })
+        const { unmount } = renderPreview(null)
 
-        act(() => result.current.saveChanges())
+        fireEvent.click(screen.getByRole("button", { name: "Salvar" }))
         expect(vi.getTimerCount()).toBe(1)
 
         unmount()

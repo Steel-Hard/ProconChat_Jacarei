@@ -3,20 +3,15 @@ import { Outlet } from "react-router-dom"
 import Sidebar from "@/components/Sidebar"
 import ToastProvider from "@/components/ToastProvider"
 import Topbar from "@/components/Topbar"
-import { useAccount } from "@/hooks/useAccount"
+import useLogout from "@/hooks/useLogout"
 import { useIsDocked } from "@/hooks/useMediaQuery"
 import { useNavBadges } from "@/hooks/useNavBadges"
-import { clearAccount } from "@/services/account.service"
-import clearToken from "@/services/session/clearToken"
+import useAppSelector from "@/store/useAppSelector"
 import css from "@/styles/layouts/panel.module.css"
 
-function handleLogout() {
-    clearToken()
-    clearAccount()
-}
-
 function PanelLayout() {
-    const account = useAccount()
+    const account = useAppSelector((state) => state.account.current)
+    const handleLogout = useLogout()
     const badges = useNavBadges()
     const docked = useIsDocked()
     const sidebarId = useId()

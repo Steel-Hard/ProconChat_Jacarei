@@ -1,15 +1,16 @@
 import { afterEach, describe, expect, it } from "vitest"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
-import { render, screen } from "@testing-library/react"
+import { screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { routes } from "@/routers/Router"
 import { ROUTES } from "@/routers/paths"
+import renderWithStore from "@/testUtils/renderWithStore"
 import clearToken from "@/services/session/clearToken"
 import setToken from "@/services/session/setToken"
 
 function renderRoutes(initialEntries: string[]) {
     const router = createMemoryRouter(routes, { initialEntries })
-    return render(<RouterProvider router={router} />)
+    return renderWithStore(<RouterProvider router={router} />)
 }
 
 const protectedRoutes: Array<[string, string]> = [

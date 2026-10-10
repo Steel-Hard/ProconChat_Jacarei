@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react"
 import type { LastChange } from "@/components/LastChangeNote"
 import { useToast } from "@/hooks/useToast"
-import { clearAccount, getAccount, setAccount } from "@/services/account.service"
+import accountSlice from "@/store/slices/account.slice"
+import useAppDispatch from "@/store/useAppDispatch"
+import useAppSelector from "@/store/useAppSelector"
 import type { PanelAccount } from "@/types/account"
 
 const PREVIEW_ACCOUNT: PanelAccount = {
@@ -27,18 +29,22 @@ export function useLayoutPreview() {
     const [saving, setSaving] = useState(false)
     const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+    const dispatch = useAppDispatch()
+    const currentAccount = useAppSelector((state) => state.account.current)
+    const previousAccount = useRef(currentAccount)
+
     useEffect(() => {
-        const previous = getAccount()
-        setAccount(PREVIEW_ACCOUNT)
+        const previous = previousAccount.current
+        dispatch(accountSlice.actions.accountLoaded(PREVIEW_ACCOUNT))
 
         return () => {
-            if (previous === null) {
-                clearAccount()
-            } else {
-                setAccount(previous)
-            }
+            dispatch(
+                previous === null
+                    ? accountSlice.actions.accountCleared()
+                    : accountSlice.actions.accountLoaded(previous)
+            )
         }
-    }, [])
+    }, [dispatch])
 
     useEffect(
         () => () => {
