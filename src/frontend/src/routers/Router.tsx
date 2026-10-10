@@ -15,6 +15,21 @@ function withSuspense(element: ReactNode) {
     return <Suspense fallback={<p>Carregando...</p>}>{element}</Suspense>
 }
 
+function previewRoutes(): RouteObject[] {
+    if (!import.meta.env.DEV) {
+        return []
+    }
+
+    const LayoutPreview = lazy(() => import("@/pages/LayoutPreview.page"))
+
+    return [
+        {
+            element: <PanelLayout />,
+            children: [{ path: "/dev/layout", element: withSuspense(<LayoutPreview />) }]
+        }
+    ]
+}
+
 function underConstruction(path: string, title: string): RouteObject {
     return { path, element: withSuspense(<UnderConstruction title={title} />) }
 }
@@ -45,6 +60,7 @@ export const routes: RouteObject[] = [
                     }
                 ]
             },
+            ...previewRoutes(),
             { path: ROUTES.forbidden, element: withSuspense(<Forbidden />) },
             { path: ROUTES.notFound, element: withSuspense(<NotFound />) }
         ]
