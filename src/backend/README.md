@@ -53,6 +53,6 @@ docker compose --profile test run --rm --build backend-tests
 
 `GET /health` responde `200` com `{ "data": { "status": "ok" } }` e não depende do banco de dados — serve como healthcheck de infraestrutura (Docker, load balancer) e como exemplo do padrão de código para copiar em novos recursos.
 
-`POST /api/v1/whatsapp/sessions` recebe `{ phone, text?, providerInstance? }` do Gateway WhatsApp
+`POST /api/v1/whatsapp/sessions` recebe `{ phone, text? }` do Gateway WhatsApp
 (`src/gateway/`), autenticado pelo header `X-Internal-Token`, e cria ou reutiliza uma sessão
 guardando somente o HMAC do telefone (nunca o número em texto puro).

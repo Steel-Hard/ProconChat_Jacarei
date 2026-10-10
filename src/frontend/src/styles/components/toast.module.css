@@ -1,0 +1,17 @@
+.region {
+    position: fixed;
+    left: 50%;
+    bottom: 28px;
+    z-index: 80;
+    transform: translateX(-50%);
+}
+
+.toast {
+    display: block;
+    padding: 11px 18px;
+    border-radius: 10px;
+    background: var(--sidebar-bg);
+    box-shadow: 0 8px 24px rgba(20, 16, 40, 0.25);
+    color: #ffffff;
+    font-size: 13.5px;
+}

@@ -1,7 +1,10 @@
 const requiredEnvVars = [
-    "EVOLUTION_WEBHOOK_TOKEN",
     "BACKEND_INTERNAL_URL",
     "GATEWAY_INTERNAL_TOKEN",
+    "WHATSAPP_PHONE_NUMBER_ID",
+    "WHATSAPP_ACCESS_TOKEN",
+    "WHATSAPP_APP_SECRET",
+    "WHATSAPP_VERIFY_TOKEN",
 ]
 
 export default function validateEnv(): void {

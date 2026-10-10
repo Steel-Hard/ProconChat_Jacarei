@@ -48,4 +48,51 @@ describe("Backend client", () => {
             backendClient.createWhatsappSession({ phone: "5511999999999" }),
         ).rejects.toThrow("Backend returned HTTP 401")
     })
+
+    test("envia optionId sem text quando o cidadao toca numa opcao", async () => {
+        process.env.BACKEND_INTERNAL_URL = "http://backend:3000"
+        process.env.GATEWAY_INTERNAL_TOKEN = "test-internal-token"
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 202,
+            json: () => Promise.resolve({ data: { sessionId: "42", newSession: false } }),
+        })
+        vi.stubGlobal("fetch", fetchMock)
+
+        await backendClient.createWhatsappSession({ phone: "5500000000001", optionId: "categoria-3" })
+
+        const body = JSON.parse(fetchMock.mock.calls[0]?.[1].body as string)
+        expect(body).toEqual({ phone: "5500000000001", optionId: "categoria-3" })
+        expect(body).not.toHaveProperty("text")
+    })
+
+    test("devolve a resposta inteira com reply.messages", async () => {
+        process.env.BACKEND_INTERNAL_URL = "http://backend:3000"
+        process.env.GATEWAY_INTERNAL_TOKEN = "test-internal-token"
+        const data = {
+            sessionId: "42",
+            newSession: false,
+            reply: {
+                text: "Escolha uma categoria",
+                step: "AWAITING_CATEGORY",
+                messages: [
+                    {
+                        type: "list",
+                        text: "Escolha uma categoria",
+                        buttonText: "Ver categorias",
+                        rows: [{ id: "cat-1", title: "Bancos", description: "Tarifas" }],
+                    },
+                    { type: "buttons", text: "Resolveu?", buttons: [{ id: "sim", title: "Sim" }] },
+                ],
+            },
+        }
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValue({ ok: true, status: 202, json: () => Promise.resolve({ data }) }),
+        )
+
+        const result = await backendClient.createWhatsappSession({ phone: "5500000000001", text: "oi" })
+
+        expect(result).toEqual(data)
+    })
 })

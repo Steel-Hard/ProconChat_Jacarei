@@ -1,20 +1,22 @@
+import { useTranslation } from "react-i18next"
 import { Link, useRouteError } from "react-router-dom"
-import { ROUTES } from "@/routers/paths"
+import ROUTES from "@/routers/paths"
 import css from "@/styles/pages/error.module.css"
 
 function ErrorPage() {
     const error = useRouteError()
+    const { t } = useTranslation(["error", "common"])
 
     return (
         <>
-            <title>Ocorreu um erro.</title>
-            <meta name="description" content="Algo deu errado ao carregar esta página." />
+            <title>{t("meta.title")}</title>
+            <meta name="description" content={t("meta.description")} />
             <main className={css.main}>
                 <div>
-                    <h1>Ocorreu um erro inesperado.</h1>
-                    <p>{error instanceof Error ? error.message : "Erro desconhecido."}</p>
+                    <h1>{t("heading")}</h1>
+                    <p>{error instanceof Error ? error.message : t("unknown")}</p>
                     <p>
-                        <Link to={ROUTES.dashboard}>Vá para a página inicial.</Link>
+                        <Link to={ROUTES.dashboard}>{t("common:backHome")}</Link>
                     </p>
                 </div>
             </main>

@@ -12,7 +12,7 @@ Revisão feita em 27/09/2026, no início da Sprint 2 (15/09 a 19/10/2026). A ent
 
 | Req. | Código | Desenho | Situação |
 |---|---|---|---|
-| **RF01** WhatsApp como interface | Evolution API funcionando | Migração para a Cloud API ([003](../decisoes/003-migracao-whatsapp-cloud-api.md)) | ✅ |
+| **RF01** WhatsApp como interface | Cloud API funcionando; Evolution API removida na #82 | Migração para a Cloud API ([003](../decisoes/003-migracao-whatsapp-cloud-api.md)) | ✅ |
 | **RF02** Opções com base na tabela de decisões | 7 categorias e 47 itens do FAQ real | Conteúdo gerenciável, títulos curtos, paginação ([001](../decisoes/001-fluxo-guiado-por-categorias.md)) | ⚠️ Nota 1 |
 | **RF03** Fluxos decisórios sequenciais | Categoria → pergunta | + "resolveu?" → quem comparece → horário ([008](../decisoes/008-fluxo-da-conversa-e-desfechos.md)) | ⚠️ Nota 1 |
 | **RF04** Resposta que resume o caso e indica próximos passos | Resposta com base legal e documentos | + oferta de agendamento | ⚠️ Nota 2 |
@@ -34,11 +34,11 @@ Revisão feita em 27/09/2026, no início da Sprint 2 (15/09 a 19/10/2026). A ent
 | Req. | Situação | O que falta |
 |---|---|---|
 | **RNF01** Usabilidade | ⚠️ Desenho cuidadoso (títulos curtos, listas tocáveis, prévias das mensagens) | Nenhum teste com usuários. Sugestão: teste rápido com a equipe do PROCON e 3 a 5 cidadãos na Sprint 3 |
-| **RNF02** Disponibilidade e tempo de resposta | ⚠️ | Envio assíncrono do LLM; `restart` e healthchecks em todos os containers. A Cloud API melhora a disponibilidade em relação à Evolution |
+| **RNF02** Disponibilidade e tempo de resposta | ⚠️ | Envio assíncrono do LLM; `restart` e healthchecks em todos os containers. A Cloud API, que substituiu a Evolution (removida na #82), melhora a disponibilidade |
 | **RNF03** LGPD | ⚠️ Bem encaminhado ([002](../decisoes/002-lgpd-dados-pessoais.md)) | Aviso de privacidade na saudação do bot; política de retenção (RNF09); procedimento para pedidos do titular |
 | **RNF04** Caráter orientativo | ✅ Implementado (PR #43), texto único em todo o sistema | — |
 | **RNF05** Identificar o que é gerado por IA | ⚠️ Desenhado | Implementar junto com o RF05 |
-| **RNF06** Docker | ✅ | Adicionar o container do front; remover Evolution e Redis na migração |
+| **RNF06** Docker | ✅ | Adicionar o container do front. Evolution e Redis removidos na #82 |
 | **RNF07** Instalação e requisitos de hardware/software | ✅ Para o estado atual | Atualizar após a migração: chave-mestra, `.env` reduzido, front-end. Escrever o **guia de passagem para o PROCON** (conta Meta, número próprio, token permanente, modelos de mensagem, tela de WhatsApp), já que durante as sprints o sistema roda com o número de testes do time ([003](../decisoes/003-migracao-whatsapp-cloud-api.md)) |
 | **RNF08** Práticas modernas (ágil, CI/CD, testes, docs) | ❌ **CI/CD não existe** | Pipeline de CI rodando os testes em cada PR. É o único ❌ que não depende de funcionalidade e deveria entrar na Sprint 2. Teste end-to-end do fluxo mínimo (#18) |
 
@@ -68,4 +68,4 @@ Proposta de corte, a validar com o grupo antes de criar as tasks:
 
 Atualizada em 27/09/2026 com as decisões da Sprint 2: [`../architecture/architecture.md`](../architecture/architecture.md) (arquitetura atual e alvo), [`../database/database.md`](../database/database.md) (schema atual e planejado), [`../regras/`](../regras/) (regras das telas) e [`../prototipo/`](../prototipo/) (protótipo aprovado).
 
-Ainda a atualizar quando a migração para a Cloud API for concluída: as instruções de instalação do `README.md` da raiz e o `src/gateway/README.md` (ainda descrevem a Evolution API).
+As instruções de instalação do `README.md` da raiz e o `src/gateway/README.md` foram atualizadas na #82 e descrevem só a Cloud API; a Evolution API e o Redis foram removidos.

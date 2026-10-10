@@ -1,9 +1,97 @@
+@font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-display: swap;
+    font-weight: 400;
+    src: url("/fonts/inter-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-display: swap;
+    font-weight: 500;
+    src: url("/fonts/inter-latin-500-normal.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-display: swap;
+    font-weight: 600;
+    src: url("/fonts/inter-latin-600-normal.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-display: swap;
+    font-weight: 700;
+    src: url("/fonts/inter-latin-700-normal.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Manrope";
+    font-style: normal;
+    font-display: swap;
+    font-weight: 500;
+    src: url("/fonts/manrope-latin-500-normal.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Manrope";
+    font-style: normal;
+    font-display: swap;
+    font-weight: 600;
+    src: url("/fonts/manrope-latin-600-normal.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Manrope";
+    font-style: normal;
+    font-display: swap;
+    font-weight: 700;
+    src: url("/fonts/manrope-latin-700-normal.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Manrope";
+    font-style: normal;
+    font-display: swap;
+    font-weight: 800;
+    src: url("/fonts/manrope-latin-800-normal.woff2") format("woff2");
+}
+
 :root {
-    --bg-page: #ffffff;
-    --text-body: #202020;
-    --text-link: #483d8b;
+    --color-primary: #483d8b;
+    --color-primary-dark: #3a3072;
+    --color-primary-darker: #2e2757;
+    --bg-page: #f5f4fa;
+    --bg-surface: #ffffff;
+    --bg-subtle: #faf9fd;
+    --text-body: #1f1b33;
+    --text-muted: #6b6780;
+    --text-soft: #8a869c;
+    --text-strong: #3b3654;
+    --text-link: var(--color-primary);
+    --border: #e4e1ee;
+    --border-input: #d9d5e8;
+    --sidebar-bg: #1e1938;
+    --sidebar-active: #3b3272;
+    --sidebar-text: #c9c4e0;
+    --sidebar-label: #8a84ab;
+    --sidebar-divider: #322b57;
+    --badge-count-bg: #f2c66d;
+    --badge-count-text: #3d2a00;
+    --danger: #a3261b;
+    --warn-bg: #fcf4e3;
+    --warn-border: #e9c98a;
+    --warn-text: #7a4f00;
+    --overlay: rgba(24, 19, 48, 0.45);
+    --focus-ring: #b9b0e6;
     --space-4: 1rem;
-    --font-body: system-ui, sans-serif;
+    --font-body: "Inter", system-ui, sans-serif;
+    --font-heading: "Manrope", system-ui, sans-serif;
 }
 
 * {
@@ -17,10 +105,27 @@ body {
     color: var(--text-body);
     font-family: var(--font-body);
     line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+input,
+select,
+textarea,
+button {
+    font: inherit;
 }
 
 a {
     color: var(--text-link);
+}
+
+a:hover {
+    color: var(--color-primary-darker);
+}
+
+:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
 }
 
 main {
