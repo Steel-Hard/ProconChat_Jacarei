@@ -4,7 +4,6 @@ import { sessionRepository, SessionRepository } from "../repositories/session.re
 export interface WhatsappSessionInput {
     phone: string
     text?: string
-    providerInstance?: string
 }
 
 export interface WhatsappSessionResult {
