@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import createStore from "@/store/createStore"
 import accountSlice from "@/store/slices/account.slice"
 import type PanelAccount from "@/types/account/PanelAccount.types"
 
@@ -30,5 +31,16 @@ describe("accountSlice", () => {
         )
 
         expect(state.current).toBeNull()
+    })
+
+    it("guarda a conta só em memória, sem usar armazenamento do navegador", () => {
+        const store = createStore()
+
+        store.dispatch(accountSlice.actions.accountLoaded(account))
+
+        expect(store.getState().account.current).toEqual(account)
+        expect(window.localStorage.length).toBe(0)
+        expect(window.sessionStorage.length).toBe(0)
+        expect(document.cookie).toBe("")
     })
 })
