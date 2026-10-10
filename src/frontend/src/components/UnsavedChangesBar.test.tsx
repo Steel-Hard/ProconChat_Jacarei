@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { act, fireEvent, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import UnsavedChangesBar from "@/components/UnsavedChangesBar"
 
@@ -17,6 +17,13 @@ function renderBar(changes: string[], saving = false) {
     )
 
     return { onDiscard, onSave }
+}
+
+function tap(element: HTMLElement) {
+    fireEvent.pointerDown(element, { pointerType: "touch" })
+    act(() => element.focus())
+    fireEvent.pointerUp(element, { pointerType: "touch" })
+    fireEvent.click(element, { detail: 1 })
 }
 
 describe("UnsavedChangesBar", () => {
@@ -72,5 +79,28 @@ describe("UnsavedChangesBar", () => {
 
         expect(screen.getByRole("button", { name: "Descartar" })).toBeDisabled()
         expect(screen.getByRole("button", { name: "Salvar alterações" })).toBeDisabled()
+    })
+
+    it("alterna a lista de pendentes ao tocar no aviso", () => {
+        renderBar(["Duração", "Vagas"])
+        const chip = screen.getByRole("button", { name: "2 alterações não salvas" })
+
+        tap(chip)
+        expect(screen.getByRole("tooltip")).toHaveTextContent("Pendentes: Duração; Vagas")
+
+        tap(chip)
+        expect(screen.queryByRole("tooltip")).not.toBeInTheDocument()
+    })
+
+    it("alterna a lista de pendentes com Enter pelo teclado", () => {
+        renderBar(["Duração", "Vagas"])
+        userEvent.tab()
+        expect(screen.getByRole("tooltip")).toBeInTheDocument()
+
+        userEvent.keyboard("{enter}")
+        expect(screen.queryByRole("tooltip")).not.toBeInTheDocument()
+
+        userEvent.keyboard("{enter}")
+        expect(screen.getByRole("tooltip")).toBeInTheDocument()
     })
 })
