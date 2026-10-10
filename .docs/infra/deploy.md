@@ -325,6 +325,7 @@ O `deploy.sh <tag>`:
 
 2. recria os serviços com `IMAGE_TAG=<tag>` (`up -d --remove-orphans`). O `migrate` aplica as migrations novas e o `seed` roda antes do `backend`; se o `migrate` falhar, o `backend` novo não sobe;
 3. espera `backend` e `gateway` ficarem `healthy` (até `DEPLOY_WAIT_TIMEOUT`, padrão 300 s). Não espera o `llm-pull`;
+   depois recarrega o Caddy (`caddy reload`), porque o `Caddyfile` é montado como arquivo e uma mudança nele não recria o container. O `scp` do workflow sobrescreve o arquivo no lugar, então o container vê o conteúdo novo. Se o `Caddyfile` for trocado por outro meio que crie um arquivo novo (por exemplo `mv`), recrie o Caddy com `docker compose -f compose.prod.yaml up -d --force-recreate caddy`;
 4. confere pelo endereço público que `/` responde 200 e `/webhooks/whatsapp` responde 403, com até 12 tentativas;
 5. registra `<data UTC> <tag>` em `/opt/proconchat/releases.log`;
 6. remove as imagens sem container que foram criadas há mais de uma semana (`docker image prune -af --filter "until=168h"`). Imagens em uso nunca são removidas, e as da última semana ficam para um rollback rápido; uma tag mais antiga é baixada de novo do GHCR.

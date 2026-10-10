@@ -72,6 +72,7 @@ check_status() {
 
 wait_healthy backend
 wait_healthy gateway
+"${compose[@]}" exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
 
 check_status / 200
 check_status /webhooks/whatsapp 403
