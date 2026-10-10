@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useState } from "react"
+import { useCallback, useEffect, useId, useRef, useState } from "react"
 import { Outlet } from "react-router-dom"
 import Sidebar from "@/components/Sidebar"
 import ToastProvider from "@/components/ToastProvider"
@@ -32,8 +32,28 @@ function PanelLayout() {
     }
 
     const drawerVisible = !docked && drawerOpen
+    const drawerRef = useRef<HTMLDivElement>(null)
+    const menuButtonRef = useRef<HTMLButtonElement>(null)
+    const restoreFocus = useRef(false)
 
     const closeDrawer = useCallback(() => setDrawerOpen(false), [])
+
+    const dismissDrawer = useCallback(() => {
+        restoreFocus.current = true
+        setDrawerOpen(false)
+    }, [])
+
+    useEffect(() => {
+        if (drawerVisible) {
+            drawerRef.current?.querySelector<HTMLElement>("a[href]")?.focus()
+            return
+        }
+
+        if (restoreFocus.current) {
+            restoreFocus.current = false
+            menuButtonRef.current?.focus()
+        }
+    }, [drawerVisible])
 
     useEffect(() => {
         if (!drawerVisible) {
@@ -42,7 +62,7 @@ function PanelLayout() {
 
         function handleKeyDown(event: KeyboardEvent) {
             if (event.key === "Escape") {
-                setDrawerOpen(false)
+                dismissDrawer()
             }
         }
 
@@ -51,7 +71,7 @@ function PanelLayout() {
         return () => {
             document.removeEventListener("keydown", handleKeyDown)
         }
-    }, [drawerVisible])
+    }, [drawerVisible, dismissDrawer])
 
     let sidebarClass = css.sidebarDocked
 
@@ -62,7 +82,7 @@ function PanelLayout() {
     return (
         <ToastProvider>
             <div className={css.shell}>
-                <div className={sidebarClass} hidden={!docked && !drawerOpen}>
+                <div ref={drawerRef} className={sidebarClass} hidden={!docked && !drawerOpen}>
                     <Sidebar
                         id={sidebarId}
                         account={account}
@@ -71,14 +91,15 @@ function PanelLayout() {
                     />
                 </div>
                 {drawerVisible ? (
-                    <div role="presentation" className={css.overlay} onClick={closeDrawer} />
+                    <div role="presentation" className={css.overlay} onClick={dismissDrawer} />
                 ) : null}
-                <div className={css.content}>
+                <div className={css.content} inert={drawerVisible}>
                     <Topbar
                         account={account}
                         showMenuButton={!docked}
                         menuOpen={drawerVisible}
                         menuControls={sidebarId}
+                        menuButtonRef={menuButtonRef}
                         onOpenMenu={() => setDrawerOpen(true)}
                         onLogout={handleLogout}
                     />

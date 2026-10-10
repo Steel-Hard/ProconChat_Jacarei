@@ -1,3 +1,4 @@
+import type { Ref } from "react"
 import { Link, useLocation } from "react-router-dom"
 import AccountMenu from "@/components/AccountMenu"
 import { breadcrumbFor } from "@/routers/navigation"
@@ -9,6 +10,7 @@ type TopbarProps = {
     showMenuButton: boolean
     menuOpen: boolean
     menuControls: string
+    menuButtonRef?: Ref<HTMLButtonElement>
     onOpenMenu: () => void
     onChangePassword?: () => void
     onLogout?: () => void
@@ -19,6 +21,7 @@ function Topbar({
     showMenuButton,
     menuOpen,
     menuControls,
+    menuButtonRef,
     onOpenMenu,
     onChangePassword,
     onLogout
@@ -31,6 +34,7 @@ function Topbar({
             <div className={css.start}>
                 {showMenuButton ? (
                     <button
+                        ref={menuButtonRef}
                         type="button"
                         className={css.menuButton}
                         aria-expanded={menuOpen}

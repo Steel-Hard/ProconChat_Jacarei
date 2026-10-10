@@ -92,12 +92,24 @@ describe("PanelLayout", { timeout: 15000 }, () => {
         expect(screen.getByRole("link", { name: "Sessões" })).toBeInTheDocument()
     })
 
+    it("leva o foco ao menu ao abrir a gaveta e tira o fundo do foco", async () => {
+        await openDrawer()
+
+        expect(screen.getByRole("link", { name: "Dashboard" })).toHaveFocus()
+        expect(screen.getByRole("banner").parentElement).toHaveAttribute("inert")
+
+        userEvent.keyboard("{esc}")
+
+        expect(screen.getByRole("banner").parentElement).not.toHaveAttribute("inert")
+    })
+
     it("fecha a gaveta ao clicar na sobreposição", async () => {
         await openDrawer()
 
         userEvent.click(screen.getByRole("presentation"))
 
         expect(screen.queryByRole("link", { name: "Sessões" })).not.toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "☰ Menu" })).toHaveFocus()
     })
 
     it("fecha a gaveta com Esc", async () => {
@@ -106,6 +118,7 @@ describe("PanelLayout", { timeout: 15000 }, () => {
         userEvent.keyboard("{esc}")
 
         expect(screen.queryByRole("link", { name: "Sessões" })).not.toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "☰ Menu" })).toHaveFocus()
     })
 
     it("fecha a gaveta ao clicar num link", async () => {
