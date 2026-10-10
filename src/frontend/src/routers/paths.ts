@@ -1,4 +1,4 @@
-export const ROUTES = {
+const ROUTES = {
     login: "/login",
     dashboard: "/",
     appointments: "/agendamentos",
@@ -13,3 +13,5 @@ export const ROUTES = {
     forbidden: "/acesso-negado",
     notFound: "*"
 } as const
+
+export default ROUTES

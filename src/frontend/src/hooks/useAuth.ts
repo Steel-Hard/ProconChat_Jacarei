@@ -1,12 +1,12 @@
 import { useSyncExternalStore } from "react"
-import { getToken, subscribe } from "@/services/session.service"
+import getToken from "@/services/session/getToken"
+import subscribeToToken from "@/services/session/subscribeToToken"
+import type AuthState from "@/types/auth/AuthState.types"
 
-export type AuthState = {
-    isAuthenticated: boolean
-}
-
-export function useAuth(): AuthState {
-    const token = useSyncExternalStore(subscribe, getToken)
+function useAuth(): AuthState {
+    const token = useSyncExternalStore(subscribeToToken, getToken)
 
     return { isAuthenticated: token !== null }
 }
+
+export default useAuth
