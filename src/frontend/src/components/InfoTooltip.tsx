@@ -1,4 +1,11 @@
-import { useId, useRef, useState, type KeyboardEvent, type PointerEvent } from "react"
+import {
+    useId,
+    useRef,
+    useState,
+    type KeyboardEvent,
+    type MouseEvent,
+    type PointerEvent
+} from "react"
 import css from "@/styles/components/infoTooltip.module.css"
 
 type InfoTooltipProps = {
@@ -9,7 +16,7 @@ type InfoTooltipProps = {
 function InfoTooltip({ text, label = "Mais informações" }: InfoTooltipProps) {
     const tooltipId = useId()
     const [open, setOpen] = useState(false)
-    const openBeforePress = useRef<boolean | null>(null)
+    const press = useRef<{ pointerType: string; wasOpen: boolean } | null>(null)
 
     function handlePointerEnter(event: PointerEvent<HTMLButtonElement>) {
         if (event.pointerType !== "touch") {
@@ -23,14 +30,25 @@ function InfoTooltip({ text, label = "Mais informações" }: InfoTooltipProps) {
         }
     }
 
-    function handlePointerDown() {
-        openBeforePress.current = open
+    function handlePointerDown(event: PointerEvent<HTMLButtonElement>) {
+        press.current = { pointerType: event.pointerType, wasOpen: open }
     }
 
-    function handleClick() {
-        const wasOpen = openBeforePress.current ?? open
-        openBeforePress.current = null
-        setOpen(!wasOpen)
+    function handleClick(event: MouseEvent<HTMLButtonElement>) {
+        const current = press.current
+        press.current = null
+
+        if (event.detail === 0 || current === null) {
+            setOpen(!open)
+            return
+        }
+
+        if (current.pointerType === "touch") {
+            setOpen(!current.wasOpen)
+            return
+        }
+
+        setOpen(true)
     }
 
     function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>) {

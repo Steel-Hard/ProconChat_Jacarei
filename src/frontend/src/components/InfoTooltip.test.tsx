@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { act, fireEvent, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import InfoTooltip from "@/components/InfoTooltip"
 
 const text = "Quantidade de mensagens recebidas nas últimas 24 horas."
+
+function tap(element: HTMLElement) {
+    fireEvent.pointerDown(element, { pointerType: "touch" })
+    act(() => element.focus())
+    fireEvent.pointerUp(element, { pointerType: "touch" })
+    fireEvent.click(element, { detail: 1 })
+}
 
 describe("InfoTooltip", () => {
     it("começa fechado com o botão Mais informações", () => {
@@ -40,11 +47,34 @@ describe("InfoTooltip", () => {
         render(<InfoTooltip text={text} />)
         const button = screen.getByRole("button", { name: "Mais informações" })
 
-        userEvent.click(button, undefined, { skipHover: true })
+        tap(button)
         expect(screen.getByRole("tooltip")).toHaveTextContent(text)
 
-        userEvent.click(button, undefined, { skipHover: true })
+        tap(button)
         expect(screen.queryByRole("tooltip")).not.toBeInTheDocument()
+    })
+
+    it("mantém o balão aberto ao clicar com o mouse", () => {
+        render(<InfoTooltip text={text} />)
+        const button = screen.getByRole("button", { name: "Mais informações" })
+
+        userEvent.click(button)
+        expect(screen.getByRole("tooltip")).toHaveTextContent(text)
+
+        userEvent.click(button)
+        expect(screen.getByRole("tooltip")).toHaveTextContent(text)
+    })
+
+    it("alterna o balão com Enter pelo teclado", () => {
+        render(<InfoTooltip text={text} />)
+        userEvent.tab()
+        expect(screen.getByRole("tooltip")).toBeInTheDocument()
+
+        userEvent.keyboard("{enter}")
+        expect(screen.queryByRole("tooltip")).not.toBeInTheDocument()
+
+        userEvent.keyboard("{enter}")
+        expect(screen.getByRole("tooltip")).toBeInTheDocument()
     })
 
     it("usa o label recebido como nome do botão", () => {
