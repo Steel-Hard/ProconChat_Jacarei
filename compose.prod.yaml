@@ -1,0 +1,153 @@
+name: proconchat-prod
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-db-url: &db-url postgresql://${POSTGRES_USER:-proconchat}:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}@postgres:5432/proconchat
+
+x-backend-image: &backend-image ghcr.io/${IMAGE_OWNER:-steel-hard}/proconchat-backend:${IMAGE_TAG:?defina IMAGE_TAG com a tag das imagens}
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?defina SITE_ADDRESS com o host público, sem esquema}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+      - gateway
+    logging: *logging
+
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: proconchat
+      POSTGRES_USER: ${POSTGRES_USER:-proconchat}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    logging: *logging
+
+  migrate:
+    image: *backend-image
+    environment:
+      DB_URL: *db-url
+    command: ["npm", "run", "db:migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    logging: *logging
+
+  seed:
+    image: *backend-image
+    environment:
+      DB_URL: *db-url
+    command: ["node", "dist/db/seeds/run.js"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+    logging: *logging
+
+  backend:
+    image: *backend-image
+    restart: unless-stopped
+    environment:
+      DB_URL: *db-url
+      PORT: 3000
+      PHONE_HASH_SECRET: ${PHONE_HASH_SECRET:?defina PHONE_HASH_SECRET no .env}
+      GATEWAY_INTERNAL_TOKEN: ${GATEWAY_INTERNAL_TOKEN:?defina GATEWAY_INTERNAL_TOKEN no .env}
+      OLLAMA_URL: http://ollama:11434
+      LLM_MODEL: ${LLM_MODEL:-llama3.2:3b}
+      LLM_TIMEOUT_MS: ${LLM_TIMEOUT_MS:-20000}
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging: *logging
+
+  frontend:
+    image: ghcr.io/${IMAGE_OWNER:-steel-hard}/proconchat-frontend:${IMAGE_TAG:?defina IMAGE_TAG com a tag das imagens}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    logging: *logging
+
+  gateway:
+    image: ghcr.io/${IMAGE_OWNER:-steel-hard}/proconchat-gateway:${IMAGE_TAG:?defina IMAGE_TAG com a tag das imagens}
+    restart: unless-stopped
+    environment:
+      PORT: 3001
+      BACKEND_INTERNAL_URL: http://backend:3000
+      GATEWAY_INTERNAL_TOKEN: ${GATEWAY_INTERNAL_TOKEN:?defina GATEWAY_INTERNAL_TOKEN no .env}
+      EVOLUTION_WEBHOOK_TOKEN: ${EVOLUTION_WEBHOOK_TOKEN:?defina EVOLUTION_WEBHOOK_TOKEN no .env}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:?defina WHATSAPP_PHONE_NUMBER_ID no .env}
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:?defina WHATSAPP_ACCESS_TOKEN no .env}
+      WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET:?defina WHATSAPP_APP_SECRET no .env}
+      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:?defina WHATSAPP_VERIFY_TOKEN no .env}
+      WHATSAPP_GRAPH_API_VERSION: ${WHATSAPP_GRAPH_API_VERSION:-v26.0}
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3001/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging: *logging
+
+  ollama:
+    image: ollama/ollama:0.40.2
+    profiles: ["llm"]
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    logging: *logging
+
+  llm-pull:
+    image: ollama/ollama:0.40.2
+    profiles: ["llm"]
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      OLLAMA_HOST: ollama:11434
+    entrypoint: ["sh", "-c", "ollama pull ${LLM_MODEL:-llama3.2:3b}"]
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: "no"
+    logging: *logging
+
+volumes:
+  postgres_data:
+  ollama_data:
+  caddy_data:
+  caddy_config:
