@@ -10,16 +10,16 @@ Painel administrativo do ProconChat (RF08), feito com React 19, Vite, TypeScript
 
 Rode dentro de `src/frontend/`.
 
-| Comando | O que faz |
-|---|---|
-| `npm ci` | Instala as dependências e ativa o hook de pre-commit |
-| `npm run dev` | Sobe o servidor de desenvolvimento do Vite |
-| `npm run build` | Checa os tipos (`tsc --noEmit`) e gera `dist/` |
-| `npm run preview` | Serve o build localmente |
-| `npm test` | Vitest em modo interativo |
-| `npm run test:run` | Vitest uma única vez (usado no CI) |
-| `npm run lint` / `npm run lint:fix` | oxlint |
-| `npm run format` / `npm run format:check` | Prettier |
+| Comando                                   | O que faz                                            |
+| ----------------------------------------- | ---------------------------------------------------- |
+| `npm ci`                                  | Instala as dependências e ativa o hook de pre-commit |
+| `npm run dev`                             | Sobe o servidor de desenvolvimento do Vite           |
+| `npm run build`                           | Checa os tipos (`tsc --noEmit`) e gera `dist/`       |
+| `npm run preview`                         | Serve o build localmente                             |
+| `npm test`                                | Vitest em modo interativo                            |
+| `npm run test:run`                        | Vitest uma única vez (usado no CI)                   |
+| `npm run lint` / `npm run lint:fix`       | oxlint                                               |
+| `npm run format` / `npm run format:check` | Prettier                                             |
 
 Não há limite mínimo nem relatório de cobertura.
 
@@ -49,13 +49,13 @@ Toda rota protegida é renderizada dentro do `PanelLayout` (`layouts/Panel.layou
 - Contador do menu: `hooks/useNavBadges.ts` devolve `{ [chave]: { count, label } }`, hoje vazio. A #85 troca a implementação para os agendamentos pendentes. O contador só aparece com `count > 0`.
 - Limites de largura (`hooks/useMediaQuery.ts`): menu encaixado a partir de 1200 px (abaixo vira gaveta aberta pelo "☰ Menu"); `useCompactTable()` é `true` até 1431 px e `false` a partir de 1432 px; o e-mail da conta aparece a partir de 940 px.
 - Componentes em `components/`:
-  - `StatusBadge`: selo de status de agendamento (`kind="appointment"`) e de desfecho de conversa (`kind="outcome"`), com chaves iguais aos enums do banco e cores em `statusStyles.ts`.
-  - `EmptyState`: título, descrição e ação opcional.
-  - `InfoTooltip`: ícone ⓘ que abre ao passar o mouse, focar ou tocar.
-  - `ConfirmDialog`: modal de confirmação com conteúdo extra opcional e `tone="danger"`.
-  - `ToastProvider` + `useToast()`: aviso temporário (2600 ms), um por vez.
-  - `UnsavedChangesBar`: "N alterações não salvas", lista de pendentes ao passar o mouse ou focar, "Descartar" e "Salvar alterações".
-  - `LastChangeNote`: "Última alteração por [nome] em [data]". Recebe `{ changedBy, changedAt }`, com `changedAt` em ISO 8601 com fuso, e mostra a data em dd/mm/aaaa no fuso de Brasília por `utils/formatDate.ts`. Sem alteração ou com data inválida, não mostra nada. O `formatDate` também aceita data sem hora (`AAAA-MM-DD`, como uma coluna `DATE`) e a formata como está, sem conversão de fuso.
+    - `StatusBadge`: selo de status de agendamento (`kind="appointment"`) e de desfecho de conversa (`kind="outcome"`), com chaves iguais aos enums do banco e cores em `statusStyles.ts`.
+    - `EmptyState`: título, descrição e ação opcional.
+    - `InfoTooltip`: ícone ⓘ que abre ao passar o mouse, focar ou tocar.
+    - `ConfirmDialog`: modal de confirmação com conteúdo extra opcional e `tone="danger"`.
+    - `ToastProvider` + `useToast()`: aviso temporário (2600 ms), um por vez.
+    - `UnsavedChangesBar`: "N alterações não salvas", lista de pendentes ao passar o mouse ou focar, "Descartar" e "Salvar alterações".
+    - `LastChangeNote`: "Última alteração por [nome] em [data]". Recebe `{ changedBy, changedAt }`, com `changedAt` em ISO 8601 com fuso, e mostra a data em dd/mm/aaaa no fuso de Brasília por `utils/formatDate.ts`. Sem alteração ou com data inválida, não mostra nada. O `formatDate` também aceita data sem hora (`AAAA-MM-DD`, como uma coluna `DATE`) e a formata como está, sem conversão de fuso.
 - Prévia: com `npm run dev`, a rota `/dev/layout` mostra o layout com uma conta Admin de exemplo e um exemplo de cada componente. Ela só existe em desenvolvimento e não entra no build de produção.
 
 ## Convenções
