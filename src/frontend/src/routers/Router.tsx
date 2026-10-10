@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState, type ReactNode } from "react"
 import { createBrowserRouter, RouterProvider, type RouteObject } from "react-router-dom"
+import PanelLayout from "@/layouts/Panel.layout"
 import RootLayout from "@/layouts/Root.layout"
 import ErrorPage from "@/pages/Error.page"
 import RequireAuth from "@/routers/RequireAuth"
@@ -27,16 +28,21 @@ export const routes: RouteObject[] = [
             {
                 element: <RequireAuth />,
                 children: [
-                    underConstruction(ROUTES.dashboard, "Painel"),
-                    underConstruction(ROUTES.appointments, "Agendamentos"),
-                    underConstruction(ROUTES.appointmentDetail, "Detalhe do agendamento"),
-                    underConstruction(ROUTES.reports, "Relatórios"),
-                    underConstruction(ROUTES.content, "Conteúdo"),
-                    underConstruction(ROUTES.sessions, "Sessões"),
-                    underConstruction(ROUTES.schedule, "Horários"),
-                    underConstruction(ROUTES.documents, "Documentos"),
-                    underConstruction(ROUTES.users, "Usuários"),
-                    underConstruction(ROUTES.whatsapp, "WhatsApp")
+                    {
+                        element: <PanelLayout />,
+                        children: [
+                            underConstruction(ROUTES.dashboard, "Painel"),
+                            underConstruction(ROUTES.appointments, "Agendamentos"),
+                            underConstruction(ROUTES.appointmentDetail, "Detalhe do agendamento"),
+                            underConstruction(ROUTES.reports, "Relatórios"),
+                            underConstruction(ROUTES.content, "Conteúdo"),
+                            underConstruction(ROUTES.sessions, "Sessões"),
+                            underConstruction(ROUTES.schedule, "Horários"),
+                            underConstruction(ROUTES.documents, "Documentos"),
+                            underConstruction(ROUTES.users, "Usuários"),
+                            underConstruction(ROUTES.whatsapp, "WhatsApp")
+                        ]
+                    }
                 ]
             },
             { path: ROUTES.forbidden, element: withSuspense(<Forbidden />) },
