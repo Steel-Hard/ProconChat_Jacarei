@@ -1,8 +1,8 @@
 import type { Ref } from "react"
 import { Link, useLocation } from "react-router-dom"
 import AccountMenu from "@/components/AccountMenu"
-import { breadcrumbFor } from "@/routers/navigation"
-import type { PanelAccount } from "@/types/account"
+import breadcrumbFor from "@/navigation/breadcrumbFor"
+import type PanelAccount from "@/types/account/PanelAccount.types"
 import css from "@/styles/components/topbar.module.css"
 
 type TopbarProps = {

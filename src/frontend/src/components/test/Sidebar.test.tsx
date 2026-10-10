@@ -3,9 +3,9 @@ import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import Sidebar from "@/components/Sidebar"
-import type { NavBadges } from "@/hooks/useNavBadges"
+import type NavBadges from "@/types/navigation/NavBadges.types"
 import ROUTES from "@/routers/paths"
-import type { PanelAccount } from "@/types/account"
+import type PanelAccount from "@/types/account/PanelAccount.types"
 
 const admin: PanelAccount = {
     name: "Ana Paula Souza",

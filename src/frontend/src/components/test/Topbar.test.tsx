@@ -4,7 +4,7 @@ import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import Topbar from "@/components/Topbar"
 import ROUTES from "@/routers/paths"
-import type { PanelAccount } from "@/types/account"
+import type PanelAccount from "@/types/account/PanelAccount.types"
 
 const admin: PanelAccount = {
     name: "Ana Paula Souza",

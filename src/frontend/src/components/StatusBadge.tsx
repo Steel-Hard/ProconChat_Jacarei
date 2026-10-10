@@ -1,9 +1,7 @@
-import {
-    APPOINTMENT_STATUS,
-    CONVERSATION_OUTCOME,
-    type AppointmentStatus,
-    type ConversationOutcome
-} from "@/components/statusStyles"
+import APPOINTMENT_STATUS from "@/status/appointmentStatusStyles"
+import CONVERSATION_OUTCOME from "@/status/conversationOutcomeStyles"
+import type AppointmentStatus from "@/types/status/AppointmentStatus.types"
+import type ConversationOutcome from "@/types/status/ConversationOutcome.types"
 import css from "@/styles/components/statusBadge.module.css"
 
 type StatusBadgeProps =

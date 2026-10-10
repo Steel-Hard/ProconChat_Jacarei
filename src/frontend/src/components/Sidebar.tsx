@@ -1,8 +1,9 @@
 import { useId } from "react"
 import { Link, useLocation } from "react-router-dom"
-import type { NavBadges } from "@/hooks/useNavBadges"
-import { activeNavKey, visibleNavGroups } from "@/routers/navigation"
-import type { PanelAccount } from "@/types/account"
+import type NavBadges from "@/types/navigation/NavBadges.types"
+import activeNavKey from "@/navigation/activeNavKey"
+import visibleNavGroups from "@/navigation/visibleNavGroups"
+import type PanelAccount from "@/types/account/PanelAccount.types"
 import css from "@/styles/components/sidebar.module.css"
 
 type SidebarProps = {

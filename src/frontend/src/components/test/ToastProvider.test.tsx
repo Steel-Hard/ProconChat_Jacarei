@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { act, render, renderHook, screen } from "@testing-library/react"
-import ToastProvider, { TOAST_DURATION_MS } from "@/components/ToastProvider"
-import { useToast } from "@/hooks/useToast"
+import ToastProvider from "@/components/ToastProvider"
+import useToast from "@/hooks/useToast"
 
 function ToastTrigger() {
     const { showToast } = useToast()
@@ -60,7 +60,7 @@ describe("ToastProvider", () => {
         click("Primeiro")
 
         act(() => {
-            vi.advanceTimersByTime(TOAST_DURATION_MS - 1)
+            vi.advanceTimersByTime(2599)
         })
         expect(screen.getByRole("status")).toHaveTextContent("Agendamento A3F9C21B")
 

@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react"
-import type { LastChange } from "@/components/LastChangeNote"
-import { useToast } from "@/hooks/useToast"
+import type LastChange from "@/types/settings/LastChange.types"
+import useToast from "@/hooks/useToast"
 import accountSlice from "@/store/slices/account.slice"
 import useAppDispatch from "@/store/useAppDispatch"
 import useAppSelector from "@/store/useAppSelector"
-import type { PanelAccount } from "@/types/account"
+import type PanelAccount from "@/types/account/PanelAccount.types"
 
 const PREVIEW_ACCOUNT: PanelAccount = {
     name: "Mariana Couto",
@@ -22,7 +22,7 @@ const PREVIEW_CHANGES = ["Duração do atendimento", "Vagas por horário"]
 
 type DialogTone = "primary" | "danger"
 
-export function useLayoutPreview() {
+function useLayoutPreview() {
     const { showToast } = useToast()
     const [dialogTone, setDialogTone] = useState<DialogTone | null>(null)
     const [changes, setChanges] = useState<string[]>(PREVIEW_CHANGES)
@@ -105,3 +105,5 @@ export function useLayoutPreview() {
         showToast
     }
 }
+
+export default useLayoutPreview

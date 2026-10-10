@@ -1,10 +1,6 @@
-import { formatDate } from "@/utils/formatDate"
+import type LastChange from "@/types/settings/LastChange.types"
+import formatDate from "@/utils/formatDate"
 import css from "@/styles/components/lastChangeNote.module.css"
-
-export type LastChange = {
-    changedBy: string
-    changedAt: string
-}
 
 type LastChangeNoteProps = {
     change: LastChange | null

@@ -9,9 +9,10 @@ import ROUTES from "@/routers/paths"
 import clearToken from "@/services/session/clearToken"
 import getToken from "@/services/session/getToken"
 import setToken from "@/services/session/setToken"
-import { mockMatchMedia, setViewportWidth } from "@/testUtils/mockMatchMedia"
+import mockMatchMedia from "@/testUtils/mockMatchMedia"
+import setViewportWidth from "@/testUtils/setViewportWidth"
 import renderWithStore from "@/testUtils/renderWithStore"
-import type { PanelAccount } from "@/types/account"
+import type PanelAccount from "@/types/account/PanelAccount.types"
 
 const admin: PanelAccount = {
     name: "Ana Paula Souza",

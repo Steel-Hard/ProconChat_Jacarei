@@ -1,25 +1,13 @@
 import { useEffect, useId, useRef, useState } from "react"
-import { useShowAccountEmail } from "@/hooks/useMediaQuery"
-import type { PanelAccount } from "@/types/account"
+import useShowAccountEmail from "@/hooks/useShowAccountEmail"
+import type PanelAccount from "@/types/account/PanelAccount.types"
 import css from "@/styles/components/accountMenu.module.css"
+import initialsOf from "@/utils/initialsOf"
 
 type AccountMenuProps = {
     account: PanelAccount
     onChangePassword?: () => void
     onLogout?: () => void
-}
-
-export function initialsOf(name: string): string {
-    const words = name.trim().split(/\s+/).filter(Boolean)
-
-    if (words.length === 0) {
-        return ""
-    }
-
-    const first = words[0].charAt(0)
-    const last = words.length > 1 ? words[words.length - 1].charAt(0) : ""
-
-    return `${first}${last}`.toUpperCase()
 }
 
 function AccountMenu({ account, onChangePassword, onLogout }: AccountMenuProps) {

@@ -1,36 +1,18 @@
+import evaluateMediaQuery from "@/testUtils/evaluateMediaQuery"
+import matchMediaState from "@/testUtils/matchMediaState"
+
 type ChangeListener = (event: MediaQueryListEvent) => void
-
-type Subscription = {
-    query: string
-    listener: ChangeListener
-    matches: boolean
-}
-
-let viewportWidth = 1440
-let subscriptions: Subscription[] = []
-
-function evaluate(query: string, width: number): boolean {
-    const conditions = query.split(/\s+and\s+/i)
-
-    return conditions.every((condition) => {
-        const match = /\(\s*(min|max)-width\s*:\s*(\d+(?:\.\d+)?)px\s*\)/i.exec(condition)
-
-        if (!match) {
-            return false
-        }
-
-        const limit = Number(match[2])
-
-        return match[1].toLowerCase() === "min" ? width >= limit : width <= limit
-    })
-}
 
 function createMediaQueryList(query: string): MediaQueryList {
     const add = (listener: ChangeListener) => {
-        subscriptions.push({ query, listener, matches: evaluate(query, viewportWidth) })
+        matchMediaState.subscriptions.push({
+            query,
+            listener,
+            matches: evaluateMediaQuery(query, matchMediaState.viewportWidth)
+        })
     }
     const remove = (listener: ChangeListener) => {
-        subscriptions = subscriptions.filter(
+        matchMediaState.subscriptions = matchMediaState.subscriptions.filter(
             (subscription) => subscription.query !== query || subscription.listener !== listener
         )
     }
@@ -38,7 +20,7 @@ function createMediaQueryList(query: string): MediaQueryList {
     return {
         media: query,
         get matches() {
-            return evaluate(query, viewportWidth)
+            return evaluateMediaQuery(query, matchMediaState.viewportWidth)
         },
         onchange: null,
         addEventListener: (_type: string, listener: ChangeListener) => add(listener),
@@ -49,9 +31,9 @@ function createMediaQueryList(query: string): MediaQueryList {
     } as unknown as MediaQueryList
 }
 
-export function mockMatchMedia(width: number) {
-    viewportWidth = width
-    subscriptions = []
+function mockMatchMedia(width: number) {
+    matchMediaState.viewportWidth = width
+    matchMediaState.subscriptions = []
     Object.defineProperty(window, "innerWidth", {
         value: width,
         configurable: true,
@@ -64,16 +46,4 @@ export function mockMatchMedia(width: number) {
     })
 }
 
-export function setViewportWidth(width: number) {
-    viewportWidth = width
-    window.innerWidth = width
-
-    for (const subscription of subscriptions) {
-        const matches = evaluate(subscription.query, width)
-
-        if (matches !== subscription.matches) {
-            subscription.matches = matches
-            subscription.listener({ matches, media: subscription.query } as MediaQueryListEvent)
-        }
-    }
-}
+export default mockMatchMedia

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
-import { ToastContext } from "@/hooks/useToast"
+import ToastContext from "@/contexts/toastContext"
 import css from "@/styles/components/toast.module.css"
 
-export const TOAST_DURATION_MS = 2600
+const TOAST_DURATION_MS = 2600
 
 type ToastProviderProps = {
     children: ReactNode

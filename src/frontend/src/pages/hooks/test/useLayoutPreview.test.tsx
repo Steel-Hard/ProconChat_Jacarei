@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { fireEvent, screen } from "@testing-library/react"
 import ToastProvider from "@/components/ToastProvider"
-import { useLayoutPreview } from "@/pages/hooks/useLayoutPreview"
+import useLayoutPreview from "@/pages/hooks/useLayoutPreview"
 import renderWithStore from "@/testUtils/renderWithStore"
-import type { PanelAccount } from "@/types/account"
+import type PanelAccount from "@/types/account/PanelAccount.types"
 
 const realAccount: PanelAccount = {
     name: "Bruno Lima",

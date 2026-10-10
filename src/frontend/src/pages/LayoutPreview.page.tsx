@@ -4,8 +4,9 @@ import InfoTooltip from "@/components/InfoTooltip"
 import LastChangeNote from "@/components/LastChangeNote"
 import StatusBadge from "@/components/StatusBadge"
 import UnsavedChangesBar from "@/components/UnsavedChangesBar"
-import { APPOINTMENT_STATUS_ORDER, CONVERSATION_OUTCOME_ORDER } from "@/components/statusStyles"
-import { useLayoutPreview } from "@/pages/hooks/useLayoutPreview"
+import APPOINTMENT_STATUS_ORDER from "@/status/appointmentStatusOrder"
+import CONVERSATION_OUTCOME_ORDER from "@/status/conversationOutcomeOrder"
+import useLayoutPreview from "@/pages/hooks/useLayoutPreview"
 import css from "@/styles/pages/layoutPreview.module.css"
 
 function LayoutPreviewPage() {

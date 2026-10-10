@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import accountSlice from "@/store/slices/account.slice"
-import type { PanelAccount } from "@/types/account"
+import type PanelAccount from "@/types/account/PanelAccount.types"
 
 const account: PanelAccount = {
     name: "Ana Paula Souza",

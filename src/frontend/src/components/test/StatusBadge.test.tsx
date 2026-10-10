@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest"
 import { render, screen } from "@testing-library/react"
 import StatusBadge from "@/components/StatusBadge"
-import type { AppointmentStatus, ConversationOutcome } from "@/components/statusStyles"
+import type AppointmentStatus from "@/types/status/AppointmentStatus.types"
+import type ConversationOutcome from "@/types/status/ConversationOutcome.types"
 
 describe("StatusBadge", () => {
     it.each<[AppointmentStatus, string]>([

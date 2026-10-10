@@ -1,12 +1,8 @@
-import { createContext, useContext } from "react"
+import { useContext } from "react"
+import ToastContext from "@/contexts/toastContext"
+import type ToastContextValue from "@/types/toast/ToastContextValue.types"
 
-export type ToastContextValue = {
-    showToast: (message: string) => void
-}
-
-export const ToastContext = createContext<ToastContextValue | null>(null)
-
-export function useToast(): ToastContextValue {
+function useToast(): ToastContextValue {
     const context = useContext(ToastContext)
 
     if (context === null) {
@@ -15,3 +11,5 @@ export function useToast(): ToastContextValue {
 
     return context
 }
+
+export default useToast

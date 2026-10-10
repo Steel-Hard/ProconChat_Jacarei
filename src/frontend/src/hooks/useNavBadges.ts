@@ -1,14 +1,9 @@
-import type { NavKey } from "@/routers/navigation"
-
-export type NavBadge = {
-    count: number
-    label: string
-}
-
-export type NavBadges = Partial<Record<NavKey, NavBadge>>
+import type NavBadges from "@/types/navigation/NavBadges.types"
 
 const NO_BADGES: NavBadges = {}
 
-export function useNavBadges(): NavBadges {
+function useNavBadges(): NavBadges {
     return NO_BADGES
 }
+
+export default useNavBadges

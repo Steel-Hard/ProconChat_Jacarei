@@ -17,7 +17,7 @@ function formatDateOnly(year: string, month: string, day: string): string | null
     return `${day}/${month}/${year}`
 }
 
-export function formatDate(value: string): string | null {
+function formatDate(value: string): string | null {
     const dateOnly = DATE_ONLY.exec(value)
 
     if (dateOnly) {
@@ -32,3 +32,5 @@ export function formatDate(value: string): string | null {
 
     return dateFormatter.format(date)
 }
+
+export default formatDate
