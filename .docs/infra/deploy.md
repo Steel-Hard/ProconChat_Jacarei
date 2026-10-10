@@ -328,7 +328,7 @@ O `deploy.sh <tag>`:
    depois recarrega o Caddy (`caddy reload`), porque o `Caddyfile` é montado como arquivo e uma mudança nele não recria o container. O `scp` do workflow sobrescreve o arquivo no lugar, então o container vê o conteúdo novo. Se o `Caddyfile` for trocado por outro meio que crie um arquivo novo (por exemplo `mv`), recrie o Caddy com `docker compose -f compose.prod.yaml up -d --force-recreate caddy`;
 4. confere pelo endereço público que `/` responde 200 e `/webhooks/whatsapp` responde 403, com até 12 tentativas;
 5. registra `<data UTC> <tag>` em `/opt/proconchat/releases.log`;
-6. remove as imagens sem container que foram criadas há mais de uma semana (`docker image prune -af --filter "until=168h"`). Imagens em uso nunca são removidas, e as da última semana ficam para um rollback rápido; uma tag mais antiga é baixada de novo do GHCR.
+6. remove as imagens sem container que chegaram à VM (por `pull` ou `build`) há mais de uma semana (`docker image prune -af --filter "until=168h"`). Com o armazenamento de imagens do containerd, padrão do Docker na VM, o `until` conta a partir da chegada da imagem na VM, não da data de criação dela. Imagens em uso nunca são removidas, e as da última semana ficam para um rollback rápido; uma tag mais antiga é baixada de novo do GHCR.
 
 Qualquer falha sai com código diferente de 0, e o job fica vermelho. Sem tag, ele sai com código 2 sem mexer nos containers.
 
