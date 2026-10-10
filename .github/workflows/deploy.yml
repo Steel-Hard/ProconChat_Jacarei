@@ -14,10 +14,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: deploy-production
-  cancel-in-progress: false
-
 jobs:
   ci:
     if: (github.event_name == 'push' && github.ref_name == (vars.DEPLOY_BRANCH || 'develop')) || (github.event_name == 'workflow_dispatch' && inputs.image_tag == '')
@@ -72,6 +68,9 @@ jobs:
       )
     runs-on: ubuntu-latest
     environment: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
     permissions:
       contents: read
     env:
