@@ -101,15 +101,19 @@ sessões no Postgres" do README do gateway.
 
 ## 10. Limitação do número de teste
 
-Sem a verificação de empresa no portfólio do negócio, o número de teste da Meta recebe as mensagens e
-aceita os envios, mas toda entrega para número brasileiro termina com status `failed` e código `130497`.
-Na prática:
+O número de teste da Meta recebe as mensagens e aceita os envios, mas na #53 toda entrega para número
+brasileiro terminou com status `failed` e código `130497` ("Business account is restricted from messaging
+users in this country"). Cadastrar cartão e completar o perfil da empresa não resolveu. A causa provável
+é a falta de verificação de empresa no portfólio (`141010` no `health_status`). Na prática:
 
 - o app de teste serve para verificar o webhook e ver a mensagem chegar ao gateway e ao backend;
 - a resposta chegando ao celular é validada com um número real registrado na conta do WhatsApp
   Business. Hoje isso é feito na produção, com o número da equipe, depois do merge em `develop`.
 
-Como ler o status de uma mensagem e conferir a saúde do número está na seção
+O gateway ainda descarta os eventos de status sem registrar `failed` nem o código de erro (isso fica
+para a #88). Por isso, uma resposta que não chega ao celular não aparece nos logs: confira o payload de
+status no painel do app e a saúde do número com `GET /{phone_number_id}?fields=health_status`. Os dois
+estão na seção
 [Validação com número real e diagnóstico de entrega](../../src/gateway/README.md#validação-com-número-real-e-diagnóstico-de-entrega)
 do README do gateway.
 

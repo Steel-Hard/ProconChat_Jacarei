@@ -39,8 +39,8 @@ docker compose ps
 No PowerShell, use `Copy-Item .env.example .env` no lugar de `cp`.
 
 Devem aparecer `postgres`, `backend`, `frontend`, `gateway` e `ollama` (mais o `migrate`, o `seed` e o
-`llm-pull`, que rodam uma vez e saem com código `0`). `postgres`, `backend`, `gateway` e `ollama`
-aparecem como `healthy`.
+`llm-pull`, que rodam uma vez e saem com código `0`). `postgres`, `backend` e `ollama` aparecem como
+`healthy`; `frontend` e `gateway` não têm healthcheck em desenvolvimento e aparecem como `Up`.
 
 Troque as chaves e senhas do `.env` antes de qualquer ambiente compartilhado. As credenciais do
 PostgreSQL são aplicadas na criação inicial do volume — não altere só a senha depois que o banco já
