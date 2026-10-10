@@ -105,11 +105,10 @@ novo (`docker compose -p outro-nome ...`) com portas livres e volume independent
 
 ## Integração com a issue #6
 
-Este Compose cobre banco, migrations e backend. Na junção com a branch `evolution`,
-preserve Redis/Evolution e suas configurações; substitua os mounts de SQL de
-inicialização pelo serviço `migrate` e faça o backend depender de
+Este Compose cobre banco, migrations e backend. Os mounts de SQL de
+inicialização foram substituídos pelo serviço `migrate`, e o backend depende de
 `service_completed_successfully`. Os nomes `postgres`, `postgres_data` e a porta
-local 5433 seguem aquela branch. A carga de conteúdo real pertence à issue #12.
+local 5433 seguem a issue #6. A carga de conteúdo real pertence à issue #12.
 
 ## Validação
 
