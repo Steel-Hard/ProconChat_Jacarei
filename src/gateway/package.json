@@ -1,7 +1,7 @@
 {
     "name": "proconchat-gateway",
     "version": "1.0.0",
-    "description": "Gateway WhatsApp do ProconChat (Evolution API) — Express + TypeScript.",
+    "description": "Gateway WhatsApp do ProconChat (WhatsApp Cloud API) — Express + TypeScript.",
     "main": "dist/index.js",
     "scripts": {
         "dev": "nodemon --watch . --ignore dist --ignore node_modules --ext ts --exec \"ts-node index.ts\"",
