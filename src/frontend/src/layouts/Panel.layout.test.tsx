@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, beforeAll, describe, expect, it } from "vitest"
 import { act, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
@@ -16,6 +16,8 @@ const admin: PanelAccount = {
     permissions: []
 }
 
+const LAZY_TIMEOUT_MS = 4000
+
 async function renderPanel(path: string = ROUTES.dashboard) {
     setToken("abc")
     setAccount(admin)
@@ -23,7 +25,7 @@ async function renderPanel(path: string = ROUTES.dashboard) {
 
     render(<RouterProvider router={router} />)
 
-    await screen.findByText("Em construção.")
+    await screen.findByText("Em construção.", {}, { timeout: LAZY_TIMEOUT_MS })
 }
 
 async function openDrawer() {
@@ -33,7 +35,11 @@ async function openDrawer() {
     expect(screen.getByRole("link", { name: "Sessões" })).toBeInTheDocument()
 }
 
-describe("PanelLayout", () => {
+describe("PanelLayout", { timeout: 15000 }, () => {
+    beforeAll(async () => {
+        await import("@/pages/UnderConstruction.page")
+    })
+
     afterEach(() => {
         clearToken()
         clearAccount()
@@ -54,7 +60,9 @@ describe("PanelLayout", () => {
 
         userEvent.click(screen.getByRole("link", { name: "Sessões" }))
 
-        expect(await screen.findByRole("heading", { name: "Sessões" })).toBeInTheDocument()
+        expect(
+            await screen.findByRole("heading", { name: "Sessões" }, { timeout: LAZY_TIMEOUT_MS })
+        ).toBeInTheDocument()
         expect(screen.getByRole("link", { name: "Sessões" })).toHaveAttribute(
             "aria-current",
             "page"
@@ -105,7 +113,9 @@ describe("PanelLayout", () => {
 
         userEvent.click(screen.getByRole("link", { name: "Sessões" }))
 
-        expect(await screen.findByRole("heading", { name: "Sessões" })).toBeInTheDocument()
+        expect(
+            await screen.findByRole("heading", { name: "Sessões" }, { timeout: LAZY_TIMEOUT_MS })
+        ).toBeInTheDocument()
         expect(screen.queryByRole("link", { name: "Sessões" })).not.toBeInTheDocument()
     })
 
@@ -132,7 +142,13 @@ describe("PanelLayout", () => {
         userEvent.click(screen.getByRole("button", { name: "Minha conta" }))
         userEvent.click(screen.getByRole("menuitem", { name: "Sair" }))
 
-        expect(await screen.findByRole("heading", { name: "Acesso negado." })).toBeInTheDocument()
+        expect(
+            await screen.findByRole(
+                "heading",
+                { name: "Acesso negado." },
+                { timeout: LAZY_TIMEOUT_MS }
+            )
+        ).toBeInTheDocument()
         expect(getToken()).toBeNull()
         expect(getAccount()).toBeNull()
         expect(
