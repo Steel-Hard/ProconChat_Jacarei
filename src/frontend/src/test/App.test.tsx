@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
 import App from "@/App"
 import clearToken from "@/services/session/clearToken"
@@ -8,6 +8,7 @@ describe("App", () => {
     afterEach(() => {
         clearToken()
         window.history.pushState({}, "", "/")
+        vi.restoreAllMocks()
     })
 
     it("renderiza o painel na rota raiz com sessão", async () => {
@@ -29,5 +30,17 @@ describe("App", () => {
         expect(document.querySelector('meta[name="description"]')?.getAttribute("content")).toBe(
             "A página não existe ou você não possui acesso."
         )
+    })
+
+    it("renderiza dentro do Provider da store sem avisos no console", async () => {
+        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+        const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined)
+        setToken("abc")
+
+        render(<App />)
+
+        expect(await screen.findByRole("heading", { name: "Painel" })).toBeInTheDocument()
+        expect(errorSpy).not.toHaveBeenCalled()
+        expect(warnSpy).not.toHaveBeenCalled()
     })
 })
