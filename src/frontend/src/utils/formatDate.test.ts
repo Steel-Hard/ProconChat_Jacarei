@@ -13,4 +13,8 @@ describe("formatDate", () => {
     it("devolve null para um valor que não é data", () => {
         expect(formatDate("não é data")).toBeNull()
     })
+
+    it("formata uma data sem hora sem deslocar o dia", () => {
+        expect(formatDate("2026-12-25")).toBe("25/12/2026")
+    })
 })

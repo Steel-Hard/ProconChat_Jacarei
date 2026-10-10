@@ -55,7 +55,7 @@ Toda rota protegida é renderizada dentro do `PanelLayout` (`layouts/Panel.layou
   - `ConfirmDialog`: modal de confirmação com conteúdo extra opcional e `tone="danger"`.
   - `ToastProvider` + `useToast()`: aviso temporário (2600 ms), um por vez.
   - `UnsavedChangesBar`: "N alterações não salvas", lista de pendentes ao passar o mouse ou focar, "Descartar" e "Salvar alterações".
-  - `LastChangeNote`: "Última alteração por [nome] em [data]". Recebe `{ changedBy, changedAt }`, com `changedAt` em ISO 8601 com fuso, e mostra a data em dd/mm/aaaa no fuso de Brasília por `utils/formatDate.ts`. Sem alteração ou com data inválida, não mostra nada.
+  - `LastChangeNote`: "Última alteração por [nome] em [data]". Recebe `{ changedBy, changedAt }`, com `changedAt` em ISO 8601 com fuso, e mostra a data em dd/mm/aaaa no fuso de Brasília por `utils/formatDate.ts`. Sem alteração ou com data inválida, não mostra nada. O `formatDate` também aceita data sem hora (`AAAA-MM-DD`, como uma coluna `DATE`) e a formata como está, sem conversão de fuso.
 - Prévia: com `npm run dev`, a rota `/dev/layout` mostra o layout com uma conta Admin de exemplo e um exemplo de cada componente. Ela só existe em desenvolvimento e não entra no build de produção.
 
 ## Convenções
