@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { act, renderHook } from "@testing-library/react"
 import { useCompactTable, useIsDocked, useMediaQuery } from "@/hooks/useMediaQuery"
-import { mockMatchMedia, setViewportWidth } from "@/test/mockMatchMedia"
+import { mockMatchMedia, setViewportWidth } from "@/testUtils/mockMatchMedia"
 
 describe("useMediaQuery", () => {
     it("encaixa o menu com viewport de 1440 px", () => {

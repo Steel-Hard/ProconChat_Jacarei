@@ -6,7 +6,7 @@ import { routes } from "@/routers/Router"
 import { ROUTES } from "@/routers/paths"
 import { clearAccount, getAccount, setAccount } from "@/services/account.service"
 import { clearToken, getToken, setToken } from "@/services/session.service"
-import { mockMatchMedia, setViewportWidth } from "@/test/mockMatchMedia"
+import { mockMatchMedia, setViewportWidth } from "@/testUtils/mockMatchMedia"
 import type { PanelAccount } from "@/types/account"
 
 const admin: PanelAccount = {

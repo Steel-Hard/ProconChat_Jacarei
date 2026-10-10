@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import AccountMenu from "@/components/AccountMenu"
-import { mockMatchMedia } from "@/test/mockMatchMedia"
+import { mockMatchMedia } from "@/testUtils/mockMatchMedia"
 import type { PanelAccount } from "@/types/account"
 
 const admin: PanelAccount = {
