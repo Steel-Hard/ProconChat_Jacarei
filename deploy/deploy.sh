@@ -67,7 +67,7 @@ check_status() {
     return 1
 }
 
-"${compose[@]}" pull
+"${compose[@]}" pull --policy missing
 "${compose[@]}" up -d --remove-orphans
 
 wait_healthy backend
