@@ -26,6 +26,7 @@ function AccountMenu({ account, onChangePassword, onLogout }: AccountMenuProps) 
     const menuId = useId()
     const [open, setOpen] = useState(false)
     const container = useRef<HTMLDivElement>(null)
+    const trigger = useRef<HTMLButtonElement>(null)
     const showEmail = useShowAccountEmail()
     const hasOptions = onChangePassword !== undefined || onLogout !== undefined
 
@@ -37,6 +38,7 @@ function AccountMenu({ account, onChangePassword, onLogout }: AccountMenuProps) 
         function handleKeyDown(event: KeyboardEvent) {
             if (event.key === "Escape") {
                 setOpen(false)
+                trigger.current?.focus()
             }
         }
 
@@ -74,9 +76,9 @@ function AccountMenu({ account, onChangePassword, onLogout }: AccountMenuProps) 
             </span>
             {hasOptions ? (
                 <button
+                    ref={trigger}
                     type="button"
                     className={css.trigger}
-                    aria-haspopup="menu"
                     aria-expanded={open}
                     aria-controls={open ? menuId : undefined}
                     onClick={() => setOpen((value) => !value)}
@@ -85,28 +87,30 @@ function AccountMenu({ account, onChangePassword, onLogout }: AccountMenuProps) 
                 </button>
             ) : null}
             {open ? (
-                <div id={menuId} role="menu" aria-label="Minha conta" className={css.menu}>
+                <ul id={menuId} aria-label="Minha conta" className={css.menu}>
                     {onChangePassword ? (
-                        <button
-                            type="button"
-                            role="menuitem"
-                            className={css.item}
-                            onClick={() => choose(onChangePassword)}
-                        >
-                            Alterar minha senha
-                        </button>
+                        <li>
+                            <button
+                                type="button"
+                                className={css.item}
+                                onClick={() => choose(onChangePassword)}
+                            >
+                                Alterar minha senha
+                            </button>
+                        </li>
                     ) : null}
                     {onLogout ? (
-                        <button
-                            type="button"
-                            role="menuitem"
-                            className={`${css.item} ${css.logout}`}
-                            onClick={() => choose(onLogout)}
-                        >
-                            Sair
-                        </button>
+                        <li>
+                            <button
+                                type="button"
+                                className={`${css.item} ${css.logout}`}
+                                onClick={() => choose(onLogout)}
+                            >
+                                Sair
+                            </button>
+                        </li>
                     ) : null}
-                </div>
+                </ul>
             ) : null}
         </div>
     )

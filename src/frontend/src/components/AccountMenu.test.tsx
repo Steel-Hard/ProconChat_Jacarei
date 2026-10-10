@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import AccountMenu from "@/components/AccountMenu"
 import { mockMatchMedia } from "@/test/mockMatchMedia"
@@ -50,29 +50,38 @@ describe("AccountMenu", () => {
         userEvent.click(trigger)
 
         expect(trigger).toHaveAttribute("aria-expanded", "true")
-        expect(screen.getByRole("menu")).toBeInTheDocument()
-        expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Sair"])
+        const options = screen.getByRole("list", { name: "Minha conta" })
+        expect(trigger).toHaveAttribute("aria-controls", options.id)
+        expect(
+            within(options)
+                .getAllByRole("button")
+                .map((item) => item.textContent)
+        ).toEqual(["Sair"])
+        expect(screen.queryByRole("menu")).not.toBeInTheDocument()
     })
 
     it("chama onLogout e fecha o menu ao escolher Sair", () => {
         const onLogout = vi.fn()
         render(<AccountMenu account={admin} onChangePassword={vi.fn()} onLogout={onLogout} />)
         userEvent.click(screen.getByRole("button", { name: "Minha conta" }))
-        expect(screen.getByRole("menuitem", { name: "Alterar minha senha" })).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "Alterar minha senha" })).toBeInTheDocument()
 
-        userEvent.click(screen.getByRole("menuitem", { name: "Sair" }))
+        userEvent.click(screen.getByRole("button", { name: "Sair" }))
 
         expect(onLogout).toHaveBeenCalledTimes(1)
-        expect(screen.queryByRole("menu")).not.toBeInTheDocument()
+        expect(screen.queryByRole("list", { name: "Minha conta" })).not.toBeInTheDocument()
     })
 
-    it("fecha o menu com Esc", () => {
+    it("fecha o menu com Esc e devolve o foco ao botão Minha conta", () => {
         render(<AccountMenu account={admin} onLogout={vi.fn()} />)
-        userEvent.click(screen.getByRole("button", { name: "Minha conta" }))
+        const trigger = screen.getByRole("button", { name: "Minha conta" })
+        userEvent.click(trigger)
+        screen.getByRole("button", { name: "Sair" }).focus()
 
         userEvent.keyboard("{esc}")
 
-        expect(screen.queryByRole("menu")).not.toBeInTheDocument()
+        expect(trigger).toHaveFocus()
+        expect(screen.queryByRole("list", { name: "Minha conta" })).not.toBeInTheDocument()
     })
 
     it("fecha o menu ao clicar fora", () => {
@@ -86,7 +95,7 @@ describe("AccountMenu", () => {
 
         userEvent.click(screen.getByText("Fora do menu"))
 
-        expect(screen.queryByRole("menu")).not.toBeInTheDocument()
+        expect(screen.queryByRole("list", { name: "Minha conta" })).not.toBeInTheDocument()
     })
 
     it("usa iniciais em maiúsculas para nomes digitados em minúsculas", () => {

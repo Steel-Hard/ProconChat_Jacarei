@@ -140,7 +140,7 @@ describe("PanelLayout", { timeout: 15000 }, () => {
         await renderPanel()
 
         userEvent.click(screen.getByRole("button", { name: "Minha conta" }))
-        userEvent.click(screen.getByRole("menuitem", { name: "Sair" }))
+        userEvent.click(screen.getByRole("button", { name: "Sair" }))
 
         expect(
             await screen.findByRole(
@@ -152,7 +152,7 @@ describe("PanelLayout", { timeout: 15000 }, () => {
         expect(getToken()).toBeNull()
         expect(getAccount()).toBeNull()
         expect(
-            screen.queryByRole("menuitem", { name: "Alterar minha senha" })
+            screen.queryByRole("button", { name: "Alterar minha senha" })
         ).not.toBeInTheDocument()
     })
 
