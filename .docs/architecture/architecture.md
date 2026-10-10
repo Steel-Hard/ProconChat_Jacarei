@@ -49,13 +49,13 @@ O LLM Service só recebe chamadas do Backend e não tem acesso ao banco nem à s
 
 | Componente | Papel | Container | Estado |
 |---|---|---|---|
-| **Gateway WhatsApp** | Recebe o webhook da Meta, valida a assinatura, deduplica e repassa ao Backend; envia as mensagens pedidas pelo Backend (texto, lista, botões, modelos); repassa os status de entrega | `gateway` | ✅ com Evolution API · 🟡 migração para a Cloud API (S2-04) |
+| **Gateway WhatsApp** | Recebe o webhook da Meta, valida a assinatura, deduplica e repassa ao Backend; envia as mensagens pedidas pelo Backend (texto, lista, botões, modelos); repassa os status de entrega | `gateway` | ✅ com a Cloud API (S2-04) |
 | **Backend API** | Orquestrador: conversa, Motor de Decisão, agenda, mensagens ao cidadão, registro de eventos, API do painel, autenticação e permissões | `backend` | ✅ parcial (sessão + Motor de Decisão) · 🟡🟠 demais módulos |
 | **Frontend (painel)** | Painel da equipe do PROCON (RF08), a partir do `template-react` | `frontend` (nginx) | 🟡 S2-10 |
 | **LLM Service** | Ollama com `llama3.2:3b`; gera só o texto complementar (RF05) | `ollama` + `llm-pull` | ✅ serviço pronto · 🟠 ligado ao fluxo (S3-05) |
 | **PostgreSQL** | Persistência única | `postgres` (+ `migrate`, `seed`) | ✅ · 🟡 schema da Sprint 2 (S2-03) |
-| **Proxy HTTPS** | Certificado e roteamento para painel, API e webhook | `caddy` | 🟡 S2-02 |
-| ~~Evolution API + Redis~~ | Integração não oficial usada na Sprint 1 | `evolution-api`, `redis` | Saem na migração (S2-04). Ver [decisão 003](../decisoes/003-migracao-whatsapp-cloud-api.md) |
+| **Proxy HTTPS** | Certificado e roteamento para painel, API e webhook; bloqueia a rota interna `/api/v1/whatsapp/sessions` | `caddy` | ✅ (`compose.prod.yaml`, `deploy/Caddyfile`) |
+| ~~Evolution API + Redis~~ | Integração não oficial usada na Sprint 1 | `evolution-api`, `redis` | Removidos na #82. Ver [decisão 003](../decisoes/003-migracao-whatsapp-cloud-api.md) |
 
 ### Módulos do Backend
 
@@ -115,11 +115,11 @@ As credenciais da Cloud API ficam no banco, **criptografadas com uma chave-mestr
 | Ambiente | Onde | WhatsApp |
 |---|---|---|
 | **Desenvolvimento** | Máquina de cada pessoa (`docker compose up`) + túnel HTTPS | App de teste próprio na Meta, com o número de teste gratuito da Meta |
-| **Produção / demonstração** | VM na nuvem com pelo menos 8 GB de RAM (por causa do Ollama) | Número de teste comprado pelo time; depois das sprints, o número do PROCON |
+| **Produção / demonstração** | VM AWS EC2 `t4g.small` (arm64, 2 GB + 2 GB de swap) em `us-east-2`, com `compose.prod.yaml`: `caddy`, `postgres`, `migrate`, `seed`, `backend`, `gateway` e `frontend`. Sem Evolution e Redis. O Ollama (`ollama` e `llm-pull`, perfil `llm`) fica desligado até haver uma VM com mais memória (#66) | Número real da equipe; depois das sprints, o número do PROCON |
 
 - **CI** (🟡 S2-01): GitHub Actions roda build, lint e testes de cada app em todo PR. O CI verde é obrigatório para o merge.
-- **CD** (🟡 S2-02): merge em `main` gera as imagens no GitHub Container Registry e atualiza a VM por SSH (`docker compose pull && up -d`). As migrations rodam pelo serviço `migrate`.
-- **Segredos:** GitHub Secrets e `.env` só na VM. Continuam no `.env`: banco, `PHONE_HASH_SECRET`, token interno Gateway ↔ Backend, chave-mestra de criptografia e URL pública.
+- **CD** (✅ #51): push com CI verde na branch de `DEPLOY_BRANCH` (hoje `develop`; `main` no fim do semestre) gera as imagens no GitHub Container Registry e atualiza a VM por SSH com `deploy/deploy.sh <sha>`. As migrations rodam pelo serviço `migrate`. Operação, rollback e backup: [`infra/deploy.md`](../infra/deploy.md).
+- **Segredos:** no GitHub, só os de acesso SSH (environment `production`); os da aplicação ficam no `.env` da VM. Continuam no `.env`: banco, `PHONE_HASH_SECRET`, token interno Gateway ↔ Backend, chave-mestra de criptografia e URL pública.
 
 ## Segurança e dados pessoais
 
@@ -159,5 +159,5 @@ Ver [`../database/database.md`](../database/database.md): o schema atual e o pla
 | RNF02 | Resposta oficial não espera o LLM; `restart` e healthchecks; Cloud API em vez de automação não oficial |
 | RNF03 | Seção "Segurança e dados pessoais" |
 | RNF06 | Tudo no Docker Compose |
-| RNF08 | CI em todo PR e CD a cada merge em `main` |
+| RNF08 | CI em todo PR e CD a cada push com CI verde na branch de `DEPLOY_BRANCH` (`develop` durante o semestre, `main` no fim) |
 | RP03 | Gateway, Backend e LLM separados; módulos internos no Backend |

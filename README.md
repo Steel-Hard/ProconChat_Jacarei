@@ -1,6 +1,9 @@
 # ProconChat Jacareí
 
 [![CI](https://github.com/Steel-Hard/ProconChat_Jacarei/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/Steel-Hard/ProconChat_Jacarei/actions/workflows/ci.yml)
+[![Deploy](https://github.com/Steel-Hard/ProconChat_Jacarei/actions/workflows/deploy.yml/badge.svg?branch=develop)](https://github.com/Steel-Hard/ProconChat_Jacarei/actions/workflows/deploy.yml)
+
+Produção: <https://3.150.166.93.sslip.io>. Operação e deploy: [`.docs/infra/deploy.md`](.docs/infra/deploy.md).
 
 Documentação do projeto: [`.docs/README.md`](.docs/README.md) (requisitos, decisões, regras das telas,
 arquitetura, banco e protótipo do painel).
@@ -82,7 +85,7 @@ O projeto busca:
 | Backend e Gateway | Node.js + TypeScript (Express), Vitest | Implementado |
 | Banco | PostgreSQL 15, migrations com `node-pg-migrate` | Implementado |
 | LLM | Ollama + `llama3.2:3b`, local (RP05: nenhuma API externa de LLM) | Serviço implementado; ligado ao fluxo na Sprint 3 |
-| WhatsApp | Evolution API na Sprint 1 → **WhatsApp Cloud API** oficial (migração na Sprint 2) | Em migração |
+| WhatsApp | **WhatsApp Cloud API** oficial | Implementado |
 | Painel web | React 19 + Vite + TypeScript, a partir do `template-react` | Sprint 2 |
 | Infraestrutura | Docker Compose, GitHub Actions (CI/CD), VM na nuvem com HTTPS | Docker implementado; CI/CD na Sprint 2 |
 
@@ -180,7 +183,7 @@ com base nos requisitos e fluxos decisórios fornecidos pelo PROCON.
 ### Pré-requisitos
 
 - [Docker](https://docs.docker.com/get-docker/) e Docker Compose v2 (`docker compose`, sem hífen);
-- Nenhuma outra dependência de host é necessária — Node.js, PostgreSQL, Redis e o
+- Nenhuma outra dependência de host é necessária — Node.js, PostgreSQL e o
   modelo de linguagem rodam todos dentro dos containers.
 
 ### Passo a passo
@@ -199,8 +202,6 @@ Isso sobe, com um único comando, todo o ambiente do MVP:
 | `postgres`      | Banco de dados (persistência via volume `postgres_data`)           |    `127.0.0.1:5433`    |
 | `migrate`       | Aplica as migrations e encerra (`node-pg-migrate`)                  |           —           |
 | `backend`       | API/orquestrador (Motor de Decisão, Scheduler)                     |    `127.0.0.1:3000`    |
-| `redis`         | Cache/fila usado pela Evolution API                                |         `6379`         |
-| `evolution-api` | Integração com o WhatsApp (Evolution API)                         |         `8080`         |
 | `gateway`       | Gateway WhatsApp — recebe o webhook e fala com o `backend`         |         `3001`         |
 | `ollama`        | LLM local (modelo definido por `LLM_MODEL` no `.env`)               |           —           |
 | `llm-pull`      | Baixa o modelo do Ollama e encerra                                  |           —           |
@@ -208,15 +209,11 @@ Isso sobe, com um único comando, todo o ambiente do MVP:
 Todas as variáveis sensíveis (senhas, tokens, segredos) vêm do `.env` — nunca
 hardcoded no `compose.yaml`. Veja `.env.example` para a lista completa.
 
-> **Em migração:** a Evolution API e o Redis serão removidos quando o Gateway passar para a WhatsApp
-> Cloud API (Sprint 2, [decisão 003](.docs/decisoes/003-migracao-whatsapp-cloud-api.md)). As instruções
-> abaixo valem para o estado atual de `develop`.
-
 ### Documentação detalhada por serviço
 
 - [`.docs/database/migrations.md`](.docs/database/migrations.md) — schema, migrations e como resetar o banco.
 - [`src/backend/README.md`](src/backend/README.md) — rodar o backend fora do Docker, rotas disponíveis, testes.
-- [`src/gateway/README.md`](src/gateway/README.md) — subir e validar a Evolution API + Gateway WhatsApp.
+- [`src/gateway/README.md`](src/gateway/README.md) — subir e validar o Gateway WhatsApp com a Cloud API.
 - [`.docs/llm/contrato.md`](.docs/llm/contrato.md) — contrato de entrada/saída do serviço LLM.
 - [`.docs/README.md`](.docs/README.md) — índice de toda a documentação: requisitos, decisões, regras das telas e protótipo.
 

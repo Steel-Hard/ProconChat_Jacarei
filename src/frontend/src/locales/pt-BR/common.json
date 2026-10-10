@@ -1,0 +1,103 @@
+{
+    "backHome": "Vá para a página inicial.",
+    "loading": "Carregando...",
+    "accountMenu": {
+        "trigger": "Minha conta",
+        "options": "Minha conta",
+        "changePassword": "Alterar minha senha",
+        "logout": "Sair",
+        "nameWithAdmin": "{{name}} <badge>ADMIN</badge>"
+    },
+    "confirmDialog": {
+        "cancel": "Voltar"
+    },
+    "infoTooltip": {
+        "label": "Mais informações"
+    },
+    "lastChangeNote": {
+        "text": "Última alteração por {{name}} em {{date}}"
+    },
+    "navigation": {
+        "groups": {
+            "operation": "Operação",
+            "chatbot": "Chatbot",
+            "settings": "Configurações"
+        },
+        "items": {
+            "dashboard": {
+                "label": "Dashboard",
+                "title": "Dashboard"
+            },
+            "appointments": {
+                "label": "Agendamentos",
+                "title": "Agendamentos"
+            },
+            "reports": {
+                "label": "Relatórios",
+                "title": "Relatórios"
+            },
+            "content": {
+                "label": "Conteúdo",
+                "title": "Conteúdo do chatbot"
+            },
+            "sessions": {
+                "label": "Sessões",
+                "title": "Sessões"
+            },
+            "schedule": {
+                "label": "Horários de atendimento",
+                "title": "Horários de atendimento"
+            },
+            "documents": {
+                "label": "Documentos",
+                "title": "Documentos para atendimento"
+            },
+            "users": {
+                "label": "Usuários",
+                "title": "Usuários"
+            },
+            "whatsapp": {
+                "label": "WhatsApp",
+                "title": "WhatsApp"
+            }
+        },
+        "appointmentDetail": "Detalhe do agendamento",
+        "itemWithBadge": "<label>{{label}}</label> <count>{{count}}</count> <hidden>{{badgeLabel}}</hidden>"
+    },
+    "sidebar": {
+        "label": "Menu principal",
+        "brand": "ProconChat",
+        "subtitle": "Jacareí · Painel interno",
+        "footer": "Uso exclusivo de servidores do PROCON Jacareí."
+    },
+    "status": {
+        "appointment": {
+            "PENDING": "Pendente",
+            "CONFIRMED": "Confirmado",
+            "ATTENDED": "Atendido",
+            "NO_SHOW": "Não compareceu",
+            "CANCELED": "Cancelado"
+        },
+        "outcome": {
+            "RESOLVED": "Resolvida sem agendamento",
+            "SCHEDULED": "Terminou em agendamento",
+            "OUT_OF_SCOPE": "Fora do escopo do PROCON",
+            "NO_SLOT": "Sem horário disponível na janela",
+            "DECLINED": "Não quis agendar",
+            "MANAGED_APPOINTMENT": "Remarcou ou cancelou agendamento existente",
+            "ABANDONED": "Abandonada",
+            "IN_PROGRESS": "Em andamento"
+        }
+    },
+    "topbar": {
+        "menu": "Menu",
+        "trail": "Trilha"
+    },
+    "unsavedChangesBar": {
+        "summary_one": "{{count}} alteração não salva",
+        "summary_other": "{{count}} alterações não salvas",
+        "pending": "Pendentes: {{list}}",
+        "discard": "Descartar",
+        "save": "Salvar alterações"
+    }
+}
