@@ -77,5 +77,5 @@ check_status / 200
 check_status /webhooks/whatsapp 403
 
 printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$IMAGE_TAG" >> releases.log
-docker image prune -f
+docker image prune -af --filter "until=168h"
 echo "deploy de $IMAGE_TAG concluído"
