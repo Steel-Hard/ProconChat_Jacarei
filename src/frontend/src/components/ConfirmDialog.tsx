@@ -1,6 +1,9 @@
 import { useEffect, useId, useRef, type MouseEvent, type ReactNode } from "react"
 import css from "@/styles/components/confirmDialog.module.css"
 
+const FOCUSABLE_SELECTOR =
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
 type ConfirmDialogProps = {
     open: boolean
     title: string
@@ -31,6 +34,7 @@ function ConfirmDialog({
     const titleId = useId()
     const descriptionId = useId()
     const cancelRef = useRef<HTMLButtonElement>(null)
+    const dialogRef = useRef<HTMLDialogElement>(null)
 
     useEffect(() => {
         if (!open) {
@@ -54,6 +58,35 @@ function ConfirmDialog({
         function handleKeyDown(event: KeyboardEvent) {
             if (event.key === "Escape") {
                 onCancel()
+                return
+            }
+
+            if (event.key === "Tab") {
+                trapFocus(event)
+            }
+        }
+
+        function trapFocus(event: KeyboardEvent) {
+            const focusable = Array.from(
+                dialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? []
+            )
+
+            if (focusable.length === 0) {
+                event.preventDefault()
+                return
+            }
+
+            const first = focusable[0]
+            const last = focusable[focusable.length - 1]
+            const active = document.activeElement
+            const inside = active instanceof Node && dialogRef.current?.contains(active)
+
+            if (event.shiftKey && (active === first || !inside)) {
+                event.preventDefault()
+                last.focus()
+            } else if (!event.shiftKey && (active === last || !inside)) {
+                event.preventDefault()
+                first.focus()
             }
         }
 
@@ -79,6 +112,7 @@ function ConfirmDialog({
     return (
         <div className={css.overlay} role="presentation" onClick={handleOverlayClick}>
             <dialog
+                ref={dialogRef}
                 open
                 className={css.dialog}
                 aria-modal="true"

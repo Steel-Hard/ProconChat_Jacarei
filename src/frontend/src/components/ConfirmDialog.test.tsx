@@ -120,4 +120,21 @@ describe("ConfirmDialog", () => {
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
         expect(opener).toHaveFocus()
     })
+
+    it("mantém o foco dentro do modal com Tab e Shift+Tab", () => {
+        render(<DialogHarness />)
+        userEvent.click(screen.getByRole("button", { name: "Abrir modal" }))
+        const back = screen.getByRole("button", { name: "Voltar" })
+        const confirm = screen.getByRole("button", { name: "Confirmar" })
+        expect(back).toHaveFocus()
+
+        userEvent.tab()
+        expect(confirm).toHaveFocus()
+
+        userEvent.tab()
+        expect(back).toHaveFocus()
+
+        userEvent.tab({ shift: true })
+        expect(confirm).toHaveFocus()
+    })
 })
