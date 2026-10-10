@@ -4,7 +4,7 @@ Guia do ambiente de produção (issue #51). Ele cobre a criação da VM, o deplo
 
 ## Visão geral
 
-- Uma VM na Oracle Cloud roda a stack com Docker Compose a partir de `compose.prod.yaml`.
+- Uma VM na AWS (EC2 `t4g.small`, `us-east-2`) roda a stack com Docker Compose a partir de `compose.prod.yaml`.
 - O Caddy é o único serviço exposto (portas 80 e 443). Ele emite o certificado HTTPS sozinho e encaminha:
   - `/webhooks/whatsapp` para o `gateway`;
   - `/api/v1/whatsapp/sessions` responde 404 (rota interna entre gateway e backend);
@@ -41,27 +41,36 @@ Na VM, tudo fica em `/opt/proconchat`, com a mesma estrutura do repositório:
 
 | Item | Valor |
 |---|---|
-| Provedor | Oracle Cloud Infrastructure, Always Free |
-| Região | Brazil East (São Paulo), `sa-saopaulo-1` |
-| Forma | Ampere A1 (`VM.Standard.A1.Flex`), arm64. Tamanho final: preencher na T6 (alvo: 4 OCPU e 24 GB) |
-| Sistema | Ubuntu 24.04 (aarch64) |
-| Disco | Volume de boot: preencher na T6 (o Always Free cobre até 200 GB no total) |
-| Custo | Zero dentro do Always Free. Custo confirmado na criação: preencher na T6 |
-| Endereço | `<ip>.sslip.io`, com IP público reservado. IP: preencher na T6 |
-| Conta | Em nome de Luiz Felipe |
+| Provedor | Amazon Web Services (EC2), conta no plano **Free** com US$ 100 de crédito, válido até 10/04/2027 |
+| Região | `us-east-2` (Ohio) |
+| Instância | `t4g.small` (2 vCPU ARM Graviton, 2 GB de RAM), arm64, mais 2 GB de swap |
+| Sistema | Ubuntu 24.04 arm64 (AMI da Canonical) |
+| Disco | gp3 de 40 GB, criptografado |
+| Metadados | IMDSv2 obrigatório |
+| Endereço | Elastic IP `3.150.166.93`, ou seja, `3.150.166.93.sslip.io` |
+| Firewall | Security group `proconchat-prod` (22, 80 e 443) e `ufw` no host com as mesmas portas |
+| Custo | Cerca de US$ 19 por mês (instância ≈ US$ 12,30, disco ≈ US$ 3,20, IPv4 público ≈ US$ 3,65), pago pelo crédito |
 
-As imagens são geradas só para a arquitetura da VM, definida pelas variáveis `DEPLOY_PLATFORM=linux/arm64` e `DEPLOY_RUNNER=ubuntu-24.04-arm`. Se a VM mudar para amd64 (plano B, DigitalOcean), basta trocar para `linux/amd64` e `ubuntu-latest`.
+**Por que `t4g.small`:**
+
+- O plano Free só aceita alguns tipos de instância. A `t4g.large` (8 GB) foi recusada.
+- Os tipos de 8 GB aceitos no plano Free (`m7i-flex.large`, `c7i-flex.large`) esgotariam o crédito antes da entrega de 23/11/2026.
+- Com cerca de US$ 19 por mês, o crédito dura até meados de março de 2027.
+- 2 GB bastam para a stack sem o Ollama. O swap de 2 GB evita que um pico de memória derrube um serviço.
+
+**Ollama desligado.** Em produção, `COMPOSE_PROFILES` fica vazio e o `ollama` e o `llm-pull` não sobem. O modelo precisa de 3 a 4 GB só para ele. O LLM ainda não está no fluxo; o impacto está comentado na #66. Ele volta numa VM maior ou na migração para a Oracle. Basta pôr `COMPOSE_PROFILES=llm` no `.env` e rodar o deploy de novo.
+
+**Dados fora do Brasil (LGPD).** A região é nos EUA. Isso foi aceito para o projeto acadêmico e fica registrado aqui. Na passagem para o PROCON (#70), a região e o provedor precisam ser revistos.
+
+**Quando o crédito acaba.** No plano Free não há cobrança no cartão. Quando o crédito de US$ 100 acaba ou o prazo de 10/04/2027 chega, o que vier primeiro, a AWS para os recursos e fecha a conta. Ela dá um prazo para migrar para o plano pago (com cobrança no cartão) antes de apagar os dados; confira o prazo atual em **Billing and Cost Management → Free plan**. Como os backups ficam só na VM, copie um dump para fora antes desse ponto. Acompanhe o saldo em **Billing and Cost Management → Credits**.
+
+**Acesso à conta.** A conta está em nome de Luiz Felipe. Para outro membro do time administrar, crie um usuário no IAM Identity Center com o conjunto de permissões `AdministratorAccess`. Até lá, só uma pessoa acessa a conta.
+
+As imagens são geradas só para a arquitetura da VM, pelas variáveis `DEPLOY_PLATFORM=linux/arm64` e `DEPLOY_RUNNER=ubuntu-24.04-arm`. Para uma VM amd64, troque para `linux/amd64` e `ubuntu-latest`.
 
 Versões fixas em produção: `postgres:15-alpine`, `caddy:2-alpine` e `ollama/ollama:0.40.2`. Nenhuma imagem usa `latest`.
 
-## Conta Oracle
-
-Faça estes passos logo depois de criar a conta, antes de depender da VM:
-
-1. **Converter para Pay As You Go.** Em **Billing & Cost Management → Upgrade and Manage Payment**, escolha **Upgrade to Pay As You Go**. Os recursos Always Free continuam gratuitos, e a VM deixa de ser recuperada por ociosidade. Sem a conversão, a Oracle pode recuperar instâncias com CPU, rede e memória baixas por 7 dias, e esta stack fica ociosa quase o tempo todo.
-2. **Criar um alerta de orçamento.** Em **Billing & Cost Management → Budgets → Create Budget**, crie um orçamento mensal de valor baixo (por exemplo US$ 1) para a tenancy, com alerta por e-mail para o dono da conta quando o gasto real passar de 1%. Assim qualquer cobrança é avisada.
-3. **Adicionar outro administrador (pendente).** Em **Identity & Security → Domains → Default → Users**, convide outro membro do time e adicione-o ao grupo `Administrators`. Até isso ser feito, só Luiz Felipe acessa a conta.
-4. **Se faltar capacidade A1.** A mensagem "Out of capacity for shape VM.Standard.A1.Flex" é comum em São Paulo. Tente em outros horários (madrugada costuma funcionar), em outro *availability domain* ou *fault domain*, ou com um tamanho menor (por exemplo 2 OCPU e 12 GB, que também serve) e aumente depois. Depois de 2 a 3 dias sem sucesso, a troca para o plano B (DigitalOcean, droplet de 8 GB) volta ao time antes de ser feita.
+**Alternativa futura: Oracle Cloud Always Free.** A Ampere A1 (até 4 OCPU e 24 GB, sem custo e sem prazo) foi a primeira escolha, mas ficou sem capacidade em São Paulo. Se a capacidade aparecer, a migração resolve o Ollama, a região e o fim do crédito. Na Oracle, a conta precisa ser convertida para Pay As You Go (sem isso, a VM ociosa pode ser recuperada), e a imagem Ubuntu vem com `iptables` que bloqueia tudo menos a porta 22, além da *security list* da VCN. O pipeline não muda, porque a A1 também é arm64.
 
 ## Chaves SSH
 
@@ -69,8 +78,8 @@ São duas chaves, com papéis diferentes. Nunca use a mesma para os dois.
 
 | Chave | Arquivo | Usuário na VM | Quem usa |
 |---|---|---|---|
-| Administração | `~/.ssh/proconchat_oci` (ed25519) | `ubuntu` (padrão da imagem, com `sudo`) | Só pessoas, para administrar a VM |
-| Deploy | `~/.ssh/proconchat_deploy` (ed25519, gerada à parte) | `deploy` (sem `sudo`, no grupo `docker`) | Só o GitHub Actions, pelo segredo `DEPLOY_SSH_KEY` |
+| Administração | `~/.ssh/proconchat_oci` (ed25519), key pair `proconchat-oci-admin` na AWS | `ubuntu` (padrão da AMI, com `sudo`) | Só pessoas, para administrar a VM |
+| Deploy | `~/.ssh/proconchat_deploy` (ed25519, gerada à parte) | `deploy` (sem `sudo`, no grupo `docker`) | O GitHub Actions, pelo segredo `DEPLOY_SSH_KEY`, e o deploy manual |
 
 O grupo `docker` equivale a root na VM, por isso a chave do GitHub é exclusiva do deploy e pode ser revogada sem afetar o acesso de administração. Não há restrição por IP, porque os runners do GitHub não têm IP fixo.
 
@@ -80,21 +89,43 @@ Gerar a chave de deploy no WSL, sem senha (o Actions não digita senha):
 ssh-keygen -t ed25519 -f ~/.ssh/proconchat_deploy -C proconchat-deploy-github -N ""
 ```
 
-## Criar a VM
+## Criar a VM pela AWS CLI
 
-1. No console, **Compute → Instances → Create instance**, na região Brazil East (São Paulo).
-2. **Image and shape:**
-   - imagem **Canonical Ubuntu 24.04** (a versão aarch64 aparece ao escolher a forma Ampere);
-   - forma **Ampere → VM.Standard.A1.Flex**, com 4 OCPU e 24 GB.
-3. **Networking:** crie uma VCN nova com sub-rede pública (ou use a existente) e marque **Assign a public IPv4 address**.
-4. **Add SSH keys:** escolha **Paste public keys** e cole o conteúdo de `~/.ssh/proconchat_oci.pub`.
-5. **Boot volume:** aumente o tamanho se quiser mais espaço (por exemplo 100 GB), dentro do limite gratuito.
-6. Crie a instância e anote o IP público.
-7. **Reservar o IP:**
-   - em **Networking → IP management → Reserved public IPs**, crie um IP reservado no mesmo compartimento;
-   - na instância, abra **Attached VNICs → (VNIC) → IPv4 Addresses → Edit**, troque o IP efêmero por **No public IP**, salve, edite de novo e escolha **Reserved public IP** com o IP reservado.
-   - O endereço do sistema passa a ser `<ip>.sslip.io` (por exemplo, para `203.0.113.10`, `203.0.113.10.sslip.io`). O `sslip.io` resolve o nome para o próprio IP, sem cadastro de DNS.
-8. Teste o acesso:
+Os comandos abaixo recriam a VM do zero, na conta e na região certas. Rode no WSL, com a AWS CLI configurada num perfil da conta. Antes de rodar, confira no console que a conta continua no plano Free: no plano pago, esses recursos são cobrados no cartão.
+
+```bash
+export AWS_PROFILE=<perfil> AWS_REGION=us-east-2
+
+aws ec2 import-key-pair --key-name proconchat-oci-admin --public-key-material fileb://~/.ssh/proconchat_oci.pub
+
+SG_ID="$(aws ec2 create-security-group --group-name proconchat-prod --description "ProconChat prod: 22 80 443" --query GroupId --output text)"
+for port in 22 80 443; do
+  aws ec2 authorize-security-group-ingress --group-id "$SG_ID" --protocol tcp --port "$port" --cidr 0.0.0.0/0
+done
+
+AMI_ID="$(aws ssm get-parameter --name /aws/service/canonical/ubuntu/server/24.04/stable/current/arm64/hvm/ebs-gp3/ami-id --query Parameter.Value --output text)"
+
+INSTANCE_ID="$(aws ec2 run-instances \
+  --image-id "$AMI_ID" \
+  --instance-type t4g.small \
+  --key-name proconchat-oci-admin \
+  --security-group-ids "$SG_ID" \
+  --block-device-mappings '[{"DeviceName":"/dev/sda1","Ebs":{"VolumeSize":40,"VolumeType":"gp3","Encrypted":true,"DeleteOnTermination":true}}]' \
+  --metadata-options HttpTokens=required,HttpEndpoint=enabled \
+  --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=proconchat-prod}]' \
+  --query 'Instances[0].InstanceId' --output text)"
+aws ec2 wait instance-running --instance-ids "$INSTANCE_ID"
+
+ALLOC_ID="$(aws ec2 allocate-address --domain vpc --tag-specifications 'ResourceType=elastic-ip,Tags=[{Key=Name,Value=proconchat-prod}]' --query AllocationId --output text)"
+aws ec2 associate-address --instance-id "$INSTANCE_ID" --allocation-id "$ALLOC_ID"
+aws ec2 describe-addresses --allocation-ids "$ALLOC_ID" --query 'Addresses[0].PublicIp' --output text
+```
+
+- A AMI vem do parâmetro público do SSM da Canonical, então é sempre a imagem atual do Ubuntu 24.04 arm64.
+- O Elastic IP não muda ao parar e ligar a VM. O endereço do sistema é `<ip>.sslip.io` (o `sslip.io` resolve o nome para o próprio IP, sem cadastro de DNS).
+- Um Elastic IP sem instância associada também é cobrado. Ao desmontar o ambiente, libere-o com `aws ec2 release-address`.
+
+Teste o acesso:
 
 ```bash
 ssh -i ~/.ssh/proconchat_oci ubuntu@<ip>
@@ -102,21 +133,24 @@ ssh -i ~/.ssh/proconchat_oci ubuntu@<ip>
 
 ## Firewall
 
-A Oracle tem dois firewalls, e os dois precisam liberar 80 e 443.
+Dois níveis, os dois só com 22, 80 e 443:
 
-1. **Security list da VCN:** em **Networking → Virtual cloud networks → (VCN) → Security Lists → Default Security List → Add Ingress Rules**, crie duas regras com origem `0.0.0.0/0`, protocolo TCP, portas de destino `80` e `443`. A regra da porta 22 já existe. Não abra nenhuma outra porta.
-2. **iptables da imagem Ubuntu da Oracle:** a imagem vem com regras que rejeitam tudo menos a porta 22. Na VM, como `ubuntu`:
+1. **Security group `proconchat-prod`**, criado acima. É a barreira principal.
+2. **`ufw` no host**, como `ubuntu`:
 
 ```bash
-sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT
-sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT
-sudo netfilter-persistent save
-sudo iptables -L INPUT -n --line-numbers
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow 22/tcp
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw --force enable
+sudo ufw status verbose
 ```
 
-As duas regras novas precisam aparecer antes da linha `REJECT`.
+O Docker publica portas direto no `iptables`, sem passar pelo `ufw`. Por isso só o `caddy` publica portas no `compose.prod.yaml`, e o security group continua sendo o que vale para o resto.
 
-Para conferir de fora da VM, depois do primeiro deploy, só 22, 80 e 443 devem aparecer abertas:
+Para conferir de fora da VM, só 22, 80 e 443 devem aparecer abertas:
 
 ```bash
 nmap -Pn <ip>
@@ -124,12 +158,18 @@ nmap -Pn <ip>
 
 ## Preparar a VM
 
-### Atualizar o sistema e endurecer o SSH
+### Atualizar o sistema, endurecer o SSH e criar o swap
 
 ```bash
 sudo apt-get update && sudo apt-get -y upgrade
 printf 'PermitRootLogin no\nPasswordAuthentication no\nKbdInteractiveAuthentication no\n' | sudo tee /etc/ssh/sshd_config.d/99-proconchat.conf
 sudo sshd -t && sudo systemctl reload ssh
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+free -m
 ```
 
 Antes de fechar a sessão, abra outra e confirme que o login com `proconchat_oci` continua funcionando.
@@ -179,7 +219,7 @@ O `.env` fica só em `/opt/proconchat/.env`, com dono `deploy` e permissão `600
 |---|---|
 | `SITE_ADDRESS` | Host público, sem esquema (`<ip>.sslip.io`). É também a URL pública prevista na decisão 003, reaproveitada pela #83 e pela #54 |
 | `IMAGE_OWNER` | Dono das imagens no GHCR, em minúsculas (`steel-hard`) |
-| `COMPOSE_PROFILES` | `llm` para subir o Ollama. Vazio para uma VM sem Ollama |
+| `COMPOSE_PROFILES` | Vazio na VM atual de 2 GB (sem Ollama). `llm` numa VM com memória para o Ollama |
 | `POSTGRES_USER` | Usuário do banco (`proconchat`) |
 | `POSTGRES_PASSWORD` | Senha do banco. **Nunca muda depois do primeiro deploy**: ela só vale na criação do volume |
 | `PHONE_HASH_SECRET` | Segredo do HMAC do telefone. **Nunca muda depois do primeiro deploy**: trocar faz as sessões existentes deixarem de ser encontradas |
@@ -293,31 +333,35 @@ O deploy automático só existe quando o `deploy.yml` estiver em `develop`. Há 
 
 **A. Pelo merge do PR da #51 (padrão).** Com a VM preparada, o `.env` criado, os segredos e as variáveis no GitHub e a liberação do GHCR feita, o merge do PR em `develop` dispara o workflow. Depois do primeiro build, torne os três pacotes públicos e, se o job de deploy tiver falhado no `pull`, rode-o de novo em **Actions → (execução) → Re-run failed jobs**.
 
-**B. Antes do merge, com imagens geradas na própria VM.** Serve para validar a VM e o webhook antes do PR entrar. Como `deploy`, na VM (que já é arm64):
+**B. Antes do merge, com as imagens geradas na própria VM.** Serve para subir e validar a produção antes de o PR entrar, sem push e sem GHCR. A VM já é arm64, então o build é nativo. Com 2 GB de RAM, gere uma imagem por vez e com a stack parada.
+
+No WSL, na raiz do repositório, envie o commit atual (só o que está commitado) para a VM:
+
+```bash
+SHA="$(git rev-parse HEAD)"
+git archive --format=tar HEAD compose.prod.yaml deploy src/backend src/gateway src/frontend \
+  | ssh -i ~/.ssh/proconchat_deploy deploy@<ip> "mkdir -p /opt/proconchat/build-$SHA && tar -x -C /opt/proconchat/build-$SHA"
+echo "$SHA"
+```
+
+Na VM, como `deploy`, com o SHA impresso acima:
 
 ```bash
 cd /opt/proconchat
-git clone --depth 1 --branch feat/51-producao-vm-deploy-continuo https://github.com/Steel-Hard/ProconChat_Jacarei.git src-checkout
-cp src-checkout/compose.prod.yaml . && cp -r src-checkout/deploy .
-TAG="$(git -C src-checkout rev-parse HEAD)"
-docker build --target runtime -t "ghcr.io/steel-hard/proconchat-backend:$TAG" src-checkout/src/backend
-docker build --target runtime -t "ghcr.io/steel-hard/proconchat-gateway:$TAG" src-checkout/src/gateway
-docker build --build-arg VITE_API_URL= -t "ghcr.io/steel-hard/proconchat-frontend:$TAG" src-checkout/src/frontend
-export IMAGE_TAG="$TAG"
-docker compose -f compose.prod.yaml up -d --remove-orphans
-docker compose -f compose.prod.yaml ps
-printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$TAG" >> releases.log
-rm -rf src-checkout
+SHA=<sha>
+B="build-$SHA"
+cp "$B/compose.prod.yaml" . && cp -r "$B/deploy" .
+docker build --target runtime -t "ghcr.io/steel-hard/proconchat-backend:$SHA" "$B/src/backend"
+docker build --target runtime -t "ghcr.io/steel-hard/proconchat-gateway:$SHA" "$B/src/gateway"
+docker build --target runtime --build-arg VITE_API_URL= -t "ghcr.io/steel-hard/proconchat-frontend:$SHA" "$B/src/frontend"
+docker builder prune -f
+rm -rf "$B"
+./deploy/deploy.sh "$SHA"
 ```
 
-Esse caminho não usa o `deploy.sh`, porque ele faz `pull` do GHCR e as imagens ainda não estão lá. Confira as rotas como no deploy automático:
+O `deploy.sh` baixa só as imagens que faltam (`pull --policy missing`). Como as três da tag já existem na VM, ele só baixa `postgres` e `caddy` e segue igual ao deploy automático.
 
-```bash
-curl -s -o /dev/null -w '%{http_code}\n' https://<ip>.sslip.io/
-curl -s -o /dev/null -w '%{http_code}\n' https://<ip>.sslip.io/webhooks/whatsapp
-```
-
-O primeiro deve responder `200` e o segundo `403`. A primeira emissão do certificado leva alguns segundos. Se o Let's Encrypt recusar o `sslip.io` por limite de emissão, o Caddy tenta outro emissor ACME sozinho. Se continuar falhando, a saída é um domínio próprio, o que precisa de decisão do time.
+A primeira emissão do certificado leva alguns segundos, e o `deploy.sh` tenta de novo enquanto isso. Se o Let's Encrypt recusar o `sslip.io` por limite de emissão, o Caddy tenta outro emissor ACME sozinho. Se continuar falhando, a saída é um domínio próprio, o que precisa de decisão do time.
 
 ## Deploy manual e rollback
 
@@ -369,15 +413,15 @@ ls -l /opt/proconchat/backups/
 
 **Retenção e LGPD.** O dump contém o telefone criptografado dos agendamentos, o hash do telefone das sessões e o CPF em hash e mascarado. Com 7 dias de retenção, um telefone apagado ao fim do agendamento (decisão 002) sobrevive no máximo 7 dias nos backups. Isso faz parte da política de retenção, e o restante dela é da #69.
 
-**Não há cópia fora da VM.** Os dumps ficam só no disco da VM. Perder a VM ou a conta Oracle perde também os backups. A cópia externa (por exemplo, Object Storage da Oracle) ficou para depois.
+**Não há cópia fora da VM.** Os dumps ficam só no disco da VM. Perder a VM ou a conta AWS (por exemplo, no fim do crédito) perde também os backups. A cópia externa (por exemplo, um bucket S3) ficou para depois.
 
 Para copiar um dump para a sua máquina (por exemplo, antes de mexer na VM):
 
 ```bash
-scp -i ~/.ssh/proconchat_oci ubuntu@<ip>:/opt/proconchat/backups/proconchat-AAAA-MM-DD.dump .
+scp -i ~/.ssh/proconchat_deploy deploy@<ip>:/opt/proconchat/backups/proconchat-AAAA-MM-DD.dump .
 ```
 
-O usuário `ubuntu` precisa de `sudo` para ler a pasta. Se o `scp` negar, copie antes com `sudo cp` para `/tmp` e ajuste o dono.
+Guarde a cópia fora do repositório e apague-a quando não precisar mais (ela tem dados pessoais).
 
 ### Conferir um dump num banco temporário
 
@@ -459,5 +503,5 @@ Casos comuns:
 |---|---|
 | Job de deploy falha no `pull` com `denied` | Pacote do GHCR ainda privado |
 | `backend` ou `gateway` não ficam `healthy` | Variável obrigatória faltando no `.env` (o serviço encerra na inicialização) ou `migrate` falhou. Veja `logs` |
-| Verificação pública falha com o resto `healthy` | Certificado ainda não emitido, portas 80/443 fechadas na security list ou no `iptables`, ou IP trocado |
+| Verificação pública falha com o resto `healthy` | Certificado ainda não emitido, portas 80/443 fechadas no security group ou no `ufw`, ou Elastic IP desassociado |
 | Job falha na conexão SSH | `DEPLOY_KNOWN_HOSTS` desatualizado (VM recriada) ou chave de deploy removida de `authorized_keys` |

@@ -3,7 +3,7 @@
 [![CI](https://github.com/Steel-Hard/ProconChat_Jacarei/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/Steel-Hard/ProconChat_Jacarei/actions/workflows/ci.yml)
 [![Deploy](https://github.com/Steel-Hard/ProconChat_Jacarei/actions/workflows/deploy.yml/badge.svg?branch=develop)](https://github.com/Steel-Hard/ProconChat_Jacarei/actions/workflows/deploy.yml)
 
-Produção: `https://<ip>.sslip.io` (endereço definido na criação da VM). Operação e deploy: [`.docs/infra/deploy.md`](.docs/infra/deploy.md).
+Produção: <https://3.150.166.93.sslip.io>. Operação e deploy: [`.docs/infra/deploy.md`](.docs/infra/deploy.md).
 
 Documentação do projeto: [`.docs/README.md`](.docs/README.md) (requisitos, decisões, regras das telas,
 arquitetura, banco e protótipo do painel).
