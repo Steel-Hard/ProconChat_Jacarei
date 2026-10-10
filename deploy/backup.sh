@@ -13,7 +13,7 @@ env_value() {
 
 RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-$(env_value BACKUP_RETENTION_DAYS)}"
 RETENTION_DAYS="${RETENTION_DAYS:-7}"
-if ! [[ "$RETENTION_DAYS" =~ ^[0-9]+$ ]]; then
+if ! [[ "$RETENTION_DAYS" =~ ^[1-9][0-9]*$ ]]; then
     echo "BACKUP_RETENTION_DAYS inválido: $RETENTION_DAYS" >&2
     exit 1
 fi
@@ -47,4 +47,4 @@ chmod 600 "$partial"
 mv "$partial" "$final"
 echo "backup criado em $final"
 
-find "$BACKUP_DIR" -maxdepth 1 -type f -name 'proconchat-*.dump' -mtime +"$RETENTION_DAYS" -print -delete
+find "$BACKUP_DIR" -maxdepth 1 -type f -name 'proconchat-*.dump' -mtime +"$((RETENTION_DAYS - 1))" -print -delete
