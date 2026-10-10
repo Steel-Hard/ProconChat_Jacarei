@@ -21,7 +21,7 @@ Chatbot de orientação ao consumidor via WhatsApp, desenvolvido para o PROCON d
 | [`infra/`](infra/) | Ambiente de produção: VM, deploy contínuo, rollback, backup e diagnóstico | Atual |
 | [`database/`](database/) | Modelo de dados (schema atual e planejado), migrations e o FAQ real do PROCON (`Dúvidas Frequentes.odt`) | Atual |
 | [`llm/`](llm/) | Contrato e escolha do modelo do serviço de LLM | Atual |
-| [`whatsapp/`](whatsapp/) | Pesquisa de integração com o WhatsApp (issue #3) | Atual como pesquisa; a decisão final está em [003](decisoes/003-migracao-whatsapp-cloud-api.md) |
+| [`whatsapp/`](whatsapp/) | Pesquisa de integração com o WhatsApp (issue #3) e [guia do app de teste da Meta](whatsapp/app-de-teste.md) para desenvolvimento | Atual como pesquisa; a decisão final está em [003](decisoes/003-migracao-whatsapp-cloud-api.md) |
 | [`sprints/`](sprints/) | Documentos de fechamento de cada sprint | Atual |
 | [`historico/`](historico/) | Documentos superados, mantidos só para contexto | Não usar como referência |
 | [`.tasks/`](.tasks/) | Specs e tasks do fluxo de planejamento (`sdd` → `executor` → `reviewer`) | Atual |

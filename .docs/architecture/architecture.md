@@ -49,13 +49,13 @@ O LLM Service só recebe chamadas do Backend e não tem acesso ao banco nem à s
 
 | Componente | Papel | Container | Estado |
 |---|---|---|---|
-| **Gateway WhatsApp** | Recebe o webhook da Meta, valida a assinatura, deduplica e repassa ao Backend; envia as mensagens pedidas pelo Backend (texto, lista, botões, modelos); repassa os status de entrega | `gateway` | ✅ com Evolution API · 🟡 migração para a Cloud API (S2-04) |
+| **Gateway WhatsApp** | Recebe o webhook da Meta, valida a assinatura, deduplica e repassa ao Backend; envia as mensagens pedidas pelo Backend (texto, lista, botões, modelos); repassa os status de entrega | `gateway` | ✅ com a Cloud API (S2-04) |
 | **Backend API** | Orquestrador: conversa, Motor de Decisão, agenda, mensagens ao cidadão, registro de eventos, API do painel, autenticação e permissões | `backend` | ✅ parcial (sessão + Motor de Decisão) · 🟡🟠 demais módulos |
 | **Frontend (painel)** | Painel da equipe do PROCON (RF08), a partir do `template-react` | `frontend` (nginx) | 🟡 S2-10 |
 | **LLM Service** | Ollama com `llama3.2:3b`; gera só o texto complementar (RF05) | `ollama` + `llm-pull` | ✅ serviço pronto · 🟠 ligado ao fluxo (S3-05) |
 | **PostgreSQL** | Persistência única | `postgres` (+ `migrate`, `seed`) | ✅ · 🟡 schema da Sprint 2 (S2-03) |
 | **Proxy HTTPS** | Certificado e roteamento para painel, API e webhook; bloqueia a rota interna `/api/v1/whatsapp/sessions` | `caddy` | ✅ (`compose.prod.yaml`, `deploy/Caddyfile`) |
-| ~~Evolution API + Redis~~ | Integração não oficial usada na Sprint 1 | `evolution-api`, `redis` | Saem na migração (S2-04). Ver [decisão 003](../decisoes/003-migracao-whatsapp-cloud-api.md) |
+| ~~Evolution API + Redis~~ | Integração não oficial usada na Sprint 1 | `evolution-api`, `redis` | Removidos na #82. Ver [decisão 003](../decisoes/003-migracao-whatsapp-cloud-api.md) |
 
 ### Módulos do Backend
 
