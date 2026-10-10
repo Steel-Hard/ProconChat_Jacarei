@@ -17,7 +17,7 @@ describe("LayoutPreviewPage", { timeout: 15000 }, () => {
 
     it("mostra um exemplo de cada componente dentro do layout em desenvolvimento", async () => {
         await import("@/pages/LayoutPreview.page")
-        const { routes } = await import("@/routers/Router")
+        const { default: routes } = await import("@/routers/routes")
         const { default: renderWithStore } = await import("@/testUtils/renderWithStore")
         const router = createMemoryRouter(routes, { initialEntries: [PREVIEW_PATH] })
 
@@ -50,7 +50,7 @@ describe("LayoutPreviewPage", { timeout: 15000 }, () => {
         vi.stubEnv("DEV", false)
         vi.resetModules()
 
-        const { routes } = await import("@/routers/Router")
+        const { default: routes } = await import("@/routers/routes")
 
         expect(hasPath(routes, PREVIEW_PATH)).toBe(false)
         expect(hasPath(routes, "/sessoes")).toBe(true)

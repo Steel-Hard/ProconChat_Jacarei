@@ -1,5 +1,5 @@
 import { matchPath } from "react-router-dom"
-import { ROUTES } from "@/routers/paths"
+import ROUTES from "@/routers/paths"
 import type { PanelAccount, PermissionKey } from "@/types/account"
 
 export type NavKey =

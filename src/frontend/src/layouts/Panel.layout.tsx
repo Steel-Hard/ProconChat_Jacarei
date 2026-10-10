@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useId, useRef, useState } from "react"
+import { Suspense, useCallback, useEffect, useId, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Outlet } from "react-router-dom"
 import Sidebar from "@/components/Sidebar"
 import ToastProvider from "@/components/ToastProvider"
@@ -10,6 +11,7 @@ import useAppSelector from "@/store/useAppSelector"
 import css from "@/styles/layouts/panel.module.css"
 
 function PanelLayout() {
+    const { t } = useTranslation()
     const account = useAppSelector((state) => state.account.current)
     const handleLogout = useLogout()
     const badges = useNavBadges()
@@ -99,7 +101,9 @@ function PanelLayout() {
                         onLogout={handleLogout}
                     />
                     <main className={css.main}>
-                        <Outlet />
+                        <Suspense fallback={<p>{t("loading")}</p>}>
+                            <Outlet />
+                        </Suspense>
                     </main>
                 </div>
             </div>

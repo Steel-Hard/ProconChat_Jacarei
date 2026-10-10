@@ -4,7 +4,7 @@ import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import Sidebar from "@/components/Sidebar"
 import type { NavBadges } from "@/hooks/useNavBadges"
-import { ROUTES } from "@/routers/paths"
+import ROUTES from "@/routers/paths"
 import type { PanelAccount } from "@/types/account"
 
 const admin: PanelAccount = {

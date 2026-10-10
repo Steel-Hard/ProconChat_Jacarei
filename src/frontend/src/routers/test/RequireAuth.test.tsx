@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { render, screen } from "@testing-library/react"
 import RequireAuth from "@/routers/RequireAuth"
-import { ROUTES } from "@/routers/paths"
+import ROUTES from "@/routers/paths"
 import clearToken from "@/services/session/clearToken"
 import setToken from "@/services/session/setToken"
 

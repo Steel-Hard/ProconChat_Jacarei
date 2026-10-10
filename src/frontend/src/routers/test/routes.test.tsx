@@ -1,9 +1,9 @@
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { routes } from "@/routers/Router"
-import { ROUTES } from "@/routers/paths"
+import routes from "@/routers/routes"
+import ROUTES from "@/routers/paths"
 import renderWithStore from "@/testUtils/renderWithStore"
 import clearToken from "@/services/session/clearToken"
 import setToken from "@/services/session/setToken"
@@ -31,8 +31,13 @@ describe("routes", () => {
         clearToken()
     })
 
-    it("mostra o fallback de carregamento antes da página lazy resolver", () => {
-        renderRoutes([ROUTES.login])
+    it("mostra o fallback de carregamento antes da página lazy resolver", async () => {
+        vi.resetModules()
+        const { default: freshRoutes } = await import("@/routers/routes")
+        const { default: freshRenderWithStore } = await import("@/testUtils/renderWithStore")
+        const router = createMemoryRouter(freshRoutes, { initialEntries: [ROUTES.login] })
+
+        freshRenderWithStore(<RouterProvider router={router} />)
 
         expect(screen.getByText("Carregando...")).toBeInTheDocument()
     })

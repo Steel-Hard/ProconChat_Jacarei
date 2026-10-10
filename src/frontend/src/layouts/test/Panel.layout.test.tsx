@@ -1,9 +1,11 @@
+import { lazy } from "react"
 import { afterEach, beforeAll, describe, expect, it } from "vitest"
 import { act, screen } from "@testing-library/react"
 import userEvent, { type UserEvent } from "@testing-library/user-event"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
-import { routes } from "@/routers/Router"
-import { ROUTES } from "@/routers/paths"
+import PanelLayout from "@/layouts/Panel.layout"
+import routes from "@/routers/routes"
+import ROUTES from "@/routers/paths"
 import clearToken from "@/services/session/clearToken"
 import getToken from "@/services/session/getToken"
 import setToken from "@/services/session/setToken"
@@ -19,6 +21,8 @@ const admin: PanelAccount = {
 }
 
 const LAZY_TIMEOUT_MS = 4000
+
+const NeverResolves = lazy(() => new Promise<never>(() => {}))
 
 async function renderPanel(path: string = ROUTES.dashboard) {
     setToken("abc")
@@ -191,5 +195,21 @@ describe("PanelLayout", { timeout: 15000 }, () => {
         expect(screen.getByRole("navigation", { name: "Menu principal" })).toBeInTheDocument()
         expect(screen.queryAllByRole("link")).toHaveLength(0)
         expect(screen.queryByRole("button", { name: "Minha conta" })).not.toBeInTheDocument()
+    })
+
+    it("mostra o carregamento dentro do main sem esconder o menu e o topo", () => {
+        setToken("abc")
+        const router = createMemoryRouter(
+            [{ element: <PanelLayout />, children: [{ path: "/", element: <NeverResolves /> }] }],
+            { initialEntries: ["/"] }
+        )
+
+        renderWithStore(<RouterProvider router={router} />, {
+            preloadedState: { account: { current: admin } }
+        })
+
+        expect(screen.getByRole("main")).toHaveTextContent("Carregando...")
+        expect(screen.getByRole("navigation", { name: "Menu principal" })).toBeInTheDocument()
+        expect(screen.getByRole("banner")).toBeInTheDocument()
     })
 })
