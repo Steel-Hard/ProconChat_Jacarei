@@ -19,6 +19,10 @@ import {
   formatarListaPerguntas,
   formatarRespostaFinal,
 } from "./messageFormatter.service";
+import {
+  conversationEventService,
+  ConversationEventService,
+} from "./conversationEvent.service";
 
 export interface ConversationFlowInput {
   phone: string;
@@ -44,6 +48,7 @@ export interface MotorDecisao {
 
 interface ConversationFlowDependencies {
   sessions: SessionRepository;
+  events: ConversationEventService;
   motor: MotorDecisao;
   hashPhone: (phone: string) => string;
 }
@@ -101,6 +106,7 @@ function createPhoneLock() {
 
 export function createConversationFlowService({
   sessions,
+  events,
   motor,
   hashPhone: hashPhoneOf,
 }: ConversationFlowDependencies): (
@@ -112,6 +118,7 @@ export function createConversationFlowService({
     sessionId: string,
     newSession: boolean,
   ): Promise<ConversationFlowResult> {
+    await events.record(sessionId, { type: "STARTED" });
     const categorias = await motor.iniciarSessao();
 
     return {
@@ -172,6 +179,7 @@ export function createConversationFlowService({
       currentStep: "AWAITING_QUESTION",
       currentCategoryId: String(categoria.id),
     });
+    await events.record(sessionId, { type: "CATEGORY_CHOSEN", categoryId: categoria.id });
 
     return {
       sessionId,
@@ -219,9 +227,21 @@ export function createConversationFlowService({
       };
     }
 
+    await events.record(sessionId, {
+      type: "QUESTION_CHOSEN",
+      categoryId: pergunta.category_id,
+      questionId: pergunta.id,
+    });
+
     const resposta = await motor.processarPergunta(pergunta.id);
 
-    await sessions.finish(sessionId);
+    await events.record(sessionId, {
+      type: "ANSWER_SENT",
+      categoryId: pergunta.category_id,
+      questionId: pergunta.id,
+      llmStatus: resposta.llm_status ?? "NOT_CALLED",
+    });
+    await sessions.finish(sessionId, resposta.fora_de_escopo ? "OUT_OF_SCOPE" : "RESOLVED");
 
     return {
       sessionId,
@@ -242,6 +262,8 @@ export function createConversationFlowService({
     if (session.created || session.currentStep === "FINISHED") {
       return startOver(session.id, session.created);
     }
+
+    await sessions.touch(session.id);
 
     if (session.currentStep === "AWAITING_CATEGORY") {
       return handleAwaitingCategory(session.id, text);
@@ -267,6 +289,7 @@ export function createConversationFlowService({
 
 export const processIncomingMessage = createConversationFlowService({
   sessions: sessionRepository,
+  events: conversationEventService,
   motor: new MotorDecisaoService(new PgMotorDecisaoRepository()),
   hashPhone,
 });

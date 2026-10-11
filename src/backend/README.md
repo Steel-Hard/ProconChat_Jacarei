@@ -84,3 +84,14 @@ As oito chaves suportadas por `requirePermission` estão definidas em
 `types/auth.types.ts`. Nesta sprint o Admin recebe todas; usuários sem a permissão recebem 403.
 Use `requireAuth` antes de `requirePermission(...)` nas rotas protegidas. A autorização de
 permissões individuais para funcionários depende das tabelas/gestão previstas para a Sprint 3.
+
+## Eventos da conversa
+
+O fluxo grava `STARTED`, `CATEGORY_CHOSEN`, `QUESTION_CHOSEN` e `ANSWER_SENT` em
+`ConversationEvents`. As respostas carregam `llmStatus` (`NOT_CALLED`, `USED` ou `FAILED`), e
+categorias e perguntas são referenciadas somente por IDs. Texto livre do cidadão não faz parte
+do contrato de eventos. Sessões inativas por 30 minutos são encerradas como `ABANDONED`; o passo
+é guardado em `abandoned_at_step` e nos dados estruturados do evento.
+
+O tipo compartilhado também define eventos de resposta sobre resolução e agendamento para serem
+usados pelos respectivos fluxos quando estiverem implementados.

@@ -13,6 +13,7 @@
 |---|---|
 | [README.md](README.md) | Placar, tarefas concluídas com datas, tarefas em aberto e riscos |
 | [burndown.md](burndown.md) · [burndown.svg](burndown.svg) | Gráfico, série diária e leitura do burndown |
+| [fluxo-conversa.md](fluxo-conversa.md) | Visão do fluxo conversacional, eventos, desfechos e proteção contra persistência de texto livre |
 
 ![Burndown da Sprint 2](burndown.svg)
 

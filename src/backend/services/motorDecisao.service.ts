@@ -32,6 +32,7 @@ export class MotorDecisaoService {
                 documentos_necessarios: [],
                 requer_presencial: pergunta.requires_in_person,
                 fora_de_escopo: true,
+                llm_status: "NOT_CALLED",
             }
         }
 
@@ -45,6 +46,7 @@ export class MotorDecisaoService {
             documentos_necessarios: documentos.map((d) => d.description),
             requer_presencial: pergunta.requires_in_person,
             fora_de_escopo: false,
+            llm_status: "NOT_CALLED",
         }
     }
 }
