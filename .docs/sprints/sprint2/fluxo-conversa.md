@@ -13,7 +13,7 @@ Mensagem recebida
        v
 Encontrar ou criar sessão pela identificação HMAC do telefone
        |
-       +-- sessão ativa há mais de 30 min --> ABANDONED (etapa anterior)
+       +-- sessão ativa há 30 min ou mais --> ABANDONED (etapa anterior)
        |                                      |
        |                                      v
        |                                Criar sessão nova

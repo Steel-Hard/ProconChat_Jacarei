@@ -102,7 +102,11 @@ Nenhum evento guarda texto digitado pelo cidadão (RNF03): só tipos, ids e valo
 | `conversationEventService.listBySession(sessionId)` | `services/conversationEvent.service.ts` | Leitura tipada, em ordem cronológica, com `createdAt`, para a linha do tempo (#60, #72, #86). Chaves desconhecidas vindas do banco são descartadas. Uma linha fora do contrato é descartada e registrada no log, sem derrubar a lista (ver "Leitura") |
 
 `insertConversationEvent` e `finishSessionWith` são o **único** caminho de escrita em
-`ConversationEvents` e de encerramento de sessão. O teste `repositories/conversationEventWriters.test.ts`
+`ConversationEvents` e de encerramento de sessão, com uma exceção: o evento `ABANDONED` e o abandono
+da sessão são gravados pela CTE de `findOrCreateActive` em `repositories/session.repository.ts`,
+direto em SQL e sem passar pelo validador da aplicação. Esse evento é protegido só pelos `CHECK` da
+migration `13` (`chk_conversation_events_data_keys` e `chk_conversation_events_data_values` no `data`,
+`chk_sessions_step_finished` e `chk_sessions_abandoned_step_not_finished` na etapa copiada). O teste `repositories/conversationEventWriters.test.ts`
 falha se aparecer `INSERT INTO ConversationEvents` fora de `conversationEvent.repository.ts` e
 `session.repository.ts`, ou `UPDATE Sessions ... status = 'FINISHED'` fora de `session.repository.ts`.
 O `STARTED` é gravado pelo próprio `findOrCreateActive`, na transação que cria a sessão; nenhum fluxo
