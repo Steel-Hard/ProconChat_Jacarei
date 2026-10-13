@@ -87,11 +87,163 @@ permissões individuais para funcionários depende das tabelas/gestão previstas
 
 ## Eventos da conversa
 
-O fluxo grava `STARTED`, `CATEGORY_CHOSEN`, `QUESTION_CHOSEN` e `ANSWER_SENT` em
-`ConversationEvents`. As respostas carregam `llmStatus` (`NOT_CALLED`, `USED` ou `FAILED`), e
-categorias e perguntas são referenciadas somente por IDs. Texto livre do cidadão não faz parte
-do contrato de eventos. Sessões inativas por 30 minutos são encerradas como `ABANDONED`; o passo
-é guardado em `abandoned_at_step` e nos dados estruturados do evento.
+Os passos da conversa ficam em `ConversationEvents` (RF06, decisão 010) e o desfecho fica em
+`Sessions.outcome` (decisão 008). O contrato completo está em `types/conversationEvent.types.ts`.
+Nenhum evento guarda texto digitado pelo cidadão (RNF03): só tipos, ids e valores de lista fechada.
 
-O tipo compartilhado também define eventos de resposta sobre resolução e agendamento para serem
-usados pelos respectivos fluxos quando estiverem implementados.
+### Pontos de escrita
+
+| Função | Arquivo | Uso |
+| --- | --- | --- |
+| `conversationEventService.record(sessionId, event)` | `services/conversationEvent.service.ts` | Evento comum de um passo. Nunca lança (ver "Falhas de gravação") |
+| `conversationEventService.finish(sessionId, { outcome, event })` | `services/conversationEvent.service.ts` | Encerramento fora de transação. Abre a própria transação e lança se falhar |
+| `finishSessionWith(client, sessionId, { outcome, event })` | `repositories/session.repository.ts` | Encerramento dentro da transação de outro repositório (reserva da #56, remarcação e cancelamento da #59). Lança e não desfaz nada: quem abriu a transação faz o `ROLLBACK` |
+| `insertConversationEvent(client, sessionId, event)` | `repositories/conversationEvent.repository.ts` | Evento comum dentro de uma transação aberta |
+| `conversationEventService.listBySession(sessionId)` | `services/conversationEvent.service.ts` | Leitura tipada, em ordem cronológica, com `createdAt`, para a linha do tempo (#60, #72, #86). Chaves desconhecidas vindas do banco são descartadas |
+
+`insertConversationEvent` e `finishSessionWith` são o **único** caminho de escrita em
+`ConversationEvents` e de encerramento de sessão. O teste `repositories/conversationEventWriters.test.ts`
+falha se aparecer `INSERT INTO ConversationEvents` fora de `conversationEvent.repository.ts` e
+`session.repository.ts`, ou `UPDATE Sessions ... status = 'FINISHED'` fora de `session.repository.ts`.
+O `STARTED` é gravado pelo próprio `findOrCreateActive`, na transação que cria a sessão; nenhum fluxo
+grava `STARTED`.
+
+### Tipos e dados persistidos
+
+| Tipo | Campos do evento | Colunas | `data` gravado |
+| --- | --- | --- | --- |
+| `STARTED` | — | — | `{}` |
+| `CATEGORY_CHOSEN` | `categoryId` | `category_id` | `{}` |
+| `QUESTION_CHOSEN` | `categoryId`, `questionId` | `category_id`, `question_id` | `{}` |
+| `ANSWER_SENT` | `categoryId`, `questionId`, `llm` | `category_id`, `question_id` | `{ "llm": "NOT_CALLED" \| "USED" \| "FAILED" }` |
+| `RESOLVED_ANSWERED` | `resolved` | — | `{ "resolved": true \| false }` |
+| `SCHEDULE_OFFERED` | `reason` | — | `{ "reason": "REQUIRES_IN_PERSON" \| "NOT_RESOLVED" }` |
+| `NO_SLOT`, `SCHEDULE_DECLINED`, `PHONE_NOTICE_SHOWN` | — | — | `{}` |
+| `ATTENDEE_CHOSEN` | `byRepresentative` | — | `{ "by_representative": true \| false }` |
+| `APPOINTMENT_CREATED`, `APPOINTMENT_CONSULTED`, `APPOINTMENT_CANCELED` | `appointmentId` | `appointment_id` | `{}` |
+| `APPOINTMENT_RESCHEDULED` | `appointmentId`, `from`, `to` | `appointment_id` | `{ "from": "<ISO 8601>", "to": "<ISO 8601>" }` |
+| `ABANDONED` | `step` | — | `{ "step": "<session_step>" }` |
+
+O `llm` vem do campo `status` devolvido por `services/llmExplicacao.service.ts`: `NOT_CALLED` quando
+a pergunta é fora do escopo e o cliente não é chamado, `USED` quando o Ollama respondeu e `FAILED`
+em qualquer falha do cliente (timeout, HTTP, corpo malformado, rede). Enquanto a #66 não liga o LLM
+ao fluxo, o fluxo grava `NOT_CALLED`.
+
+### Validação
+
+Antes de qualquer consulta, `buildConversationEventRow` (`utils/conversationEventData.ts`) recusa com
+`InternalServerError`:
+
+- `type` fora dos 15 valores e qualquer chave a mais no objeto do evento;
+- id que não é inteiro positivo seguro (`0`, negativo, fracionário ou em texto) e `sessionId` que não
+  é texto só de dígitos;
+- `llm`, `reason` ou `step` fora da lista (`step` nunca é `FINISHED`);
+- `resolved` e `byRepresentative` que não são booleanos (`"true"` é recusado);
+- `from` e `to` que não são data ISO 8601 válida com fuso (`Z` ou `±hh:mm`).
+
+A mensagem do erro nunca repete o valor recebido. Os ids que o Postgres devolve como texto (`BIGINT`)
+precisam ser convertidos com `Number(...)` antes de entrar no evento.
+
+No banco, a migration `13_conversation_events_data_checks.sql` cria `chk_conversation_events_data_keys`
+(só as chaves da tabela acima, por tipo) e `chk_conversation_events_data_values` (listas fechadas de
+`llm`, `reason` e `step`, booleanos com `jsonb_typeof = 'boolean'` e `from`/`to` em texto no formato
+ISO 8601 com fuso). Um `INSERT` por fora do contrato falha com `23514`.
+
+### Encerramento coerente com a decisão 008
+
+O encerramento grava o evento de fechamento e faz um único `UPDATE Sessions` com `status = 'FINISHED'`,
+`outcome`, `ended_at`, `last_interaction_at`, `current_step = 'FINISHED'` e `draft = NULL`, só se a
+sessão ainda estiver `IN_PROGRESS`. Se nenhuma linha mudar, lança, e a transação volta com o evento.
+O par desfecho e evento tem que casar, senão lança `InternalServerError` sem consultar o banco:
+
+| Desfecho | Evento de fechamento aceito |
+| --- | --- |
+| `RESOLVED` | `RESOLVED_ANSWERED` com `resolved: true`. Provisoriamente também `ANSWER_SENT`, enquanto o fluxo da Sprint 1 não pergunta "A dúvida foi resolvida?". **A #55 remove essa exceção** em `isClosingCompatible` (`utils/conversationEventData.ts`) |
+| `SCHEDULED` | `APPOINTMENT_CREATED` |
+| `OUT_OF_SCOPE` | `ANSWER_SENT` |
+| `NO_SLOT` | `NO_SLOT` |
+| `DECLINED` | `SCHEDULE_DECLINED` |
+| `MANAGED_APPOINTMENT` | `APPOINTMENT_RESCHEDULED` ou `APPOINTMENT_CANCELED` |
+
+`ABANDONED` não é desfecho de encerramento: só o timeout grava.
+
+### Chamada por passo
+
+| Passo | Issue | Chamada | Evento | Desfecho |
+| --- | --- | --- | --- | --- |
+| Sessão criada | #16 (automático) | `findOrCreateActive` | `STARTED` | — |
+| Categoria escolhida | #55 | `record` | `CATEGORY_CHOSEN` | — |
+| Pergunta escolhida | #55 | `record` | `QUESTION_CHOSEN` | — |
+| Resposta entregue | #55 / #66 (`llm`) | `record`, ou `finish` se fora do escopo | `ANSWER_SENT` | `OUT_OF_SCOPE` |
+| "A dúvida foi resolvida?" | #55 | `record` (Não) ou `finish` (Sim) | `RESOLVED_ANSWERED` | `RESOLVED` |
+| Agendamento oferecido | #55 | `record` | `SCHEDULE_OFFERED` | — |
+| Recusou agendar | #55 | `finish` | `SCHEDULE_DECLINED` | `DECLINED` |
+| Quem comparece | #56 | `record` | `ATTENDEE_CHOSEN` | — |
+| Sem horário | #56 | `finish` | `NO_SLOT` | `NO_SLOT` |
+| Aviso de mensagens neste número | #56 | `record` | `PHONE_NOTICE_SHOWN` | — |
+| Agendamento criado | #56 | `finishSessionWith(client, ...)` na transação da reserva; se falhar, a reserva volta e o cidadão é avisado | `APPOINTMENT_CREATED` | `SCHEDULED` |
+| Consultou agendamento | #59 | `record` | `APPOINTMENT_CONSULTED` | — |
+| Remarcou / cancelou | #59 | `finishSessionWith(client, ...)` na transação da alteração; se falhar, a alteração volta e o cidadão é avisado | `APPOINTMENT_RESCHEDULED` / `APPOINTMENT_CANCELED` | `MANAGED_APPOINTMENT` |
+| 30 min sem interação | #16 na próxima mensagem do mesmo número; #55 na varredura periódica | — | `ABANDONED` | `ABANDONED` |
+
+Hoje o fluxo da Sprint 1 encerra a resposta com `finish` e `ANSWER_SENT` (`llm: "NOT_CALLED"`):
+`OUT_OF_SCOPE` para pergunta fora do escopo e `RESOLVED` (exceção provisória) para as demais.
+
+### Encerramento dentro de uma transação
+
+A reserva (#56) e a remarcação ou o cancelamento (#59) gravam o agendamento, o evento e o desfecho
+na mesma transação, sem `INSERT` direto em `ConversationEvents`:
+
+```ts
+const client = await getPool().connect()
+try {
+    await client.query("BEGIN")
+    const appointmentId = await insertAppointment(client, reservation)
+    await finishSessionWith(client, sessionId, {
+        outcome: "SCHEDULED",
+        event: { type: "APPOINTMENT_CREATED", appointmentId },
+    })
+    await client.query("COMMIT")
+} catch (error) {
+    await client.query("ROLLBACK")
+    throw error
+} finally {
+    client.release()
+}
+```
+
+### Falhas de gravação
+
+| Situação | Comportamento |
+| --- | --- |
+| Falha ao gravar evento comum com `record` (categoria, pergunta, resposta enviada, "resolveu?", oferta, quem comparece etc.), inclusive evento recusado pelo validador | `record` captura o erro, registra no log só o tipo do evento (ou `INVALID`), o id da sessão (ou `INVALID`) e o código do erro, e resolve normalmente. O cidadão recebe a resposta |
+| Encerramento do fluxo atual (`RESOLVED`/`OUT_OF_SCOPE` com `ANSWER_SENT`) | `finish` lança. O fluxo registra no log do mesmo jeito e entrega a resposta; a sessão continua `IN_PROGRESS`, sem evento de fechamento, e será abandonada pelo timeout |
+| Criação do agendamento e encerramentos ligados a ele (`APPOINTMENT_CREATED`/`SCHEDULED`, `APPOINTMENT_RESCHEDULED`/`APPOINTMENT_CANCELED`/`MANAGED_APPOINTMENT`) | `finishSessionWith(client, ...)` na mesma transação da reserva ou da alteração. Se a reserva, o evento ou o encerramento falhar, a transação inteira volta e o cidadão recebe uma mensagem clara de que o agendamento **não** foi gravado. A mensagem e o tratamento são do fluxo da #56 (e da #59 no retorno) |
+
+O log nunca leva `data`, texto do cidadão, telefone nem `draft`.
+
+### Abandono
+
+Na transação de `findOrCreateActive`, a sessão do mesmo número em andamento com
+`last_interaction_at <= now() - interval '30 minutes'` recebe, num único `UPDATE`:
+`status = 'ABANDONED'`, `outcome = 'ABANDONED'`, `abandoned_at_step = current_step`,
+`current_step = 'FINISHED'`, `draft = NULL` e `ended_at = last_interaction_at + interval '30 minutes'`.
+O `last_interaction_at` **não** muda. O evento `ABANDONED` com `{ "step": <etapa> }` é gravado na
+mesma transação, e só então a sessão nova é criada (com o seu `STARTED`).
+
+Esta regra só roda quando o mesmo número volta a escrever. A **varredura periódica** das sessões de
+quem nunca volta é da **#55** e precisa aplicar exatamente a mesma regra. A correspondência entre
+etapa e os nomes de abandono dos Relatórios é da #68.
+
+### O que cada branch troca no merge
+
+- **#55** (`feat/55-novo-fluxo-da-duvida`): fica com a versão da #16 de `findOrCreateActive` e de
+  `finish`, apaga o abandono próprio, faz a varredura reaproveitando a regra acima, emite os eventos
+  da tabela por passo com `record`/`finish` e remove a exceção provisória do `RESOLVED` em
+  `isClosingCompatible`.
+- **#56** (`feat/56-bot-agendamento-presencial`): troca o `INSERT` direto em `ConversationEvents` e o
+  `UPDATE Sessions` da reserva (`schedule.repository.ts`) por `finishSessionWith(client, ...)` com
+  `APPOINTMENT_CREATED`/`SCHEDULED`, e avisa o cidadão quando a transação falhar.
+- **#60** (`feat/60-api-agendamentos`): lê a linha do tempo da conversa de origem com `listBySession`
+  em vez de consultar `ConversationEvents` em `appointment.repository.ts`, fica com a versão da #16 de
+  `session.repository.ts` e aplica a mesma troca da #56 no `schedule.repository.ts` que carrega.

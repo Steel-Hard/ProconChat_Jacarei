@@ -276,7 +276,7 @@ WHERE status = 'IN_PROGRESS';
 | `AWAITING_CANCEL_CONFIRMATION` | Confirmação do cancelamento por botão (#59, Sprint 3) |
 | `FINISHED` | Conversa encerrada |
 
-A correspondência entre etapa e os 6 nomes de abandono dos Relatórios é da aplicação (#16/#68).
+A correspondência entre etapa e os 6 nomes de abandono dos Relatórios é da aplicação e fica com a #68. A #16 só grava a etapa em `abandoned_at_step` e no evento `ABANDONED`.
 
 **`session_outcome`** (desfecho, 8 valores, `NOT NULL DEFAULT 'IN_PROGRESS'`):
 
@@ -305,10 +305,16 @@ A correspondência entre etapa e os 6 nomes de abandono dos Relatórios é da ap
 
 - só aceita as chaves `by_representative`, `holder_name`, `cpf_hash`, `cpf_masked` e `target_appointment_id` (`chk_sessions_draft_keys`). Uma chave nova exige migration, de propósito;
 - `cpf_hash` tem que ser hex de 64 caracteres e `cpf_masked` tem que estar mascarado (`***.456.789-**`). **Não há onde pôr o CPF completo** (`chk_sessions_draft_cpf`);
-- **é limpo em todo encerramento**, inclusive no abandono por timeout: nenhuma sessão fora de `IN_PROGRESS` pode ter `draft` (`chk_sessions_draft_only_in_progress`), então a varredura do timeout zera o `draft` no mesmo `UPDATE` que marca `ABANDONED`;
+- **é limpo em todo encerramento**, inclusive no abandono por timeout: nenhuma sessão fora de `IN_PROGRESS` pode ter `draft` (`chk_sessions_draft_only_in_progress`), então o encerramento e o abandono zeram o `draft` no mesmo `UPDATE` que muda o `status`;
 - **regra de aplicação:** o `draft` nunca aparece na tela de Sessões (nem na API dela) e nunca é copiado para `ConversationEvents.data` nem para `AppointmentEvents.data`.
 
-**Backfill feito pela migration `11`** nas sessões que já existiam: `outcome` `IN_PROGRESS` → `IN_PROGRESS`, `ABANDONED` → `ABANDONED` e `FINISHED` → `RESOLVED`; `abandoned_at_step = current_step` nas abandonadas; `last_interaction_at = COALESCE(ended_at, started_at)`. O `RESOLVED` é **provisório até a #55**: nenhum dos desfechos descreve o fim do fluxo da Sprint 1 ("recebeu a resposta, sem pergunta de resolvido"), e `sessionRepository.finish()` grava o mesmo `RESOLVED` até a #55 substituir o fluxo.
+**Backfill feito pela migration `11`** nas sessões que já existiam: `outcome` `IN_PROGRESS` → `IN_PROGRESS`, `ABANDONED` → `ABANDONED` e `FINISHED` → `RESOLVED`; `abandoned_at_step = current_step` nas abandonadas; `last_interaction_at = COALESCE(ended_at, started_at)`. O `RESOLVED` é **provisório até a #55**: nenhum dos desfechos descreve o fim do fluxo da Sprint 1 ("recebeu a resposta, sem pergunta de resolvido"), e o fluxo encerra com `RESOLVED` e `ANSWER_SENT` como evento de fechamento até a #55 substituir o fluxo e remover essa exceção.
+
+**Regras de aplicação do encerramento e do abandono (#16):**
+
+- **Encerramento atômico:** `finishSessionWith(db, sessionId, { outcome, event })` (`src/backend/repositories/session.repository.ts`) grava o evento de fechamento em `ConversationEvents` e faz um único `UPDATE` com `status = 'FINISHED'`, `outcome`, `ended_at`, `last_interaction_at`, `current_step = 'FINISHED'` e `draft = NULL`, com `WHERE status = 'IN_PROGRESS'`. Se nenhuma linha mudar, lança e a transação volta com o evento. O evento de fechamento tem que casar com o desfecho da decisão 008 (`RESOLVED` ↔ `RESOLVED_ANSWERED` com `resolved: true`, e provisoriamente `ANSWER_SENT`; `SCHEDULED` ↔ `APPOINTMENT_CREATED`; `OUT_OF_SCOPE` ↔ `ANSWER_SENT`; `NO_SLOT` ↔ `NO_SLOT`; `DECLINED` ↔ `SCHEDULE_DECLINED`; `MANAGED_APPOINTMENT` ↔ `APPOINTMENT_RESCHEDULED` ou `APPOINTMENT_CANCELED`). A reserva da #56 e a alteração da #59 chamam a função com o `client` da própria transação.
+- **`STARTED` na criação:** a sessão nova e o evento `STARTED` são gravados na mesma transação de `findOrCreateActive`.
+- **Abandono:** na mesma transação, a sessão do mesmo número com `last_interaction_at <= now() - interval '30 minutes'` recebe `status` e `outcome` `ABANDONED`, `abandoned_at_step = current_step`, `current_step = 'FINISHED'`, `draft = NULL` e `ended_at = last_interaction_at + interval '30 minutes'`; o `last_interaction_at` original é mantido, e o evento `ABANDONED` com `{ "step": <etapa> }` é gravado antes de abrir a sessão nova. Isso só acontece quando o mesmo número volta a escrever; a varredura periódica das sessões de quem não volta é da #55 e aplica a mesma regra.
 
 ### ConversationEvents — [decisão 010](../decisoes/010-registro-de-interacoes-e-relatorios.md)
 
@@ -407,10 +413,12 @@ CREATE INDEX idx_conversation_events_appointment ON ConversationEvents(appointme
 | `ATTENDEE_CHOSEN` | `{ "by_representative": true \| false }` |
 | `PHONE_NOTICE_SHOWN` | — (o cidadão foi informado de que receberá avisos neste número, decisão 002, item 5) |
 | `APPOINTMENT_CREATED`, `APPOINTMENT_CONSULTED`, `APPOINTMENT_CANCELED` | — (`appointment_id`) |
-| `APPOINTMENT_RESCHEDULED` | `{ "from": ..., "to": ... }` |
+| `APPOINTMENT_RESCHEDULED` | `{ "from": "<ISO 8601>", "to": "<ISO 8601>" }`: data e hora antiga e nova, em texto ISO 8601 com fuso (`Z` ou `±hh:mm`) |
 | `ABANDONED` | `{ "step": "<session_step>" }` |
 
-- **Nenhum evento guarda texto digitado pelo cidadão** (RNF03). `data` é sempre um objeto (`CHECK`) e só recebe as chaves acima (e as que a #16 documentar), com valores de lista fechada, booleanos, datas ou ids.
+- **Nenhum evento guarda texto digitado pelo cidadão** (RNF03). `data` é sempre um objeto (`chk_conversation_events_data_object`) e só recebe as chaves acima, por tipo (`chk_conversation_events_data_keys`, migration `13`). Os valores são de lista fechada (`llm`, `reason` e `step`, sem `FINISHED`), booleanos com `jsonb_typeof = 'boolean'` (`resolved`, `by_representative`) ou datas ISO 8601 com fuso em texto (`from`, `to`), conferidos por `chk_conversation_events_data_values`. Fora disso, o banco recusa com `23514`.
+- A aplicação grava só por `insertConversationEvent` e `finishSessionWith` (o `ABANDONED` é gravado pelo SQL do abandono, em `session.repository.ts`), que validam o evento antes de qualquer consulta (`utils/conversationEventData.ts`). Um teste de unidade falha se outro arquivo de produção fizer `INSERT INTO ConversationEvents`. A leitura para a linha do tempo é `listBySession`, que devolve os eventos tipados em ordem e descarta chaves desconhecidas.
+- No banco, as chaves de `data` são snake_case (`llm`, `by_representative`); o tipo TypeScript usa camelCase (`llm`, `byRepresentative`), e o repositório converte nos dois sentidos.
 - `session_id` usa `ON DELETE CASCADE`: os eventos são parte da sessão (facilita a limpeza nos testes e a retenção da #69). `category_id`, `question_id` e `appointment_id` não usam cascade.
 
 ### Appointments — [decisão 006](../decisoes/006-ciclo-de-vida-do-agendamento.md)
