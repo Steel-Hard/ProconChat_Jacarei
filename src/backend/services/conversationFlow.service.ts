@@ -20,9 +20,12 @@ import {
   formatarRespostaFinal,
 } from "./messageFormatter.service";
 import {
+  conversationEventFailureLog,
+  ConversationEventLogger,
   conversationEventService,
   ConversationEventService,
 } from "./conversationEvent.service";
+import type { SessionClosing } from "../types/conversationEvent.types";
 
 export interface ConversationFlowInput {
   phone: string;
@@ -51,6 +54,7 @@ interface ConversationFlowDependencies {
   events: ConversationEventService;
   motor: MotorDecisao;
   hashPhone: (phone: string) => string;
+  logger: ConversationEventLogger;
 }
 
 function parseOption(text: string | undefined, max: number): number | null {
@@ -109,6 +113,7 @@ export function createConversationFlowService({
   events,
   motor,
   hashPhone: hashPhoneOf,
+  logger,
 }: ConversationFlowDependencies): (
   input: ConversationFlowInput,
 ) => Promise<ConversationFlowResult> {
@@ -118,7 +123,6 @@ export function createConversationFlowService({
     sessionId: string,
     newSession: boolean,
   ): Promise<ConversationFlowResult> {
-    await events.record(sessionId, { type: "STARTED" });
     const categorias = await motor.iniciarSessao();
 
     return {
@@ -179,7 +183,10 @@ export function createConversationFlowService({
       currentStep: "AWAITING_QUESTION",
       currentCategoryId: String(categoria.id),
     });
-    await events.record(sessionId, { type: "CATEGORY_CHOSEN", categoryId: categoria.id });
+    await events.record(sessionId, {
+      type: "CATEGORY_CHOSEN",
+      categoryId: Number(categoria.id),
+    });
 
     return {
       sessionId,
@@ -229,19 +236,30 @@ export function createConversationFlowService({
 
     await events.record(sessionId, {
       type: "QUESTION_CHOSEN",
-      categoryId: pergunta.category_id,
-      questionId: pergunta.id,
+      categoryId: Number(pergunta.category_id),
+      questionId: Number(pergunta.id),
     });
 
     const resposta = await motor.processarPergunta(pergunta.id);
 
-    await events.record(sessionId, {
-      type: "ANSWER_SENT",
-      categoryId: pergunta.category_id,
-      questionId: pergunta.id,
-      llmStatus: resposta.llm_status ?? "NOT_CALLED",
-    });
-    await sessions.finish(sessionId, resposta.fora_de_escopo ? "OUT_OF_SCOPE" : "RESOLVED");
+    const closing: SessionClosing = {
+      outcome: resposta.fora_de_escopo ? "OUT_OF_SCOPE" : "RESOLVED",
+      event: {
+        type: "ANSWER_SENT",
+        categoryId: Number(pergunta.category_id),
+        questionId: Number(pergunta.id),
+        llm: "NOT_CALLED",
+      },
+    };
+
+    try {
+      await events.finish(sessionId, closing);
+    } catch (error) {
+      logger.error(
+        "Failed to finish conversation session",
+        conversationEventFailureLog(sessionId, closing.event, error),
+      );
+    }
 
     return {
       sessionId,
@@ -259,7 +277,7 @@ export function createConversationFlowService({
   }: ConversationFlowInput): Promise<ConversationFlowResult> {
     const session = await sessions.findOrCreateActive(hashPhoneOf(phone));
 
-    if (session.created || session.currentStep === "FINISHED") {
+    if (session.created) {
       return startOver(session.id, session.created);
     }
 
@@ -292,4 +310,5 @@ export const processIncomingMessage = createConversationFlowService({
   events: conversationEventService,
   motor: new MotorDecisaoService(new PgMotorDecisaoRepository()),
   hashPhone,
+  logger: console,
 });

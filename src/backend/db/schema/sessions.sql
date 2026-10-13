@@ -50,6 +50,8 @@ CREATE TABLE Sessions (
     CONSTRAINT chk_sessions_outcome_in_progress CHECK ((status = 'IN_PROGRESS') = (outcome = 'IN_PROGRESS')),
     CONSTRAINT chk_sessions_outcome_abandoned CHECK ((status = 'ABANDONED') = (outcome = 'ABANDONED')),
     CONSTRAINT chk_sessions_abandoned_step CHECK ((outcome = 'ABANDONED') = (abandoned_at_step IS NOT NULL)),
+    CONSTRAINT chk_sessions_step_finished CHECK ((status = 'IN_PROGRESS') = (current_step <> 'FINISHED')),
+    CONSTRAINT chk_sessions_abandoned_step_not_finished CHECK (abandoned_at_step IS DISTINCT FROM 'FINISHED'),
     CONSTRAINT chk_sessions_list_page CHECK (list_page >= 1),
     CONSTRAINT chk_sessions_draft_only_in_progress CHECK (draft IS NULL OR status = 'IN_PROGRESS'),
     CONSTRAINT chk_sessions_draft_object CHECK (draft IS NULL OR jsonb_typeof(draft) = 'object'),
