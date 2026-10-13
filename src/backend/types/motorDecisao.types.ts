@@ -29,5 +29,4 @@ export interface RespostaFinalOutput {
     documentos_necessarios: string[]
     requer_presencial: boolean
     fora_de_escopo: boolean
-    llm_status?: "NOT_CALLED" | "USED" | "FAILED"
 }
