@@ -1,6 +1,6 @@
 import { createHmac } from "crypto"
 import request from "supertest"
-import { afterAll, beforeAll, describe, expect, test } from "vitest"
+import { afterAll, beforeAll, describe, expect, test, vi } from "vitest"
 import app from "../../app"
 import getPool from "../../db/connection"
 import { conversationEventRepository } from "../../repositories/conversationEvent.repository"
@@ -13,6 +13,7 @@ const phones = {
     outOfScope: "5500000000992",
     abandoned: "5500000000993",
     transaction: "5500000000994",
+    invalidRow: "5500000000995",
 }
 
 let categoryId = ""
@@ -263,5 +264,29 @@ describe("Eventos da conversa com Postgres", () => {
                 llm: "NOT_CALLED",
             },
         ])
+    })
+
+    test("listBySession descarta a linha fora do contrato gravada por fora e registra o log sem dados do cidadão", async () => {
+        const { sessionId } = await send(phones.invalidRow, sentinel)
+        await getPool().query(
+            "INSERT INTO ConversationEvents (session_id, type, data) VALUES ($1, 'ANSWER_SENT', '{}'::jsonb)",
+            [sessionId],
+        )
+        const error = vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+        try {
+            const events = await conversationEventRepository.listBySession(sessionId)
+
+            expect(events.map((event) => event.type)).toEqual(["STARTED"])
+            expect(error).toHaveBeenCalledOnce()
+            expect(error).toHaveBeenCalledWith(expect.any(String), {
+                type: "ANSWER_SENT",
+                sessionId,
+                code: "INTERNAL_SERVER_ERROR",
+            })
+            expect(JSON.stringify(error.mock.calls)).not.toContain("Maria")
+        } finally {
+            error.mockRestore()
+        }
     })
 })

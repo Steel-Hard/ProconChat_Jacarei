@@ -7,7 +7,11 @@ vi.mock("../db/connection", () => ({
     default: () => ({ query }),
 }))
 
-import { conversationEventRepository, insertConversationEvent } from "./conversationEvent.repository"
+import {
+    conversationEventRepository,
+    createConversationEventRepository,
+    insertConversationEvent,
+} from "./conversationEvent.repository"
 
 describe("conversationEventRepository", () => {
     beforeEach(() => {
@@ -162,5 +166,100 @@ describe("conversationEventRepository", () => {
         const events = await conversationEventRepository.listBySession("5")
 
         expect(events).toEqual([{ type: "ATTENDEE_CHOSEN", byRepresentative: false, createdAt }])
+    })
+
+    it("listBySession descarta a linha fora do contrato, registra o log sem dados do cidadão e devolve as outras", async () => {
+        const sentinel = "Meu nome é Maria Fictícia e meu CPF é 000.000.000-00"
+        const first = new Date("2030-01-01T12:00:00Z")
+        const last = new Date("2030-01-01T12:03:00Z")
+        const logger = { error: vi.fn() }
+        const repository = createConversationEventRepository({ logger })
+        query.mockResolvedValueOnce({
+            rows: [
+                {
+                    type: "STARTED",
+                    category_id: null,
+                    question_id: null,
+                    appointment_id: null,
+                    data: {},
+                    created_at: first,
+                },
+                {
+                    type: "ANSWER_SENT",
+                    category_id: "3",
+                    question_id: "7",
+                    appointment_id: null,
+                    data: {},
+                    created_at: new Date("2030-01-01T12:01:00Z"),
+                },
+                {
+                    type: "ABANDONED",
+                    category_id: null,
+                    question_id: null,
+                    appointment_id: null,
+                    data: { step: sentinel },
+                    created_at: new Date("2030-01-01T12:02:00Z"),
+                },
+                {
+                    type: sentinel,
+                    category_id: null,
+                    question_id: null,
+                    appointment_id: null,
+                    data: {},
+                    created_at: new Date("2030-01-01T12:02:30Z"),
+                },
+                {
+                    type: "CATEGORY_CHOSEN",
+                    category_id: "3",
+                    question_id: null,
+                    appointment_id: null,
+                    data: {},
+                    created_at: last,
+                },
+            ],
+        })
+
+        const events = await repository.listBySession("5")
+
+        expect(events).toEqual([
+            { type: "STARTED", createdAt: first },
+            { type: "CATEGORY_CHOSEN", categoryId: 3, createdAt: last },
+        ])
+        expect(logger.error.mock.calls).toEqual([
+            [expect.any(String), { type: "ANSWER_SENT", sessionId: "5", code: "INTERNAL_SERVER_ERROR" }],
+            [expect.any(String), { type: "ABANDONED", sessionId: "5", code: "INTERNAL_SERVER_ERROR" }],
+            [expect.any(String), { type: "INVALID", sessionId: "5", code: "INTERNAL_SERVER_ERROR" }],
+        ])
+        expect(JSON.stringify(logger.error.mock.calls)).not.toContain("Maria")
+    })
+
+    it("listBySession não chama o log quando todas as linhas estão no contrato", async () => {
+        const logger = { error: vi.fn() }
+        const repository = createConversationEventRepository({ logger })
+        query.mockResolvedValueOnce({
+            rows: [
+                {
+                    type: "STARTED",
+                    category_id: null,
+                    question_id: null,
+                    appointment_id: null,
+                    data: {},
+                    created_at: new Date("2030-01-01T12:00:00Z"),
+                },
+            ],
+        })
+
+        await repository.listBySession("5")
+
+        expect(logger.error).not.toHaveBeenCalled()
+    })
+
+    it("listBySession propaga a falha da consulta", async () => {
+        const logger = { error: vi.fn() }
+        const repository = createConversationEventRepository({ logger })
+        query.mockRejectedValueOnce(new Error("db down"))
+
+        await expect(repository.listBySession("5")).rejects.toThrow("db down")
+        expect(logger.error).not.toHaveBeenCalled()
     })
 })

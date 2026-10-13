@@ -6,12 +6,17 @@ import type {
     StoredConversationEventRow,
 } from "../types/conversationEvent.types"
 import { buildConversationEventRow, parseConversationEventRow } from "../utils/conversationEventData"
+import { conversationEventFailureLog, ConversationEventLogger } from "../utils/conversationEventLog"
 
 export type Queryable = Pick<PoolClient, "query">
 
 export interface ConversationEventRepository {
     record(sessionId: string, event: ConversationEvent): Promise<void>
     listBySession(sessionId: string): Promise<RecordedConversationEvent[]>
+}
+
+interface ConversationEventRepositoryDependencies {
+    logger: ConversationEventLogger
 }
 
 export async function insertConversationEvent(
@@ -36,20 +41,36 @@ export async function insertConversationEvent(
     )
 }
 
-export const conversationEventRepository: ConversationEventRepository = {
-    async record(sessionId, event): Promise<void> {
-        await insertConversationEvent(getPool(), sessionId, event)
-    },
+export function createConversationEventRepository({
+    logger,
+}: ConversationEventRepositoryDependencies): ConversationEventRepository {
+    return {
+        async record(sessionId, event): Promise<void> {
+            await insertConversationEvent(getPool(), sessionId, event)
+        },
 
-    async listBySession(sessionId): Promise<RecordedConversationEvent[]> {
-        const result = await getPool().query<StoredConversationEventRow>(
-            `SELECT type, category_id, question_id, appointment_id, data, created_at
-             FROM ConversationEvents
-             WHERE session_id = $1
-             ORDER BY created_at, id`,
-            [sessionId],
-        )
+        async listBySession(sessionId): Promise<RecordedConversationEvent[]> {
+            const result = await getPool().query<StoredConversationEventRow>(
+                `SELECT type, category_id, question_id, appointment_id, data, created_at
+                 FROM ConversationEvents
+                 WHERE session_id = $1
+                 ORDER BY created_at, id`,
+                [sessionId],
+            )
 
-        return result.rows.map(parseConversationEventRow)
-    },
+            return result.rows.flatMap((row) => {
+                try {
+                    return [parseConversationEventRow(row)]
+                } catch (error) {
+                    logger.error(
+                        "Discarded conversation event outside the contract",
+                        conversationEventFailureLog(sessionId, row, error),
+                    )
+                    return []
+                }
+            })
+        },
+    }
 }
+
+export const conversationEventRepository = createConversationEventRepository({ logger: console })

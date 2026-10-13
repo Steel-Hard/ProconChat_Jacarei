@@ -99,7 +99,7 @@ Nenhum evento guarda texto digitado pelo cidadão (RNF03): só tipos, ids e valo
 | `conversationEventService.finish(sessionId, { outcome, event })` | `services/conversationEvent.service.ts` | Encerramento fora de transação. Abre a própria transação e lança se falhar |
 | `finishSessionWith(client, sessionId, { outcome, event })` | `repositories/session.repository.ts` | Encerramento dentro da transação de outro repositório (reserva da #56, remarcação e cancelamento da #59). Lança e não desfaz nada: quem abriu a transação faz o `ROLLBACK` |
 | `insertConversationEvent(client, sessionId, event)` | `repositories/conversationEvent.repository.ts` | Evento comum dentro de uma transação aberta |
-| `conversationEventService.listBySession(sessionId)` | `services/conversationEvent.service.ts` | Leitura tipada, em ordem cronológica, com `createdAt`, para a linha do tempo (#60, #72, #86). Chaves desconhecidas vindas do banco são descartadas |
+| `conversationEventService.listBySession(sessionId)` | `services/conversationEvent.service.ts` | Leitura tipada, em ordem cronológica, com `createdAt`, para a linha do tempo (#60, #72, #86). Chaves desconhecidas vindas do banco são descartadas. Uma linha fora do contrato é descartada e registrada no log, sem derrubar a lista (ver "Leitura") |
 
 `insertConversationEvent` e `finishSessionWith` são o **único** caminho de escrita em
 `ConversationEvents` e de encerramento de sessão. O teste `repositories/conversationEventWriters.test.ts`
@@ -150,6 +150,17 @@ No banco, a migration `13_conversation_events_data_checks.sql` cria `chk_convers
 `llm`, `reason` e `step`, booleanos com `jsonb_typeof = 'boolean'` e `from`/`to` em texto no formato
 ISO 8601 com fuso). Um `INSERT` por fora do contrato falha com `23514`. O banco confere só o formato
 de `from`/`to`; a data de calendário e a hora válidas são conferidas pela aplicação.
+
+### Leitura
+
+O `CHECK` da `13` limita as chaves e os valores de `data`, mas não exige as chaves de cada tipo: um
+`ANSWER_SENT` gravado por fora com `data = {}` passa no banco. `listBySession`
+(`repositories/conversationEvent.repository.ts`) valida cada linha com `parseConversationEventRow` e,
+se uma linha estiver fora do contrato (tipo desconhecido, campo obrigatório ausente ou valor fora da
+lista), **descarta só essa linha** e devolve as outras na ordem. O descarte vai para o log com
+`{ type, sessionId, code }`: o tipo do contrato (ou `INVALID`), o id da sessão e o código do erro
+(`INTERNAL_SERVER_ERROR`). O log nunca leva `data` nem o valor recebido. Falha da consulta continua
+lançando.
 
 ### Encerramento coerente com a decisão 008
 
