@@ -277,7 +277,7 @@ export function createConversationFlowService({
   }: ConversationFlowInput): Promise<ConversationFlowResult> {
     const session = await sessions.findOrCreateActive(hashPhoneOf(phone));
 
-    if (session.created || session.currentStep === "FINISHED") {
+    if (session.created) {
       return startOver(session.id, session.created);
     }
 

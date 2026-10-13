@@ -3,7 +3,7 @@
 > Persistência única em PostgreSQL, compartilhada entre o chatbot e o painel ([`../architecture/architecture.md`](../architecture/architecture.md)).
 >
 > Este documento tem duas partes:
-> 1. **[Schema atual](#parte-1--schema-atual-implementado)**: o que existe depois das migrations `01` a `09`, `010`, `11`, `12` e `13` (a `11_sprint2_schema.sql` é o schema da Sprint 2, issue #52; a `12_short_text_checks.sql` ajusta o limite dos títulos curtos, issue #61; a `13_conversation_events_data_checks.sql` limita as chaves e os valores de `ConversationEvents.data`, issue #16).
+> 1. **[Schema atual](#parte-1--schema-atual-implementado)**: o que existe depois das migrations `01` a `09`, `010`, `11`, `12` e `13` (a `11_sprint2_schema.sql` é o schema da Sprint 2, issue #52; a `12_short_text_checks.sql` ajusta o limite dos títulos curtos, issue #61; a `13_conversation_events_data_checks.sql` limita as chaves e os valores de `ConversationEvents.data` e amarra `current_step = 'FINISHED'` às sessões encerradas, issue #16).
 > 2. **[Schema planejado](#parte-2--schema-planejado-sprint-3)**: o que ainda falta criar, com a issue de cada parte.
 >
 > Antes de mexer no banco, leia também o SQL em `src/backend/db/schema/` e as convenções em [`migrations.md`](migrations.md): **toda mudança é uma migration nova**, nunca edição de migration antiga.
@@ -24,7 +24,7 @@
 | `010` | `current_category_id` com `ON DELETE SET NULL`, para o seed conseguir apagar categorias. O prefixo é lido como número: `010` é a versão 10 |
 | `11` | Schema da Sprint 2 (#52): conta Admin, títulos curtos e ordem do conteúdo, desfecho e rascunho da sessão, `ConversationEvents` no lugar de `Interactions`, `Appointments` recriada com o ciclo de vida novo, observações e histórico do agendamento, agenda, documentos de atendimento e configuração do WhatsApp |
 | `12` | Títulos e descrições curtas medidos como gravados, sem espaço nas pontas (#61): apara os valores que já existiam e troca os três `CHECK` de tamanho, com os mesmos nomes |
-| `13` | Chaves e valores de `ConversationEvents.data` por tipo (#16): renomeia as chaves antigas `llmStatus` e `byRepresentative` das linhas que já existiam, aborta com mensagem clara se sobrar linha fora do contrato e cria `chk_conversation_events_data_keys` e `chk_conversation_events_data_values`. O `Down` remove só os dois `CHECK` |
+| `13` | Chaves e valores de `ConversationEvents.data` por tipo (#16): renomeia as chaves antigas `llmStatus` e `byRepresentative` das linhas que já existiam, aborta com mensagem clara se sobrar linha fora do contrato e cria `chk_conversation_events_data_keys` e `chk_conversation_events_data_values`. Em `Sessions`, põe `current_step = 'FINISHED'` nas sessões já encerradas que ainda guardavam outra etapa (a etapa do abandono continua em `abandoned_at_step`), aborta com mensagem clara se sobrar sessão `IN_PROGRESS` em `FINISHED` ou abandonada com `abandoned_at_step = 'FINISHED'` e cria `chk_sessions_step_finished` e `chk_sessions_abandoned_step_not_finished`. O `Down` remove só os quatro `CHECK` e não desfaz a troca de `current_step` |
 
 ### Diagrama
 
@@ -233,6 +233,8 @@ CREATE TABLE Sessions (
     CONSTRAINT chk_sessions_outcome_in_progress CHECK ((status = 'IN_PROGRESS') = (outcome = 'IN_PROGRESS')),
     CONSTRAINT chk_sessions_outcome_abandoned CHECK ((status = 'ABANDONED') = (outcome = 'ABANDONED')),
     CONSTRAINT chk_sessions_abandoned_step CHECK ((outcome = 'ABANDONED') = (abandoned_at_step IS NOT NULL)),
+    CONSTRAINT chk_sessions_step_finished CHECK ((status = 'IN_PROGRESS') = (current_step <> 'FINISHED')),
+    CONSTRAINT chk_sessions_abandoned_step_not_finished CHECK (abandoned_at_step IS DISTINCT FROM 'FINISHED'),
     CONSTRAINT chk_sessions_list_page CHECK (list_page >= 1),
     CONSTRAINT chk_sessions_draft_only_in_progress CHECK (draft IS NULL OR status = 'IN_PROGRESS'),
     CONSTRAINT chk_sessions_draft_object CHECK (draft IS NULL OR jsonb_typeof(draft) = 'object'),
@@ -296,7 +298,8 @@ A correspondência entre etapa e os 6 nomes de abandono dos Relatórios é da ap
 **Regras garantidas pelo banco:**
 
 - `status` e `outcome` andam juntos: `IN_PROGRESS` ⇔ `IN_PROGRESS` e `ABANDONED` ⇔ `ABANDONED`; `FINISHED` corresponde a um dos outros 6 desfechos. Encerrar uma sessão exige atualizar os dois no mesmo `UPDATE`.
-- `abandoned_at_step` é obrigatória quando o desfecho é `ABANDONED`, e proibida nos demais.
+- `abandoned_at_step` é obrigatória quando o desfecho é `ABANDONED`, e proibida nos demais. Ela nunca é `FINISHED` (`chk_sessions_abandoned_step_not_finished`, migration `13`).
+- `current_step = 'FINISHED'` se e somente se a sessão está encerrada (`chk_sessions_step_finished`, migration `13`): uma sessão `IN_PROGRESS` sempre está numa etapa `AWAITING_*`, e o abandono, que copia `current_step` para `abandoned_at_step` e para o evento `ABANDONED`, nunca recebe `FINISHED`. Por isso o fluxo não trata sessão em andamento em `FINISHED`, e `ActiveSession.currentStep`/`NavigationState.currentStep` são `Exclude<SessionStep, "FINISHED">`.
 - `list_page` (página da lista no WhatsApp) é ≥ 1.
 - `last_interaction_at` sustenta o **timeout de 30 minutos**, com o índice parcial `idx_sessions_last_interaction` só nas sessões em andamento.
 - `current_category_id` e `current_question_id` usam `ON DELETE SET NULL` (migration `010` e `11`). Isso vem do seed antigo, que apagava as categorias; desde a #61 o seed não apaga conteúdo e não mexe em `Sessions`.

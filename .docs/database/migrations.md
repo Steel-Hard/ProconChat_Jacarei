@@ -17,7 +17,8 @@ tabelas da Sprint 1, `08`, `09` e `010` ajustam `Sessions`,
 `11_sprint2_schema.sql` é o schema da Sprint 2 (#52),
 `12_short_text_checks.sql` ajusta o limite dos títulos curtos (#61) e
 `13_conversation_events_data_checks.sql` limita as chaves e os valores de
-`ConversationEvents.data` (#16). O que cada uma faz está
+`ConversationEvents.data` e amarra `Sessions.current_step = 'FINISHED'` às
+sessões encerradas (#16). O que cada uma faz está
 em [`database.md`](database.md#histórico-das-migrations). Os nomes sem aspas
 são convertidos para minúsculas pelo PostgreSQL (por exemplo,
 `RequiredDocuments` vira `requireddocuments`). Cada migration tem
@@ -143,13 +144,20 @@ não limpa o banco informado. Ele cobre estes cenários:
   contrato e recusam com `23514` chave fora da lista do tipo (inclusive as
   antigas `llmStatus` e `byRepresentative`), texto livre em `llm`, `reason` e
   `step`, `step` igual a `FINISHED`, booleano em string e `from`/`to` que não
-  são data ISO 8601 com fuso. Por fim, a volta à versão 10 (`interactions` de
-  volta, `appointment_status` com 3 valores, etapas novas mapeadas) é feita em
-  três passos: o primeiro `down 1` desfaz só a `13` (sobra só
-  `chk_conversation_events_data_object` e um evento com chave livre volta a
-  ser aceito), o segundo desfaz a `12` (os `CHECK` de tamanho voltam a aceitar
-  espaço nas pontas) e o terceiro desfaz a `11`. Depois `up` reaplica,
-  `down 13` deixa só `pgmigrations` e `up` reaplica tudo. Os `CHECK` da `12`
+  são data ISO 8601 com fuso. Os `CHECK` de `Sessions` da `13` aceitam sessão
+  encerrada ou abandonada em `FINISHED` com a etapa em `abandoned_at_step` e
+  recusam com `23514` sessão `IN_PROGRESS` em `FINISHED`, sessão encerrada ou
+  abandonada fora de `FINISHED` e `abandoned_at_step = 'FINISHED'`. Por fim,
+  a volta à versão 10 (`interactions` de volta, `appointment_status` com 3
+  valores, etapas novas mapeadas) é feita em três passos: o primeiro `down 1`
+  desfaz só a `13` (sobra só `chk_conversation_events_data_object`, um evento
+  com chave livre volta a ser aceito e uma sessão em andamento em `FINISHED`
+  também), o segundo desfaz a `12` (os `CHECK` de tamanho voltam a aceitar
+  espaço nas pontas) e o terceiro desfaz a `11`. A volta à versão 10 perde a
+  etapa do abandono: a `11` reaplicada copia `current_step = 'FINISHED'` para
+  `abandoned_at_step`, e por isso o `up` seguinte falha na guarda de sessões da
+  `13` enquanto houver sessão abandonada; depois de apagar a sessão abandonada
+  da versão 10, `up` reaplica, `down 13` deixa só `pgmigrations` e `up` reaplica tudo. Os `CHECK` da `12`
   recusam título curto com espaço nas pontas ou com 25 caracteres e aceitam 24.
 - **Sobre a versão 10 com o conteúdo do seed:** `up 10`, carga dos dados de
   `db/seeds/data` com as colunas da versão 10, sessões `IN_PROGRESS`,
@@ -157,7 +165,8 @@ não limpa o banco informado. Ele cobre estes cenários:
   categorias, as 47 perguntas e os documentos continuam com os mesmos ids e
   textos, o backfill de `short_title`, `llm_allowed`, `position`, `outcome`,
   `abandoned_at_step` e `last_interaction_at`, e que `current_step` foi
-  preservado. Depois roda o seed real (`db/seeds/run.ts`) duas vezes.
+  preservado nas sessões em andamento e passou a `FINISHED` nas encerradas e
+  abandonadas (a etapa do abandono fica em `abandoned_at_step`). Depois roda o seed real (`db/seeds/run.ts`) duas vezes.
 - **Guarda de `Appointments`:** num banco na versão 10 com uma linha em
   `appointments`, o `up` falha com a mensagem da guarda e a versão continua 10,
   sem nada aplicado.
@@ -170,6 +179,13 @@ não limpa o banco informado. Ele cobre estes cenários:
 - **Guarda da `13`:** num banco na versão 12 com um evento cujo `data` tem
   texto livre, o `up` falha com a mensagem da guarda, a versão continua 12 e
   nenhum `CHECK` novo fica; depois de apagar a linha, o `up` funciona.
+- **Sessões na `13`:** sessões encerradas e abandonadas gravadas na versão 12
+  com outra etapa em `current_step` passam a `FINISHED` (a abandonada mantém
+  `abandoned_at_step`) e a sessão em andamento não muda. Num banco na versão 12
+  com uma sessão `IN_PROGRESS` em `FINISHED`, ou abandonada com
+  `abandoned_at_step = 'FINISHED'`, o `up` falha com a mensagem da guarda, a
+  versão continua 12 e nenhum `CHECK` de `Sessions` fica; depois de apagar a
+  linha, o `up` funciona.
 - **Seed:** do zero (7 categorias, 47 perguntas, títulos, ordem, `llm_allowed`,
   documentos e configuração inicial iguais aos arquivos de dados, `BlockedDates`
   vazia); idempotência (retrato completo das tabelas semeadas igual depois da

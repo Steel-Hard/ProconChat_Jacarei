@@ -231,6 +231,12 @@ Na transação de `findOrCreateActive`, a sessão do mesmo número em andamento 
 O `last_interaction_at` **não** muda. O evento `ABANDONED` com `{ "step": <etapa> }` é gravado na
 mesma transação, e só então a sessão nova é criada (com o seu `STARTED`).
 
+A migration `13` garante no banco que `current_step = 'FINISHED'` só existe em sessão encerrada
+(`chk_sessions_step_finished`) e que `abandoned_at_step` nunca é `FINISHED`
+(`chk_sessions_abandoned_step_not_finished`). Assim a etapa copiada pelo abandono é sempre uma
+`AWAITING_*`, e `ActiveSession.currentStep` e `NavigationState.currentStep` são
+`Exclude<SessionStep, "FINISHED">`.
+
 Esta regra só roda quando o mesmo número volta a escrever. A **varredura periódica** das sessões de
 quem nunca volta é da **#55** e precisa aplicar exatamente a mesma regra. A correspondência entre
 etapa e os nomes de abandono dos Relatórios é da #68.

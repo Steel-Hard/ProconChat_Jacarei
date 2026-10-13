@@ -70,7 +70,30 @@ EXCEPTION
 END
 $$;
 
+UPDATE Sessions
+SET current_step = 'FINISHED'
+WHERE status <> 'IN_PROGRESS'
+  AND current_step <> 'FINISHED';
+
+ALTER TABLE Sessions
+    ADD CONSTRAINT chk_sessions_step_finished CHECK ((status = 'IN_PROGRESS') = (current_step <> 'FINISHED')) NOT VALID,
+    ADD CONSTRAINT chk_sessions_abandoned_step_not_finished CHECK (abandoned_at_step IS DISTINCT FROM 'FINISHED') NOT VALID;
+
+DO $$
+BEGIN
+    ALTER TABLE Sessions VALIDATE CONSTRAINT chk_sessions_step_finished;
+    ALTER TABLE Sessions VALIDATE CONSTRAINT chk_sessions_abandoned_step_not_finished;
+EXCEPTION
+    WHEN check_violation THEN
+        RAISE EXCEPTION 'A migration 13_conversation_events_data_checks encontrou sessões com current_step ou abandoned_at_step = ''FINISHED'' fora do contrato: sessão IN_PROGRESS em FINISHED ou sessão abandonada com abandoned_at_step = FINISHED. Corrija ou apague essas linhas (regras em .docs/database/database.md) e rode a migration de novo.';
+END
+$$;
+
 -- Down Migration
+ALTER TABLE Sessions
+    DROP CONSTRAINT chk_sessions_abandoned_step_not_finished,
+    DROP CONSTRAINT chk_sessions_step_finished;
+
 ALTER TABLE ConversationEvents
     DROP CONSTRAINT chk_conversation_events_data_values,
     DROP CONSTRAINT chk_conversation_events_data_keys;

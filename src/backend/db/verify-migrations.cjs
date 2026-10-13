@@ -165,6 +165,7 @@ async function checkFreshSchema(db) {
     assert.equal((await column(db, 'sessions', 'outcome')).is_nullable, 'NO');
     assert.equal(await count(db, "SELECT 1 FROM pg_extension WHERE extname = 'unaccent'"), 1);
     assert.equal((await db.query("SELECT unaccent('Cobrança Vício') AS v")).rows[0].v, 'Cobranca Vicio');
+    assert.equal(await count(db, "SELECT 1 FROM pg_constraint WHERE conname IN ('chk_sessions_step_finished', 'chk_sessions_abandoned_step_not_finished') AND convalidated"), 2);
 }
 
 async function checkConstraints(db) {
@@ -218,7 +219,12 @@ async function checkConstraints(db) {
     await rejects(db, "UPDATE sessions SET status = 'FINISHED', outcome = 'ABANDONED', abandoned_at_step = 'AWAITING_SLOT', draft = NULL WHERE id = $1", [session.id], '23514');
     await rejects(db, "UPDATE sessions SET status = 'FINISHED', outcome = 'RESOLVED', abandoned_at_step = 'AWAITING_SLOT', draft = NULL WHERE id = $1", [session.id], '23514');
     const finished = (await db.query("INSERT INTO sessions(phone_hash, status, outcome, current_step) VALUES ('s2', 'FINISHED', 'SCHEDULED', 'FINISHED') RETURNING id")).rows[0].id;
-    await db.query("INSERT INTO sessions(phone_hash, status, outcome, current_step, abandoned_at_step) VALUES ('s3', 'ABANDONED', 'ABANDONED', 'AWAITING_HOLDER_CPF', 'AWAITING_HOLDER_CPF')");
+    await db.query("INSERT INTO sessions(phone_hash, status, outcome, current_step, abandoned_at_step) VALUES ('s3', 'ABANDONED', 'ABANDONED', 'FINISHED', 'AWAITING_HOLDER_CPF')");
+    await rejects(db, "UPDATE sessions SET current_step = 'FINISHED' WHERE id = $1", [session.id], '23514');
+    await rejects(db, "INSERT INTO sessions(phone_hash, current_step) VALUES ('s5', 'FINISHED')", [], '23514');
+    await rejects(db, "INSERT INTO sessions(phone_hash, status, outcome, current_step) VALUES ('s5', 'FINISHED', 'RESOLVED', 'AWAITING_QUESTION')", [], '23514');
+    await rejects(db, "INSERT INTO sessions(phone_hash, status, outcome, current_step, abandoned_at_step) VALUES ('s5', 'ABANDONED', 'ABANDONED', 'AWAITING_SLOT', 'AWAITING_SLOT')", [], '23514');
+    await rejects(db, "INSERT INTO sessions(phone_hash, status, outcome, current_step, abandoned_at_step) VALUES ('s5', 'ABANDONED', 'ABANDONED', 'FINISHED', 'FINISHED')", [], '23514');
     await rejects(db, 'UPDATE sessions SET draft = $1 WHERE id = $2', [{ holder_name: 'Maria' }, finished], '23514');
     await rejects(db, "UPDATE sessions SET draft = $1 WHERE phone_hash = 's3'", [{ holder_name: 'Maria' }], '23514');
     await rejects(db, "INSERT INTO sessions(phone_hash, status) VALUES ('s4', 'FINISHED')", [], '23514');
@@ -298,6 +304,9 @@ async function checkRollback(db, url) {
     mustMigrate(url, 'down', '1');
     assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
     assert.equal(await count(db, "SELECT 1 FROM pg_constraint WHERE conname LIKE 'chk_conversation_events_data_%'"), 1);
+    assert.equal(await count(db, "SELECT 1 FROM pg_constraint WHERE conname IN ('chk_sessions_step_finished', 'chk_sessions_abandoned_step_not_finished')"), 0);
+    await db.query("INSERT INTO sessions(phone_hash, current_step) VALUES ('old-step', 'FINISHED')");
+    await db.query("DELETE FROM sessions WHERE phone_hash = 'old-step'");
     const oldSession = (await db.query("INSERT INTO sessions(phone_hash) VALUES ('old-events') RETURNING id")).rows[0].id;
     await db.query("INSERT INTO conversationevents(session_id, type, data) VALUES ($1, 'STARTED', $2)", [oldSession, { note: 'texto livre' }]);
     await db.query('DELETE FROM sessions WHERE id = $1', [oldSession]);
@@ -319,6 +328,11 @@ async function checkRollback(db, url) {
     assert.equal(await count(db, "SELECT 1 FROM sessions WHERE phone_hash = 's1' AND status = 'IN_PROGRESS' AND current_step = 'AWAITING_CATEGORY'"), 1);
     assert.equal(await count(db, "SELECT 1 FROM sessions WHERE phone_hash = 's3' AND current_step = 'FINISHED'"), 1);
     assert.equal(await count(db, "SELECT 1 FROM pg_extension WHERE extname = 'unaccent'"), 0);
+    const blocked = migrate(url, 'up');
+    assert.notEqual(blocked.status, 0);
+    assert.match(blocked.stderr + blocked.stdout, /sessões com current_step ou abandoned_at_step = 'FINISHED' fora do contrato/);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 10);
+    await db.query("DELETE FROM sessions WHERE phone_hash = 's3'");
     mustMigrate(url, 'up');
     assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
     assert.deepEqual(await tableNames(db), expectedTables);
@@ -372,7 +386,7 @@ async function checkUpgradeWithSeed(db, url) {
     assert.deepEqual(sessions, [
         { phone_hash: 'in-progress', status: 'IN_PROGRESS', outcome: 'IN_PROGRESS', current_step: 'AWAITING_QUESTION', abandoned_at_step: null, current_category_id: category, backfilled: true, draft: null, list_page: 1 },
         { phone_hash: 'finished', status: 'FINISHED', outcome: 'RESOLVED', current_step: 'FINISHED', abandoned_at_step: null, current_category_id: null, backfilled: true, draft: null, list_page: 1 },
-        { phone_hash: 'abandoned', status: 'ABANDONED', outcome: 'ABANDONED', current_step: 'AWAITING_QUESTION', abandoned_at_step: 'AWAITING_QUESTION', current_category_id: category, backfilled: true, draft: null, list_page: 1 },
+        { phone_hash: 'abandoned', status: 'ABANDONED', outcome: 'ABANDONED', current_step: 'FINISHED', abandoned_at_step: 'AWAITING_QUESTION', current_category_id: category, backfilled: true, draft: null, list_page: 1 },
     ]);
 
     mustSeed(url);
@@ -475,6 +489,39 @@ async function checkConversationEventDataGuard(db, url) {
     assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
     assert.equal(await count(db, "SELECT 1 FROM pg_constraint WHERE conname LIKE 'chk_conversation_events_data_%'"), 1);
     await db.query('DELETE FROM conversationevents WHERE session_id = $1', [session]);
+    mustMigrate(url, 'up');
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
+}
+
+async function checkSessionStepUpgrade(db, url) {
+    mustMigrate(url, 'up', '12');
+    await db.query("INSERT INTO sessions(phone_hash, status, outcome, current_step) VALUES ('legacy-finished', 'FINISHED', 'RESOLVED', 'AWAITING_QUESTION')");
+    await db.query("INSERT INTO sessions(phone_hash, status, outcome, current_step, abandoned_at_step) VALUES ('legacy-abandoned', 'ABANDONED', 'ABANDONED', 'AWAITING_SLOT', 'AWAITING_SLOT')");
+    await db.query("INSERT INTO sessions(phone_hash, current_step) VALUES ('legacy-in-progress', 'AWAITING_QUESTION')");
+    mustMigrate(url, 'up');
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
+    assert.deepEqual((await db.query('SELECT phone_hash, status, current_step, abandoned_at_step FROM sessions ORDER BY id')).rows, [
+        { phone_hash: 'legacy-finished', status: 'FINISHED', current_step: 'FINISHED', abandoned_at_step: null },
+        { phone_hash: 'legacy-abandoned', status: 'ABANDONED', current_step: 'FINISHED', abandoned_at_step: 'AWAITING_SLOT' },
+        { phone_hash: 'legacy-in-progress', status: 'IN_PROGRESS', current_step: 'AWAITING_QUESTION', abandoned_at_step: null },
+    ]);
+}
+
+async function checkSessionStepGuard(db, url) {
+    mustMigrate(url, 'up', '12');
+    const assertAborts = async () => {
+        const result = migrate(url, 'up');
+        assert.notEqual(result.status, 0);
+        assert.match(result.stderr + result.stdout, /sessões com current_step ou abandoned_at_step = 'FINISHED' fora do contrato/);
+        assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
+        assert.equal(await count(db, "SELECT 1 FROM pg_constraint WHERE conname IN ('chk_sessions_step_finished', 'chk_sessions_abandoned_step_not_finished')"), 0);
+    };
+    await db.query("INSERT INTO sessions(phone_hash, current_step) VALUES ('stuck', 'FINISHED')");
+    await assertAborts();
+    await db.query("DELETE FROM sessions WHERE phone_hash = 'stuck'");
+    await db.query("INSERT INTO sessions(phone_hash, status, outcome, current_step, abandoned_at_step) VALUES ('abandoned-finished', 'ABANDONED', 'ABANDONED', 'FINISHED', 'FINISHED')");
+    await assertAborts();
+    await db.query("DELETE FROM sessions WHERE phone_hash = 'abandoned-finished'");
     mustMigrate(url, 'up');
     assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
 }
@@ -590,7 +637,7 @@ async function checkSeedBackfillWithHistory(db, url) {
         [category, question, draft],
     )).rows[0].id;
     await db.query("INSERT INTO sessions(phone_hash, status, outcome, current_step, current_category_id, current_question_id) VALUES ('backfill-finished', 'FINISHED', 'RESOLVED', 'FINISHED', $1, $2)", [category, question]);
-    await db.query("INSERT INTO sessions(phone_hash, status, outcome, current_step, abandoned_at_step, current_category_id, list_page) VALUES ('backfill-abandoned', 'ABANDONED', 'ABANDONED', 'AWAITING_QUESTION', 'AWAITING_QUESTION', $1, 2)", [category]);
+    await db.query("INSERT INTO sessions(phone_hash, status, outcome, current_step, abandoned_at_step, current_category_id, list_page) VALUES ('backfill-abandoned', 'ABANDONED', 'ABANDONED', 'FINISHED', 'AWAITING_QUESTION', $1, 2)", [category]);
     await db.query("INSERT INTO conversationevents(session_id, type, category_id, question_id) VALUES ($1, 'QUESTION_CHOSEN', $2, $3)", [inProgress, category, question]);
     await db.query('UPDATE categories SET position = 6 - position');
     await db.query(`UPDATE questions q SET position = c.n - 1 - q.position
@@ -714,6 +761,10 @@ async function main() {
         console.log('OK: migration 13 renames legacy event keys, rollback keeps them and reapply works');
         await withDatabase(admin, process.env.DB_TEST_URL, checkConversationEventDataGuard);
         console.log('OK: migration 13 aborts on event data outside the contract without applying anything');
+        await withDatabase(admin, process.env.DB_TEST_URL, checkSessionStepUpgrade);
+        console.log('OK: migration 13 moves closed sessions to current_step FINISHED keeping abandoned_at_step');
+        await withDatabase(admin, process.env.DB_TEST_URL, checkSessionStepGuard);
+        console.log('OK: migration 13 aborts on sessions with FINISHED outside the contract without applying anything');
         await withDatabase(admin, process.env.DB_TEST_URL, checkSeedFromScratch);
         console.log('OK: seed from scratch loads content, titles, order and initial config');
         await withDatabase(admin, process.env.DB_TEST_URL, checkSeedIdempotence);

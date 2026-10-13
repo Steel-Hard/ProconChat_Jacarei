@@ -18,6 +18,8 @@ export type SessionStep =
     | "AWAITING_CANCEL_CONFIRMATION"
     | "FINISHED"
 
+export type ActiveSessionStep = Exclude<SessionStep, "FINISHED">
+
 export type SessionOutcome =
     | "IN_PROGRESS"
     | "RESOLVED"
@@ -31,12 +33,12 @@ export type SessionOutcome =
 export interface ActiveSession {
     id: string
     created: boolean
-    currentStep: SessionStep
+    currentStep: ActiveSessionStep
     currentCategoryId: string | null
 }
 
 export interface NavigationState {
-    currentStep: SessionStep
+    currentStep: ActiveSessionStep
     currentCategoryId: string | null
 }
 
@@ -104,7 +106,7 @@ export const sessionRepository: SessionRepository = {
 
             const inserted = await client.query<{
                 id: string
-                current_step: SessionStep
+                current_step: ActiveSessionStep
                 current_category_id: string | null
             }>(
                 `INSERT INTO Sessions (phone_hash)
@@ -128,7 +130,7 @@ export const sessionRepository: SessionRepository = {
 
             const existing = await client.query<{
                 id: string
-                current_step: SessionStep
+                current_step: ActiveSessionStep
                 current_category_id: string | null
             }>(
                 `SELECT id, current_step, current_category_id FROM Sessions
