@@ -188,7 +188,7 @@ describe("conversationFlow.service", () => {
             type: "ANSWER_SENT",
             categoryId: perguntas[0]?.category_id,
             questionId: perguntas[0]?.id,
-            llmStatus: "NOT_CALLED",
+            llm: "NOT_CALLED",
         })
         expect(result).toEqual({
             sessionId: "s1",
@@ -303,7 +303,7 @@ describe("conversationFlow.service", () => {
         expect(JSON.stringify(recordEvent.mock.calls)).not.toContain(citizenText)
         expect(recordEvent.mock.calls).toContainEqual([
             "s1",
-            { type: "ANSWER_SENT", categoryId: 1, questionId: 10, llmStatus: "NOT_CALLED" },
+            { type: "ANSWER_SENT", categoryId: 1, questionId: 10, llm: "NOT_CALLED" },
         ])
     })
 
@@ -321,7 +321,7 @@ describe("conversationFlow.service", () => {
 
         expect(recordEvent).toHaveBeenCalledWith("s1", expect.objectContaining({
             type: "ANSWER_SENT",
-            llmStatus: "FAILED",
+            llm: "FAILED",
         }))
     })
 

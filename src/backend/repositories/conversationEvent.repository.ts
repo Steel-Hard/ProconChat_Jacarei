@@ -28,13 +28,13 @@ export const conversationEventRepository: ConversationEventRepository = {
 
         switch (event.type) {
             case "ANSWER_SENT":
-                data = { llmStatus: event.llmStatus }
+                data = { llm: event.llm }
                 break
             case "RESOLVED_ANSWERED":
                 data = { resolved: event.resolved }
                 break
             case "ATTENDEE_CHOSEN":
-                data = { byRepresentative: event.byRepresentative }
+                data = { by_representative: event.byRepresentative }
                 break
             case "ABANDONED":
                 data = { step: event.step }

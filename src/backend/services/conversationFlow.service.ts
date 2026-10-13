@@ -239,7 +239,7 @@ export function createConversationFlowService({
       type: "ANSWER_SENT",
       categoryId: pergunta.category_id,
       questionId: pergunta.id,
-      llmStatus: resposta.llm_status ?? "NOT_CALLED",
+      llm: resposta.llm_status ?? "NOT_CALLED",
     });
     await sessions.finish(sessionId, resposta.fora_de_escopo ? "OUT_OF_SCOPE" : "RESOLVED");
 

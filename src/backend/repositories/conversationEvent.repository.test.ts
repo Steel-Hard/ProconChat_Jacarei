@@ -18,7 +18,7 @@ describe("conversationEventRepository", () => {
             type: "ANSWER_SENT",
             categoryId: 10,
             questionId: 20,
-            llmStatus: "FAILED",
+            llm: "FAILED",
         })
 
         const [sql, values] = query.mock.calls[0] as [string, unknown[]]
@@ -30,7 +30,7 @@ describe("conversationEventRepository", () => {
             10,
             20,
             null,
-            JSON.stringify({ llmStatus: "FAILED" }),
+            JSON.stringify({ llm: "FAILED" }),
         ])
     })
 
@@ -39,9 +39,9 @@ describe("conversationEventRepository", () => {
             type: "ANSWER_SENT",
             categoryId: 10,
             questionId: 20,
-            llmStatus: "NOT_CALLED",
+            llm: "NOT_CALLED",
         })
 
-        expect(query.mock.calls[0]?.[1]?.[5]).toBe(JSON.stringify({ llmStatus: "NOT_CALLED" }))
+        expect(query.mock.calls[0]?.[1]?.[5]).toBe(JSON.stringify({ llm: "NOT_CALLED" }))
     })
 })
