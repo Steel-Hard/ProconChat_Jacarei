@@ -1,9 +1,6 @@
 import getPool from "../connection"
 import { seedInitialConfig } from "./config.seed"
 import { seedContent, SeedRowCounts } from "./content.seed"
-import { insertInitialUserAdmin } from "./admin.seed"
-
-
 
 const SEED_LOCK_KEY = 61061
 
@@ -20,14 +17,13 @@ async function run(): Promise<void> {
 
         const content = await seedContent(client)
         const config = await seedInitialConfig(client)
-        const admin = await insertInitialUserAdmin(client)
 
         await client.query("COMMIT")
 
         const configMessage =
             config === "created" ? "configuração inicial criada" : "configuração inicial já existe, mantida"
         console.log(
-            `Seed concluído. ${describeCounts("Categorias", content.categories)}. ${describeCounts("Perguntas", content.questions)}. Agenda e documentos: ${configMessage}. Administrador: ${admin === "created" ? "criado" : "já existia, mantido"}`
+            `Seed concluído. ${describeCounts("Categorias", content.categories)}. ${describeCounts("Perguntas", content.questions)}. Agenda e documentos: ${configMessage}.`
         )
     } catch (error) {
         await client.query("ROLLBACK")
