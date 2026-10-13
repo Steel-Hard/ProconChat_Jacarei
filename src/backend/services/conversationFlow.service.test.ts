@@ -178,17 +178,19 @@ describe("conversationFlow.service", () => {
 
         expect(escolherCategoria).toHaveBeenCalledWith(1)
         expect(processarPergunta).toHaveBeenCalledWith(perguntas[0]?.id)
-        expect(finish).toHaveBeenCalledWith("s1", "RESOLVED")
         expect(recordEvent).toHaveBeenCalledWith("s1", {
             type: "QUESTION_CHOSEN",
             categoryId: perguntas[0]?.category_id,
             questionId: perguntas[0]?.id,
         })
-        expect(recordEvent).toHaveBeenCalledWith("s1", {
-            type: "ANSWER_SENT",
-            categoryId: perguntas[0]?.category_id,
-            questionId: perguntas[0]?.id,
-            llm: "NOT_CALLED",
+        expect(finish).toHaveBeenCalledWith("s1", {
+            outcome: "RESOLVED",
+            event: {
+                type: "ANSWER_SENT",
+                categoryId: perguntas[0]?.category_id,
+                questionId: perguntas[0]?.id,
+                llm: "NOT_CALLED",
+            },
         })
         expect(result).toEqual({
             sessionId: "s1",
@@ -257,7 +259,7 @@ describe("conversationFlow.service", () => {
         const third = await processIncomingMessage({ phone: "5511999999999", text: "1" })
         expect(third.sessionId).toBe("s1")
         expect(third.reply.step).toBe("FINISHED")
-        expect(finish).toHaveBeenCalledWith("s1", "RESOLVED")
+        expect(finish).toHaveBeenCalledWith("s1", expect.objectContaining({ outcome: "RESOLVED" }))
     })
 
     test("eventos guardam estado tipado sem persistir texto livre do cidadão", async () => {
@@ -301,9 +303,13 @@ describe("conversationFlow.service", () => {
         await processIncomingMessage({ phone: "5511999999999", text: "1" })
 
         expect(JSON.stringify(recordEvent.mock.calls)).not.toContain(citizenText)
-        expect(recordEvent.mock.calls).toContainEqual([
+        expect(JSON.stringify(finish.mock.calls)).not.toContain(citizenText)
+        expect(finish.mock.calls).toContainEqual([
             "s1",
-            { type: "ANSWER_SENT", categoryId: 1, questionId: 10, llm: "NOT_CALLED" },
+            {
+                outcome: "RESOLVED",
+                event: { type: "ANSWER_SENT", categoryId: 1, questionId: 10, llm: "NOT_CALLED" },
+            },
         ])
     })
 
@@ -319,9 +325,8 @@ describe("conversationFlow.service", () => {
 
         await processIncomingMessage({ phone: "5511999999999", text: "1" })
 
-        expect(recordEvent).toHaveBeenCalledWith("s1", expect.objectContaining({
-            type: "ANSWER_SENT",
-            llm: "FAILED",
+        expect(finish).toHaveBeenCalledWith("s1", expect.objectContaining({
+            event: expect.objectContaining({ type: "ANSWER_SENT", llm: "FAILED" }),
         }))
     })
 
@@ -340,6 +345,6 @@ describe("conversationFlow.service", () => {
 
         await processIncomingMessage({ phone: "5511999999999", text: "1" })
 
-        expect(finish).toHaveBeenCalledWith("s1", "OUT_OF_SCOPE")
+        expect(finish).toHaveBeenCalledWith("s1", expect.objectContaining({ outcome: "OUT_OF_SCOPE" }))
     })
 })

@@ -1,4 +1,8 @@
 import getPool from "../db/connection"
+import InternalServerError from "../errors/InternalServerError"
+import type { SessionClosing } from "../types/conversationEvent.types"
+import { isClosingCompatible } from "../utils/conversationEventData"
+import { insertConversationEvent, Queryable } from "./conversationEvent.repository"
 
 export type SessionStep =
     | "AWAITING_CATEGORY"
@@ -15,6 +19,7 @@ export type SessionStep =
     | "FINISHED"
 
 export type SessionOutcome =
+    | "IN_PROGRESS"
     | "RESOLVED"
     | "SCHEDULED"
     | "OUT_OF_SCOPE"
@@ -39,7 +44,30 @@ export interface SessionRepository {
     findOrCreateActive(phoneHash: string): Promise<ActiveSession>
     updateNavigationState(sessionId: string, state: NavigationState): Promise<void>
     touch(sessionId: string): Promise<void>
-    finish(sessionId: string, outcome: SessionOutcome): Promise<void>
+    finish(sessionId: string, closing: SessionClosing): Promise<void>
+}
+
+export async function finishSessionWith(
+    db: Queryable,
+    sessionId: string,
+    closing: SessionClosing,
+): Promise<void> {
+    if (!isClosingCompatible(closing)) {
+        throw new InternalServerError("Closing event does not match the session outcome")
+    }
+
+    await insertConversationEvent(db, sessionId, closing.event)
+
+    const result = await db.query(
+        `UPDATE Sessions
+         SET status = 'FINISHED', outcome = $2, ended_at = now(),
+             last_interaction_at = now(), current_step = 'FINISHED', draft = NULL
+         WHERE id = $1 AND status = 'IN_PROGRESS'`,
+        [sessionId, closing.outcome],
+    )
+    if (result.rowCount !== 1) {
+        throw new Error("Conversation session was changed or finished")
+    }
 }
 
 export const sessionRepository: SessionRepository = {
@@ -49,7 +77,7 @@ export const sessionRepository: SessionRepository = {
             await client.query("BEGIN")
             await client.query(
                 `WITH stale AS (
-                    SELECT id, current_step
+                    SELECT id, current_step, last_interaction_at
                     FROM Sessions
                     WHERE phone_hash = $1
                       AND status = 'IN_PROGRESS'
@@ -61,9 +89,9 @@ export const sessionRepository: SessionRepository = {
                     SET status = 'ABANDONED',
                         outcome = 'ABANDONED',
                         abandoned_at_step = stale.current_step,
-                        ended_at = now(),
-                        last_interaction_at = now(),
-                        current_step = 'FINISHED'
+                        ended_at = stale.last_interaction_at + interval '30 minutes',
+                        current_step = 'FINISHED',
+                        draft = NULL
                     FROM stale
                     WHERE session.id = stale.id
                     RETURNING session.id, stale.current_step
@@ -88,6 +116,7 @@ export const sessionRepository: SessionRepository = {
 
             const created = inserted.rows[0]
             if (created) {
+                await insertConversationEvent(client, created.id, { type: "STARTED" })
                 await client.query("COMMIT")
                 return {
                     id: created.id,
@@ -158,17 +187,17 @@ export const sessionRepository: SessionRepository = {
         }
     },
 
-    async finish(sessionId: string, outcome: SessionOutcome): Promise<void> {
-        const pool = getPool()
-        const result = await pool.query(
-            `UPDATE Sessions
-             SET status = 'FINISHED', outcome = $2, ended_at = now(),
-                 last_interaction_at = now(), current_step = 'FINISHED'
-             WHERE id = $1 AND status = 'IN_PROGRESS'`,
-            [sessionId, outcome],
-        )
-        if (result.rowCount !== 1) {
-            throw new Error("Conversation session was changed or finished")
+    async finish(sessionId: string, closing: SessionClosing): Promise<void> {
+        const client = await getPool().connect()
+        try {
+            await client.query("BEGIN")
+            await finishSessionWith(client, sessionId, closing)
+            await client.query("COMMIT")
+        } catch (error) {
+            await client.query("ROLLBACK")
+            throw error
+        } finally {
+            client.release()
         }
     },
 }

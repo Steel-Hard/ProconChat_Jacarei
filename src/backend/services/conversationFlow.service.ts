@@ -235,13 +235,15 @@ export function createConversationFlowService({
 
     const resposta = await motor.processarPergunta(pergunta.id);
 
-    await events.record(sessionId, {
-      type: "ANSWER_SENT",
-      categoryId: pergunta.category_id,
-      questionId: pergunta.id,
-      llm: resposta.llm_status ?? "NOT_CALLED",
+    await sessions.finish(sessionId, {
+      outcome: resposta.fora_de_escopo ? "OUT_OF_SCOPE" : "RESOLVED",
+      event: {
+        type: "ANSWER_SENT",
+        categoryId: pergunta.category_id,
+        questionId: pergunta.id,
+        llm: resposta.llm_status ?? "NOT_CALLED",
+      },
     });
-    await sessions.finish(sessionId, resposta.fora_de_escopo ? "OUT_OF_SCOPE" : "RESOLVED");
 
     return {
       sessionId,
