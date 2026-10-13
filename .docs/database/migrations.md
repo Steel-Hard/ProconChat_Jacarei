@@ -12,10 +12,12 @@ numerados sozinhos ainda precisariam de histórico, transações e locking.
 Referências: [ferramenta](https://github.com/salsita/node-pg-migrate/tree/v8.0.4),
 [CLI](https://salsita.github.io/node-pg-migrate/cli).
 
-Existem 12 migrations em `src/backend/db/migrations`: `01` a `07` criam as
+Existem 13 migrations em `src/backend/db/migrations`: `01` a `07` criam as
 tabelas da Sprint 1, `08`, `09` e `010` ajustam `Sessions`,
-`11_sprint2_schema.sql` é o schema da Sprint 2 (#52) e
-`12_short_text_checks.sql` ajusta o limite dos títulos curtos (#61). O que cada uma faz está
+`11_sprint2_schema.sql` é o schema da Sprint 2 (#52),
+`12_short_text_checks.sql` ajusta o limite dos títulos curtos (#61) e
+`13_conversation_events_data_checks.sql` limita as chaves e os valores de
+`ConversationEvents.data` (#16). O que cada uma faz está
 em [`database.md`](database.md#histórico-das-migrations). Os nomes sem aspas
 são convertidos para minúsculas pelo PostgreSQL (por exemplo,
 `RequiredDocuments` vira `requireddocuments`). Cada migration tem
@@ -24,7 +26,7 @@ são convertidos para minúsculas pelo PostgreSQL (por exemplo,
 **Numeração.** O node-pg-migrate 8 ordena os arquivos pelo **prefixo lido como
 número**, não como texto: `010_alter_sessions.sql` é a versão 10, e um arquivo
 `10_...` empataria com ela. Por isso a migration da Sprint 2 é a `11_`, e a
-**próxima livre é `13_`**. Não renomeie a `010`: ela já está registrada com esse
+**próxima livre é `14_`**. Não renomeie a `010`: ela já está registrada com esse
 nome em `pgmigrations` nos bancos existentes. O executor imprime
 `Can't determine timestamp for 01` (e os demais prefixos), pois seu formato
 padrão é timestamp. Esse aviso não impede a execução.
@@ -74,7 +76,7 @@ npm run db:migrate
 ```
 
 O comando gera um timestamp: antes de aplicar o arquivo, substitua esse prefixo
-pelo próximo número disponível (hoje `13_`), sem repetir números.
+pelo próximo número disponível (hoje `14_`), sem repetir números.
 Preencha os blocos up/down do arquivo gerado. Nunca edite uma migration já
 aplicada em ambiente compartilhado: adicione uma nova versão. `db/schema` tem o
 `CREATE TABLE` consolidado de cada tabela no estado atual, e deve ser atualizado
@@ -129,7 +131,7 @@ npm run test:db
 O teste cria bancos temporários com nome aleatório e os remove ao terminar;
 não limpa o banco informado. Ele cobre estes cenários:
 
-- **Do zero:** `up` aplica as 12 migrations; as tabelas públicas são exatamente
+- **Do zero:** `up` aplica as 13 migrations; as tabelas públicas são exatamente
   as do schema atual (`interactions` não existe); cada enum tem os valores
   esperados (`appointment_status` 5, `session_outcome` 8, `session_step` 12);
   `users.session_version` é `integer not null default 0`; `short_title` é
@@ -137,11 +139,17 @@ não limpa o banco informado. Ele cobre estes cenários:
   `up` não muda nada. Depois, cada constraint da migration `11` é exercitada
   com um caso inválido (código `23514` para `CHECK`, `23505` para unicidade,
   `23502` para `NOT NULL`, `P0001` para o trigger de `AppointmentNotes`) e um
-  válido. Por fim, `down 1` volta à versão 10 (`interactions` de volta,
-  `appointment_status` com 3 valores, etapas novas mapeadas), em dois passos:
-  o primeiro `down 1` desfaz só a `12` (os `CHECK` de tamanho voltam a aceitar
-  espaço nas pontas) e o segundo desfaz a `11`. Depois `up` reaplica,
-  `down 12` deixa só `pgmigrations` e `up` reaplica tudo. Os `CHECK` da `12`
+  válido. Os `CHECK` da `13` aceitam o `data` de cada tipo de evento do
+  contrato e recusam com `23514` chave fora da lista do tipo (inclusive as
+  antigas `llmStatus` e `byRepresentative`), texto livre em `llm`, `reason` e
+  `step`, `step` igual a `FINISHED`, booleano em string e `from`/`to` que não
+  são data ISO 8601 com fuso. Por fim, a volta à versão 10 (`interactions` de
+  volta, `appointment_status` com 3 valores, etapas novas mapeadas) é feita em
+  três passos: o primeiro `down 1` desfaz só a `13` (sobra só
+  `chk_conversation_events_data_object` e um evento com chave livre volta a
+  ser aceito), o segundo desfaz a `12` (os `CHECK` de tamanho voltam a aceitar
+  espaço nas pontas) e o terceiro desfaz a `11`. Depois `up` reaplica,
+  `down 13` deixa só `pgmigrations` e `up` reaplica tudo. Os `CHECK` da `12`
   recusam título curto com espaço nas pontas ou com 25 caracteres e aceitam 24.
 - **Sobre a versão 10 com o conteúdo do seed:** `up 10`, carga dos dados de
   `db/seeds/data` com as colunas da versão 10, sessões `IN_PROGRESS`,
@@ -155,6 +163,13 @@ não limpa o banco informado. Ele cobre estes cenários:
   sem nada aplicado.
 - **Normalização da `12`:** um título e uma descrição curta com espaço nas
   pontas, gravados na versão 11, ficam aparados depois do `up`.
+- **Chaves antigas na `13`:** eventos gravados na versão 12 com
+  `{ "llmStatus": ... }` e `{ "byRepresentative": ... }` passam a
+  `{ "llm": ... }` e `{ "by_representative": ... }` depois do `up`; o `down 1`
+  mantém as chaves novas e o `up` seguinte funciona.
+- **Guarda da `13`:** num banco na versão 12 com um evento cujo `data` tem
+  texto livre, o `up` falha com a mensagem da guarda, a versão continua 12 e
+  nenhum `CHECK` novo fica; depois de apagar a linha, o `up` funciona.
 - **Seed:** do zero (7 categorias, 47 perguntas, títulos, ordem, `llm_allowed`,
   documentos e configuração inicial iguais aos arquivos de dados, `BlockedDates`
   vazia); idempotência (retrato completo das tabelas semeadas igual depois da

@@ -3,7 +3,7 @@
 > Persistência única em PostgreSQL, compartilhada entre o chatbot e o painel ([`../architecture/architecture.md`](../architecture/architecture.md)).
 >
 > Este documento tem duas partes:
-> 1. **[Schema atual](#parte-1--schema-atual-implementado)**: o que existe depois das migrations `01` a `09`, `010`, `11` e `12` (a `11_sprint2_schema.sql` é o schema da Sprint 2, issue #52; a `12_short_text_checks.sql` ajusta o limite dos títulos curtos, issue #61).
+> 1. **[Schema atual](#parte-1--schema-atual-implementado)**: o que existe depois das migrations `01` a `09`, `010`, `11`, `12` e `13` (a `11_sprint2_schema.sql` é o schema da Sprint 2, issue #52; a `12_short_text_checks.sql` ajusta o limite dos títulos curtos, issue #61; a `13_conversation_events_data_checks.sql` limita as chaves e os valores de `ConversationEvents.data`, issue #16).
 > 2. **[Schema planejado](#parte-2--schema-planejado-sprint-3)**: o que ainda falta criar, com a issue de cada parte.
 >
 > Antes de mexer no banco, leia também o SQL em `src/backend/db/schema/` e as convenções em [`migrations.md`](migrations.md): **toda mudança é uma migration nova**, nunca edição de migration antiga.
@@ -24,6 +24,7 @@
 | `010` | `current_category_id` com `ON DELETE SET NULL`, para o seed conseguir apagar categorias. O prefixo é lido como número: `010` é a versão 10 |
 | `11` | Schema da Sprint 2 (#52): conta Admin, títulos curtos e ordem do conteúdo, desfecho e rascunho da sessão, `ConversationEvents` no lugar de `Interactions`, `Appointments` recriada com o ciclo de vida novo, observações e histórico do agendamento, agenda, documentos de atendimento e configuração do WhatsApp |
 | `12` | Títulos e descrições curtas medidos como gravados, sem espaço nas pontas (#61): apara os valores que já existiam e troca os três `CHECK` de tamanho, com os mesmos nomes |
+| `13` | Chaves e valores de `ConversationEvents.data` por tipo (#16): renomeia as chaves antigas `llmStatus` e `byRepresentative` das linhas que já existiam, aborta com mensagem clara se sobrar linha fora do contrato e cria `chk_conversation_events_data_keys` e `chk_conversation_events_data_values`. O `Down` remove só os dois `CHECK` |
 
 ### Diagrama
 
@@ -341,7 +342,52 @@ CREATE TABLE ConversationEvents (
     appointment_id BIGINT REFERENCES Appointments(id),
     data JSONB NOT NULL DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT chk_conversation_events_data_object CHECK (jsonb_typeof(data) = 'object')
+    CONSTRAINT chk_conversation_events_data_object CHECK (jsonb_typeof(data) = 'object'),
+    CONSTRAINT chk_conversation_events_data_keys CHECK (
+        jsonb_typeof(data) <> 'object'
+        OR (
+            data - CASE type
+                WHEN 'ANSWER_SENT' THEN ARRAY['llm']
+                WHEN 'RESOLVED_ANSWERED' THEN ARRAY['resolved']
+                WHEN 'SCHEDULE_OFFERED' THEN ARRAY['reason']
+                WHEN 'ATTENDEE_CHOSEN' THEN ARRAY['by_representative']
+                WHEN 'APPOINTMENT_RESCHEDULED' THEN ARRAY['from', 'to']
+                WHEN 'ABANDONED' THEN ARRAY['step']
+                ELSE ARRAY[]::text[]
+            END
+        ) = '{}'::jsonb
+    ),
+    CONSTRAINT chk_conversation_events_data_values CHECK (
+        jsonb_typeof(data) <> 'object'
+        OR (
+            (NOT data ? 'llm' OR (
+                jsonb_typeof(data -> 'llm') = 'string'
+                AND data ->> 'llm' IN ('NOT_CALLED', 'USED', 'FAILED')
+            ))
+            AND (NOT data ? 'reason' OR (
+                jsonb_typeof(data -> 'reason') = 'string'
+                AND data ->> 'reason' IN ('REQUIRES_IN_PERSON', 'NOT_RESOLVED')
+            ))
+            AND (NOT data ? 'step' OR (
+                jsonb_typeof(data -> 'step') = 'string'
+                AND data ->> 'step' IN (
+                    'AWAITING_CATEGORY', 'AWAITING_QUESTION', 'AWAITING_ANSWER', 'AWAITING_RESOLVED',
+                    'AWAITING_SCHEDULE_OFFER', 'AWAITING_ATTENDEE', 'AWAITING_HOLDER_NAME', 'AWAITING_HOLDER_CPF',
+                    'AWAITING_SLOT', 'AWAITING_RETURN_CHOICE', 'AWAITING_CANCEL_CONFIRMATION'
+                )
+            ))
+            AND (NOT data ? 'resolved' OR jsonb_typeof(data -> 'resolved') = 'boolean')
+            AND (NOT data ? 'by_representative' OR jsonb_typeof(data -> 'by_representative') = 'boolean')
+            AND (NOT data ? 'from' OR (
+                jsonb_typeof(data -> 'from') = 'string'
+                AND data ->> 'from' ~ '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,9})?)?(Z|[+-]\d{2}:\d{2})$'
+            ))
+            AND (NOT data ? 'to' OR (
+                jsonb_typeof(data -> 'to') = 'string'
+                AND data ->> 'to' ~ '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,9})?)?(Z|[+-]\d{2}:\d{2})$'
+            ))
+        )
+    )
 );
 
 CREATE INDEX idx_conversation_events_session ON ConversationEvents(session_id, created_at);
