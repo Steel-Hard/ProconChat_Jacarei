@@ -29,6 +29,23 @@ async function expire(sessionId: string): Promise<void> {
     )
 }
 
+async function waitForBlockedAbandonments(count: number): Promise<void> {
+    const deadline = Date.now() + 10_000
+    while (Date.now() < deadline) {
+        const blocked = await getPool().query<{ n: number }>(
+            `SELECT count(*)::int AS n FROM pg_stat_activity
+             WHERE datname = current_database()
+               AND wait_event_type = 'Lock'
+               AND query LIKE '%WITH stale AS%'`,
+        )
+        if ((blocked.rows[0]?.n ?? 0) >= count) {
+            return
+        }
+        await new Promise((resolve) => setTimeout(resolve, 20))
+    }
+    throw new Error("As mensagens simultâneas não chegaram a esperar pela linha travada")
+}
+
 describe("Abandono da sessão com Postgres", () => {
     beforeAll(async () => {
         await removeTestSessions()
@@ -43,14 +60,25 @@ describe("Abandono da sessão com Postgres", () => {
         const hash = phoneHash(phones.concurrent)
         const stale = await sessionRepository.findOrCreateActive(hash)
         await expire(stale.id)
+        const holder = await getPool().connect()
+        let results: Awaited<ReturnType<typeof sessionRepository.findOrCreateActive>>[]
+        try {
+            await holder.query("BEGIN")
+            await holder.query("SELECT id FROM Sessions WHERE id = $1 FOR UPDATE", [stale.id])
+            const pending = Promise.all([
+                sessionRepository.findOrCreateActive(hash),
+                sessionRepository.findOrCreateActive(hash),
+            ])
+            await waitForBlockedAbandonments(2)
+            await holder.query("COMMIT")
+            results = await pending
+        } finally {
+            holder.release()
+        }
+        const [first, second] = results
 
-        const [first, second] = await Promise.all([
-            sessionRepository.findOrCreateActive(hash),
-            sessionRepository.findOrCreateActive(hash),
-        ])
-
-        expect(first.id).toBe(second.id)
-        expect(first.id).not.toBe(stale.id)
+        expect(first?.id).toBe(second?.id)
+        expect(first?.id).not.toBe(stale.id)
         const inProgress = await getPool().query(
             "SELECT 1 FROM Sessions WHERE phone_hash = $1 AND status = 'IN_PROGRESS'",
             [hash],

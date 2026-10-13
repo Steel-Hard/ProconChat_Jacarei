@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, test, vi } from "vitest"
 import app from "../../app"
 import getPool from "../../db/connection"
 import { conversationEventRepository } from "../../repositories/conversationEvent.repository"
+import type { Queryable } from "../../repositories/conversationEvent.repository"
 import { finishSessionWith, sessionRepository } from "../../repositories/session.repository"
 
 const sentinel = "Meu nome é Maria Fictícia e meu CPF é 000.000.000-00"
@@ -14,6 +15,7 @@ const phones = {
     abandoned: "5500000000993",
     transaction: "5500000000994",
     invalidRow: "5500000000995",
+    finishFails: "5500000000996",
 }
 
 let categoryId = ""
@@ -286,6 +288,55 @@ describe("Eventos da conversa com Postgres", () => {
             })
             expect(JSON.stringify(error.mock.calls)).not.toContain("Maria")
         } finally {
+            error.mockRestore()
+        }
+    })
+
+    test("falha do encerramento no fluxo entrega a resposta e deixa a sessão IN_PROGRESS sem ANSWER_SENT", async () => {
+        const finish = vi.spyOn(sessionRepository, "finish").mockImplementation(async (sessionId, closing) => {
+            const client = await getPool().connect()
+            const failingOnSessionUpdate = {
+                query: (sql: string, values?: unknown[]) =>
+                    /UPDATE\s+Sessions/i.test(sql)
+                        ? Promise.reject(Object.assign(new Error("falha simulada"), { code: "57P01" }))
+                        : client.query(sql, values),
+            } as unknown as Queryable
+            try {
+                await client.query("BEGIN")
+                await finishSessionWith(failingOnSessionUpdate, sessionId, closing)
+                await client.query("COMMIT")
+            } catch (error) {
+                await client.query("ROLLBACK")
+                throw error
+            } finally {
+                client.release()
+            }
+        })
+        const error = vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+        try {
+            const sessionId = await talkUntilAnswer(phones.finishFails, "1")
+
+            expect(finish).toHaveBeenCalledOnce()
+            expect(await sessionOf(sessionId)).toEqual({
+                status: "IN_PROGRESS",
+                outcome: "IN_PROGRESS",
+                draft: null,
+                abandoned_at_step: null,
+                current_step: "AWAITING_QUESTION",
+            })
+            expect((await eventsOf(sessionId)).map((event) => event.type)).toEqual([
+                "STARTED",
+                "CATEGORY_CHOSEN",
+                "QUESTION_CHOSEN",
+            ])
+            expect(error).toHaveBeenCalledWith(expect.any(String), {
+                type: "ANSWER_SENT",
+                sessionId,
+                code: "57P01",
+            })
+        } finally {
+            finish.mockRestore()
             error.mockRestore()
         }
     })
