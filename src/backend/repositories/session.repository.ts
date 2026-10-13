@@ -20,16 +20,6 @@ export type SessionStep =
 
 export type ActiveSessionStep = Exclude<SessionStep, "FINISHED">
 
-export type SessionOutcome =
-    | "IN_PROGRESS"
-    | "RESOLVED"
-    | "SCHEDULED"
-    | "OUT_OF_SCOPE"
-    | "NO_SLOT"
-    | "DECLINED"
-    | "MANAGED_APPOINTMENT"
-    | "ABANDONED"
-
 export interface ActiveSession {
     id: string
     created: boolean
