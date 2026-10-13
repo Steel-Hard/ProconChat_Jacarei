@@ -71,7 +71,8 @@ const ABANDONED_STEPS: readonly AbandonedStep[] = [
     "AWAITING_CANCEL_CONFIRMATION",
 ]
 
-const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?(?:Z|[+-]\d{2}:\d{2})$/
+const ISO_DATETIME =
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,9})?)?(?:Z|[+-]\d{2}:\d{2})$/
 
 const CLOSING_EVENTS = new Map<string, (event: ConversationEvent) => boolean>([
     [
@@ -109,8 +110,35 @@ function isOneOf(list: readonly string[], value: unknown): boolean {
     return typeof value === "string" && list.includes(value)
 }
 
+function isCalendarDate(year: number, month: number, day: number): boolean {
+    const date = new Date(Date.UTC(year, month - 1, day))
+    return (
+        date.getUTCFullYear() === year &&
+        date.getUTCMonth() === month - 1 &&
+        date.getUTCDate() === day
+    )
+}
+
 function isDateTime(value: unknown): boolean {
-    return typeof value === "string" && ISO_DATETIME.test(value) && Number.isFinite(Date.parse(value))
+    if (typeof value !== "string") {
+        return false
+    }
+
+    const match = ISO_DATETIME.exec(value)
+    if (!match) {
+        return false
+    }
+
+    const [year = 0, month = 0, day = 0, hour = 0, minute = 0, second = 0] = match
+        .slice(1, 7)
+        .map((part) => Number(part ?? "0"))
+    return (
+        isCalendarDate(year, month, day) &&
+        hour <= 23 &&
+        minute <= 59 &&
+        second <= 59 &&
+        Number.isFinite(Date.parse(value))
+    )
 }
 
 function isValidValue(kind: FieldKind, value: unknown): boolean {

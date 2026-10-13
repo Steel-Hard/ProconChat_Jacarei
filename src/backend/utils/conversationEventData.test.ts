@@ -149,6 +149,78 @@ describe("buildConversationEventRow", () => {
             },
         ],
         [
+            "dia 31 de fevereiro",
+            {
+                type: "APPOINTMENT_RESCHEDULED",
+                appointmentId: 1,
+                from: "2030-01-01T12:00:00Z",
+                to: "2026-02-31T12:00:00Z",
+            },
+        ],
+        [
+            "29 de fevereiro em ano não bissexto",
+            {
+                type: "APPOINTMENT_RESCHEDULED",
+                appointmentId: 1,
+                from: "2030-01-01T12:00:00Z",
+                to: "2026-02-29T12:00:00Z",
+            },
+        ],
+        [
+            "dia 31 de abril",
+            {
+                type: "APPOINTMENT_RESCHEDULED",
+                appointmentId: 1,
+                from: "2030-01-01T12:00:00Z",
+                to: "2030-04-31T12:00:00-03:00",
+            },
+        ],
+        [
+            "mês zero",
+            {
+                type: "APPOINTMENT_RESCHEDULED",
+                appointmentId: 1,
+                from: "2030-01-01T12:00:00Z",
+                to: "2030-00-10T12:00:00Z",
+            },
+        ],
+        [
+            "dia zero",
+            {
+                type: "APPOINTMENT_RESCHEDULED",
+                appointmentId: 1,
+                from: "2030-01-01T12:00:00Z",
+                to: "2030-01-00T12:00:00Z",
+            },
+        ],
+        [
+            "hora 24:00",
+            {
+                type: "APPOINTMENT_RESCHEDULED",
+                appointmentId: 1,
+                from: "2030-01-01T12:00:00Z",
+                to: "2030-01-02T24:00:00Z",
+            },
+        ],
+        [
+            "minuto 60",
+            {
+                type: "APPOINTMENT_RESCHEDULED",
+                appointmentId: 1,
+                from: "2030-01-01T12:00:00Z",
+                to: "2030-01-02T12:60:00Z",
+            },
+        ],
+        [
+            "segundo 60",
+            {
+                type: "APPOINTMENT_RESCHEDULED",
+                appointmentId: 1,
+                from: "2030-01-01T12:00:00Z",
+                to: "2030-01-02T12:00:60Z",
+            },
+        ],
+        [
             "data em número",
             {
                 type: "APPOINTMENT_RESCHEDULED",
@@ -159,6 +231,22 @@ describe("buildConversationEventRow", () => {
         ],
     ])("rejeita %s sem gravar nada", (_label, event) => {
         expect(() => buildConversationEventRow("42", event)).toThrow(InternalServerError)
+    })
+
+    it.each([
+        ["2028-02-29T12:00:00Z"],
+        ["2030-12-31T23:59:59.999Z"],
+        ["2030-01-01T00:00-03:00"],
+        ["2030-04-30T23:59:59+05:30"],
+    ])("aceita a data limite válida %s", (to) => {
+        const row = buildConversationEventRow("42", {
+            type: "APPOINTMENT_RESCHEDULED",
+            appointmentId: 1,
+            from: "2030-01-01T12:00:00Z",
+            to,
+        })
+
+        expect(row.data).toEqual({ from: "2030-01-01T12:00:00Z", to })
     })
 
     it.each([["abc"], [""], ["1a"], [42], [null]])(

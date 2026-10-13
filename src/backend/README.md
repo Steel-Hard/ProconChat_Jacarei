@@ -139,7 +139,8 @@ Antes de qualquer consulta, `buildConversationEventRow` (`utils/conversationEven
   é texto só de dígitos;
 - `llm`, `reason` ou `step` fora da lista (`step` nunca é `FINISHED`);
 - `resolved` e `byRepresentative` que não são booleanos (`"true"` é recusado);
-- `from` e `to` que não são data ISO 8601 válida com fuso (`Z` ou `±hh:mm`).
+- `from` e `to` que não são data ISO 8601 válida com fuso (`Z` ou `±hh:mm`): o dia tem que existir no
+  mês (`2026-02-31` é recusado), a hora vai até `23`, e minuto e segundo até `59` (`24:00` é recusado).
 
 A mensagem do erro nunca repete o valor recebido. Os ids que o Postgres devolve como texto (`BIGINT`)
 precisam ser convertidos com `Number(...)` antes de entrar no evento.
@@ -147,7 +148,8 @@ precisam ser convertidos com `Number(...)` antes de entrar no evento.
 No banco, a migration `13_conversation_events_data_checks.sql` cria `chk_conversation_events_data_keys`
 (só as chaves da tabela acima, por tipo) e `chk_conversation_events_data_values` (listas fechadas de
 `llm`, `reason` e `step`, booleanos com `jsonb_typeof = 'boolean'` e `from`/`to` em texto no formato
-ISO 8601 com fuso). Um `INSERT` por fora do contrato falha com `23514`.
+ISO 8601 com fuso). Um `INSERT` por fora do contrato falha com `23514`. O banco confere só o formato
+de `from`/`to`; a data de calendário e a hora válidas são conferidas pela aplicação.
 
 ### Encerramento coerente com a decisão 008
 
