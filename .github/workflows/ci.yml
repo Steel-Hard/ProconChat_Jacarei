@@ -91,8 +91,6 @@ jobs:
       DB_TEST_URL: postgresql://proconchat:proconchat_ci@localhost:5432/proconchat
       PHONE_HASH_SECRET: ci-phone-hash-secret
       GATEWAY_INTERNAL_TOKEN: ci-internal-token
-      ADMIN_EMAIL: ci-admin@procon.test
-      ADMIN_PASSWORD: ci-admin-password-123
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
