@@ -118,4 +118,23 @@ describe("whatsappConfigStore", () => {
 
         expect(() => store.current()).toThrow(ServiceUnavailableError)
     })
+
+    test("o aviso de recarga durante uma busca em andamento faz a proxima carga buscar de novo", async () => {
+        const { store, getWhatsappConfig } = setup()
+        let resolveFirst!: (value: WhatsAppConfig) => void
+        getWhatsappConfig
+            .mockImplementationOnce(() => new Promise((resolve) => {
+                resolveFirst = resolve
+            }))
+            .mockResolvedValueOnce({ ...config, accessToken: "token-salvo-depois" })
+
+        const first = store.load()
+        store.invalidate()
+        resolveFirst(config)
+        await first
+        const loaded = await store.load()
+
+        expect(getWhatsappConfig).toHaveBeenCalledTimes(2)
+        expect(loaded.accessToken).toBe("token-salvo-depois")
+    })
 })

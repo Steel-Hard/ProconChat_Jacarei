@@ -28,17 +28,19 @@ export function createWhatsAppConfigStore({
     let loadedAt = 0
     let stale = true
     let inFlight: Promise<WhatsAppConfig> | undefined
+    let generation = 0
 
     function isFresh(): boolean {
         return cached !== undefined && !stale && now() - loadedAt < ttlMs
     }
 
     async function refresh(): Promise<WhatsAppConfig> {
+        const startedAt = generation
         try {
             const config = await backend.getWhatsappConfig()
             cached = config
             loadedAt = now()
-            stale = false
+            stale = startedAt !== generation
             return config
         } catch {
             logger.log(JSON.stringify({ event: "whatsapp_config_refresh_failed" }))
@@ -55,9 +57,12 @@ export function createWhatsAppConfigStore({
                 return Promise.resolve(cached)
             }
             if (!inFlight) {
-                inFlight = refresh().finally(() => {
-                    inFlight = undefined
+                const current = refresh().finally(() => {
+                    if (inFlight === current) {
+                        inFlight = undefined
+                    }
                 })
+                inFlight = current
             }
             return inFlight
         },
@@ -70,7 +75,9 @@ export function createWhatsAppConfigStore({
         },
 
         invalidate() {
+            generation += 1
             stale = true
+            inFlight = undefined
         },
     }
 }
