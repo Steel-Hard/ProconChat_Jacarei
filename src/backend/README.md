@@ -10,8 +10,8 @@ Backend do chatbot de orientação ao consumidor via WhatsApp (PROCON Jacareí).
 - `controllers/` — recebe a requisição HTTP, valida entrada básica, chama o service e formata a resposta (envelope `{ data }` ou erro via `next(error)`). Não acessa o banco diretamente.
 - `services/` — contém a lógica de negócio de cada recurso, sem depender do objeto `Request`/`Response` do Express.
 - `repositories/` — contratos e adaptadores de persistência; concentra o SQL e isola os services do PostgreSQL.
-- `errors/` — hierarquia de erros da aplicação: `AppError` (abstrata) e subclasses por status HTTP (`BadRequestError`, `NotFoundError`, `InternalServerError`). Lançar/`next()` uma dessas classes é o jeito padrão de sinalizar um erro esperado.
-- `middleware/` — middlewares do Express: `requestLogger.middleware.ts` (log estruturado por requisição) e `errorHandler.middleware.ts` (converte qualquer erro numa resposta JSON padronizada).
+- `errors/` — hierarquia de erros da aplicação: `AppError` (abstrata) e subclasses por status HTTP (`BadRequestError`, `UnauthorizedError`, `ForbiddenError`, `NotFoundError`, `TooManyRequestsError`, `InvalidOriginError`, `InvalidCurrentPasswordError`, `InternalServerError`). Lançar/`next()` uma dessas classes é o jeito padrão de sinalizar um erro esperado.
+- `middleware/` — middlewares do Express: `requestLogger.middleware.ts` (log estruturado por requisição, sem corpo nem cookies), `errorHandler.middleware.ts` (converte qualquer erro numa resposta JSON padronizada; corpo JSON malformado vira `400 BAD_REQUEST`), `trustedOrigin.middleware.ts` (proteção CSRF) e `auth.middleware.ts` (`requireAuth` e `requirePermission`).
 - `types/` — DTOs e formatos de resposta compartilhados (`successResponse.types.ts`, `errorResponse.types.ts`, tipos específicos de cada recurso).
 - `utils/` — utilitários que não pertencem a nenhum recurso específico, ex.: `validateEnv.ts` (validação de variáveis de ambiente obrigatórias na inicialização).
 - `db/` — `connection.ts`, conexão genérica ao PostgreSQL (via `pg`). Ainda não é usada por nenhuma rota — fica pronta para o primeiro recurso real que precisar de acesso ao banco.
@@ -30,6 +30,10 @@ Copie `.env.example` para `.env` e preencha:
 | `PORT` | Não (padrão `3000`) | Porta em que o servidor Express escuta. |
 | `PHONE_HASH_SECRET` | Sim | Segredo HMAC usado para que o telefone nunca seja persistido em texto puro. |
 | `GATEWAY_INTERNAL_TOKEN` | Sim | Token esperado no header `X-Internal-Token` das chamadas do Gateway WhatsApp (`src/gateway/`) a `POST /api/v1/whatsapp/sessions`. |
+| `AUTH_TOKEN_SECRET` | Sim, com 32 ou mais caracteres | Segredo HS256 dos cookies de sessão do painel. O servidor encerra na inicialização sem ele ou com ele curto. Trocar derruba todas as sessões. |
+| `FRONTEND_ORIGIN` | Não (padrão `http://localhost:5173`) | Origem exata do painel (esquema, host e porta, sem barra no fim), usada no CORS e na proteção CSRF. No Compose local é `http://localhost:8081`; em produção, `https://<SITE_ADDRESS>`. |
+| `ROOT_EMAIL` | Só no `seed`, enquanto não existe a conta Admin | E-mail da conta Admin criada pelo seed. |
+| `ROOT_PASSWORD` | Só no `seed` (enquanto não existe Admin) e no `admin:reset-password` | Senha da conta Admin, de 8 caracteres a 72 bytes em UTF-8. |
 
 ## Como rodar
 
@@ -56,6 +60,101 @@ docker compose --profile test run --rm --build backend-tests
 `POST /api/v1/whatsapp/sessions` recebe `{ phone, text? }` do Gateway WhatsApp
 (`src/gateway/`), autenticado pelo header `X-Internal-Token`, e cria ou reutiliza uma sessão
 guardando somente o HMAC do telefone (nunca o número em texto puro).
+
+## Autenticação do painel
+
+Contas e permissões seguem a decisão 004. A sessão viaja **só** em cookies `HttpOnly`: nenhuma
+resposta traz token no corpo, nenhum token chega ao JavaScript do navegador e o cabeçalho
+`Authorization: Bearer` é ignorado.
+
+### Cookies
+
+| Cookie | Conteúdo | Atributos | Vida |
+| --- | --- | --- | --- |
+| `proconchat_access` | JWT HS256 `{ sub, sessionVersion, typ: "access" }` | `HttpOnly`, `SameSite=Strict`, `Path=/`, `Secure` com `NODE_ENV=production` | 1 hora |
+| `proconchat_refresh` | JWT HS256 `{ sub, sessionVersion, typ: "refresh" }` | `HttpOnly`, `SameSite=Strict`, `Path=/api/v1/auth`, `Secure` com `NODE_ENV=production` | 90 dias a contar do login (ou da troca de senha), sem deslizar |
+
+Um token do `typ` errado é recusado. As respostas de `/api/v1/auth` levam `Cache-Control: no-store`.
+A imagem Docker roda com `NODE_ENV=production`, então os cookies saem `Secure` também no Compose
+local. Chrome e Firefox aceitam cookie `Secure` em `http://localhost`; o **Safari não guarda**, então
+use outro navegador para testar o painel local pelo Compose.
+
+### Rotas
+
+| Rota | Autenticação | Sucesso | Erros |
+| --- | --- | --- | --- |
+| `POST /api/v1/auth/login` `{ email, password }` | nenhuma | `200 { data: { user } }` + os dois cookies | `400 BAD_REQUEST`; `401 UNAUTHORIZED` (mensagem única para e-mail inexistente, senha errada ou conta inativa); `429 TOO_MANY_REQUESTS` com `Retry-After`; `403 INVALID_ORIGIN` |
+| `POST /api/v1/auth/refresh` | cookie de refresh | `204` + novo cookie de acesso (o de refresh não muda) | `401 UNAUTHORIZED`, que limpa os dois cookies; `403 INVALID_ORIGIN` |
+| `POST /api/v1/auth/logout` | nenhuma | `204`, que limpa os dois cookies sempre, sem mudar `session_version` | `403 INVALID_ORIGIN` |
+| `GET /api/v1/auth/me` | cookie de acesso | `200 { data: { id, name, email, isAdmin, permissions } }` | `401 UNAUTHORIZED` |
+| `POST /api/v1/auth/change-password` `{ currentPassword, newPassword }` | cookie de acesso | `200 { data: { changed: true } }` + os dois cookies reemitidos | `400 BAD_REQUEST`; `400 INVALID_CURRENT_PASSWORD`; `401`; `403 INVALID_ORIGIN` |
+
+`user` tem o mesmo formato de `/auth/me`. O e-mail do login é comparado sem espaços nas pontas e em
+minúsculas. Toda tentativa de login executa uma comparação bcrypt, inclusive quando o e-mail não
+existe, para não revelar pelo tempo quais e-mails têm conta.
+
+### Senhas e revogação
+
+- Hash `bcryptjs` com custo 12. A senha tem de 8 caracteres a 72 bytes em UTF-8 (limite do bcrypt),
+  no seed, na troca e no script de redefinição. Uma senha acima de 72 bytes nunca confere no login.
+- A cada requisição, `requireAuth` confere a conta ativa (`active`) e a `session_version` gravada no
+  token. **Trocar a senha incrementa `session_version`**: as outras sessões caem, inclusive no
+  refresh, e a sessão atual recebe cookies novos. **Sair não incrementa**: só limpa os cookies do
+  navegador.
+- **Derrubar todas as sessões de todas as contas:** troque `AUTH_TOKEN_SECRET` e reinicie o backend.
+
+### Rotas do painel: `requireAuth` e `requirePermission`
+
+```ts
+router.get("/", requireAuth, requirePermission("appointments.view"), listAppointments)
+```
+
+- Sem cookie de acesso válido: `401 UNAUTHORIZED`. Sem a permissão: `403 FORBIDDEN`.
+- As 8 chaves (`types/auth.types.ts`, `.docs/database/database.md`): `appointments.view`,
+  `appointments.manage`, `content.manage`, `schedule.configure`, `documents.configure`,
+  `sessions.view`, `reports.view`, `users.manage`.
+- Na Sprint 2 só a conta Admin (`is_admin`) recebe as 8. As permissões das outras contas são da #62.
+
+### CSRF e CORS
+
+- `requireTrustedOrigin` é montado em `/api/v1` depois de `POST /api/v1/whatsapp/sessions` (servidor a
+  servidor, sem cookie) e antes de `/api/v1/auth`. **Toda rota nova sob `/api/v1` herda a
+  verificação** sem precisar lembrar dela.
+- Em `POST`, `PUT`, `PATCH` e `DELETE`, o `Origin` precisa ser igual a `FRONTEND_ORIGIN`. Sem `Origin`,
+  vale a origem do `Referer`. Sem os dois, ou com outro valor, a resposta é `403 INVALID_ORIGIN`, antes
+  da rota e do limitador. Por isso `curl` e scripts que mudam estado precisam mandar
+  `-H "Origin: <FRONTEND_ORIGIN>"`.
+- `GET`, `HEAD` e `OPTIONS` não passam pela verificação. **Uma rota `GET` nunca pode mudar estado.**
+- CORS só libera `FRONTEND_ORIGIN`, com `credentials: true`. Outra origem não recebe
+  `Access-Control-Allow-Origin`.
+- Limite: o `HttpOnly` impede que um XSS no painel **leia** o token, mas não que ele faça requisições
+  como o usuário enquanto a página está aberta. A defesa é não ter XSS no painel.
+
+### Limitador de tentativas
+
+- 5 falhas em 15 minutos pelo par IP + e-mail bloqueiam esse par por 15 minutos, mesmo com a senha
+  certa. 20 falhas em 15 minutos de um IP, em qualquer e-mail, bloqueiam o IP. A resposta é `429`
+  com `Retry-After` em segundos. Um login certo zera o contador do par.
+- O IP é o do cliente: `app.set("trust proxy", 1)` confia no `X-Forwarded-For` posto pelo Caddy. Em
+  produção o backend não publica porta. No `npm run dev` o cabeçalho pode ser forjado.
+- Os contadores ficam em memória: zeram quando o processo reinicia e valem para uma instância só.
+
+### Conta Admin e redefinição da senha
+
+- O `seed` cria a conta Admin (`name = 'Admin'`, `is_admin`) a partir de `ROOT_EMAIL` e
+  `ROOT_PASSWORD` só se ela ainda não existe (detalhes em `db/seeds/README.md`).
+- Não existe "esqueci minha senha" (decisão 004, item 8). Para redefinir a senha do Admin, troque
+  `ROOT_PASSWORD` e rode:
+
+  ```bash
+  npm run admin:reset-password
+  docker compose run --rm seed node dist/db/scripts/resetAdminPassword.js
+  ```
+
+  A primeira linha é para o ambiente local com `DB_URL`; a segunda, para o Compose. O script grava o
+  novo hash, incrementa `session_version` e registra `Senha do Admin redefinida`, sem e-mail nem
+  senha. Sem conta Admin, sai com código 1 e pede para rodar o seed. Em produção, veja
+  `.docs/infra/deploy.md`.
 
 ## Eventos da conversa
 
