@@ -1,18 +1,30 @@
 import { NextFunction, Request, Response, Router } from "express"
-import { changePassword, login, logout, me, refresh } from "../controllers/auth.controller"
+import AuthController from "../controllers/auth.controller"
 import { requireAuth } from "../middleware/auth.middleware"
 
-const router = Router()
+class AuthRoutes {
+    private authController: AuthController
+    private router: Router = Router()
 
-router.use((_req: Request, res: Response, next: NextFunction) => {
-    res.set("Cache-Control", "no-store")
-    next()
-})
+    constructor() {
+        this.authController = new AuthController()
 
-router.post("/login", login)
-router.post("/refresh", refresh)
-router.post("/logout", logout)
-router.get("/me", requireAuth, me)
-router.post("/change-password", requireAuth, changePassword)
+        this.router.use((_req: Request, res: Response, next: NextFunction) => {
+            res.set("Cache-Control", "no-store")
+            next()
+        })
 
-export default router
+        this.router.post("/login", this.authController.login.bind(this.authController))
+        this.router.post("/refresh", this.authController.refresh.bind(this.authController))
+        this.router.post("/logout", this.authController.logout.bind(this.authController))
+        this.router.get("/me", requireAuth, this.authController.me.bind(this.authController))
+        this.router.post("/change-password", requireAuth, this.authController.changePassword.bind(this.authController))
+    }
+
+    public getRouter(): Router {
+        return this.router
+    }
+}
+
+const authRoutes = new AuthRoutes().getRouter()
+export default authRoutes
