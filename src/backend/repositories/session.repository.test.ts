@@ -17,7 +17,7 @@ import { finishSessionWith, sessionRepository } from "./session.repository"
 
 const resolvedClosing: SessionClosing = {
     outcome: "RESOLVED",
-    event: { type: "ANSWER_SENT", categoryId: 1, questionId: 2, llm: "NOT_CALLED" },
+    event: { type: "RESOLVED_ANSWERED", resolved: true },
 }
 
 function sqlOf(call: unknown[] | undefined): string {
@@ -128,11 +128,11 @@ describe("sessionRepository", () => {
         expect(calls[1]).toMatch(/INSERT INTO ConversationEvents/i)
         expect(query.mock.calls[1]?.[1]).toEqual([
             "55",
-            "ANSWER_SENT",
-            1,
-            2,
+            "RESOLVED_ANSWERED",
             null,
-            JSON.stringify({ llm: "NOT_CALLED" }),
+            null,
+            null,
+            JSON.stringify({ resolved: true }),
         ])
         expect(calls[2]).toContain("status = 'FINISHED'")
         expect(calls[2]).toContain("current_step = 'FINISHED'")
@@ -202,5 +202,24 @@ describe("sessionRepository", () => {
         }
 
         await expect(finishSessionWith(db as never, "55", resolvedClosing)).rejects.toThrow()
+    })
+
+    it("sweepAbandonedSessions executa CTE de abandono e grava eventos para sessões inativas", async () => {
+        query
+            .mockResolvedValueOnce({ rows: [] }) // BEGIN
+            .mockResolvedValueOnce({ rows: [{ id: "10" }, { id: "11" }], rowCount: 2 }) // CTE
+            .mockResolvedValueOnce({ rows: [] }) // COMMIT
+
+        const count = await sessionRepository.sweepAbandonedSessions()
+
+        expect(count).toBe(2)
+        const [sweepSql] = query.mock.calls[1] as [string, unknown[]]
+        expect(sweepSql).toContain("last_interaction_at <= now() - interval '30 minutes'")
+        expect(sweepSql).toContain("status = 'ABANDONED'")
+        expect(sweepSql).toContain("outcome = 'ABANDONED'")
+        expect(sweepSql).toContain("abandoned_at_step = stale.current_step")
+        expect(sweepSql).toContain("draft = NULL")
+        expect(sweepSql).toContain("ended_at = stale.last_interaction_at + interval '30 minutes'")
+        expect(sweepSql).not.toMatch(/last_interaction_at\s*=\s*now\(\)/)
     })
 })

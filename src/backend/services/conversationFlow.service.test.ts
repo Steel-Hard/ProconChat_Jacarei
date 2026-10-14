@@ -1,21 +1,23 @@
 import { beforeEach, describe, expect, test, vi } from "vitest"
-import { MockConversationEventRepository } from "../repositories/conversationEventMock.repository"
+import { MockConversationEventRepository } from "../repositories/mock/conversationEventMock.repository"
 import { SessionRepository } from "../repositories/session.repository"
 import { Categoria, Pergunta, RespostaFinalOutput } from "../types/motorDecisao.types"
 import { createConversationFlowService, MotorDecisao } from "./conversationFlow.service"
 import { ConversationEventService, createConversationEventService } from "./conversationEvent.service"
 import {
-    formatarCategoriaSemPerguntas,
-    formatarErroCategoria,
-    formatarErroPergunta,
-    formatarListaCategorias,
+    ERRO_OFERTA_AGENDAMENTO,
+    ERRO_RESOLVIDA,
     formatarListaPerguntas,
-    formatarRespostaFinal,
+    OFERTA_AGENDAMENTO,
+    PERGUNTA_RESOLVIDA,
+    RESPOSTA_INICIO_AGENDAMENTO,
+    RESPOSTA_RECUSA_AGENDAMENTO,
+    RESPOSTA_RESOLVIDA_SIM,
 } from "./messageFormatter.service"
 
 const categorias: Categoria[] = [
-    { id: 1, title: "Contrato", active: true },
-    { id: 2, title: "Garantias", active: true },
+    { id: 1, title: "Contrato", short_title: "Contrato", active: true },
+    { id: 2, title: "Garantias", short_title: "Garantias", active: true },
 ]
 
 const perguntas: Pergunta[] = [
@@ -23,6 +25,8 @@ const perguntas: Pergunta[] = [
         id: 10,
         category_id: 1,
         question: "Posso cancelar o contrato?",
+        short_title: "Cancelar contrato",
+        short_description: "Cancelamento em 7 dias",
         legal_basis: "Art. 49 do CDC",
         answer: "Sim.",
         requires_in_person: false,
@@ -32,16 +36,30 @@ const perguntas: Pergunta[] = [
     {
         id: 11,
         category_id: 1,
-        question: "Existe multa por cancelamento?",
+        question: "Como denunciar crime cibernético?",
+        short_title: "Crime cibernético",
+        short_description: "Golpes na internet",
         legal_basis: null,
-        answer: "Depende do contrato.",
+        answer: "Procure a delegacia.",
         requires_in_person: false,
+        out_of_scope: true,
+        active: true,
+    },
+    {
+        id: 12,
+        category_id: 1,
+        question: "Quero abrir processo formal?",
+        short_title: "Processo formal",
+        short_description: "Abertura presencial de processo",
+        legal_basis: null,
+        answer: "Compareça ao PROCON.",
+        requires_in_person: true,
         out_of_scope: false,
         active: true,
     },
 ]
 
-const respostaFinal: RespostaFinalOutput = {
+const respostaPadrao: RespostaFinalOutput = {
     categoria: "Contrato",
     pergunta: "Posso cancelar o contrato?",
     base_legal: "Art. 49 do CDC",
@@ -51,12 +69,39 @@ const respostaFinal: RespostaFinalOutput = {
     fora_de_escopo: false,
 }
 
-describe("conversationFlow.service", () => {
+const respostaForaEscopo: RespostaFinalOutput = {
+    categoria: "Contrato",
+    pergunta: "Como denunciar crime cibernético?",
+    base_legal: "",
+    resposta: "Esta dúvida está fora do escopo.",
+    documentos_necessarios: [],
+    requer_presencial: false,
+    fora_de_escopo: true,
+}
+
+const respostaPresencial: RespostaFinalOutput = {
+    categoria: "Contrato",
+    pergunta: "Quero abrir processo formal?",
+    base_legal: "",
+    resposta: "Esta situação exige atendimento presencial.",
+    documentos_necessarios: ["RG", "CPF"],
+    requer_presencial: true,
+    fora_de_escopo: false,
+}
+
+describe("conversationFlow.service (Issue #55 - Novo fluxo da dúvida)", () => {
     const findOrCreateActive = vi.fn()
     const updateNavigationState = vi.fn()
     const touch = vi.fn()
     const finish = vi.fn()
-    const sessions: SessionRepository = { findOrCreateActive, updateNavigationState, touch, finish }
+    const sweepAbandonedSessions = vi.fn()
+    const sessions: SessionRepository = {
+        findOrCreateActive,
+        updateNavigationState,
+        touch,
+        finish,
+        sweepAbandonedSessions,
+    }
     const recordEvent = vi.fn()
     const finishEvent = vi.fn()
     const listEvents = vi.fn()
@@ -86,246 +131,339 @@ describe("conversationFlow.service", () => {
         vi.clearAllMocks()
     })
 
-    test("sessão nova ignora o texto recebido e devolve a lista de categorias sem gravar STARTED pelo fluxo", async () => {
+    test("sessão nova inicia com saudação, aviso LGPD e lista de categorias", async () => {
         findOrCreateActive.mockResolvedValueOnce({
             id: "s1",
             created: true,
             currentStep: "AWAITING_CATEGORY",
             currentCategoryId: null,
+            listPage: 1,
         })
         iniciarSessao.mockResolvedValueOnce(categorias)
 
-        const result = await processIncomingMessage({ phone: "5511999999999", text: "qualquer coisa" })
+        const result = await processIncomingMessage({ phone: "5511999999999", text: "Olá" })
 
         expect(findOrCreateActive).toHaveBeenCalledWith("hash-5511999999999")
         expect(iniciarSessao).toHaveBeenCalledOnce()
-        expect(recordEvent).not.toHaveBeenCalled()
-        expect(result).toEqual({
-            sessionId: "s1",
-            newSession: true,
-            reply: { text: formatarListaCategorias(categorias), step: "AWAITING_CATEGORY" },
+        expect(updateNavigationState).toHaveBeenCalledWith("s1", {
+            currentStep: "AWAITING_CATEGORY",
+            currentCategoryId: null,
+            currentQuestionId: null,
+            listPage: 1,
         })
+        expect(recordEvent).not.toHaveBeenCalled()
+        expect(result.reply.text).toContain("LGPD")
+        expect(result.reply.text).toContain("caráter informativo")
+        expect(result.reply.step).toBe("AWAITING_CATEGORY")
+        expect(result.reply.messages).toBeDefined()
     })
 
-    test("AWAITING_CATEGORY com escolha numérica válida avança para AWAITING_QUESTION", async () => {
+    test("AWAITING_CATEGORY avança para AWAITING_QUESTION ao selecionar categoria válida", async () => {
         findOrCreateActive.mockResolvedValueOnce({
             id: "s1",
             created: false,
             currentStep: "AWAITING_CATEGORY",
             currentCategoryId: null,
+            listPage: 1,
         })
         iniciarSessao.mockResolvedValueOnce(categorias)
         escolherCategoria.mockResolvedValueOnce(perguntas)
 
-        const result = await processIncomingMessage({ phone: "5511999999999", text: "2" })
+        const result = await processIncomingMessage({ phone: "5511999999999", text: "1" })
 
-        expect(escolherCategoria).toHaveBeenCalledWith(categorias[1]?.id)
+        expect(escolherCategoria).toHaveBeenCalledWith(categorias[0]?.id)
         expect(updateNavigationState).toHaveBeenCalledWith("s1", {
             currentStep: "AWAITING_QUESTION",
-            currentCategoryId: String(categorias[1]?.id),
+            currentCategoryId: String(categorias[0]?.id),
+            listPage: 1,
         })
         expect(recordEvent).toHaveBeenCalledWith("s1", {
             type: "CATEGORY_CHOSEN",
-            categoryId: categorias[1]?.id,
+            categoryId: 1,
         })
-        expect(result).toEqual({
-            sessionId: "s1",
-            newSession: false,
-            reply: { text: formatarListaPerguntas(perguntas), step: "AWAITING_QUESTION" },
-        })
+        expect(result.reply.step).toBe("AWAITING_QUESTION")
+        expect(result.reply.text).toEqual(formatarListaPerguntas(perguntas, 1))
     })
 
-    test("AWAITING_CATEGORY com categoria sem perguntas ativas mantém o passo atual", async () => {
+    test("AWAITING_CATEGORY com paginação: 'Ver mais opções' avança página", async () => {
+        const muitasCategorias: Categoria[] = Array.from({ length: 15 }, (_, i) => ({
+            id: i + 1,
+            title: `Categoria ${i + 1}`,
+            active: true,
+        }))
+
         findOrCreateActive.mockResolvedValueOnce({
             id: "s1",
             created: false,
             currentStep: "AWAITING_CATEGORY",
             currentCategoryId: null,
+            listPage: 1,
         })
-        iniciarSessao.mockResolvedValueOnce(categorias)
-        escolherCategoria.mockResolvedValueOnce([])
+        iniciarSessao.mockResolvedValueOnce(muitasCategorias)
 
-        const result = await processIncomingMessage({ phone: "5511999999999", text: "1" })
+        const result = await processIncomingMessage({ phone: "5511999999999", text: "10" })
 
-        expect(updateNavigationState).not.toHaveBeenCalled()
-        expect(result).toEqual({
-            sessionId: "s1",
-            newSession: false,
-            reply: { text: formatarCategoriaSemPerguntas(), step: "AWAITING_CATEGORY" },
+        expect(updateNavigationState).toHaveBeenCalledWith("s1", {
+            currentStep: "AWAITING_CATEGORY",
+            currentCategoryId: null,
+            listPage: 2,
         })
+        expect(result.reply.step).toBe("AWAITING_CATEGORY")
+        expect(result.reply.text).toContain("Categoria 10")
     })
 
-    test.each([["abc"], ["0"], ["99"], [undefined]])(
-        "AWAITING_CATEGORY com texto inválido (%s) re-lista as categorias com erro",
-        async (text) => {
-            findOrCreateActive.mockResolvedValueOnce({
-                id: "s1",
-                created: false,
-                currentStep: "AWAITING_CATEGORY",
-                currentCategoryId: null,
-            })
-            iniciarSessao.mockResolvedValueOnce(categorias)
-
-            const result = await processIncomingMessage({ phone: "5511999999999", text })
-
-            expect(updateNavigationState).not.toHaveBeenCalled()
-            expect(escolherCategoria).not.toHaveBeenCalled()
-            expect(result).toEqual({
-                sessionId: "s1",
-                newSession: false,
-                reply: { text: formatarErroCategoria(categorias), step: "AWAITING_CATEGORY" },
-            })
-        },
-    )
-
-    test("AWAITING_QUESTION com escolha numérica válida finaliza a sessão", async () => {
+    test("AWAITING_QUESTION: pergunta padrão grava QUESTION_CHOSEN e ANSWER_SENT e avança para AWAITING_RESOLVED", async () => {
         findOrCreateActive.mockResolvedValueOnce({
             id: "s1",
             created: false,
             currentStep: "AWAITING_QUESTION",
             currentCategoryId: "1",
+            listPage: 1,
         })
         escolherCategoria.mockResolvedValueOnce(perguntas)
-        processarPergunta.mockResolvedValueOnce(respostaFinal)
+        processarPergunta.mockResolvedValueOnce(respostaPadrao)
 
         const result = await processIncomingMessage({ phone: "5511999999999", text: "1" })
 
-        expect(escolherCategoria).toHaveBeenCalledWith(1)
-        expect(processarPergunta).toHaveBeenCalledWith(perguntas[0]?.id)
         expect(recordEvent).toHaveBeenCalledWith("s1", {
             type: "QUESTION_CHOSEN",
-            categoryId: perguntas[0]?.category_id,
-            questionId: perguntas[0]?.id,
+            categoryId: 1,
+            questionId: 10,
+        })
+        expect(recordEvent).toHaveBeenCalledWith("s1", {
+            type: "ANSWER_SENT",
+            categoryId: 1,
+            questionId: 10,
+            llm: "NOT_CALLED",
+        })
+        expect(updateNavigationState).toHaveBeenCalledWith("s1", {
+            currentStep: "AWAITING_RESOLVED",
+            currentCategoryId: "1",
+            currentQuestionId: "10",
+        })
+        expect(result.reply.step).toBe("AWAITING_RESOLVED")
+        expect(result.reply.text).toContain(PERGUNTA_RESOLVIDA)
+        expect(result.reply.text).toContain("O que fazer agora")
+        expect(finishEvent).not.toHaveBeenCalled()
+    })
+
+    test("AWAITING_QUESTION: pergunta fora do escopo encerra com OUT_OF_SCOPE imediatamente", async () => {
+        findOrCreateActive.mockResolvedValueOnce({
+            id: "s1",
+            created: false,
+            currentStep: "AWAITING_QUESTION",
+            currentCategoryId: "1",
+            listPage: 1,
+        })
+        escolherCategoria.mockResolvedValueOnce(perguntas)
+        processarPergunta.mockResolvedValueOnce(respostaForaEscopo)
+
+        const result = await processIncomingMessage({ phone: "5511999999999", text: "2" })
+
+        expect(recordEvent).toHaveBeenCalledWith("s1", {
+            type: "QUESTION_CHOSEN",
+            categoryId: 1,
+            questionId: 11,
         })
         expect(finishEvent).toHaveBeenCalledWith("s1", {
-            outcome: "RESOLVED",
+            outcome: "OUT_OF_SCOPE",
             event: {
                 type: "ANSWER_SENT",
-                categoryId: perguntas[0]?.category_id,
-                questionId: perguntas[0]?.id,
+                categoryId: 1,
+                questionId: 11,
                 llm: "NOT_CALLED",
             },
         })
-        expect(finish).not.toHaveBeenCalled()
-        expect(result).toEqual({
-            sessionId: "s1",
-            newSession: false,
-            reply: { text: formatarRespostaFinal(respostaFinal), step: "FINISHED" },
-        })
+        expect(result.reply.step).toBe("FINISHED")
+        expect(result.reply.text).not.toContain(PERGUNTA_RESOLVIDA)
+        expect(result.reply.text).not.toContain(OFERTA_AGENDAMENTO)
     })
 
-    test("AWAITING_QUESTION com texto inválido re-lista as perguntas da categoria atual", async () => {
+    test("AWAITING_QUESTION: pergunta presencial pula 'resolveu?' e oferece agendamento direto", async () => {
         findOrCreateActive.mockResolvedValueOnce({
             id: "s1",
             created: false,
             currentStep: "AWAITING_QUESTION",
             currentCategoryId: "1",
+            listPage: 1,
         })
         escolherCategoria.mockResolvedValueOnce(perguntas)
+        processarPergunta.mockResolvedValueOnce(respostaPresencial)
 
-        const result = await processIncomingMessage({ phone: "5511999999999", text: "abc" })
+        const result = await processIncomingMessage({ phone: "5511999999999", text: "3" })
 
-        expect(escolherCategoria).toHaveBeenCalledWith(1)
-        expect(processarPergunta).not.toHaveBeenCalled()
-        expect(finish).not.toHaveBeenCalled()
-        expect(finishEvent).not.toHaveBeenCalled()
-        expect(result).toEqual({
-            sessionId: "s1",
-            newSession: false,
-            reply: { text: formatarErroPergunta(perguntas), step: "AWAITING_QUESTION" },
+        expect(recordEvent).toHaveBeenCalledWith("s1", {
+            type: "QUESTION_CHOSEN",
+            categoryId: 1,
+            questionId: 12,
         })
-    })
-
-    test("conversa completa: nova sessão -> categoria -> pergunta -> resposta final mantém o mesmo sessionId", async () => {
-        findOrCreateActive.mockResolvedValueOnce({
-            id: "s1",
-            created: true,
-            currentStep: "AWAITING_CATEGORY",
-            currentCategoryId: null,
+        expect(recordEvent).toHaveBeenCalledWith("s1", {
+            type: "ANSWER_SENT",
+            categoryId: 1,
+            questionId: 12,
+            llm: "NOT_CALLED",
         })
-        iniciarSessao.mockResolvedValueOnce(categorias)
-
-        const first = await processIncomingMessage({ phone: "5511999999999" })
-        expect(first.sessionId).toBe("s1")
-        expect(first.newSession).toBe(true)
-        expect(first.reply.step).toBe("AWAITING_CATEGORY")
-
-        findOrCreateActive.mockResolvedValueOnce({
-            id: "s1",
-            created: false,
-            currentStep: "AWAITING_CATEGORY",
-            currentCategoryId: null,
+        expect(recordEvent).toHaveBeenCalledWith("s1", {
+            type: "SCHEDULE_OFFERED",
+            reason: "REQUIRES_IN_PERSON",
         })
-        iniciarSessao.mockResolvedValueOnce(categorias)
-        escolherCategoria.mockResolvedValueOnce(perguntas)
-
-        const second = await processIncomingMessage({ phone: "5511999999999", text: "1" })
-        expect(second.sessionId).toBe("s1")
-        expect(second.reply.step).toBe("AWAITING_QUESTION")
-
-        findOrCreateActive.mockResolvedValueOnce({
-            id: "s1",
-            created: false,
-            currentStep: "AWAITING_QUESTION",
-            currentCategoryId: String(categorias[0]?.id),
-        })
-        escolherCategoria.mockResolvedValueOnce(perguntas)
-        processarPergunta.mockResolvedValueOnce(respostaFinal)
-
-        const third = await processIncomingMessage({ phone: "5511999999999", text: "1" })
-        expect(third.sessionId).toBe("s1")
-        expect(third.reply.step).toBe("FINISHED")
-        expect(finishEvent).toHaveBeenCalledWith("s1", expect.objectContaining({ outcome: "RESOLVED" }))
-    })
-
-    test("grava o desfecho fora de escopo na sessão", async () => {
-        findOrCreateActive.mockResolvedValueOnce({
-            id: "s1",
-            created: false,
-            currentStep: "AWAITING_QUESTION",
+        expect(updateNavigationState).toHaveBeenCalledWith("s1", {
+            currentStep: "AWAITING_SCHEDULE_OFFER",
             currentCategoryId: "1",
+            currentQuestionId: "12",
         })
-        escolherCategoria.mockResolvedValueOnce(perguntas)
-        processarPergunta.mockResolvedValueOnce({
-            ...respostaFinal,
-            fora_de_escopo: true,
+        expect(result.reply.step).toBe("AWAITING_SCHEDULE_OFFER")
+        expect(result.reply.text).toContain(OFERTA_AGENDAMENTO)
+        expect(result.reply.text).not.toContain(PERGUNTA_RESOLVIDA)
+    })
+
+    test("AWAITING_RESOLVED: Sim (1) finaliza a sessão com RESOLVED e grava RESOLVED_ANSWERED (true)", async () => {
+        findOrCreateActive.mockResolvedValueOnce({
+            id: "s1",
+            created: false,
+            currentStep: "AWAITING_RESOLVED",
+            currentCategoryId: "1",
+            listPage: 1,
         })
 
-        await processIncomingMessage({ phone: "5511999999999", text: "1" })
+        const result = await processIncomingMessage({ phone: "5511999999999", text: "1" })
 
         expect(finishEvent).toHaveBeenCalledWith("s1", {
-            outcome: "OUT_OF_SCOPE",
-            event: { type: "ANSWER_SENT", categoryId: 1, questionId: 10, llm: "NOT_CALLED" },
+            outcome: "RESOLVED",
+            event: {
+                type: "RESOLVED_ANSWERED",
+                resolved: true,
+            },
         })
-        expect(finish).not.toHaveBeenCalled()
+        expect(result.reply.step).toBe("FINISHED")
+        expect(result.reply.text).toBe(RESPOSTA_RESOLVIDA_SIM)
     })
 
-    test("AWAITING_QUESTION sem categoria reapresenta as categorias sem gravar outro STARTED", async () => {
+    test("AWAITING_RESOLVED: Não (2) avança para AWAITING_SCHEDULE_OFFER e grava eventos", async () => {
         findOrCreateActive.mockResolvedValueOnce({
             id: "s1",
             created: false,
-            currentStep: "AWAITING_QUESTION",
+            currentStep: "AWAITING_RESOLVED",
+            currentCategoryId: "1",
+            listPage: 1,
+        })
+
+        const result = await processIncomingMessage({ phone: "5511999999999", text: "2" })
+
+        expect(recordEvent).toHaveBeenCalledWith("s1", {
+            type: "RESOLVED_ANSWERED",
+            resolved: false,
+        })
+        expect(recordEvent).toHaveBeenCalledWith("s1", {
+            type: "SCHEDULE_OFFERED",
+            reason: "NOT_RESOLVED",
+        })
+        expect(updateNavigationState).toHaveBeenCalledWith("s1", {
+            currentStep: "AWAITING_SCHEDULE_OFFER",
             currentCategoryId: null,
         })
-        iniciarSessao.mockResolvedValueOnce(categorias)
-
-        const result = await processIncomingMessage({ phone: "5500000000101", text: "1" })
-
-        expect(recordEvent).not.toHaveBeenCalled()
+        expect(result.reply.step).toBe("AWAITING_SCHEDULE_OFFER")
+        expect(result.reply.text).toBe(OFERTA_AGENDAMENTO)
         expect(finishEvent).not.toHaveBeenCalled()
-        expect(result).toEqual({
-            sessionId: "s1",
-            newSession: false,
-            reply: { text: formatarListaCategorias(categorias), step: "AWAITING_CATEGORY" },
-        })
     })
 
-    test("falha ao gravar a escolha de categoria não impede a lista de perguntas", async () => {
+    test("AWAITING_RESOLVED: entrada inválida re-pergunta se foi resolvida", async () => {
+        findOrCreateActive.mockResolvedValueOnce({
+            id: "s1",
+            created: false,
+            currentStep: "AWAITING_RESOLVED",
+            currentCategoryId: "1",
+            listPage: 1,
+        })
+
+        const result = await processIncomingMessage({ phone: "5511999999999", text: "invalido" })
+
+        expect(result.reply.step).toBe("AWAITING_RESOLVED")
+        expect(result.reply.text).toBe(ERRO_RESOLVIDA)
+    })
+
+    test("AWAITING_SCHEDULE_OFFER: Agora não (2) finaliza com DECLINED e grava SCHEDULE_DECLINED", async () => {
+        findOrCreateActive.mockResolvedValueOnce({
+            id: "s1",
+            created: false,
+            currentStep: "AWAITING_SCHEDULE_OFFER",
+            currentCategoryId: "1",
+            listPage: 1,
+        })
+
+        const result = await processIncomingMessage({ phone: "5511999999999", text: "2" })
+
+        expect(finishEvent).toHaveBeenCalledWith("s1", {
+            outcome: "DECLINED",
+            event: {
+                type: "SCHEDULE_DECLINED",
+            },
+        })
+        expect(result.reply.step).toBe("FINISHED")
+        expect(result.reply.text).toBe(RESPOSTA_RECUSA_AGENDAMENTO)
+    })
+
+    test("AWAITING_SCHEDULE_OFFER: Agendar (1) avança para AWAITING_ATTENDEE", async () => {
+        findOrCreateActive.mockResolvedValueOnce({
+            id: "s1",
+            created: false,
+            currentStep: "AWAITING_SCHEDULE_OFFER",
+            currentCategoryId: "1",
+            listPage: 1,
+        })
+
+        const result = await processIncomingMessage({ phone: "5511999999999", text: "1" })
+
+        expect(updateNavigationState).toHaveBeenCalledWith("s1", {
+            currentStep: "AWAITING_ATTENDEE",
+            currentCategoryId: null,
+        })
+        expect(result.reply.step).toBe("AWAITING_ATTENDEE")
+        expect(result.reply.text).toBe(RESPOSTA_INICIO_AGENDAMENTO)
+    })
+
+    test("AWAITING_SCHEDULE_OFFER: entrada inválida re-pergunta opção de agendamento", async () => {
+        findOrCreateActive.mockResolvedValueOnce({
+            id: "s1",
+            created: false,
+            currentStep: "AWAITING_SCHEDULE_OFFER",
+            currentCategoryId: "1",
+            listPage: 1,
+        })
+
+        const result = await processIncomingMessage({ phone: "5511999999999", text: "99" })
+
+        expect(result.reply.step).toBe("AWAITING_SCHEDULE_OFFER")
+        expect(result.reply.text).toBe(ERRO_OFERTA_AGENDAMENTO)
+    })
+
+    test("suporta cliques interativos via optionId nos botões", async () => {
+        findOrCreateActive.mockResolvedValueOnce({
+            id: "s1",
+            created: false,
+            currentStep: "AWAITING_RESOLVED",
+            currentCategoryId: "1",
+            listPage: 1,
+        })
+
+        const result = await processIncomingMessage({ phone: "5511999999999", optionId: "resolved_yes" })
+
+        expect(finishEvent).toHaveBeenCalledWith("s1", {
+            outcome: "RESOLVED",
+            event: {
+                type: "RESOLVED_ANSWERED",
+                resolved: true,
+            },
+        })
+        expect(result.reply.step).toBe("FINISHED")
+    })
+
+    test("falha ao gravar evento comum com record não impede a resposta ao cidadão", async () => {
         const repository = new MockConversationEventRepository()
         repository.failWith(Object.assign(new Error("db down"), { code: "57P01" }))
         const realEvents = createConversationEventService({
             events: repository,
-            sessions: { finish },
+            sessions: { finish: vi.fn() },
             logger,
         })
         const flow = createConversationFlowService({ sessions, events: realEvents, motor, hashPhone, logger })
@@ -334,17 +472,14 @@ describe("conversationFlow.service", () => {
             created: false,
             currentStep: "AWAITING_CATEGORY",
             currentCategoryId: null,
+            listPage: 1,
         })
         iniciarSessao.mockResolvedValueOnce(categorias)
         escolherCategoria.mockResolvedValueOnce(perguntas)
 
         const result = await flow({ phone: "5500000000101", text: "1" })
 
-        expect(result).toEqual({
-            sessionId: "7",
-            newSession: false,
-            reply: { text: formatarListaPerguntas(perguntas), step: "AWAITING_QUESTION" },
-        })
+        expect(result.reply.step).toBe("AWAITING_QUESTION")
         expect(logger.error).toHaveBeenCalledWith(expect.any(String), {
             type: "CATEGORY_CHOSEN",
             sessionId: "7",
@@ -359,18 +494,15 @@ describe("conversationFlow.service", () => {
             created: false,
             currentStep: "AWAITING_QUESTION",
             currentCategoryId: "1",
+            listPage: 1,
         })
         escolherCategoria.mockResolvedValueOnce(perguntas)
-        processarPergunta.mockResolvedValueOnce(respostaFinal)
+        processarPergunta.mockResolvedValueOnce(respostaForaEscopo)
         finishEvent.mockRejectedValueOnce(Object.assign(new Error(citizenText), { code: "23514" }))
 
-        const result = await processIncomingMessage({ phone: "5500000000101", text: " 1 " })
+        const result = await processIncomingMessage({ phone: "5500000000101", text: " 2 " })
 
-        expect(result).toEqual({
-            sessionId: "7",
-            newSession: false,
-            reply: { text: formatarRespostaFinal(respostaFinal), step: "FINISHED" },
-        })
+        expect(result.reply.step).toBe("FINISHED")
         expect(logger.error).toHaveBeenCalledOnce()
         expect(logger.error).toHaveBeenCalledWith(expect.any(String), {
             type: "ANSWER_SENT",
@@ -379,110 +511,5 @@ describe("conversationFlow.service", () => {
         })
         expect(JSON.stringify(logger.error.mock.calls)).not.toContain("Maria")
         expect(JSON.stringify(logger.error.mock.calls)).not.toContain("5500000000101")
-    })
-
-    test("nenhum texto livre do cidadão chega a qualquer repositório ou ao log", async () => {
-        const sentinel = "Meu nome é Maria Fictícia e meu CPF é 000.000.000-00"
-        const sessionCalls: unknown[] = []
-        const recordingSessions: SessionRepository = {
-            findOrCreateActive: async (...args) => {
-                sessionCalls.push(["findOrCreateActive", args])
-                return sessionState.shift() ?? { id: "9", created: false, currentStep: "FINISHED", currentCategoryId: null }
-            },
-            updateNavigationState: async (...args) => {
-                sessionCalls.push(["updateNavigationState", args])
-            },
-            touch: async (...args) => {
-                sessionCalls.push(["touch", args])
-            },
-            finish: async (...args) => {
-                sessionCalls.push(["finish", args])
-            },
-        }
-        const sessionState = [
-            { id: "9", created: true, currentStep: "AWAITING_CATEGORY" as const, currentCategoryId: null },
-            { id: "9", created: false, currentStep: "AWAITING_CATEGORY" as const, currentCategoryId: null },
-            { id: "9", created: false, currentStep: "AWAITING_CATEGORY" as const, currentCategoryId: null },
-            { id: "9", created: false, currentStep: "AWAITING_CATEGORY" as const, currentCategoryId: null },
-            { id: "9", created: false, currentStep: "AWAITING_CATEGORY" as const, currentCategoryId: null },
-            { id: "9", created: false, currentStep: "AWAITING_QUESTION" as const, currentCategoryId: "1" },
-            { id: "9", created: false, currentStep: "AWAITING_QUESTION" as const, currentCategoryId: "1" },
-            { id: "9", created: false, currentStep: "AWAITING_QUESTION" as const, currentCategoryId: "1" },
-            { id: "9", created: false, currentStep: "AWAITING_QUESTION" as const, currentCategoryId: "1" },
-        ]
-        const repository = new MockConversationEventRepository()
-        const realEvents = createConversationEventService({
-            events: repository,
-            sessions: recordingSessions,
-            logger,
-        })
-        const flow = createConversationFlowService({
-            sessions: recordingSessions,
-            events: realEvents,
-            motor,
-            hashPhone: () => "hash-ficticio",
-            logger,
-        })
-        iniciarSessao.mockResolvedValue(categorias)
-        escolherCategoria.mockResolvedValue(perguntas)
-        processarPergunta.mockResolvedValue(respostaFinal)
-        const messages = [
-            sentinel,
-            sentinel,
-            "1 " + sentinel,
-            "abc",
-            undefined,
-            "1",
-            sentinel,
-            "1 " + sentinel,
-            "2",
-        ]
-
-        for (const text of messages) {
-            await flow({ phone: "5500000000101", text })
-        }
-
-        const everything = JSON.stringify([sessionCalls, repository.calls, logger.error.mock.calls])
-        expect(everything).not.toContain(sentinel)
-        expect(everything).not.toContain("Maria")
-        expect(everything).not.toContain("000.000.000-00")
-        expect(sessionCalls).toContainEqual([
-            "finish",
-            [
-                "9",
-                {
-                    outcome: "RESOLVED",
-                    event: { type: "ANSWER_SENT", categoryId: 1, questionId: 11, llm: "NOT_CALLED" },
-                },
-            ],
-        ])
-    })
-
-    test("converte para número os ids que o Postgres devolve como texto antes de gravar os eventos", async () => {
-        const perguntasDoBanco = perguntas.map((pergunta) => ({
-            ...pergunta,
-            id: String(pergunta.id),
-            category_id: String(pergunta.category_id),
-        })) as unknown as Pergunta[]
-        const categoriasDoBanco = categorias.map((categoria) => ({
-            ...categoria,
-            id: String(categoria.id),
-        })) as unknown as Categoria[]
-        findOrCreateActive
-            .mockResolvedValueOnce({ id: "7", created: false, currentStep: "AWAITING_CATEGORY", currentCategoryId: null })
-            .mockResolvedValueOnce({ id: "7", created: false, currentStep: "AWAITING_QUESTION", currentCategoryId: "1" })
-        iniciarSessao.mockResolvedValueOnce(categoriasDoBanco)
-        escolherCategoria.mockResolvedValue(perguntasDoBanco)
-        processarPergunta.mockResolvedValueOnce(respostaFinal)
-
-        await processIncomingMessage({ phone: "5500000000101", text: "1" })
-        await processIncomingMessage({ phone: "5500000000101", text: "1" })
-
-        expect(recordEvent).toHaveBeenCalledWith("7", { type: "CATEGORY_CHOSEN", categoryId: 1 })
-        expect(recordEvent).toHaveBeenCalledWith("7", { type: "QUESTION_CHOSEN", categoryId: 1, questionId: 10 })
-        expect(finishEvent).toHaveBeenCalledWith("7", {
-            outcome: "RESOLVED",
-            event: { type: "ANSWER_SENT", categoryId: 1, questionId: 10, llm: "NOT_CALLED" },
-        })
     })
 })

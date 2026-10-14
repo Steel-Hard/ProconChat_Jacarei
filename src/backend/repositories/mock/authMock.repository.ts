@@ -1,5 +1,5 @@
-import { AuthenticatedUser, PERMISSIONS, UserCredentials } from "../types/auth.types"
-import { AuthRepository } from "./auth.repository.interface"
+import { AuthenticatedUser, PERMISSIONS, UserCredentials } from "../../types/auth.types"
+import { AuthRepository } from "../auth.repository.interface"
 
 export interface MockUserInput {
     id: number

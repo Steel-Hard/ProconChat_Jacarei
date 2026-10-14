@@ -7,14 +7,23 @@ export class PgMotorDecisaoRepository implements IMotorDecisaoRepository {
 
     async getCategoriasAtivas(): Promise<Categoria[]> {
         const result = await this.pool.query<Categoria>(
-            "SELECT id, title, active FROM Categories WHERE active = true ORDER BY id ASC"
+            `SELECT c.id, c.title, c.active
+             FROM Categories c
+             WHERE c.active = true
+               AND EXISTS (
+                   SELECT 1 FROM Questions q
+                   WHERE q.category_id = c.id AND q.active = true
+               )
+             ORDER BY c.position ASC, c.id ASC`
         )
         return result.rows
     }
 
     async getPerguntasAtivasPorCategoria(categoriaId: number): Promise<Pergunta[]> {
         const result = await this.pool.query<Pergunta>(
-            "SELECT * FROM Questions WHERE category_id = $1 AND active = true ORDER BY id ASC",
+            `SELECT * FROM Questions
+             WHERE category_id = $1 AND active = true
+             ORDER BY position ASC, id ASC`,
             [categoriaId]
         )
         return result.rows

@@ -25,11 +25,15 @@ export interface ActiveSession {
     created: boolean
     currentStep: ActiveSessionStep
     currentCategoryId: string | null
+    currentQuestionId?: string | null
+    listPage?: number
 }
 
 export interface NavigationState {
     currentStep: ActiveSessionStep
     currentCategoryId: string | null
+    currentQuestionId?: string | null
+    listPage?: number
 }
 
 export interface SessionRepository {
@@ -37,6 +41,7 @@ export interface SessionRepository {
     updateNavigationState(sessionId: string, state: NavigationState): Promise<void>
     touch(sessionId: string): Promise<void>
     finish(sessionId: string, closing: SessionClosing): Promise<void>
+    sweepAbandonedSessions(): Promise<number>
 }
 
 export async function finishSessionWith(
@@ -98,11 +103,13 @@ export const sessionRepository: SessionRepository = {
                 id: string
                 current_step: ActiveSessionStep
                 current_category_id: string | null
+                current_question_id: string | null
+                list_page: number
             }>(
                 `INSERT INTO Sessions (phone_hash)
                  VALUES ($1)
                  ON CONFLICT (phone_hash) WHERE status = 'IN_PROGRESS' DO NOTHING
-                 RETURNING id, current_step, current_category_id`,
+                 RETURNING id, current_step, current_category_id, current_question_id, list_page`,
                 [phoneHash],
             )
 
@@ -115,6 +122,8 @@ export const sessionRepository: SessionRepository = {
                     created: true,
                     currentStep: created.current_step,
                     currentCategoryId: created.current_category_id,
+                    currentQuestionId: created.current_question_id,
+                    listPage: created.list_page,
                 }
             }
 
@@ -122,8 +131,10 @@ export const sessionRepository: SessionRepository = {
                 id: string
                 current_step: ActiveSessionStep
                 current_category_id: string | null
+                current_question_id: string | null
+                list_page: number
             }>(
-                `SELECT id, current_step, current_category_id FROM Sessions
+                `SELECT id, current_step, current_category_id, current_question_id, list_page FROM Sessions
                  WHERE phone_hash = $1 AND status = 'IN_PROGRESS'
                  LIMIT 1`,
                 [phoneHash],
@@ -140,6 +151,8 @@ export const sessionRepository: SessionRepository = {
                 created: false,
                 currentStep: session.current_step,
                 currentCategoryId: session.current_category_id,
+                currentQuestionId: session.current_question_id,
+                listPage: session.list_page,
             }
         } catch (error) {
             await client.query("ROLLBACK")
@@ -156,10 +169,18 @@ export const sessionRepository: SessionRepository = {
             `UPDATE Sessions
              SET current_step = $1,
                  current_category_id = $2,
+                 current_question_id = $3,
+                 list_page = $4,
                  last_interaction_at = now()
-             WHERE id = $3
+             WHERE id = $5
                AND status = 'IN_PROGRESS'`,
-            [state.currentStep, state.currentCategoryId, sessionId],
+            [
+                state.currentStep,
+                state.currentCategoryId ?? null,
+                state.currentQuestionId ?? null,
+                state.listPage ?? 1,
+                sessionId,
+            ],
         )
 
         if (result.rowCount !== 1) {
@@ -185,6 +206,45 @@ export const sessionRepository: SessionRepository = {
             await client.query("BEGIN")
             await finishSessionWith(client, sessionId, closing)
             await client.query("COMMIT")
+        } catch (error) {
+            await client.query("ROLLBACK")
+            throw error
+        } finally {
+            client.release()
+        }
+    },
+
+    async sweepAbandonedSessions(): Promise<number> {
+        const client = await getPool().connect()
+        try {
+            await client.query("BEGIN")
+            const result = await client.query<{ id: string }>(
+                `WITH stale AS (
+                    SELECT id, current_step, last_interaction_at
+                    FROM Sessions
+                    WHERE status = 'IN_PROGRESS'
+                      AND last_interaction_at <= now() - interval '30 minutes'
+                    FOR UPDATE
+                ),
+                abandoned AS (
+                    UPDATE Sessions AS session
+                    SET status = 'ABANDONED',
+                        outcome = 'ABANDONED',
+                        abandoned_at_step = stale.current_step,
+                        ended_at = stale.last_interaction_at + interval '30 minutes',
+                        current_step = 'FINISHED',
+                        draft = NULL
+                    FROM stale
+                    WHERE session.id = stale.id
+                    RETURNING session.id, stale.current_step
+                )
+                INSERT INTO ConversationEvents (session_id, type, data)
+                SELECT id, 'ABANDONED', jsonb_build_object('step', current_step)
+                FROM abandoned
+                RETURNING session_id`,
+            )
+            await client.query("COMMIT")
+            return result.rowCount ?? 0
         } catch (error) {
             await client.query("ROLLBACK")
             throw error

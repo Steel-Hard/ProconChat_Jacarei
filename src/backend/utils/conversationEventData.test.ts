@@ -368,7 +368,6 @@ describe("isClosingCompatible", () => {
 
     it.each<SessionClosing>([
         { outcome: "RESOLVED", event: { type: "RESOLVED_ANSWERED", resolved: true } },
-        { outcome: "RESOLVED", event: answerSent },
         { outcome: "SCHEDULED", event: { type: "APPOINTMENT_CREATED", appointmentId: 1 } },
         { outcome: "OUT_OF_SCOPE", event: answerSent },
         { outcome: "NO_SLOT", event: { type: "NO_SLOT" } },
@@ -391,6 +390,7 @@ describe("isClosingCompatible", () => {
     })
 
     it.each<SessionClosing>([
+        { outcome: "RESOLVED", event: answerSent },
         { outcome: "RESOLVED", event: { type: "RESOLVED_ANSWERED", resolved: false } },
         { outcome: "RESOLVED", event: { type: "STARTED" } },
         { outcome: "SCHEDULED", event: answerSent },

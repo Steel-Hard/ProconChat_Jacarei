@@ -1,6 +1,6 @@
-import type { ConversationEvent, RecordedConversationEvent } from "../types/conversationEvent.types"
-import { buildConversationEventRow, validateConversationEvent } from "../utils/conversationEventData"
-import type { ConversationEventRepository } from "./conversationEvent.repository"
+import type { ConversationEvent, RecordedConversationEvent } from "../../types/conversationEvent.types"
+import { buildConversationEventRow, validateConversationEvent } from "../../utils/conversationEventData"
+import type { ConversationEventRepository } from "../conversationEvent.repository"
 
 export interface ConversationEventRepositoryCall {
     method: "record" | "listBySession"

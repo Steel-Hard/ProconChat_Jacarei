@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
-import { MockConversationEventRepository } from "../repositories/conversationEventMock.repository"
+import { MockConversationEventRepository } from "../repositories/mock/conversationEventMock.repository"
 import type { SessionClosing } from "../types/conversationEvent.types"
 import { createConversationEventService } from "./conversationEvent.service"
 

@@ -65,7 +65,11 @@ async function sessionOf(sessionId: string) {
     return result.rows[0]
 }
 
-async function talkUntilAnswer(phone: string, questionOption: string): Promise<string> {
+async function talkUntilAnswer(
+    phone: string,
+    questionOption: string,
+    expectedStep: string,
+): Promise<string> {
     const first = await send(phone, sentinel)
     await send(phone, sentinel)
     await send(phone, "1 " + sentinel)
@@ -75,8 +79,15 @@ async function talkUntilAnswer(phone: string, questionOption: string): Promise<s
     const last = await send(phone, questionOption)
 
     expect(last.sessionId).toBe(first.sessionId)
-    expect(last.reply.step).toBe("FINISHED")
+    expect(last.reply.step).toBe(expectedStep)
     return first.sessionId
+}
+
+async function markResolved(phone: string, sessionId: string): Promise<void> {
+    const closing = await send(phone, "1")
+
+    expect(closing.sessionId).toBe(sessionId)
+    expect(closing.reply.step).toBe("FINISHED")
 }
 
 describe("Eventos da conversa com Postgres", () => {
@@ -113,13 +124,15 @@ describe("Eventos da conversa com Postgres", () => {
     })
 
     test("conversa completa grava os eventos em ordem e encerra como RESOLVED sem draft", async () => {
-        const sessionId = await talkUntilAnswer(phones.resolved, "1")
+        const sessionId = await talkUntilAnswer(phones.resolved, "1", "AWAITING_RESOLVED")
+        await markResolved(phones.resolved, sessionId)
 
         expect(await eventsOf(sessionId)).toEqual([
             { type: "STARTED", data: {} },
             { type: "CATEGORY_CHOSEN", data: {} },
             { type: "QUESTION_CHOSEN", data: {} },
             { type: "ANSWER_SENT", data: { llm: "NOT_CALLED" } },
+            { type: "RESOLVED_ANSWERED", data: { resolved: true } },
         ])
         expect(await sessionOf(sessionId)).toEqual({
             status: "FINISHED",
@@ -131,7 +144,7 @@ describe("Eventos da conversa com Postgres", () => {
     })
 
     test("pergunta fora do escopo encerra como OUT_OF_SCOPE", async () => {
-        const sessionId = await talkUntilAnswer(phones.outOfScope, "2")
+        const sessionId = await talkUntilAnswer(phones.outOfScope, "2", "FINISHED")
 
         expect((await sessionOf(sessionId))?.outcome).toBe("OUT_OF_SCOPE")
         expect((await eventsOf(sessionId)).at(-1)).toEqual({ type: "ANSWER_SENT", data: { llm: "NOT_CALLED" } })
@@ -265,6 +278,7 @@ describe("Eventos da conversa com Postgres", () => {
                 questionId: Number(questionIds[0]),
                 llm: "NOT_CALLED",
             },
+            { type: "RESOLVED_ANSWERED", resolved: true },
         ])
     })
 
@@ -292,7 +306,7 @@ describe("Eventos da conversa com Postgres", () => {
         }
     })
 
-    test("falha do encerramento no fluxo entrega a resposta e deixa a sessão IN_PROGRESS sem ANSWER_SENT", async () => {
+    test("falha do encerramento no fluxo entrega a resposta e deixa a sessão IN_PROGRESS sem RESOLVED_ANSWERED", async () => {
         const finish = vi.spyOn(sessionRepository, "finish").mockImplementation(async (sessionId, closing) => {
             const client = await getPool().connect()
             const failingOnSessionUpdate = {
@@ -315,7 +329,8 @@ describe("Eventos da conversa com Postgres", () => {
         const error = vi.spyOn(console, "error").mockImplementation(() => undefined)
 
         try {
-            const sessionId = await talkUntilAnswer(phones.finishFails, "1")
+            const sessionId = await talkUntilAnswer(phones.finishFails, "1", "AWAITING_RESOLVED")
+            await markResolved(phones.finishFails, sessionId)
 
             expect(finish).toHaveBeenCalledOnce()
             expect(await sessionOf(sessionId)).toEqual({
@@ -323,15 +338,16 @@ describe("Eventos da conversa com Postgres", () => {
                 outcome: "IN_PROGRESS",
                 draft: null,
                 abandoned_at_step: null,
-                current_step: "AWAITING_QUESTION",
+                current_step: "AWAITING_RESOLVED",
             })
             expect((await eventsOf(sessionId)).map((event) => event.type)).toEqual([
                 "STARTED",
                 "CATEGORY_CHOSEN",
                 "QUESTION_CHOSEN",
+                "ANSWER_SENT",
             ])
             expect(error).toHaveBeenCalledWith(expect.any(String), {
-                type: "ANSWER_SENT",
+                type: "RESOLVED_ANSWERED",
                 sessionId,
                 code: "57P01",
             })

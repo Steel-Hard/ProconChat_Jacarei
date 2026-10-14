@@ -77,8 +77,7 @@ const ISO_DATETIME =
 const CLOSING_EVENTS = new Map<string, (event: ConversationEvent) => boolean>([
     [
         "RESOLVED",
-        (event) =>
-            (event.type === "RESOLVED_ANSWERED" && event.resolved) || event.type === "ANSWER_SENT",
+        (event) => event.type === "RESOLVED_ANSWERED" && event.resolved,
     ],
     ["SCHEDULED", (event) => event.type === "APPOINTMENT_CREATED"],
     ["OUT_OF_SCOPE", (event) => event.type === "ANSWER_SENT"],

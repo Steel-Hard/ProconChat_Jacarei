@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 import InvalidCurrentPasswordError from "../errors/InvalidCurrentPasswordError"
-import { MockAuthRepository } from "../repositories/authMock.repository"
+import { MockAuthRepository } from "../repositories/mock/authMock.repository"
 import { PasswordHasher } from "../utils/passwordHasher"
 import { createSessionTokens } from "../utils/sessionToken"
 import { createAuthService } from "./auth.service"
