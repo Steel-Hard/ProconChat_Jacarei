@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express"
 import { processIncomingMessage, ConversationFlowInput, ConversationFlowResult } from "../services/conversationFlow.service"
 import UnauthorizedError from "../errors/UnauthorizedError"
+import { isValidInternalToken } from "../utils/internalToken"
 
 interface WhatsappSessionControllerDependencies {
     processMessage: (input: ConversationFlowInput) => Promise<ConversationFlowResult>
@@ -15,7 +16,7 @@ class WhatsappSessionController {
 
     public async create(req: Request<object, object, ConversationFlowInput>, res: Response, next: NextFunction): Promise<void> {
         try {
-            if (req.header("X-Internal-Token") !== process.env.GATEWAY_INTERNAL_TOKEN) {
+            if (!isValidInternalToken(req.header("X-Internal-Token"))) {
                 throw new UnauthorizedError("Invalid gateway internal token")
             }
             const result = await this.processMessage(req.body)
