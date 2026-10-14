@@ -67,8 +67,9 @@ docker compose --profile test run --rm --build backend-tests
 `GET /health` responde `200` com `{ "data": { "status": "ok" } }` e não depende do banco de dados — serve como healthcheck de infraestrutura (Docker, load balancer) e como exemplo do padrão de código para copiar em novos recursos.
 
 `POST /api/v1/whatsapp/sessions` recebe `{ phone, text? }` do Gateway WhatsApp
-(`src/gateway/`), autenticado pelo header `X-Internal-Token`, e cria ou reutiliza uma sessão
-guardando somente o HMAC do telefone (nunca o número em texto puro).
+(`src/gateway/`), autenticado pelo header `X-Internal-Token` (comparado em tempo constante), e cria ou
+reutiliza uma sessão guardando somente o HMAC do telefone (nunca o número em texto puro). Com o
+atendimento automático pausado, responde o texto fixo sem tocar na sessão (seção "Pausa").
 
 ## Autenticação do painel
 
@@ -132,8 +133,8 @@ router.get("/", requireAuth, requirePermission("appointments.view"), listAppoint
 
 ### CSRF e CORS
 
-- `requireTrustedOrigin` é montado em `/api/v1` depois de `POST /api/v1/whatsapp/sessions` (servidor a
-  servidor, sem cookie) e antes de `/api/v1/auth`. **Toda rota nova sob `/api/v1` herda a
+- `requireTrustedOrigin` é montado em `/api/v1` depois de `POST /api/v1/whatsapp/sessions` e de
+  `GET /api/v1/internal/whatsapp/config` (servidor a servidor, sem cookie) e antes de `/api/v1/auth`. **Toda rota nova sob `/api/v1` herda a
   verificação** sem precisar lembrar dela.
 - Em `POST`, `PUT`, `PATCH` e `DELETE`, o `Origin` precisa ser igual a `FRONTEND_ORIGIN`. Sem `Origin`,
   vale a origem do `Referer`. Sem os dois, ou com outro valor, a resposta é `403 INVALID_ORIGIN`, antes
@@ -173,6 +174,126 @@ router.get("/", requireAuth, requirePermission("appointments.view"), listAppoint
   novo hash, incrementa `session_version` e registra `Senha do Admin redefinida`, sem e-mail nem
   senha. Sem conta Admin, sai com código 1 e pede para rodar o seed. Em produção, veja
   `.docs/infra/deploy.md`.
+
+## Configuração do WhatsApp (#83)
+
+As credenciais da Cloud API ficam na linha única de `WhatsAppSettings` (decisão 003), com o token de
+acesso e o App Secret cifrados por `utils/crypto.utils.ts` (formato `v1:`, chave `ENCRYPTION_KEY`).
+Nenhuma resposta, erro ou log devolve esses dois segredos nem o texto cifrado. A linha é criada pelo
+`seed` a partir dos `WHATSAPP_*` do `.env` (`db/seeds/README.md`); sem ela, a primeira leitura do
+painel cria uma linha só com um `verify_token` gerado.
+
+### Rotas do painel
+
+Todas sob `/api/v1/whatsapp/settings`, com `requireAuth`, `requirePermission(ADMIN_ONLY)` e
+`Cache-Control: no-store`. Erros comuns: `401 UNAUTHORIZED` sem cookie válido, `403 FORBIDDEN`
+`"Insufficient permission"` para quem não é Admin (mesmo com as 8 permissões), `403 INVALID_ORIGIN`
+em `POST`/`PUT` sem origem confiável e `400 BAD_REQUEST` `"Malformed JSON body"`.
+
+| Rota | Corpo | Sucesso | Erros próprios |
+| --- | --- | --- | --- |
+| `GET /` | — | `200 { data: WhatsAppSettingsView }` | — |
+| `POST /test` | `{ phoneNumberId, businessAccountId?, accessToken?, appSecret? }` | `200 { data: { ok: true, displayPhoneNumber, verifiedName, checkedAt } }` ou `200 { data: { ok: false, reason, checkedAt } }` | `400` |
+| `PUT /` | igual ao teste | `200 { data: WhatsAppSettingsView }` | `400`; `422 { error: { code: <reason>, message: "WhatsApp connection test failed" } }` |
+| `POST /pause` | — | `200 { data: WhatsAppSettingsView }` com `autoReplyPaused: true` | — |
+| `POST /resume` | — | `200 { data: WhatsAppSettingsView }` com `autoReplyPaused: false` | — |
+
+`WhatsAppSettingsView`:
+
+```json
+{
+    "phoneNumberId": "100000000000001",
+    "businessAccountId": null,
+    "accessToken": { "configured": true, "last4": "a91F" },
+    "appSecret": { "configured": true, "last4": "9c2e" },
+    "verifyToken": "3f9a...",
+    "webhookUrl": "https://exemplo.sslip.io/webhooks/whatsapp",
+    "graphApiVersion": "v26.0",
+    "credentialsValid": true,
+    "credentialsCheckedAt": "2026-10-14T13:00:00.000Z",
+    "autoReplyPaused": false,
+    "pausedMessage": "O atendimento automático do PROCON Jacareí está temporariamente indisponível. Tente novamente mais tarde.",
+    "updatedBy": { "id": 1, "name": "Admin" },
+    "updatedAt": "2026-10-14T13:00:00.000Z"
+}
+```
+
+- `phoneNumberId`, `businessAccountId`, `webhookUrl`, `credentialsValid`, `credentialsCheckedAt` e
+  `updatedBy` podem ser `null`. `webhookUrl` é `null` sem `PUBLIC_BASE_URL`.
+- `last4` é `null` quando o segredo não está configurado, tem 8 caracteres ou menos, ou não decifra
+  (neste caso `configured` continua `true` e o log registra `whatsapp_settings_decrypt_failed` com o
+  campo, sem o valor). A tela monta a máscara `••••••••a91F`.
+- **Validação do corpo:** `phoneNumberId` obrigatório, só dígitos, até 40 (espaços nas pontas são
+  removidos). `businessAccountId` opcional: ausente, `null` ou vazio grava `NULL`; preenchido, mesma
+  regra. `accessToken` de 1 a 2048 caracteres sem espaço e `appSecret` de 1 a 256 sem espaço;
+  `null` ou ausente mantém o valor salvo. Sem valor salvo legível, o segredo é obrigatório (`400`
+  `"accessToken is required"` ou `"appSecret is required"`). Corpo inválido nunca chama a Meta.
+- **Teste:** consulta a Graph API (`clients/metaGraph.client.ts`, timeout de 10 s, versão de
+  `WHATSAPP_GRAPH_API_VERSION`, `appsecret_proof` = HMAC-SHA256 do token com o App Secret):
+  `GET /<phoneNumberId>?fields=display_phone_number,verified_name` sempre e, só com
+  `businessAccountId`, `GET /<businessAccountId>/phone_numbers?fields=id&limit=100` para conferir
+  que o número pertence à conta. Só quando os valores efetivos são iguais aos salvos (mesmos IDs,
+  nenhum segredo enviado) o teste grava `credentials_checked_at` e `credentials_valid`, sem mudar
+  `updated_by`/`updated_at`.
+- **Salvar:** refaz o teste com os valores efetivos e só grava se der `ok`. Grava os IDs, cifra só os
+  segredos enviados (o cifrado dos outros fica igual), `credentials_valid = true`,
+  `credentials_checked_at`, `updated_by` e `updated_at` numa única `UPDATE`, e depois avisa o gateway
+  (`POST <GATEWAY_INTERNAL_URL>/internal/whatsapp/config/reload`, timeout de 3 s). Uma falha no aviso
+  não muda a resposta `200`; o gateway recarrega pelo TTL de 60 s.
+- **Pausar/retomar:** grava `auto_reply_paused`, `updated_by` e `updated_at`, é idempotente, não
+  passa pelo teste e não avisa o gateway.
+
+Motivos (`reason`) do teste e textos sugeridos para a tela (#54):
+
+| `reason` | Quando | Texto sugerido | Grava `credentials_valid` (teste dos valores salvos) |
+| --- | --- | --- | --- |
+| `INVALID_TOKEN` | erro `code` 190 | "Token inválido ou expirado" | `false` |
+| `INVALID_APP_SECRET` | erro `code` 100 com `appsecret_proof` na mensagem | "App Secret inválido" | `false` |
+| `PHONE_NUMBER_NOT_FOUND` | erro `code` 100 com `error_subcode` 33 na consulta do número | "ID do número não encontrado ou sem acesso por este token" | `false` |
+| `BUSINESS_ACCOUNT_NOT_FOUND` | erro `code` 100 com `error_subcode` 33 na consulta da conta | "ID da conta WhatsApp Business não encontrado ou sem acesso por este token" | `false` |
+| `PHONE_NOT_IN_ACCOUNT` | a conta não lista o número | "O número não pertence a esta conta WhatsApp Business" | `false` |
+| `MISSING_PERMISSION` | erro `code` 10 ou 200 | "O token não tem permissão para gerenciar este número" | `false` |
+| `META_UNAVAILABLE` | timeout, erro de rede, HTTP 5xx ou `code` 4/80007 | "Não foi possível falar com a Meta. Tente de novo em instantes" | não grava |
+| `META_ERROR` | qualquer outra resposta de erro | "A Meta recusou as credenciais" | não grava |
+
+O cliente da Meta loga só `{ event: "meta_connection_test", reason, status, code }`, nunca o token, o
+App Secret, a prova ou a URL.
+
+### Pausa
+
+Com `auto_reply_paused` ligado, `POST /api/v1/whatsapp/sessions` responde `202` com o texto fixo
+`MENSAGEM_ATENDIMENTO_PAUSADO` (`services/messageFormatter.service.ts`), antes de qualquer acesso à
+sessão:
+
+```json
+{ "data": { "sessionId": null, "newSession": false, "paused": true, "reply": { "text": "<texto fixo>", "step": null, "messages": [{ "type": "text", "text": "<texto fixo>" }] } } }
+```
+
+Nada é criado nem alterado: nenhuma sessão, nenhum evento, nenhum `last_interaction_at` renovado, e
+nem o HMAC do telefone é calculado. A pausa é lida do banco a cada mensagem, então vale a partir da
+mensagem seguinte ao clique. Ao retomar, a sessão em andamento continua no passo em que estava. Pela
+decisão 008, uma pausa de mais de 30 minutos faz as sessões em andamento virarem Abandonadas.
+
+### Endpoint interno (gateway → backend)
+
+`GET /api/v1/internal/whatsapp/config`, montado antes de `requireTrustedOrigin`, com `X-Internal-Token`
+comparado em tempo constante (`utils/internalToken.ts`) e `Cache-Control: no-store`:
+
+- sem token válido: `401 UNAUTHORIZED` `"Invalid gateway internal token"`;
+- `200 { data: { phoneNumberId, accessToken, appSecret, verifyToken, graphApiVersion } }`, com os
+  segredos decifrados. `phoneNumberId`, `accessToken` e `appSecret` podem ser `null`;
+- segredo que não decifra: `500` genérico.
+
+Em produção o Caddy responde `404` para `/api/v1/internal*` e o `deploy.sh` confere isso. O gateway
+alcança o backend só pela rede interna do Docker.
+
+### Trocar a `ENCRYPTION_KEY`
+
+Não existe rotação automática. Trocar a chave deixa o token e o App Secret salvos ilegíveis: a leitura
+mostra `configured: true` com `last4: null`, o endpoint interno responde `500` e o gateway passa a usar
+a última configuração carregada até reiniciar. Depois de trocar a chave e recriar o `backend`, salve de
+novo o token e o App Secret pela tela de WhatsApp (ou `PUT /api/v1/whatsapp/settings`, enviando os
+dois).
 
 ## Eventos da conversa
 

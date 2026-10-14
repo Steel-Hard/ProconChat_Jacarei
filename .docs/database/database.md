@@ -675,11 +675,12 @@ CREATE TABLE WhatsAppSettings (
 );
 ```
 
-- **Linha única** (`id = 1`), criada pela #83 a partir dos valores do `.env` da #53 quando a tabela está vazia. A migration não insere a linha.
+- **Linha única** (`id = 1`), criada pelo `seed` (#83) a partir dos `WHATSAPP_*` do `.env` quando a tabela está vazia (`db/seeds/README.md`). Depois disso o `.env` não tem efeito. Se a linha faltar (backend rodando sem seed), a primeira leitura do painel cria a linha só com um `verify_token` gerado (`ensureRow`). A checagem de pausa nunca insere: linha ausente vale "não pausado". A migration não insere a linha.
 - **Segredos** (token de acesso e App Secret) só no formato cifrado. Os "4 últimos caracteres" exibidos na tela saem de decifrar no backend; não há coluna com parte do segredo em claro.
 - `verify_token` fica **em claro** de propósito: é gerado pelo sistema e mostrado na tela com "Copiar" para ser colado no painel da Meta. Não é credencial de acesso à conta.
 - `auto_reply_paused` + `updated_by`/`updated_at` = pausa das respostas automáticas e última alteração.
-- `credentials_checked_at`, `credentials_valid` e `last_webhook_event_at` são usados pela #83 (teste de conexão) e pela #88 (estado do número).
+- `credentials_valid`: `NULL` enquanto nunca testadas; `TRUE` depois de salvar (o salvar refaz o teste com a Meta e só grava com sucesso) ou de um teste bem-sucedido dos valores salvos; `FALSE` quando um teste dos valores salvos falha por motivo definitivo (token, App Secret, IDs ou permissão). Falha de rede ou da Meta não grava. Teste de valores novos não grava nada. `credentials_checked_at` acompanha cada gravação de `credentials_valid`, sem mudar `updated_by`/`updated_at`.
+- `last_webhook_event_at` continua sem ser gravado até a #88 (estado do número).
 
 ### Dados pessoais e segredos (RNF03)
 
@@ -693,7 +694,7 @@ CREATE TABLE WhatsAppSettings (
 | Texto livre do cidadão | — | **Não existe coluna** | Eventos só com `data` estruturado |
 | Dados em trânsito do agendamento | `Sessions.draft` | Temporário: quem comparece, nome, `cpf_hash`, `cpf_masked`. **Nunca o CPF completo** | `CHECK` de chaves e formato; só existe com a sessão em andamento |
 
-**Formato cifrado:** `v1:<iv>:<authTag>:<ciphertext>`, cada parte em base64, AES-256-GCM. O `CHECK` por regex impede que um valor em claro (um telefone `5512...`, um token `EAA...`) seja gravado por engano. O prefixo `v1` permite trocar de algoritmo ou de chave no futuro. O utilitário de criptografia é único e compartilhado entre a #56 e a #83, e a chave-mestra vem do `.env` (decisões 002 e 003).
+**Formato cifrado:** `v1:<iv>:<authTag>:<ciphertext>`, cada parte em base64, AES-256-GCM. O `CHECK` por regex impede que um valor em claro (um telefone `5512...`, um token `EAA...`) seja gravado por engano. O prefixo `v1` permite trocar de algoritmo ou de chave no futuro. O utilitário de criptografia é único e compartilhado entre a #56 e a #83 (`src/backend/utils/crypto.utils.ts`, `encrypt`/`decrypt`), e a chave-mestra vem do `.env` (decisões 002 e 003): `ENCRYPTION_KEY`, obrigatória, com exatamente 64 caracteres hexadecimais (`openssl rand -hex 32`), usada direto como chave AES de 256 bits, sem derivação nem valor alternativo. IV aleatório de 12 bytes e tag de 16 bytes. Um valor adulterado ou cifrado com outra chave é recusado.
 
 A política de retenção (por quanto tempo sessões, eventos e agendamentos ficam guardados) é da #69.
 

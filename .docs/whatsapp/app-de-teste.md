@@ -49,6 +49,12 @@ openssl rand -hex 32
 
 ## 6. Configurar o `.env` e subir o gateway
 
+Os `WHATSAPP_*` do `.env` são só o valor inicial: o `seed` os usa para criar a configuração do WhatsApp
+no banco quando ela ainda não existe (#83). Depois disso, as credenciais são trocadas pela tela de
+WhatsApp do painel, e mudar o `.env` não tem efeito (README do gateway, "Configuração do WhatsApp").
+Num banco que já tem a configuração, use a tela (ou a API `/api/v1/whatsapp/settings`) em vez deste
+passo.
+
 No `.env` da raiz (copiado de `.env.example`), preencha:
 
 ```dotenv
@@ -58,10 +64,10 @@ WHATSAPP_APP_SECRET=chave-secreta-do-app-da-meta
 WHATSAPP_VERIFY_TOKEN=valor-gerado-no-passo-5
 ```
 
-Depois recrie o gateway:
+Depois rode o `seed` de novo, para criar a configuração com esses valores:
 
 ```bash
-docker compose up -d --build gateway
+docker compose run --rm seed
 ```
 
 Se a stack ainda não estiver de pé, use `docker compose up --build -d` (seção 1 do README do gateway).
@@ -83,8 +89,8 @@ gratuitos, então o passo 8 se repete quando o túnel for recriado.
 1. Em **WhatsApp → Configuração → Webhook**, informe `https://<túnel>/webhooks/whatsapp` como URL de
    callback e o valor de `WHATSAPP_VERIFY_TOKEN` em "Verificar token".
 2. Clique em "Verificar e salvar". A Meta chama `GET /webhooks/whatsapp`, e o gateway responde com o
-   desafio quando o token confere. Se a verificação falhar, confira o token no `.env` e se o gateway foi
-   recriado depois da mudança.
+   desafio quando o token confere. Se a verificação falhar, confira o token de verificação mostrado na
+   tela de WhatsApp do painel.
 3. Assine o campo `messages`.
 
 ## 9. Conferir pelos logs
