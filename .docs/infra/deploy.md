@@ -314,7 +314,7 @@ O workflow `.github/workflows/deploy.yml` roda em todo push para `develop` e `ma
 
 Push numa branch diferente de `DEPLOY_BRANCH`, CI falho ou PR não geram imagem nem deploy. O job `deploy` usa o grupo de concorrência `deploy-production`: um deploy em andamento nunca é cancelado, e o próximo espera. Se chegarem vários enquanto um roda, só o mais recente fica na fila. Como a fila vale só para o job `deploy`, uma execução cujos jobs são pulados (por exemplo, push em `main` com `DEPLOY_BRANCH=develop`) não entra nela nem cancela um deploy pendente.
 
-O `deploy.sh <tag>`:
+O `deploy.sh <tag>` primeiro confere no `.env` (ou no ambiente do shell, que tem precedência, como no Compose) que `AUTH_TOKEN_SECRET` tem 32 ou mais caracteres, que `ROOT_EMAIL` não está vazio e que `ROOT_PASSWORD` tem de 8 caracteres a 72 bytes. Se algum falhar, ele mostra o nome da variável e a regra, nunca o valor, e sai com código 1 antes de baixar imagens ou recriar containers. Depois:
 
 1. baixa só as imagens que ainda não existem na VM (`docker compose pull --policy missing`). Uma tag nova sempre falta e é baixada; como as tags são SHAs imutáveis, uma tag que já está na VM não muda. `postgres:15-alpine` e `caddy:2-alpine` não são atualizados sozinhos depois do primeiro `pull`. Para pegar correções dessas imagens, rode antes de um deploy:
 
@@ -376,7 +376,7 @@ A primeira emissão do certificado leva alguns segundos, e o `deploy.sh` tenta d
 
 ## Entrega da autenticação do painel (#57)
 
-A #57 tornou obrigatórias `AUTH_TOKEN_SECRET`, `ROOT_EMAIL` e `ROOT_PASSWORD`. Sem elas, o `docker compose` para na interpolação, antes de recriar qualquer container, e a versão anterior continua no ar. A ordem:
+A #57 tornou obrigatórias `AUTH_TOKEN_SECRET`, `ROOT_EMAIL` e `ROOT_PASSWORD`. Se uma delas estiver ausente ou vazia, o `docker compose` para na interpolação, antes de recriar qualquer container, e a versão anterior continua no ar. Isso vale só para variável ausente ou vazia: o Compose não confere o conteúdo. Um valor inválido (`ROOT_PASSWORD` fora de 8 caracteres a 72 bytes, ou `AUTH_TOKEN_SECRET` com menos de 32 caracteres) passa pela interpolação, os containers são recriados e depois o `seed` (enquanto a conta Admin não existe) ou o `backend` encerram na inicialização, derrubando a produção. Para evitar isso, o `deploy.sh` confere esses valores antes do `pull` e do `up` (seção "Deploy automático"). Quem rodar `docker compose -f compose.prod.yaml up` direto, sem o `deploy.sh`, não tem essa checagem. A ordem:
 
 1. Confira que o último deploy está verde, com `backend` e `gateway` `healthy` e `https://<SITE_ADDRESS>/` respondendo 200.
 2. **Antes do merge do PR**, edite `/opt/proconchat/.env` como `deploy`, mantendo `chmod 600`, e acrescente:
@@ -388,6 +388,8 @@ A #57 tornou obrigatórias `AUTH_TOKEN_SECRET`, `ROOT_EMAIL` e `ROOT_PASSWORD`. 
    ```
 
    Não acrescente `FRONTEND_ORIGIN`. Confira que `SITE_ADDRESS` é exatamente o host que o navegador usa.
+
+   Os três valores precisam estar preenchidos e válidos: `ROOT_PASSWORD` de 8 caracteres a 72 bytes e `AUTH_TOKEN_SECRET` com 32 ou mais caracteres. O `deploy/.env.prod.example` traz os dois vazios de propósito, para o deploy falhar se forem esquecidos. O `deploy.sh` recusa valor inválido antes de recriar os containers, mas um valor inválido que chegue ao `up` (por exemplo, num `docker compose up` manual) derruba o `seed` ou o `backend` depois da recriação, e a versão anterior sai do ar.
 3. Faça o merge. O workflow copia o `compose.prod.yaml` novo, e o log do `seed` mostra `Administrador: criado`.
 4. Confira:
 
@@ -400,7 +402,7 @@ A #57 tornou obrigatórias `AUTH_TOKEN_SECRET`, `ROOT_EMAIL` e `ROOT_PASSWORD`. 
    ```
 
    O primeiro responde `401` em JSON, o segundo `200` com dois `Set-Cookie` (`proconchat_access` e `proconchat_refresh`) e o terceiro, sem `Origin`, `403 INVALID_ORIGIN`. Digite a senha só num terminal sem histórico, ou apague a linha do histórico depois.
-5. Se o passo 2 for esquecido, o deploy falha com `defina ROOT_EMAIL no .env` (ou a variável que faltar) e nada muda na VM. Complete o `.env` e use **Actions → Deploy → Re-run failed jobs**.
+5. Se o passo 2 for esquecido, o deploy falha na checagem do `deploy.sh` ou com `defina ROOT_EMAIL no .env` (ou a variável que faltar) e nada muda na VM. Com valor inválido, o `deploy.sh` também para antes de recriar os containers e mostra qual variável e qual regra falharam. Complete o `.env` e use **Actions → Deploy → Re-run failed jobs**.
 6. Para redefinir a senha do Admin depois, siga a seção "Redefinir a senha do Admin".
 
 ### Redefinir a senha do Admin
@@ -561,5 +563,7 @@ Casos comuns:
 | `backend` ou `gateway` não ficam `healthy` | Variável obrigatória faltando no `.env` (o serviço encerra na inicialização) ou `migrate` falhou. Veja `logs` |
 | Verificação pública falha com o resto `healthy` | Certificado ainda não emitido, portas 80/443 fechadas no security group ou no `ufw`, ou Elastic IP desassociado |
 | Job falha na conexão SSH | `DEPLOY_KNOWN_HOSTS` desatualizado (VM recriada) ou chave de deploy removida de `authorized_keys` |
-| Deploy falha com `defina ROOT_EMAIL no .env` (ou `ROOT_PASSWORD`, `AUTH_TOKEN_SECRET`) | Variável da autenticação faltando no `.env` da VM. Nada foi recriado; complete o `.env` e rode o job de novo (seção "Entrega da autenticação do painel") |
+| Deploy falha com `defina ROOT_EMAIL no .env` (ou `ROOT_PASSWORD`, `AUTH_TOKEN_SECRET`) | Variável da autenticação faltando ou vazia no `.env` da VM. Nada foi recriado, porque o Compose para na interpolação; complete o `.env` e rode o job de novo (seção "Entrega da autenticação do painel") |
+| Deploy falha com `AUTH_TOKEN_SECRET no .env precisa ter 32 ou mais caracteres` ou `ROOT_PASSWORD no .env precisa ter de 8 caracteres a 72 bytes` | Valor inválido no `.env` da VM, barrado pelo `deploy.sh` antes do `pull`. Nada foi recriado; corrija o valor e rode o job de novo |
+| `seed` ou `backend` encerram logo depois de um `up` manual, com `ROOT_PASSWORD is invalid` ou `AUTH_TOKEN_SECRET must contain at least 32 characters` no log | Valor inválido no `.env` que chegou ao Compose sem passar pelo `deploy.sh`. Ao contrário da variável ausente, os containers **já foram recriados** e a produção está fora do ar; corrija o `.env` e rode o `deploy.sh` com a tag atual |
 | Login no painel responde `403 INVALID_ORIGIN` | `SITE_ADDRESS` diferente do host que o navegador usa, ou a requisição não mandou `Origin` nem `Referer` |
