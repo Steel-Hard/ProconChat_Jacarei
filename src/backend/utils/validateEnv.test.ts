@@ -5,13 +5,16 @@ describe("validateEnv", () => {
     let originalDbUrl: string | undefined
     let originalPhoneHashSecret: string | undefined
     let originalGatewayInternalToken: string | undefined
+    let originalAuthTokenSecret: string | undefined
 
     beforeEach(() => {
         originalDbUrl = process.env.DB_URL
         originalPhoneHashSecret = process.env.PHONE_HASH_SECRET
         originalGatewayInternalToken = process.env.GATEWAY_INTERNAL_TOKEN
+        originalAuthTokenSecret = process.env.AUTH_TOKEN_SECRET
         process.env.PHONE_HASH_SECRET = "test-secret"
         process.env.GATEWAY_INTERNAL_TOKEN = "test-internal-token"
+        process.env.AUTH_TOKEN_SECRET = "test-only-auth-token-secret-with-32-chars"
     })
 
     afterEach(() => {
@@ -29,6 +32,11 @@ describe("validateEnv", () => {
             delete process.env.GATEWAY_INTERNAL_TOKEN
         } else {
             process.env.GATEWAY_INTERNAL_TOKEN = originalGatewayInternalToken
+        }
+        if (originalAuthTokenSecret === undefined) {
+            delete process.env.AUTH_TOKEN_SECRET
+        } else {
+            process.env.AUTH_TOKEN_SECRET = originalAuthTokenSecret
         }
         vi.restoreAllMocks()
     })
@@ -74,5 +82,29 @@ describe("validateEnv", () => {
 
         expect(exitSpy).toHaveBeenCalledWith(1)
         expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("GATEWAY_INTERNAL_TOKEN"))
+    })
+
+    it("encerra com codigo 1 quando falta AUTH_TOKEN_SECRET", () => {
+        process.env.DB_URL = "postgres://localhost:5432/test"
+        delete process.env.AUTH_TOKEN_SECRET
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never)
+        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+        validateEnv()
+
+        expect(exitSpy).toHaveBeenCalledWith(1)
+        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("AUTH_TOKEN_SECRET"))
+    })
+
+    it("encerra com codigo 1 quando AUTH_TOKEN_SECRET tem menos de 32 caracteres", () => {
+        process.env.DB_URL = "postgres://localhost:5432/test"
+        process.env.AUTH_TOKEN_SECRET = "a".repeat(31)
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never)
+        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+        validateEnv()
+
+        expect(exitSpy).toHaveBeenCalledWith(1)
+        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("AUTH_TOKEN_SECRET"))
     })
 })
