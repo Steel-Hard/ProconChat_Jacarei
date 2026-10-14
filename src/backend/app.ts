@@ -9,6 +9,8 @@ import NotFoundError from "./errors/NotFoundError"
 import healthRoutes from "./routes/health.routes"
 import whatsappSessionRoutes from "./routes/whatsappSession.routes"
 import authRoutes from "./routes/auth.routes"
+import whatsappSettingsRoutes from "./routes/whatsappSettings.routes"
+import whatsappInternalConfigRoutes from "./routes/whatsappInternalConfig.routes"
 import { createRequireTrustedOrigin } from "./middleware/trustedOrigin.middleware"
 
 dotenv.config({ quiet: true })
@@ -27,8 +29,10 @@ app.use(requestLoggerMiddleware)
 
 app.use("/health", healthRoutes)
 app.use("/api/v1/whatsapp/sessions", whatsappSessionRoutes)
+app.use("/api/v1/internal/whatsapp/config", whatsappInternalConfigRoutes)
 app.use("/api/v1", createRequireTrustedOrigin(frontendOrigin))
 app.use("/api/v1/auth", authRoutes)
+app.use("/api/v1/whatsapp/settings", whatsappSettingsRoutes)
 
 app.use("/", (_req: Request, _res: Response, next: NextFunction) =>
     next(new NotFoundError("Route not found")),

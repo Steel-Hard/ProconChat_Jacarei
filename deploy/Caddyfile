@@ -13,6 +13,10 @@
 		respond 404
 	}
 
+	handle /api/v1/internal* {
+		respond 404
+	}
+
 	handle /webhooks/whatsapp* {
 		reverse_proxy gateway:3001
 	}

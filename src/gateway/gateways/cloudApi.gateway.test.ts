@@ -78,6 +78,15 @@ describe("Cloud API provider: verifySignature", () => {
     })
 })
 
+describe("Cloud API provider: verifySignature com App Secret vazio", () => {
+    test("recusa ate o corpo assinado com a chave vazia quando o App Secret configurado esta vazio", () => {
+        const provider = createCloudApiProvider({ getConfig: () => ({ ...config, appSecret: "" }), fetchFn: okFetch() })
+        const body = JSON.stringify({ object: "whatsapp_business_account" })
+
+        expect(provider.verifySignature(Buffer.from(body), sign(body, ""))).toBe(false)
+    })
+})
+
 describe("Cloud API provider: parseIncoming", () => {
     const provider = createCloudApiProvider({ getConfig: () => config, fetchFn: okFetch() })
 

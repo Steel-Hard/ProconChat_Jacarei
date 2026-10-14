@@ -8,7 +8,7 @@ import {
     CloudApiOutgoingBody,
     CloudApiWebhookPayload,
 } from "../types/cloudApi.types"
-import { readWhatsAppConfigFromEnv } from "../utils/whatsappConfig"
+import { whatsappConfigStore } from "../services/whatsappConfigStore"
 
 const SIGNATURE_PATTERN = /^sha256=([0-9a-f]{64})$/i
 const SEND_TIMEOUT_MS = 10_000
@@ -137,8 +137,13 @@ export function createCloudApiProvider({
                 return false
             }
 
+            const { appSecret } = getConfig()
+            if (!appSecret) {
+                return false
+            }
+
             const received = Buffer.from(match[1], "hex")
-            const expected = createHmac("sha256", getConfig().appSecret).update(rawBody).digest()
+            const expected = createHmac("sha256", appSecret).update(rawBody).digest()
             if (received.length !== expected.length) {
                 return false
             }
@@ -222,4 +227,4 @@ export function createCloudApiProvider({
     }
 }
 
-export const cloudApiProvider = createCloudApiProvider({ getConfig: readWhatsAppConfigFromEnv })
+export const cloudApiProvider = createCloudApiProvider({ getConfig: () => whatsappConfigStore.current() })

@@ -1,11 +1,11 @@
 import express, { NextFunction, Request, Response } from "express"
 import request from "supertest"
 import { describe, expect, it } from "vitest"
-import { AuthenticatedUser, Permission, PERMISSIONS } from "../types/auth.types"
+import { ADMIN_ONLY, AuthenticatedUser, Permission, PERMISSIONS, RouteAccess } from "../types/auth.types"
 import { requirePermission } from "./auth.middleware"
 import errorHandler from "./errorHandler.middleware"
 
-function buildApp(permission: Permission, user?: AuthenticatedUser) {
+function buildApp(permission: RouteAccess, user?: AuthenticatedUser) {
     const app = express()
     app.use((req: Request, _res: Response, next: NextFunction) => {
         req.authUser = user
@@ -62,6 +62,29 @@ describe("requirePermission", () => {
 
     it("responde 401 quando nao ha usuario autenticado", async () => {
         const response = await request(buildApp("users.manage")).get("/painel")
+
+        expect(response.status).toBe(401)
+        expect(response.body).toEqual({ error: { code: "UNAUTHORIZED", message: "Authentication required" } })
+    })
+})
+
+describe("requirePermission(ADMIN_ONLY)", () => {
+    it("libera o Admin", async () => {
+        const response = await request(buildApp(ADMIN_ONLY, admin)).get("/painel")
+
+        expect(response.status).toBe(200)
+        expect(response.body).toEqual({ data: { ok: true } })
+    })
+
+    it("responde 403 FORBIDDEN para o funcionario com as 8 permissoes", async () => {
+        const response = await request(buildApp(ADMIN_ONLY, staff([...PERMISSIONS]))).get("/painel")
+
+        expect(response.status).toBe(403)
+        expect(response.body).toEqual({ error: { code: "FORBIDDEN", message: "Insufficient permission" } })
+    })
+
+    it("responde 401 quando nao ha usuario autenticado", async () => {
+        const response = await request(buildApp(ADMIN_ONLY)).get("/painel")
 
         expect(response.status).toBe(401)
         expect(response.body).toEqual({ error: { code: "UNAUTHORIZED", message: "Authentication required" } })

@@ -3,7 +3,7 @@ import ForbiddenError from "../errors/ForbiddenError"
 import UnauthorizedError from "../errors/UnauthorizedError"
 import { AuthRepository } from "../repositories/auth.repository.interface"
 import { authRepository } from "../repositories/auth.repository"
-import { Permission } from "../types/auth.types"
+import { ADMIN_ONLY, RouteAccess } from "../types/auth.types"
 import readCookie from "../utils/readCookie"
 import { ACCESS_COOKIE_NAME } from "../utils/sessionCookies"
 import { SessionTokens, sessionTokens } from "../utils/sessionToken"
@@ -33,14 +33,15 @@ export function createRequireAuth({ users, tokens }: RequireAuthDependencies): R
     }
 }
 
-export function requirePermission(permission: Permission): RequestHandler {
+export function requirePermission(access: RouteAccess): RequestHandler {
     return (req: Request, _res: Response, next: NextFunction): void => {
         const user = req.authUser
         if (!user) {
             next(new UnauthorizedError(AUTHENTICATION_REQUIRED))
             return
         }
-        if (!user.isAdmin && !user.permissions.includes(permission)) {
+        const allowed = user.isAdmin || (access !== ADMIN_ONLY && user.permissions.includes(access))
+        if (!allowed) {
             next(new ForbiddenError("Insufficient permission"))
             return
         }

@@ -119,7 +119,7 @@ As credenciais da Cloud API ficam no banco, **criptografadas com uma chave-mestr
 
 - **CI** (🟡 S2-01): GitHub Actions roda build, lint e testes de cada app em todo PR. O CI verde é obrigatório para o merge.
 - **CD** (✅ #51): push com CI verde na branch de `DEPLOY_BRANCH` (hoje `develop`; `main` no fim do semestre) gera as imagens no GitHub Container Registry e atualiza a VM por SSH com `deploy/deploy.sh <sha>`. As migrations rodam pelo serviço `migrate`. Operação, rollback e backup: [`infra/deploy.md`](../infra/deploy.md).
-- **Segredos:** no GitHub, só os de acesso SSH (environment `production`); os da aplicação ficam no `.env` da VM. Continuam no `.env`: banco, `PHONE_HASH_SECRET`, token interno Gateway ↔ Backend, chave-mestra de criptografia e URL pública.
+- **Segredos:** no GitHub, só os de acesso SSH (environment `production`); os da aplicação ficam no `.env` da VM. Continuam no `.env`: banco, `PHONE_HASH_SECRET`, token interno Gateway ↔ Backend (`GATEWAY_INTERNAL_TOKEN`), chave-mestra de criptografia (`ENCRYPTION_KEY`) e URL pública (`PUBLIC_BASE_URL`, derivada de `SITE_ADDRESS` em produção).
 
 ## Segurança e dados pessoais
 

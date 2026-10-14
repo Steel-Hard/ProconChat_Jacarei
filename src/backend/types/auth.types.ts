@@ -11,6 +11,10 @@ export const PERMISSIONS = [
 
 export type Permission = (typeof PERMISSIONS)[number]
 
+export const ADMIN_ONLY = "admin.only" as const
+
+export type RouteAccess = Permission | typeof ADMIN_ONLY
+
 export interface PublicUser {
     id: number
     name: string

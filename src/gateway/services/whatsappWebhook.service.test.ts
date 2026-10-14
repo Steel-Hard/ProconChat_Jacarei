@@ -79,6 +79,23 @@ describe("WhatsApp webhook service", () => {
         expect(result).toEqual({ results: [{ status: "processed", messageId: "wamid.1" }] })
     })
 
+    test("envia como texto a resposta de atendimento pausado do backend", async () => {
+        const pausedText = "O atendimento automático do PROCON Jacareí está temporariamente indisponível. Tente novamente mais tarde."
+        parseIncoming.mockReturnValue(incoming(textMessage("wamid.pausa")))
+        createWhatsappSession.mockResolvedValue({
+            sessionId: null,
+            newSession: false,
+            paused: true,
+            reply: { text: pausedText, step: null, messages: [{ type: "text", text: pausedText }] },
+        })
+
+        const result = await service()({})
+
+        expect(send).toHaveBeenCalledTimes(1)
+        expect(send).toHaveBeenCalledWith(PHONE, { type: "text", text: pausedText })
+        expect(result).toEqual({ results: [{ status: "processed", messageId: "wamid.pausa" }] })
+    })
+
     test("repassa a opcao escolhida ao backend so com phone e optionId", async () => {
         parseIncoming.mockReturnValue(incoming({ id: "wamid.2", from: PHONE, optionId: "categoria-3" }))
         createWhatsappSession.mockResolvedValue(reply())

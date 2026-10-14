@@ -25,6 +25,7 @@ import {
   formatarListaCategorias,
   formatarListaPerguntas,
   formatarRespostaFinal,
+  MENSAGEM_ATENDIMENTO_PAUSADO,
   OFERTA_AGENDAMENTO,
   paginarItens,
   PERGUNTA_RESOLVIDA,
@@ -39,6 +40,7 @@ import {
   ConversationEventService,
 } from "./conversationEvent.service"
 import type { SessionClosing } from "../types/conversationEvent.types"
+import { whatsappSettingsService } from "./whatsappSettings.service"
 
 export interface ConversationFlowInput {
   phone: string
@@ -58,6 +60,21 @@ export interface ConversationFlowResult {
   reply: ConversationFlowReply
 }
 
+export interface PausedConversationFlowResult {
+  sessionId: null
+  newSession: false
+  paused: true
+  reply: {
+    text: string
+    step: null
+    messages: OutgoingMessage[]
+  }
+}
+
+export type ConversationFlowResponse =
+  | ConversationFlowResult
+  | PausedConversationFlowResult
+
 export interface MotorDecisao {
   iniciarSessao(): Promise<Categoria[]>
   escolherCategoria(categoriaId: number): Promise<Pergunta[]>
@@ -70,6 +87,20 @@ interface ConversationFlowDependencies {
   motor: MotorDecisao
   hashPhone: (phone: string) => string
   logger: ConversationEventLogger
+  isAutoReplyPaused: () => Promise<boolean>
+}
+
+function pausedReply(): PausedConversationFlowResult {
+  return {
+    sessionId: null,
+    newSession: false,
+    paused: true,
+    reply: {
+      text: MENSAGEM_ATENDIMENTO_PAUSADO,
+      step: null,
+      messages: [{ type: "text", text: MENSAGEM_ATENDIMENTO_PAUSADO }],
+    },
+  }
 }
 
 function parseOption(text: string | undefined): number | null {
@@ -146,9 +177,10 @@ export function createConversationFlowService({
   motor,
   hashPhone: hashPhoneOf,
   logger,
+  isAutoReplyPaused,
 }: ConversationFlowDependencies): (
   input: ConversationFlowInput,
-) => Promise<ConversationFlowResult> {
+) => Promise<ConversationFlowResponse> {
   const withPhoneLock = createPhoneLock()
 
   async function startOver(
@@ -693,7 +725,11 @@ export function createConversationFlowService({
     phone,
     text,
     optionId,
-  }: ConversationFlowInput): Promise<ConversationFlowResult> {
+  }: ConversationFlowInput): Promise<ConversationFlowResponse> {
+    if (await isAutoReplyPaused()) {
+      return pausedReply()
+    }
+
     const session = await sessions.findOrCreateActive(hashPhoneOf(phone))
 
     if (session.created) {
@@ -730,7 +766,7 @@ export function createConversationFlowService({
     return startOver(session.id, false)
   }
 
-  return async (input: ConversationFlowInput): Promise<ConversationFlowResult> => {
+  return async (input: ConversationFlowInput): Promise<ConversationFlowResponse> => {
     const phone = input.phone.trim()
 
     if (!phone) {
@@ -747,6 +783,7 @@ export const processIncomingMessage = createConversationFlowService({
   motor: new MotorDecisaoService(new PgMotorDecisaoRepository()),
   hashPhone,
   logger: console,
+  isAutoReplyPaused: () => whatsappSettingsService.isAutoReplyPaused(),
 })
 
 export async function sweepAbandonedSessions(): Promise<number> {

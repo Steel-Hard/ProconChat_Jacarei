@@ -38,6 +38,12 @@ services:
       DB_URL: postgresql://${POSTGRES_USER:-proconchat}:${POSTGRES_PASSWORD:-proconchat_dev}@postgres:5432/proconchat
       ROOT_EMAIL: ${ROOT_EMAIL:-admin@procon.local}
       ROOT_PASSWORD: ${ROOT_PASSWORD:-admin-dev-123}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?defina ENCRYPTION_KEY no .env}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_BUSINESS_ACCOUNT_ID: ${WHATSAPP_BUSINESS_ACCOUNT_ID:-}
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
+      WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET:-}
+      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-}
     command: ["node", "dist/db/seeds/run.js"]
     depends_on:
       migrate:
@@ -54,7 +60,11 @@ services:
       PHONE_HASH_SECRET: ${PHONE_HASH_SECRET:-development-only-secret}
       GATEWAY_INTERNAL_TOKEN: ${GATEWAY_INTERNAL_TOKEN:-development-internal-token}
       AUTH_TOKEN_SECRET: ${AUTH_TOKEN_SECRET:-development-only-auth-token-secret-32chars}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?defina ENCRYPTION_KEY no .env}
       FRONTEND_ORIGIN: http://localhost:${FRONTEND_PORT:-8081}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+      GATEWAY_INTERNAL_URL: http://gateway:3001
+      WHATSAPP_GRAPH_API_VERSION: ${WHATSAPP_GRAPH_API_VERSION:-v26.0}
       OLLAMA_URL: http://ollama:11434
       LLM_MODEL: ${LLM_MODEL:-llama3.2:3b}
       LLM_TIMEOUT_MS: ${LLM_TIMEOUT_MS:-20000}
@@ -90,13 +100,8 @@ services:
       PORT: ${GATEWAY_PORT:-3001}
       BACKEND_INTERNAL_URL: http://backend:3000
       GATEWAY_INTERNAL_TOKEN: ${GATEWAY_INTERNAL_TOKEN:-development-internal-token}
-      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-development-phone-number-id}
-      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-development-access-token}
-      WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET:-development-app-secret}
-      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-development-verify-token}
-      WHATSAPP_GRAPH_API_VERSION: ${WHATSAPP_GRAPH_API_VERSION:-v26.0}
     ports:
-      - "${GATEWAY_PORT:-3001}:3001"
+      - "127.0.0.1:${GATEWAY_PORT:-3001}:3001"
     depends_on:
       backend:
         condition: service_healthy

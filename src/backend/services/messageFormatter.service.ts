@@ -32,6 +32,9 @@ export const RESPOSTA_RECUSA_AGENDAMENTO =
 export const RESPOSTA_INICIO_AGENDAMENTO =
     "Vamos iniciar o agendamento presencial. Quem irá comparecer ao atendimento?\n1. Eu mesmo\n2. Um representante"
 
+export const MENSAGEM_ATENDIMENTO_PAUSADO =
+    "O atendimento automático do PROCON Jacareí está temporariamente indisponível. Tente novamente mais tarde."
+
 export interface PaginatedResult<T> {
     itensPagina: T[]
     paginaAtual: number
