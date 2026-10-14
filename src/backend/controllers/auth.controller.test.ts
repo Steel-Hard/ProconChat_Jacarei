@@ -13,11 +13,14 @@ import {
     accessCookieOptions,
     clearAccessCookieOptions,
     clearRefreshCookieOptions,
+    refreshCookieOptions,
 } from "../utils/sessionCookies"
+import { REFRESH_TOKEN_TTL_MS } from "../utils/sessionToken"
 
 const user = { id: 1, name: "Admin", email: "admin@exemplo.test", isAdmin: true, permissions: [...PERMISSIONS] }
 const authenticatedUser: AuthenticatedUser = { ...user, sessionVersion: 2 }
-const refreshCookieShape = expect.objectContaining({ path: "/api/v1/auth", httpOnly: true, sameSite: "strict" })
+const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000
+const FIXED_NOW = new Date("2026-03-10T12:00:00.000Z")
 
 function buildAuthService() {
     return {
@@ -32,7 +35,7 @@ function issuedSession() {
     return {
         accessToken: "token-de-acesso",
         refreshToken: "token-de-refresh",
-        refreshExpiresAt: new Date(Date.now() + 60_000),
+        refreshExpiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
     }
 }
 
@@ -58,11 +61,14 @@ describe("AuthController", () => {
     let controller: AuthController
 
     beforeEach(() => {
+        vi.useFakeTimers({ toFake: ["Date"] })
+        vi.setSystemTime(FIXED_NOW)
         auth = buildAuthService()
         controller = new AuthController({ auth })
     })
 
     afterEach(() => {
+        vi.useRealTimers()
         vi.unstubAllEnvs()
     })
 
@@ -76,7 +82,11 @@ describe("AuthController", () => {
 
         expect(auth.login).toHaveBeenCalledWith({ email: "admin@exemplo.test", password: "senha-do-admin", ip: "203.0.113.7" })
         expect(res.cookie).toHaveBeenCalledWith(ACCESS_COOKIE_NAME, "token-de-acesso", accessCookieOptions(env()))
-        expect(res.cookie).toHaveBeenCalledWith(REFRESH_COOKIE_NAME, "token-de-refresh", refreshCookieShape)
+        expect(res.cookie).toHaveBeenCalledWith(
+            REFRESH_COOKIE_NAME,
+            "token-de-refresh",
+            refreshCookieOptions(env(), new Date(FIXED_NOW.getTime() + NINETY_DAYS_MS)),
+        )
         expect(res.status).toHaveBeenCalledWith(200)
         expect(res.json).toHaveBeenCalledWith({ data: { user } })
         expect(next).not.toHaveBeenCalled()
@@ -281,7 +291,11 @@ describe("AuthController", () => {
 
         expect(auth.changePassword).toHaveBeenCalledWith(1, "senha-atual", "senha-nova-forte")
         expect(res.cookie).toHaveBeenCalledWith(ACCESS_COOKIE_NAME, "token-de-acesso", accessCookieOptions(env()))
-        expect(res.cookie).toHaveBeenCalledWith(REFRESH_COOKIE_NAME, "token-de-refresh", refreshCookieShape)
+        expect(res.cookie).toHaveBeenCalledWith(
+            REFRESH_COOKIE_NAME,
+            "token-de-refresh",
+            refreshCookieOptions(env(), new Date(FIXED_NOW.getTime() + NINETY_DAYS_MS)),
+        )
         expect(res.status).toHaveBeenCalledWith(200)
         expect(res.json).toHaveBeenCalledWith({ data: { changed: true } })
         expect(next).not.toHaveBeenCalled()
