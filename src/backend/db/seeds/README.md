@@ -7,7 +7,9 @@ Este diretório carrega no banco:
   ordem das listas do WhatsApp;
 - a **configuração inicial** da agenda: `ScheduleSettings` (linha única `id = 1`), a grade de
   `ScheduleRanges` e as duas listas de `AttendanceDocuments`;
-- a **conta Admin** do painel (decisão 004, item 1), a partir de `ROOT_EMAIL` e `ROOT_PASSWORD`.
+- a **conta Admin** do painel (decisão 004, item 1), a partir de `ROOT_EMAIL` e `ROOT_PASSWORD`;
+- a **configuração inicial do WhatsApp** (`WhatsAppSettings`, linha única `id = 1`, #83), a partir
+  dos `WHATSAPP_*` do `.env`.
 
 Diferente de `../migrations` (node-pg-migrate, que versiona mudança de **schema**), este script
 carrega **dados**. Specs: `.docs/.tasks/features/popular-banco-conteudo-real/spec.md` (origem) e
@@ -116,6 +118,31 @@ gravar nada. O log nunca mostra o e-mail nem a senha.
 Trocar `ROOT_EMAIL` ou `ROOT_PASSWORD` depois não altera a conta. Para redefinir a senha, use
 `npm run admin:reset-password` (README do backend).
 
+## Configuração do WhatsApp (#83)
+
+O seed procura a linha `WhatsAppSettings.id = 1`. Se ela existe, nada muda e as variáveis
+`WHATSAPP_*` nem são lidas. Se não existe, o seed cria a linha uma única vez
+(`INSERT ... ON CONFLICT (id) DO NOTHING`) com:
+
+| Coluna | Variável | Regra |
+| --- | --- | --- |
+| `phone_number_id` | `WHATSAPP_PHONE_NUMBER_ID` | Só dígitos, até 40. Vazia ou ausente vira `NULL` |
+| `business_account_id` | `WHATSAPP_BUSINESS_ACCOUNT_ID` | Opcional. Só dígitos, até 40. Vazia ou ausente vira `NULL` |
+| `access_token_encrypted` | `WHATSAPP_ACCESS_TOKEN` | Cifrado com `ENCRYPTION_KEY` (formato `v1:`). Vazia ou ausente vira `NULL` |
+| `app_secret_encrypted` | `WHATSAPP_APP_SECRET` | Cifrado com `ENCRYPTION_KEY`. Vazia ou ausente vira `NULL` |
+| `verify_token` | `WHATSAPP_VERIFY_TOKEN` | De 1 a 64 caracteres visíveis, sem espaço. Ausente: gera 64 caracteres hexadecimais aleatórios |
+
+`credentials_valid`, `credentials_checked_at` e `updated_by` ficam `NULL`. Um ID que não é
+numérico ou um `WHATSAPP_VERIFY_TOKEN` fora da regra fazem o seed falhar com uma mensagem que cita a
+variável, sem o valor. Cifrar sem `ENCRYPTION_KEY` válida (64 caracteres hexadecimais) também faz o
+seed falhar.
+
+**O `.env` é só o valor inicial.** Depois que a linha existe, mudar `WHATSAPP_*` não tem efeito: as
+credenciais, a pausa e o número são trocados pela tela de WhatsApp do painel (API em
+`/api/v1/whatsapp/settings`, README do backend). Em produção, os `WHATSAPP_*` que já estão no `.env`
+da VM criam a linha na primeira subida, e o `deploy.sh` avisa (sem abortar e sem mostrar valores)
+quando um deles está vazio.
+
 ## Procedimentos
 
 ### Corrigir um valor de configuração num banco já semeado
@@ -142,8 +169,10 @@ Depois, `npm run db:seed` (ou `docker compose run --rm seed`).
 ## Saída
 
 O log começa com `Seed concluído` e informa quantas categorias e perguntas foram inseridas,
-atualizadas e mantidas, se a configuração inicial foi criada ou mantida e se o Administrador foi
-criado ou mantido.
+atualizadas e mantidas, se a configuração inicial foi criada ou mantida, se o Administrador foi
+criado ou mantido e se a configuração do WhatsApp foi criada ou mantida ("WhatsApp: configuração
+inicial criada" ou "WhatsApp: configuração inicial já existe, mantida"). O log nunca mostra os
+valores das variáveis.
 
 ## Estrutura interna
 
@@ -158,7 +187,9 @@ criado ou mantido.
 - `content.seed.ts` — `seedContent(client)`: upsert do conteúdo pelo `seed_key`.
 - `config.seed.ts` — `seedInitialConfig(client)`: cria a configuração inicial uma única vez.
 - `admin.seed.ts` — `seedAdminAccount(client, env)`: cria a conta Admin uma única vez.
-- `run.ts` — abre a transação, pega o lock, chama as três funções, escreve o log e faz
+- `whatsappSettings.seed.ts` — `seedWhatsAppSettings(client, env)`: cria a configuração inicial do
+  WhatsApp uma única vez.
+- `run.ts` — abre a transação, pega o lock, chama as quatro funções, escreve o log e faz
   `COMMIT`/`ROLLBACK`.
 
 Os cenários contra Postgres real (do zero, idempotência, backfill com histórico, edições do

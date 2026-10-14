@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "vitest"
 import getPool from "../../db/connection"
+import { seedWhatsAppSettings } from "../../db/seeds/whatsappSettings.seed"
 import { whatsappSettingsRepository } from "../../repositories/whatsappSettings.repository"
-import { encrypt } from "../../utils/crypto.utils"
+import { decrypt, encrypt } from "../../utils/crypto.utils"
 
 const VERIFY_TOKEN = "a".repeat(64)
 
@@ -141,5 +142,40 @@ describe("Repositorio da configuracao do WhatsApp com Postgres", () => {
         expect(after?.credentialsCheckedAt).toBeInstanceOf(Date)
         expect(after?.updatedAt.getTime()).toBe(before.updatedAt.getTime())
         expect(after?.updatedBy).toBeNull()
+    })
+
+    test("o seed cria a linha a partir do .env na primeira execucao e nao altera nada na segunda", async () => {
+        const client = await getPool().connect()
+        try {
+            const first = await seedWhatsAppSettings(client, {
+                WHATSAPP_PHONE_NUMBER_ID: "100000000000001",
+                WHATSAPP_ACCESS_TOKEN: "token-ficticio-de-acesso",
+                WHATSAPP_APP_SECRET: "segredo-ficticio-do-app",
+                WHATSAPP_VERIFY_TOKEN: "verify-token-ficticio",
+            })
+            const created = await whatsappSettingsRepository.findRow()
+            const second = await seedWhatsAppSettings(client, {
+                WHATSAPP_PHONE_NUMBER_ID: "999999999999999",
+                WHATSAPP_ACCESS_TOKEN: "outro-token",
+                WHATSAPP_VERIFY_TOKEN: "outro-verify-token",
+            })
+            const kept = await whatsappSettingsRepository.findRow()
+
+            expect(first).toBe("created")
+            expect(second).toBe("kept")
+            expect(created).toMatchObject({
+                phoneNumberId: "100000000000001",
+                businessAccountId: null,
+                verifyToken: "verify-token-ficticio",
+                credentialsValid: null,
+                updatedBy: null,
+            })
+            expect(decrypt(created?.accessTokenEncrypted as string)).toBe("token-ficticio-de-acesso")
+            expect(decrypt(created?.appSecretEncrypted as string)).toBe("segredo-ficticio-do-app")
+            expect(kept).toEqual(created)
+            expect(await rowCount()).toBe(1)
+        } finally {
+            client.release()
+        }
     })
 })

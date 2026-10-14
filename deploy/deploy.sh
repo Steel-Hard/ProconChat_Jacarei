@@ -60,6 +60,14 @@ if [ "$invalid_auth" -ne 0 ]; then
     exit 1
 fi
 
+for whatsapp_var in WHATSAPP_PHONE_NUMBER_ID WHATSAPP_ACCESS_TOKEN WHATSAPP_APP_SECRET WHATSAPP_VERIFY_TOKEN; do
+    whatsapp_value="${!whatsapp_var:-$(env_value "$whatsapp_var")}"
+    if [ -z "$(printf '%s' "$whatsapp_value" | tr -d '[:space:]')" ]; then
+        echo "aviso: $whatsapp_var vazio no .env; se a configuração do WhatsApp ainda não existe no banco, o seed vai criá-la sem esse valor, e ele precisa ser preenchido na tela de WhatsApp" >&2
+    fi
+done
+unset whatsapp_var whatsapp_value
+
 wait_healthy() {
     local service="$1"
     local deadline=$((SECONDS + WAIT_TIMEOUT))
