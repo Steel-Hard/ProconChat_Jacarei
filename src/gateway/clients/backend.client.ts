@@ -10,9 +10,10 @@ export interface WhatsappSessionRequest {
 }
 
 export interface WhatsappSessionResponse {
-    sessionId: string
+    sessionId: string | null
     newSession: boolean
-    reply: { text: string; step: string; messages?: OutgoingMessage[] }
+    paused?: boolean
+    reply: { text: string; step: string | null; messages?: OutgoingMessage[] }
 }
 
 export interface BackendClient {

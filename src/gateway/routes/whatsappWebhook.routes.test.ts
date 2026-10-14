@@ -3,10 +3,29 @@ import request from "supertest"
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
 import app from "../app"
 import { processWhatsappWebhook } from "../services/whatsappWebhook.service"
+import { whatsappConfigStore } from "../services/whatsappConfigStore"
+import ServiceUnavailableError from "../errors/ServiceUnavailableError"
 
 vi.mock("../services/whatsappWebhook.service", () => ({
     processWhatsappWebhook: vi.fn(),
 }))
+
+vi.mock("../services/whatsappConfigStore", () => {
+    const testConfig = {
+        phoneNumberId: "100000000000001",
+        accessToken: "test-only-access-token",
+        appSecret: "test-only-app-secret",
+        verifyToken: "test-only-verify-token",
+        graphApiVersion: "v26.0",
+    }
+    return {
+        whatsappConfigStore: {
+            load: vi.fn(async () => testConfig),
+            current: vi.fn(() => testConfig),
+            invalidate: vi.fn(),
+        },
+    }
+})
 
 const VERIFY_TOKEN = "test-only-verify-token"
 const APP_SECRET = "test-only-app-secret"
@@ -224,5 +243,53 @@ describe("POST /webhooks/whatsapp", () => {
         expect(response.status).toBe(400)
         expect(response.body.error.code).toBe("BAD_REQUEST")
         expect(processWhatsappWebhook).not.toHaveBeenCalled()
+    })
+})
+
+describe("/webhooks/whatsapp sem a configuracao do backend", () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        vi.spyOn(console, "log").mockImplementation(() => undefined)
+        vi.spyOn(console, "error").mockImplementation(() => undefined)
+        vi.mocked(whatsappConfigStore.load).mockRejectedValueOnce(
+            new ServiceUnavailableError("WhatsApp configuration is unavailable"),
+        )
+    })
+
+    afterEach(() => {
+        vi.mocked(whatsappConfigStore.load).mockReset()
+        vi.restoreAllMocks()
+    })
+
+    test("POST responde 503 para a Meta reenviar depois, sem chamar o service", async () => {
+        const body = JSON.stringify(payload)
+
+        const response = await request(app)
+            .post("/webhooks/whatsapp")
+            .set("Content-Type", "application/json")
+            .set("X-Hub-Signature-256", sign(body))
+            .send(body)
+
+        expect(response.status).toBe(503)
+        expect(response.body).toEqual({
+            error: { code: "SERVICE_UNAVAILABLE", message: "WhatsApp configuration is unavailable" },
+        })
+        expect(processWhatsappWebhook).not.toHaveBeenCalled()
+    })
+
+    test("GET de verificacao com os parametros responde 503", async () => {
+        const response = await request(app)
+            .get("/webhooks/whatsapp")
+            .query({ "hub.mode": "subscribe", "hub.verify_token": VERIFY_TOKEN, "hub.challenge": "123" })
+
+        expect(response.status).toBe(503)
+        expect(response.text).not.toContain("123")
+    })
+
+    test("GET sem os parametros responde 403 sem consultar o backend", async () => {
+        const response = await request(app).get("/webhooks/whatsapp")
+
+        expect(response.status).toBe(403)
+        expect(whatsappConfigStore.load).not.toHaveBeenCalled()
     })
 })

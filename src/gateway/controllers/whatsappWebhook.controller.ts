@@ -4,47 +4,57 @@ import { cloudApiProvider } from "../gateways/cloudApi.gateway"
 import { MessageProvider } from "../gateways/messageProvider"
 import { processWhatsappWebhook } from "../services/whatsappWebhook.service"
 import { WhatsappWebhookResult } from "../types/whatsappWebhook.types"
-import { readWhatsAppConfigFromEnv } from "../utils/whatsappConfig"
+import { WhatsAppConfigStore, whatsappConfigStore } from "../services/whatsappConfigStore"
 import BadRequestError from "../errors/BadRequestError"
 import ForbiddenError from "../errors/ForbiddenError"
 import PayloadTooLargeError from "../errors/PayloadTooLargeError"
 import UnauthorizedError from "../errors/UnauthorizedError"
 
 interface WhatsappWebhookControllerDependencies {
-    signatures: Pick<MessageProvider, "verifySignature">
-    processWebhook: (payload: unknown) => Promise<WhatsappWebhookResult>
+    signatures?: Pick<MessageProvider, "verifySignature">
+    processWebhook?: (payload: unknown) => Promise<WhatsappWebhookResult>
+    config?: Pick<WhatsAppConfigStore, "load">
 }
 
 class WhatsappWebhookController {
-    private signatures: WhatsappWebhookControllerDependencies["signatures"]
-    private processWebhook: WhatsappWebhookControllerDependencies["processWebhook"]
+    private signatures: Pick<MessageProvider, "verifySignature">
+    private processWebhook: (payload: unknown) => Promise<WhatsappWebhookResult>
+    private config: Pick<WhatsAppConfigStore, "load">
 
-    constructor(
-        { signatures, processWebhook }: WhatsappWebhookControllerDependencies = {
-            signatures: cloudApiProvider,
-            processWebhook: processWhatsappWebhook,
-        },
-    ) {
+    constructor({
+        signatures = cloudApiProvider,
+        processWebhook = processWhatsappWebhook,
+        config = whatsappConfigStore,
+    }: WhatsappWebhookControllerDependencies = {}) {
         this.signatures = signatures
         this.processWebhook = processWebhook
+        this.config = config
     }
 
-    public verify(req: Request, res: Response, next: NextFunction): void {
-        const mode = this.queryString(req, "hub.mode")
-        const token = this.queryString(req, "hub.verify_token")
-        const challenge = this.queryString(req, "hub.challenge")
-        const { verifyToken } = readWhatsAppConfigFromEnv()
+    public async verify(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const mode = this.queryString(req, "hub.mode")
+            const token = this.queryString(req, "hub.verify_token")
+            const challenge = this.queryString(req, "hub.challenge")
 
-        if (mode !== "subscribe" || !challenge || !this.matchesVerifyToken(token, verifyToken)) {
-            next(new ForbiddenError("Invalid webhook verification"))
-            return
+            if (mode !== "subscribe" || !challenge || !token) {
+                throw new ForbiddenError("Invalid webhook verification")
+            }
+
+            const { verifyToken } = await this.config.load()
+            if (!this.matchesVerifyToken(token, verifyToken)) {
+                throw new ForbiddenError("Invalid webhook verification")
+            }
+
+            res.status(200).type("text/plain").send(challenge)
+        } catch (error) {
+            next(error)
         }
-
-        res.status(200).type("text/plain").send(challenge)
     }
 
     public async receive(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
+            await this.config.load()
             const rawBody: Buffer = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0)
 
             if (!this.signatures.verifySignature(rawBody, req.get("X-Hub-Signature-256"))) {
