@@ -119,6 +119,7 @@ wait_healthy gateway
 
 check_status / 200
 check_status /webhooks/whatsapp 403
+check_status /api/v1/internal/whatsapp/config 404
 
 printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$IMAGE_TAG" >> releases.log
 docker image prune -af --filter "until=168h"
