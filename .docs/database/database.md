@@ -57,7 +57,7 @@ CREATE EXTENSION IF NOT EXISTS unaccent;
 
 ### Users — [decisão 004](../decisoes/004-contas-e-permissoes-granulares.md)
 
-Contas do painel. A conta Admin é marcada por `is_admin`, e `uniq_users_single_admin` garante que existe **no máximo um Admin**. O seed da conta Admin é da #57.
+Contas do painel. A conta Admin é marcada por `is_admin`, e `uniq_users_single_admin` garante que existe **no máximo um Admin**. O seed cria a conta Admin (#57) com `name = 'Admin'`, o e-mail de `ROOT_EMAIL` e o hash `bcryptjs` (custo 12) de `ROOT_PASSWORD`, só enquanto não existe nenhuma linha com `is_admin`. Depois disso a conta fica como está, mesmo que `ROOT_*` mude.
 
 ```sql
 CREATE TABLE Users (
@@ -76,8 +76,8 @@ CREATE TABLE Users (
 CREATE UNIQUE INDEX uniq_users_single_admin ON Users(is_admin) WHERE is_admin;
 ```
 
-- **Autenticação por JWT (#57), sem tabela de sessões de login.** O token carrega o `session_version` da conta no momento em que foi emitido. A cada requisição, o backend recusa o token se a versão for diferente da atual ou se a conta não estiver ativa (`active`). **Incrementar `session_version` invalida todos os tokens já emitidos daquela conta.**
-- Quando incrementar é regra da aplicação ([`regras/01-login-e-conta.md`](../regras/01-login-e-conta.md)): **"Alterar minha senha" não incrementa** (a sessão atual continua valendo e a nova senha vale a partir do próximo acesso); uma conta desativada não entra pela checagem de `active`; não existe "esqueci minha senha".
+- **Autenticação por JWT em cookies `HttpOnly` (#57), sem tabela de sessões de login.** O cookie de acesso (1 h) e o de refresh (90 dias) carregam o `session_version` da conta no momento em que foram emitidos. A cada requisição, o backend recusa o token se a versão for diferente da atual ou se a conta não estiver ativa (`active`). **Incrementar `session_version` invalida todos os tokens já emitidos daquela conta.**
+- Quando incrementar é regra da aplicação (#57, [`regras/01-login-e-conta.md`](../regras/01-login-e-conta.md)): **"Alterar minha senha" incrementa**, o que derruba as outras sessões da conta, e a sessão atual recebe cookies novos; o script `npm run admin:reset-password` (redefinição da senha do Admin no servidor) também incrementa; **"Sair" não incrementa**, só limpa os cookies do navegador; uma conta desativada não entra pela checagem de `active`; não existe "esqueci minha senha".
 - As permissões granulares ficam para a #62 (Parte 2). Na Sprint 2, o middleware só libera `is_admin`.
 
 ### Categories — [decisões 001](../decisoes/001-fluxo-guiado-por-categorias.md) e [009](../decisoes/009-complemento-por-llm.md)

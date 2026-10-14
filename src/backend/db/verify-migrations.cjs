@@ -39,12 +39,15 @@ const expectedEnums = {
     ],
 };
 
-function run(args, url) {
-    return spawnSync(process.execPath, args, {
-        cwd: backendDir,
-        env: { ...process.env, DB_URL: url },
-        encoding: 'utf8',
-    });
+const rootEnv = { ROOT_EMAIL: '  Admin@Verify.Test ', ROOT_PASSWORD: 'senha-de-verificacao' };
+const rootEmail = 'admin@verify.test';
+
+function run(args, url, extraEnv = {}) {
+    const env = { ...process.env, DB_URL: url, ...extraEnv };
+    for (const [key, value] of Object.entries(env)) {
+        if (value === undefined) delete env[key];
+    }
+    return spawnSync(process.execPath, args, { cwd: backendDir, env, encoding: 'utf8' });
 }
 
 function migrate(url, direction, ...args) {
@@ -59,8 +62,12 @@ function mustMigrate(url, direction, ...args) {
     assert.equal(result.status, 0, result.error?.message || result.stderr || result.stdout);
 }
 
-function mustSeed(url) {
-    const result = run([require.resolve('ts-node/dist/bin.js'), 'db/seeds/run.ts'], url);
+function runSeed(url, env = rootEnv) {
+    return run([require.resolve('ts-node/dist/bin.js'), 'db/seeds/run.ts'], url, env);
+}
+
+function mustSeed(url, env = rootEnv) {
+    const result = runSeed(url, env);
     assert.equal(result.status, 0, result.error?.message || result.stderr || result.stdout);
     assert.match(result.stdout, /Seed concluído/);
     return result.stdout;
@@ -531,7 +538,7 @@ async function rowsAsJson(db, table) {
 }
 
 const seededTables = [
-    'categories', 'questions', 'requireddocuments', 'schedulesettings', 'scheduleranges', 'blockeddates', 'attendancedocuments',
+    'categories', 'questions', 'requireddocuments', 'schedulesettings', 'scheduleranges', 'blockeddates', 'attendancedocuments', 'users',
 ];
 
 async function snapshotSeededTables(db) {
@@ -596,14 +603,33 @@ async function assertInitialConfig(db) {
     assert.equal((await documents('REPRESENTATIVE')).length, 4);
 }
 
+async function assertAdminAccount(db, email) {
+    const admins = (await db.query('SELECT name, email, password_hash, active, is_admin, session_version, last_login_at FROM users WHERE is_admin')).rows;
+    assert.equal(admins.length, 1);
+    const [admin] = admins;
+    assert.match(admin.password_hash, /^\$2[ab]\$12\$/);
+    assert.deepEqual(
+        { ...admin, password_hash: undefined },
+        { name: 'Admin', email, password_hash: undefined, active: true, is_admin: true, session_version: 0, last_login_at: null },
+    );
+}
+
+function assertNoCredentialsInOutput(output) {
+    assert.doesNotMatch(output, /verify\.test/i);
+    assert.doesNotMatch(output, new RegExp(rootEnv.ROOT_PASSWORD));
+}
+
 async function checkSeedFromScratch(db, url) {
     mustMigrate(url, 'up');
     const output = mustSeed(url);
     assert.match(output, /Categorias: 7 inseridas, 0 atualizadas, 0 mantidas/);
     assert.match(output, /Perguntas: 47 inseridas, 0 atualizadas, 0 mantidas/);
     assert.match(output, /configuração inicial criada/);
+    assert.match(output, /Administrador: criado/);
+    assertNoCredentialsInOutput(output);
     await assertSeededContent(db);
     await assertInitialConfig(db);
+    await assertAdminAccount(db, rootEmail);
 }
 
 async function checkSeedIdempotence(db, url) {
@@ -614,7 +640,79 @@ async function checkSeedIdempotence(db, url) {
     assert.match(output, /Categorias: 0 inseridas, 0 atualizadas, 7 mantidas/);
     assert.match(output, /Perguntas: 0 inseridas, 0 atualizadas, 47 mantidas/);
     assert.match(output, /configuração inicial já existe, mantida/);
+    assert.match(output, /Administrador: já existia, mantido/);
     assert.deepEqual(await snapshotSeededTables(db), before);
+    await assertAdminAccount(db, rootEmail);
+}
+
+async function checkSeedKeepsAdmin(db, url) {
+    mustMigrate(url, 'up');
+    mustSeed(url);
+    const before = await rowsAsJson(db, 'users');
+    const otherEmail = mustSeed(url, { ROOT_EMAIL: 'outro@verify.test', ROOT_PASSWORD: 'outra-senha-de-verificacao' });
+    assert.match(otherEmail, /Administrador: já existia, mantido/);
+    const withoutRoot = mustSeed(url, { ROOT_EMAIL: undefined, ROOT_PASSWORD: undefined });
+    assert.match(withoutRoot, /Administrador: já existia, mantido/);
+    assert.deepEqual(await rowsAsJson(db, 'users'), before);
+    await assertAdminAccount(db, rootEmail);
+}
+
+async function checkSeedRequiresRootWithoutAdmin(db, url) {
+    mustMigrate(url, 'up');
+    const cases = [
+        [{ ROOT_EMAIL: undefined, ROOT_PASSWORD: undefined }, /ROOT_EMAIL/],
+        [{ ROOT_EMAIL: rootEnv.ROOT_EMAIL, ROOT_PASSWORD: undefined }, /ROOT_PASSWORD/],
+        [{ ROOT_EMAIL: rootEnv.ROOT_EMAIL, ROOT_PASSWORD: 'curta' }, /ROOT_PASSWORD is invalid/],
+        [{ ROOT_EMAIL: rootEnv.ROOT_EMAIL, ROOT_PASSWORD: 'é'.repeat(37) }, /ROOT_PASSWORD is invalid/],
+    ];
+    for (const [env, message] of cases) {
+        const result = runSeed(url, env);
+        assert.notEqual(result.status, 0);
+        assert.match(result.stderr + result.stdout, message);
+        assert.doesNotMatch(result.stderr + result.stdout, /Seed concluído/);
+        for (const table of seededTables) {
+            assert.equal(await count(db, `SELECT 1 FROM ${table}`), 0, table);
+        }
+    }
+}
+
+async function checkResetAdminPasswordScript(db, url) {
+    const bcrypt = require('bcryptjs');
+    const resetScript = [require.resolve('ts-node/dist/bin.js'), 'db/scripts/resetAdminPassword.ts'];
+    const newPassword = 'nova-senha-de-verificacao';
+    mustMigrate(url, 'up');
+    mustSeed(url);
+    const adminRow = async () => (await db.query('SELECT name, email, password_hash, session_version FROM users WHERE is_admin')).rows[0];
+    const before = await adminRow();
+
+    for (const password of [undefined, 'curta', 'é'.repeat(37)]) {
+        const rejected = run(resetScript, url, { ROOT_EMAIL: undefined, ROOT_PASSWORD: password });
+        assert.equal(rejected.status, 1);
+        assert.doesNotMatch(rejected.stdout, /Senha do Admin redefinida/);
+        assert.doesNotMatch(rejected.stderr + rejected.stdout, /verify\.test/i);
+        if (password) assert.ok(!(rejected.stderr + rejected.stdout).includes(password));
+        assert.deepEqual(await adminRow(), before);
+    }
+
+    const reset = run(resetScript, url, { ROOT_EMAIL: rootEnv.ROOT_EMAIL, ROOT_PASSWORD: newPassword });
+    assert.equal(reset.status, 0, reset.stderr || reset.stdout);
+    assert.match(reset.stdout, /Senha do Admin redefinida/);
+    const output = reset.stdout + reset.stderr;
+    assert.doesNotMatch(output, /verify\.test/i);
+    assert.ok(!output.includes(newPassword));
+    const after = await adminRow();
+    assert.equal(after.session_version, before.session_version + 1);
+    assert.equal(after.email, before.email);
+    assert.equal(after.name, before.name);
+    assert.match(after.password_hash, /^\$2[ab]\$12\$/);
+    assert.equal(await bcrypt.compare(newPassword, after.password_hash), true);
+    assert.equal(await bcrypt.compare(rootEnv.ROOT_PASSWORD, after.password_hash), false);
+
+    await db.query('DELETE FROM users WHERE is_admin');
+    const withoutAdmin = run(resetScript, url, { ROOT_PASSWORD: newPassword });
+    assert.equal(withoutAdmin.status, 1);
+    assert.match(withoutAdmin.stderr, /seed/i);
+    assert.equal(await count(db, 'SELECT 1 FROM users WHERE is_admin'), 0);
 }
 
 async function checkSeedBackfillWithHistory(db, url) {
@@ -769,6 +867,12 @@ async function main() {
         console.log('OK: seed from scratch loads content, titles, order and initial config');
         await withDatabase(admin, process.env.DB_TEST_URL, checkSeedIdempotence);
         console.log('OK: second seed run changes nothing');
+        await withDatabase(admin, process.env.DB_TEST_URL, checkSeedKeepsAdmin);
+        console.log('OK: seed keeps the existing Admin with another ROOT_EMAIL or without ROOT_*');
+        await withDatabase(admin, process.env.DB_TEST_URL, checkSeedRequiresRootWithoutAdmin);
+        console.log('OK: seed without Admin fails on missing or invalid ROOT_* and writes nothing');
+        await withDatabase(admin, process.env.DB_TEST_URL, checkResetAdminPasswordScript);
+        console.log('OK: admin:reset-password rewrites the Admin hash, bumps session_version and prints no credentials');
         await withDatabase(admin, process.env.DB_TEST_URL, checkSeedBackfillWithHistory);
         console.log('OK: seed backfills seed_key keeping ids, events and sessions');
         await withDatabase(admin, process.env.DB_TEST_URL, checkSeedKeepsPanelEdits);

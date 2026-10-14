@@ -6,7 +6,8 @@ Este diretório carrega no banco:
   PROCON Jacareí (`.docs/database/Dúvidas Frequentes.odt`), com título curto, descrição curta e
   ordem das listas do WhatsApp;
 - a **configuração inicial** da agenda: `ScheduleSettings` (linha única `id = 1`), a grade de
-  `ScheduleRanges` e as duas listas de `AttendanceDocuments`.
+  `ScheduleRanges` e as duas listas de `AttendanceDocuments`;
+- a **conta Admin** do painel (decisão 004, item 1), a partir de `ROOT_EMAIL` e `ROOT_PASSWORD`.
 
 Diferente de `../migrations` (node-pg-migrate, que versiona mudança de **schema**), este script
 carrega **dados**. Specs: `.docs/.tasks/features/popular-banco-conteudo-real/spec.md` (origem) e
@@ -103,6 +104,18 @@ painel nunca é desfeito, mesmo sem `updated_by`.
 **Execuções simultâneas:** tudo roda numa única transação, com `pg_advisory_xact_lock` logo
 depois do `BEGIN`. Qualquer erro faz `ROLLBACK` e o processo sai com código diferente de 0.
 
+## Conta Admin (#57)
+
+O seed procura a conta com `is_admin`. Se ela existe, com qualquer e-mail, nada muda e as
+variáveis `ROOT_*` nem são lidas. Se não existe, o seed cria uma única conta com `name = 'Admin'`,
+`is_admin`, ativa, `session_version = 0`, o e-mail de `ROOT_EMAIL` sem espaços nas pontas e em
+minúsculas e o hash `bcryptjs` de custo 12 de `ROOT_PASSWORD`. Sem Admin, a falta de uma das duas
+variáveis, ou uma senha com menos de 8 caracteres ou mais de 72 bytes, faz o seed falhar sem
+gravar nada. O log nunca mostra o e-mail nem a senha.
+
+Trocar `ROOT_EMAIL` ou `ROOT_PASSWORD` depois não altera a conta. Para redefinir a senha, use
+`npm run admin:reset-password` (README do backend).
+
 ## Procedimentos
 
 ### Corrigir um valor de configuração num banco já semeado
@@ -129,7 +142,8 @@ Depois, `npm run db:seed` (ou `docker compose run --rm seed`).
 ## Saída
 
 O log começa com `Seed concluído` e informa quantas categorias e perguntas foram inseridas,
-atualizadas e mantidas, e se a configuração inicial foi criada ou mantida.
+atualizadas e mantidas, se a configuração inicial foi criada ou mantida e se o Administrador foi
+criado ou mantido.
 
 ## Estrutura interna
 
@@ -143,8 +157,9 @@ atualizadas e mantidas, e se a configuração inicial foi criada ou mantida.
 - `data/*.data.test.ts` — testes dos dados, sem banco (`npm test`).
 - `content.seed.ts` — `seedContent(client)`: upsert do conteúdo pelo `seed_key`.
 - `config.seed.ts` — `seedInitialConfig(client)`: cria a configuração inicial uma única vez.
-- `run.ts` — abre a transação, pega o lock, chama as duas funções, escreve o log e faz
+- `admin.seed.ts` — `seedAdminAccount(client, env)`: cria a conta Admin uma única vez.
+- `run.ts` — abre a transação, pega o lock, chama as três funções, escreve o log e faz
   `COMMIT`/`ROLLBACK`.
 
 Os cenários contra Postgres real (do zero, idempotência, backfill com histórico, edições do
-painel e configuração alterada) ficam em `../verify-migrations.cjs` (`npm run test:db`).
+painel, configuração alterada e conta Admin) ficam em `../verify-migrations.cjs` (`npm run test:db`).

@@ -2,6 +2,10 @@ import { Request, Response, NextFunction } from "express"
 import AppError from "../errors/AppError"
 import { ErrorResponseBody } from "../types/errorResponse.types"
 
+function isMalformedJsonBody(err: unknown): boolean {
+    return typeof err === "object" && err !== null && "type" in err && err.type === "entity.parse.failed"
+}
+
 function errorHandler(err: unknown, _req: Request, res: Response, next: NextFunction): void {
     if (res.headersSent) {
         next(err)
@@ -11,6 +15,12 @@ function errorHandler(err: unknown, _req: Request, res: Response, next: NextFunc
     if (err instanceof AppError) {
         const body: ErrorResponseBody = { error: { code: err.code, message: err.message } }
         res.status(err.statusCode).json(body)
+        return
+    }
+
+    if (isMalformedJsonBody(err)) {
+        const body: ErrorResponseBody = { error: { code: "BAD_REQUEST", message: "Malformed JSON body" } }
+        res.status(400).json(body)
         return
     }
 

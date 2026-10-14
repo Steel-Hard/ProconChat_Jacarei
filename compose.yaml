@@ -36,6 +36,8 @@ services:
       target: runtime
     environment:
       DB_URL: postgresql://${POSTGRES_USER:-proconchat}:${POSTGRES_PASSWORD:-proconchat_dev}@postgres:5432/proconchat
+      ROOT_EMAIL: ${ROOT_EMAIL:-admin@procon.local}
+      ROOT_PASSWORD: ${ROOT_PASSWORD:-admin-dev-123}
     command: ["node", "dist/db/seeds/run.js"]
     depends_on:
       migrate:
@@ -51,6 +53,8 @@ services:
       PORT: 3000
       PHONE_HASH_SECRET: ${PHONE_HASH_SECRET:-development-only-secret}
       GATEWAY_INTERNAL_TOKEN: ${GATEWAY_INTERNAL_TOKEN:-development-internal-token}
+      AUTH_TOKEN_SECRET: ${AUTH_TOKEN_SECRET:-development-only-auth-token-secret-32chars}
+      FRONTEND_ORIGIN: http://localhost:${FRONTEND_PORT:-8081}
       OLLAMA_URL: http://ollama:11434
       LLM_MODEL: ${LLM_MODEL:-llama3.2:3b}
       LLM_TIMEOUT_MS: ${LLM_TIMEOUT_MS:-20000}

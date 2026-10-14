@@ -25,6 +25,36 @@ if [ -z "$SITE_ADDRESS" ]; then
     exit 1
 fi
 
+text_chars() {
+    printf '%s' "$1" | LC_ALL=C tr -d '\200-\277' | LC_ALL=C wc -c
+}
+
+text_bytes() {
+    printf '%s' "$1" | LC_ALL=C wc -c
+}
+
+auth_token_secret="${AUTH_TOKEN_SECRET:-$(env_value AUTH_TOKEN_SECRET)}"
+root_email="${ROOT_EMAIL:-$(env_value ROOT_EMAIL)}"
+root_password="${ROOT_PASSWORD:-$(env_value ROOT_PASSWORD)}"
+invalid_auth=0
+if [ "$(($(text_chars "$auth_token_secret")))" -lt 32 ]; then
+    echo "AUTH_TOKEN_SECRET no .env precisa ter 32 ou mais caracteres (gere com openssl rand -hex 32)" >&2
+    invalid_auth=1
+fi
+if [ -z "$(printf '%s' "$root_email" | tr -d '[:space:]')" ]; then
+    echo "ROOT_EMAIL não definido no .env" >&2
+    invalid_auth=1
+fi
+if [ "$(($(text_chars "$root_password")))" -lt 8 ] || [ "$(($(text_bytes "$root_password")))" -gt 72 ]; then
+    echo "ROOT_PASSWORD no .env precisa ter de 8 caracteres a 72 bytes" >&2
+    invalid_auth=1
+fi
+unset auth_token_secret root_email root_password
+if [ "$invalid_auth" -ne 0 ]; then
+    echo "deploy abortado antes de baixar imagens ou recriar containers" >&2
+    exit 1
+fi
+
 wait_healthy() {
     local service="$1"
     local deadline=$((SECONDS + WAIT_TIMEOUT))
