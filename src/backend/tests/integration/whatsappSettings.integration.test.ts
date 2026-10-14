@@ -1,10 +1,24 @@
+import { createHmac } from "node:crypto"
+import request from "supertest"
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "vitest"
+import app from "../../app"
 import getPool from "../../db/connection"
 import { seedWhatsAppSettings } from "../../db/seeds/whatsappSettings.seed"
 import { whatsappSettingsRepository } from "../../repositories/whatsappSettings.repository"
 import { decrypt, encrypt } from "../../utils/crypto.utils"
 
 const VERIFY_TOKEN = "a".repeat(64)
+const PAUSE_TEST_PHONE = "5500000000997"
+const PAUSED_MESSAGE =
+    "O atendimento automático do PROCON Jacareí está temporariamente indisponível. Tente novamente mais tarde."
+
+function pauseTestPhoneHash(): string {
+    return createHmac("sha256", process.env.PHONE_HASH_SECRET as string).update(PAUSE_TEST_PHONE).digest("hex")
+}
+
+async function removePauseTestSessions(): Promise<void> {
+    await getPool().query("DELETE FROM Sessions WHERE phone_hash = $1", [pauseTestPhoneHash()])
+}
 
 let originalRow: Record<string, unknown> | undefined
 let userId = 0
@@ -46,6 +60,7 @@ describe("Repositorio da configuracao do WhatsApp com Postgres", () => {
 
     afterAll(async () => {
         try {
+            await removePauseTestSessions()
             await restoreRow()
             await getPool().query("DELETE FROM Users WHERE id = $1", [userId])
         } finally {
@@ -177,5 +192,30 @@ describe("Repositorio da configuracao do WhatsApp com Postgres", () => {
         } finally {
             client.release()
         }
+    })
+
+    test("com a pausa ligada, a mensagem recebe o texto fixo e nenhuma sessao e criada", async () => {
+        await removePauseTestSessions()
+        await whatsappSettingsRepository.ensureRow(VERIFY_TOKEN)
+        await whatsappSettingsRepository.setAutoReplyPaused(true, userId)
+
+        const response = await request(app)
+            .post("/api/v1/whatsapp/sessions")
+            .set("X-Internal-Token", process.env.GATEWAY_INTERNAL_TOKEN as string)
+            .send({ phone: PAUSE_TEST_PHONE, text: "Olá" })
+
+        expect(response.status).toBe(202)
+        expect(response.body).toEqual({
+            data: {
+                sessionId: null,
+                newSession: false,
+                paused: true,
+                reply: { text: PAUSED_MESSAGE, step: null, messages: [{ type: "text", text: PAUSED_MESSAGE }] },
+            },
+        })
+        const sessions = await getPool().query("SELECT 1 FROM Sessions WHERE phone_hash = $1", [pauseTestPhoneHash()])
+        expect(sessions.rowCount).toBe(0)
+        await whatsappSettingsRepository.setAutoReplyPaused(false, userId)
+        expect(await whatsappSettingsRepository.isAutoReplyPaused()).toBe(false)
     })
 })

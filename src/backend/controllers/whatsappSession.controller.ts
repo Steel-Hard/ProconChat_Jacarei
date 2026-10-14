@@ -1,10 +1,10 @@
 import { NextFunction, Request, Response } from "express"
-import { processIncomingMessage, ConversationFlowInput, ConversationFlowResult } from "../services/conversationFlow.service"
+import { processIncomingMessage, ConversationFlowInput, ConversationFlowResponse } from "../services/conversationFlow.service"
 import UnauthorizedError from "../errors/UnauthorizedError"
 import { isValidInternalToken } from "../utils/internalToken"
 
 interface WhatsappSessionControllerDependencies {
-    processMessage: (input: ConversationFlowInput) => Promise<ConversationFlowResult>
+    processMessage: (input: ConversationFlowInput) => Promise<ConversationFlowResponse>
 }
 
 class WhatsappSessionController {

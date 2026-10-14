@@ -13,6 +13,7 @@ import {
     RESPOSTA_INICIO_AGENDAMENTO,
     RESPOSTA_RECUSA_AGENDAMENTO,
     RESPOSTA_RESOLVIDA_SIM,
+    MENSAGEM_ATENDIMENTO_PAUSADO,
 } from "./messageFormatter.service"
 
 const categorias: Categoria[] = [
@@ -125,6 +126,7 @@ describe("conversationFlow.service (Issue #55 - Novo fluxo da dúvida)", () => {
         motor,
         hashPhone,
         logger,
+        isAutoReplyPaused: async () => false,
     })
 
     beforeEach(() => {
@@ -466,7 +468,7 @@ describe("conversationFlow.service (Issue #55 - Novo fluxo da dúvida)", () => {
             sessions: { finish: vi.fn() },
             logger,
         })
-        const flow = createConversationFlowService({ sessions, events: realEvents, motor, hashPhone, logger })
+        const flow = createConversationFlowService({ sessions, events: realEvents, motor, hashPhone, logger, isAutoReplyPaused: async () => false })
         findOrCreateActive.mockResolvedValueOnce({
             id: "7",
             created: false,
@@ -511,5 +513,123 @@ describe("conversationFlow.service (Issue #55 - Novo fluxo da dúvida)", () => {
         })
         expect(JSON.stringify(logger.error.mock.calls)).not.toContain("Maria")
         expect(JSON.stringify(logger.error.mock.calls)).not.toContain("5500000000101")
+    })
+})
+
+describe("conversationFlow.service com o atendimento automatico pausado (#83)", () => {
+    const findOrCreateActive = vi.fn()
+    const updateNavigationState = vi.fn()
+    const touch = vi.fn()
+    const finish = vi.fn()
+    const sweepAbandonedSessions = vi.fn()
+    const sessions: SessionRepository = { findOrCreateActive, updateNavigationState, touch, finish, sweepAbandonedSessions }
+    const recordEvent = vi.fn()
+    const finishEvent = vi.fn()
+    const listEvents = vi.fn()
+    const events: ConversationEventService = { record: recordEvent, finish: finishEvent, listBySession: listEvents }
+    const iniciarSessao = vi.fn()
+    const escolherCategoria = vi.fn()
+    const processarPergunta = vi.fn()
+    const motor: MotorDecisao = { iniciarSessao, escolherCategoria, processarPergunta }
+    const hashPhone = vi.fn((phone: string) => `hash-${phone}`)
+    const isAutoReplyPaused = vi.fn<() => Promise<boolean>>()
+    const flow = createConversationFlowService({
+        sessions,
+        events,
+        motor,
+        hashPhone,
+        logger: { error: vi.fn() },
+        isAutoReplyPaused,
+    })
+
+    const pausedReply = {
+        sessionId: null,
+        newSession: false,
+        paused: true,
+        reply: {
+            text: MENSAGEM_ATENDIMENTO_PAUSADO,
+            step: null,
+            messages: [{ type: "text", text: MENSAGEM_ATENDIMENTO_PAUSADO }],
+        },
+    }
+
+    function expectSessionUntouched() {
+        expect(findOrCreateActive).not.toHaveBeenCalled()
+        expect(touch).not.toHaveBeenCalled()
+        expect(updateNavigationState).not.toHaveBeenCalled()
+        expect(finish).not.toHaveBeenCalled()
+        expect(recordEvent).not.toHaveBeenCalled()
+        expect(finishEvent).not.toHaveBeenCalled()
+        expect(iniciarSessao).not.toHaveBeenCalled()
+        expect(escolherCategoria).not.toHaveBeenCalled()
+        expect(processarPergunta).not.toHaveBeenCalled()
+        expect(hashPhone).not.toHaveBeenCalled()
+    }
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+    })
+
+    test("responde o texto fixo da pausa sem tocar na sessao, em eventos, no motor nem no hash do telefone", async () => {
+        isAutoReplyPaused.mockResolvedValue(true)
+
+        const result = await flow({ phone: "5500000000001", text: "Olá" })
+
+        expect(result).toEqual(pausedReply)
+        expectSessionUntouched()
+    })
+
+    test("responde o mesmo texto fixo para a escolha de uma opcao durante a pausa", async () => {
+        isAutoReplyPaused.mockResolvedValue(true)
+
+        const result = await flow({ phone: "5500000000001", optionId: "cat_1" })
+
+        expect(result).toEqual(pausedReply)
+        expectSessionUntouched()
+    })
+
+    test("consulta a pausa a cada mensagem, sem guardar o estado anterior", async () => {
+        isAutoReplyPaused.mockResolvedValueOnce(true).mockResolvedValueOnce(false)
+        findOrCreateActive.mockResolvedValueOnce({
+            id: "s1",
+            created: true,
+            currentStep: "AWAITING_CATEGORY",
+            currentCategoryId: null,
+            listPage: 1,
+        })
+        iniciarSessao.mockResolvedValueOnce(categorias)
+
+        const paused = await flow({ phone: "5500000000001", text: "Olá" })
+        const resumed = await flow({ phone: "5500000000001", text: "Olá" })
+
+        expect(paused).toEqual(pausedReply)
+        expect(resumed).not.toHaveProperty("paused")
+        expect(resumed.reply.step).toBe("AWAITING_CATEGORY")
+        expect(isAutoReplyPaused).toHaveBeenCalledTimes(2)
+        expect(findOrCreateActive).toHaveBeenCalledTimes(1)
+    })
+
+    test("depois de retomar, a sessao em andamento continua no passo em que estava", async () => {
+        isAutoReplyPaused.mockResolvedValueOnce(true).mockResolvedValueOnce(true).mockResolvedValueOnce(false)
+        findOrCreateActive.mockResolvedValueOnce({
+            id: "s1",
+            created: false,
+            currentStep: "AWAITING_QUESTION",
+            currentCategoryId: "1",
+            listPage: 1,
+        })
+        escolherCategoria.mockResolvedValueOnce(perguntas)
+        processarPergunta.mockResolvedValueOnce(respostaPadrao)
+
+        await flow({ phone: "5500000000001", text: "1" })
+        await flow({ phone: "5500000000001", text: "1" })
+        const result = await flow({ phone: "5500000000001", text: "1" })
+
+        expect(findOrCreateActive).toHaveBeenCalledTimes(1)
+        expect(touch).toHaveBeenCalledWith("s1")
+        expect(escolherCategoria).toHaveBeenCalledWith(1)
+        expect(processarPergunta).toHaveBeenCalledWith(10)
+        expect(result.sessionId).toBe("s1")
+        expect(result.reply.step).toBe("AWAITING_RESOLVED")
     })
 })
