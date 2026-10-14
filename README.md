@@ -195,6 +195,11 @@ cp .env.example .env   # ajuste os valores se necessário; os defaults servem pa
 docker compose up --build
 ```
 
+Antes do `up`, preencha `ENCRYPTION_KEY` no `.env` com o resultado de `openssl rand -hex 32`
+(64 caracteres hexadecimais). Ela não tem valor padrão: sem ela, o Docker Compose recusa subir com
+`defina ENCRYPTION_KEY no .env`. Ela cifra as credenciais da Meta guardadas no banco; depois que
+houver credenciais salvas, não a troque (README do backend, "Trocar a `ENCRYPTION_KEY`").
+
 Isso sobe, com um único comando, todo o ambiente do MVP:
 
 | Serviço         | Papel                                                              | Porta padrão (host) |

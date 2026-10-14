@@ -55,9 +55,17 @@ WhatsApp do painel, e mudar o `.env` não tem efeito (README do gateway, "Config
 Num banco que já tem a configuração, use a tela (ou a API `/api/v1/whatsapp/settings`) em vez deste
 passo.
 
-No `.env` da raiz (copiado de `.env.example`), preencha:
+No `.env` da raiz (copiado de `.env.example`), gere a chave-mestra que cifra o token e o App Secret
+no banco. Ela é obrigatória e não tem valor padrão:
+
+```bash
+openssl rand -hex 32
+```
+
+Depois preencha:
 
 ```dotenv
+ENCRYPTION_KEY=valor-gerado-acima
 WHATSAPP_PHONE_NUMBER_ID=id-do-numero-no-app-da-meta
 WHATSAPP_ACCESS_TOKEN=token-de-usuario-do-sistema-sem-expiracao
 WHATSAPP_APP_SECRET=chave-secreta-do-app-da-meta

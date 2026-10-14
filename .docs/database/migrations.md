@@ -34,7 +34,8 @@ padrão é timestamp. Esse aviso não impede a execução.
 
 ## Subir em ambiente limpo
 
-Com Docker Desktop iniciado, execute na raiz do repositório:
+Com Docker Desktop iniciado e `ENCRYPTION_KEY` preenchida no `.env` (`openssl rand -hex 32`; sem ela
+o Compose recusa subir), execute na raiz do repositório:
 
 ```sh
 docker compose up -d --build

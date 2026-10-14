@@ -39,6 +39,9 @@ docker compose ps
 
 No PowerShell, use `Copy-Item .env.example .env` no lugar de `cp`.
 
+Antes do `up`, preencha `ENCRYPTION_KEY` no `.env` com o resultado de `openssl rand -hex 32`. Ela não
+tem valor padrão, e sem ela o Docker Compose recusa subir (`defina ENCRYPTION_KEY no .env`).
+
 Devem aparecer `postgres`, `backend`, `frontend`, `gateway` e `ollama` (mais o `migrate`, o `seed` e o
 `llm-pull`, que rodam uma vez e saem com código `0`). `postgres`, `backend` e `ollama` aparecem como
 `healthy`; `frontend` e `gateway` não têm healthcheck em desenvolvimento e aparecem como `Up`.
