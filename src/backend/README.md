@@ -124,6 +124,9 @@ router.get("/", requireAuth, requirePermission("appointments.view"), listAppoint
   vale a origem do `Referer`. Sem os dois, ou com outro valor, a resposta é `403 INVALID_ORIGIN`, antes
   da rota e do limitador. Por isso `curl` e scripts que mudam estado precisam mandar
   `-H "Origin: <FRONTEND_ORIGIN>"`.
+- Desvio aceito: o `express.json()` roda antes de `requireTrustedOrigin`, então um corpo JSON
+  malformado vindo de outra origem recebe `400 BAD_REQUEST` em vez de `403 INVALID_ORIGIN`, sem
+  chegar a nenhuma rota.
 - `GET`, `HEAD` e `OPTIONS` não passam pela verificação. **Uma rota `GET` nunca pode mudar estado.**
 - CORS só libera `FRONTEND_ORIGIN`, com `credentials: true`. Outra origem não recebe
   `Access-Control-Allow-Origin`.
