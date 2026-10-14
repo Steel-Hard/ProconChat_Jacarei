@@ -405,6 +405,8 @@ A #57 tornou obrigatórias `AUTH_TOKEN_SECRET`, `ROOT_EMAIL` e `ROOT_PASSWORD`. 
 5. Se o passo 2 for esquecido, o deploy falha na checagem do `deploy.sh` ou com `defina ROOT_EMAIL no .env` (ou a variável que faltar) e nada muda na VM. Com valor inválido, o `deploy.sh` também para antes de recriar os containers e mostra qual variável e qual regra falharam. Complete o `.env` e use **Actions → Deploy → Re-run failed jobs**.
 6. Para redefinir a senha do Admin depois, siga a seção "Redefinir a senha do Admin".
 
+`ROOT_PASSWORD` fica em texto puro no `.env` da VM. Quando a troca de senha pelo painel (#84) estiver no ar, entre com a conta Admin e troque a senha por ela: a senha do `.env` deixa de valer para o login e só volta a valer se o script de redefinição for rodado. Numa entrega futura, o `seed` do `compose.prod.yaml` pode passar a ler `${ROOT_PASSWORD:-}`, para que a variável possa sair do `.env` depois que a conta Admin existir; essa mudança também precisa ajustar a checagem do `deploy.sh`, que hoje exige `ROOT_PASSWORD` válido em todo deploy.
+
 ### Redefinir a senha do Admin
 
 Não existe "esqueci minha senha" no painel (decisão 004, item 8). Para redefinir a senha da conta Admin, como `deploy` na VM:
