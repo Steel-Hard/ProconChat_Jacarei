@@ -126,6 +126,9 @@ router.get("/", requireAuth, requirePermission("appointments.view"), listAppoint
   `appointments.manage`, `content.manage`, `schedule.configure`, `documents.configure`,
   `sessions.view`, `reports.view`, `users.manage`.
 - Na Sprint 2 só a conta Admin (`is_admin`) recebe as 8. As permissões das outras contas são da #62.
+- Rotas só do Admin (decisão 004, ex.: WhatsApp) usam `requirePermission(ADMIN_ONLY)`, de
+  `types/auth.types.ts`. Só `is_admin` passa: um funcionário recebe `403 FORBIDDEN` mesmo com as 8
+  chaves. `ADMIN_ONLY` não é uma permissão e não entra em `PERMISSIONS`.
 
 ### CSRF e CORS
 
