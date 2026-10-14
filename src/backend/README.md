@@ -83,7 +83,7 @@ use outro navegador para testar o painel local pelo Compose.
 
 | Rota | Autenticação | Sucesso | Erros |
 | --- | --- | --- | --- |
-| `POST /api/v1/auth/login` `{ email, password }` | nenhuma | `200 { data: { user } }` + os dois cookies | `400 BAD_REQUEST`; `401 UNAUTHORIZED` (mensagem única para e-mail inexistente, senha errada ou conta inativa); `429 TOO_MANY_REQUESTS` com `Retry-After`; `403 INVALID_ORIGIN` |
+| `POST /api/v1/auth/login` `{ email, password }` | nenhuma | `200 { data: { user } }` + os dois cookies | `400 BAD_REQUEST` (inclusive e-mail com mais de 254 caracteres, sem contar os espaços nas pontas); `401 UNAUTHORIZED` (mensagem única para e-mail inexistente, senha errada ou conta inativa); `429 TOO_MANY_REQUESTS` com `Retry-After`; `403 INVALID_ORIGIN` |
 | `POST /api/v1/auth/refresh` | cookie de refresh | `204` + novo cookie de acesso (o de refresh não muda) | `401 UNAUTHORIZED`, que limpa os dois cookies; `403 INVALID_ORIGIN` |
 | `POST /api/v1/auth/logout` | nenhuma | `204`, que limpa os dois cookies sempre, sem mudar `session_version` | `403 INVALID_ORIGIN` |
 | `GET /api/v1/auth/me` | cookie de acesso | `200 { data: { id, name, email, isAdmin, permissions } }` | `401 UNAUTHORIZED` |

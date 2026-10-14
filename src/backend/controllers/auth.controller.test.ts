@@ -91,6 +91,34 @@ describe("POST /api/v1/auth/login", () => {
         expect(authService.login).not.toHaveBeenCalled()
     })
 
+    test("responde 400 sem chamar o servico quando o email passa de 254 caracteres", async () => {
+        const email = `${"a".repeat(242)}@exemplo.test`
+
+        const response = await request(app)
+            .post("/api/v1/auth/login")
+            .set("Origin", ORIGIN)
+            .send({ email, password: "senha-do-admin" })
+
+        expect(email).toHaveLength(255)
+        expect(response.status).toBe(400)
+        expect(response.body).toEqual({ error: { code: "BAD_REQUEST", message: "email must not exceed 254 characters" } })
+        expect(authService.login).not.toHaveBeenCalled()
+    })
+
+    test("aceita o email de 254 caracteres, sem contar os espacos nas pontas", async () => {
+        vi.mocked(authService.login).mockResolvedValue({ user, ...issuedSession() })
+        const email = `  ${"a".repeat(241)}@exemplo.test  `
+
+        const response = await request(app)
+            .post("/api/v1/auth/login")
+            .set("Origin", ORIGIN)
+            .send({ email, password: "senha-do-admin" })
+
+        expect(email.trim()).toHaveLength(254)
+        expect(response.status).toBe(200)
+        expect(authService.login).toHaveBeenCalledWith(expect.objectContaining({ email }))
+    })
+
     test("responde 400 quando o corpo nao e JSON valido", async () => {
         const response = await request(app)
             .post("/api/v1/auth/login")

@@ -13,6 +13,8 @@ import {
     refreshCookieOptions,
 } from "../utils/sessionCookies"
 
+const MAX_EMAIL_LENGTH = 254
+
 const cookieEnv = () => ({ NODE_ENV: process.env.NODE_ENV })
 
 function readStrings<K extends string>(body: unknown, fields: readonly K[]): Record<K, string> | null {
@@ -47,6 +49,9 @@ export async function login(req: Request, res: Response, next: NextFunction): Pr
         const credentials = readStrings(req.body, ["email", "password"] as const)
         if (!credentials) {
             throw new BadRequestError("email and password must be non-empty strings")
+        }
+        if (credentials.email.trim().length > MAX_EMAIL_LENGTH) {
+            throw new BadRequestError(`email must not exceed ${MAX_EMAIL_LENGTH} characters`)
         }
         const result = await authService.login({ ...credentials, ip: req.ip ?? "" })
         setSessionCookies(res, result)
