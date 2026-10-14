@@ -101,7 +101,10 @@ existe, para não revelar pelo tempo quais e-mails têm conta.
   token. **Trocar a senha incrementa `session_version`**: as outras sessões caem, inclusive no
   refresh, e a sessão atual recebe cookies novos. **Sair não incrementa**: só limpa os cookies do
   navegador.
-- **Derrubar todas as sessões de todas as contas:** troque `AUTH_TOKEN_SECRET` e reinicie o backend.
+- **Derrubar todas as sessões de todas as contas:** troque `AUTH_TOKEN_SECRET` e recrie o container
+  do backend (`docker compose up -d backend` no ambiente local,
+  `docker compose -f compose.prod.yaml up -d backend` em produção). O `docker compose restart` não
+  relê o `.env`: o backend continua com o segredo antigo e as sessões continuam valendo.
 
 ### Rotas do painel: `requireAuth` e `requirePermission`
 

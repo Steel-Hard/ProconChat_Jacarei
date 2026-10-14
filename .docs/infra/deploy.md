@@ -224,7 +224,7 @@ O `.env` fica só em `/opt/proconchat/.env`, com dono `deploy` e permissão `600
 | `POSTGRES_PASSWORD` | Senha do banco. **Nunca muda depois do primeiro deploy**: ela só vale na criação do volume |
 | `PHONE_HASH_SECRET` | Segredo do HMAC do telefone. **Nunca muda depois do primeiro deploy**: trocar faz as sessões existentes deixarem de ser encontradas |
 | `GATEWAY_INTERNAL_TOKEN` | Token entre gateway e backend |
-| `AUTH_TOKEN_SECRET` | Segredo que assina os cookies de sessão do painel, com 32 ou mais caracteres (`openssl rand -hex 32`). Trocar derruba todas as sessões abertas |
+| `AUTH_TOKEN_SECRET` | Segredo que assina os cookies de sessão do painel, com 32 ou mais caracteres (`openssl rand -hex 32`). Trocar derruba todas as sessões abertas, mas só depois de recriar o container: `export IMAGE_TAG="$(tail -n 1 releases.log \| cut -d' ' -f2)"` e `docker compose -f compose.prod.yaml up -d backend`, ou o próximo deploy. `docker compose restart backend` não relê o `.env` e mantém o segredo antigo |
 | `ROOT_EMAIL` | E-mail da conta Admin do painel. O `seed` usa só enquanto a conta Admin não existe; depois ela fica como está |
 | `ROOT_PASSWORD` | Senha inicial da conta Admin, de 8 caracteres a 72 bytes. Também é a senha aplicada pelo script de redefinição (seção "Redefinir a senha do Admin") |
 | `WHATSAPP_PHONE_NUMBER_ID` | ID do número da equipe no app da Meta |
