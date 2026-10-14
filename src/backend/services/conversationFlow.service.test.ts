@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from "vitest"
-import { MockConversationEventRepository } from "../repositories/conversationEventMock.repository"
+import { MockConversationEventRepository } from "../repositories/mock/conversationEventMock.repository"
 import { SessionRepository } from "../repositories/session.repository"
 import { Categoria, Pergunta, RespostaFinalOutput } from "../types/motorDecisao.types"
 import { createConversationFlowService, MotorDecisao } from "./conversationFlow.service"

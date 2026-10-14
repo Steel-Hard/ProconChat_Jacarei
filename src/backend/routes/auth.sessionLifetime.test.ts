@@ -2,10 +2,10 @@ import request from "supertest"
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
 import app from "../app"
 import { authRepository } from "../repositories/auth.repository"
-import { MockAuthRepository } from "../repositories/authMock.repository"
+import { MockAuthRepository } from "../repositories/mock/authMock.repository"
 
 vi.mock("../repositories/auth.repository", async () => {
-    const { MockAuthRepository: Repository } = await import("../repositories/authMock.repository")
+    const { MockAuthRepository: Repository } = await import("../repositories/mock/authMock.repository")
     return {
         authRepository: new Repository([
             { id: 1, email: "admin@exemplo.test", passwordHash: "hash:senha-do-admin", name: "Admin", isAdmin: true },

@@ -5,7 +5,7 @@ import { authRepository } from "../repositories/auth.repository"
 import { bcryptPasswordHasher } from "../utils/passwordHasher"
 
 vi.mock("../repositories/auth.repository", async () => {
-    const { MockAuthRepository } = await import("../repositories/authMock.repository")
+    const { MockAuthRepository } = await import("../repositories/mock/authMock.repository")
     const users = new MockAuthRepository([
         { id: 1, email: "admin@exemplo.test", passwordHash: "hash:senha-do-admin", name: "Admin", isAdmin: true },
         { id: 2, email: "inativa@exemplo.test", passwordHash: "hash:senha-da-inativa", active: false },

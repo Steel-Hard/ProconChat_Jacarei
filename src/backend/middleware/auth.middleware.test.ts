@@ -1,7 +1,7 @@
 import express from "express"
 import request from "supertest"
 import { describe, expect, it } from "vitest"
-import { MockAuthRepository } from "../repositories/authMock.repository"
+import { MockAuthRepository } from "../repositories/mock/authMock.repository"
 import { createSessionTokens, ACCESS_TOKEN_TTL_SECONDS } from "../utils/sessionToken"
 import { createRequireAuth } from "./auth.middleware"
 import errorHandler from "./errorHandler.middleware"
