@@ -46,6 +46,15 @@ if ! printf '%s' "$encryption_key" | grep -Eq '^[0-9a-fA-F]{64}$'; then
     echo "ENCRYPTION_KEY no .env precisa ter exatamente 64 caracteres hexadecimais (gere com openssl rand -hex 32)" >&2
     invalid_auth=1
 fi
+for whatsapp_id_var in WHATSAPP_PHONE_NUMBER_ID WHATSAPP_BUSINESS_ACCOUNT_ID; do
+    whatsapp_id_value="${!whatsapp_id_var:-$(env_value "$whatsapp_id_var")}"
+    whatsapp_id_value="$(printf '%s' "$whatsapp_id_value" | tr -d '[:space:]')"
+    if [ -n "$whatsapp_id_value" ] && ! printf '%s' "$whatsapp_id_value" | grep -Eq '^[0-9]{1,40}$'; then
+        echo "$whatsapp_id_var no .env precisa ter só dígitos, até 40, ou ficar vazio" >&2
+        invalid_auth=1
+    fi
+done
+unset whatsapp_id_var whatsapp_id_value
 if [ -z "$(printf '%s' "$root_email" | tr -d '[:space:]')" ]; then
     echo "ROOT_EMAIL não definido no .env" >&2
     invalid_auth=1
