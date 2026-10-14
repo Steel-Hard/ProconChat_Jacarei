@@ -306,9 +306,6 @@ export function formatarConfirmacaoAgendamento(input: ConfirmacaoAgendamentoInpu
         : "Você receberá neste número avisos sobre este agendamento, como o aviso em caso de cancelamento."
     linhas.push(avisoTexto)
 
-    linhas.push("")
-    linhas.push("Se precisar remarcar ou cancelar, responda a esta mensagem.")
-
     return linhas.join("\n")
 }
 

@@ -291,7 +291,7 @@ describe("messageFormatter.service", () => {
             expect(texto).toContain("Documentos úteis para esta dúvida:")
             expect(texto).toContain("• Contrato")
             expect(texto).toContain("lembrete 24 horas antes do atendimento e o aviso em caso de cancelamento")
-            expect(texto).toContain("Se precisar remarcar ou cancelar, responda a esta mensagem.")
+            expect(texto).not.toContain("remarcar")
         })
 
         test("formatarConfirmacaoAgendamento quando representante comparece", () => {
