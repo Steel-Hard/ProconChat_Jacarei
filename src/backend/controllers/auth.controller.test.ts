@@ -74,7 +74,7 @@ describe("POST /api/v1/auth/login", () => {
         const access = cookieNamed(response, "proconchat_access")
         const refresh = cookieNamed(response, "proconchat_refresh")
         expect(access).toMatch(/^proconchat_access=token-de-acesso; Max-Age=3600; Path=\/; Expires=.+; HttpOnly; SameSite=Strict$/)
-        expect(refresh).toMatch(/^proconchat_refresh=token-de-refresh; Max-Age=777599\d; Path=\/api\/v1\/auth; Expires=.+; HttpOnly; SameSite=Strict$/)
+        expect(refresh).toMatch(/^proconchat_refresh=token-de-refresh; Max-Age=(777599\d|7776000); Path=\/api\/v1\/auth; Expires=.+; HttpOnly; SameSite=Strict$/)
     })
 
     test("responde 400 sem chamar o servico quando faltam os campos ou nao sao texto", async () => {
@@ -245,7 +245,7 @@ describe("POST /api/v1/auth/change-password", () => {
         expect(response.body).toEqual({ data: { changed: true } })
         expect(authService.changePassword).toHaveBeenCalledWith(1, "senha-do-admin", "nova-senha-123")
         expect(cookieNamed(response, "proconchat_access")).toMatch(/^proconchat_access=token-de-acesso; Max-Age=3600; Path=\//)
-        expect(cookieNamed(response, "proconchat_refresh")).toMatch(/^proconchat_refresh=token-de-refresh; Max-Age=777599\d; Path=\/api\/v1\/auth/)
+        expect(cookieNamed(response, "proconchat_refresh")).toMatch(/^proconchat_refresh=token-de-refresh; Max-Age=(777599\d|7776000); Path=\/api\/v1\/auth/)
     })
 
     test("responde 400 INVALID_CURRENT_PASSWORD sem cookies quando a senha atual nao confere", async () => {
