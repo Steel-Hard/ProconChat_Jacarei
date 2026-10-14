@@ -15,7 +15,7 @@ dotenv.config({ quiet: true })
 
 validateEnv()
 
-const frontendOrigin = process.env.FRONTEND_ORIGIN ?? "http://localhost:5173"
+const frontendOrigin = new URL(process.env.FRONTEND_ORIGIN ?? "http://localhost:5173").origin
 
 const app = express()
 

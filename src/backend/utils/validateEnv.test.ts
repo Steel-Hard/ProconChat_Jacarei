@@ -39,6 +39,7 @@ describe("validateEnv", () => {
             process.env.AUTH_TOKEN_SECRET = originalAuthTokenSecret
         }
         vi.restoreAllMocks()
+        vi.unstubAllEnvs()
     })
 
     it("does not exit when DB_URL is set", () => {
@@ -106,5 +107,31 @@ describe("validateEnv", () => {
 
         expect(exitSpy).toHaveBeenCalledWith(1)
         expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("AUTH_TOKEN_SECRET"))
+    })
+
+    it.each(["localhost:5173", "nao-e-uma-url", "ftp://painel.exemplo.test"])(
+        "encerra com codigo 1 quando FRONTEND_ORIGIN e %s",
+        (value) => {
+            process.env.DB_URL = "postgres://localhost:5432/test"
+            vi.stubEnv("FRONTEND_ORIGIN", value)
+            const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never)
+            const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+            validateEnv()
+
+            expect(exitSpy).toHaveBeenCalledWith(1)
+            expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("FRONTEND_ORIGIN"))
+        },
+    )
+
+    it.each(["https://Painel.Exemplo.test/", "HTTP://LOCALHOST:5173"])("aceita FRONTEND_ORIGIN %s", (value) => {
+        process.env.DB_URL = "postgres://localhost:5432/test"
+        vi.stubEnv("FRONTEND_ORIGIN", value)
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never)
+        vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+        validateEnv()
+
+        expect(exitSpy).not.toHaveBeenCalled()
     })
 })
