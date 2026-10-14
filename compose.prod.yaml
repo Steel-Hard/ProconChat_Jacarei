@@ -81,6 +81,9 @@ services:
       AUTH_TOKEN_SECRET: ${AUTH_TOKEN_SECRET:?defina AUTH_TOKEN_SECRET no .env}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?defina ENCRYPTION_KEY no .env}
       FRONTEND_ORIGIN: https://${SITE_ADDRESS:?defina SITE_ADDRESS com o host público, sem esquema}
+      PUBLIC_BASE_URL: https://${SITE_ADDRESS:?defina SITE_ADDRESS com o host público, sem esquema}
+      GATEWAY_INTERNAL_URL: http://gateway:3001
+      WHATSAPP_GRAPH_API_VERSION: ${WHATSAPP_GRAPH_API_VERSION:-v26.0}
       OLLAMA_URL: http://ollama:11434
       LLM_MODEL: ${LLM_MODEL:-llama3.2:3b}
       LLM_TIMEOUT_MS: ${LLM_TIMEOUT_MS:-20000}

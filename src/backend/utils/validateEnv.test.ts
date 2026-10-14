@@ -159,6 +159,50 @@ describe("validateEnv", () => {
         expect(exitSpy).not.toHaveBeenCalled()
     })
 
+    it.each([
+        ["PUBLIC_BASE_URL", "nao-e-uma-url"],
+        ["PUBLIC_BASE_URL", "ftp://exemplo.test"],
+        ["GATEWAY_INTERNAL_URL", "gateway:3001"],
+        ["WHATSAPP_GRAPH_API_VERSION", "26.0"],
+        ["WHATSAPP_GRAPH_API_VERSION", "v26"],
+    ])("encerra com codigo 1 quando %s e %s", (name, value) => {
+        process.env.DB_URL = "postgres://localhost:5432/test"
+        vi.stubEnv(name, value)
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never)
+        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+        validateEnv()
+
+        expect(exitSpy).toHaveBeenCalledWith(1)
+        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining(name))
+    })
+
+    it("aceita URL publica, endereco do gateway e versao validos", () => {
+        process.env.DB_URL = "postgres://localhost:5432/test"
+        vi.stubEnv("PUBLIC_BASE_URL", "https://exemplo.sslip.io")
+        vi.stubEnv("GATEWAY_INTERNAL_URL", "http://gateway:3001")
+        vi.stubEnv("WHATSAPP_GRAPH_API_VERSION", "v26.0")
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never)
+        vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+        validateEnv()
+
+        expect(exitSpy).not.toHaveBeenCalled()
+    })
+
+    it("nao exige URL publica, endereco do gateway nem versao da Graph API", () => {
+        process.env.DB_URL = "postgres://localhost:5432/test"
+        vi.stubEnv("PUBLIC_BASE_URL", "")
+        vi.stubEnv("GATEWAY_INTERNAL_URL", undefined)
+        vi.stubEnv("WHATSAPP_GRAPH_API_VERSION", undefined)
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never)
+        vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+        validateEnv()
+
+        expect(exitSpy).not.toHaveBeenCalled()
+    })
+
     it.each(["https://Painel.Exemplo.test/", "HTTP://LOCALHOST:5173"])("aceita FRONTEND_ORIGIN %s", (value) => {
         process.env.DB_URL = "postgres://localhost:5432/test"
         vi.stubEnv("FRONTEND_ORIGIN", value)
