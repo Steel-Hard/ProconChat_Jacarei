@@ -58,7 +58,7 @@ describe("validateEnv", () => {
     })
 })
 
-describe("validateEnv com as variaveis da Cloud API", () => {
+describe("validateEnv sem as variaveis da Cloud API", () => {
     const whatsappVars = [
         "WHATSAPP_PHONE_NUMBER_ID",
         "WHATSAPP_ACCESS_TOKEN",
@@ -86,15 +86,14 @@ describe("validateEnv com as variaveis da Cloud API", () => {
         vi.restoreAllMocks()
     })
 
-    it.each(whatsappVars)("encerra com codigo 1 quando falta %s", (name) => {
+    it.each(whatsappVars)("nao exige %s", (name) => {
         delete process.env[name]
         const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never)
-        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+        vi.spyOn(console, "error").mockImplementation(() => undefined)
 
         validateEnv()
 
-        expect(exitSpy).toHaveBeenCalledWith(1)
-        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining(name))
+        expect(exitSpy).not.toHaveBeenCalled()
     })
 
     it("nao exige WHATSAPP_GRAPH_API_VERSION", () => {
@@ -120,10 +119,6 @@ describe("validateEnv com o ambiente minimo", () => {
         process.env = {
             BACKEND_INTERNAL_URL: "http://backend:3000",
             GATEWAY_INTERNAL_TOKEN: "test-internal-token",
-            WHATSAPP_PHONE_NUMBER_ID: "100000000000001",
-            WHATSAPP_ACCESS_TOKEN: "test-access-token",
-            WHATSAPP_APP_SECRET: "test-app-secret",
-            WHATSAPP_VERIFY_TOKEN: "test-verify-token",
         }
     })
 
@@ -132,7 +127,7 @@ describe("validateEnv com o ambiente minimo", () => {
         vi.restoreAllMocks()
     })
 
-    it("nao encerra com o ambiente reduzido as seis variaveis obrigatorias", () => {
+    it("nao encerra com o ambiente reduzido as duas variaveis obrigatorias", () => {
         const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never)
         vi.spyOn(console, "error").mockImplementation(() => undefined)
 

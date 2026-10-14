@@ -2,6 +2,7 @@ import getPool from "../connection"
 import { seedInitialConfig } from "./config.seed"
 import { seedAdminAccount } from "./admin.seed"
 import { seedContent, SeedRowCounts } from "./content.seed"
+import { seedWhatsAppSettings } from "./whatsappSettings.seed"
 
 const SEED_LOCK_KEY = 61061
 
@@ -19,14 +20,17 @@ async function run(): Promise<void> {
         const admin = await seedAdminAccount(client, process.env)
         const content = await seedContent(client)
         const config = await seedInitialConfig(client)
+        const whatsapp = await seedWhatsAppSettings(client, process.env)
 
         await client.query("COMMIT")
 
         const configMessage =
             config === "created" ? "configuração inicial criada" : "configuração inicial já existe, mantida"
         const adminMessage = admin === "created" ? "criado" : "já existia, mantido"
+        const whatsappMessage =
+            whatsapp === "created" ? "configuração inicial criada" : "configuração inicial já existe, mantida"
         console.log(
-            `Seed concluído. ${describeCounts("Categorias", content.categories)}. ${describeCounts("Perguntas", content.questions)}. Agenda e documentos: ${configMessage}. Administrador: ${adminMessage}.`
+            `Seed concluído. ${describeCounts("Categorias", content.categories)}. ${describeCounts("Perguntas", content.questions)}. Agenda e documentos: ${configMessage}. Administrador: ${adminMessage}. WhatsApp: ${whatsappMessage}.`
         )
     } catch (error) {
         await client.query("ROLLBACK")

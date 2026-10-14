@@ -1,47 +1,77 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { decrypt, encrypt } from "./crypto.utils"
 
+const CHECK_PATTERN = /^v1:[A-Za-z0-9+/]+={0,2}:[A-Za-z0-9+/]+={0,2}:[A-Za-z0-9+/]+={0,2}$/
+const OTHER_KEY = "f".repeat(64)
+
+function replacePart(value: string, index: number, replacement: (part: string) => string): string {
+    const parts = value.split(":")
+    parts[index] = replacement(parts[index] ?? "")
+    return parts.join(":")
+}
+
+function flipFirstByte(part: string): string {
+    const bytes = Buffer.from(part, "base64")
+    bytes[0] = (bytes[0] ?? 0) ^ 0xff
+    return bytes.toString("base64")
+}
+
 describe("crypto.utils", () => {
-  const originalKey = process.env.ENCRYPTION_KEY
+    afterEach(() => {
+        vi.unstubAllEnvs()
+    })
 
-  beforeEach(() => {
-    process.env.ENCRYPTION_KEY = "test-only-encryption-key-for-aes256"
-  })
+    it("cifra no formato v1 aceito pelo CHECK da tabela e decifra o texto original", () => {
+        const encrypted = encrypt("token-ficticio-de-acesso")
 
-  afterEach(() => {
-    if (originalKey === undefined) {
-      delete process.env.ENCRYPTION_KEY
-    } else {
-      process.env.ENCRYPTION_KEY = originalKey
-    }
-  })
+        expect(encrypted).toMatch(CHECK_PATTERN)
+        expect(decrypt(encrypted)).toBe("token-ficticio-de-acesso")
+    })
 
-  it("deve criptografar e decifrar com sucesso mantendo o valor original", () => {
-    const original = "5512999998888"
-    const encrypted = encrypt(original)
+    it("gera resultados diferentes para o mesmo texto", () => {
+        const first = encrypt("mesmo-texto")
+        const second = encrypt("mesmo-texto")
 
-    expect(encrypted).not.toBe(original)
-    expect(encrypted.startsWith("v1:")).toBe(true)
+        expect(first).not.toBe(second)
+    })
 
-    const decrypted = decrypt(encrypted)
-    expect(decrypted).toBe(original)
-  })
+    it.each([
+        ["o IV", 1],
+        ["a tag", 2],
+        ["o texto cifrado", 3],
+    ])("recusa o valor quando %s foi alterado, sem expor o valor", (_label, index) => {
+        const encrypted = encrypt("segredo-ficticio")
+        const tampered = replacePart(encrypted, index, flipFirstByte)
 
-  it("deve obedecer à regex da constraint do banco de dados", () => {
-    const regex =
-      /^v1:[A-Za-z0-9+/]+={0,2}:[A-Za-z0-9+/]+={0,2}:[A-Za-z0-9+/]+={0,2}$/
+        expect(() => decrypt(tampered)).toThrow(new Error("Invalid encrypted value"))
+    })
 
-    const encrypted = encrypt("5512987654321")
-    expect(regex.test(encrypted)).toBe(true)
-  })
+    it("recusa o valor cifrado com outra chave", () => {
+        const encrypted = encrypt("segredo-ficticio")
+        vi.stubEnv("ENCRYPTION_KEY", OTHER_KEY)
 
-  it("deve lançar erro se tentar decifrar formato inválido", () => {
-    expect(() => decrypt("invalido")).toThrow("Formato de texto cifrado inválido")
-    expect(() => decrypt("v2:abc:def:ghi")).toThrow("Formato de texto cifrado inválido")
-  })
+        expect(() => decrypt(encrypted)).toThrow(new Error("Invalid encrypted value"))
+    })
 
-  it("deve falhar se ENCRYPTION_KEY não estiver definida", () => {
-    delete process.env.ENCRYPTION_KEY
-    expect(() => encrypt("5512999998888")).toThrow("ENCRYPTION_KEY is not configured")
-  })
+    it.each(["v2:AAAA:AAAA:AAAA", "texto-em-claro", "v1:AAAA:AAAA", "v1:AAAAAAAAAAAAAAAA:AAAA:AAAA"])(
+        "recusa o formato invalido %s",
+        (value) => {
+            expect(() => decrypt(value)).toThrow(new Error("Invalid encrypted value"))
+        },
+    )
+
+    it("recusa cifrar texto vazio", () => {
+        expect(() => encrypt("")).toThrow(new Error("Cannot encrypt an empty value"))
+    })
+
+    it.each([undefined, "", "abc", "g".repeat(64), "a".repeat(63), "a".repeat(65)])(
+        "lanca ao cifrar e decifrar quando ENCRYPTION_KEY e %s",
+        (value) => {
+            const encrypted = encrypt("segredo-ficticio")
+            vi.stubEnv("ENCRYPTION_KEY", value)
+
+            expect(() => encrypt("segredo-ficticio")).toThrow(new Error("ENCRYPTION_KEY must be 64 hexadecimal characters"))
+            expect(() => decrypt(encrypted)).toThrow(new Error("ENCRYPTION_KEY must be 64 hexadecimal characters"))
+        },
+    )
 })

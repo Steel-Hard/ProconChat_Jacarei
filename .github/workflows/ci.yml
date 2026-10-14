@@ -92,6 +92,7 @@ jobs:
       PHONE_HASH_SECRET: ci-phone-hash-secret
       GATEWAY_INTERNAL_TOKEN: ci-internal-token
       AUTH_TOKEN_SECRET: ci-only-auth-token-secret-with-32-chars
+      ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
       FRONTEND_ORIGIN: http://localhost:5173
       ROOT_EMAIL: admin@ci.test
       ROOT_PASSWORD: ci-admin-password

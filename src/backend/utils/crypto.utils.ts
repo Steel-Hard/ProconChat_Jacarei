@@ -1,68 +1,63 @@
-import {
-  createCipheriv,
-  createDecipheriv,
-  createHash,
-  randomBytes,
-} from "node:crypto"
+import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto"
 
 const ALGORITHM = "aes-256-gcm"
 const IV_LENGTH = 12
+const AUTH_TAG_LENGTH = 16
 const VERSION_PREFIX = "v1"
+const KEY_PATTERN = /^[0-9a-fA-F]{64}$/
+const BASE64_PATTERN = /^[A-Za-z0-9+/]+={0,2}$/
+
+export const ENCRYPTION_KEY_ERROR = "ENCRYPTION_KEY must be 64 hexadecimal characters"
+const INVALID_VALUE_ERROR = "Invalid encrypted value"
+
+export function isValidEncryptionKey(value: string | undefined): boolean {
+    return value !== undefined && KEY_PATTERN.test(value)
+}
 
 function getKey(): Buffer {
-  const secret = process.env.ENCRYPTION_KEY
-  if (!secret) {
-    throw new Error("ENCRYPTION_KEY is not configured")
-  }
-  return createHash("sha256").update(secret, "utf8").digest()
+    const value = process.env.ENCRYPTION_KEY
+    if (!isValidEncryptionKey(value)) {
+        throw new Error(ENCRYPTION_KEY_ERROR)
+    }
+    return Buffer.from(value as string, "hex")
 }
 
-/**
- * Criptografa uma string usando AES-256-GCM.
- * Formato gerado: `v1:<ivBase64>:<authTagBase64>:<ciphertextBase64>`
- * Atende às constraints do PostgreSQL `chk_appointments_phone_encrypted` e `chk_whatsapp_settings_*_encrypted`.
- */
 export function encrypt(plaintext: string): string {
-  const key = getKey()
-  const iv = randomBytes(IV_LENGTH)
-  const cipher = createCipheriv(ALGORITHM, key, iv)
-
-  const ciphertext = Buffer.concat([
-    cipher.update(plaintext, "utf8"),
-    cipher.final(),
-  ])
-
-  const authTag = cipher.getAuthTag()
-
-  const ivB64 = iv.toString("base64")
-  const tagB64 = authTag.toString("base64")
-  const dataB64 = ciphertext.toString("base64")
-
-  return `${VERSION_PREFIX}:${ivB64}:${tagB64}:${dataB64}`
+    const key = getKey()
+    if (plaintext === "") {
+        throw new Error("Cannot encrypt an empty value")
+    }
+    const iv = randomBytes(IV_LENGTH)
+    const cipher = createCipheriv(ALGORITHM, key, iv, { authTagLength: AUTH_TAG_LENGTH })
+    const ciphertext = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()])
+    const authTag = cipher.getAuthTag()
+    return [VERSION_PREFIX, iv.toString("base64"), authTag.toString("base64"), ciphertext.toString("base64")].join(":")
 }
 
-/**
- * Decifra uma string no formato `v1:<ivBase64>:<authTagBase64>:<ciphertextBase64>`.
- */
-export function decrypt(encryptedText: string): string {
-  const parts = encryptedText.split(":")
+function decodePart(part: string | undefined): Buffer {
+    if (part === undefined || !BASE64_PATTERN.test(part)) {
+        throw new Error(INVALID_VALUE_ERROR)
+    }
+    return Buffer.from(part, "base64")
+}
 
-  if (parts.length !== 4 || parts[0] !== VERSION_PREFIX) {
-    throw new Error("Formato de texto cifrado inválido")
-  }
-
-  const iv = Buffer.from(parts[1] ?? "", "base64")
-  const authTag = Buffer.from(parts[2] ?? "", "base64")
-  const ciphertext = Buffer.from(parts[3] ?? "", "base64")
-
-  const key = getKey()
-  const decipher = createDecipheriv(ALGORITHM, key, iv)
-  decipher.setAuthTag(authTag)
-
-  const decrypted = Buffer.concat([
-    decipher.update(ciphertext),
-    decipher.final(),
-  ])
-
-  return decrypted.toString("utf8")
+export function decrypt(text: string): string {
+    const key = getKey()
+    const parts = text.split(":")
+    if (parts.length !== 4 || parts[0] !== VERSION_PREFIX) {
+        throw new Error(INVALID_VALUE_ERROR)
+    }
+    const iv = decodePart(parts[1])
+    const authTag = decodePart(parts[2])
+    const ciphertext = decodePart(parts[3])
+    if (iv.length !== IV_LENGTH || authTag.length !== AUTH_TAG_LENGTH) {
+        throw new Error(INVALID_VALUE_ERROR)
+    }
+    try {
+        const decipher = createDecipheriv(ALGORITHM, key, iv, { authTagLength: AUTH_TAG_LENGTH })
+        decipher.setAuthTag(authTag)
+        return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString("utf8")
+    } catch {
+        throw new Error(INVALID_VALUE_ERROR)
+    }
 }

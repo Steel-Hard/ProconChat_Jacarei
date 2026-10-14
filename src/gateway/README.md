@@ -3,7 +3,8 @@
 App própria (Express + TypeScript), extraída de `src/backend/` (issue #4), que recebe os eventos da
 WhatsApp Cloud API oficial (issue #53, decisão 003) e repassa as mensagens ao Backend. Não acessa o
 Postgres nem conhece `PHONE_HASH_SECRET` — autentica-se no Backend via `X-Internal-Token`
-(`GATEWAY_INTERNAL_TOKEN`) chamando `POST /api/v1/whatsapp/sessions` (`clients/backend.client.ts`).
+(`GATEWAY_INTERNAL_TOKEN`) chamando `POST /api/v1/whatsapp/sessions` e
+`GET /api/v1/internal/whatsapp/config` (`clients/backend.client.ts`).
 
 Os serviços não devem ser executados por arquivos Compose separados. O arquivo
 [`compose.yaml`](../../compose.yaml) na raiz é a fonte única de configuração e sobe:
@@ -12,7 +13,7 @@ Os serviços não devem ser executados por arquivos Compose separados. O arquivo
   iniciais e sai);
 - `backend` (porta `3000`);
 - `frontend` (porta `8081`);
-- `gateway` (porta `3001`);
+- `gateway` (porta `3001`, publicada só em `127.0.0.1`);
 - `ollama` (sem porta pública mapeada, só acessível pela rede interna do compose) e `llm-pull`
   (baixa o modelo `LLM_MODEL` — padrão `llama3.2:3b` — e sai).
 
@@ -38,6 +39,9 @@ docker compose ps
 
 No PowerShell, use `Copy-Item .env.example .env` no lugar de `cp`.
 
+Antes do `up`, preencha `ENCRYPTION_KEY` no `.env` com o resultado de `openssl rand -hex 32`. Ela não
+tem valor padrão, e sem ela o Docker Compose recusa subir (`defina ENCRYPTION_KEY no .env`).
+
 Devem aparecer `postgres`, `backend`, `frontend`, `gateway` e `ollama` (mais o `migrate`, o `seed` e o
 `llm-pull`, que rodam uma vez e saem com código `0`). `postgres`, `backend` e `ollama` aparecem como
 `healthy`; `frontend` e `gateway` não têm healthcheck em desenvolvimento e aparecem como `Up`.
@@ -46,26 +50,49 @@ Troque as chaves e senhas do `.env` antes de qualquer ambiente compartilhado. As
 PostgreSQL são aplicadas na criação inicial do volume — não altere só a senha depois que o banco já
 tiver dados.
 
-### Variáveis da WhatsApp Cloud API
-
-O webhook `/webhooks/whatsapp` usa as variáveis abaixo, lidas do `.env` da raiz. Sem elas no
-`.env`, o `compose.yaml` aplica defaults de desenvolvimento e o gateway sobe sem app da Meta (os
-envios falham até as credenciais reais serem configuradas).
+### Variáveis de ambiente
 
 | Variável | Obrigatória | Descrição |
 |---|---|---|
-| `WHATSAPP_PHONE_NUMBER_ID` | sim | ID do número no app da Meta (**WhatsApp → Configuração da API**). Eventos de outro número são ignorados |
-| `WHATSAPP_ACCESS_TOKEN` | sim | Token usado no envio pela Graph API. Use um **token de usuário do sistema sem expiração** (seção "Token de acesso permanente"); o token temporário do painel expira em 24 h |
-| `WHATSAPP_APP_SECRET` | sim | Chave secreta do app (**Configurações do app → Básico**), usada para validar `X-Hub-Signature-256` |
-| `WHATSAPP_VERIFY_TOKEN` | sim | Segredo escolhido pelo time e repetido no campo "Verificar token" do webhook na Meta |
-| `WHATSAPP_GRAPH_API_VERSION` | não | Versão da Graph API usada no envio. Padrão: `v26.0` |
+| `PORT` | não | Porta HTTP. Padrão: `3001` |
+| `BACKEND_INTERNAL_URL` | sim | Endereço interno do Backend (`http://backend:3000` no Compose) |
+| `GATEWAY_INTERNAL_TOKEN` | sim | Segredo compartilhado com o Backend, enviado e conferido no cabeçalho `X-Internal-Token` |
 
-Nenhuma dessas variáveis aparece em log. Os segredos ficam só no `.env`, nunca em arquivo versionado.
+O gateway **não lê mais** `WHATSAPP_*` (#83). Sem elas, ele sobe normalmente.
+
+### Configuração do WhatsApp (#83)
+
+O ID do número, o token de acesso, o App Secret, o token de verificação e a versão da Graph API ficam
+no banco do Backend (`WhatsAppSettings`), com os segredos cifrados, e são trocados pela tela de
+WhatsApp do painel (só Admin, API `/api/v1/whatsapp/settings` descrita no
+[README do Backend](../backend/README.md)).
+
+- **Valor inicial:** na primeira subida, o `seed` cria a configuração a partir dos `WHATSAPP_*` do
+  `.env` da raiz (`WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`,
+  `WHATSAPP_VERIFY_TOKEN` e, opcional, `WHATSAPP_BUSINESS_ACCOUNT_ID`). Depois disso, mudar essas
+  variáveis não tem efeito ([README do seed](../backend/db/seeds/README.md)). Sem elas, a configuração
+  nasce vazia, com um token de verificação gerado.
+- **Leitura:** o gateway busca a configuração decifrada em `GET /api/v1/internal/whatsapp/config`
+  (com `X-Internal-Token`) na primeira requisição do webhook e a guarda em memória por 60 s.
+- **Recarga:** quando o Admin salva, o Backend chama `POST /internal/whatsapp/config/reload` no
+  gateway (com `X-Internal-Token`; sem ele, `401`). O gateway responde `204` e busca a configuração
+  nova na próxima requisição, sem reiniciar. Se o aviso falhar, o TTL de 60 s garante a recarga.
+- **Backend fora:** com uma configuração já carregada, o gateway continua com a última boa e loga
+  `whatsapp_config_refresh_failed`, sem valores. Sem nenhuma configuração carregada,
+  `POST /webhooks/whatsapp` e o `GET` de verificação com os parâmetros `hub.*` respondem
+  `503 SERVICE_UNAVAILABLE` (a Meta reenvia o evento depois). O `GET` sem os parâmetros continua `403`
+  sem consultar o Backend.
+- **Pausa:** quem decide é o Backend. Durante a pausa, ele devolve o texto fixo de atendimento
+  indisponível (`paused: true`, `sessionId: null`) e o gateway o envia como texto, como qualquer
+  resposta.
+- **App Secret vazio:** toda assinatura é recusada (`401`), inclusive um corpo assinado com a chave vazia.
+
+Nenhum desses valores aparece em log nem em arquivo versionado.
 
 ## 2. Endereços locais
 
 - Backend: http://localhost:3000 (`GET /health`)
-- Gateway: http://localhost:3001 (`GET /health`)
+- Gateway: http://localhost:3001 (`GET /health`), só a partir da própria máquina
 - Painel: http://localhost:8081
 - PostgreSQL: `localhost:5433`
 
@@ -128,14 +155,18 @@ curl http://localhost:3001/health
 O caminho de uma mensagem é:
 
 Meta → `GET`/`POST /webhooks/whatsapp` neste Gateway → `POST /api/v1/whatsapp/sessions` no Backend →
-resposta enviada pela Graph API (`https://graph.facebook.com/<versão>/<WHATSAPP_PHONE_NUMBER_ID>/messages`).
+resposta enviada pela Graph API (`https://graph.facebook.com/<versão>/<ID do número>/messages`).
 
-- `GET /webhooks/whatsapp`: verificação da Meta. Com `hub.mode=subscribe` e `hub.verify_token` igual a
-  `WHATSAPP_VERIFY_TOKEN`, responde `200` em `text/plain` com o `hub.challenge`. Qualquer outro caso
-  responde `403 FORBIDDEN`.
+O token de verificação, o App Secret, o ID do número e o token de acesso usados abaixo são os da
+configuração do painel (seção "Configuração do WhatsApp"), não variáveis do `.env`.
+
+- `GET /webhooks/whatsapp`: verificação da Meta. Com `hub.mode=subscribe` e `hub.verify_token` igual ao
+  token de verificação da configuração, responde `200` em `text/plain` com o `hub.challenge`. Sem a
+  configuração, `503`. Qualquer outro caso responde `403 FORBIDDEN`.
 - `POST /webhooks/whatsapp`: eventos. O cabeçalho `X-Hub-Signature-256` precisa ser
-  `sha256=` + HMAC-SHA256 do corpo cru com `WHATSAPP_APP_SECRET`. Sem assinatura ou com assinatura
-  errada: `401 UNAUTHORIZED`, nada é processado. Corpo assinado que não é JSON: `400 BAD_REQUEST`.
+  `sha256=` + HMAC-SHA256 do corpo cru com o App Secret da configuração. Sem assinatura ou com
+  assinatura errada: `401 UNAUTHORIZED`, nada é processado. Corpo assinado que não é JSON:
+  `400 BAD_REQUEST`. Sem a configuração: `503 SERVICE_UNAVAILABLE`.
 - Mensagens de texto vão ao Backend como `{ phone, text }`; toques em lista ou botão vão como
   `{ phone, optionId }`. Eventos de status, outros números, outros campos, mensagens repetidas (mesmo
   `wamid`), mensagens com mais de 5 minutos e tipos sem texto (áudio, imagem etc.) são ignorados com um
@@ -167,24 +198,36 @@ cloudflared tunnel --url http://localhost:3001
 ```
 
 No seu app de teste, em **WhatsApp → Configuração → Webhook**, informe `https://<túnel>/webhooks/whatsapp`
-como URL de callback e o valor de `WHATSAPP_VERIFY_TOKEN` em "Verificar token". Depois de "Verificar e
+como URL de callback e o token de verificação mostrado na tela de WhatsApp do painel (`verifyToken` em
+`GET /api/v1/whatsapp/settings`) em "Verificar token". Com `PUBLIC_BASE_URL` igual à URL do túnel no
+`.env`, a tela mostra a URL do webhook pronta para copiar. Depois de "Verificar e
 salvar", assine o campo `messages`. O número de teste da Meta só entrega a até 5 destinatários
 cadastrados no app.
 
 ### Teste manual com `curl`
 
+Os comandos usam três variáveis de shell, preenchidas à mão (nunca em arquivo versionado):
+
+- `VERIFY_TOKEN`: o token de verificação da tela de WhatsApp, ou
+  `docker compose exec postgres psql -U proconchat -d proconchat -tAc "SELECT verify_token FROM WhatsAppSettings"`;
+- `PHONE_NUMBER_ID`: o ID do número da tela de WhatsApp (o mesmo do `WHATSAPP_PHONE_NUMBER_ID` usado
+  na primeira subida);
+- `APP_SECRET`: o App Secret salvo na configuração (o mesmo do `WHATSAPP_APP_SECRET` usado na primeira
+  subida). Ele nunca é devolvido pela API.
+
+Sem App Secret configurado, todo evento é recusado com `401`.
+
 Verificação (deve imprimir `123`):
 
 ```bash
-curl -s "http://localhost:3001/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=$WHATSAPP_VERIFY_TOKEN&hub.challenge=123"
+curl -s "http://localhost:3001/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=$VERIFY_TOKEN&hub.challenge=123"
 ```
 
-Evento assinado (use o mesmo `WHATSAPP_APP_SECRET` e `WHATSAPP_PHONE_NUMBER_ID` do gateway; com os
-defaults do Compose são `development-app-secret` e `development-phone-number-id`):
+Evento assinado:
 
 ```bash
-BODY='{"object":"whatsapp_business_account","entry":[{"id":"0","changes":[{"field":"messages","value":{"messaging_product":"whatsapp","metadata":{"phone_number_id":"development-phone-number-id"},"messages":[{"id":"wamid.manual-1","from":"5500000000999","type":"text","text":{"body":"oi"}}]}}]}]}'
-SIGNATURE="sha256=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$WHATSAPP_APP_SECRET" | sed 's/^.* //')"
+BODY='{"object":"whatsapp_business_account","entry":[{"id":"0","changes":[{"field":"messages","value":{"messaging_product":"whatsapp","metadata":{"phone_number_id":"'"$PHONE_NUMBER_ID"'"},"messages":[{"id":"wamid.manual-1","from":"5500000000999","type":"text","text":{"body":"oi"}}]}}]}]}'
+SIGNATURE="sha256=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$APP_SECRET" | sed 's/^.* //')"
 curl -s -X POST http://localhost:3001/webhooks/whatsapp \
   -H "Content-Type: application/json" \
   -H "X-Hub-Signature-256: $SIGNATURE" \
@@ -202,17 +245,19 @@ O número de teste da Meta recebe mensagens e aceita os envios, mas enquanto o p
 tiver a verificação de empresa (erro `141010`), toda entrega para número brasileiro termina com status
 `failed` e código `130497` ("Business account is restricted from messaging users in this country").
 Por isso, a validação manual usa um número real registrado na conta do WhatsApp Business (status
-`CONNECTED`), com o `WHATSAPP_PHONE_NUMBER_ID` dele no `.env`.
+`CONNECTED`), com o ID dele salvo na configuração do painel.
 
 O gateway ainda descarta os eventos de status (`status_update` no log, sem o código de erro); o registro
 de `sent`/`delivered`/`read`/`failed` vem na issue #88. Até lá, quando a resposta não chega ao celular:
 
-1. Conferir a saúde do número (o token vem do `.env`, sem imprimir o valor):
+1. Conferir a saúde do número. `GRAPH_API_VERSION` é a versão mostrada na tela (`graphApiVersion`),
+   `PHONE_NUMBER_ID` é o ID do número da tela e `ACCESS_TOKEN` é o token de acesso salvo, preenchido à mão
+   no shell sem imprimir o valor (a API nunca o devolve):
 
    ```bash
-   curl -s -G "https://graph.facebook.com/$WHATSAPP_GRAPH_API_VERSION/$WHATSAPP_PHONE_NUMBER_ID" \
+   curl -s -G "https://graph.facebook.com/$GRAPH_API_VERSION/$PHONE_NUMBER_ID" \
      --data-urlencode "fields=health_status" \
-     -H "Authorization: Bearer $WHATSAPP_ACCESS_TOKEN"
+     -H "Authorization: Bearer $ACCESS_TOKEN"
    ```
 
    A resposta traz `can_send_message` (`AVAILABLE`, `LIMITED` ou `BLOCKED`) no geral e para cada entidade
@@ -239,8 +284,11 @@ usuário do sistema sem expiração:
 4. Clicar em **Gerar novo token**, escolher o app, definir a validade como **Nunca** e marcar as
    permissões `whatsapp_business_messaging` e `whatsapp_business_management`.
 5. Gerar e copiar o token (ele só aparece uma vez).
-6. Colar em `WHATSAPP_ACCESS_TOKEN` no `.env` da raiz (nunca em arquivo versionado) e recriar o
-   gateway: `docker compose up -d --build gateway`.
+6. Colar o token na tela de WhatsApp do painel (#54), testar a conexão e salvar. Enquanto a tela não
+   existe, use `POST /api/v1/whatsapp/settings/test` e `PUT /api/v1/whatsapp/settings` com o cookie do
+   Admin ([README do Backend](../backend/README.md)). O gateway recarrega sozinho, sem recriar o
+   container. O `WHATSAPP_ACCESS_TOKEN` do `.env` só vale na primeira subida, quando a configuração
+   ainda não existe no banco.
 7. Conferir enviando uma mensagem ao número de teste a partir de um destinatário cadastrado.
 
 ## 9. Vindo da Evolution

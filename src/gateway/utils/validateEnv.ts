@@ -1,11 +1,4 @@
-const requiredEnvVars = [
-    "BACKEND_INTERNAL_URL",
-    "GATEWAY_INTERNAL_TOKEN",
-    "WHATSAPP_PHONE_NUMBER_ID",
-    "WHATSAPP_ACCESS_TOKEN",
-    "WHATSAPP_APP_SECRET",
-    "WHATSAPP_VERIFY_TOKEN",
-]
+const requiredEnvVars = ["BACKEND_INTERNAL_URL", "GATEWAY_INTERNAL_TOKEN"]
 
 export default function validateEnv(): void {
     const missingEnvVars = requiredEnvVars.filter((envVar) => !process.env[envVar])

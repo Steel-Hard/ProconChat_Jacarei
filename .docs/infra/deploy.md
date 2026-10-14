@@ -227,16 +227,18 @@ O `.env` fica só em `/opt/proconchat/.env`, com dono `deploy` e permissão `600
 | `AUTH_TOKEN_SECRET` | Segredo que assina os cookies de sessão do painel, com 32 ou mais caracteres (`openssl rand -hex 32`). Trocar derruba todas as sessões abertas, mas só depois de recriar o container: `export IMAGE_TAG="$(tail -n 1 releases.log \| cut -d' ' -f2)"` e `docker compose -f compose.prod.yaml up -d backend`, ou o próximo deploy. `docker compose restart backend` não relê o `.env` e mantém o segredo antigo |
 | `ROOT_EMAIL` | E-mail da conta Admin do painel. O `seed` usa só enquanto a conta Admin não existe; depois ela fica como está |
 | `ROOT_PASSWORD` | Senha inicial da conta Admin, de 8 caracteres a 72 bytes. Também é a senha aplicada pelo script de redefinição (seção "Redefinir a senha do Admin") |
-| `WHATSAPP_PHONE_NUMBER_ID` | ID do número da equipe no app da Meta |
-| `WHATSAPP_ACCESS_TOKEN` | Token **permanente** de usuário do sistema (README do gateway, "Token de acesso permanente"). O temporário expira em 24 h |
-| `WHATSAPP_APP_SECRET` | Chave secreta do app da Meta |
-| `WHATSAPP_VERIFY_TOKEN` | Token de verificação do webhook, gerado para produção |
-| `WHATSAPP_GRAPH_API_VERSION` | Versão da Graph API (`v26.0`) |
+| `ENCRYPTION_KEY` | Chave-mestra AES-256-GCM dos segredos do WhatsApp guardados no banco, com exatamente 64 caracteres hexadecimais (`openssl rand -hex 32`). O `deploy.sh` aborta sem ela. **Nunca muda depois do primeiro deploy**: trocar deixa os segredos salvos ilegíveis, e o token e o App Secret precisam ser salvos de novo pela tela de WhatsApp |
+| `WHATSAPP_PHONE_NUMBER_ID` | ID do número da equipe no app da Meta. Lido só pelo `seed`, na primeira subida, para criar a configuração do WhatsApp no banco (#83); depois, o número é trocado pela tela de WhatsApp |
+| `WHATSAPP_BUSINESS_ACCOUNT_ID` | Opcional. ID da conta do WhatsApp Business, também só para a primeira subida |
+| `WHATSAPP_ACCESS_TOKEN` | Token **permanente** de usuário do sistema (README do gateway, "Token de acesso permanente"). O temporário expira em 24 h. Só para a primeira subida, como os demais `WHATSAPP_*` |
+| `WHATSAPP_APP_SECRET` | Chave secreta do app da Meta. Só para a primeira subida |
+| `WHATSAPP_VERIFY_TOKEN` | Token de verificação do webhook, gerado para produção. Só para a primeira subida; depois, o valor vale o que está no banco e aparece na tela de WhatsApp |
+| `WHATSAPP_GRAPH_API_VERSION` | Versão da Graph API (`v26.0`), lida pelo backend |
 | `LLM_MODEL` | Modelo do Ollama (`llama3.2:3b`) |
 | `LLM_TIMEOUT_MS` | Tempo limite do LLM |
 | `BACKUP_RETENTION_DAYS` | Dias de retenção dos dumps (`7`) |
 
-`IMAGE_TAG` não precisa ficar no `.env`: o `deploy.sh` define a tag a cada deploy e a registra em `releases.log`. `FRONTEND_ORIGIN` também não: o `compose.prod.yaml` a deriva de `SITE_ADDRESS`.
+`IMAGE_TAG` não precisa ficar no `.env`: o `deploy.sh` define a tag a cada deploy e a registra em `releases.log`. `FRONTEND_ORIGIN` e `PUBLIC_BASE_URL` também não: o `compose.prod.yaml` as deriva de `SITE_ADDRESS`. O gateway não recebe mais nenhum `WHATSAPP_*`: ele lê a configuração do backend (README do gateway, "Configuração do WhatsApp"). Se um dos quatro `WHATSAPP_*` principais estiver vazio, o `deploy.sh` só avisa, sem mostrar valores e sem abortar.
 
 Para criar, como `deploy`:
 
@@ -314,7 +316,7 @@ O workflow `.github/workflows/deploy.yml` roda em todo push para `develop` e `ma
 
 Push numa branch diferente de `DEPLOY_BRANCH`, CI falho ou PR não geram imagem nem deploy. O job `deploy` usa o grupo de concorrência `deploy-production`: um deploy em andamento nunca é cancelado, e o próximo espera. Se chegarem vários enquanto um roda, só o mais recente fica na fila. Como a fila vale só para o job `deploy`, uma execução cujos jobs são pulados (por exemplo, push em `main` com `DEPLOY_BRANCH=develop`) não entra nela nem cancela um deploy pendente.
 
-O `deploy.sh <tag>` primeiro confere no `.env` (ou no ambiente do shell, que tem precedência, como no Compose) que `AUTH_TOKEN_SECRET` tem 32 ou mais caracteres, que `ROOT_EMAIL` não está vazio e que `ROOT_PASSWORD` tem de 8 caracteres a 72 bytes. Se algum falhar, ele mostra o nome da variável e a regra, nunca o valor, e sai com código 1 antes de baixar imagens ou recriar containers. Depois:
+O `deploy.sh <tag>` primeiro confere no `.env` (ou no ambiente do shell, que tem precedência, como no Compose) que `AUTH_TOKEN_SECRET` tem 32 ou mais caracteres, que `ENCRYPTION_KEY` tem exatamente 64 caracteres hexadecimais, que `WHATSAPP_PHONE_NUMBER_ID` e `WHATSAPP_BUSINESS_ACCOUNT_ID`, quando preenchidos, têm só dígitos (até 40, a mesma regra do `seed`), que `ROOT_EMAIL` não está vazio e que `ROOT_PASSWORD` tem de 8 caracteres a 72 bytes. Se algum falhar, ele mostra o nome da variável e a regra, nunca o valor, e sai com código 1 antes de baixar imagens ou recriar containers. Depois:
 
 1. baixa só as imagens que ainda não existem na VM (`docker compose pull --policy missing`). Uma tag nova sempre falta e é baixada; como as tags são SHAs imutáveis, uma tag que já está na VM não muda. `postgres:15-alpine` e `caddy:2-alpine` não são atualizados sozinhos depois do primeiro `pull`. Para pegar correções dessas imagens, rode antes de um deploy:
 
@@ -512,7 +514,7 @@ docker compose -f compose.prod.yaml up -d
 
 1. No app da Meta, em **WhatsApp → Configuração → Webhook**, clique em **Editar**.
 2. **URL de callback:** `https://<ip>.sslip.io/webhooks/whatsapp`.
-3. **Verificar token:** o `WHATSAPP_VERIFY_TOKEN` do `.env` da VM.
+3. **Verificar token:** o token de verificação mostrado na tela de WhatsApp do painel (o mesmo `WHATSAPP_VERIFY_TOKEN` do `.env` da VM, se a configuração foi criada a partir dele).
 4. Clique em **Verificar e salvar** e assine o campo `messages`.
 5. Mande uma mensagem ao número da equipe e confira a resposta no WhatsApp e o log do gateway:
 

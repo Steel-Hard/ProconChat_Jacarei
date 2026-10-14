@@ -77,6 +77,8 @@ export interface ConfirmacaoAgendamentoInput {
     reminderEnabled: boolean
     reminderHours: number
 }
+export const MENSAGEM_ATENDIMENTO_PAUSADO =
+    "O atendimento automático do PROCON Jacareí está temporariamente indisponível. Tente novamente mais tarde."
 
 export interface PaginatedResult<T> {
     itensPagina: T[]
