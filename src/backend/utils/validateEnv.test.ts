@@ -124,6 +124,41 @@ describe("validateEnv", () => {
         },
     )
 
+    it("encerra com codigo 1 quando falta ENCRYPTION_KEY", () => {
+        process.env.DB_URL = "postgres://localhost:5432/test"
+        vi.stubEnv("ENCRYPTION_KEY", undefined)
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never)
+        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+        validateEnv()
+
+        expect(exitSpy).toHaveBeenCalledWith(1)
+        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("ENCRYPTION_KEY"))
+    })
+
+    it.each(["a".repeat(63), "g".repeat(64), "a".repeat(65)])("encerra com codigo 1 quando ENCRYPTION_KEY e %s", (value) => {
+        process.env.DB_URL = "postgres://localhost:5432/test"
+        vi.stubEnv("ENCRYPTION_KEY", value)
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never)
+        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+        validateEnv()
+
+        expect(exitSpy).toHaveBeenCalledWith(1)
+        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("ENCRYPTION_KEY"))
+    })
+
+    it("aceita ENCRYPTION_KEY com 64 caracteres hexadecimais", () => {
+        process.env.DB_URL = "postgres://localhost:5432/test"
+        vi.stubEnv("ENCRYPTION_KEY", "0123456789ABCDEF".repeat(4))
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never)
+        vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+        validateEnv()
+
+        expect(exitSpy).not.toHaveBeenCalled()
+    })
+
     it.each(["https://Painel.Exemplo.test/", "HTTP://LOCALHOST:5173"])("aceita FRONTEND_ORIGIN %s", (value) => {
         process.env.DB_URL = "postgres://localhost:5432/test"
         vi.stubEnv("FRONTEND_ORIGIN", value)

@@ -34,11 +34,16 @@ text_bytes() {
 }
 
 auth_token_secret="${AUTH_TOKEN_SECRET:-$(env_value AUTH_TOKEN_SECRET)}"
+encryption_key="${ENCRYPTION_KEY:-$(env_value ENCRYPTION_KEY)}"
 root_email="${ROOT_EMAIL:-$(env_value ROOT_EMAIL)}"
 root_password="${ROOT_PASSWORD:-$(env_value ROOT_PASSWORD)}"
 invalid_auth=0
 if [ "$(($(text_chars "$auth_token_secret")))" -lt 32 ]; then
     echo "AUTH_TOKEN_SECRET no .env precisa ter 32 ou mais caracteres (gere com openssl rand -hex 32)" >&2
+    invalid_auth=1
+fi
+if ! printf '%s' "$encryption_key" | grep -Eq '^[0-9a-fA-F]{64}$'; then
+    echo "ENCRYPTION_KEY no .env precisa ter exatamente 64 caracteres hexadecimais (gere com openssl rand -hex 32)" >&2
     invalid_auth=1
 fi
 if [ -z "$(printf '%s' "$root_email" | tr -d '[:space:]')" ]; then
@@ -49,7 +54,7 @@ if [ "$(($(text_chars "$root_password")))" -lt 8 ] || [ "$(($(text_bytes "$root_
     echo "ROOT_PASSWORD no .env precisa ter de 8 caracteres a 72 bytes" >&2
     invalid_auth=1
 fi
-unset auth_token_secret root_email root_password
+unset auth_token_secret encryption_key root_email root_password
 if [ "$invalid_auth" -ne 0 ]; then
     echo "deploy abortado antes de baixar imagens ou recriar containers" >&2
     exit 1

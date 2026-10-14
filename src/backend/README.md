@@ -37,6 +37,7 @@ Copie `.env.example` para `.env` e preencha:
 | `GATEWAY_INTERNAL_TOKEN` | Sim | Token esperado no header `X-Internal-Token` das chamadas do Gateway WhatsApp (`src/gateway/`) a `POST /api/v1/whatsapp/sessions`. |
 | `AUTH_TOKEN_SECRET` | Sim, com 32 ou mais caracteres | Segredo HS256 dos cookies de sessão do painel. O servidor encerra na inicialização sem ele ou com ele curto. Trocar derruba todas as sessões. |
 | `FRONTEND_ORIGIN` | Não (padrão `http://localhost:5173`) | Origem do painel (esquema, host e porta), usada no CORS e na proteção CSRF. Precisa ser uma URL `http` ou `https`, senão o servidor encerra na inicialização. É normalizada na leitura com `new URL(valor).origin`: barra no fim, caminho e maiúsculas no esquema ou no host são descartados. No Compose local é `http://localhost:8081`; em produção, `https://<SITE_ADDRESS>`. |
+| `ENCRYPTION_KEY` | Sim, exatamente 64 caracteres hexadecimais | Chave-mestra AES-256-GCM dos segredos guardados no banco (`utils/crypto.utils.ts`, formato `v1:<iv>:<tag>:<cifrado>`). Gere com `openssl rand -hex 32`. O servidor encerra na inicialização sem ela ou fora do formato, e o `seed` falha se precisar cifrar algo sem ela. |
 | `ROOT_EMAIL` | Só no `seed`, enquanto não existe a conta Admin | E-mail da conta Admin criada pelo seed. |
 | `ROOT_PASSWORD` | Só no `seed` (enquanto não existe Admin) e no `admin:reset-password` | Senha da conta Admin, de 8 caracteres a 72 bytes em UTF-8. |
 

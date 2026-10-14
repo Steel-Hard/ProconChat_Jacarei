@@ -1,4 +1,6 @@
-const requiredEnvVars = ["DB_URL", "PHONE_HASH_SECRET", "GATEWAY_INTERNAL_TOKEN", "AUTH_TOKEN_SECRET"]
+import { ENCRYPTION_KEY_ERROR, isValidEncryptionKey } from "./crypto.utils"
+
+const requiredEnvVars = ["DB_URL", "PHONE_HASH_SECRET", "GATEWAY_INTERNAL_TOKEN", "AUTH_TOKEN_SECRET", "ENCRYPTION_KEY"]
 
 const MIN_AUTH_TOKEN_SECRET_LENGTH = 32
 
@@ -22,6 +24,12 @@ export default function validateEnv(): void {
 
     if ((process.env.AUTH_TOKEN_SECRET ?? "").length < MIN_AUTH_TOKEN_SECRET_LENGTH) {
         console.error(`AUTH_TOKEN_SECRET must contain at least ${MIN_AUTH_TOKEN_SECRET_LENGTH} characters`)
+        process.exit(1)
+        return
+    }
+
+    if (!isValidEncryptionKey(process.env.ENCRYPTION_KEY)) {
+        console.error(ENCRYPTION_KEY_ERROR)
         process.exit(1)
         return
     }
