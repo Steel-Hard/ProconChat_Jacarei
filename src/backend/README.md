@@ -6,9 +6,9 @@ Backend do chatbot de orientação ao consumidor via WhatsApp (PROCON Jacareí).
 
 - `app.ts` — monta a aplicação Express: middlewares globais (helmet, cors, json), validação de variáveis de ambiente, logger de requisição, rotas e o middleware de erro central. Não contém lógica de negócio.
 - `index.ts` — ponto de entrada: sobe o servidor HTTP na porta configurada, trata `uncaughtException`/`unhandledRejection` e faz o encerramento gracioso do processo em `SIGTERM`/`SIGINT`.
-- `routes/` — define os endpoints HTTP de cada recurso e delega para o controller correspondente (ex.: `health.routes.ts`).
-- `controllers/` — recebe a requisição HTTP, valida entrada básica, chama o service e formata a resposta (envelope `{ data }` ou erro via `next(error)`). Não acessa o banco diretamente.
-- `services/` — contém a lógica de negócio de cada recurso, sem depender do objeto `Request`/`Response` do Express.
+- `routes/` — cada recurso tem uma classe `XRoutes` que cria o controller, registra os caminhos com `metodo.bind(controller)` e exporta o `Router` por `getRouter()` (ex.: `health.routes.ts`, `auth.routes.ts`).
+- `controllers/` — cada controller é uma classe com as dependências injetadas pelo constructor (com valor padrão apontando para a instância já montada do service) e métodos `(req, res, next)`. Recebe a requisição HTTP, valida entrada básica, chama o service e formata a resposta (envelope `{ data }` ou erro via `next(error)`). Não acessa o banco diretamente.
+- `services/` — contém a lógica de negócio de cada recurso, sem depender do objeto `Request`/`Response` do Express. O service é criado por fábrica (`createXService({ ... })`) e exporta uma instância já montada (ex.: `createAuthService` e `authService` em `auth.service.ts`). O `HealthService` em classe é a exceção histórica.
 - `repositories/` — contratos e adaptadores de persistência; concentra o SQL e isola os services do PostgreSQL.
 - `errors/` — hierarquia de erros da aplicação: `AppError` (abstrata) e subclasses por status HTTP (`BadRequestError`, `UnauthorizedError`, `ForbiddenError`, `NotFoundError`, `TooManyRequestsError`, `InvalidOriginError`, `InvalidCurrentPasswordError`, `InternalServerError`). Lançar/`next()` uma dessas classes é o jeito padrão de sinalizar um erro esperado.
 - `middleware/` — middlewares do Express: `requestLogger.middleware.ts` (log estruturado por requisição, sem corpo nem cookies), `errorHandler.middleware.ts` (converte qualquer erro numa resposta JSON padronizada; corpo JSON malformado vira `400 BAD_REQUEST`), `trustedOrigin.middleware.ts` (proteção CSRF) e `auth.middleware.ts` (`requireAuth` e `requirePermission`).
@@ -18,7 +18,12 @@ Backend do chatbot de orientação ao consumidor via WhatsApp (PROCON Jacareí).
 
 ## Padrão para adicionar um novo recurso
 
-Copie o padrão do `health`: crie `services/<recurso>.service.ts`, `controllers/<recurso>.controller.ts`, `routes/<recurso>.routes.ts`, monte a rota em `app.ts` (sob o prefixo `/api/v1`, exceto casos como `/health` que ficam fora do versionamento por serem consumidos por infraestrutura) e um teste co-localizado `routes/<recurso>.routes.test.ts` usando `supertest` contra o `app` exportado por `app.ts`.
+- Service em fábrica: `services/<recurso>.service.ts` com `createXService({ ... })` e a instância padrão exportada.
+- Controller em classe, como `controllers/health.controller.ts`, com as dependências no constructor (ex.: `controllers/auth.controller.ts`). Variáveis de ambiente são lidas na requisição, nunca no constructor.
+- Rotas em classe, como `routes/health.routes.ts`, exportando o `Router` de `getRouter()`.
+- Montagem em `app.ts`, sob o prefixo `/api/v1` (exceto casos como `/health`, que ficam fora do versionamento por serem consumidos por infraestrutura).
+- Teste unitário do controller em `controllers/<recurso>.controller.test.ts`: instancia a classe com dublês, monta `req`/`res`/`next` falsos e chama os métodos direto, sem `supertest` (ex.: `controllers/auth.controller.test.ts`).
+- Teste de montagem em `routes/<recurso>.routes.test.ts` com `supertest` contra o `app` exportado por `app.ts`, só para caminho, middlewares e ordem, CORS, CSRF, cabeçalhos e envelope de erro (ex.: `routes/health.routes.test.ts`).
 
 ## Variáveis de ambiente
 
