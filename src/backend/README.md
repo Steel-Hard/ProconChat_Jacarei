@@ -57,6 +57,19 @@ npm start       # roda a versão compilada (dist/index.js)
 npm test        # roda a suíte de testes (Vitest + Supertest)
 ```
 
+Rode `npm run test:integration` num **banco separado**, só com as migrations aplicadas (sem o
+seed), como faz o CI. O teste da configuração do WhatsApp (#83) apaga a linha de `WhatsAppSettings`
+durante a execução e a restaura no fim; se a execução for interrompida, a linha do banco usado pode
+ficar perdida. Os testes de eventos da conversa também esperam um banco sem o conteúdo do seed.
+Por exemplo, com o Postgres do Compose:
+
+```bash
+docker compose exec postgres psql -U proconchat -d proconchat -c "CREATE DATABASE proconchat_test"
+export DB_URL=postgresql://proconchat:<POSTGRES_PASSWORD>@localhost:5433/proconchat_test
+npm run db:migrate
+npm run test:integration
+```
+
 Na raiz do repositório, o teste de integração usa o PostgreSQL do Compose e remove os próprios
 dados ao terminar:
 
