@@ -60,6 +60,8 @@ services:
     image: *backend-image
     environment:
       DB_URL: *db-url
+      ROOT_EMAIL: ${ROOT_EMAIL:?defina ROOT_EMAIL no .env}
+      ROOT_PASSWORD: ${ROOT_PASSWORD:?defina ROOT_PASSWORD no .env}
     command: ["node", "dist/db/seeds/run.js"]
     depends_on:
       migrate:
@@ -74,7 +76,11 @@ services:
       DB_URL: *db-url
       PORT: 3000
       PHONE_HASH_SECRET: ${PHONE_HASH_SECRET:?defina PHONE_HASH_SECRET no .env}
+      CPF_HASH_SECRET: ${CPF_HASH_SECRET:?defina CPF_HASH_SECRET no .env}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?defina ENCRYPTION_KEY no .env}
       GATEWAY_INTERNAL_TOKEN: ${GATEWAY_INTERNAL_TOKEN:?defina GATEWAY_INTERNAL_TOKEN no .env}
+      AUTH_TOKEN_SECRET: ${AUTH_TOKEN_SECRET:?defina AUTH_TOKEN_SECRET no .env}
+      FRONTEND_ORIGIN: https://${SITE_ADDRESS:?defina SITE_ADDRESS com o host público, sem esquema}
       OLLAMA_URL: http://ollama:11434
       LLM_MODEL: ${LLM_MODEL:-llama3.2:3b}
       LLM_TIMEOUT_MS: ${LLM_TIMEOUT_MS:-20000}

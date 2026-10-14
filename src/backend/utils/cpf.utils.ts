@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto"
+import { createHmac } from "node:crypto"
 
 /**
  * Remove qualquer caractere não numérico do CPF.
@@ -74,10 +74,14 @@ export function maskCpf(cpf: string): string {
 }
 
 /**
- * Gera hash SHA-256 dos 11 dígitos limpos do CPF em hexadecimal (64 caracteres).
+ * Gera hash HMAC-SHA256 dos 11 dígitos limpos do CPF com segredo em hexadecimal (64 caracteres).
  * Regex: ^[0-9a-f]{64}$
  */
-export function hashCpf(cpf: string): string {
+export function hashCpf(cpf: string, secret?: string): string {
+  const secretKey = secret ?? process.env.CPF_HASH_SECRET
+  if (!secretKey) {
+    throw new Error("CPF_HASH_SECRET is not configured")
+  }
   const cleaned = cleanCpf(cpf)
-  return createHash("sha256").update(cleaned, "utf8").digest("hex").toLowerCase()
+  return createHmac("sha256", secretKey).update(cleaned, "utf8").digest("hex").toLowerCase()
 }

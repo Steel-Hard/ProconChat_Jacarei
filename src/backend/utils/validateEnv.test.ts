@@ -4,14 +4,23 @@ import validateEnv from "./validateEnv"
 describe("validateEnv", () => {
     let originalDbUrl: string | undefined
     let originalPhoneHashSecret: string | undefined
+    let originalCpfHashSecret: string | undefined
+    let originalEncryptionKey: string | undefined
     let originalGatewayInternalToken: string | undefined
+    let originalAuthTokenSecret: string | undefined
 
     beforeEach(() => {
         originalDbUrl = process.env.DB_URL
         originalPhoneHashSecret = process.env.PHONE_HASH_SECRET
+        originalCpfHashSecret = process.env.CPF_HASH_SECRET
+        originalEncryptionKey = process.env.ENCRYPTION_KEY
         originalGatewayInternalToken = process.env.GATEWAY_INTERNAL_TOKEN
+        originalAuthTokenSecret = process.env.AUTH_TOKEN_SECRET
         process.env.PHONE_HASH_SECRET = "test-secret"
+        process.env.CPF_HASH_SECRET = "test-cpf-secret"
+        process.env.ENCRYPTION_KEY = "test-encryption-key-for-aes256"
         process.env.GATEWAY_INTERNAL_TOKEN = "test-internal-token"
+        process.env.AUTH_TOKEN_SECRET = "test-only-auth-token-secret-with-32-chars"
     })
 
     afterEach(() => {
@@ -25,12 +34,28 @@ describe("validateEnv", () => {
         } else {
             process.env.PHONE_HASH_SECRET = originalPhoneHashSecret
         }
+        if (originalCpfHashSecret === undefined) {
+            delete process.env.CPF_HASH_SECRET
+        } else {
+            process.env.CPF_HASH_SECRET = originalCpfHashSecret
+        }
+        if (originalEncryptionKey === undefined) {
+            delete process.env.ENCRYPTION_KEY
+        } else {
+            process.env.ENCRYPTION_KEY = originalEncryptionKey
+        }
         if (originalGatewayInternalToken === undefined) {
             delete process.env.GATEWAY_INTERNAL_TOKEN
         } else {
             process.env.GATEWAY_INTERNAL_TOKEN = originalGatewayInternalToken
         }
+        if (originalAuthTokenSecret === undefined) {
+            delete process.env.AUTH_TOKEN_SECRET
+        } else {
+            process.env.AUTH_TOKEN_SECRET = originalAuthTokenSecret
+        }
         vi.restoreAllMocks()
+        vi.unstubAllEnvs()
     })
 
     it("does not exit when DB_URL is set", () => {
@@ -65,6 +90,28 @@ describe("validateEnv", () => {
         expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("PHONE_HASH_SECRET"))
     })
 
+    it("exits with code 1 when CPF_HASH_SECRET is missing", () => {
+        delete process.env.CPF_HASH_SECRET
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never)
+        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+        validateEnv()
+
+        expect(exitSpy).toHaveBeenCalledWith(1)
+        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("CPF_HASH_SECRET"))
+    })
+
+    it("exits with code 1 when ENCRYPTION_KEY is missing", () => {
+        delete process.env.ENCRYPTION_KEY
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never)
+        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+        validateEnv()
+
+        expect(exitSpy).toHaveBeenCalledWith(1)
+        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("ENCRYPTION_KEY"))
+    })
+
     it("exits with code 1 when GATEWAY_INTERNAL_TOKEN is missing", () => {
         delete process.env.GATEWAY_INTERNAL_TOKEN
         const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never)
@@ -74,5 +121,55 @@ describe("validateEnv", () => {
 
         expect(exitSpy).toHaveBeenCalledWith(1)
         expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("GATEWAY_INTERNAL_TOKEN"))
+    })
+
+    it("encerra com codigo 1 quando falta AUTH_TOKEN_SECRET", () => {
+        process.env.DB_URL = "postgres://localhost:5432/test"
+        delete process.env.AUTH_TOKEN_SECRET
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never)
+        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+        validateEnv()
+
+        expect(exitSpy).toHaveBeenCalledWith(1)
+        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("AUTH_TOKEN_SECRET"))
+    })
+
+    it("encerra com codigo 1 quando AUTH_TOKEN_SECRET tem menos de 32 caracteres", () => {
+        process.env.DB_URL = "postgres://localhost:5432/test"
+        process.env.AUTH_TOKEN_SECRET = "a".repeat(31)
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never)
+        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+        validateEnv()
+
+        expect(exitSpy).toHaveBeenCalledWith(1)
+        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("AUTH_TOKEN_SECRET"))
+    })
+
+    it.each(["localhost:5173", "nao-e-uma-url", "ftp://painel.exemplo.test"])(
+        "encerra com codigo 1 quando FRONTEND_ORIGIN e %s",
+        (value) => {
+            process.env.DB_URL = "postgres://localhost:5432/test"
+            vi.stubEnv("FRONTEND_ORIGIN", value)
+            const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never)
+            const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+            validateEnv()
+
+            expect(exitSpy).toHaveBeenCalledWith(1)
+            expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("FRONTEND_ORIGIN"))
+        },
+    )
+
+    it.each(["https://Painel.Exemplo.test/", "HTTP://LOCALHOST:5173"])("aceita FRONTEND_ORIGIN %s", (value) => {
+        process.env.DB_URL = "postgres://localhost:5432/test"
+        vi.stubEnv("FRONTEND_ORIGIN", value)
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never)
+        vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+        validateEnv()
+
+        expect(exitSpy).not.toHaveBeenCalled()
     })
 })

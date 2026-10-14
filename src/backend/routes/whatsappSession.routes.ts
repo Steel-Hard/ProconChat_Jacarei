@@ -1,8 +1,22 @@
 import { Router } from "express"
-import { createWhatsappSession } from "../controllers/whatsappSession.controller"
+import WhatsappSessionController from "../controllers/whatsappSession.controller"
 
-const router = Router()
+class WhatsappSessionRoutes {
+    private whatsappSessionController: WhatsappSessionController
+    private router: Router = Router()
 
-router.post("/", createWhatsappSession)
+    private url: string = "/"
 
-export default router
+    constructor() {
+        this.whatsappSessionController = new WhatsappSessionController()
+
+        this.router.post(this.url, this.whatsappSessionController.create.bind(this.whatsappSessionController))
+    }
+
+    public getRouter(): Router {
+        return this.router
+    }
+}
+
+const whatsappSessionRoutes = new WhatsappSessionRoutes().getRouter()
+export default whatsappSessionRoutes

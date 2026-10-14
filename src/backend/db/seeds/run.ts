@@ -1,5 +1,6 @@
 import getPool from "../connection"
 import { seedInitialConfig } from "./config.seed"
+import { seedAdminAccount } from "./admin.seed"
 import { seedContent, SeedRowCounts } from "./content.seed"
 
 const SEED_LOCK_KEY = 61061
@@ -15,6 +16,7 @@ async function run(): Promise<void> {
         await client.query("BEGIN")
         await client.query("SELECT pg_advisory_xact_lock($1)", [SEED_LOCK_KEY])
 
+        const admin = await seedAdminAccount(client, process.env)
         const content = await seedContent(client)
         const config = await seedInitialConfig(client)
 
@@ -22,8 +24,9 @@ async function run(): Promise<void> {
 
         const configMessage =
             config === "created" ? "configuração inicial criada" : "configuração inicial já existe, mantida"
+        const adminMessage = admin === "created" ? "criado" : "já existia, mantido"
         console.log(
-            `Seed concluído. ${describeCounts("Categorias", content.categories)}. ${describeCounts("Perguntas", content.questions)}. Agenda e documentos: ${configMessage}.`
+            `Seed concluído. ${describeCounts("Categorias", content.categories)}. ${describeCounts("Perguntas", content.questions)}. Agenda e documentos: ${configMessage}. Administrador: ${adminMessage}.`
         )
     } catch (error) {
         await client.query("ROLLBACK")

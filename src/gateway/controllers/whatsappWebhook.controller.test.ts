@@ -1,8 +1,10 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
 import { Request, Response } from "express"
 import { beforeEach, describe, expect, test, vi } from "vitest"
-import { handleRawBodyError, receiveWhatsappWebhook, verifyWhatsappWebhook } from "./whatsappWebhook.controller"
+import WhatsappWebhookController from "./whatsappWebhook.controller"
+import BadRequestError from "../errors/BadRequestError"
 import { processWhatsappWebhook } from "../services/whatsappWebhook.service"
+import { WhatsappWebhookResult } from "../types/whatsappWebhook.types"
 
 vi.mock("../services/whatsappWebhook.service", () => ({
     processWhatsappWebhook: vi.fn(),
@@ -12,6 +14,8 @@ vi.mock("node:crypto", async (importOriginal) => {
     const actual = await importOriginal<typeof import("node:crypto")>()
     return { ...actual, timingSafeEqual: vi.fn(actual.timingSafeEqual) }
 })
+
+const controller = new WhatsappWebhookController()
 
 function verificationRequest(token: string): Request {
     return {
@@ -49,7 +53,7 @@ describe("whatsappWebhook controller", () => {
         const res = buildResponse()
         const next = vi.fn()
 
-        verifyWhatsappWebhook(req, res, next)
+        controller.verify(req, res, next)
 
         expect(res.status).toHaveBeenCalledWith(200)
         expect(res.type).toHaveBeenCalledWith("text/plain")
@@ -61,7 +65,7 @@ describe("whatsappWebhook controller", () => {
         const res = buildResponse()
         const next = vi.fn()
 
-        await receiveWhatsappWebhook(requestWith(Buffer.from("{}"), "sha256=00"), res, next)
+        await controller.receive(requestWith(Buffer.from("{}"), "sha256=00"), res, next)
 
         expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 401, code: "UNAUTHORIZED" }))
         expect(processWhatsappWebhook).not.toHaveBeenCalled()
@@ -74,7 +78,7 @@ describe("whatsappWebhook controller", () => {
         const res = buildResponse()
         const next = vi.fn()
 
-        await receiveWhatsappWebhook(requestWith(body, signature), res, next)
+        await controller.receive(requestWith(body, signature), res, next)
 
         expect(processWhatsappWebhook).toHaveBeenCalledWith({ object: "whatsapp_business_account", entry: [] })
         expect(res.status).toHaveBeenCalledWith(200)
@@ -86,7 +90,7 @@ describe("whatsappWebhook controller", () => {
         const res = buildResponse()
         const next = vi.fn()
 
-        verifyWhatsappWebhook(verificationRequest("test-only-verify-token"), res, next)
+        controller.verify(verificationRequest("test-only-verify-token"), res, next)
 
         expect(timingSafeEqual).toHaveBeenCalledWith(
             Buffer.from("test-only-verify-token"),
@@ -99,7 +103,7 @@ describe("whatsappWebhook controller", () => {
         const res = buildResponse()
         const next = vi.fn()
 
-        verifyWhatsappWebhook(verificationRequest("test-only-verify-tokeX"), res, next)
+        controller.verify(verificationRequest("test-only-verify-tokeX"), res, next)
 
         expect(timingSafeEqual).toHaveBeenCalled()
         expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 403, code: "FORBIDDEN" }))
@@ -110,7 +114,7 @@ describe("whatsappWebhook controller", () => {
         const res = buildResponse()
         const next = vi.fn()
 
-        expect(() => verifyWhatsappWebhook(verificationRequest("curto"), res, next)).not.toThrow()
+        expect(() => controller.verify(verificationRequest("curto"), res, next)).not.toThrow()
 
         expect(timingSafeEqual).not.toHaveBeenCalled()
         expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 403, code: "FORBIDDEN" }))
@@ -124,7 +128,7 @@ describe("handleRawBodyError", () => {
 
     function handled(error: unknown): unknown {
         const next = vi.fn()
-        handleRawBodyError(error, {} as Request, buildResponse(), next)
+        controller.handleRawBodyError(error, {} as Request, buildResponse(), next)
         return next.mock.calls[0]?.[0]
     }
 
@@ -151,5 +155,91 @@ describe("handleRawBodyError", () => {
 
         expect(handled(internal)).toBe(internal)
         expect(handled(plain)).toBe(plain)
+    })
+})
+
+describe("WhatsappWebhookController com dependencias injetadas", () => {
+    beforeEach(() => vi.clearAllMocks())
+
+    function buildDependencies() {
+        return {
+            signatures: { verifySignature: vi.fn<(rawBody: Buffer, signatureHeader: string | undefined) => boolean>() },
+            processWebhook: vi.fn<(payload: unknown) => Promise<WhatsappWebhookResult>>(),
+        }
+    }
+
+    test("delega BadRequestError ao next sem chamar o processador quando o corpo assinado nao e JSON", async () => {
+        const dependencies = buildDependencies()
+        dependencies.signatures.verifySignature.mockReturnValue(true)
+        const injected = new WhatsappWebhookController(dependencies)
+        const res = buildResponse()
+        const next = vi.fn()
+
+        await injected.receive(requestWith(Buffer.from("nao-e-json"), "sha256=qualquer"), res, next)
+
+        expect(next).toHaveBeenCalledWith(expect.any(BadRequestError))
+        expect(next.mock.calls[0][0].message).toBe("Invalid JSON body")
+        expect(dependencies.processWebhook).not.toHaveBeenCalled()
+        expect(res.status).not.toHaveBeenCalled()
+    })
+
+    test("delega ao next o erro do processador do webhook", async () => {
+        const dependencies = buildDependencies()
+        const error = new Error("falha inesperada")
+        dependencies.signatures.verifySignature.mockReturnValue(true)
+        dependencies.processWebhook.mockRejectedValue(error)
+        const injected = new WhatsappWebhookController(dependencies)
+        const res = buildResponse()
+        const next = vi.fn()
+
+        await injected.receive(requestWith(Buffer.from("{}"), "sha256=qualquer"), res, next)
+
+        expect(dependencies.processWebhook).toHaveBeenCalledWith({})
+        expect(next).toHaveBeenCalledWith(error)
+        expect(res.status).not.toHaveBeenCalled()
+        expect(processWhatsappWebhook).not.toHaveBeenCalled()
+    })
+
+    test("usa o verificador de assinatura injetado com o corpo cru e o cabecalho X-Hub-Signature-256", async () => {
+        const dependencies = buildDependencies()
+        dependencies.signatures.verifySignature.mockReturnValue(true)
+        dependencies.processWebhook.mockResolvedValue({ results: [] })
+        const injected = new WhatsappWebhookController(dependencies)
+        const body = Buffer.from(JSON.stringify({ object: "whatsapp_business_account", entry: [] }))
+        const res = buildResponse()
+        const next = vi.fn()
+
+        await injected.receive(requestWith(body, "sha256=assinatura-falsa"), res, next)
+
+        expect(dependencies.signatures.verifySignature).toHaveBeenCalledWith(body, "sha256=assinatura-falsa")
+        expect(dependencies.processWebhook).toHaveBeenCalledWith({ object: "whatsapp_business_account", entry: [] })
+        expect(res.status).toHaveBeenCalledWith(200)
+        expect(res.json).toHaveBeenCalledWith({ data: { results: [] } })
+        expect(next).not.toHaveBeenCalled()
+    })
+
+    test("trata como corpo vazio a requisicao cujo corpo nao e Buffer", async () => {
+        const dependencies = buildDependencies()
+        dependencies.signatures.verifySignature.mockReturnValue(false)
+        const injected = new WhatsappWebhookController(dependencies)
+        const req = {
+            body: { object: "whatsapp_business_account" },
+            get: (name: string) => (name.toLowerCase() === "x-hub-signature-256" ? "sha256=qualquer" : undefined),
+        } as unknown as Request
+        const next = vi.fn()
+
+        await injected.receive(req, buildResponse(), next)
+
+        expect(dependencies.signatures.verifySignature).toHaveBeenCalledWith(Buffer.alloc(0), "sha256=qualquer")
+        expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 401, code: "UNAUTHORIZED" }))
+        expect(dependencies.processWebhook).not.toHaveBeenCalled()
+    })
+
+    test("declara quatro parametros em handleRawBodyError para o Express trata-lo como middleware de erro", () => {
+        const injected = new WhatsappWebhookController(buildDependencies())
+
+        const declaredParameters = injected.handleRawBodyError.length
+
+        expect(declaredParameters).toBe(4)
     })
 })

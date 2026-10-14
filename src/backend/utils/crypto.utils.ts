@@ -10,10 +10,10 @@ const IV_LENGTH = 12
 const VERSION_PREFIX = "v1"
 
 function getKey(): Buffer {
-  const secret =
-    process.env.ENCRYPTION_KEY ||
-    process.env.PHONE_HASH_SECRET ||
-    "proconchat-fallback-encryption-key-for-local-dev"
+  const secret = process.env.ENCRYPTION_KEY
+  if (!secret) {
+    throw new Error("ENCRYPTION_KEY is not configured")
+  }
   return createHash("sha256").update(secret, "utf8").digest()
 }
 

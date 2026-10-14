@@ -8,6 +8,7 @@ import {
   ScheduleSettings,
 } from "../types/schedule.types"
 import { encrypt } from "../utils/crypto.utils"
+import { finishSessionWith } from "./session.repository"
 import { IScheduleRepository } from "./schedule.repository.interface"
 
 export class PgScheduleRepository implements IScheduleRepository {
@@ -225,25 +226,14 @@ export class PgScheduleRepository implements IScheduleRepository {
         [created.id],
       )
 
-      // Registra evento APPOINTMENT_CREATED na sessão da conversa
-      await client.query(
-        `INSERT INTO ConversationEvents (session_id, type, question_id, appointment_id, data)
-         VALUES ($1, 'APPOINTMENT_CREATED', $2, $3, '{}'::jsonb)`,
-        [input.sessionId, input.questionId, created.id],
-      )
-
-      // Finaliza a sessão com desfecho SCHEDULED e limpa o draft
-      await client.query(
-        `UPDATE Sessions
-         SET status = 'FINISHED',
-             outcome = 'SCHEDULED',
-             draft = NULL,
-             ended_at = now(),
-             last_interaction_at = now(),
-             current_step = 'FINISHED'
-         WHERE id = $1`,
-        [input.sessionId],
-      )
+      // Finaliza a sessão com desfecho SCHEDULED e grava APPOINTMENT_CREATED na mesma transação
+      await finishSessionWith(client, input.sessionId, {
+        outcome: "SCHEDULED",
+        event: {
+          type: "APPOINTMENT_CREATED",
+          appointmentId: Number(created.id),
+        },
+      })
 
       await client.query("COMMIT")
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { cleanCpf, hashCpf, maskCpf, validateCpf } from "./cpf.utils"
 
 describe("cpf.utils", () => {
@@ -48,12 +48,37 @@ describe("cpf.utils", () => {
   })
 
   describe("hashCpf", () => {
-    it("deve gerar hash SHA-256 de 64 caracteres hexadecimais minúsculos", () => {
+    const originalEnv = process.env.CPF_HASH_SECRET
+
+    beforeEach(() => {
+      process.env.CPF_HASH_SECRET = "test-cpf-secret-key"
+    })
+
+    afterEach(() => {
+      if (originalEnv === undefined) {
+        delete process.env.CPF_HASH_SECRET
+      } else {
+        process.env.CPF_HASH_SECRET = originalEnv
+      }
+    })
+
+    it("deve gerar hash HMAC-SHA256 de 64 caracteres hexadecimais minúsculos", () => {
       const hash = hashCpf("52998224725")
       expect(hash).toHaveLength(64)
       expect(/^[0-9a-f]{64}$/.test(hash)).toBe(true)
       // Mesma entrada com ou sem formatação deve produzir o mesmo hash
       expect(hashCpf("529.982.247-25")).toBe(hash)
+    })
+
+    it("deve gerar hashes diferentes para segredos diferentes", () => {
+      const hash1 = hashCpf("52998224725", "secret-1")
+      const hash2 = hashCpf("52998224725", "secret-2")
+      expect(hash1).not.toBe(hash2)
+    })
+
+    it("deve lançar erro se CPF_HASH_SECRET não estiver configurado", () => {
+      delete process.env.CPF_HASH_SECRET
+      expect(() => hashCpf("52998224725")).toThrow("CPF_HASH_SECRET is not configured")
     })
   })
 

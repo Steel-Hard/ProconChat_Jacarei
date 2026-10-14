@@ -1,5 +1,5 @@
-import { Categoria, Pergunta, DocumentoNecessario } from "../types/motorDecisao.types"
-import { IMotorDecisaoRepository } from "./motorDecisao.repository.interface"
+import { Categoria, Pergunta, DocumentoNecessario } from "../../types/motorDecisao.types"
+import { IMotorDecisaoRepository } from "../motorDecisao.repository.interface"
 
 export class MockMotorDecisaoRepository implements IMotorDecisaoRepository {
     private categorias: Categoria[] = [

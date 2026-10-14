@@ -11,6 +11,8 @@ import {
     formatarListaSlots,
     formatarRespostaFinal,
     paginarItens,
+    criarBotoesAttendee,
+    criarMensagensSlots,
 } from "./messageFormatter.service"
 
 const categorias: Categoria[] = [
@@ -230,6 +232,40 @@ describe("messageFormatter.service", () => {
             const texto = formatarListaSlots(slots, 1)
             expect(texto).toContain("1. Terça-feira, 06/10 às 08:00")
             expect(texto).toContain("2. Terça-feira, 06/10 às 08:30")
+        })
+
+        test("criarBotoesAttendee gera botões válidos para quem comparece", () => {
+            const botoes = criarBotoesAttendee()
+            expect(botoes).toHaveLength(2)
+            expect(botoes[0]).toEqual({ id: "attendee_self", title: "Eu mesmo" })
+            expect(botoes[1]).toEqual({ id: "attendee_rep", title: "Um representante" })
+            for (const btn of botoes) {
+                expect(btn.title.length).toBeLessThanOrEqual(24)
+            }
+        })
+
+        test("criarMensagensSlots gera lista interativa com limites da Cloud API", () => {
+            const slots = [
+                {
+                    datetime: new Date("2026-10-06T08:00:00-03:00"),
+                    dateStr: "2026-10-06",
+                    timeStr: "08:00",
+                    formatted: "Terça-feira, 06/10 às 08:00",
+                    remainingSeats: 2,
+                },
+            ]
+
+            const msgs = criarMensagensSlots(slots, 1)
+            expect(msgs).toHaveLength(1)
+            const listMsg = msgs[0]!
+            expect(listMsg.type).toBe("list")
+            if (listMsg.type === "list") {
+                expect(listMsg.buttonText.length).toBeLessThanOrEqual(20)
+                expect(listMsg.rows).toHaveLength(1)
+                expect(listMsg.rows[0]?.id).toBe("slot_1")
+                expect(listMsg.rows[0]?.title.length).toBeLessThanOrEqual(24)
+                expect(listMsg.rows[0]?.description?.length).toBeLessThanOrEqual(72)
+            }
         })
 
         test("formatarConfirmacaoAgendamento gera mensagem completa com documentos, endereco e avisos", () => {

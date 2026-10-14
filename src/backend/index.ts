@@ -1,5 +1,10 @@
 import { Server } from "http"
 import app from "./app"
+import {
+    DEFAULT_SWEEP_INTERVAL_MS,
+    startAbandonedSessionsSweep,
+} from "./services/abandonedSessionsSweep.service"
+import { sweepAbandonedSessions } from "./services/conversationFlow.service"
 
 const port = process.env.PORT ? Number(process.env.PORT) : 3000
 
@@ -22,6 +27,12 @@ const server: Server = app.listen(port, "0.0.0.0", () => {
     console.log(`Servidor rodando na porta http://0.0.0.0:${port}`)
 })
 
+const stopAbandonedSessionsSweep = startAbandonedSessionsSweep({
+    sweep: sweepAbandonedSessions,
+    intervalMs: DEFAULT_SWEEP_INTERVAL_MS,
+    logger: console,
+})
+
 const SHUTDOWN_TIMEOUT_MS = 10_000
 let shuttingDown = false
 
@@ -30,6 +41,7 @@ function shutdown(signal: NodeJS.Signals): void {
         return
     }
     shuttingDown = true
+    stopAbandonedSessionsSweep()
 
     console.log(`Recebido ${signal}, encerrando servidor...`)
 

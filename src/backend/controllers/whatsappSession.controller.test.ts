@@ -1,54 +1,97 @@
-import request from "supertest"
-import { beforeEach, describe, expect, test, vi } from "vitest"
-import app from "../app"
-import { processIncomingMessage } from "../services/conversationFlow.service"
+import { Request, Response } from "express"
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
+import WhatsappSessionController from "./whatsappSession.controller"
+import UnauthorizedError from "../errors/UnauthorizedError"
+import { ConversationFlowInput, ConversationFlowResult } from "../services/conversationFlow.service"
 
-vi.mock("../services/conversationFlow.service", () => ({
-    processIncomingMessage: vi.fn(),
-}))
+const input: ConversationFlowInput = { phone: "5500000000001", text: "oi" }
+const result = { sessionId: "sessao-1", newSession: true, reply: { text: "Ola" } } as unknown as ConversationFlowResult
 
-describe("POST /api/v1/whatsapp/sessions", () => {
-    beforeEach(() => vi.clearAllMocks())
+function buildRequest(headers: Record<string, string>): Request {
+    return {
+        header: (name: string) => headers[name.toLowerCase()],
+        body: input,
+    } as unknown as Request
+}
 
-    test("resolve a sessao com 202 quando o token interno e valido", async () => {
-        vi.mocked(processIncomingMessage).mockResolvedValue({
-            sessionId: "42",
-            newSession: true,
-            reply: { text: "1. Categoria A", step: "AWAITING_CATEGORY" },
-        })
+function buildResponse(): Response {
+    const res = {} as Response
+    res.status = vi.fn().mockReturnValue(res)
+    res.json = vi.fn().mockReturnValue(res)
+    return res
+}
 
-        const response = await request(app)
-            .post("/api/v1/whatsapp/sessions")
-            .set("X-Internal-Token", process.env.GATEWAY_INTERNAL_TOKEN as string)
-            .send({ phone: "5511999999999" })
+describe("WhatsappSessionController", () => {
+    let processMessage: ReturnType<typeof vi.fn<(input: ConversationFlowInput) => Promise<ConversationFlowResult>>>
+    let controller: WhatsappSessionController
 
-        expect(response.status).toBe(202)
-        expect(response.body).toEqual({
-            data: {
-                sessionId: "42",
-                newSession: true,
-                reply: { text: "1. Categoria A", step: "AWAITING_CATEGORY" },
-            },
-        })
+    beforeEach(() => {
+        processMessage = vi.fn<(input: ConversationFlowInput) => Promise<ConversationFlowResult>>()
+        controller = new WhatsappSessionController({ processMessage })
     })
 
-    test("recusa a requisicao sem o token interno", async () => {
-        const response = await request(app)
-            .post("/api/v1/whatsapp/sessions")
-            .send({ phone: "5511999999999" })
-
-        expect(response.status).toBe(401)
-        expect(response.body.error.code).toBe("UNAUTHORIZED")
-        expect(processIncomingMessage).not.toHaveBeenCalled()
+    afterEach(() => {
+        vi.unstubAllEnvs()
     })
 
-    test("recusa a requisicao com o token interno errado", async () => {
-        const response = await request(app)
-            .post("/api/v1/whatsapp/sessions")
-            .set("X-Internal-Token", "token-errado")
-            .send({ phone: "5511999999999" })
+    test("responde 202 com { data } quando o token interno confere", async () => {
+        processMessage.mockResolvedValue(result)
+        const res = buildResponse()
+        const next = vi.fn()
 
-        expect(response.status).toBe(401)
-        expect(processIncomingMessage).not.toHaveBeenCalled()
+        await controller.create(buildRequest({ "x-internal-token": "test-only-internal-token" }), res, next)
+
+        expect(processMessage).toHaveBeenCalledWith(input)
+        expect(res.status).toHaveBeenCalledWith(202)
+        expect(res.json).toHaveBeenCalledWith({ data: result })
+        expect(next).not.toHaveBeenCalled()
+    })
+
+    test("delega UnauthorizedError ao next sem chamar o servico quando falta o token interno", async () => {
+        const res = buildResponse()
+        const next = vi.fn()
+
+        await controller.create(buildRequest({}), res, next)
+
+        expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError))
+        expect(next.mock.calls[0][0].message).toBe("Invalid gateway internal token")
+        expect(processMessage).not.toHaveBeenCalled()
+        expect(res.status).not.toHaveBeenCalled()
+    })
+
+    test("delega UnauthorizedError ao next sem chamar o servico quando o token interno e diferente", async () => {
+        const res = buildResponse()
+        const next = vi.fn()
+
+        await controller.create(buildRequest({ "x-internal-token": "token-errado" }), res, next)
+
+        expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError))
+        expect(next.mock.calls[0][0].message).toBe("Invalid gateway internal token")
+        expect(processMessage).not.toHaveBeenCalled()
+        expect(res.status).not.toHaveBeenCalled()
+    })
+
+    test("delega ao next o erro do servico", async () => {
+        const error = new Error("falha inesperada")
+        processMessage.mockRejectedValue(error)
+        const res = buildResponse()
+        const next = vi.fn()
+
+        await controller.create(buildRequest({ "x-internal-token": "test-only-internal-token" }), res, next)
+
+        expect(next).toHaveBeenCalledWith(error)
+        expect(res.status).not.toHaveBeenCalled()
+    })
+
+    test("le o GATEWAY_INTERNAL_TOKEN na hora da requisicao", async () => {
+        processMessage.mockResolvedValue(result)
+        vi.stubEnv("GATEWAY_INTERNAL_TOKEN", "token-trocado")
+        const res = buildResponse()
+        const next = vi.fn()
+
+        await controller.create(buildRequest({ "x-internal-token": "token-trocado" }), res, next)
+
+        expect(res.status).toHaveBeenCalledWith(202)
+        expect(next).not.toHaveBeenCalled()
     })
 })

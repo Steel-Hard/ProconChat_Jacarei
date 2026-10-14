@@ -13,10 +13,18 @@ import {
   Pergunta,
   RespostaFinalOutput,
 } from "../types/motorDecisao.types"
+import { OutgoingMessage } from "../types/message.types"
 import {
+  criarBotoesAttendee,
+  criarBotoesOfertaAgendamento,
+  criarBotoesResolvida,
+  criarMensagensCategorias,
+  criarMensagensPerguntas,
+  criarMensagensSlots,
   ERRO_ATTENDEE,
   ERRO_CPF,
   ERRO_DUPLICATE_APPOINTMENT,
+  ERRO_FALHA_AGENDAMENTO,
   ERRO_NOME,
   ERRO_OFERTA_AGENDAMENTO,
   ERRO_RESOLVIDA,
@@ -48,15 +56,25 @@ import {
 } from "../types/schedule.types"
 import { ScheduleService } from "./schedule.service"
 import { PgScheduleRepository } from "../repositories/schedule.repository"
+import {
+  conversationEventFailureLog,
+  ConversationEventLogger,
+  conversationEventService,
+  ConversationEventService,
+} from "./conversationEvent.service"
+import type { SessionClosing } from "../types/conversationEvent.types"
+import BadRequestError from "../errors/BadRequestError"
 
 export interface ConversationFlowInput {
   phone: string
   text?: string
+  optionId?: string
 }
 
 export interface ConversationFlowReply {
   text: string
   step: SessionStep
+  messages?: OutgoingMessage[]
 }
 
 export interface ConversationFlowResult {
@@ -78,9 +96,11 @@ export interface ScheduleProvider {
 
 interface ConversationFlowDependencies {
   sessions: SessionRepository
+  events: ConversationEventService
   motor: MotorDecisao
   schedule: ScheduleProvider
   hashPhone: (phone: string) => string
+  logger: ConversationEventLogger
 }
 
 function parseOption(text: string | undefined): number | null {
@@ -96,6 +116,28 @@ function parseOption(text: string | undefined): number | null {
 
   const value = Number(trimmed)
   return value > 0 ? value : null
+}
+
+function parseYesNo(
+  text: string | undefined,
+  optionId: string | undefined,
+  yesId: string,
+  noId: string,
+): boolean | null {
+  if (optionId === yesId) return true
+  if (optionId === noId) return false
+
+  if (!text) return null
+  const cleaned = text.trim().toLowerCase()
+
+  if (cleaned === "1" || cleaned === "sim" || cleaned === "s" || cleaned.includes("agendar")) {
+    return true
+  }
+  if (cleaned === "2" || cleaned === "não" || cleaned === "nao" || cleaned === "n" || cleaned.includes("agora não") || cleaned.includes("agora nao")) {
+    return false
+  }
+
+  return null
 }
 
 function createPhoneLock() {
@@ -131,9 +173,11 @@ function createPhoneLock() {
 
 export function createConversationFlowService({
   sessions,
+  events,
   motor,
   schedule,
   hashPhone: hashPhoneOf,
+  logger,
 }: ConversationFlowDependencies): (
   input: ConversationFlowInput,
 ) => Promise<ConversationFlowResult> {
@@ -159,89 +203,118 @@ export function createConversationFlowService({
       reply: {
         text: formatarListaCategorias(categorias, 1),
         step: "AWAITING_CATEGORY",
+        messages: criarMensagensCategorias(categorias, 1),
       },
     }
   }
 
   async function handleAwaitingCategory(
     sessionId: string,
-    currentPage: number = 1,
+    currentPage: number,
     text: string | undefined,
+    optionId: string | undefined,
   ): Promise<ConversationFlowResult> {
     const categorias = await motor.iniciarSessao()
     const paginacao = paginarItens(categorias, currentPage)
+
+    // 1. Tratar navegação por clique em optionId
+    if (optionId) {
+      if (optionId.startsWith("page_")) {
+        const targetPage = Number(optionId.replace("page_", ""))
+        if (targetPage >= 1 && targetPage <= paginacao.totalPaginas) {
+          await sessions.updateNavigationState(sessionId, {
+            currentStep: "AWAITING_CATEGORY",
+            currentCategoryId: null,
+            listPage: targetPage,
+          })
+          return {
+            sessionId,
+            newSession: false,
+            reply: {
+              text: formatarListaCategorias(categorias, targetPage),
+              step: "AWAITING_CATEGORY",
+              messages: criarMensagensCategorias(categorias, targetPage),
+            },
+          }
+        }
+      }
+
+      if (optionId.startsWith("cat_")) {
+        const catId = Number(optionId.replace("cat_", ""))
+        const categoria = categorias.find((c) => Number(c.id) === catId)
+        if (categoria) {
+          return transitionToQuestions(sessionId, categoria)
+        }
+      }
+    }
+
+    // 2. Tratar navegação por texto/número
     const escolha = parseOption(text)
 
-    if (escolha === null) {
-      return {
-        sessionId,
-        newSession: false,
-        reply: {
-          text: formatarErroCategoria(categorias, paginacao.paginaAtual),
-          step: "AWAITING_CATEGORY",
-        },
+    if (escolha !== null) {
+      // Se clicou em "Voltar"
+      if (paginacao.opcaoAnterior !== undefined && escolha === paginacao.opcaoAnterior) {
+        const targetPage = paginacao.paginaAtual - 1
+        await sessions.updateNavigationState(sessionId, {
+          currentStep: "AWAITING_CATEGORY",
+          currentCategoryId: null,
+          listPage: targetPage,
+        })
+        return {
+          sessionId,
+          newSession: false,
+          reply: {
+            text: formatarListaCategorias(categorias, targetPage),
+            step: "AWAITING_CATEGORY",
+            messages: criarMensagensCategorias(categorias, targetPage),
+          },
+        }
+      }
+
+      // Se clicou em "Ver mais opções"
+      if (paginacao.opcaoProxima !== undefined && escolha === paginacao.opcaoProxima) {
+        const targetPage = paginacao.paginaAtual + 1
+        await sessions.updateNavigationState(sessionId, {
+          currentStep: "AWAITING_CATEGORY",
+          currentCategoryId: null,
+          listPage: targetPage,
+        })
+        return {
+          sessionId,
+          newSession: false,
+          reply: {
+            text: formatarListaCategorias(categorias, targetPage),
+            step: "AWAITING_CATEGORY",
+            messages: criarMensagensCategorias(categorias, targetPage),
+          },
+        }
+      }
+
+      // Se escolheu um item da página
+      if (escolha >= 1 && escolha <= paginacao.itensPagina.length) {
+        const categoria = paginacao.itensPagina[escolha - 1]
+        if (categoria) {
+          return transitionToQuestions(sessionId, categoria)
+        }
       }
     }
 
-    // Navegação: Ver mais opções
-    if (paginacao.opcaoProxima !== undefined && escolha === paginacao.opcaoProxima) {
-      const nextPage = paginacao.paginaAtual + 1
-      await sessions.updateNavigationState(sessionId, {
-        currentStep: "AWAITING_CATEGORY",
-        listPage: nextPage,
-      })
-      return {
-        sessionId,
-        newSession: false,
-        reply: {
-          text: formatarListaCategorias(categorias, nextPage),
-          step: "AWAITING_CATEGORY",
-        },
-      }
+    return {
+      sessionId,
+      newSession: false,
+      reply: {
+        text: formatarErroCategoria(categorias, paginacao.paginaAtual),
+        step: "AWAITING_CATEGORY",
+        messages: criarMensagensCategorias(categorias, paginacao.paginaAtual),
+      },
     }
+  }
 
-    // Navegação: Voltar opções
-    if (paginacao.opcaoAnterior !== undefined && escolha === paginacao.opcaoAnterior) {
-      const prevPage = paginacao.paginaAtual - 1
-      await sessions.updateNavigationState(sessionId, {
-        currentStep: "AWAITING_CATEGORY",
-        listPage: prevPage,
-      })
-      return {
-        sessionId,
-        newSession: false,
-        reply: {
-          text: formatarListaCategorias(categorias, prevPage),
-          step: "AWAITING_CATEGORY",
-        },
-      }
-    }
-
-    // Escolha de uma categoria na página atual
-    if (escolha < 1 || escolha > paginacao.itensPagina.length) {
-      return {
-        sessionId,
-        newSession: false,
-        reply: {
-          text: formatarErroCategoria(categorias, paginacao.paginaAtual),
-          step: "AWAITING_CATEGORY",
-        },
-      }
-    }
-
-    const categoria = paginacao.itensPagina[escolha - 1]
-    if (!categoria) {
-      return {
-        sessionId,
-        newSession: false,
-        reply: {
-          text: formatarErroCategoria(categorias, paginacao.paginaAtual),
-          step: "AWAITING_CATEGORY",
-        },
-      }
-    }
-
-    const perguntas = await motor.escolherCategoria(categoria.id)
+  async function transitionToQuestions(
+    sessionId: string,
+    categoria: Categoria,
+  ): Promise<ConversationFlowResult> {
+    const perguntas = await motor.escolherCategoria(Number(categoria.id))
 
     if (perguntas.length === 0) {
       return {
@@ -260,12 +333,18 @@ export function createConversationFlowService({
       listPage: 1,
     })
 
+    await events.record(sessionId, {
+      type: "CATEGORY_CHOSEN",
+      categoryId: Number(categoria.id),
+    })
+
     return {
       sessionId,
       newSession: false,
       reply: {
         text: formatarListaPerguntas(perguntas, 1),
         step: "AWAITING_QUESTION",
+        messages: criarMensagensPerguntas(perguntas, 1),
       },
     }
   }
@@ -273,8 +352,9 @@ export function createConversationFlowService({
   async function handleAwaitingQuestion(
     sessionId: string,
     currentCategoryId: string | null,
-    currentPage: number = 1,
+    currentPage: number,
     text: string | undefined,
+    optionId: string | undefined,
   ): Promise<ConversationFlowResult> {
     if (!currentCategoryId) {
       return startOver(sessionId, false)
@@ -282,106 +362,175 @@ export function createConversationFlowService({
 
     const perguntas = await motor.escolherCategoria(Number(currentCategoryId))
     const paginacao = paginarItens(perguntas, currentPage)
+
+    // 1. Tratar navegação por optionId
+    if (optionId) {
+      if (optionId.startsWith("page_")) {
+        const targetPage = Number(optionId.replace("page_", ""))
+        if (targetPage >= 1 && targetPage <= paginacao.totalPaginas) {
+          await sessions.updateNavigationState(sessionId, {
+            currentStep: "AWAITING_QUESTION",
+            currentCategoryId,
+            listPage: targetPage,
+          })
+          return {
+            sessionId,
+            newSession: false,
+            reply: {
+              text: formatarListaPerguntas(perguntas, targetPage),
+              step: "AWAITING_QUESTION",
+              messages: criarMensagensPerguntas(perguntas, targetPage),
+            },
+          }
+        }
+      }
+
+      if (optionId.startsWith("q_")) {
+        const qId = Number(optionId.replace("q_", ""))
+        const pergunta = perguntas.find((p) => Number(p.id) === qId)
+        if (pergunta) {
+          return processSelectedQuestion(sessionId, pergunta)
+        }
+      }
+    }
+
+    // 2. Tratar navegação por texto/número
     const escolha = parseOption(text)
 
-    if (escolha === null) {
-      return {
-        sessionId,
-        newSession: false,
-        reply: {
-          text: formatarErroPergunta(perguntas, paginacao.paginaAtual),
-          step: "AWAITING_QUESTION",
-        },
+    if (escolha !== null) {
+      if (paginacao.opcaoAnterior !== undefined && escolha === paginacao.opcaoAnterior) {
+        const targetPage = paginacao.paginaAtual - 1
+        await sessions.updateNavigationState(sessionId, {
+          currentStep: "AWAITING_QUESTION",
+          currentCategoryId,
+          listPage: targetPage,
+        })
+        return {
+          sessionId,
+          newSession: false,
+          reply: {
+            text: formatarListaPerguntas(perguntas, targetPage),
+            step: "AWAITING_QUESTION",
+            messages: criarMensagensPerguntas(perguntas, targetPage),
+          },
+        }
+      }
+
+      if (paginacao.opcaoProxima !== undefined && escolha === paginacao.opcaoProxima) {
+        const targetPage = paginacao.paginaAtual + 1
+        await sessions.updateNavigationState(sessionId, {
+          currentStep: "AWAITING_QUESTION",
+          currentCategoryId,
+          listPage: targetPage,
+        })
+        return {
+          sessionId,
+          newSession: false,
+          reply: {
+            text: formatarListaPerguntas(perguntas, targetPage),
+            step: "AWAITING_QUESTION",
+            messages: criarMensagensPerguntas(perguntas, targetPage),
+          },
+        }
+      }
+
+      if (escolha >= 1 && escolha <= paginacao.itensPagina.length) {
+        const pergunta = paginacao.itensPagina[escolha - 1]
+        if (pergunta) {
+          return processSelectedQuestion(sessionId, pergunta)
+        }
       }
     }
 
-    // Navegação: Ver mais opções
-    if (paginacao.opcaoProxima !== undefined && escolha === paginacao.opcaoProxima) {
-      const nextPage = paginacao.paginaAtual + 1
-      await sessions.updateNavigationState(sessionId, {
-        currentStep: "AWAITING_QUESTION",
-        currentCategoryId,
-        listPage: nextPage,
-      })
-      return {
-        sessionId,
-        newSession: false,
-        reply: {
-          text: formatarListaPerguntas(perguntas, nextPage),
-          step: "AWAITING_QUESTION",
-        },
-      }
+    return {
+      sessionId,
+      newSession: false,
+      reply: {
+        text: formatarErroPergunta(perguntas, paginacao.paginaAtual),
+        step: "AWAITING_QUESTION",
+        messages: criarMensagensPerguntas(perguntas, paginacao.paginaAtual),
+      },
     }
+  }
 
-    // Navegação: Voltar opções
-    if (paginacao.opcaoAnterior !== undefined && escolha === paginacao.opcaoAnterior) {
-      const prevPage = paginacao.paginaAtual - 1
-      await sessions.updateNavigationState(sessionId, {
-        currentStep: "AWAITING_QUESTION",
-        currentCategoryId,
-        listPage: prevPage,
-      })
-      return {
-        sessionId,
-        newSession: false,
-        reply: {
-          text: formatarListaPerguntas(perguntas, prevPage),
-          step: "AWAITING_QUESTION",
-        },
-      }
-    }
-
-    // Escolha de uma pergunta na página atual
-    if (escolha < 1 || escolha > paginacao.itensPagina.length) {
-      return {
-        sessionId,
-        newSession: false,
-        reply: {
-          text: formatarErroPergunta(perguntas, paginacao.paginaAtual),
-          step: "AWAITING_QUESTION",
-        },
-      }
-    }
-
-    const pergunta = paginacao.itensPagina[escolha - 1]
-    if (!pergunta) {
-      return {
-        sessionId,
-        newSession: false,
-        reply: {
-          text: formatarErroPergunta(perguntas, paginacao.paginaAtual),
-          step: "AWAITING_QUESTION",
-        },
-      }
-    }
+  async function processSelectedQuestion(
+    sessionId: string,
+    pergunta: Pergunta,
+  ): Promise<ConversationFlowResult> {
+    await events.record(sessionId, {
+      type: "QUESTION_CHOSEN",
+      categoryId: Number(pergunta.category_id),
+      questionId: Number(pergunta.id),
+    })
 
     const resposta = await motor.processarPergunta(pergunta.id)
 
-    // Caso 1: Fora do escopo do PROCON (Decisão 008)
+    // Caso 1: Fora do escopo do PROCON (Decisão 008 - encerra direto com OUT_OF_SCOPE)
     if (resposta.fora_de_escopo) {
-      await sessions.finish(sessionId, "OUT_OF_SCOPE")
+      const closing: SessionClosing = {
+        outcome: "OUT_OF_SCOPE",
+        event: {
+          type: "ANSWER_SENT",
+          categoryId: Number(pergunta.category_id),
+          questionId: Number(pergunta.id),
+          llm: "NOT_CALLED",
+        },
+      }
+      try {
+        await events.finish(sessionId, closing)
+      } catch (error) {
+        logger.error(
+          "Failed to finish conversation session",
+          conversationEventFailureLog(sessionId, closing.event, error),
+        )
+      }
+
       return {
         sessionId,
         newSession: false,
         reply: {
           text: formatarRespostaFinal(resposta),
           step: "FINISHED",
+          messages: [{ type: "text", text: formatarRespostaFinal(resposta) }],
         },
       }
     }
 
-    // Caso 2: Exige atendimento presencial (Decisão 008: oferece agendamento direto sem perguntar se resolveu)
+    // Grava ANSWER_SENT para casos dentro do escopo
+    await events.record(sessionId, {
+      type: "ANSWER_SENT",
+      categoryId: Number(pergunta.category_id),
+      questionId: Number(pergunta.id),
+      llm: "NOT_CALLED",
+    })
+
+    // Caso 2: Exige atendimento presencial (oferece agendamento direto)
     if (resposta.requer_presencial) {
+      await events.record(sessionId, {
+        type: "SCHEDULE_OFFERED",
+        reason: "REQUIRES_IN_PERSON",
+      })
+
       await sessions.updateNavigationState(sessionId, {
         currentStep: "AWAITING_SCHEDULE_OFFER",
+        currentCategoryId: String(pergunta.category_id),
         currentQuestionId: String(pergunta.id),
       })
+
       return {
         sessionId,
         newSession: false,
         reply: {
           text: `${formatarRespostaFinal(resposta)}\n\n${OFERTA_AGENDAMENTO}`,
           step: "AWAITING_SCHEDULE_OFFER",
+          messages: [
+            { type: "text", text: formatarRespostaFinal(resposta) },
+            {
+              type: "buttons",
+              text: "Deseja agendar um atendimento presencial no PROCON Jacareí?",
+              buttons: criarBotoesOfertaAgendamento(),
+            },
+          ],
         },
       }
     }
@@ -389,6 +538,7 @@ export function createConversationFlowService({
     // Caso 3: Pergunta padrão -> Pergunta se a dúvida foi resolvida
     await sessions.updateNavigationState(sessionId, {
       currentStep: "AWAITING_RESOLVED",
+      currentCategoryId: String(pergunta.category_id),
       currentQuestionId: String(pergunta.id),
     })
 
@@ -398,6 +548,14 @@ export function createConversationFlowService({
       reply: {
         text: `${formatarRespostaFinal(resposta)}\n\n${PERGUNTA_RESOLVIDA}`,
         step: "AWAITING_RESOLVED",
+        messages: [
+          { type: "text", text: formatarRespostaFinal(resposta) },
+          {
+            type: "buttons",
+            text: "A dúvida foi resolvida?",
+            buttons: criarBotoesResolvida(),
+          },
+        ],
       },
     }
   }
@@ -405,33 +563,67 @@ export function createConversationFlowService({
   async function handleAwaitingResolved(
     sessionId: string,
     text: string | undefined,
+    optionId: string | undefined,
   ): Promise<ConversationFlowResult> {
-    const trimmed = text?.trim()
+    const resolvida = parseYesNo(text, optionId, "resolved_yes", "resolved_no")
 
-    if (trimmed === "1") {
-      // Dúvida resolvida com sucesso
-      await sessions.finish(sessionId, "RESOLVED")
+    if (resolvida === true) {
+      const closing: SessionClosing = {
+        outcome: "RESOLVED",
+        event: {
+          type: "RESOLVED_ANSWERED",
+          resolved: true,
+        },
+      }
+      try {
+        await events.finish(sessionId, closing)
+      } catch (error) {
+        logger.error(
+          "Failed to finish conversation session",
+          conversationEventFailureLog(sessionId, closing.event, error),
+        )
+      }
+
       return {
         sessionId,
         newSession: false,
         reply: {
           text: RESPOSTA_RESOLVIDA_SIM,
           step: "FINISHED",
+          messages: [{ type: "text", text: RESPOSTA_RESOLVIDA_SIM }],
         },
       }
     }
 
-    if (trimmed === "2") {
-      // Dúvida não resolvida -> Oferece agendamento presencial
+    if (resolvida === false) {
+      await events.record(sessionId, {
+        type: "RESOLVED_ANSWERED",
+        resolved: false,
+      })
+
+      await events.record(sessionId, {
+        type: "SCHEDULE_OFFERED",
+        reason: "NOT_RESOLVED",
+      })
+
       await sessions.updateNavigationState(sessionId, {
         currentStep: "AWAITING_SCHEDULE_OFFER",
+        currentCategoryId: null,
       })
+
       return {
         sessionId,
         newSession: false,
         reply: {
           text: OFERTA_AGENDAMENTO,
           step: "AWAITING_SCHEDULE_OFFER",
+          messages: [
+            {
+              type: "buttons",
+              text: "Deseja agendar um atendimento presencial no PROCON Jacareí?",
+              buttons: criarBotoesOfertaAgendamento(),
+            },
+          ],
         },
       }
     }
@@ -442,6 +634,13 @@ export function createConversationFlowService({
       reply: {
         text: ERRO_RESOLVIDA,
         step: "AWAITING_RESOLVED",
+        messages: [
+          {
+            type: "buttons",
+            text: ERRO_RESOLVIDA,
+            buttons: criarBotoesResolvida(),
+          },
+        ],
       },
     }
   }
@@ -449,33 +648,56 @@ export function createConversationFlowService({
   async function handleAwaitingScheduleOffer(
     sessionId: string,
     text: string | undefined,
+    optionId: string | undefined,
   ): Promise<ConversationFlowResult> {
-    const trimmed = text?.trim()
+    const querAgendar = parseYesNo(text, optionId, "schedule_yes", "schedule_no")
 
-    if (trimmed === "2") {
-      // Não quis agendar
-      await sessions.finish(sessionId, "DECLINED")
+    if (querAgendar === false) {
+      const closing: SessionClosing = {
+        outcome: "DECLINED",
+        event: {
+          type: "SCHEDULE_DECLINED",
+        },
+      }
+      try {
+        await events.finish(sessionId, closing)
+      } catch (error) {
+        logger.error(
+          "Failed to finish conversation session",
+          conversationEventFailureLog(sessionId, closing.event, error),
+        )
+      }
+
       return {
         sessionId,
         newSession: false,
         reply: {
           text: RESPOSTA_RECUSA_AGENDAMENTO,
           step: "FINISHED",
+          messages: [{ type: "text", text: RESPOSTA_RECUSA_AGENDAMENTO }],
         },
       }
     }
 
-    if (trimmed === "1") {
-      // Deseja agendar -> Avança para o fluxo de coleta de dados do agendamento (#56)
+    if (querAgendar === true) {
       await sessions.updateNavigationState(sessionId, {
         currentStep: "AWAITING_ATTENDEE",
+        currentCategoryId: null,
       })
+
       return {
         sessionId,
         newSession: false,
         reply: {
           text: RESPOSTA_INICIO_AGENDAMENTO,
           step: "AWAITING_ATTENDEE",
+          messages: [
+            {
+              type: "buttons",
+              text: "Vamos iniciar o agendamento presencial. Quem irá comparecer ao atendimento?",
+              buttons: criarBotoesAttendee(),
+            },
+          ],
         },
       }
     }
@@ -486,6 +708,13 @@ export function createConversationFlowService({
       reply: {
         text: ERRO_OFERTA_AGENDAMENTO,
         step: "AWAITING_SCHEDULE_OFFER",
+        messages: [
+          {
+            type: "buttons",
+            text: ERRO_OFERTA_AGENDAMENTO,
+            buttons: criarBotoesOfertaAgendamento(),
+          },
+        ],
       },
     }
   }
@@ -494,23 +723,49 @@ export function createConversationFlowService({
     sessionId: string,
     draft: SessionDraft | null | undefined,
     text: string | undefined,
+    optionId: string | undefined,
   ): Promise<ConversationFlowResult> {
-    const trimmed = text?.trim()
+    let byRepresentative: boolean | null = null
 
-    if (trimmed !== "1" && trimmed !== "2") {
+    if (optionId === "attendee_self") {
+      byRepresentative = false
+    } else if (optionId === "attendee_rep") {
+      byRepresentative = true
+    } else if (text) {
+      const trimmed = text.trim()
+      if (trimmed === "1" || trimmed.toLowerCase() === "eu mesmo") {
+        byRepresentative = false
+      } else if (trimmed === "2" || trimmed.toLowerCase().includes("representante")) {
+        byRepresentative = true
+      }
+    }
+
+    if (byRepresentative === null) {
       return {
         sessionId,
         newSession: false,
         reply: {
           text: ERRO_ATTENDEE,
           step: "AWAITING_ATTENDEE",
+          messages: [
+            {
+              type: "buttons",
+              text: ERRO_ATTENDEE,
+              buttons: criarBotoesAttendee(),
+            },
+          ],
         },
       }
     }
 
-    const byRepresentative = trimmed === "2"
+    await events.record(sessionId, {
+      type: "ATTENDEE_CHOSEN",
+      byRepresentative,
+    })
+
     await sessions.updateNavigationState(sessionId, {
       currentStep: "AWAITING_HOLDER_NAME",
+      currentCategoryId: null,
       draft: {
         ...draft,
         by_representative: byRepresentative,
@@ -523,6 +778,7 @@ export function createConversationFlowService({
       reply: {
         text: PROMPT_NOME,
         step: "AWAITING_HOLDER_NAME",
+        messages: [{ type: "text", text: PROMPT_NOME }],
       },
     }
   }
@@ -541,12 +797,14 @@ export function createConversationFlowService({
         reply: {
           text: ERRO_NOME,
           step: "AWAITING_HOLDER_NAME",
+          messages: [{ type: "text", text: ERRO_NOME }],
         },
       }
     }
 
     await sessions.updateNavigationState(sessionId, {
       currentStep: "AWAITING_HOLDER_CPF",
+      currentCategoryId: null,
       draft: {
         ...draft,
         holder_name: name,
@@ -559,6 +817,7 @@ export function createConversationFlowService({
       reply: {
         text: PROMPT_CPF,
         step: "AWAITING_HOLDER_CPF",
+        messages: [{ type: "text", text: PROMPT_CPF }],
       },
     }
   }
@@ -575,6 +834,7 @@ export function createConversationFlowService({
         reply: {
           text: ERRO_CPF,
           step: "AWAITING_HOLDER_CPF",
+          messages: [{ type: "text", text: ERRO_CPF }],
         },
       }
     }
@@ -593,20 +853,39 @@ export function createConversationFlowService({
     const slots = await schedule.getAvailableSlots()
 
     if (slots.length === 0) {
-      // Agenda lotada / sem horário disponível na janela (Decisão 008, outcome NO_SLOT)
-      await sessions.finish(sessionId, "NO_SLOT")
+      const closing: SessionClosing = {
+        outcome: "NO_SLOT",
+        event: {
+          type: "NO_SLOT",
+        },
+      }
+      try {
+        await events.finish(sessionId, closing)
+      } catch (error) {
+        logger.error(
+          "Failed to finish conversation session",
+          conversationEventFailureLog(sessionId, closing.event, error),
+        )
+      }
+
       return {
         sessionId,
         newSession: false,
         reply: {
           text: MENSAGEM_SEM_HORARIOS,
           step: "FINISHED",
+          messages: [{ type: "text", text: MENSAGEM_SEM_HORARIOS }],
         },
       }
     }
 
+    await events.record(sessionId, {
+      type: "PHONE_NOTICE_SHOWN",
+    })
+
     await sessions.updateNavigationState(sessionId, {
       currentStep: "AWAITING_SLOT",
+      currentCategoryId: null,
       listPage: 1,
       draft: updatedDraft,
     })
@@ -617,103 +896,35 @@ export function createConversationFlowService({
       reply: {
         text: formatarListaSlots(slots, 1),
         step: "AWAITING_SLOT",
+        messages: criarMensagensSlots(slots, 1),
       },
     }
   }
 
-  async function handleAwaitingSlot(
+  async function bookChosenSlot(
     session: ActiveSession,
     phone: string,
-    text: string | undefined,
+    chosenSlot: AvailableSlot,
+    slots: AvailableSlot[],
+    currentPage: number,
   ): Promise<ConversationFlowResult> {
-    const slots = await schedule.getAvailableSlots()
-
-    if (slots.length === 0) {
-      await sessions.finish(session.id, "NO_SLOT")
-      return {
-        sessionId: session.id,
-        newSession: false,
-        reply: {
-          text: MENSAGEM_SEM_HORARIOS,
-          step: "FINISHED",
-        },
-      }
+    if (!session.currentQuestionId) {
+      throw new BadRequestError("Missing question ID for appointment booking")
+    }
+    const questionId = Number(session.currentQuestionId)
+    if (!Number.isSafeInteger(questionId) || questionId <= 0) {
+      throw new BadRequestError("Invalid question ID for appointment booking")
     }
 
-    const currentPage = session.listPage || 1
-    const paginacao = paginarItens(slots, currentPage)
-    const escolha = parseOption(text)
-
-    if (escolha === null) {
-      return {
-        sessionId: session.id,
-        newSession: false,
-        reply: {
-          text: formatarErroSlot(slots, paginacao.paginaAtual),
-          step: "AWAITING_SLOT",
-        },
-      }
+    if (
+      !session.draft?.holder_name ||
+      !session.draft?.cpf_hash ||
+      !session.draft?.cpf_masked ||
+      session.draft.by_representative === undefined
+    ) {
+      throw new BadRequestError("Incomplete draft data for appointment booking")
     }
 
-    // Navegação: Ver mais opções
-    if (paginacao.opcaoProxima !== undefined && escolha === paginacao.opcaoProxima) {
-      const nextPage = paginacao.paginaAtual + 1
-      await sessions.updateNavigationState(session.id, {
-        currentStep: "AWAITING_SLOT",
-        listPage: nextPage,
-      })
-      return {
-        sessionId: session.id,
-        newSession: false,
-        reply: {
-          text: formatarListaSlots(slots, nextPage),
-          step: "AWAITING_SLOT",
-        },
-      }
-    }
-
-    // Navegação: Voltar opções
-    if (paginacao.opcaoAnterior !== undefined && escolha === paginacao.opcaoAnterior) {
-      const prevPage = paginacao.paginaAtual - 1
-      await sessions.updateNavigationState(session.id, {
-        currentStep: "AWAITING_SLOT",
-        listPage: prevPage,
-      })
-      return {
-        sessionId: session.id,
-        newSession: false,
-        reply: {
-          text: formatarListaSlots(slots, prevPage),
-          step: "AWAITING_SLOT",
-        },
-      }
-    }
-
-    // Escolha de um slot na página atual
-    if (escolha < 1 || escolha > paginacao.itensPagina.length) {
-      return {
-        sessionId: session.id,
-        newSession: false,
-        reply: {
-          text: formatarErroSlot(slots, paginacao.paginaAtual),
-          step: "AWAITING_SLOT",
-        },
-      }
-    }
-
-    const chosenSlot = paginacao.itensPagina[escolha - 1]
-    if (!chosenSlot) {
-      return {
-        sessionId: session.id,
-        newSession: false,
-        reply: {
-          text: formatarErroSlot(slots, paginacao.paginaAtual),
-          step: "AWAITING_SLOT",
-        },
-      }
-    }
-
-    const questionId = Number(session.currentQuestionId ?? 1)
     const perguntaResp = await motor.processarPergunta(questionId)
     const reason = perguntaResp.requer_presencial
       ? "REQUIRES_IN_PERSON"
@@ -724,11 +935,11 @@ export function createConversationFlowService({
         sessionId: session.id,
         questionId,
         reason,
-        name: session.draft?.holder_name ?? "Cidadão",
-        cpfHash: session.draft?.cpf_hash ?? "",
-        cpfMasked: session.draft?.cpf_masked ?? "",
+        name: session.draft.holder_name,
+        cpfHash: session.draft.cpf_hash,
+        cpfMasked: session.draft.cpf_masked,
         phone,
-        byRepresentative: session.draft?.by_representative ?? false,
+        byRepresentative: session.draft.by_representative,
         appointmentDatetime: chosenSlot.datetime,
       })
 
@@ -737,7 +948,7 @@ export function createConversationFlowService({
         quando: chosenSlot.formatted,
         unitAddress: bookResult.unitAddress,
         unitAddressComplement: bookResult.unitAddressComplement,
-        byRepresentative: session.draft?.by_representative ?? false,
+        byRepresentative: session.draft.by_representative,
         groupDocuments: bookResult.documentsSent.group,
         questionDocuments: bookResult.documentsSent.question,
         reminderEnabled: bookResult.reminderEnabled,
@@ -750,19 +961,32 @@ export function createConversationFlowService({
         reply: {
           text: confirmationText,
           step: "FINISHED",
+          messages: [{ type: "text", text: confirmationText }],
         },
       }
     } catch (err: unknown) {
       if (err instanceof Error && err.message === "SLOT_FULL") {
         const updatedSlots = await schedule.getAvailableSlots()
         if (updatedSlots.length === 0) {
-          await sessions.finish(session.id, "NO_SLOT")
+          const closing: SessionClosing = {
+            outcome: "NO_SLOT",
+            event: { type: "NO_SLOT" },
+          }
+          try {
+            await events.finish(session.id, closing)
+          } catch (finishErr) {
+            logger.error(
+              "Failed to finish conversation session",
+              conversationEventFailureLog(session.id, closing.event, finishErr),
+            )
+          }
           return {
             sessionId: session.id,
             newSession: false,
             reply: {
               text: MENSAGEM_SEM_HORARIOS,
               step: "FINISHED",
+              messages: [{ type: "text", text: MENSAGEM_SEM_HORARIOS }],
             },
           }
         }
@@ -772,6 +996,10 @@ export function createConversationFlowService({
           reply: {
             text: `${ERRO_SLOT_OCUPADO}\n${formatarListaSlots(updatedSlots, 1)}`,
             step: "AWAITING_SLOT",
+            messages: [
+              { type: "text", text: ERRO_SLOT_OCUPADO },
+              ...criarMensagensSlots(updatedSlots, 1),
+            ],
           },
         }
       }
@@ -783,28 +1011,181 @@ export function createConversationFlowService({
           reply: {
             text: `${ERRO_DUPLICATE_APPOINTMENT}\n${formatarListaSlots(slots, currentPage)}`,
             step: "AWAITING_SLOT",
+            messages: [
+              { type: "text", text: ERRO_DUPLICATE_APPOINTMENT },
+              ...criarMensagensSlots(slots, currentPage),
+            ],
           },
         }
       }
 
-      throw err
+      logger.error(
+        "Failed to book appointment",
+        conversationEventFailureLog(session.id, { type: "APPOINTMENT_CREATED" }, err),
+      )
+
+      return {
+        sessionId: session.id,
+        newSession: false,
+        reply: {
+          text: ERRO_FALHA_AGENDAMENTO,
+          step: "AWAITING_SLOT",
+          messages: [{ type: "text", text: ERRO_FALHA_AGENDAMENTO }],
+        },
+      }
+    }
+  }
+
+  async function handleAwaitingSlot(
+    session: ActiveSession,
+    phone: string,
+    text: string | undefined,
+    optionId: string | undefined,
+  ): Promise<ConversationFlowResult> {
+    const slots = await schedule.getAvailableSlots()
+
+    if (slots.length === 0) {
+      const closing: SessionClosing = {
+        outcome: "NO_SLOT",
+        event: {
+          type: "NO_SLOT",
+        },
+      }
+      try {
+        await events.finish(session.id, closing)
+      } catch (error) {
+        logger.error(
+          "Failed to finish conversation session",
+          conversationEventFailureLog(session.id, closing.event, error),
+        )
+      }
+
+      return {
+        sessionId: session.id,
+        newSession: false,
+        reply: {
+          text: MENSAGEM_SEM_HORARIOS,
+          step: "FINISHED",
+          messages: [{ type: "text", text: MENSAGEM_SEM_HORARIOS }],
+        },
+      }
+    }
+
+    const currentPage = session.listPage || 1
+    const paginacao = paginarItens(slots, currentPage)
+
+    // 1. Tratar clique em optionId
+    if (optionId) {
+      if (optionId.startsWith("page_")) {
+        const targetPage = Number(optionId.replace("page_", ""))
+        if (targetPage >= 1 && targetPage <= paginacao.totalPaginas) {
+          await sessions.updateNavigationState(session.id, {
+            currentStep: "AWAITING_SLOT",
+            currentCategoryId: null,
+            listPage: targetPage,
+          })
+          return {
+            sessionId: session.id,
+            newSession: false,
+            reply: {
+              text: formatarListaSlots(slots, targetPage),
+              step: "AWAITING_SLOT",
+              messages: criarMensagensSlots(slots, targetPage),
+            },
+          }
+        }
+      }
+
+      if (optionId.startsWith("slot_")) {
+        const slotIdx = Number(optionId.replace("slot_", ""))
+        if (slotIdx >= 1 && slotIdx <= slots.length) {
+          const chosenSlot = slots[slotIdx - 1]
+          if (chosenSlot) {
+            return bookChosenSlot(session, phone, chosenSlot, slots, currentPage)
+          }
+        }
+      }
+    }
+
+    // 2. Tratar texto numérico
+    const escolha = parseOption(text)
+
+    if (escolha !== null) {
+      // Se clicou em "Voltar"
+      if (paginacao.opcaoAnterior !== undefined && escolha === paginacao.opcaoAnterior) {
+        const targetPage = paginacao.paginaAtual - 1
+        await sessions.updateNavigationState(session.id, {
+          currentStep: "AWAITING_SLOT",
+          currentCategoryId: null,
+          listPage: targetPage,
+        })
+        return {
+          sessionId: session.id,
+          newSession: false,
+          reply: {
+            text: formatarListaSlots(slots, targetPage),
+            step: "AWAITING_SLOT",
+            messages: criarMensagensSlots(slots, targetPage),
+          },
+        }
+      }
+
+      // Se clicou em "Ver mais opções"
+      if (paginacao.opcaoProxima !== undefined && escolha === paginacao.opcaoProxima) {
+        const targetPage = paginacao.paginaAtual + 1
+        await sessions.updateNavigationState(session.id, {
+          currentStep: "AWAITING_SLOT",
+          currentCategoryId: null,
+          listPage: targetPage,
+        })
+        return {
+          sessionId: session.id,
+          newSession: false,
+          reply: {
+            text: formatarListaSlots(slots, targetPage),
+            step: "AWAITING_SLOT",
+            messages: criarMensagensSlots(slots, targetPage),
+          },
+        }
+      }
+
+      // Se escolheu um slot da página atual
+      if (escolha >= 1 && escolha <= paginacao.itensPagina.length) {
+        const chosenSlot = paginacao.itensPagina[escolha - 1]
+        if (chosenSlot) {
+          return bookChosenSlot(session, phone, chosenSlot, slots, currentPage)
+        }
+      }
+    }
+
+    return {
+      sessionId: session.id,
+      newSession: false,
+      reply: {
+        text: formatarErroSlot(slots, paginacao.paginaAtual),
+        step: "AWAITING_SLOT",
+        messages: criarMensagensSlots(slots, paginacao.paginaAtual),
+      },
     }
   }
 
   async function processMessage({
     phone,
     text,
+    optionId,
   }: ConversationFlowInput): Promise<ConversationFlowResult> {
     const session = await sessions.findOrCreateActive(hashPhoneOf(phone))
 
-    if (session.created || session.currentStep === "FINISHED") {
+    if (session.created) {
       return startOver(session.id, session.created)
     }
+
+    await sessions.touch(session.id)
 
     const page = session.listPage || 1
 
     if (session.currentStep === "AWAITING_CATEGORY") {
-      return handleAwaitingCategory(session.id, page, text)
+      return handleAwaitingCategory(session.id, page, text, optionId)
     }
 
     if (session.currentStep === "AWAITING_QUESTION") {
@@ -813,19 +1194,20 @@ export function createConversationFlowService({
         session.currentCategoryId,
         page,
         text,
+        optionId,
       )
     }
 
     if (session.currentStep === "AWAITING_RESOLVED") {
-      return handleAwaitingResolved(session.id, text)
+      return handleAwaitingResolved(session.id, text, optionId)
     }
 
     if (session.currentStep === "AWAITING_SCHEDULE_OFFER") {
-      return handleAwaitingScheduleOffer(session.id, text)
+      return handleAwaitingScheduleOffer(session.id, text, optionId)
     }
 
     if (session.currentStep === "AWAITING_ATTENDEE") {
-      return handleAwaitingAttendee(session.id, session.draft, text)
+      return handleAwaitingAttendee(session.id, session.draft, text, optionId)
     }
 
     if (session.currentStep === "AWAITING_HOLDER_NAME") {
@@ -833,15 +1215,11 @@ export function createConversationFlowService({
     }
 
     if (session.currentStep === "AWAITING_HOLDER_CPF") {
-      return handleAwaitingHolderCpf(
-        session.id,
-        session.draft,
-        text,
-      )
+      return handleAwaitingHolderCpf(session.id, session.draft, text)
     }
 
     if (session.currentStep === "AWAITING_SLOT") {
-      return handleAwaitingSlot(session, phone, text)
+      return handleAwaitingSlot(session, phone, text, optionId)
     }
 
     // Se estiver em outro step futuro ou inesperado, recomeça
@@ -861,7 +1239,13 @@ export function createConversationFlowService({
 
 export const processIncomingMessage = createConversationFlowService({
   sessions: sessionRepository,
+  events: conversationEventService,
   motor: new MotorDecisaoService(new PgMotorDecisaoRepository()),
   schedule: new ScheduleService(new PgScheduleRepository()),
   hashPhone,
+  logger: console,
 })
+
+export async function sweepAbandonedSessions(): Promise<number> {
+  return sessionRepository.sweepAbandonedSessions()
+}

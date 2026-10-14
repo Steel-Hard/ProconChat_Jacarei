@@ -12,15 +12,15 @@ export function createLlmExplicacaoService({
 }: LlmExplicacaoDependencies): (resumo: RespostaFinalOutput) => Promise<LlmExplicacaoResult> {
     return async (resumo: RespostaFinalOutput): Promise<LlmExplicacaoResult> => {
         if (resumo.fora_de_escopo) {
-            return { explicacaoLlm: null, geradoPorLlm: false }
+            return { explicacaoLlm: null, geradoPorLlm: false, status: "NOT_CALLED" }
         }
 
         try {
             const explicacaoLlm = await client.gerarTextoExplicativo(resumo)
-            return { explicacaoLlm, geradoPorLlm: true }
+            return { explicacaoLlm, geradoPorLlm: true, status: "USED" }
         } catch (error) {
             console.error("Falha ao gerar explicacao via LLM, usando resposta estruturada crua.", error)
-            return { explicacaoLlm: null, geradoPorLlm: false }
+            return { explicacaoLlm: null, geradoPorLlm: false, status: "FAILED" }
         }
     }
 }
