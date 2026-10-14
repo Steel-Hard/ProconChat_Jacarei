@@ -132,15 +132,16 @@ describe("AuthController", () => {
         expect(next).not.toHaveBeenCalled()
     })
 
-    test("login repassa ao servico o req.ip e usa texto vazio quando o req.ip nao existe", async () => {
+    test.each([
+        ["o req.ip quando ele existe", "198.51.100.4", "198.51.100.4"],
+        ["texto vazio quando o req.ip nao existe", undefined, ""],
+    ])("login repassa ao servico %s", async (_label, ip, expectedIp) => {
         auth.login.mockResolvedValue({ user, ...issuedSession() })
         const body = { email: "admin@exemplo.test", password: "senha-do-admin" }
 
-        await controller.login(buildRequest({ body, ip: "198.51.100.4" }), buildResponse(), vi.fn())
-        await controller.login(buildRequest({ body }), buildResponse(), vi.fn())
+        await controller.login(buildRequest({ body, ip }), buildResponse(), vi.fn())
 
-        expect(auth.login).toHaveBeenNthCalledWith(1, { ...body, ip: "198.51.100.4" })
-        expect(auth.login).toHaveBeenNthCalledWith(2, { ...body, ip: "" })
+        expect(auth.login).toHaveBeenCalledWith({ ...body, ip: expectedIp })
     })
 
     test("login define Retry-After e delega ao next quando o servico rejeita com TooManyRequestsError", async () => {
