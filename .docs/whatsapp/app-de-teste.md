@@ -41,44 +41,86 @@ gateway. O token vai em `WHATSAPP_ACCESS_TOKEN`.
 
 ## 5. Token de verificação do webhook
 
-O `WHATSAPP_VERIFY_TOKEN` é escolhido por você e repetido na Meta no passo 8. Gere um valor aleatório:
+O `WHATSAPP_VERIFY_TOKEN` é escolhido por você, usado no passo 6a e repetido na Meta no passo 8. Gere um valor aleatório (se a configuração já existir no banco, use o token que ela já tem, passo 6b):
 
 ```bash
 openssl rand -hex 32
 ```
 
-## 6. Configurar o `.env` e subir o gateway
-
-Os `WHATSAPP_*` do `.env` são só o valor inicial: o `seed` os usa para criar a configuração do WhatsApp
-no banco quando ela ainda não existe (#83). Depois disso, as credenciais são trocadas pela tela de
-WhatsApp do painel, e mudar o `.env` não tem efeito (README do gateway, "Configuração do WhatsApp").
-Num banco que já tem a configuração, use a tela (ou a API `/api/v1/whatsapp/settings`) em vez deste
-passo.
+## 6. Configurar o `.env` e as credenciais
 
 No `.env` da raiz (copiado de `.env.example`), gere a chave-mestra que cifra o token e o App Secret
-no banco. Ela é obrigatória e não tem valor padrão:
+no banco. Ela é obrigatória e não tem valor padrão: sem ela, o Docker Compose recusa subir.
 
 ```bash
 openssl rand -hex 32
 ```
-
-Depois preencha:
 
 ```dotenv
 ENCRYPTION_KEY=valor-gerado-acima
+```
+
+As credenciais da Meta ficam no banco (#83), não no `.env`. O caminho depende de a configuração do
+WhatsApp já existir.
+
+### 6a. Antes da primeira subida
+
+Os `WHATSAPP_*` do `.env` são lidos pelo `seed` **só enquanto a configuração ainda não existe no
+banco**. Se você ainda não rodou `docker compose up` neste volume do Postgres, preencha:
+
+```dotenv
 WHATSAPP_PHONE_NUMBER_ID=id-do-numero-no-app-da-meta
 WHATSAPP_ACCESS_TOKEN=token-de-usuario-do-sistema-sem-expiracao
 WHATSAPP_APP_SECRET=chave-secreta-do-app-da-meta
 WHATSAPP_VERIFY_TOKEN=valor-gerado-no-passo-5
 ```
 
-Depois rode o `seed` de novo, para criar a configuração com esses valores:
+e suba a stack com `docker compose up --build -d` (seção 1 do README do gateway). O log do `seed` mostra
+`WhatsApp: configuração inicial criada`.
+
+### 6b. Com a configuração já criada
+
+Depois da primeira subida, o `seed` mostra `WhatsApp: configuração inicial já existe, mantida` e
+ignora os `WHATSAPP_*`: rodar o seed de novo não muda nada. Troque as credenciais pela tela de WhatsApp
+do painel (#54) ou, enquanto ela não existe, pela API do backend com o cookie do Admin
+([README do backend](../../src/backend/README.md), "Configuração do WhatsApp").
+
+Os exemplos usam o Admin e as portas padrão do `compose.yaml` (`ROOT_EMAIL`/`ROOT_PASSWORD` do `.env`,
+backend em `3000`, painel em `8081`). Leia os segredos sem ecoar na tela e sem gravar no histórico:
 
 ```bash
-docker compose run --rm seed
+ORIGIN=http://localhost:8081
+read -r PHONE_NUMBER_ID
+read -rs ACCESS_TOKEN
+read -rs APP_SECRET
+ACCESS_COOKIE=$(curl -s -D - -o /dev/null -X POST http://localhost:3000/api/v1/auth/login \
+  -H "Origin: $ORIGIN" -H "Content-Type: application/json" \
+  -d '{"email":"admin@procon.local","password":"admin-dev-123"}' \
+  | grep -i '^set-cookie: proconchat_access=' | sed 's/^[^:]*: //; s/;.*//')
+BODY=$(printf '{"phoneNumberId":"%s","accessToken":"%s","appSecret":"%s"}' "$PHONE_NUMBER_ID" "$ACCESS_TOKEN" "$APP_SECRET")
 ```
 
-Se a stack ainda não estiver de pé, use `docker compose up --build -d` (seção 1 do README do gateway).
+Testar a conexão (não grava nada quando os valores são novos):
+
+```bash
+curl -s -X POST http://localhost:3000/api/v1/whatsapp/settings/test \
+  -H "Origin: $ORIGIN" -H "Cookie: $ACCESS_COOKIE" -H "Content-Type: application/json" \
+  -d "$BODY"
+```
+
+A resposta é `{"data":{"ok":true,...}}` ou `{"data":{"ok":false,"reason":"..."}}`. Com `ok: true`,
+salvar (o backend refaz o teste e só grava se ele passar; falha devolve `422` com o motivo):
+
+```bash
+curl -s -X PUT http://localhost:3000/api/v1/whatsapp/settings \
+  -H "Origin: $ORIGIN" -H "Cookie: $ACCESS_COOKIE" -H "Content-Type: application/json" \
+  -d "$BODY"
+unset ACCESS_TOKEN APP_SECRET BODY
+```
+
+O gateway recarrega sozinho. O token de verificação do passo 8 aparece em `verifyToken` na resposta de
+`GET /api/v1/whatsapp/settings` (com o mesmo cookie). Ele é o `WHATSAPP_VERIFY_TOKEN` do `.env` se a
+configuração foi criada pelo passo 6a, ou um valor gerado pelo sistema.
 
 ## 7. Túnel HTTPS
 
@@ -95,7 +137,7 @@ gratuitos, então o passo 8 se repete quando o túnel for recriado.
 ## 8. Configurar o webhook na Meta
 
 1. Em **WhatsApp → Configuração → Webhook**, informe `https://<túnel>/webhooks/whatsapp` como URL de
-   callback e o valor de `WHATSAPP_VERIFY_TOKEN` em "Verificar token".
+   callback e o token de verificação da configuração (`verifyToken`, passo 6b) em "Verificar token".
 2. Clique em "Verificar e salvar". A Meta chama `GET /webhooks/whatsapp`, e o gateway responde com o
    desafio quando o token confere. Se a verificação falhar, confira o token de verificação mostrado na
    tela de WhatsApp do painel.
