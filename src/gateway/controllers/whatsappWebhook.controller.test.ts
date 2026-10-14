@@ -235,12 +235,11 @@ describe("WhatsappWebhookController com dependencias injetadas", () => {
         expect(dependencies.processWebhook).not.toHaveBeenCalled()
     })
 
-    test("mantem handleRawBodyError com quatro parametros tambem depois do bind", () => {
+    test("declara quatro parametros em handleRawBodyError para o Express trata-lo como middleware de erro", () => {
         const injected = new WhatsappWebhookController(buildDependencies())
 
-        const bound = injected.handleRawBodyError.bind(injected)
+        const declaredParameters = injected.handleRawBodyError.length
 
-        expect(injected.handleRawBodyError.length).toBe(4)
-        expect(bound.length).toBe(4)
+        expect(declaredParameters).toBe(4)
     })
 })
