@@ -23,7 +23,7 @@ Backend do chatbot de orientação ao consumidor via WhatsApp (PROCON Jacareí).
 - Rotas em classe, como `routes/health.routes.ts`, exportando o `Router` de `getRouter()`.
 - Montagem em `app.ts`, sob o prefixo `/api/v1` (exceto casos como `/health`, que ficam fora do versionamento por serem consumidos por infraestrutura).
 - Teste unitário do controller em `controllers/<recurso>.controller.test.ts`: instancia a classe com dublês, monta `req`/`res`/`next` falsos e chama os métodos direto, sem `supertest` (ex.: `controllers/auth.controller.test.ts`).
-- Teste de montagem em `routes/<recurso>.routes.test.ts` com `supertest` contra o `app` exportado por `app.ts`, só para caminho, middlewares e ordem, CORS, CSRF, cabeçalhos e envelope de erro (ex.: `routes/health.routes.test.ts`).
+- Teste de montagem em `routes/<recurso>.routes.test.ts` com `supertest` contra o `app` exportado por `app.ts`, principalmente para caminho, middlewares e ordem, CORS, CSRF, cabeçalhos e envelope de erro (ex.: `routes/health.routes.test.ts`). Temas maiores ficam em arquivos irmãos `routes/<recurso>.<tema>.test.ts` (ex.: `auth.endpoints`, `auth.loginLimiter`, `auth.sessionLifetime`, `auth.frontendOrigin`). O dublê de uma dependência num teste de rota entra por `vi.mock` ou por injeção no constructor, não por `vi.spyOn` na exportação do módulo, porque o controller guarda o service padrão quando é construído.
 
 ## Variáveis de ambiente
 
