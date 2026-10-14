@@ -58,11 +58,6 @@ export class MockAuthRepository implements AuthRepository {
         return user?.active ? { ...user } : null
     }
 
-    async findAdmin(): Promise<AuthenticatedUser | null> {
-        const user = [...this.users.values()].find((candidate) => candidate.isAdmin)
-        return user ? toAuthenticatedUser(user) : null
-    }
-
     async recordLogin(id: number): Promise<void> {
         this.loginsRecorded.push(id)
     }

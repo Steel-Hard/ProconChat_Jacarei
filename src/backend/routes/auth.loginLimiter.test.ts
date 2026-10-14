@@ -15,7 +15,6 @@ vi.mock("../repositories/auth.repository", async () => {
             findByEmail: vi.fn((email: string) => users.findByEmail(email)),
             findActiveById: vi.fn((id: number) => users.findActiveById(id)),
             findActiveWithPassword: vi.fn((id: number) => users.findActiveWithPassword(id)),
-            findAdmin: vi.fn(() => users.findAdmin()),
             recordLogin: vi.fn((id: number) => users.recordLogin(id)),
             updatePassword: vi.fn((id: number, hash: string) => users.updatePassword(id, hash)),
         },

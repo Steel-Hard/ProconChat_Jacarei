@@ -47,11 +47,6 @@ export const authRepository: AuthRepository = {
         return user ? withoutCredentials(user) : null
     },
 
-    async findAdmin() {
-        const user = await findOne("is_admin", [])
-        return user ? withoutCredentials(user) : null
-    },
-
     async recordLogin(id) {
         await getPool().query("UPDATE Users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1", [id])
     },
