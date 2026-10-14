@@ -11,7 +11,12 @@ import {
   Pergunta,
   RespostaFinalOutput,
 } from "../types/motorDecisao.types"
+import { OutgoingMessage } from "../types/message.types"
 import {
+  criarBotoesOfertaAgendamento,
+  criarBotoesResolvida,
+  criarMensagensCategorias,
+  criarMensagensPerguntas,
   ERRO_OFERTA_AGENDAMENTO,
   ERRO_RESOLVIDA,
   formatarCategoriaSemPerguntas,
@@ -27,15 +32,24 @@ import {
   RESPOSTA_RECUSA_AGENDAMENTO,
   RESPOSTA_RESOLVIDA_SIM,
 } from "./messageFormatter.service"
+import {
+  conversationEventFailureLog,
+  ConversationEventLogger,
+  conversationEventService,
+  ConversationEventService,
+} from "./conversationEvent.service"
+import type { SessionClosing } from "../types/conversationEvent.types"
 
 export interface ConversationFlowInput {
   phone: string
   text?: string
+  optionId?: string
 }
 
 export interface ConversationFlowReply {
   text: string
   step: SessionStep
+  messages?: OutgoingMessage[]
 }
 
 export interface ConversationFlowResult {
@@ -52,8 +66,10 @@ export interface MotorDecisao {
 
 interface ConversationFlowDependencies {
   sessions: SessionRepository
+  events: ConversationEventService
   motor: MotorDecisao
   hashPhone: (phone: string) => string
+  logger: ConversationEventLogger
 }
 
 function parseOption(text: string | undefined): number | null {
@@ -69,6 +85,28 @@ function parseOption(text: string | undefined): number | null {
 
   const value = Number(trimmed)
   return value > 0 ? value : null
+}
+
+function parseYesNo(
+  text: string | undefined,
+  optionId: string | undefined,
+  yesId: string,
+  noId: string,
+): boolean | null {
+  if (optionId === yesId) return true
+  if (optionId === noId) return false
+
+  if (!text) return null
+  const cleaned = text.trim().toLowerCase()
+
+  if (cleaned === "1" || cleaned === "sim" || cleaned === "s" || cleaned.includes("agendar")) {
+    return true
+  }
+  if (cleaned === "2" || cleaned === "não" || cleaned === "nao" || cleaned === "n" || cleaned.includes("agora não") || cleaned.includes("agora nao")) {
+    return false
+  }
+
+  return null
 }
 
 function createPhoneLock() {
@@ -104,8 +142,10 @@ function createPhoneLock() {
 
 export function createConversationFlowService({
   sessions,
+  events,
   motor,
   hashPhone: hashPhoneOf,
+  logger,
 }: ConversationFlowDependencies): (
   input: ConversationFlowInput,
 ) => Promise<ConversationFlowResult> {
@@ -130,89 +170,118 @@ export function createConversationFlowService({
       reply: {
         text: formatarListaCategorias(categorias, 1),
         step: "AWAITING_CATEGORY",
+        messages: criarMensagensCategorias(categorias, 1),
       },
     }
   }
 
   async function handleAwaitingCategory(
     sessionId: string,
-    currentPage: number = 1,
+    currentPage: number,
     text: string | undefined,
+    optionId: string | undefined,
   ): Promise<ConversationFlowResult> {
     const categorias = await motor.iniciarSessao()
     const paginacao = paginarItens(categorias, currentPage)
+
+    // 1. Tratar navegação por clique em optionId
+    if (optionId) {
+      if (optionId.startsWith("page_")) {
+        const targetPage = Number(optionId.replace("page_", ""))
+        if (targetPage >= 1 && targetPage <= paginacao.totalPaginas) {
+          await sessions.updateNavigationState(sessionId, {
+            currentStep: "AWAITING_CATEGORY",
+            currentCategoryId: null,
+            listPage: targetPage,
+          })
+          return {
+            sessionId,
+            newSession: false,
+            reply: {
+              text: formatarListaCategorias(categorias, targetPage),
+              step: "AWAITING_CATEGORY",
+              messages: criarMensagensCategorias(categorias, targetPage),
+            },
+          }
+        }
+      }
+
+      if (optionId.startsWith("cat_")) {
+        const catId = Number(optionId.replace("cat_", ""))
+        const categoria = categorias.find((c) => Number(c.id) === catId)
+        if (categoria) {
+          return transitionToQuestions(sessionId, categoria)
+        }
+      }
+    }
+
+    // 2. Tratar navegação por texto/número
     const escolha = parseOption(text)
 
-    if (escolha === null) {
-      return {
-        sessionId,
-        newSession: false,
-        reply: {
-          text: formatarErroCategoria(categorias, paginacao.paginaAtual),
-          step: "AWAITING_CATEGORY",
-        },
+    if (escolha !== null) {
+      // Se clicou em "Voltar"
+      if (paginacao.opcaoAnterior !== undefined && escolha === paginacao.opcaoAnterior) {
+        const targetPage = paginacao.paginaAtual - 1
+        await sessions.updateNavigationState(sessionId, {
+          currentStep: "AWAITING_CATEGORY",
+          currentCategoryId: null,
+          listPage: targetPage,
+        })
+        return {
+          sessionId,
+          newSession: false,
+          reply: {
+            text: formatarListaCategorias(categorias, targetPage),
+            step: "AWAITING_CATEGORY",
+            messages: criarMensagensCategorias(categorias, targetPage),
+          },
+        }
+      }
+
+      // Se clicou em "Ver mais opções"
+      if (paginacao.opcaoProxima !== undefined && escolha === paginacao.opcaoProxima) {
+        const targetPage = paginacao.paginaAtual + 1
+        await sessions.updateNavigationState(sessionId, {
+          currentStep: "AWAITING_CATEGORY",
+          currentCategoryId: null,
+          listPage: targetPage,
+        })
+        return {
+          sessionId,
+          newSession: false,
+          reply: {
+            text: formatarListaCategorias(categorias, targetPage),
+            step: "AWAITING_CATEGORY",
+            messages: criarMensagensCategorias(categorias, targetPage),
+          },
+        }
+      }
+
+      // Se escolheu um item da página
+      if (escolha >= 1 && escolha <= paginacao.itensPagina.length) {
+        const categoria = paginacao.itensPagina[escolha - 1]
+        if (categoria) {
+          return transitionToQuestions(sessionId, categoria)
+        }
       }
     }
 
-    // Navegação: Ver mais opções
-    if (paginacao.opcaoProxima !== undefined && escolha === paginacao.opcaoProxima) {
-      const nextPage = paginacao.paginaAtual + 1
-      await sessions.updateNavigationState(sessionId, {
-        currentStep: "AWAITING_CATEGORY",
-        listPage: nextPage,
-      })
-      return {
-        sessionId,
-        newSession: false,
-        reply: {
-          text: formatarListaCategorias(categorias, nextPage),
-          step: "AWAITING_CATEGORY",
-        },
-      }
+    return {
+      sessionId,
+      newSession: false,
+      reply: {
+        text: formatarErroCategoria(categorias, paginacao.paginaAtual),
+        step: "AWAITING_CATEGORY",
+        messages: criarMensagensCategorias(categorias, paginacao.paginaAtual),
+      },
     }
+  }
 
-    // Navegação: Voltar opções
-    if (paginacao.opcaoAnterior !== undefined && escolha === paginacao.opcaoAnterior) {
-      const prevPage = paginacao.paginaAtual - 1
-      await sessions.updateNavigationState(sessionId, {
-        currentStep: "AWAITING_CATEGORY",
-        listPage: prevPage,
-      })
-      return {
-        sessionId,
-        newSession: false,
-        reply: {
-          text: formatarListaCategorias(categorias, prevPage),
-          step: "AWAITING_CATEGORY",
-        },
-      }
-    }
-
-    // Escolha de uma categoria na página atual
-    if (escolha < 1 || escolha > paginacao.itensPagina.length) {
-      return {
-        sessionId,
-        newSession: false,
-        reply: {
-          text: formatarErroCategoria(categorias, paginacao.paginaAtual),
-          step: "AWAITING_CATEGORY",
-        },
-      }
-    }
-
-    const categoria = paginacao.itensPagina[escolha - 1]
-    if (!categoria) {
-      return {
-        sessionId,
-        newSession: false,
-        reply: {
-          text: formatarErroCategoria(categorias, paginacao.paginaAtual),
-          step: "AWAITING_CATEGORY",
-        },
-      }
-    }
-
-    const perguntas = await motor.escolherCategoria(categoria.id)
+  async function transitionToQuestions(
+    sessionId: string,
+    categoria: Categoria,
+  ): Promise<ConversationFlowResult> {
+    const perguntas = await motor.escolherCategoria(Number(categoria.id))
 
     if (perguntas.length === 0) {
       return {
@@ -231,12 +300,18 @@ export function createConversationFlowService({
       listPage: 1,
     })
 
+    await events.record(sessionId, {
+      type: "CATEGORY_CHOSEN",
+      categoryId: Number(categoria.id),
+    })
+
     return {
       sessionId,
       newSession: false,
       reply: {
         text: formatarListaPerguntas(perguntas, 1),
         step: "AWAITING_QUESTION",
+        messages: criarMensagensPerguntas(perguntas, 1),
       },
     }
   }
@@ -244,8 +319,9 @@ export function createConversationFlowService({
   async function handleAwaitingQuestion(
     sessionId: string,
     currentCategoryId: string | null,
-    currentPage: number = 1,
+    currentPage: number,
     text: string | undefined,
+    optionId: string | undefined,
   ): Promise<ConversationFlowResult> {
     if (!currentCategoryId) {
       return startOver(sessionId, false)
@@ -253,106 +329,175 @@ export function createConversationFlowService({
 
     const perguntas = await motor.escolherCategoria(Number(currentCategoryId))
     const paginacao = paginarItens(perguntas, currentPage)
+
+    // 1. Tratar navegação por optionId
+    if (optionId) {
+      if (optionId.startsWith("page_")) {
+        const targetPage = Number(optionId.replace("page_", ""))
+        if (targetPage >= 1 && targetPage <= paginacao.totalPaginas) {
+          await sessions.updateNavigationState(sessionId, {
+            currentStep: "AWAITING_QUESTION",
+            currentCategoryId,
+            listPage: targetPage,
+          })
+          return {
+            sessionId,
+            newSession: false,
+            reply: {
+              text: formatarListaPerguntas(perguntas, targetPage),
+              step: "AWAITING_QUESTION",
+              messages: criarMensagensPerguntas(perguntas, targetPage),
+            },
+          }
+        }
+      }
+
+      if (optionId.startsWith("q_")) {
+        const qId = Number(optionId.replace("q_", ""))
+        const pergunta = perguntas.find((p) => Number(p.id) === qId)
+        if (pergunta) {
+          return processSelectedQuestion(sessionId, pergunta)
+        }
+      }
+    }
+
+    // 2. Tratar navegação por texto/número
     const escolha = parseOption(text)
 
-    if (escolha === null) {
-      return {
-        sessionId,
-        newSession: false,
-        reply: {
-          text: formatarErroPergunta(perguntas, paginacao.paginaAtual),
-          step: "AWAITING_QUESTION",
-        },
+    if (escolha !== null) {
+      if (paginacao.opcaoAnterior !== undefined && escolha === paginacao.opcaoAnterior) {
+        const targetPage = paginacao.paginaAtual - 1
+        await sessions.updateNavigationState(sessionId, {
+          currentStep: "AWAITING_QUESTION",
+          currentCategoryId,
+          listPage: targetPage,
+        })
+        return {
+          sessionId,
+          newSession: false,
+          reply: {
+            text: formatarListaPerguntas(perguntas, targetPage),
+            step: "AWAITING_QUESTION",
+            messages: criarMensagensPerguntas(perguntas, targetPage),
+          },
+        }
+      }
+
+      if (paginacao.opcaoProxima !== undefined && escolha === paginacao.opcaoProxima) {
+        const targetPage = paginacao.paginaAtual + 1
+        await sessions.updateNavigationState(sessionId, {
+          currentStep: "AWAITING_QUESTION",
+          currentCategoryId,
+          listPage: targetPage,
+        })
+        return {
+          sessionId,
+          newSession: false,
+          reply: {
+            text: formatarListaPerguntas(perguntas, targetPage),
+            step: "AWAITING_QUESTION",
+            messages: criarMensagensPerguntas(perguntas, targetPage),
+          },
+        }
+      }
+
+      if (escolha >= 1 && escolha <= paginacao.itensPagina.length) {
+        const pergunta = paginacao.itensPagina[escolha - 1]
+        if (pergunta) {
+          return processSelectedQuestion(sessionId, pergunta)
+        }
       }
     }
 
-    // Navegação: Ver mais opções
-    if (paginacao.opcaoProxima !== undefined && escolha === paginacao.opcaoProxima) {
-      const nextPage = paginacao.paginaAtual + 1
-      await sessions.updateNavigationState(sessionId, {
-        currentStep: "AWAITING_QUESTION",
-        currentCategoryId,
-        listPage: nextPage,
-      })
-      return {
-        sessionId,
-        newSession: false,
-        reply: {
-          text: formatarListaPerguntas(perguntas, nextPage),
-          step: "AWAITING_QUESTION",
-        },
-      }
+    return {
+      sessionId,
+      newSession: false,
+      reply: {
+        text: formatarErroPergunta(perguntas, paginacao.paginaAtual),
+        step: "AWAITING_QUESTION",
+        messages: criarMensagensPerguntas(perguntas, paginacao.paginaAtual),
+      },
     }
+  }
 
-    // Navegação: Voltar opções
-    if (paginacao.opcaoAnterior !== undefined && escolha === paginacao.opcaoAnterior) {
-      const prevPage = paginacao.paginaAtual - 1
-      await sessions.updateNavigationState(sessionId, {
-        currentStep: "AWAITING_QUESTION",
-        currentCategoryId,
-        listPage: prevPage,
-      })
-      return {
-        sessionId,
-        newSession: false,
-        reply: {
-          text: formatarListaPerguntas(perguntas, prevPage),
-          step: "AWAITING_QUESTION",
-        },
-      }
-    }
-
-    // Escolha de uma pergunta na página atual
-    if (escolha < 1 || escolha > paginacao.itensPagina.length) {
-      return {
-        sessionId,
-        newSession: false,
-        reply: {
-          text: formatarErroPergunta(perguntas, paginacao.paginaAtual),
-          step: "AWAITING_QUESTION",
-        },
-      }
-    }
-
-    const pergunta = paginacao.itensPagina[escolha - 1]
-    if (!pergunta) {
-      return {
-        sessionId,
-        newSession: false,
-        reply: {
-          text: formatarErroPergunta(perguntas, paginacao.paginaAtual),
-          step: "AWAITING_QUESTION",
-        },
-      }
-    }
+  async function processSelectedQuestion(
+    sessionId: string,
+    pergunta: Pergunta,
+  ): Promise<ConversationFlowResult> {
+    await events.record(sessionId, {
+      type: "QUESTION_CHOSEN",
+      categoryId: Number(pergunta.category_id),
+      questionId: Number(pergunta.id),
+    })
 
     const resposta = await motor.processarPergunta(pergunta.id)
 
-    // Caso 1: Fora do escopo do PROCON (Decisão 008)
+    // Caso 1: Fora do escopo do PROCON (Decisão 008 - encerra direto com OUT_OF_SCOPE)
     if (resposta.fora_de_escopo) {
-      await sessions.finish(sessionId, "OUT_OF_SCOPE")
+      const closing: SessionClosing = {
+        outcome: "OUT_OF_SCOPE",
+        event: {
+          type: "ANSWER_SENT",
+          categoryId: Number(pergunta.category_id),
+          questionId: Number(pergunta.id),
+          llm: "NOT_CALLED",
+        },
+      }
+      try {
+        await events.finish(sessionId, closing)
+      } catch (error) {
+        logger.error(
+          "Failed to finish conversation session",
+          conversationEventFailureLog(sessionId, closing.event, error),
+        )
+      }
+
       return {
         sessionId,
         newSession: false,
         reply: {
           text: formatarRespostaFinal(resposta),
           step: "FINISHED",
+          messages: [{ type: "text", text: formatarRespostaFinal(resposta) }],
         },
       }
     }
 
-    // Caso 2: Exige atendimento presencial (Decisão 008: oferece agendamento direto sem perguntar se resolveu)
+    // Grava ANSWER_SENT para casos dentro do escopo
+    await events.record(sessionId, {
+      type: "ANSWER_SENT",
+      categoryId: Number(pergunta.category_id),
+      questionId: Number(pergunta.id),
+      llm: "NOT_CALLED",
+    })
+
+    // Caso 2: Exige atendimento presencial (oferece agendamento direto)
     if (resposta.requer_presencial) {
+      await events.record(sessionId, {
+        type: "SCHEDULE_OFFERED",
+        reason: "REQUIRES_IN_PERSON",
+      })
+
       await sessions.updateNavigationState(sessionId, {
         currentStep: "AWAITING_SCHEDULE_OFFER",
+        currentCategoryId: String(pergunta.category_id),
         currentQuestionId: String(pergunta.id),
       })
+
       return {
         sessionId,
         newSession: false,
         reply: {
           text: `${formatarRespostaFinal(resposta)}\n\n${OFERTA_AGENDAMENTO}`,
           step: "AWAITING_SCHEDULE_OFFER",
+          messages: [
+            { type: "text", text: formatarRespostaFinal(resposta) },
+            {
+              type: "buttons",
+              text: "Deseja agendar um atendimento presencial no PROCON Jacareí?",
+              buttons: criarBotoesOfertaAgendamento(),
+            },
+          ],
         },
       }
     }
@@ -360,6 +505,7 @@ export function createConversationFlowService({
     // Caso 3: Pergunta padrão -> Pergunta se a dúvida foi resolvida
     await sessions.updateNavigationState(sessionId, {
       currentStep: "AWAITING_RESOLVED",
+      currentCategoryId: String(pergunta.category_id),
       currentQuestionId: String(pergunta.id),
     })
 
@@ -369,6 +515,14 @@ export function createConversationFlowService({
       reply: {
         text: `${formatarRespostaFinal(resposta)}\n\n${PERGUNTA_RESOLVIDA}`,
         step: "AWAITING_RESOLVED",
+        messages: [
+          { type: "text", text: formatarRespostaFinal(resposta) },
+          {
+            type: "buttons",
+            text: "A dúvida foi resolvida?",
+            buttons: criarBotoesResolvida(),
+          },
+        ],
       },
     }
   }
@@ -376,33 +530,67 @@ export function createConversationFlowService({
   async function handleAwaitingResolved(
     sessionId: string,
     text: string | undefined,
+    optionId: string | undefined,
   ): Promise<ConversationFlowResult> {
-    const trimmed = text?.trim()
+    const resolvida = parseYesNo(text, optionId, "resolved_yes", "resolved_no")
 
-    if (trimmed === "1") {
-      // Dúvida resolvida com sucesso
-      await sessions.finish(sessionId, "RESOLVED")
+    if (resolvida === true) {
+      const closing: SessionClosing = {
+        outcome: "RESOLVED",
+        event: {
+          type: "RESOLVED_ANSWERED",
+          resolved: true,
+        },
+      }
+      try {
+        await events.finish(sessionId, closing)
+      } catch (error) {
+        logger.error(
+          "Failed to finish conversation session",
+          conversationEventFailureLog(sessionId, closing.event, error),
+        )
+      }
+
       return {
         sessionId,
         newSession: false,
         reply: {
           text: RESPOSTA_RESOLVIDA_SIM,
           step: "FINISHED",
+          messages: [{ type: "text", text: RESPOSTA_RESOLVIDA_SIM }],
         },
       }
     }
 
-    if (trimmed === "2") {
-      // Dúvida não resolvida -> Oferece agendamento presencial
+    if (resolvida === false) {
+      await events.record(sessionId, {
+        type: "RESOLVED_ANSWERED",
+        resolved: false,
+      })
+
+      await events.record(sessionId, {
+        type: "SCHEDULE_OFFERED",
+        reason: "NOT_RESOLVED",
+      })
+
       await sessions.updateNavigationState(sessionId, {
         currentStep: "AWAITING_SCHEDULE_OFFER",
+        currentCategoryId: null,
       })
+
       return {
         sessionId,
         newSession: false,
         reply: {
           text: OFERTA_AGENDAMENTO,
           step: "AWAITING_SCHEDULE_OFFER",
+          messages: [
+            {
+              type: "buttons",
+              text: "Deseja agendar um atendimento presencial no PROCON Jacareí?",
+              buttons: criarBotoesOfertaAgendamento(),
+            },
+          ],
         },
       }
     }
@@ -413,6 +601,13 @@ export function createConversationFlowService({
       reply: {
         text: ERRO_RESOLVIDA,
         step: "AWAITING_RESOLVED",
+        messages: [
+          {
+            type: "buttons",
+            text: ERRO_RESOLVIDA,
+            buttons: criarBotoesResolvida(),
+          },
+        ],
       },
     }
   }
@@ -420,33 +615,59 @@ export function createConversationFlowService({
   async function handleAwaitingScheduleOffer(
     sessionId: string,
     text: string | undefined,
+    optionId: string | undefined,
   ): Promise<ConversationFlowResult> {
-    const trimmed = text?.trim()
+    const querAgendar = parseYesNo(text, optionId, "schedule_yes", "schedule_no")
 
-    if (trimmed === "2") {
-      // Não quis agendar
-      await sessions.finish(sessionId, "DECLINED")
+    if (querAgendar === false) {
+      const closing: SessionClosing = {
+        outcome: "DECLINED",
+        event: {
+          type: "SCHEDULE_DECLINED",
+        },
+      }
+      try {
+        await events.finish(sessionId, closing)
+      } catch (error) {
+        logger.error(
+          "Failed to finish conversation session",
+          conversationEventFailureLog(sessionId, closing.event, error),
+        )
+      }
+
       return {
         sessionId,
         newSession: false,
         reply: {
           text: RESPOSTA_RECUSA_AGENDAMENTO,
           step: "FINISHED",
+          messages: [{ type: "text", text: RESPOSTA_RECUSA_AGENDAMENTO }],
         },
       }
     }
 
-    if (trimmed === "1") {
-      // Deseja agendar -> Avança para o fluxo de coleta de dados do agendamento (#56)
+    if (querAgendar === true) {
       await sessions.updateNavigationState(sessionId, {
         currentStep: "AWAITING_ATTENDEE",
+        currentCategoryId: null,
       })
+
       return {
         sessionId,
         newSession: false,
         reply: {
           text: RESPOSTA_INICIO_AGENDAMENTO,
           step: "AWAITING_ATTENDEE",
+          messages: [
+            {
+              type: "buttons",
+              text: "Vamos iniciar o agendamento presencial. Quem irá comparecer ao atendimento?",
+              buttons: [
+                { id: "attendee_self", title: "Eu mesmo" },
+                { id: "attendee_rep", title: "Um representante" },
+              ],
+            },
+          ],
         },
       }
     }
@@ -457,6 +678,13 @@ export function createConversationFlowService({
       reply: {
         text: ERRO_OFERTA_AGENDAMENTO,
         step: "AWAITING_SCHEDULE_OFFER",
+        messages: [
+          {
+            type: "buttons",
+            text: ERRO_OFERTA_AGENDAMENTO,
+            buttons: criarBotoesOfertaAgendamento(),
+          },
+        ],
       },
     }
   }
@@ -464,17 +692,20 @@ export function createConversationFlowService({
   async function processMessage({
     phone,
     text,
+    optionId,
   }: ConversationFlowInput): Promise<ConversationFlowResult> {
     const session = await sessions.findOrCreateActive(hashPhoneOf(phone))
 
-    if (session.created || session.currentStep === "FINISHED") {
+    if (session.created) {
       return startOver(session.id, session.created)
     }
+
+    await sessions.touch(session.id)
 
     const page = session.listPage || 1
 
     if (session.currentStep === "AWAITING_CATEGORY") {
-      return handleAwaitingCategory(session.id, page, text)
+      return handleAwaitingCategory(session.id, page, text, optionId)
     }
 
     if (session.currentStep === "AWAITING_QUESTION") {
@@ -483,15 +714,16 @@ export function createConversationFlowService({
         session.currentCategoryId,
         page,
         text,
+        optionId,
       )
     }
 
     if (session.currentStep === "AWAITING_RESOLVED") {
-      return handleAwaitingResolved(session.id, text)
+      return handleAwaitingResolved(session.id, text, optionId)
     }
 
     if (session.currentStep === "AWAITING_SCHEDULE_OFFER") {
-      return handleAwaitingScheduleOffer(session.id, text)
+      return handleAwaitingScheduleOffer(session.id, text, optionId)
     }
 
     // Se estiver em outro step futuro ou inesperado, recomeça
@@ -511,6 +743,12 @@ export function createConversationFlowService({
 
 export const processIncomingMessage = createConversationFlowService({
   sessions: sessionRepository,
+  events: conversationEventService,
   motor: new MotorDecisaoService(new PgMotorDecisaoRepository()),
   hashPhone,
+  logger: console,
 })
+
+export async function sweepAbandonedSessions(): Promise<number> {
+  return sessionRepository.sweepAbandonedSessions()
+}

@@ -25,7 +25,11 @@ describe("llmExplicacaoService", () => {
         const gerarExplicacaoLlm = createLlmExplicacaoService({ client })
         const resultado = await gerarExplicacaoLlm(resumoBase)
 
-        expect(resultado).toEqual({ explicacaoLlm: "Texto explicativo gerado.", geradoPorLlm: true })
+        expect(resultado).toEqual({
+            explicacaoLlm: "Texto explicativo gerado.",
+            geradoPorLlm: true,
+            status: "USED",
+        })
     })
 
     it("devolve fallback sem lançar quando o cliente lança timeout", async () => {
@@ -36,6 +40,7 @@ describe("llmExplicacaoService", () => {
         await expect(gerarExplicacaoLlm(resumoBase)).resolves.toEqual({
             explicacaoLlm: null,
             geradoPorLlm: false,
+            status: "FAILED",
         })
     })
 
@@ -49,6 +54,7 @@ describe("llmExplicacaoService", () => {
         await expect(gerarExplicacaoLlm(resumoBase)).resolves.toEqual({
             explicacaoLlm: null,
             geradoPorLlm: false,
+            status: "FAILED",
         })
     })
 
@@ -62,6 +68,7 @@ describe("llmExplicacaoService", () => {
         await expect(gerarExplicacaoLlm(resumoBase)).resolves.toEqual({
             explicacaoLlm: null,
             geradoPorLlm: false,
+            status: "FAILED",
         })
     })
 
@@ -73,6 +80,7 @@ describe("llmExplicacaoService", () => {
         await expect(gerarExplicacaoLlm(resumoBase)).resolves.toEqual({
             explicacaoLlm: null,
             geradoPorLlm: false,
+            status: "FAILED",
         })
     })
 
@@ -83,7 +91,7 @@ describe("llmExplicacaoService", () => {
         const gerarExplicacaoLlm = createLlmExplicacaoService({ client })
         const resultado = await gerarExplicacaoLlm(resumoForaDeEscopo)
 
-        expect(resultado).toEqual({ explicacaoLlm: null, geradoPorLlm: false })
+        expect(resultado).toEqual({ explicacaoLlm: null, geradoPorLlm: false, status: "NOT_CALLED" })
         expect(client.gerarTextoExplicativo).not.toHaveBeenCalled()
     })
 })

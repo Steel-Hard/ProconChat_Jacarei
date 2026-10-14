@@ -1,7 +1,10 @@
+import { OutgoingMessage, ListRow, ReplyButton } from "../types/message.types"
 import { Categoria, Pergunta, RespostaFinalOutput } from "../types/motorDecisao.types"
 
 export const SAUDACAO =
-    "Olá! Sou o assistente virtual do PROCON Jacareí. As orientações abaixo têm caráter informativo e não substituem o atendimento formal. Para o atendimento, protegemos seus dados conforme a LGPD.\n\nEscolha uma das opções abaixo digitando o número correspondente:"
+    "Olá! Sou o assistente virtual do PROCON Jacareí. As orientações a seguir têm caráter informativo e não substituem o atendimento formal.\n\n" +
+    "🔒 Privacidade (LGPD): utilizamos o identificador do seu telefone de forma anonimizada e as opções selecionadas exclusivamente para prestar este atendimento e orientar sua dúvida. Não armazenamos mensagens de texto abertas.\n\n" +
+    "Escolha uma das opções abaixo digitando o número correspondente:"
 
 export const ERRO_PREFIXO = "Não entendi. Digite o número de uma das opções abaixo:"
 
@@ -203,9 +206,24 @@ export function formatarRespostaFinal(resposta: RespostaFinalOutput): string {
         linhas.push(`Documentos necessários: ${resposta.documentos_necessarios.join(", ")}`)
     }
 
-    linhas.push(
-        "\nO que fazer agora:\nGuarde os documentos necessários e siga as orientações indicadas para buscar a resolução junto ao fornecedor.",
-    )
+    let proximosPassos = resposta.proximos_passos
+    if (!proximosPassos) {
+        if (resposta.fora_de_escopo) {
+            proximosPassos =
+                "Como esta demanda não compete ao PROCON, dirija-se ao órgão indicado na orientação acima portando seus documentos e comprovantes para atendimento especializado."
+        } else if (resposta.requer_presencial) {
+            proximosPassos =
+                "Como este caso requer análise documental aprofundada, organize os documentos necessários indicados e agende um atendimento presencial no PROCON Jacareí."
+        } else if (resposta.documentos_necessarios.length > 0) {
+            proximosPassos =
+                "Separe os documentos necessários citados e faça contato formal com o fornecedor solicitando a solução amigável e anotando os protocolos. Caso não haja acordo, busque o PROCON."
+        } else {
+            proximosPassos =
+                "Guarde os comprovantes da relação de consumo e informe ao fornecedor os seus direitos com base na legislação citada acima."
+        }
+    }
+
+    linhas.push(`\nO que fazer agora:\n${proximosPassos}`)
 
     if (resposta.requer_presencial) {
         linhas.push(
@@ -214,4 +232,125 @@ export function formatarRespostaFinal(resposta: RespostaFinalOutput): string {
     }
 
     return `${linhas.join("\n")}\n\n${AVISO_NAO_VINCULANTE}`
+}
+
+function limitarString(texto: string | undefined | null, max: number): string {
+    if (!texto) return ""
+    const trimmed = texto.trim()
+    return Array.from(trimmed).slice(0, max).join("")
+}
+
+export function criarMensagensCategorias(
+    categorias: Categoria[],
+    pagina: number = 1,
+): OutgoingMessage[] {
+    if (categorias.length === 0) {
+        return [{ type: "text", text: formatarListaCategorias(categorias, pagina) }]
+    }
+
+    const paginacao = paginarItens(categorias, pagina)
+    const rows: ListRow[] = paginacao.itensPagina.map((c) => ({
+        id: `cat_${c.id}`,
+        title: limitarString(c.short_title || c.title, 24),
+        description: c.description ? limitarString(c.description, 72) : undefined,
+    }))
+
+    if (paginacao.opcaoAnterior !== undefined && paginacao.opcaoProxima !== undefined) {
+        rows.push({
+            id: `page_${paginacao.paginaAtual - 1}`,
+            title: "Voltar opções",
+            description: "Ver categorias anteriores",
+        })
+        rows.push({
+            id: `page_${paginacao.paginaAtual + 1}`,
+            title: "Ver mais opções",
+            description: "Exibir mais categorias",
+        })
+    } else if (paginacao.opcaoProxima !== undefined) {
+        rows.push({
+            id: `page_${paginacao.paginaAtual + 1}`,
+            title: "Ver mais opções",
+            description: "Exibir mais categorias",
+        })
+    } else if (paginacao.opcaoAnterior !== undefined) {
+        rows.push({
+            id: `page_${paginacao.paginaAtual - 1}`,
+            title: "Voltar opções",
+            description: "Ver categorias anteriores",
+        })
+    }
+
+    return [
+        { type: "text", text: SAUDACAO },
+        {
+            type: "list",
+            text: "Selecione a categoria correspondente à sua dúvida:",
+            buttonText: "Ver categorias",
+            rows,
+        },
+    ]
+}
+
+export function criarMensagensPerguntas(
+    perguntas: Pergunta[],
+    pagina: number = 1,
+): OutgoingMessage[] {
+    if (perguntas.length === 0) {
+        return [{ type: "text", text: formatarCategoriaSemPerguntas() }]
+    }
+
+    const paginacao = paginarItens(perguntas, pagina)
+    const rows: ListRow[] = paginacao.itensPagina.map((p) => ({
+        id: `q_${p.id}`,
+        title: limitarString(p.short_title || p.question, 24),
+        description: p.short_description ? limitarString(p.short_description, 72) : undefined,
+    }))
+
+    if (paginacao.opcaoAnterior !== undefined && paginacao.opcaoProxima !== undefined) {
+        rows.push({
+            id: `page_${paginacao.paginaAtual - 1}`,
+            title: "Voltar opções",
+            description: "Ver perguntas anteriores",
+        })
+        rows.push({
+            id: `page_${paginacao.paginaAtual + 1}`,
+            title: "Ver mais opções",
+            description: "Exibir mais perguntas",
+        })
+    } else if (paginacao.opcaoProxima !== undefined) {
+        rows.push({
+            id: `page_${paginacao.paginaAtual + 1}`,
+            title: "Ver mais opções",
+            description: "Exibir mais perguntas",
+        })
+    } else if (paginacao.opcaoAnterior !== undefined) {
+        rows.push({
+            id: `page_${paginacao.paginaAtual - 1}`,
+            title: "Voltar opções",
+            description: "Ver perguntas anteriores",
+        })
+    }
+
+    return [
+        {
+            type: "list",
+            text: "Escolha uma das perguntas abaixo:",
+            buttonText: "Ver perguntas",
+            rows,
+        },
+    ]
+}
+
+export function criarBotoesResolvida(): ReplyButton[] {
+    return [
+        { id: "resolved_yes", title: "Sim" },
+        { id: "resolved_no", title: "Não" },
+    ]
+}
+
+export function criarBotoesOfertaAgendamento(): ReplyButton[] {
+    return [
+        { id: "schedule_yes", title: "Agendar presencial" },
+        { id: "schedule_no", title: "Agora não" },
+    ]
 }

@@ -3,7 +3,7 @@
 > Persistência única em PostgreSQL, compartilhada entre o chatbot e o painel ([`../architecture/architecture.md`](../architecture/architecture.md)).
 >
 > Este documento tem duas partes:
-> 1. **[Schema atual](#parte-1--schema-atual-implementado)**: o que existe depois das migrations `01` a `09`, `010`, `11` e `12` (a `11_sprint2_schema.sql` é o schema da Sprint 2, issue #52; a `12_short_text_checks.sql` ajusta o limite dos títulos curtos, issue #61).
+> 1. **[Schema atual](#parte-1--schema-atual-implementado)**: o que existe depois das migrations `01` a `09`, `010`, `11`, `12` e `13` (a `11_sprint2_schema.sql` é o schema da Sprint 2, issue #52; a `12_short_text_checks.sql` ajusta o limite dos títulos curtos, issue #61; a `13_conversation_events_data_checks.sql` limita as chaves e os valores de `ConversationEvents.data` e amarra `current_step = 'FINISHED'` às sessões encerradas, issue #16).
 > 2. **[Schema planejado](#parte-2--schema-planejado-sprint-3)**: o que ainda falta criar, com a issue de cada parte.
 >
 > Antes de mexer no banco, leia também o SQL em `src/backend/db/schema/` e as convenções em [`migrations.md`](migrations.md): **toda mudança é uma migration nova**, nunca edição de migration antiga.
@@ -24,6 +24,7 @@
 | `010` | `current_category_id` com `ON DELETE SET NULL`, para o seed conseguir apagar categorias. O prefixo é lido como número: `010` é a versão 10 |
 | `11` | Schema da Sprint 2 (#52): conta Admin, títulos curtos e ordem do conteúdo, desfecho e rascunho da sessão, `ConversationEvents` no lugar de `Interactions`, `Appointments` recriada com o ciclo de vida novo, observações e histórico do agendamento, agenda, documentos de atendimento e configuração do WhatsApp |
 | `12` | Títulos e descrições curtas medidos como gravados, sem espaço nas pontas (#61): apara os valores que já existiam e troca os três `CHECK` de tamanho, com os mesmos nomes |
+| `13` | Chaves e valores de `ConversationEvents.data` por tipo (#16): renomeia as chaves antigas `llmStatus` e `byRepresentative` das linhas que já existiam, aborta com mensagem clara se sobrar linha fora do contrato e cria `chk_conversation_events_data_keys` e `chk_conversation_events_data_values`. Em `Sessions`, põe `current_step = 'FINISHED'` nas sessões já encerradas que ainda guardavam outra etapa (a etapa do abandono continua em `abandoned_at_step`), aborta com mensagem clara se sobrar sessão `IN_PROGRESS` em `FINISHED` ou abandonada com `abandoned_at_step = 'FINISHED'` e cria `chk_sessions_step_finished` e `chk_sessions_abandoned_step_not_finished`. O `Down` remove só os quatro `CHECK` e não desfaz a troca de `current_step` |
 
 ### Diagrama
 
@@ -56,7 +57,7 @@ CREATE EXTENSION IF NOT EXISTS unaccent;
 
 ### Users — [decisão 004](../decisoes/004-contas-e-permissoes-granulares.md)
 
-Contas do painel. A conta Admin é marcada por `is_admin`, e `uniq_users_single_admin` garante que existe **no máximo um Admin**. O seed da conta Admin é da #57.
+Contas do painel. A conta Admin é marcada por `is_admin`, e `uniq_users_single_admin` garante que existe **no máximo um Admin**. O seed cria a conta Admin (#57) com `name = 'Admin'`, o e-mail de `ROOT_EMAIL` e o hash `bcryptjs` (custo 12) de `ROOT_PASSWORD`, só enquanto não existe nenhuma linha com `is_admin`. Depois disso a conta fica como está, mesmo que `ROOT_*` mude.
 
 ```sql
 CREATE TABLE Users (
@@ -75,8 +76,8 @@ CREATE TABLE Users (
 CREATE UNIQUE INDEX uniq_users_single_admin ON Users(is_admin) WHERE is_admin;
 ```
 
-- **Autenticação por JWT (#57), sem tabela de sessões de login.** O token carrega o `session_version` da conta no momento em que foi emitido. A cada requisição, o backend recusa o token se a versão for diferente da atual ou se a conta não estiver ativa (`active`). **Incrementar `session_version` invalida todos os tokens já emitidos daquela conta.**
-- Quando incrementar é regra da aplicação ([`regras/01-login-e-conta.md`](../regras/01-login-e-conta.md)): **"Alterar minha senha" não incrementa** (a sessão atual continua valendo e a nova senha vale a partir do próximo acesso); uma conta desativada não entra pela checagem de `active`; não existe "esqueci minha senha".
+- **Autenticação por JWT em cookies `HttpOnly` (#57), sem tabela de sessões de login.** O cookie de acesso (1 h) e o de refresh (90 dias) carregam o `session_version` da conta no momento em que foram emitidos. A cada requisição, o backend recusa o token se a versão for diferente da atual ou se a conta não estiver ativa (`active`). **Incrementar `session_version` invalida todos os tokens já emitidos daquela conta.**
+- Quando incrementar é regra da aplicação (#57, [`regras/01-login-e-conta.md`](../regras/01-login-e-conta.md)): **"Alterar minha senha" incrementa**, o que derruba as outras sessões da conta, e a sessão atual recebe cookies novos; o script `npm run admin:reset-password` (redefinição da senha do Admin no servidor) também incrementa; **"Sair" não incrementa**, só limpa os cookies do navegador; uma conta desativada não entra pela checagem de `active`; não existe "esqueci minha senha".
 - As permissões granulares ficam para a #62 (Parte 2). Na Sprint 2, o middleware só libera `is_admin`.
 
 ### Categories — [decisões 001](../decisoes/001-fluxo-guiado-por-categorias.md) e [009](../decisoes/009-complemento-por-llm.md)
@@ -232,6 +233,8 @@ CREATE TABLE Sessions (
     CONSTRAINT chk_sessions_outcome_in_progress CHECK ((status = 'IN_PROGRESS') = (outcome = 'IN_PROGRESS')),
     CONSTRAINT chk_sessions_outcome_abandoned CHECK ((status = 'ABANDONED') = (outcome = 'ABANDONED')),
     CONSTRAINT chk_sessions_abandoned_step CHECK ((outcome = 'ABANDONED') = (abandoned_at_step IS NOT NULL)),
+    CONSTRAINT chk_sessions_step_finished CHECK ((status = 'IN_PROGRESS') = (current_step <> 'FINISHED')),
+    CONSTRAINT chk_sessions_abandoned_step_not_finished CHECK (abandoned_at_step IS DISTINCT FROM 'FINISHED'),
     CONSTRAINT chk_sessions_list_page CHECK (list_page >= 1),
     CONSTRAINT chk_sessions_draft_only_in_progress CHECK (draft IS NULL OR status = 'IN_PROGRESS'),
     CONSTRAINT chk_sessions_draft_object CHECK (draft IS NULL OR jsonb_typeof(draft) = 'object'),
@@ -275,7 +278,7 @@ WHERE status = 'IN_PROGRESS';
 | `AWAITING_CANCEL_CONFIRMATION` | Confirmação do cancelamento por botão (#59, Sprint 3) |
 | `FINISHED` | Conversa encerrada |
 
-A correspondência entre etapa e os 6 nomes de abandono dos Relatórios é da aplicação (#16/#68).
+A correspondência entre etapa e os 6 nomes de abandono dos Relatórios é da aplicação e fica com a #68. A #16 só grava a etapa em `abandoned_at_step` e no evento `ABANDONED`.
 
 **`session_outcome`** (desfecho, 8 valores, `NOT NULL DEFAULT 'IN_PROGRESS'`):
 
@@ -295,7 +298,8 @@ A correspondência entre etapa e os 6 nomes de abandono dos Relatórios é da ap
 **Regras garantidas pelo banco:**
 
 - `status` e `outcome` andam juntos: `IN_PROGRESS` ⇔ `IN_PROGRESS` e `ABANDONED` ⇔ `ABANDONED`; `FINISHED` corresponde a um dos outros 6 desfechos. Encerrar uma sessão exige atualizar os dois no mesmo `UPDATE`.
-- `abandoned_at_step` é obrigatória quando o desfecho é `ABANDONED`, e proibida nos demais.
+- `abandoned_at_step` é obrigatória quando o desfecho é `ABANDONED`, e proibida nos demais. Ela nunca é `FINISHED` (`chk_sessions_abandoned_step_not_finished`, migration `13`).
+- `current_step = 'FINISHED'` se e somente se a sessão está encerrada (`chk_sessions_step_finished`, migration `13`): uma sessão `IN_PROGRESS` sempre está numa etapa `AWAITING_*`, e o abandono, que copia `current_step` para `abandoned_at_step` e para o evento `ABANDONED`, nunca recebe `FINISHED`. Por isso o fluxo não trata sessão em andamento em `FINISHED`, e `ActiveSession.currentStep`/`NavigationState.currentStep` são `Exclude<SessionStep, "FINISHED">`.
 - `list_page` (página da lista no WhatsApp) é ≥ 1.
 - `last_interaction_at` sustenta o **timeout de 30 minutos**, com o índice parcial `idx_sessions_last_interaction` só nas sessões em andamento.
 - `current_category_id` e `current_question_id` usam `ON DELETE SET NULL` (migration `010` e `11`). Isso vem do seed antigo, que apagava as categorias; desde a #61 o seed não apaga conteúdo e não mexe em `Sessions`.
@@ -304,10 +308,16 @@ A correspondência entre etapa e os 6 nomes de abandono dos Relatórios é da ap
 
 - só aceita as chaves `by_representative`, `holder_name`, `cpf_hash`, `cpf_masked` e `target_appointment_id` (`chk_sessions_draft_keys`). Uma chave nova exige migration, de propósito;
 - `cpf_hash` tem que ser hex de 64 caracteres e `cpf_masked` tem que estar mascarado (`***.456.789-**`). **Não há onde pôr o CPF completo** (`chk_sessions_draft_cpf`);
-- **é limpo em todo encerramento**, inclusive no abandono por timeout: nenhuma sessão fora de `IN_PROGRESS` pode ter `draft` (`chk_sessions_draft_only_in_progress`), então a varredura do timeout zera o `draft` no mesmo `UPDATE` que marca `ABANDONED`;
+- **é limpo em todo encerramento**, inclusive no abandono por timeout: nenhuma sessão fora de `IN_PROGRESS` pode ter `draft` (`chk_sessions_draft_only_in_progress`), então o encerramento e o abandono zeram o `draft` no mesmo `UPDATE` que muda o `status`;
 - **regra de aplicação:** o `draft` nunca aparece na tela de Sessões (nem na API dela) e nunca é copiado para `ConversationEvents.data` nem para `AppointmentEvents.data`.
 
-**Backfill feito pela migration `11`** nas sessões que já existiam: `outcome` `IN_PROGRESS` → `IN_PROGRESS`, `ABANDONED` → `ABANDONED` e `FINISHED` → `RESOLVED`; `abandoned_at_step = current_step` nas abandonadas; `last_interaction_at = COALESCE(ended_at, started_at)`. O `RESOLVED` é **provisório até a #55**: nenhum dos desfechos descreve o fim do fluxo da Sprint 1 ("recebeu a resposta, sem pergunta de resolvido"), e `sessionRepository.finish()` grava o mesmo `RESOLVED` até a #55 substituir o fluxo.
+**Backfill feito pela migration `11`** nas sessões que já existiam: `outcome` `IN_PROGRESS` → `IN_PROGRESS`, `ABANDONED` → `ABANDONED` e `FINISHED` → `RESOLVED`; `abandoned_at_step = current_step` nas abandonadas; `last_interaction_at = COALESCE(ended_at, started_at)`. O `RESOLVED` é **provisório até a #55**: nenhum dos desfechos descreve o fim do fluxo da Sprint 1 ("recebeu a resposta, sem pergunta de resolvido"), e o fluxo encerra com `RESOLVED` e `ANSWER_SENT` como evento de fechamento até a #55 substituir o fluxo e remover essa exceção.
+
+**Regras de aplicação do encerramento e do abandono (#16):**
+
+- **Encerramento atômico:** `finishSessionWith(db, sessionId, { outcome, event })` (`src/backend/repositories/session.repository.ts`) grava o evento de fechamento em `ConversationEvents` e faz um único `UPDATE` com `status = 'FINISHED'`, `outcome`, `ended_at`, `last_interaction_at`, `current_step = 'FINISHED'` e `draft = NULL`, com `WHERE status = 'IN_PROGRESS'`. Se nenhuma linha mudar, lança e a transação volta com o evento. O evento de fechamento tem que casar com o desfecho da decisão 008 (`RESOLVED` ↔ `RESOLVED_ANSWERED` com `resolved: true`, e provisoriamente `ANSWER_SENT`; `SCHEDULED` ↔ `APPOINTMENT_CREATED`; `OUT_OF_SCOPE` ↔ `ANSWER_SENT`; `NO_SLOT` ↔ `NO_SLOT`; `DECLINED` ↔ `SCHEDULE_DECLINED`; `MANAGED_APPOINTMENT` ↔ `APPOINTMENT_RESCHEDULED` ou `APPOINTMENT_CANCELED`). A reserva da #56 e a alteração da #59 chamam a função com o `client` da própria transação.
+- **`STARTED` na criação:** a sessão nova e o evento `STARTED` são gravados na mesma transação de `findOrCreateActive`.
+- **Abandono:** na mesma transação, a sessão do mesmo número com `last_interaction_at <= now() - interval '30 minutes'` recebe `status` e `outcome` `ABANDONED`, `abandoned_at_step = current_step`, `current_step = 'FINISHED'`, `draft = NULL` e `ended_at = last_interaction_at + interval '30 minutes'`; o `last_interaction_at` original é mantido, e o evento `ABANDONED` com `{ "step": <etapa> }` é gravado antes de abrir a sessão nova. Isso só acontece quando o mesmo número volta a escrever; a varredura periódica das sessões de quem não volta é da #55 e aplica a mesma regra.
 
 ### ConversationEvents — [decisão 010](../decisoes/010-registro-de-interacoes-e-relatorios.md)
 
@@ -341,7 +351,52 @@ CREATE TABLE ConversationEvents (
     appointment_id BIGINT REFERENCES Appointments(id),
     data JSONB NOT NULL DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT chk_conversation_events_data_object CHECK (jsonb_typeof(data) = 'object')
+    CONSTRAINT chk_conversation_events_data_object CHECK (jsonb_typeof(data) = 'object'),
+    CONSTRAINT chk_conversation_events_data_keys CHECK (
+        jsonb_typeof(data) <> 'object'
+        OR (
+            data - CASE type
+                WHEN 'ANSWER_SENT' THEN ARRAY['llm']
+                WHEN 'RESOLVED_ANSWERED' THEN ARRAY['resolved']
+                WHEN 'SCHEDULE_OFFERED' THEN ARRAY['reason']
+                WHEN 'ATTENDEE_CHOSEN' THEN ARRAY['by_representative']
+                WHEN 'APPOINTMENT_RESCHEDULED' THEN ARRAY['from', 'to']
+                WHEN 'ABANDONED' THEN ARRAY['step']
+                ELSE ARRAY[]::text[]
+            END
+        ) = '{}'::jsonb
+    ),
+    CONSTRAINT chk_conversation_events_data_values CHECK (
+        jsonb_typeof(data) <> 'object'
+        OR (
+            (NOT data ? 'llm' OR (
+                jsonb_typeof(data -> 'llm') = 'string'
+                AND data ->> 'llm' IN ('NOT_CALLED', 'USED', 'FAILED')
+            ))
+            AND (NOT data ? 'reason' OR (
+                jsonb_typeof(data -> 'reason') = 'string'
+                AND data ->> 'reason' IN ('REQUIRES_IN_PERSON', 'NOT_RESOLVED')
+            ))
+            AND (NOT data ? 'step' OR (
+                jsonb_typeof(data -> 'step') = 'string'
+                AND data ->> 'step' IN (
+                    'AWAITING_CATEGORY', 'AWAITING_QUESTION', 'AWAITING_ANSWER', 'AWAITING_RESOLVED',
+                    'AWAITING_SCHEDULE_OFFER', 'AWAITING_ATTENDEE', 'AWAITING_HOLDER_NAME', 'AWAITING_HOLDER_CPF',
+                    'AWAITING_SLOT', 'AWAITING_RETURN_CHOICE', 'AWAITING_CANCEL_CONFIRMATION'
+                )
+            ))
+            AND (NOT data ? 'resolved' OR jsonb_typeof(data -> 'resolved') = 'boolean')
+            AND (NOT data ? 'by_representative' OR jsonb_typeof(data -> 'by_representative') = 'boolean')
+            AND (NOT data ? 'from' OR (
+                jsonb_typeof(data -> 'from') = 'string'
+                AND data ->> 'from' ~ '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,9})?)?(Z|[+-]\d{2}:\d{2})$'
+            ))
+            AND (NOT data ? 'to' OR (
+                jsonb_typeof(data -> 'to') = 'string'
+                AND data ->> 'to' ~ '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,9})?)?(Z|[+-]\d{2}:\d{2})$'
+            ))
+        )
+    )
 );
 
 CREATE INDEX idx_conversation_events_session ON ConversationEvents(session_id, created_at);
@@ -361,10 +416,12 @@ CREATE INDEX idx_conversation_events_appointment ON ConversationEvents(appointme
 | `ATTENDEE_CHOSEN` | `{ "by_representative": true \| false }` |
 | `PHONE_NOTICE_SHOWN` | — (o cidadão foi informado de que receberá avisos neste número, decisão 002, item 5) |
 | `APPOINTMENT_CREATED`, `APPOINTMENT_CONSULTED`, `APPOINTMENT_CANCELED` | — (`appointment_id`) |
-| `APPOINTMENT_RESCHEDULED` | `{ "from": ..., "to": ... }` |
+| `APPOINTMENT_RESCHEDULED` | `{ "from": "<ISO 8601>", "to": "<ISO 8601>" }`: data e hora antiga e nova, em texto ISO 8601 com fuso (`Z` ou `±hh:mm`) |
 | `ABANDONED` | `{ "step": "<session_step>" }` |
 
-- **Nenhum evento guarda texto digitado pelo cidadão** (RNF03). `data` é sempre um objeto (`CHECK`) e só recebe as chaves acima (e as que a #16 documentar), com valores de lista fechada, booleanos, datas ou ids.
+- **Nenhum evento guarda texto digitado pelo cidadão** (RNF03). `data` é sempre um objeto (`chk_conversation_events_data_object`) e só recebe as chaves acima, por tipo (`chk_conversation_events_data_keys`, migration `13`). Os valores são de lista fechada (`llm`, `reason` e `step`, sem `FINISHED`), booleanos com `jsonb_typeof = 'boolean'` (`resolved`, `by_representative`) ou datas ISO 8601 com fuso em texto (`from`, `to`), conferidos por `chk_conversation_events_data_values`. Em `from`/`to` o banco confere só o formato; a aplicação também recusa dia inexistente no mês (`2026-02-31`) e hora fora de `00:00:00` a `23:59:59`. Fora disso, o banco recusa com `23514`.
+- A aplicação grava só por `insertConversationEvent` e `finishSessionWith` (o `ABANDONED` é gravado pelo SQL do abandono, em `session.repository.ts`), que validam o evento antes de qualquer consulta (`utils/conversationEventData.ts`). Um teste de unidade falha se outro arquivo de produção fizer `INSERT INTO ConversationEvents`. A leitura para a linha do tempo é `listBySession`, que devolve os eventos tipados em ordem e descarta chaves desconhecidas. Como o `CHECK` não exige as chaves de cada tipo, uma linha gravada por fora pode ficar fora do contrato (por exemplo, `ANSWER_SENT` com `data = {}`): a leitura descarta só essa linha e registra no log o tipo, o id da sessão e o código do erro, sem `data` nem texto, e devolve as demais.
+- No banco, as chaves de `data` são snake_case (`llm`, `by_representative`); o tipo TypeScript usa camelCase (`llm`, `byRepresentative`), e o repositório converte nos dois sentidos.
 - `session_id` usa `ON DELETE CASCADE`: os eventos são parte da sessão (facilita a limpeza nos testes e a retenção da #69). `category_id`, `question_id` e `appointment_id` não usam cascade.
 
 ### Appointments — [decisão 006](../decisoes/006-ciclo-de-vida-do-agendamento.md)

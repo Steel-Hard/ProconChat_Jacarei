@@ -39,12 +39,15 @@ const expectedEnums = {
     ],
 };
 
-function run(args, url) {
-    return spawnSync(process.execPath, args, {
-        cwd: backendDir,
-        env: { ...process.env, DB_URL: url },
-        encoding: 'utf8',
-    });
+const rootEnv = { ROOT_EMAIL: '  Admin@Verify.Test ', ROOT_PASSWORD: 'senha-de-verificacao' };
+const rootEmail = 'admin@verify.test';
+
+function run(args, url, extraEnv = {}) {
+    const env = { ...process.env, DB_URL: url, ...extraEnv };
+    for (const [key, value] of Object.entries(env)) {
+        if (value === undefined) delete env[key];
+    }
+    return spawnSync(process.execPath, args, { cwd: backendDir, env, encoding: 'utf8' });
 }
 
 function migrate(url, direction, ...args) {
@@ -59,8 +62,12 @@ function mustMigrate(url, direction, ...args) {
     assert.equal(result.status, 0, result.error?.message || result.stderr || result.stdout);
 }
 
-function mustSeed(url) {
-    const result = run([require.resolve('ts-node/dist/bin.js'), 'db/seeds/run.ts'], url);
+function runSeed(url, env = rootEnv) {
+    return run([require.resolve('ts-node/dist/bin.js'), 'db/seeds/run.ts'], url, env);
+}
+
+function mustSeed(url, env = rootEnv) {
+    const result = runSeed(url, env);
     assert.equal(result.status, 0, result.error?.message || result.stderr || result.stdout);
     assert.match(result.stdout, /Seed concluído/);
     return result.stdout;
@@ -143,8 +150,8 @@ async function withDatabase(admin, baseUrl, fn) {
 
 function checkMigrationFile() {
     const files = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql'));
-    assert.equal(files.length, 12);
-    for (const file of ['11_sprint2_schema.sql', '12_short_text_checks.sql']) {
+    assert.equal(files.length, 13);
+    for (const file of ['11_sprint2_schema.sql', '12_short_text_checks.sql', '13_conversation_events_data_checks.sql']) {
         const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
         assert.doesNotMatch(sql, /add\s+value/i, file);
         assert.match(sql, /^-- Up Migration/, file);
@@ -154,7 +161,7 @@ function checkMigrationFile() {
 
 async function checkFreshSchema(db) {
     assert.deepEqual(await tableNames(db), expectedTables);
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
     for (const [name, values] of Object.entries(expectedEnums)) {
         assert.deepEqual(await enumValues(db, name), values, name);
     }
@@ -165,6 +172,7 @@ async function checkFreshSchema(db) {
     assert.equal((await column(db, 'sessions', 'outcome')).is_nullable, 'NO');
     assert.equal(await count(db, "SELECT 1 FROM pg_extension WHERE extname = 'unaccent'"), 1);
     assert.equal((await db.query("SELECT unaccent('Cobrança Vício') AS v")).rows[0].v, 'Cobranca Vicio');
+    assert.equal(await count(db, "SELECT 1 FROM pg_constraint WHERE conname IN ('chk_sessions_step_finished', 'chk_sessions_abandoned_step_not_finished') AND convalidated"), 2);
 }
 
 async function checkConstraints(db) {
@@ -218,7 +226,12 @@ async function checkConstraints(db) {
     await rejects(db, "UPDATE sessions SET status = 'FINISHED', outcome = 'ABANDONED', abandoned_at_step = 'AWAITING_SLOT', draft = NULL WHERE id = $1", [session.id], '23514');
     await rejects(db, "UPDATE sessions SET status = 'FINISHED', outcome = 'RESOLVED', abandoned_at_step = 'AWAITING_SLOT', draft = NULL WHERE id = $1", [session.id], '23514');
     const finished = (await db.query("INSERT INTO sessions(phone_hash, status, outcome, current_step) VALUES ('s2', 'FINISHED', 'SCHEDULED', 'FINISHED') RETURNING id")).rows[0].id;
-    await db.query("INSERT INTO sessions(phone_hash, status, outcome, current_step, abandoned_at_step) VALUES ('s3', 'ABANDONED', 'ABANDONED', 'AWAITING_HOLDER_CPF', 'AWAITING_HOLDER_CPF')");
+    await db.query("INSERT INTO sessions(phone_hash, status, outcome, current_step, abandoned_at_step) VALUES ('s3', 'ABANDONED', 'ABANDONED', 'FINISHED', 'AWAITING_HOLDER_CPF')");
+    await rejects(db, "UPDATE sessions SET current_step = 'FINISHED' WHERE id = $1", [session.id], '23514');
+    await rejects(db, "INSERT INTO sessions(phone_hash, current_step) VALUES ('s5', 'FINISHED')", [], '23514');
+    await rejects(db, "INSERT INTO sessions(phone_hash, status, outcome, current_step) VALUES ('s5', 'FINISHED', 'RESOLVED', 'AWAITING_QUESTION')", [], '23514');
+    await rejects(db, "INSERT INTO sessions(phone_hash, status, outcome, current_step, abandoned_at_step) VALUES ('s5', 'ABANDONED', 'ABANDONED', 'AWAITING_SLOT', 'AWAITING_SLOT')", [], '23514');
+    await rejects(db, "INSERT INTO sessions(phone_hash, status, outcome, current_step, abandoned_at_step) VALUES ('s5', 'ABANDONED', 'ABANDONED', 'FINISHED', 'FINISHED')", [], '23514');
     await rejects(db, 'UPDATE sessions SET draft = $1 WHERE id = $2', [{ holder_name: 'Maria' }, finished], '23514');
     await rejects(db, "UPDATE sessions SET draft = $1 WHERE phone_hash = 's3'", [{ holder_name: 'Maria' }], '23514');
     await rejects(db, "INSERT INTO sessions(phone_hash, status) VALUES ('s4', 'FINISHED')", [], '23514');
@@ -255,6 +268,7 @@ async function checkConstraints(db) {
 
     await db.query("INSERT INTO conversationevents(session_id, type, category_id, question_id, appointment_id, data) VALUES ($1, 'ANSWER_SENT', $2, $3, $4, $5)", [session.id, category, question, appointment.id, { llm: 'USED' }]);
     await rejects(db, "INSERT INTO conversationevents(session_id, type, data) VALUES ($1, 'STARTED', '\"texto\"'::jsonb)", [session.id], '23514');
+    await checkConversationEventData(db, session.id, appointment.id);
     await rejects(db, 'DELETE FROM questions WHERE id = $1', [question], '23503');
     const tempSession = (await db.query("INSERT INTO sessions(phone_hash) VALUES ('cascade') RETURNING id")).rows[0].id;
     await db.query("INSERT INTO conversationevents(session_id, type) VALUES ($1, 'STARTED')", [tempSession]);
@@ -295,6 +309,15 @@ async function checkConstraints(db) {
 
 async function checkRollback(db, url) {
     mustMigrate(url, 'down', '1');
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
+    assert.equal(await count(db, "SELECT 1 FROM pg_constraint WHERE conname LIKE 'chk_conversation_events_data_%'"), 1);
+    assert.equal(await count(db, "SELECT 1 FROM pg_constraint WHERE conname IN ('chk_sessions_step_finished', 'chk_sessions_abandoned_step_not_finished')"), 0);
+    await db.query("INSERT INTO sessions(phone_hash, current_step) VALUES ('old-step', 'FINISHED')");
+    await db.query("DELETE FROM sessions WHERE phone_hash = 'old-step'");
+    const oldSession = (await db.query("INSERT INTO sessions(phone_hash) VALUES ('old-events') RETURNING id")).rows[0].id;
+    await db.query("INSERT INTO conversationevents(session_id, type, data) VALUES ($1, 'STARTED', $2)", [oldSession, { note: 'texto livre' }]);
+    await db.query('DELETE FROM sessions WHERE id = $1', [oldSession]);
+    mustMigrate(url, 'down', '1');
     assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 11);
     const category = (await db.query("INSERT INTO categories(title, short_title) VALUES ('Old check', ' Garantias') RETURNING id")).rows[0].id;
     await db.query("INSERT INTO questions(category_id, question, answer, short_title, short_description) VALUES ($1, 'Q', 'A', 'Garantias ', ' x')", [category]);
@@ -312,10 +335,15 @@ async function checkRollback(db, url) {
     assert.equal(await count(db, "SELECT 1 FROM sessions WHERE phone_hash = 's1' AND status = 'IN_PROGRESS' AND current_step = 'AWAITING_CATEGORY'"), 1);
     assert.equal(await count(db, "SELECT 1 FROM sessions WHERE phone_hash = 's3' AND current_step = 'FINISHED'"), 1);
     assert.equal(await count(db, "SELECT 1 FROM pg_extension WHERE extname = 'unaccent'"), 0);
+    const blocked = migrate(url, 'up');
+    assert.notEqual(blocked.status, 0);
+    assert.match(blocked.stderr + blocked.stdout, /sessões com current_step ou abandoned_at_step = 'FINISHED' fora do contrato/);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 10);
+    await db.query("DELETE FROM sessions WHERE phone_hash = 's3'");
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
     assert.deepEqual(await tableNames(db), expectedTables);
-    mustMigrate(url, 'down', '12');
+    mustMigrate(url, 'down', '13');
     assert.deepEqual(await tableNames(db), ['pgmigrations']);
     assert.equal(await count(db, "SELECT 1 FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace WHERE n.nspname = 'public' AND t.typtype = 'e'"), 0);
     mustMigrate(url, 'up');
@@ -346,7 +374,7 @@ async function checkUpgradeWithSeed(db, url) {
     await db.query("INSERT INTO sessions(phone_hash, status, current_step, current_category_id, started_at, ended_at) VALUES ('abandoned', 'ABANDONED', 'AWAITING_QUESTION', $1, '2030-01-01T10:00:00Z', '2030-01-01T10:40:00Z')", [category]);
 
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
     assert.deepEqual(await snapshotContent(db), before);
 
     const outOfScope = before.questions.find(q => q.out_of_scope).id;
@@ -365,7 +393,7 @@ async function checkUpgradeWithSeed(db, url) {
     assert.deepEqual(sessions, [
         { phone_hash: 'in-progress', status: 'IN_PROGRESS', outcome: 'IN_PROGRESS', current_step: 'AWAITING_QUESTION', abandoned_at_step: null, current_category_id: category, backfilled: true, draft: null, list_page: 1 },
         { phone_hash: 'finished', status: 'FINISHED', outcome: 'RESOLVED', current_step: 'FINISHED', abandoned_at_step: null, current_category_id: null, backfilled: true, draft: null, list_page: 1 },
-        { phone_hash: 'abandoned', status: 'ABANDONED', outcome: 'ABANDONED', current_step: 'AWAITING_QUESTION', abandoned_at_step: 'AWAITING_QUESTION', current_category_id: category, backfilled: true, draft: null, list_page: 1 },
+        { phone_hash: 'abandoned', status: 'ABANDONED', outcome: 'ABANDONED', current_step: 'FINISHED', abandoned_at_step: 'AWAITING_QUESTION', current_category_id: category, backfilled: true, draft: null, list_page: 1 },
     ]);
 
     mustSeed(url);
@@ -389,7 +417,7 @@ async function checkNonEmptyAppointmentsGuard(db, url) {
     assert.deepEqual(await enumValues(db, 'session_step'), ['AWAITING_CATEGORY', 'AWAITING_QUESTION', 'FINISHED']);
     await db.query('DELETE FROM appointments');
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
 }
 
 async function checkShortTextNormalization(db, url) {
@@ -398,12 +426,111 @@ async function checkShortTextNormalization(db, url) {
     const category = (await db.query("INSERT INTO categories(title, short_title) VALUES ('Abc', 'Abc ') RETURNING id")).rows[0].id;
     const question = (await db.query("INSERT INTO questions(category_id, question, answer, short_title, short_description) VALUES ($1, 'Q', 'A', ' Pergunta ', ' Descrição ') RETURNING id", [category])).rows[0].id;
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
     assert.equal((await db.query('SELECT short_title FROM categories WHERE id = $1', [category])).rows[0].short_title, 'Abc');
     assert.deepEqual((await db.query('SELECT short_title, short_description FROM questions WHERE id = $1', [question])).rows[0], { short_title: 'Pergunta', short_description: 'Descrição' });
-    mustMigrate(url, 'down', '1');
+    mustMigrate(url, 'down', '2');
     mustMigrate(url, 'up');
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
+}
+
+async function checkConversationEventData(db, sessionId, appointmentId) {
+    const insertEvent = 'INSERT INTO conversationevents(session_id, type, appointment_id, data) VALUES ($1, $2, $3, $4)';
+    const accepts = (type, data, appointment = null) => db.query(insertEvent, [sessionId, type, appointment, data]);
+    const refuses = (type, data, appointment = null) => rejects(db, insertEvent, [sessionId, type, appointment, data], '23514');
+
+    await accepts('ANSWER_SENT', { llm: 'NOT_CALLED' });
+    await accepts('ANSWER_SENT', { llm: 'FAILED' });
+    await refuses('ANSWER_SENT', { llm: 'Meu nome é Maria' });
+    await refuses('ANSWER_SENT', { llm: true });
+    await refuses('ANSWER_SENT', { llmStatus: 'USED' });
+    await accepts('STARTED', {});
+    await refuses('STARTED', { text: 'Meu nome é Maria' });
+    await accepts('RESOLVED_ANSWERED', { resolved: false });
+    await refuses('RESOLVED_ANSWERED', { resolved: 'false' });
+    await accepts('ATTENDEE_CHOSEN', { by_representative: true });
+    await refuses('ATTENDEE_CHOSEN', { by_representative: 'true' });
+    await refuses('ATTENDEE_CHOSEN', { byRepresentative: true });
+    await accepts('SCHEDULE_OFFERED', { reason: 'REQUIRES_IN_PERSON' });
+    await accepts('SCHEDULE_OFFERED', { reason: 'NOT_RESOLVED' });
+    await refuses('SCHEDULE_OFFERED', { reason: 'OUTRO' });
+    await accepts('ABANDONED', { step: 'AWAITING_HOLDER_CPF' });
+    await refuses('ABANDONED', { step: 'FINISHED' });
+    await refuses('ABANDONED', { step: 'Meu nome é Maria' });
+    await accepts('APPOINTMENT_RESCHEDULED', { from: '2030-01-01T12:00:00Z', to: '2030-01-02T09:30:00.000-03:00' }, appointmentId);
+    await refuses('APPOINTMENT_RESCHEDULED', { from: 1893499200000, to: '2030-01-02T12:00:00Z' }, appointmentId);
+    await refuses('APPOINTMENT_RESCHEDULED', { from: '2030-01-01T12:00:00Z', to: 'amanhã de manhã' }, appointmentId);
+    await refuses('APPOINTMENT_CREATED', { note: 'texto' }, appointmentId);
+}
+
+async function checkConversationEventKeyUpgrade(db, url) {
+    mustMigrate(url, 'up', '12');
     assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
+    const session = (await db.query("INSERT INTO sessions(phone_hash) VALUES ('legacy-events') RETURNING id")).rows[0].id;
+    await db.query("INSERT INTO conversationevents(session_id, type, data) VALUES ($1, 'ANSWER_SENT', $2), ($1, 'ATTENDEE_CHOSEN', $3), ($1, 'ABANDONED', $4)", [
+        session, { llmStatus: 'NOT_CALLED' }, { byRepresentative: true }, { step: 'AWAITING_QUESTION' },
+    ]);
+    mustMigrate(url, 'up');
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
+    const dataOf = async () => (await db.query('SELECT type, data FROM conversationevents WHERE session_id = $1 ORDER BY id', [session])).rows;
+    const converted = [
+        { type: 'ANSWER_SENT', data: { llm: 'NOT_CALLED' } },
+        { type: 'ATTENDEE_CHOSEN', data: { by_representative: true } },
+        { type: 'ABANDONED', data: { step: 'AWAITING_QUESTION' } },
+    ];
+    assert.deepEqual(await dataOf(), converted);
+    mustMigrate(url, 'down', '1');
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
+    assert.deepEqual(await dataOf(), converted);
+    mustMigrate(url, 'up');
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
+}
+
+async function checkConversationEventDataGuard(db, url) {
+    mustMigrate(url, 'up', '12');
+    const session = (await db.query("INSERT INTO sessions(phone_hash) VALUES ('free-text-events') RETURNING id")).rows[0].id;
+    await db.query("INSERT INTO conversationevents(session_id, type, data) VALUES ($1, 'STARTED', $2)", [session, { text: 'Meu nome é Maria' }]);
+    const result = migrate(url, 'up');
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr + result.stdout, /chave ou valor de data fora do contrato/);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
+    assert.equal(await count(db, "SELECT 1 FROM pg_constraint WHERE conname LIKE 'chk_conversation_events_data_%'"), 1);
+    await db.query('DELETE FROM conversationevents WHERE session_id = $1', [session]);
+    mustMigrate(url, 'up');
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
+}
+
+async function checkSessionStepUpgrade(db, url) {
+    mustMigrate(url, 'up', '12');
+    await db.query("INSERT INTO sessions(phone_hash, status, outcome, current_step) VALUES ('legacy-finished', 'FINISHED', 'RESOLVED', 'AWAITING_QUESTION')");
+    await db.query("INSERT INTO sessions(phone_hash, status, outcome, current_step, abandoned_at_step) VALUES ('legacy-abandoned', 'ABANDONED', 'ABANDONED', 'AWAITING_SLOT', 'AWAITING_SLOT')");
+    await db.query("INSERT INTO sessions(phone_hash, current_step) VALUES ('legacy-in-progress', 'AWAITING_QUESTION')");
+    mustMigrate(url, 'up');
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
+    assert.deepEqual((await db.query('SELECT phone_hash, status, current_step, abandoned_at_step FROM sessions ORDER BY id')).rows, [
+        { phone_hash: 'legacy-finished', status: 'FINISHED', current_step: 'FINISHED', abandoned_at_step: null },
+        { phone_hash: 'legacy-abandoned', status: 'ABANDONED', current_step: 'FINISHED', abandoned_at_step: 'AWAITING_SLOT' },
+        { phone_hash: 'legacy-in-progress', status: 'IN_PROGRESS', current_step: 'AWAITING_QUESTION', abandoned_at_step: null },
+    ]);
+}
+
+async function checkSessionStepGuard(db, url) {
+    mustMigrate(url, 'up', '12');
+    const assertAborts = async () => {
+        const result = migrate(url, 'up');
+        assert.notEqual(result.status, 0);
+        assert.match(result.stderr + result.stdout, /sessões com current_step ou abandoned_at_step = 'FINISHED' fora do contrato/);
+        assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
+        assert.equal(await count(db, "SELECT 1 FROM pg_constraint WHERE conname IN ('chk_sessions_step_finished', 'chk_sessions_abandoned_step_not_finished')"), 0);
+    };
+    await db.query("INSERT INTO sessions(phone_hash, current_step) VALUES ('stuck', 'FINISHED')");
+    await assertAborts();
+    await db.query("DELETE FROM sessions WHERE phone_hash = 'stuck'");
+    await db.query("INSERT INTO sessions(phone_hash, status, outcome, current_step, abandoned_at_step) VALUES ('abandoned-finished', 'ABANDONED', 'ABANDONED', 'FINISHED', 'FINISHED')");
+    await assertAborts();
+    await db.query("DELETE FROM sessions WHERE phone_hash = 'abandoned-finished'");
+    mustMigrate(url, 'up');
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
 }
 
 async function rowsAsJson(db, table) {
@@ -411,7 +538,7 @@ async function rowsAsJson(db, table) {
 }
 
 const seededTables = [
-    'categories', 'questions', 'requireddocuments', 'schedulesettings', 'scheduleranges', 'blockeddates', 'attendancedocuments',
+    'categories', 'questions', 'requireddocuments', 'schedulesettings', 'scheduleranges', 'blockeddates', 'attendancedocuments', 'users',
 ];
 
 async function snapshotSeededTables(db) {
@@ -476,14 +603,33 @@ async function assertInitialConfig(db) {
     assert.equal((await documents('REPRESENTATIVE')).length, 4);
 }
 
+async function assertAdminAccount(db, email) {
+    const admins = (await db.query('SELECT name, email, password_hash, active, is_admin, session_version, last_login_at FROM users WHERE is_admin')).rows;
+    assert.equal(admins.length, 1);
+    const [admin] = admins;
+    assert.match(admin.password_hash, /^\$2[ab]\$12\$/);
+    assert.deepEqual(
+        { ...admin, password_hash: undefined },
+        { name: 'Admin', email, password_hash: undefined, active: true, is_admin: true, session_version: 0, last_login_at: null },
+    );
+}
+
+function assertNoCredentialsInOutput(output) {
+    assert.doesNotMatch(output, /verify\.test/i);
+    assert.doesNotMatch(output, new RegExp(rootEnv.ROOT_PASSWORD));
+}
+
 async function checkSeedFromScratch(db, url) {
     mustMigrate(url, 'up');
     const output = mustSeed(url);
     assert.match(output, /Categorias: 7 inseridas, 0 atualizadas, 0 mantidas/);
     assert.match(output, /Perguntas: 47 inseridas, 0 atualizadas, 0 mantidas/);
     assert.match(output, /configuração inicial criada/);
+    assert.match(output, /Administrador: criado/);
+    assertNoCredentialsInOutput(output);
     await assertSeededContent(db);
     await assertInitialConfig(db);
+    await assertAdminAccount(db, rootEmail);
 }
 
 async function checkSeedIdempotence(db, url) {
@@ -494,7 +640,79 @@ async function checkSeedIdempotence(db, url) {
     assert.match(output, /Categorias: 0 inseridas, 0 atualizadas, 7 mantidas/);
     assert.match(output, /Perguntas: 0 inseridas, 0 atualizadas, 47 mantidas/);
     assert.match(output, /configuração inicial já existe, mantida/);
+    assert.match(output, /Administrador: já existia, mantido/);
     assert.deepEqual(await snapshotSeededTables(db), before);
+    await assertAdminAccount(db, rootEmail);
+}
+
+async function checkSeedKeepsAdmin(db, url) {
+    mustMigrate(url, 'up');
+    mustSeed(url);
+    const before = await rowsAsJson(db, 'users');
+    const otherEmail = mustSeed(url, { ROOT_EMAIL: 'outro@verify.test', ROOT_PASSWORD: 'outra-senha-de-verificacao' });
+    assert.match(otherEmail, /Administrador: já existia, mantido/);
+    const withoutRoot = mustSeed(url, { ROOT_EMAIL: undefined, ROOT_PASSWORD: undefined });
+    assert.match(withoutRoot, /Administrador: já existia, mantido/);
+    assert.deepEqual(await rowsAsJson(db, 'users'), before);
+    await assertAdminAccount(db, rootEmail);
+}
+
+async function checkSeedRequiresRootWithoutAdmin(db, url) {
+    mustMigrate(url, 'up');
+    const cases = [
+        [{ ROOT_EMAIL: undefined, ROOT_PASSWORD: undefined }, /ROOT_EMAIL/],
+        [{ ROOT_EMAIL: rootEnv.ROOT_EMAIL, ROOT_PASSWORD: undefined }, /ROOT_PASSWORD/],
+        [{ ROOT_EMAIL: rootEnv.ROOT_EMAIL, ROOT_PASSWORD: 'curta' }, /ROOT_PASSWORD is invalid/],
+        [{ ROOT_EMAIL: rootEnv.ROOT_EMAIL, ROOT_PASSWORD: 'é'.repeat(37) }, /ROOT_PASSWORD is invalid/],
+    ];
+    for (const [env, message] of cases) {
+        const result = runSeed(url, env);
+        assert.notEqual(result.status, 0);
+        assert.match(result.stderr + result.stdout, message);
+        assert.doesNotMatch(result.stderr + result.stdout, /Seed concluído/);
+        for (const table of seededTables) {
+            assert.equal(await count(db, `SELECT 1 FROM ${table}`), 0, table);
+        }
+    }
+}
+
+async function checkResetAdminPasswordScript(db, url) {
+    const bcrypt = require('bcryptjs');
+    const resetScript = [require.resolve('ts-node/dist/bin.js'), 'db/scripts/resetAdminPassword.ts'];
+    const newPassword = 'nova-senha-de-verificacao';
+    mustMigrate(url, 'up');
+    mustSeed(url);
+    const adminRow = async () => (await db.query('SELECT name, email, password_hash, session_version FROM users WHERE is_admin')).rows[0];
+    const before = await adminRow();
+
+    for (const password of [undefined, 'curta', 'é'.repeat(37)]) {
+        const rejected = run(resetScript, url, { ROOT_EMAIL: undefined, ROOT_PASSWORD: password });
+        assert.equal(rejected.status, 1);
+        assert.doesNotMatch(rejected.stdout, /Senha do Admin redefinida/);
+        assert.doesNotMatch(rejected.stderr + rejected.stdout, /verify\.test/i);
+        if (password) assert.ok(!(rejected.stderr + rejected.stdout).includes(password));
+        assert.deepEqual(await adminRow(), before);
+    }
+
+    const reset = run(resetScript, url, { ROOT_EMAIL: rootEnv.ROOT_EMAIL, ROOT_PASSWORD: newPassword });
+    assert.equal(reset.status, 0, reset.stderr || reset.stdout);
+    assert.match(reset.stdout, /Senha do Admin redefinida/);
+    const output = reset.stdout + reset.stderr;
+    assert.doesNotMatch(output, /verify\.test/i);
+    assert.ok(!output.includes(newPassword));
+    const after = await adminRow();
+    assert.equal(after.session_version, before.session_version + 1);
+    assert.equal(after.email, before.email);
+    assert.equal(after.name, before.name);
+    assert.match(after.password_hash, /^\$2[ab]\$12\$/);
+    assert.equal(await bcrypt.compare(newPassword, after.password_hash), true);
+    assert.equal(await bcrypt.compare(rootEnv.ROOT_PASSWORD, after.password_hash), false);
+
+    await db.query('DELETE FROM users WHERE is_admin');
+    const withoutAdmin = run(resetScript, url, { ROOT_PASSWORD: newPassword });
+    assert.equal(withoutAdmin.status, 1);
+    assert.match(withoutAdmin.stderr, /seed/i);
+    assert.equal(await count(db, 'SELECT 1 FROM users WHERE is_admin'), 0);
 }
 
 async function checkSeedBackfillWithHistory(db, url) {
@@ -517,7 +735,7 @@ async function checkSeedBackfillWithHistory(db, url) {
         [category, question, draft],
     )).rows[0].id;
     await db.query("INSERT INTO sessions(phone_hash, status, outcome, current_step, current_category_id, current_question_id) VALUES ('backfill-finished', 'FINISHED', 'RESOLVED', 'FINISHED', $1, $2)", [category, question]);
-    await db.query("INSERT INTO sessions(phone_hash, status, outcome, current_step, abandoned_at_step, current_category_id, list_page) VALUES ('backfill-abandoned', 'ABANDONED', 'ABANDONED', 'AWAITING_QUESTION', 'AWAITING_QUESTION', $1, 2)", [category]);
+    await db.query("INSERT INTO sessions(phone_hash, status, outcome, current_step, abandoned_at_step, current_category_id, list_page) VALUES ('backfill-abandoned', 'ABANDONED', 'ABANDONED', 'FINISHED', 'AWAITING_QUESTION', $1, 2)", [category]);
     await db.query("INSERT INTO conversationevents(session_id, type, category_id, question_id) VALUES ($1, 'QUESTION_CHOSEN', $2, $3)", [inProgress, category, question]);
     await db.query('UPDATE categories SET position = 6 - position');
     await db.query(`UPDATE questions q SET position = c.n - 1 - q.position
@@ -626,7 +844,7 @@ async function main() {
             mustMigrate(url, 'up');
             await checkFreshSchema(db);
             mustMigrate(url, 'up');
-            assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
+            assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
             await checkConstraints(db);
             await checkRollback(db, url);
         });
@@ -637,10 +855,24 @@ async function main() {
         console.log('OK: guard aborts on non-empty Appointments without applying anything');
         await withDatabase(admin, process.env.DB_TEST_URL, checkShortTextNormalization);
         console.log('OK: migration 12 trims short texts saved under version 11, rollback and reapply');
+        await withDatabase(admin, process.env.DB_TEST_URL, checkConversationEventKeyUpgrade);
+        console.log('OK: migration 13 renames legacy event keys, rollback keeps them and reapply works');
+        await withDatabase(admin, process.env.DB_TEST_URL, checkConversationEventDataGuard);
+        console.log('OK: migration 13 aborts on event data outside the contract without applying anything');
+        await withDatabase(admin, process.env.DB_TEST_URL, checkSessionStepUpgrade);
+        console.log('OK: migration 13 moves closed sessions to current_step FINISHED keeping abandoned_at_step');
+        await withDatabase(admin, process.env.DB_TEST_URL, checkSessionStepGuard);
+        console.log('OK: migration 13 aborts on sessions with FINISHED outside the contract without applying anything');
         await withDatabase(admin, process.env.DB_TEST_URL, checkSeedFromScratch);
         console.log('OK: seed from scratch loads content, titles, order and initial config');
         await withDatabase(admin, process.env.DB_TEST_URL, checkSeedIdempotence);
         console.log('OK: second seed run changes nothing');
+        await withDatabase(admin, process.env.DB_TEST_URL, checkSeedKeepsAdmin);
+        console.log('OK: seed keeps the existing Admin with another ROOT_EMAIL or without ROOT_*');
+        await withDatabase(admin, process.env.DB_TEST_URL, checkSeedRequiresRootWithoutAdmin);
+        console.log('OK: seed without Admin fails on missing or invalid ROOT_* and writes nothing');
+        await withDatabase(admin, process.env.DB_TEST_URL, checkResetAdminPasswordScript);
+        console.log('OK: admin:reset-password rewrites the Admin hash, bumps session_version and prints no credentials');
         await withDatabase(admin, process.env.DB_TEST_URL, checkSeedBackfillWithHistory);
         console.log('OK: seed backfills seed_key keeping ids, events and sessions');
         await withDatabase(admin, process.env.DB_TEST_URL, checkSeedKeepsPanelEdits);
