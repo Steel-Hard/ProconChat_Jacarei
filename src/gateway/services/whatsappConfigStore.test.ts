@@ -137,4 +137,25 @@ describe("whatsappConfigStore", () => {
         expect(getWhatsappConfig).toHaveBeenCalledTimes(2)
         expect(loaded.accessToken).toBe("token-salvo-depois")
     })
+
+    test("uma busca antiga que termina depois da nova nao sobrescreve a configuracao", async () => {
+        const { store, getWhatsappConfig } = setup()
+        let resolveOld!: (value: WhatsAppConfig) => void
+        getWhatsappConfig
+            .mockImplementationOnce(() => new Promise((resolve) => {
+                resolveOld = resolve
+            }))
+            .mockResolvedValueOnce({ ...config, accessToken: "token-novo" })
+
+        const oldLoad = store.load()
+        store.invalidate()
+        const newLoaded = await store.load()
+        resolveOld({ ...config, accessToken: "token-antigo" })
+        await oldLoad
+
+        expect(newLoaded.accessToken).toBe("token-novo")
+        expect(store.current().accessToken).toBe("token-novo")
+        expect((await store.load()).accessToken).toBe("token-novo")
+        expect(getWhatsappConfig).toHaveBeenCalledTimes(2)
+    })
 })

@@ -38,10 +38,13 @@ export function createWhatsAppConfigStore({
         const startedAt = generation
         try {
             const config = await backend.getWhatsappConfig()
-            cached = config
-            loadedAt = now()
-            stale = startedAt !== generation
-            return config
+            const isCurrent = startedAt === generation
+            if (isCurrent || !cached) {
+                cached = config
+                loadedAt = now()
+                stale = !isCurrent
+            }
+            return cached
         } catch {
             logger.log(JSON.stringify({ event: "whatsapp_config_refresh_failed" }))
             if (cached) {
