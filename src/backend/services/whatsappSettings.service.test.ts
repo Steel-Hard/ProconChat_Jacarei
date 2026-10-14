@@ -360,7 +360,7 @@ describe("whatsappSettings service", () => {
         })
 
         it("devolve null nos segredos nao configurados", async () => {
-            const { service } = setup(null)
+            const { service } = setup(savedRow({ phoneNumberId: null, accessTokenEncrypted: null, appSecretEncrypted: null }))
 
             const config = await service.getInternalConfig()
 
@@ -368,9 +368,18 @@ describe("whatsappSettings service", () => {
                 phoneNumberId: null,
                 accessToken: null,
                 appSecret: null,
-                verifyToken: "b".repeat(64),
+                verifyToken: VERIFY_TOKEN,
                 graphApiVersion: "v26.0",
             })
+        })
+
+        it("lanca erro generico sem criar a linha quando a configuracao nao existe", async () => {
+            const { service, settings } = setup(null)
+
+            const error = await service.getInternalConfig().catch((caught: unknown) => caught)
+
+            expect(error).toMatchObject({ statusCode: 500, code: "INTERNAL_SERVER_ERROR", message: "Internal Server Error" })
+            expect(settings.row).toBeNull()
         })
 
         it("lanca erro generico sem o valor quando um segredo nao decifra", async () => {

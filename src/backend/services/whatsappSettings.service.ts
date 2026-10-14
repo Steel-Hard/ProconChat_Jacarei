@@ -269,7 +269,10 @@ export function createWhatsAppSettingsService({
         },
 
         async getInternalConfig() {
-            const row = await ensureRow()
+            const row = await settings.findRow()
+            if (!row) {
+                throw new InternalServerError("Internal Server Error")
+            }
             return {
                 phoneNumberId: row.phoneNumberId,
                 accessToken: decryptForGateway(row.accessTokenEncrypted, "accessToken"),

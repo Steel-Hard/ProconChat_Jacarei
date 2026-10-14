@@ -282,7 +282,8 @@ comparado em tempo constante (`utils/internalToken.ts`) e `Cache-Control: no-sto
 - sem token válido: `401 UNAUTHORIZED` `"Invalid gateway internal token"`;
 - `200 { data: { phoneNumberId, accessToken, appSecret, verifyToken, graphApiVersion } }`, com os
   segredos decifrados. `phoneNumberId`, `accessToken` e `appSecret` podem ser `null`;
-- segredo que não decifra: `500` genérico.
+- segredo que não decifra, ou linha de `WhatsAppSettings` ausente: `500` genérico. O endpoint só lê:
+  nunca cria a linha.
 
 Em produção o Caddy responde `404` para `/api/v1/internal*` e o `deploy.sh` confere isso. O gateway
 alcança o backend só pela rede interna do Docker.
