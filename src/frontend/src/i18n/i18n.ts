@@ -21,7 +21,7 @@ void i18n.init({
     supportedLngs: SUPPORTED_LANGUAGES,
     fallbackLng: FALLBACK_LANGUAGE,
     defaultNS: "common",
-    ns: ["common", "error", "notFound", "underConstruction"],
+    ns: ["common", "error", "login", "notFound", "underConstruction"],
     initAsync: false,
     interpolation: {
         escapeValue: false

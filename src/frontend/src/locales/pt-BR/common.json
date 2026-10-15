@@ -8,6 +8,9 @@
         "logout": "Sair",
         "nameWithAdmin": "{{name}} <badge>ADMIN</badge>"
     },
+    "errors": {
+        "invalidOrigin": "O painel foi aberto por um endereço não autorizado. Acesse pelo endereço oficial do painel."
+    },
     "confirmDialog": {
         "cancel": "Voltar"
     },
