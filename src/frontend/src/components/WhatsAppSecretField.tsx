@@ -42,6 +42,7 @@ function WhatsAppSecretField({
 }: WhatsAppSecretFieldProps) {
     const labelId = useId()
     const inputId = useId()
+    const hintId = useId()
     const editing = !secret.configured || secret.value !== null
     const inputClass = secret.value ? `${css.input} ${css.changed}` : css.input
 
@@ -66,6 +67,7 @@ function WhatsAppSecretField({
                         spellCheck={false}
                         placeholder={placeholder}
                         value={secret.value ?? ""}
+                        aria-describedby={hint ? hintId : undefined}
                         disabled={disabled}
                         onChange={(event) => onChange(event.target.value)}
                     />
@@ -95,7 +97,9 @@ function WhatsAppSecretField({
             )}
             {secret.configured ? <span className={css.note}>{storedNote}</span> : null}
             {hint ? (
-                <span className={`${css.hint} ${HINT_TONE_CLASS[hintTone]}`}>{hint}</span>
+                <span id={hintId} className={`${css.hint} ${HINT_TONE_CLASS[hintTone]}`}>
+                    {hint}
+                </span>
             ) : null}
         </fieldset>
     )

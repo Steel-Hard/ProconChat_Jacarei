@@ -4,7 +4,10 @@ import { describe, expect, it, vi } from "vitest"
 import WhatsAppSecretField from "@/components/WhatsAppSecretField"
 import css from "@/styles/components/whatsappSecretField.module.css"
 
-function renderField(secret: { configured: boolean; last4: string | null; value: string | null }) {
+function renderField(
+    secret: { configured: boolean; last4: string | null; value: string | null },
+    hint?: string
+) {
     const handlers = { onReplace: vi.fn(), onCancel: vi.fn(), onChange: vi.fn() }
 
     render(
@@ -16,6 +19,7 @@ function renderField(secret: { configured: boolean; last4: string | null; value:
             cancelLabel="Cancelar"
             placeholder="Cole o novo valor"
             storedNote="Guardado criptografado. Não é possível visualizar o valor salvo."
+            hint={hint}
             {...handlers}
         />
     )
@@ -84,5 +88,24 @@ describe("WhatsAppSecretField", () => {
 
         expect(toneClass).toEqual(expect.any(String))
         expect(screen.getByText("Este token expira em 20/10/2026.")).toHaveClass(toneClass)
+    })
+
+    it("liga o aviso ao campo de digitação como descrição acessível", () => {
+        renderField(
+            { configured: true, last4: "9c2e", value: "" },
+            "Este token expira em 20/10/2026."
+        )
+
+        expect(
+            screen.getByLabelText("App Secret", { selector: "input" })
+        ).toHaveAccessibleDescription("Este token expira em 20/10/2026.")
+    })
+
+    it("sem aviso o campo de digitação não aponta para descrição", () => {
+        renderField({ configured: true, last4: "9c2e", value: "" })
+
+        expect(screen.getByLabelText("App Secret", { selector: "input" })).not.toHaveAttribute(
+            "aria-describedby"
+        )
     })
 })
