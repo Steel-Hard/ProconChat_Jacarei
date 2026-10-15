@@ -107,9 +107,10 @@ Rota `/whatsapp`, só para o Admin (o funcionário vê a tela de não encontrado
 - Leitura, pausa e retomada pelo RTK Query (`store/api/whatsappSettings.api.ts`); pausar e reativar gravam a leitura devolvida no cache, sem nova requisição.
 - Segredos salvos só aparecem como `••••••••` + 4 últimos caracteres, com "Substituir". O Salvar fica travado até um teste bem-sucedido com exatamente os valores atuais do formulário; qualquer mudança depois do teste invalida o resultado.
 - O ID da conta WhatsApp Business é obrigatório na tela, embora a API aceite vazio.
-- O texto do campo "Token de acesso" segue o tipo do token (`accessTokenLifetime`): o do token salvo, ou o de um teste bem-sucedido com os valores atuais. Enquanto o Admin substitui o token, só vale o teste do token digitado. Token que não expira: nenhum aviso no campo. Token com validade: a data e a hora de Brasília, em tom neutro com mais de 7 dias, amarelo de 4 a 7 dias e vermelho com 3 dias ou menos ou já expirado. Quando o sistema não sabe o tipo, fica o aviso "Use um token permanente…". O passo 1 de "Configure no painel da Meta" não muda.
+- O texto do campo "Token de acesso" segue o tipo do token (`accessTokenLifetime`): o do token salvo, ou o de um teste bem-sucedido com os valores atuais. Enquanto o Admin substitui o token, só vale o teste do token digitado. Token que não expira: nenhum aviso no campo. Token com validade: a data e a hora de Brasília, em tom neutro com mais de 7 dias, amarelo de 4 a 7 dias e vermelho com 3 dias ou menos ou já expirado. Quando o sistema não sabe o tipo, fica o aviso "Use um token permanente…". O prazo é recalculado a cada teste de conexão e depois de salvar, sem recarregar a tela. O passo 1 de "Configure no painel da Meta" não muda.
 - Pausar pede confirmação com a prévia da mensagem fixa e age na hora; reativar não pede confirmação. Os dois mantêm o rascunho e o resultado do teste.
 - Sem `PUBLIC_BASE_URL` no Backend, a URL do webhook não existe e a tela mostra um aviso no lugar.
+- O fundo da conversa nas prévias (`public/images/whatsapp-chat-background.webp`) é uma imagem de uso livre, sem licença, informada pelo usuário.
 - Fora desta tela por enquanto: "Estado do número" e "Histórico de alterações" (#88) e "Modelos de mensagem" (#67).
 
 ## Fontes
