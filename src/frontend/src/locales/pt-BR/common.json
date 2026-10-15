@@ -6,6 +6,7 @@
         "options": "Minha conta",
         "changePassword": "Alterar minha senha",
         "logout": "Sair",
+        "logoutFailed": "Não foi possível sair agora. Tente de novo.",
         "nameWithAdmin": "{{name}} <badge>ADMIN</badge>"
     },
     "errors": {

@@ -1,5 +1,5 @@
 import { lazy } from "react"
-import { beforeAll, describe, expect, it } from "vitest"
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 import { act, screen } from "@testing-library/react"
 import userEvent, { type UserEvent } from "@testing-library/user-event"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
@@ -33,7 +33,13 @@ async function renderPanel(path: string = ROUTES.dashboard) {
 
     await screen.findByText("Em construção.", {}, { timeout: LAZY_TIMEOUT_MS })
 
-    return result
+    return { ...result, router }
+}
+
+function stubLogout(response: () => Response) {
+    const fetchMock = vi.fn((_url: string, _init?: RequestInit) => Promise.resolve(response()))
+    vi.stubGlobal("fetch", fetchMock)
+    return fetchMock
 }
 
 async function openDrawer(user: UserEvent) {
@@ -46,6 +52,11 @@ async function openDrawer(user: UserEvent) {
 describe("PanelLayout", { timeout: 15000 }, () => {
     beforeAll(async () => {
         await import("@/pages/UnderConstruction.page")
+        await import("@/pages/Login.page")
+    })
+
+    afterEach(() => {
+        vi.unstubAllGlobals()
     })
 
     it("mostra o menu, o topo e a tela dentro do main", async () => {
@@ -159,9 +170,10 @@ describe("PanelLayout", { timeout: 15000 }, () => {
         expect(screen.queryByRole("link", { name: "Sessões" })).not.toBeInTheDocument()
     })
 
-    it("sai limpando a conta e leva para a tela de entrada", async () => {
+    it("sai pelo logout da API, limpa a conta e leva para a tela de entrada sem redirect", async () => {
         const user = userEvent.setup()
-        const { store } = await renderPanel()
+        const fetchMock = stubLogout(() => new Response(null, { status: 204 }))
+        const { store, router } = await renderPanel()
 
         await user.click(screen.getByRole("button", { name: "Minha conta" }))
         await user.click(screen.getByRole("button", { name: "Sair" }))
@@ -170,9 +182,48 @@ describe("PanelLayout", { timeout: 15000 }, () => {
             await screen.findByRole("heading", { name: "Entrar" }, { timeout: LAZY_TIMEOUT_MS })
         ).toBeInTheDocument()
         expect(store.getState().account.current).toBeNull()
+        expect(fetchMock.mock.calls[0][0]).toMatch(/\/api\/v1\/auth\/logout$/)
+        expect(router.state.location.pathname).toBe(ROUTES.login)
+        expect(router.state.location.search).toBe("")
         expect(
             screen.queryByRole("button", { name: "Alterar minha senha" })
         ).not.toBeInTheDocument()
+    })
+
+    it("depois de sair, voltar a uma rota do painel leva ao login", async () => {
+        const user = userEvent.setup()
+        stubLogout(() => new Response(null, { status: 204 }))
+        const { router } = await renderPanel(ROUTES.sessions)
+        await user.click(screen.getByRole("button", { name: "Minha conta" }))
+        await user.click(screen.getByRole("button", { name: "Sair" }))
+        await screen.findByRole("heading", { name: "Entrar" }, { timeout: LAZY_TIMEOUT_MS })
+
+        await act(() => router.navigate(ROUTES.sessions))
+
+        expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument()
+        expect(router.state.location.search).toBe("?redirect=%2Fsessoes")
+        expect(screen.queryByRole("navigation", { name: "Menu principal" })).not.toBeInTheDocument()
+    })
+
+    it("continua no painel e avisa quando o logout é recusado por origem", async () => {
+        const user = userEvent.setup()
+        stubLogout(
+            () =>
+                new Response(JSON.stringify({ error: { code: "INVALID_ORIGIN", message: "x" } }), {
+                    status: 403
+                })
+        )
+        const { store, router } = await renderPanel(ROUTES.sessions)
+
+        await user.click(screen.getByRole("button", { name: "Minha conta" }))
+        await user.click(screen.getByRole("button", { name: "Sair" }))
+
+        expect(
+            await screen.findByText("Não foi possível sair agora. Tente de novo.")
+        ).toBeInTheDocument()
+        expect(store.getState().account.current).toEqual(admin)
+        expect(router.state.location.pathname).toBe(ROUTES.sessions)
+        expect(screen.getByRole("heading", { name: "Sessões" })).toBeInTheDocument()
     })
 
     it("não mostra links nem o bloco de conta quando não há conta", async () => {
