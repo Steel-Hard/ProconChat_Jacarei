@@ -78,6 +78,8 @@ function savedView(overrides: Record<string, unknown> = {}) {
         pausedMessage: PAUSED_MESSAGE,
         updatedBy: null,
         updatedAt: NOW.toISOString(),
+        displayPhoneNumber: null,
+        verifiedName: null,
         ...overrides,
     }
 }
@@ -96,6 +98,8 @@ describe("/api/v1/whatsapp/settings", () => {
             autoReplyPaused: false,
             credentialsCheckedAt: null,
             credentialsValid: null,
+            displayPhoneNumber: null,
+            verifiedName: null,
             updatedBy: null,
             updatedAt: NOW,
         }
@@ -185,6 +189,8 @@ describe("/api/v1/whatsapp/settings", () => {
                 credentialsValid: true,
                 credentialsCheckedAt: NOW.toISOString(),
                 updatedBy: { id: 1, name: "Admin" },
+                displayPhoneNumber: "+55 12 99999-0000",
+                verifiedName: "PROCON Jacareí",
             }),
         })
         expect(response.headers["cache-control"]).toBe("no-store")

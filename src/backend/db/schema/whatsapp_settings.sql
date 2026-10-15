@@ -8,6 +8,8 @@ CREATE TABLE WhatsAppSettings (
     auto_reply_paused BOOLEAN NOT NULL DEFAULT FALSE,
     credentials_checked_at TIMESTAMPTZ,
     credentials_valid BOOLEAN,
+    display_phone_number VARCHAR(40),
+    verified_name VARCHAR(255),
     last_webhook_event_at TIMESTAMPTZ,
     updated_by BIGINT REFERENCES Users(id),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,

@@ -83,6 +83,8 @@ describe("Repositorio da configuracao do WhatsApp com Postgres", () => {
         expect(first.verifyToken).toBe(VERIFY_TOKEN)
         expect(second.verifyToken).toBe(VERIFY_TOKEN)
         expect(second).toMatchObject({
+            displayPhoneNumber: null,
+            verifiedName: null,
             phoneNumberId: null,
             businessAccountId: null,
             accessTokenEncrypted: null,
@@ -105,6 +107,8 @@ describe("Repositorio da configuracao do WhatsApp com Postgres", () => {
             businessAccountId: null,
             accessTokenEncrypted,
             appSecretEncrypted,
+            displayPhoneNumber: "+55 12 3955-9000",
+            verifiedName: "PROCON Jacareí",
             updatedBy: userId,
         })
 
@@ -114,6 +118,8 @@ describe("Repositorio da configuracao do WhatsApp com Postgres", () => {
             accessTokenEncrypted,
             appSecretEncrypted,
             credentialsValid: true,
+            displayPhoneNumber: "+55 12 3955-9000",
+            verifiedName: "PROCON Jacareí",
             updatedBy: { id: userId, name: "Admin Integracao WhatsApp" },
         })
         expect(row.credentialsCheckedAt).toBeInstanceOf(Date)
@@ -128,6 +134,8 @@ describe("Repositorio da configuracao do WhatsApp com Postgres", () => {
                 businessAccountId: null,
                 accessTokenEncrypted: "token-em-claro",
                 appSecretEncrypted: encrypt("segredo-ficticio-do-app"),
+                displayPhoneNumber: "+55 12 3955-9000",
+                verifiedName: "PROCON Jacareí",
                 updatedBy: userId,
             }),
         ).rejects.toMatchObject({ code: "23514" })
@@ -157,6 +165,41 @@ describe("Repositorio da configuracao do WhatsApp com Postgres", () => {
         expect(after?.credentialsCheckedAt).toBeInstanceOf(Date)
         expect(after?.updatedAt.getTime()).toBe(before.updatedAt.getTime())
         expect(after?.updatedBy).toBeNull()
+    })
+
+    test("recordCredentialsCheck valido grava o numero e o nome verificados sem mudar updated_at nem updated_by", async () => {
+        const before = await whatsappSettingsRepository.ensureRow(VERIFY_TOKEN)
+
+        await whatsappSettingsRepository.recordCredentialsCheck(true, {
+            displayPhoneNumber: "+55 12 3955-9000",
+            verifiedName: "PROCON Jacareí",
+        })
+        const after = await whatsappSettingsRepository.findRow()
+
+        expect(after).toMatchObject({
+            credentialsValid: true,
+            displayPhoneNumber: "+55 12 3955-9000",
+            verifiedName: "PROCON Jacareí",
+            updatedBy: null,
+        })
+        expect(after?.updatedAt.getTime()).toBe(before.updatedAt.getTime())
+    })
+
+    test("recordCredentialsCheck sem o numero mantem o numero e o nome guardados", async () => {
+        await whatsappSettingsRepository.ensureRow(VERIFY_TOKEN)
+        await whatsappSettingsRepository.recordCredentialsCheck(true, {
+            displayPhoneNumber: "+55 12 3955-9000",
+            verifiedName: "PROCON Jacareí",
+        })
+
+        await whatsappSettingsRepository.recordCredentialsCheck(false)
+        const after = await whatsappSettingsRepository.findRow()
+
+        expect(after).toMatchObject({
+            credentialsValid: false,
+            displayPhoneNumber: "+55 12 3955-9000",
+            verifiedName: "PROCON Jacareí",
+        })
     })
 
     test("o seed cria a linha a partir do .env na primeira execucao e nao altera nada na segunda", async () => {

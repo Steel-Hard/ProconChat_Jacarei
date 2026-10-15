@@ -11,6 +11,8 @@ interface SettingsRow {
     auto_reply_paused: boolean
     credentials_checked_at: Date | null
     credentials_valid: boolean | null
+    display_phone_number: string | null
+    verified_name: string | null
     updated_by: string | null
     updated_by_name: string | null
     updated_at: Date
@@ -19,7 +21,7 @@ interface SettingsRow {
 const SELECT_WITH_USER = `
     SELECT s.phone_number_id, s.business_account_id, s.access_token_encrypted, s.app_secret_encrypted,
            s.verify_token, s.auto_reply_paused, s.credentials_checked_at, s.credentials_valid,
-           s.updated_by, u.name AS updated_by_name, s.updated_at
+           s.display_phone_number, s.verified_name, s.updated_by, u.name AS updated_by_name, s.updated_at
     FROM settings s
     LEFT JOIN Users u ON u.id = s.updated_by`
 
@@ -33,6 +35,8 @@ function toRow(row: SettingsRow): WhatsAppSettingsRow {
         autoReplyPaused: row.auto_reply_paused,
         credentialsCheckedAt: row.credentials_checked_at,
         credentialsValid: row.credentials_valid,
+        displayPhoneNumber: row.display_phone_number,
+        verifiedName: row.verified_name,
         updatedBy: row.updated_by === null ? null : { id: Number(row.updated_by), name: row.updated_by_name ?? "" },
         updatedAt: row.updated_at,
     }
@@ -70,18 +74,37 @@ export const whatsappSettingsRepository: WhatsAppSettingsRepository = {
         return result.rows[0]?.auto_reply_paused ?? false
     },
 
-    saveCredentials: ({ phoneNumberId, businessAccountId, accessTokenEncrypted, appSecretEncrypted, updatedBy }) =>
+    saveCredentials: ({
+        phoneNumberId,
+        businessAccountId,
+        accessTokenEncrypted,
+        appSecretEncrypted,
+        displayPhoneNumber,
+        verifiedName,
+        updatedBy,
+    }) =>
         requireSettings(
             `UPDATE WhatsAppSettings
              SET phone_number_id = $1, business_account_id = $2, access_token_encrypted = $3,
                  app_secret_encrypted = $4, credentials_valid = TRUE, credentials_checked_at = now(),
-                 updated_by = $5, updated_at = now()
+                 display_phone_number = $5, verified_name = $6,
+                 updated_by = $7, updated_at = now()
              WHERE id = 1
              RETURNING *`,
-            [phoneNumberId, businessAccountId, accessTokenEncrypted, appSecretEncrypted, updatedBy],
+            [phoneNumberId, businessAccountId, accessTokenEncrypted, appSecretEncrypted, displayPhoneNumber, verifiedName, updatedBy],
         ),
 
-    async recordCredentialsCheck(valid) {
+    async recordCredentialsCheck(valid, verified) {
+        if (verified) {
+            await getPool().query(
+                `UPDATE WhatsAppSettings
+                 SET credentials_valid = $1, credentials_checked_at = now(),
+                     display_phone_number = $2, verified_name = $3
+                 WHERE id = 1`,
+                [valid, verified.displayPhoneNumber, verified.verifiedName],
+            )
+            return
+        }
         await getPool().query(
             "UPDATE WhatsAppSettings SET credentials_valid = $1, credentials_checked_at = now() WHERE id = 1",
             [valid],

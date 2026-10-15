@@ -12,8 +12,15 @@ export interface WhatsAppSettingsRow {
     autoReplyPaused: boolean
     credentialsCheckedAt: Date | null
     credentialsValid: boolean | null
+    displayPhoneNumber: string | null
+    verifiedName: string | null
     updatedBy: WhatsAppSettingsUpdatedBy | null
     updatedAt: Date
+}
+
+export interface VerifiedPhoneNumber {
+    displayPhoneNumber: string
+    verifiedName: string
 }
 
 export interface SaveCredentialsInput {
@@ -21,6 +28,8 @@ export interface SaveCredentialsInput {
     businessAccountId: string | null
     accessTokenEncrypted: string
     appSecretEncrypted: string
+    displayPhoneNumber: string
+    verifiedName: string
     updatedBy: number
 }
 
@@ -43,6 +52,8 @@ export interface WhatsAppSettingsView {
     pausedMessage: string
     updatedBy: WhatsAppSettingsUpdatedBy | null
     updatedAt: string
+    displayPhoneNumber: string | null
+    verifiedName: string | null
 }
 
 export interface WhatsAppSettingsInput {

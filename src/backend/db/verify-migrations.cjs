@@ -150,8 +150,8 @@ async function withDatabase(admin, baseUrl, fn) {
 
 function checkMigrationFile() {
     const files = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql'));
-    assert.equal(files.length, 13);
-    for (const file of ['11_sprint2_schema.sql', '12_short_text_checks.sql', '13_conversation_events_data_checks.sql']) {
+    assert.equal(files.length, 14);
+    for (const file of ['11_sprint2_schema.sql', '12_short_text_checks.sql', '13_conversation_events_data_checks.sql', '14_whatsapp_settings_display_number.sql']) {
         const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
         assert.doesNotMatch(sql, /add\s+value/i, file);
         assert.match(sql, /^-- Up Migration/, file);
@@ -161,7 +161,7 @@ function checkMigrationFile() {
 
 async function checkFreshSchema(db) {
     assert.deepEqual(await tableNames(db), expectedTables);
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 14);
     for (const [name, values] of Object.entries(expectedEnums)) {
         assert.deepEqual(await enumValues(db, name), values, name);
     }
@@ -170,6 +170,8 @@ async function checkFreshSchema(db) {
     assert.equal((await column(db, 'questions', 'short_title')).is_nullable, 'NO');
     assert.equal((await column(db, 'questions', 'short_description')).is_nullable, 'YES');
     assert.equal((await column(db, 'sessions', 'outcome')).is_nullable, 'NO');
+    assert.deepEqual(await column(db, 'whatsappsettings', 'display_phone_number'), { data_type: 'character varying', is_nullable: 'YES', column_default: null });
+    assert.deepEqual(await column(db, 'whatsappsettings', 'verified_name'), { data_type: 'character varying', is_nullable: 'YES', column_default: null });
     assert.equal(await count(db, "SELECT 1 FROM pg_extension WHERE extname = 'unaccent'"), 1);
     assert.equal((await db.query("SELECT unaccent('Cobrança Vício') AS v")).rows[0].v, 'Cobranca Vicio');
     assert.equal(await count(db, "SELECT 1 FROM pg_constraint WHERE conname IN ('chk_sessions_step_finished', 'chk_sessions_abandoned_step_not_finished') AND convalidated"), 2);
@@ -305,9 +307,19 @@ async function checkConstraints(db) {
     await db.query(insertWhatsApp, ['verify', encrypted, encrypted]);
     await rejects(db, insertWhatsApp, ['verify', null, null], '23505');
     await rejects(db, "INSERT INTO whatsappsettings(id, verify_token) VALUES (2, 'verify')", [], '23514');
+    assert.deepEqual((await db.query('SELECT display_phone_number, verified_name FROM whatsappsettings')).rows, [{ display_phone_number: null, verified_name: null }]);
+    await db.query('UPDATE whatsappsettings SET display_phone_number = $1, verified_name = $2', ['+55 12 3955-9000', 'PROCON Jacareí']);
+    await db.query('UPDATE whatsappsettings SET display_phone_number = $1, verified_name = $2', ['9'.repeat(40), 'n'.repeat(255)]);
+    await rejects(db, 'UPDATE whatsappsettings SET display_phone_number = $1', ['9'.repeat(41)], '22001');
+    await rejects(db, 'UPDATE whatsappsettings SET verified_name = $1', ['n'.repeat(256)], '22001');
 }
 
 async function checkRollback(db, url) {
+    mustMigrate(url, 'down', '1');
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
+    assert.equal(await column(db, 'whatsappsettings', 'display_phone_number'), undefined);
+    assert.equal(await column(db, 'whatsappsettings', 'verified_name'), undefined);
+    assert.equal(await count(db, 'SELECT 1 FROM whatsappsettings'), 1);
     mustMigrate(url, 'down', '1');
     assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
     assert.equal(await count(db, "SELECT 1 FROM pg_constraint WHERE conname LIKE 'chk_conversation_events_data_%'"), 1);
@@ -341,9 +353,9 @@ async function checkRollback(db, url) {
     assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 10);
     await db.query("DELETE FROM sessions WHERE phone_hash = 's3'");
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 14);
     assert.deepEqual(await tableNames(db), expectedTables);
-    mustMigrate(url, 'down', '13');
+    mustMigrate(url, 'down', '14');
     assert.deepEqual(await tableNames(db), ['pgmigrations']);
     assert.equal(await count(db, "SELECT 1 FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace WHERE n.nspname = 'public' AND t.typtype = 'e'"), 0);
     mustMigrate(url, 'up');
@@ -374,7 +386,7 @@ async function checkUpgradeWithSeed(db, url) {
     await db.query("INSERT INTO sessions(phone_hash, status, current_step, current_category_id, started_at, ended_at) VALUES ('abandoned', 'ABANDONED', 'AWAITING_QUESTION', $1, '2030-01-01T10:00:00Z', '2030-01-01T10:40:00Z')", [category]);
 
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 14);
     assert.deepEqual(await snapshotContent(db), before);
 
     const outOfScope = before.questions.find(q => q.out_of_scope).id;
@@ -417,7 +429,7 @@ async function checkNonEmptyAppointmentsGuard(db, url) {
     assert.deepEqual(await enumValues(db, 'session_step'), ['AWAITING_CATEGORY', 'AWAITING_QUESTION', 'FINISHED']);
     await db.query('DELETE FROM appointments');
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 14);
 }
 
 async function checkShortTextNormalization(db, url) {
@@ -426,12 +438,12 @@ async function checkShortTextNormalization(db, url) {
     const category = (await db.query("INSERT INTO categories(title, short_title) VALUES ('Abc', 'Abc ') RETURNING id")).rows[0].id;
     const question = (await db.query("INSERT INTO questions(category_id, question, answer, short_title, short_description) VALUES ($1, 'Q', 'A', ' Pergunta ', ' Descrição ') RETURNING id", [category])).rows[0].id;
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 14);
     assert.equal((await db.query('SELECT short_title FROM categories WHERE id = $1', [category])).rows[0].short_title, 'Abc');
     assert.deepEqual((await db.query('SELECT short_title, short_description FROM questions WHERE id = $1', [question])).rows[0], { short_title: 'Pergunta', short_description: 'Descrição' });
-    mustMigrate(url, 'down', '2');
+    mustMigrate(url, 'down', '3');
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 14);
 }
 
 async function checkConversationEventData(db, sessionId, appointmentId) {
@@ -471,7 +483,7 @@ async function checkConversationEventKeyUpgrade(db, url) {
         session, { llmStatus: 'NOT_CALLED' }, { byRepresentative: true }, { step: 'AWAITING_QUESTION' },
     ]);
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 14);
     const dataOf = async () => (await db.query('SELECT type, data FROM conversationevents WHERE session_id = $1 ORDER BY id', [session])).rows;
     const converted = [
         { type: 'ANSWER_SENT', data: { llm: 'NOT_CALLED' } },
@@ -479,11 +491,11 @@ async function checkConversationEventKeyUpgrade(db, url) {
         { type: 'ABANDONED', data: { step: 'AWAITING_QUESTION' } },
     ];
     assert.deepEqual(await dataOf(), converted);
-    mustMigrate(url, 'down', '1');
+    mustMigrate(url, 'down', '2');
     assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
     assert.deepEqual(await dataOf(), converted);
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 14);
 }
 
 async function checkConversationEventDataGuard(db, url) {
@@ -497,7 +509,7 @@ async function checkConversationEventDataGuard(db, url) {
     assert.equal(await count(db, "SELECT 1 FROM pg_constraint WHERE conname LIKE 'chk_conversation_events_data_%'"), 1);
     await db.query('DELETE FROM conversationevents WHERE session_id = $1', [session]);
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 14);
 }
 
 async function checkSessionStepUpgrade(db, url) {
@@ -506,7 +518,7 @@ async function checkSessionStepUpgrade(db, url) {
     await db.query("INSERT INTO sessions(phone_hash, status, outcome, current_step, abandoned_at_step) VALUES ('legacy-abandoned', 'ABANDONED', 'ABANDONED', 'AWAITING_SLOT', 'AWAITING_SLOT')");
     await db.query("INSERT INTO sessions(phone_hash, current_step) VALUES ('legacy-in-progress', 'AWAITING_QUESTION')");
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 14);
     assert.deepEqual((await db.query('SELECT phone_hash, status, current_step, abandoned_at_step FROM sessions ORDER BY id')).rows, [
         { phone_hash: 'legacy-finished', status: 'FINISHED', current_step: 'FINISHED', abandoned_at_step: null },
         { phone_hash: 'legacy-abandoned', status: 'ABANDONED', current_step: 'FINISHED', abandoned_at_step: 'AWAITING_SLOT' },
@@ -530,7 +542,25 @@ async function checkSessionStepGuard(db, url) {
     await assertAborts();
     await db.query("DELETE FROM sessions WHERE phone_hash = 'abandoned-finished'");
     mustMigrate(url, 'up');
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 14);
+}
+
+async function checkWhatsAppDisplayNumberUpgrade(db, url) {
+    mustMigrate(url, 'up', '13');
     assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
+    await db.query('INSERT INTO whatsappsettings(verify_token, phone_number_id, access_token_encrypted, app_secret_encrypted, credentials_valid) VALUES ($1, $2, $3, $3, true)', ['verify', '100000000000001', encrypted]);
+    mustMigrate(url, 'up');
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 14);
+    assert.deepEqual((await db.query('SELECT verify_token, phone_number_id, credentials_valid, display_phone_number, verified_name FROM whatsappsettings')).rows, [
+        { verify_token: 'verify', phone_number_id: '100000000000001', credentials_valid: true, display_phone_number: null, verified_name: null },
+    ]);
+    await db.query('UPDATE whatsappsettings SET display_phone_number = $1, verified_name = $2', ['+55 12 3955-9000', 'PROCON Jacareí']);
+    mustMigrate(url, 'down', '1');
+    assert.deepEqual((await db.query('SELECT verify_token, phone_number_id, credentials_valid FROM whatsappsettings')).rows, [
+        { verify_token: 'verify', phone_number_id: '100000000000001', credentials_valid: true },
+    ]);
+    mustMigrate(url, 'up');
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 14);
 }
 
 async function rowsAsJson(db, table) {
@@ -844,7 +874,7 @@ async function main() {
             mustMigrate(url, 'up');
             await checkFreshSchema(db);
             mustMigrate(url, 'up');
-            assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
+            assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 14);
             await checkConstraints(db);
             await checkRollback(db, url);
         });
@@ -863,6 +893,8 @@ async function main() {
         console.log('OK: migration 13 moves closed sessions to current_step FINISHED keeping abandoned_at_step');
         await withDatabase(admin, process.env.DB_TEST_URL, checkSessionStepGuard);
         console.log('OK: migration 13 aborts on sessions with FINISHED outside the contract without applying anything');
+        await withDatabase(admin, process.env.DB_TEST_URL, checkWhatsAppDisplayNumberUpgrade);
+        console.log('OK: migration 14 adds the verified number columns keeping the WhatsApp settings row, rollback and reapply');
         await withDatabase(admin, process.env.DB_TEST_URL, checkSeedFromScratch);
         console.log('OK: seed from scratch loads content, titles, order and initial config');
         await withDatabase(admin, process.env.DB_TEST_URL, checkSeedIdempotence);

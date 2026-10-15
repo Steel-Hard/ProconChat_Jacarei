@@ -228,12 +228,19 @@ em `POST`/`PUT` sem origem confiável e `400 BAD_REQUEST` `"Malformed JSON body"
     "autoReplyPaused": false,
     "pausedMessage": "O atendimento automático do PROCON Jacareí está temporariamente indisponível. Tente novamente mais tarde.",
     "updatedBy": { "id": 1, "name": "Admin" },
-    "updatedAt": "2026-10-14T13:00:00.000Z"
+    "updatedAt": "2026-10-14T13:00:00.000Z",
+    "displayPhoneNumber": "+55 12 3955-9000",
+    "verifiedName": "PROCON Jacareí"
 }
 ```
 
-- `phoneNumberId`, `businessAccountId`, `webhookUrl`, `credentialsValid`, `credentialsCheckedAt` e
-  `updatedBy` podem ser `null`. `webhookUrl` é `null` sem `PUBLIC_BASE_URL`.
+- `phoneNumberId`, `businessAccountId`, `webhookUrl`, `credentialsValid`, `credentialsCheckedAt`,
+  `updatedBy`, `displayPhoneNumber` e `verifiedName` podem ser `null`. `webhookUrl` é `null` sem
+  `PUBLIC_BASE_URL`.
+- `displayPhoneNumber` e `verifiedName` são o número institucional e o nome verificado que a Meta
+  devolveu no último teste ou salvar com `ok` dos valores salvos (colunas `display_phone_number` e
+  `verified_name`, migration `14`). Ficam `null` até o primeiro teste ou salvar bem-sucedido. Teste
+  de valores novos ou teste que falha não muda esses dois campos.
 - `last4` é `null` quando o segredo não está configurado, tem 8 caracteres ou menos, ou não decifra
   (neste caso `configured` continua `true` e o log registra `whatsapp_settings_decrypt_failed` com o
   campo, sem o valor). A tela monta a máscara `••••••••a91F`.
@@ -247,11 +254,12 @@ em `POST`/`PUT` sem origem confiável e `400 BAD_REQUEST` `"Malformed JSON body"
   `GET /<phoneNumberId>?fields=display_phone_number,verified_name` sempre e, só com
   `businessAccountId`, `GET /<businessAccountId>/phone_numbers?fields=id&limit=100` para conferir
   que o número pertence à conta. Só quando os valores efetivos são iguais aos salvos (mesmos IDs,
-  nenhum segredo enviado) o teste grava `credentials_checked_at` e `credentials_valid`, sem mudar
-  `updated_by`/`updated_at`.
+  nenhum segredo enviado) o teste grava `credentials_checked_at` e `credentials_valid` e, se der
+  `ok`, também `display_phone_number` e `verified_name`, sem mudar `updated_by`/`updated_at`.
 - **Salvar:** refaz o teste com os valores efetivos e só grava se der `ok`. Grava os IDs, cifra só os
   segredos enviados (o cifrado dos outros fica igual), `credentials_valid = true`,
-  `credentials_checked_at`, `updated_by` e `updated_at` numa única `UPDATE`, e depois avisa o gateway
+  `credentials_checked_at`, `display_phone_number` e `verified_name` do teste refeito, `updated_by` e
+  `updated_at` numa única `UPDATE`, e depois avisa o gateway
   (`POST <GATEWAY_INTERNAL_URL>/internal/whatsapp/config/reload`, timeout de 3 s). Uma falha no aviso
   não muda a resposta `200`; o gateway recarrega pelo TTL de 60 s.
 - **Pausar/retomar:** grava `auto_reply_paused`, `updated_by` e `updated_at`, é idempotente, não

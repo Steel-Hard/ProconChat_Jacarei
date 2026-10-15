@@ -1,4 +1,4 @@
-import { SaveCredentialsInput, WhatsAppSettingsRow } from "../../types/whatsappSettings.types"
+import { SaveCredentialsInput, VerifiedPhoneNumber, WhatsAppSettingsRow } from "../../types/whatsappSettings.types"
 import { WhatsAppSettingsRepository } from "../whatsappSettings.repository.interface"
 
 export class MockWhatsAppSettingsRepository implements WhatsAppSettingsRepository {
@@ -44,16 +44,18 @@ export class MockWhatsAppSettingsRepository implements WhatsAppSettingsRepositor
             appSecretEncrypted: input.appSecretEncrypted,
             credentialsValid: true,
             credentialsCheckedAt: this.clock(),
+            displayPhoneNumber: input.displayPhoneNumber,
+            verifiedName: input.verifiedName,
             updatedBy: this.userOf(input.updatedBy),
             updatedAt: this.clock(),
         }
         return { ...this.row }
     }
 
-    async recordCredentialsCheck(valid: boolean): Promise<void> {
+    async recordCredentialsCheck(valid: boolean, verified?: VerifiedPhoneNumber): Promise<void> {
         const row = this.requireRow()
         this.credentialChecks.push(valid)
-        this.row = { ...row, credentialsValid: valid, credentialsCheckedAt: this.clock() }
+        this.row = { ...row, ...verified, credentialsValid: valid, credentialsCheckedAt: this.clock() }
     }
 
     async setAutoReplyPaused(paused: boolean, updatedBy: number): Promise<WhatsAppSettingsRow> {
@@ -83,6 +85,8 @@ export class MockWhatsAppSettingsRepository implements WhatsAppSettingsRepositor
             autoReplyPaused: false,
             credentialsCheckedAt: null,
             credentialsValid: null,
+            displayPhoneNumber: null,
+            verifiedName: null,
             updatedBy: null,
             updatedAt: this.clock(),
         }

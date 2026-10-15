@@ -167,6 +167,8 @@ export function createWhatsAppSettingsService({
             pausedMessage: MENSAGEM_ATENDIMENTO_PAUSADO,
             updatedBy: row.updatedBy,
             updatedAt: row.updatedAt.toISOString(),
+            displayPhoneNumber: row.displayPhoneNumber,
+            verifiedName: row.verifiedName,
         }
     }
 
@@ -233,7 +235,10 @@ export function createWhatsAppSettingsService({
             const checkedAt = now().toISOString()
             if (matchesSaved(prepared)) {
                 if (result.ok) {
-                    await settings.recordCredentialsCheck(true)
+                    await settings.recordCredentialsCheck(true, {
+                        displayPhoneNumber: result.displayPhoneNumber,
+                        verifiedName: result.verifiedName,
+                    })
                 } else if (DEFINITIVE_FAILURES.has(result.reason)) {
                     await settings.recordCredentialsCheck(false)
                 }
@@ -252,6 +257,8 @@ export function createWhatsAppSettingsService({
                 businessAccountId: input.businessAccountId,
                 accessTokenEncrypted: input.accessToken === null ? (row.accessTokenEncrypted as string) : encrypt(input.accessToken),
                 appSecretEncrypted: input.appSecret === null ? (row.appSecretEncrypted as string) : encrypt(input.appSecret),
+                displayPhoneNumber: result.displayPhoneNumber,
+                verifiedName: result.verifiedName,
                 updatedBy: userId,
             })
             await notifyGateway()

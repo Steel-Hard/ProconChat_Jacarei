@@ -12,13 +12,14 @@ numerados sozinhos ainda precisariam de histórico, transações e locking.
 Referências: [ferramenta](https://github.com/salsita/node-pg-migrate/tree/v8.0.4),
 [CLI](https://salsita.github.io/node-pg-migrate/cli).
 
-Existem 13 migrations em `src/backend/db/migrations`: `01` a `07` criam as
+Existem 14 migrations em `src/backend/db/migrations`: `01` a `07` criam as
 tabelas da Sprint 1, `08`, `09` e `010` ajustam `Sessions`,
 `11_sprint2_schema.sql` é o schema da Sprint 2 (#52),
-`12_short_text_checks.sql` ajusta o limite dos títulos curtos (#61) e
+`12_short_text_checks.sql` ajusta o limite dos títulos curtos (#61),
 `13_conversation_events_data_checks.sql` limita as chaves e os valores de
 `ConversationEvents.data` e amarra `Sessions.current_step = 'FINISHED'` às
-sessões encerradas (#16). O que cada uma faz está
+sessões encerradas (#16) e `14_whatsapp_settings_display_number.sql` guarda o
+número e o nome verificados do WhatsApp (#54). O que cada uma faz está
 em [`database.md`](database.md#histórico-das-migrations). Os nomes sem aspas
 são convertidos para minúsculas pelo PostgreSQL (por exemplo,
 `RequiredDocuments` vira `requireddocuments`). Cada migration tem
@@ -27,7 +28,7 @@ são convertidos para minúsculas pelo PostgreSQL (por exemplo,
 **Numeração.** O node-pg-migrate 8 ordena os arquivos pelo **prefixo lido como
 número**, não como texto: `010_alter_sessions.sql` é a versão 10, e um arquivo
 `10_...` empataria com ela. Por isso a migration da Sprint 2 é a `11_`, e a
-**próxima livre é `14_`**. Não renomeie a `010`: ela já está registrada com esse
+**próxima livre é `15_`**. Não renomeie a `010`: ela já está registrada com esse
 nome em `pgmigrations` nos bancos existentes. O executor imprime
 `Can't determine timestamp for 01` (e os demais prefixos), pois seu formato
 padrão é timestamp. Esse aviso não impede a execução.
@@ -78,7 +79,7 @@ npm run db:migrate
 ```
 
 O comando gera um timestamp: antes de aplicar o arquivo, substitua esse prefixo
-pelo próximo número disponível (hoje `14_`), sem repetir números.
+pelo próximo número disponível (hoje `15_`), sem repetir números.
 Preencha os blocos up/down do arquivo gerado. Nunca edite uma migration já
 aplicada em ambiente compartilhado: adicione uma nova versão. `db/schema` tem o
 `CREATE TABLE` consolidado de cada tabela no estado atual, e deve ser atualizado

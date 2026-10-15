@@ -76,11 +76,21 @@ describe("whatsappSettings service", () => {
                 pausedMessage: MENSAGEM_ATENDIMENTO_PAUSADO,
                 updatedBy: { id: 1, name: "Admin" },
                 updatedAt: "2026-10-14T13:00:00.000Z",
+                displayPhoneNumber: null,
+                verifiedName: null,
             })
             expect(serialized(view)).not.toContain(SAVED_TOKEN)
             expect(serialized(view)).not.toContain(SAVED_SECRET)
             expect(serialized(view)).not.toContain(settings.row?.accessTokenEncrypted as string)
             expect(serialized(view)).not.toContain("v1:")
+        })
+
+        it("devolve o numero e o nome verificados guardados", async () => {
+            const { service } = setup(savedRow({ displayPhoneNumber: "+55 12 3955-9000", verifiedName: "PROCON Jacareí" }))
+
+            const view = await service.getView()
+
+            expect(view).toMatchObject({ displayPhoneNumber: "+55 12 3955-9000", verifiedName: "PROCON Jacareí" })
         })
 
         it("devolve last4 null para segredo de 8 caracteres ou menos", async () => {
@@ -170,6 +180,28 @@ describe("whatsappSettings service", () => {
             expect(settings.saveCalls).toBe(0)
         })
 
+        it("grava o numero e o nome verificados no teste dos valores salvos sem mudar quem alterou nem quando", async () => {
+            const { service, settings } = setup(savedRow({ updatedAt: new Date("2026-10-01T10:00:00.000Z") }))
+
+            await service.testConnection({ phoneNumberId: "100000000000001" })
+
+            expect(settings.row).toMatchObject({
+                displayPhoneNumber: "+55 12 99999-0000",
+                verifiedName: "PROCON Jacareí",
+                updatedBy: null,
+                updatedAt: new Date("2026-10-01T10:00:00.000Z"),
+            })
+        })
+
+        it("mantem o numero e o nome guardados quando o teste dos valores salvos falha", async () => {
+            const { service, settings, meta } = setup(savedRow({ displayPhoneNumber: "+55 12 3955-9000", verifiedName: "PROCON Jacareí" }))
+            meta.respondWith({ ok: false, reason: "INVALID_TOKEN" })
+
+            await service.testConnection({ phoneNumberId: "100000000000001" })
+
+            expect(settings.row).toMatchObject({ displayPhoneNumber: "+55 12 3955-9000", verifiedName: "PROCON Jacareí" })
+        })
+
         it.each(["INVALID_TOKEN", "INVALID_APP_SECRET", "PHONE_NUMBER_NOT_FOUND", "BUSINESS_ACCOUNT_NOT_FOUND", "PHONE_NOT_IN_ACCOUNT", "MISSING_PERMISSION"] as const)(
             "grava credentials_valid false no teste dos valores salvos que falha com %s",
             async (reason) => {
@@ -205,6 +237,14 @@ describe("whatsappSettings service", () => {
             expect(meta.calls).toHaveLength(1)
             expect(settings.credentialChecks).toEqual([])
             expect(settings.saveCalls).toBe(0)
+        })
+
+        it("nao grava o numero e o nome no teste de valores novos que da certo", async () => {
+            const { service, settings } = setup()
+
+            await service.testConnection({ phoneNumberId: "100000000000009" })
+
+            expect(settings.row).toMatchObject({ displayPhoneNumber: null, verifiedName: null })
         })
 
         it.each([
@@ -265,6 +305,16 @@ describe("whatsappSettings service", () => {
             })
             expect(serialized(view)).not.toContain(NEW_TOKEN)
             expect(gateway.notifyConfigChanged).toHaveBeenCalledTimes(1)
+        })
+
+        it("grava o numero e o nome verificados pelo teste refeito e os devolve na leitura", async () => {
+            const { service, settings, meta } = setup()
+            meta.respondWith({ ok: true, displayPhoneNumber: "+55 12 3955-9000", verifiedName: "PROCON Jacareí" })
+
+            const view = await service.save({ phoneNumberId: "100000000000001", accessToken: NEW_TOKEN }, 1)
+
+            expect(settings.row).toMatchObject({ displayPhoneNumber: "+55 12 3955-9000", verifiedName: "PROCON Jacareí" })
+            expect(view).toMatchObject({ displayPhoneNumber: "+55 12 3955-9000", verifiedName: "PROCON Jacareí" })
         })
 
         it("refaz o teste com os valores efetivos antes de gravar", async () => {
