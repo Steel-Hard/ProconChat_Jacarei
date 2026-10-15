@@ -153,9 +153,10 @@
 }
 
 .chat {
-    padding: 10px;
+    max-width: 560px;
+    padding: 14px 10px;
     border-radius: 10px;
-    background: var(--chat-bg);
+    background: var(--chat-bg) url("/images/whatsapp-chat-background.webp") center / auto no-repeat;
 }
 
 .sectionTitle {
