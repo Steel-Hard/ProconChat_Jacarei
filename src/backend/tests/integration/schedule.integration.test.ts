@@ -8,6 +8,7 @@ import { createScheduleService } from "../../services/schedule.service"
 
 const phones = {
     c1: "5512999990001",
+    c1_slot: "5512999990005",
     c2: "5512999990002",
     c3: "5512999990003",
     rollback: "5512999990004",
@@ -32,17 +33,44 @@ const createdSessionIds: string[] = []
 
 async function cleanup(): Promise<void> {
     const pool = getPool()
-    if (createdAppointmentIds.length > 0) {
+    const hashes = Object.values(phones).map(phoneHash)
+
+    const sessResult = await pool.query<{ id: string }>(
+        "SELECT id FROM Sessions WHERE phone_hash = ANY($1::text[])",
+        [hashes],
+    )
+    const sessionIds = sessResult.rows.map((r) => r.id)
+
+    const apptResult = await pool.query<{ id: string }>(
+        "SELECT id FROM Appointments WHERE session_id = ANY($1::bigint[]) OR id = ANY($2::bigint[])",
+        [
+            sessionIds.length > 0 ? sessionIds : [-1],
+            createdAppointmentIds.length > 0 ? createdAppointmentIds : [-1],
+        ],
+    )
+    const allApptIds = apptResult.rows.map((r) => r.id)
+
+    if (allApptIds.length > 0) {
+        await pool.query("DELETE FROM ConversationEvents WHERE appointment_id = ANY($1::bigint[])", [
+            allApptIds,
+        ])
         await pool.query("DELETE FROM AppointmentEvents WHERE appointment_id = ANY($1::bigint[])", [
-            createdAppointmentIds,
+            allApptIds,
         ])
         await pool.query("DELETE FROM Appointments WHERE id = ANY($1::bigint[])", [
-            createdAppointmentIds,
+            allApptIds,
         ])
     }
-    await pool.query("DELETE FROM Sessions WHERE phone_hash = ANY($1::text[])", [
-        Object.values(phones).map(phoneHash),
-    ])
+
+    if (sessionIds.length > 0) {
+        await pool.query("DELETE FROM ConversationEvents WHERE session_id = ANY($1::bigint[])", [
+            sessionIds,
+        ])
+        await pool.query("DELETE FROM Sessions WHERE id = ANY($1::bigint[])", [
+            sessionIds,
+        ])
+    }
+
     if (testCategoryId) {
         await pool.query("DELETE FROM Questions WHERE category_id = $1", [testCategoryId])
         await pool.query("DELETE FROM Categories WHERE id = $1", [testCategoryId])
@@ -134,7 +162,7 @@ describe("Schedule integration tests (Postgres)", () => {
     })
 
     it("gerencia concorrência na última vaga: 3 reservas simultâneas para 2 vagas resultam em 2 OK e 1 SlotFullError", async () => {
-        const s1 = await sessionRepository.findOrCreateActive(phoneHash(phones.c1 + "_slot"))
+        const s1 = await sessionRepository.findOrCreateActive(phoneHash(phones.c1_slot))
         const s2 = await sessionRepository.findOrCreateActive(phoneHash(phones.c2))
         const s3 = await sessionRepository.findOrCreateActive(phoneHash(phones.c3))
         createdSessionIds.push(s1.id, s2.id, s3.id)
