@@ -39,10 +39,10 @@ O CI (`.github/workflows/ci.yml`) roda `format:check`, `lint`, `build` e `test:r
 - `hooks/`: hooks compartilhados (`useSession`, `useLogout`, `useChangePasswordForm`, `useMediaQuery`, `useIsDocked`, `useCompactTable`, `useShowAccountEmail`, `useNavBadges`, `useToast`).
 - `contexts/`: contextos React (`toastContext`).
 - `navigation/`: itens do menu, regras de acesso e trilha (`navGroups`, `permissionKeys`, `canAccess`, `visibleNavGroups`, `firstAllowedPath`, `activeNavKey`, `breadcrumbFor`).
-- `status/`: cores e ordem dos status de agendamento e dos desfechos de conversa.
+- `status/`: cores e ordem dos status de agendamento e dos desfechos de conversa, e as cores da situação do WhatsApp.
 - `i18n/`: configuração do i18next (um símbolo por arquivo). `locales/pt-BR/<namespace>.json`: os textos.
 - `store/`: Redux Toolkit e RTK Query (`api.ts`, `baseQueryWithSessionRenewal.ts`, `rootReducer.ts`, `createStore.ts`, `store.ts`, `useAppDispatch.ts`, `useAppSelector.ts` e `slices/`).
-- `services/http/`: cliente HTTP, um arquivo por função (`apiUrl`, `get`, `post`, `put`, `patch`, `del`, `request`, `parseResponse`, `HttpError`, `refreshSession`, `onUnauthorized`). `services/auth/`: as chamadas de `/api/v1/auth` (`fetchCurrentAccount`, `signIn`, `signOut`, `changePassword` e `toPanelAccount`).
+- `services/http/`: cliente HTTP, um arquivo por função (`apiUrl`, `get`, `post`, `put`, `patch`, `del`, `request`, `parseResponse`, `HttpError`, `refreshSession`, `onUnauthorized`). `services/auth/`: as chamadas de `/api/v1/auth` (`fetchCurrentAccount`, `signIn`, `signOut`, `changePassword` e `toPanelAccount`). `services/whatsapp/`: teste de conexão e salvar da configuração do WhatsApp (`testWhatsAppConnection`, `saveWhatsAppSettings`), fora do RTK Query porque levam o token e o App Secret digitados.
 - `styles/`: `global.css` (fontes, cores e reset) e CSS Modules em `styles/<components|layouts|pages>/<nome>.module.css`.
 - `types/<dominio>/<Nome>.types.ts`: tipos exportados, um por arquivo.
 - `utils/`: funções puras (`formatDate`, `initialsOf`, `safeRedirectPath`, `loginPathFor`).
@@ -65,6 +65,7 @@ Só pt-BR (`SUPPORTED_LANGUAGES = ["pt-BR"]`, fallback `pt-BR`). A estrutura do 
 - Redux Toolkit para estado de cliente compartilhado. A conta logada fica no slice `account` (`store/slices/account.slice.ts`): `state.account.current` (a conta ou `null`) e `state.account.status` (`"unknown"` até o `/me` responder, `"authenticated"` ou `"anonymous"`). `accountLoaded` grava a conta e leva a `authenticated`; `accountCleared` limpa a conta e leva a `anonymous`. Leia com `useAppSelector` e escreva com `useAppDispatch`. A store vive só em memória.
 - RTK Query (`store/api.ts`) para dado do servidor, com endpoints injetados por domínio em `store/api/<dominio>.api.ts`. A `baseQuery` (`store/baseQueryWithSessionRenewal.ts`) usa `VITE_API_URL`, `credentials: "include"` e `Accept-Language`, sem `Authorization`. No 401 ela renova a sessão como o cliente HTTP (mesmo `refreshSession`, mesmo `onUnauthorized`) e repete a query uma vez.
 - Testes de componente que leem a store usam `renderWithStore(ui, { preloadedState })`.
+- Segredos digitados (token de acesso e App Secret do WhatsApp) nunca entram na store: o RTK Query guarda o argumento de cada mutation em `state.api.mutations`. Por isso o teste de conexão e o salvar usam `services/whatsapp/` sobre o cliente HTTP, e o valor digitado fica só no estado React do hook da tela até salvar, descartar ou cancelar.
 
 ## Autenticação no cliente
 
@@ -89,14 +90,26 @@ Toda rota protegida é renderizada dentro do `PanelLayout`: menu lateral (`Sideb
 - Contador do menu: `hooks/useNavBadges.ts` devolve `{ [chave]: { count, label } }`, hoje vazio. A #85 troca a implementação para os agendamentos pendentes. O contador só aparece com `count > 0`.
 - Limites de largura: menu encaixado a partir de 1200 px (`useIsDocked`; abaixo vira gaveta aberta pelo botão "Menu"); `useCompactTable()` é `true` até 1431 px e `false` a partir de 1432 px; o e-mail da conta aparece a partir de 940 px (`useShowAccountEmail`).
 - Componentes em `components/`:
-    - `StatusBadge`: selo de status de agendamento (`kind="appointment"`) e de desfecho de conversa (`kind="outcome"`), com chaves iguais aos enums do banco, rótulo em `common:status` e cores em `status/`.
+    - `StatusBadge`: selo de status de agendamento (`kind="appointment"`), de desfecho de conversa (`kind="outcome"`) e da situação do WhatsApp (`kind="whatsapp"`: `OPERATING`, `PAUSED`, `INVALID_CREDENTIALS`, `NOT_VERIFIED`, `NOT_CONFIGURED`), com rótulo em `common:status` e cores em `status/`.
     - `EmptyState`: título, descrição e ação opcional.
     - `InfoTooltip`: ícone ⓘ que abre ao passar o mouse, focar ou tocar.
     - `ConfirmDialog`: modal de confirmação com conteúdo extra opcional e `tone="danger"`. Com `submitOnEnter`, o conteúdo fica num `<form>`: Enter num campo aciona o confirmar (só se ele estiver habilitado e não ocupado), o confirmar vira `type="submit"` e o foco inicial vai para o primeiro campo. Sem a prop, o foco inicial fica no cancelar.
     - `ToastProvider` + `useToast()`: aviso temporário (2600 ms), um por vez.
-    - `UnsavedChangesBar`: "N alterações não salvas", lista de pendentes ao passar o mouse, focar ou tocar, "Descartar" e "Salvar alterações".
+    - `UnsavedChangesBar`: "N alterações não salvas", lista de pendentes ao passar o mouse, focar ou tocar, "Descartar" e "Salvar alterações". Com `saveDisabled`, o Salvar fica travado mesmo com alterações; com `saveHint`, o motivo aparece ao lado e vira a descrição acessível do botão.
     - `LastChangeNote`: "Última alteração por [nome] em [data]". Recebe `{ changedBy, changedAt }`, com `changedAt` em ISO 8601 com fuso, e mostra a data em dd/mm/aaaa no fuso de Brasília por `utils/formatDate.ts`. Sem alteração ou com data inválida, não mostra nada. O `formatDate` também aceita data sem hora (`AAAA-MM-DD`, como uma coluna `DATE`) e a formata como está, sem conversão de fuso.
+- Telas liberadas no menu (`navigation/navItemsReady.ts`): só WhatsApp (#54). As outras rotas continuam com "Em construção" até a issue de cada tela.
 - Prévia: com `npm run dev`, a rota `/dev/layout` mostra o layout com uma conta Admin de exemplo e um exemplo de cada componente. Ela só existe em desenvolvimento e não entra no build de produção, nem os textos dela.
+
+## Tela de WhatsApp
+
+Rota `/whatsapp`, só para o Admin (o funcionário vê a tela de não encontrado e a API recusa com `403`). A página `pages/WhatsApp.page.tsx` só renderiza; a lógica fica em `pages/hooks/useWhatsAppSettings.ts`, e os textos no namespace `whatsapp`. As partes da tela ficam em `components/WhatsApp*.tsx` e recebem os textos já traduzidos por props.
+
+- Leitura, pausa e retomada pelo RTK Query (`store/api/whatsappSettings.api.ts`); pausar e reativar gravam a leitura devolvida no cache, sem nova requisição.
+- Segredos salvos só aparecem como `••••••••` + 4 últimos caracteres, com "Substituir". O Salvar fica travado até um teste bem-sucedido com exatamente os valores atuais do formulário; qualquer mudança depois do teste invalida o resultado.
+- O ID da conta WhatsApp Business é obrigatório na tela, embora a API aceite vazio.
+- Pausar pede confirmação com a prévia da mensagem fixa e age na hora; reativar não pede confirmação. Os dois mantêm o rascunho e o resultado do teste.
+- Sem `PUBLIC_BASE_URL` no Backend, a URL do webhook não existe e a tela mostra um aviso no lugar.
+- Fora desta tela por enquanto: "Estado do número" e "Histórico de alterações" (#88) e "Modelos de mensagem" (#67).
 
 ## Fontes
 
