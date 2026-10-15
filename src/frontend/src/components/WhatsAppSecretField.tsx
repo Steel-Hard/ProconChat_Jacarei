@@ -22,8 +22,7 @@ type WhatsAppSecretFieldProps = {
 const HINT_TONE_CLASS: Record<WhatsAppHint["tone"], string> = {
     neutral: css.hintNeutral,
     warning: css.hintWarning,
-    danger: css.hintDanger,
-    success: css.hintSuccess
+    danger: css.hintDanger
 }
 
 function WhatsAppSecretField({

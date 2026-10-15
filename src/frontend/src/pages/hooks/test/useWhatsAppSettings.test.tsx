@@ -918,7 +918,7 @@ describe("useWhatsAppSettings", () => {
             text: "Use um token permanente de usuário do sistema; o token temporário expira em 24 horas.",
             tone: "warning"
         }
-        const PERMANENT_HINT = { text: "Token permanente: não expira.", tone: "success" }
+        const PERMANENT_HINT = null
 
         function inDays(days: number): string {
             return new Date(NOW.getTime() + days * DAY_MS).toISOString()
@@ -966,7 +966,7 @@ describe("useWhatsAppSettings", () => {
                 text: "Este token expira em 16/10/2026 às 11:00 (horário de Brasília). Gere um token permanente de usuário do sistema para o chatbot não parar de responder.",
                 tone: "danger"
             })
-            expect(tested.text).not.toContain(NEW_TOKEN)
+            expect(tested?.text).not.toContain(NEW_TOKEN)
             expect(result.current.tokenHint).toEqual(PERMANENT_HINT)
         })
 
@@ -1096,7 +1096,7 @@ describe("useWhatsAppSettings", () => {
             act(() => result.current.replaceSecret("accessToken"))
             act(() => result.current.setSecret("accessToken", NEW_TOKEN))
             await act(() => result.current.runTest())
-            const tested = result.current.tokenHint.tone
+            const tested = result.current.tokenHint?.tone
 
             act(() => result.current.discard())
 

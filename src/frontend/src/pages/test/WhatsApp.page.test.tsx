@@ -588,18 +588,21 @@ describe("WhatsAppPage", () => {
         const PERMANENT_STEP =
             "Use um token permanente de usuário do sistema (Gerenciador de Negócios › Usuários do sistema › Gerar token). O token temporário do painel de desenvolvedor expira em 24 horas e o chatbot para de funcionar."
 
-        it("com token permanente salvo mostra que não expira, sem o aviso de token temporário", async () => {
+        it("com token permanente salvo não mostra nenhum aviso no campo do token", async () => {
             await renderPage({}, settingsView({ accessTokenLifetime: PERMANENT }))
             await loaded()
 
             const token = group("Token de acesso")
 
-            expect(within(token).getByText("Token permanente: não expira.")).toBeInTheDocument()
+            expect(
+                within(token).queryByText("Token permanente: não expira.")
+            ).not.toBeInTheDocument()
             expect(within(token).queryByText(GENERIC_HINT)).not.toBeInTheDocument()
+            expect(within(token).queryByText(/Este token expir/)).not.toBeInTheDocument()
             expect(firstStep()).toBe(PERMANENT_STEP)
         })
 
-        it("ao substituir mostra o aviso genérico e ao cancelar volta ao token permanente", async () => {
+        it("ao substituir mostra o aviso genérico e ao cancelar o campo volta a ficar sem aviso", async () => {
             const { user } = await renderPage({}, settingsView({ accessTokenLifetime: PERMANENT }))
             await loaded()
 
@@ -611,10 +614,10 @@ describe("WhatsAppPage", () => {
                 within(group("Token de acesso")).getByRole("button", { name: "Cancelar" })
             )
 
-            expect(replacing).toBeInTheDocument()
+            expect(replacing).not.toBeInTheDocument()
             expect(
-                within(group("Token de acesso")).getByText("Token permanente: não expira.")
-            ).toBeInTheDocument()
+                within(group("Token de acesso")).queryByText(GENERIC_HINT)
+            ).not.toBeInTheDocument()
             expect(firstStep()).toBe(PERMANENT_STEP)
         })
 

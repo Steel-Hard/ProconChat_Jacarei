@@ -1,6 +1,6 @@
 type WhatsAppHint = {
     text: string
-    tone: "neutral" | "warning" | "danger" | "success"
+    tone: "neutral" | "warning" | "danger"
 }
 
 export default WhatsAppHint

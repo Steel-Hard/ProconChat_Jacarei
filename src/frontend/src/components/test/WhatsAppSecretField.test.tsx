@@ -61,7 +61,6 @@ describe("WhatsAppSecretField", () => {
     })
 
     it.each([
-        ["success", css.hintSuccess],
         ["neutral", css.hintNeutral],
         ["warning", css.hintWarning],
         ["danger", css.hintDanger]
@@ -75,7 +74,7 @@ describe("WhatsAppSecretField", () => {
                 cancelLabel="Cancelar"
                 placeholder="Cole o novo valor"
                 storedNote="Guardado criptografado. Não é possível visualizar o valor salvo."
-                hint="Token permanente: não expira."
+                hint="Este token expira em 20/10/2026."
                 hintTone={tone}
                 onReplace={vi.fn()}
                 onCancel={vi.fn()}
@@ -84,6 +83,6 @@ describe("WhatsAppSecretField", () => {
         )
 
         expect(toneClass).toEqual(expect.any(String))
-        expect(screen.getByText("Token permanente: não expira.")).toHaveClass(toneClass)
+        expect(screen.getByText("Este token expira em 20/10/2026.")).toHaveClass(toneClass)
     })
 })

@@ -34,7 +34,6 @@
         "newValuePlaceholder": "Cole o novo valor",
         "storedNote": "Guardado criptografado. Não é possível visualizar o valor salvo.",
         "tokenHint": "Use um token permanente de usuário do sistema; o token temporário expira em 24 horas.",
-        "tokenPermanent": "Token permanente: não expira.",
         "tokenExpiresInfo": "Este token expira em {{date}} às {{time}} (horário de Brasília).",
         "tokenExpires": "Este token expira em {{date}} às {{time}} (horário de Brasília). Gere um token permanente de usuário do sistema para o chatbot não parar de responder.",
         "tokenExpired": "Este token expirou em {{date}} às {{time}} (horário de Brasília). Gere um token permanente de usuário do sistema, use \"Substituir\", teste e salve."

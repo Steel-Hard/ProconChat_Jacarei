@@ -435,9 +435,9 @@ function useWhatsAppSettings() {
         return { text: t("credentials.tokenExpiresInfo", values), tone: "neutral" }
     }
 
-    function tokenHintOf(lifetime: WhatsAppAccessTokenLifetime): WhatsAppHint {
+    function tokenHintOf(lifetime: WhatsAppAccessTokenLifetime): WhatsAppHint | null {
         if (lifetime.kind === "PERMANENT") {
-            return { text: t("credentials.tokenPermanent"), tone: "success" }
+            return null
         }
 
         if (lifetime.kind === "EXPIRING") {
