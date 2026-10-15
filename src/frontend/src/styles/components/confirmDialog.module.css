@@ -24,6 +24,12 @@
     background: var(--bg-surface);
 }
 
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
 .title {
     font-family: var(--font-heading);
     font-size: 19px;

@@ -190,6 +190,30 @@ describe("PanelLayout", { timeout: 15000 }, () => {
         ).not.toBeInTheDocument()
     })
 
+    it("mostra Alterar minha senha e Sair no menu da conta", async () => {
+        const user = userEvent.setup()
+        await renderPanel()
+
+        await user.click(screen.getByRole("button", { name: "Minha conta" }))
+
+        expect(screen.getByRole("button", { name: "Alterar minha senha" })).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "Sair" })).toBeInTheDocument()
+    })
+
+    it("abre o modal de senha pelo menu da conta com o e-mail da conta", async () => {
+        const user = userEvent.setup()
+        await renderPanel()
+
+        await user.click(screen.getByRole("button", { name: "Minha conta" }))
+        await user.click(screen.getByRole("button", { name: "Alterar minha senha" }))
+
+        expect(screen.getByRole("dialog", { name: "Alterar minha senha" })).toBeInTheDocument()
+        expect(
+            screen.getByText("ana@exemplo.gov.br · A nova senha vale a partir do próximo acesso.")
+        ).toBeInTheDocument()
+        expect(screen.getByLabelText("Senha atual")).toHaveFocus()
+    })
+
     it("depois de sair, voltar a uma rota do painel leva ao login", async () => {
         const user = userEvent.setup()
         stubLogout(() => new Response(null, { status: 204 }))

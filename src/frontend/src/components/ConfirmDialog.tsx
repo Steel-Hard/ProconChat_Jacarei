@@ -1,6 +1,8 @@
-import { useEffect, useId, useRef, type MouseEvent, type ReactNode } from "react"
+import { useEffect, useId, useRef, type FormEvent, type MouseEvent, type ReactNode } from "react"
 import { useTranslation } from "react-i18next"
 import css from "@/styles/components/confirmDialog.module.css"
+
+const FIELD_SELECTOR = "input:not([disabled]), select:not([disabled]), textarea:not([disabled])"
 
 const FOCUSABLE_SELECTOR =
     'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -15,6 +17,7 @@ type ConfirmDialogProps = {
     tone?: "primary" | "danger"
     confirmDisabled?: boolean
     busy?: boolean
+    submitOnEnter?: boolean
     onConfirm: () => void
     onCancel: () => void
 }
@@ -29,6 +32,7 @@ function ConfirmDialog({
     tone = "primary",
     confirmDisabled = false,
     busy = false,
+    submitOnEnter = false,
     onConfirm,
     onCancel
 }: ConfirmDialogProps) {
@@ -45,12 +49,16 @@ function ConfirmDialog({
 
         const previous =
             document.activeElement instanceof HTMLElement ? document.activeElement : null
-        cancelRef.current?.focus()
+        const field = submitOnEnter
+            ? dialogRef.current?.querySelector<HTMLElement>(FIELD_SELECTOR)
+            : null
+        const target = field ?? cancelRef.current
+        target?.focus()
 
         return () => {
             previous?.focus()
         }
-    }, [open])
+    }, [open, submitOnEnter])
 
     useEffect(() => {
         if (!open) {
@@ -109,7 +117,45 @@ function ConfirmDialog({
         }
     }
 
+    function handleSubmit(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault()
+
+        if (!confirmDisabled && !busy) {
+            onConfirm()
+        }
+    }
+
     const confirmClass = tone === "danger" ? `${css.confirm} ${css.danger}` : css.confirm
+
+    const content = (
+        <>
+            <div>
+                <h2 id={titleId} className={css.title}>
+                    {title}
+                </h2>
+                {description ? (
+                    <p id={descriptionId} className={css.description}>
+                        {description}
+                    </p>
+                ) : null}
+            </div>
+            {children}
+            <div className={css.actions}>
+                <button ref={cancelRef} type="button" className={css.cancel} onClick={onCancel}>
+                    {cancelLabel ?? t("confirmDialog.cancel")}
+                </button>
+                <button
+                    type={submitOnEnter ? "submit" : "button"}
+                    className={confirmClass}
+                    disabled={confirmDisabled || busy}
+                    aria-busy={busy || undefined}
+                    onClick={submitOnEnter ? undefined : onConfirm}
+                >
+                    {confirmLabel}
+                </button>
+            </div>
+        </>
+    )
 
     return (
         <div className={css.overlay} role="presentation" onClick={handleOverlayClick}>
@@ -121,31 +167,13 @@ function ConfirmDialog({
                 aria-labelledby={titleId}
                 aria-describedby={description ? descriptionId : undefined}
             >
-                <div>
-                    <h2 id={titleId} className={css.title}>
-                        {title}
-                    </h2>
-                    {description ? (
-                        <p id={descriptionId} className={css.description}>
-                            {description}
-                        </p>
-                    ) : null}
-                </div>
-                {children}
-                <div className={css.actions}>
-                    <button ref={cancelRef} type="button" className={css.cancel} onClick={onCancel}>
-                        {cancelLabel ?? t("confirmDialog.cancel")}
-                    </button>
-                    <button
-                        type="button"
-                        className={confirmClass}
-                        disabled={confirmDisabled || busy}
-                        aria-busy={busy || undefined}
-                        onClick={onConfirm}
-                    >
-                        {confirmLabel}
-                    </button>
-                </div>
+                {submitOnEnter ? (
+                    <form noValidate className={css.form} onSubmit={handleSubmit}>
+                        {content}
+                    </form>
+                ) : (
+                    content
+                )}
             </dialog>
         </div>
     )

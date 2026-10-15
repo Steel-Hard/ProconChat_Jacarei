@@ -1,6 +1,7 @@
 import { Suspense, useCallback, useEffect, useId, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Outlet } from "react-router-dom"
+import ChangePasswordDialog from "@/components/ChangePasswordDialog"
 import Sidebar from "@/components/Sidebar"
 import Topbar from "@/components/Topbar"
 import useLogout from "@/hooks/useLogout"
@@ -17,6 +18,7 @@ function PanelShell() {
     const docked = useIsDocked()
     const sidebarId = useId()
     const [drawerOpen, setDrawerOpen] = useState(false)
+    const [passwordOpen, setPasswordOpen] = useState(false)
     const [wasDocked, setWasDocked] = useState(docked)
 
     if (docked !== wasDocked) {
@@ -97,6 +99,7 @@ function PanelShell() {
                         menuControls={sidebarId}
                         menuButtonRef={menuButtonRef}
                         onOpenMenu={() => setDrawerOpen(true)}
+                        onChangePassword={() => setPasswordOpen(true)}
                         onLogout={handleLogout}
                     />
                     <main className={css.main}>
@@ -106,6 +109,13 @@ function PanelShell() {
                     </main>
                 </div>
             </div>
+            {account ? (
+                <ChangePasswordDialog
+                    open={passwordOpen}
+                    email={account.email}
+                    onClose={() => setPasswordOpen(false)}
+                />
+            ) : null}
         </>
     )
 }
