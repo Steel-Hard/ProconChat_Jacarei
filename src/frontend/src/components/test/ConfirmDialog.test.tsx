@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { describe, expect, it, vi } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { fireEvent, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import ConfirmDialog from "@/components/ConfirmDialog"
 
@@ -20,6 +20,19 @@ function renderDialog(overrides: DialogOverrides = {}) {
     render(<ConfirmDialog {...props} />)
 
     return props
+}
+
+function renderForm(overrides: DialogOverrides = {}) {
+    return renderDialog({
+        submitOnEnter: true,
+        children: (
+            <label>
+                Campo
+                <input type="text" />
+            </label>
+        ),
+        ...overrides
+    })
 }
 
 function DialogHarness() {
@@ -142,5 +155,58 @@ describe("ConfirmDialog", () => {
 
         await user.tab({ shift: true })
         expect(confirm).toHaveFocus()
+    })
+
+    describe("com submitOnEnter", () => {
+        it("chama onConfirm uma vez ao apertar Enter num campo", async () => {
+            const user = userEvent.setup()
+            const props = renderForm()
+
+            await user.type(screen.getByRole("textbox", { name: "Campo" }), "abc{Enter}")
+
+            expect(props.onConfirm).toHaveBeenCalledTimes(1)
+        })
+
+        it("chama onConfirm uma vez ao clicar no botão de confirmar", async () => {
+            const user = userEvent.setup()
+            const props = renderForm()
+
+            await user.click(screen.getByRole("button", { name: "Cancelar e avisar o cidadão" }))
+
+            expect(props.onConfirm).toHaveBeenCalledTimes(1)
+            expect(
+                screen.getByRole("button", { name: "Cancelar e avisar o cidadão" })
+            ).toHaveAttribute("type", "submit")
+        })
+
+        it("não chama onConfirm com Enter quando o confirmar está desabilitado", async () => {
+            const user = userEvent.setup()
+            const props = renderForm({ confirmDisabled: true })
+
+            await user.type(screen.getByRole("textbox", { name: "Campo" }), "abc{Enter}")
+            fireEvent.submit(
+                screen.getByRole("textbox", { name: "Campo" }).closest("form") as HTMLFormElement
+            )
+
+            expect(props.onConfirm).not.toHaveBeenCalled()
+        })
+
+        it("não chama onConfirm com Enter quando está ocupado", async () => {
+            const user = userEvent.setup()
+            const props = renderForm({ busy: true })
+
+            await user.type(screen.getByRole("textbox", { name: "Campo" }), "abc{Enter}")
+            fireEvent.submit(
+                screen.getByRole("textbox", { name: "Campo" }).closest("form") as HTMLFormElement
+            )
+
+            expect(props.onConfirm).not.toHaveBeenCalled()
+        })
+
+        it("leva o foco ao primeiro campo ao abrir", () => {
+            renderForm()
+
+            expect(screen.getByRole("textbox", { name: "Campo" })).toHaveFocus()
+        })
     })
 })

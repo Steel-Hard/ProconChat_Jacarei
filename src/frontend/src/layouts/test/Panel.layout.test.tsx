@@ -1,20 +1,33 @@
 import { lazy } from "react"
-import { afterEach, beforeAll, describe, expect, it } from "vitest"
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 import { act, screen } from "@testing-library/react"
 import userEvent, { type UserEvent } from "@testing-library/user-event"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import PanelLayout from "@/layouts/Panel.layout"
+import UnderConstructionPage from "@/pages/UnderConstruction.page"
 import routes from "@/routers/routes"
 import ROUTES from "@/routers/paths"
-import clearToken from "@/services/session/clearToken"
-import getToken from "@/services/session/getToken"
-import setToken from "@/services/session/setToken"
 import mockMatchMedia from "@/testUtils/mockMatchMedia"
 import setViewportWidth from "@/testUtils/setViewportWidth"
 import renderWithStore from "@/testUtils/renderWithStore"
 import type PanelAccount from "@/types/account/PanelAccount.types"
 
+vi.mock("@/navigation/navItemsReady", () => ({
+    default: {
+        dashboard: true,
+        appointments: true,
+        reports: true,
+        content: true,
+        sessions: true,
+        schedule: true,
+        documents: true,
+        users: true,
+        whatsapp: true
+    }
+}))
+
 const admin: PanelAccount = {
+    id: 1,
     name: "Ana Paula Souza",
     email: "ana@exemplo.gov.br",
     isAdmin: true,
@@ -26,16 +39,21 @@ const LAZY_TIMEOUT_MS = 4000
 const NeverResolves = lazy(() => new Promise<never>(() => {}))
 
 async function renderPanel(path: string = ROUTES.dashboard) {
-    setToken("abc")
     const router = createMemoryRouter(routes, { initialEntries: [path] })
 
     const result = renderWithStore(<RouterProvider router={router} />, {
-        preloadedState: { account: { current: admin } }
+        preloadedState: { account: { current: admin, status: "authenticated" } }
     })
 
     await screen.findByText("Em construção.", {}, { timeout: LAZY_TIMEOUT_MS })
 
-    return result
+    return { ...result, router }
+}
+
+function stubLogout(response: () => Response) {
+    const fetchMock = vi.fn((_url: string, _init?: RequestInit) => Promise.resolve(response()))
+    vi.stubGlobal("fetch", fetchMock)
+    return fetchMock
 }
 
 async function openDrawer(user: UserEvent) {
@@ -48,10 +66,11 @@ async function openDrawer(user: UserEvent) {
 describe("PanelLayout", { timeout: 15000 }, () => {
     beforeAll(async () => {
         await import("@/pages/UnderConstruction.page")
+        await import("@/pages/Login.page")
     })
 
     afterEach(() => {
-        clearToken()
+        vi.unstubAllGlobals()
     })
 
     it("mostra o menu, o topo e a tela dentro do main", async () => {
@@ -165,30 +184,148 @@ describe("PanelLayout", { timeout: 15000 }, () => {
         expect(screen.queryByRole("link", { name: "Sessões" })).not.toBeInTheDocument()
     })
 
-    it("sai limpando o token e a conta e leva para o acesso negado", async () => {
+    it("sai pelo logout da API, limpa a conta e leva para a tela de entrada sem redirect", async () => {
         const user = userEvent.setup()
-        const { store } = await renderPanel()
+        const fetchMock = stubLogout(() => new Response(null, { status: 204 }))
+        const { store, router } = await renderPanel()
 
         await user.click(screen.getByRole("button", { name: "Minha conta" }))
         await user.click(screen.getByRole("button", { name: "Sair" }))
 
         expect(
-            await screen.findByRole(
-                "heading",
-                { name: "Acesso negado." },
-                { timeout: LAZY_TIMEOUT_MS }
-            )
+            await screen.findByRole("heading", { name: "Entrar" }, { timeout: LAZY_TIMEOUT_MS })
         ).toBeInTheDocument()
-        expect(getToken()).toBeNull()
         expect(store.getState().account.current).toBeNull()
+        expect(fetchMock.mock.calls[0][0]).toMatch(/\/api\/v1\/auth\/logout$/)
+        expect(router.state.location.pathname).toBe(ROUTES.login)
+        expect(router.state.location.search).toBe("")
         expect(
             screen.queryByRole("button", { name: "Alterar minha senha" })
         ).not.toBeInTheDocument()
     })
 
+    it("mostra Alterar minha senha e Sair no menu da conta", async () => {
+        const user = userEvent.setup()
+        await renderPanel()
+
+        await user.click(screen.getByRole("button", { name: "Minha conta" }))
+
+        expect(screen.getByRole("button", { name: "Alterar minha senha" })).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "Sair" })).toBeInTheDocument()
+    })
+
+    it("abre o modal de senha pelo menu da conta com o e-mail da conta", async () => {
+        const user = userEvent.setup()
+        await renderPanel()
+
+        await user.click(screen.getByRole("button", { name: "Minha conta" }))
+        await user.click(screen.getByRole("button", { name: "Alterar minha senha" }))
+
+        expect(screen.getByRole("dialog", { name: "Alterar minha senha" })).toBeInTheDocument()
+        expect(
+            screen.getByText("ana@exemplo.gov.br · A nova senha vale a partir do próximo acesso.")
+        ).toBeInTheDocument()
+        expect(screen.getByLabelText("Senha atual")).toHaveFocus()
+    })
+
+    it("mostra a NotFound quando o login volta a uma tela que a conta não pode acessar", async () => {
+        const user = userEvent.setup()
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(
+                async () =>
+                    new Response(
+                        JSON.stringify({
+                            data: {
+                                user: {
+                                    id: 8,
+                                    name: "Bruno Lima",
+                                    email: "bruno@exemplo.gov.br",
+                                    isAdmin: false,
+                                    permissions: ["sessions.view"]
+                                }
+                            }
+                        }),
+                        { status: 200 }
+                    )
+            )
+        )
+        const router = createMemoryRouter(routes, {
+            initialEntries: ["/login?redirect=%2Fusuarios"]
+        })
+        renderWithStore(<RouterProvider router={router} />, {
+            preloadedState: { account: { current: null, status: "anonymous" } }
+        })
+
+        await user.type(
+            await screen.findByRole("textbox", { name: "E-mail" }, { timeout: LAZY_TIMEOUT_MS }),
+            "bruno@exemplo.gov.br"
+        )
+        await user.type(screen.getByLabelText("Senha"), "senha-segura")
+        await user.click(screen.getByRole("button", { name: "Entrar" }))
+
+        expect(
+            await screen.findByRole(
+                "heading",
+                { name: "404 - Not Found" },
+                { timeout: LAZY_TIMEOUT_MS }
+            )
+        ).toBeInTheDocument()
+        expect(router.state.location.pathname).toBe(ROUTES.users)
+        expect(screen.queryByRole("navigation", { name: "Menu principal" })).not.toBeInTheDocument()
+    })
+
+    it("depois de sair, voltar a uma rota do painel leva ao login", async () => {
+        const user = userEvent.setup()
+        stubLogout(() => new Response(null, { status: 204 }))
+        const { router } = await renderPanel(ROUTES.sessions)
+        await user.click(screen.getByRole("button", { name: "Minha conta" }))
+        await user.click(screen.getByRole("button", { name: "Sair" }))
+        await screen.findByRole("heading", { name: "Entrar" }, { timeout: LAZY_TIMEOUT_MS })
+
+        await act(() => router.navigate(ROUTES.sessions))
+
+        expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument()
+        expect(router.state.location.search).toBe("?redirect=%2Fsessoes")
+        expect(screen.queryByRole("navigation", { name: "Menu principal" })).not.toBeInTheDocument()
+    })
+
+    it("continua no painel e avisa quando o logout é recusado por origem", async () => {
+        const user = userEvent.setup()
+        stubLogout(
+            () =>
+                new Response(JSON.stringify({ error: { code: "INVALID_ORIGIN", message: "x" } }), {
+                    status: 403
+                })
+        )
+        const { store, router } = await renderPanel(ROUTES.sessions)
+
+        await user.click(screen.getByRole("button", { name: "Minha conta" }))
+        await user.click(screen.getByRole("button", { name: "Sair" }))
+
+        expect(
+            await screen.findByText("Não foi possível sair agora. Tente de novo.")
+        ).toBeInTheDocument()
+        expect(store.getState().account.current).toEqual(admin)
+        expect(router.state.location.pathname).toBe(ROUTES.sessions)
+        expect(screen.getByRole("heading", { name: "Sessões" })).toBeInTheDocument()
+    })
+
     it("não mostra links nem o bloco de conta quando não há conta", async () => {
-        setToken("abc")
-        const router = createMemoryRouter(routes, { initialEntries: [ROUTES.dashboard] })
+        const router = createMemoryRouter(
+            [
+                {
+                    element: <PanelLayout />,
+                    children: [
+                        {
+                            path: ROUTES.dashboard,
+                            element: <UnderConstructionPage titleKey="dashboard" />
+                        }
+                    ]
+                }
+            ],
+            { initialEntries: [ROUTES.dashboard] }
+        )
 
         renderWithStore(<RouterProvider router={router} />)
         await screen.findByText("Em construção.", {}, { timeout: LAZY_TIMEOUT_MS })
@@ -199,14 +336,13 @@ describe("PanelLayout", { timeout: 15000 }, () => {
     })
 
     it("mostra o carregamento dentro do main sem esconder o menu e o topo", () => {
-        setToken("abc")
         const router = createMemoryRouter(
             [{ element: <PanelLayout />, children: [{ path: "/", element: <NeverResolves /> }] }],
             { initialEntries: ["/"] }
         )
 
         renderWithStore(<RouterProvider router={router} />, {
-            preloadedState: { account: { current: admin } }
+            preloadedState: { account: { current: admin, status: "authenticated" } }
         })
 
         expect(screen.getByRole("main")).toHaveTextContent("Carregando...")

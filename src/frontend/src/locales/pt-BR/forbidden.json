@@ -1,9 +1,0 @@
-{
-    "meta": {
-        "title": "Acesso negado.",
-        "description": "Você não tem sessão ativa ou permissão para acessar esta página."
-    },
-    "heading": "Acesso negado.",
-    "message": "Você não tem sessão ativa ou permissão para acessar esta página.",
-    "login": "Entrar no painel."
-}

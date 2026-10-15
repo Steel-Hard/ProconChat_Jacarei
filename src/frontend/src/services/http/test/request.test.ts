@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
+const REFRESH_URL = "http://api.test/api/v1/auth/refresh"
+
 function jsonResponse(status: number, body?: unknown): Response {
     return new Response(body === undefined ? null : JSON.stringify(body), { status })
 }
@@ -10,26 +12,18 @@ async function setup(apiUrl = "http://api.test") {
     const fetchMock = vi.fn()
     vi.stubGlobal("fetch", fetchMock)
     const { default: request } = await import("@/services/http/request")
-    const { default: setTokenRefresher } = await import("@/services/http/setTokenRefresher")
     const { default: onUnauthorized } = await import("@/services/http/onUnauthorized")
     const { default: HttpError } = await import("@/services/http/HttpError")
-    const { default: setToken } = await import("@/services/session/setToken")
-    const { default: getToken } = await import("@/services/session/getToken")
 
     function headersOf(call: number): Record<string, string> {
         return fetchMock.mock.calls[call][1].headers
     }
 
-    return {
-        request,
-        setTokenRefresher,
-        onUnauthorized,
-        HttpError,
-        setToken,
-        getToken,
-        fetchMock,
-        headersOf
+    function callsTo(url: string) {
+        return fetchMock.mock.calls.filter(([input]) => input === url)
     }
+
+    return { request, onUnauthorized, HttpError, fetchMock, headersOf, callsTo }
 }
 
 afterEach(() => {
@@ -63,14 +57,23 @@ describe("request", () => {
         expect(fetchMock).toHaveBeenCalledWith("/api/v1/x", expect.anything())
     })
 
-    it("envia o token como Bearer quando há sessão", async () => {
-        const { request, setToken, fetchMock, headersOf } = await setup()
-        setToken("abc")
+    it("não envia o cabeçalho Authorization", async () => {
+        const { request, fetchMock, headersOf } = await setup()
         fetchMock.mockResolvedValue(jsonResponse(200, {}))
 
         await request("GET", "/x")
 
-        expect(headersOf(0).Authorization).toBe("Bearer abc")
+        expect(headersOf(0)).not.toHaveProperty("Authorization")
+    })
+
+    it("não envia Authorization numa requisição com corpo e usa as credenciais", async () => {
+        const { request, fetchMock, headersOf } = await setup()
+        fetchMock.mockResolvedValue(jsonResponse(200, {}))
+
+        await request("POST", "/x", { a: 1 })
+
+        expect(headersOf(0)).not.toHaveProperty("Authorization")
+        expect(fetchMock.mock.calls[0][1].credentials).toBe("include")
     })
 
     it("serializa o corpo e define Content-Type quando há corpo", async () => {
@@ -105,90 +108,144 @@ describe("request", () => {
         expect(error).toMatchObject({ status: 400, code: "BAD_REQUEST", message: "campo ausente" })
     })
 
-    it("sem refresher, 401 limpa o token e chama onUnauthorized", async () => {
-        const { request, onUnauthorized, setToken, getToken, fetchMock } = await setup()
-        setToken("abc")
+    it("quando o refresh responde 401, chama onUnauthorized uma vez e rejeita com o 401 original", async () => {
+        const { request, onUnauthorized, fetchMock, callsTo } = await setup()
         const handler = vi.fn()
         onUnauthorized(handler)
-        fetchMock.mockResolvedValue(jsonResponse(401, { error: { message: "expirado" } }))
+        fetchMock.mockImplementation(async (url: string) =>
+            url === REFRESH_URL
+                ? jsonResponse(401, { error: { message: "sem refresh" } })
+                : jsonResponse(401, { error: { message: "expirado" } })
+        )
 
         await expect(request("GET", "/x")).rejects.toMatchObject({
             status: 401,
             message: "expirado"
         })
 
-        expect(getToken()).toBeNull()
         expect(handler).toHaveBeenCalledTimes(1)
-        expect(fetchMock).toHaveBeenCalledTimes(1)
+        expect(callsTo("http://api.test/x")).toHaveLength(1)
+        expect(callsTo(REFRESH_URL)).toHaveLength(1)
     })
 
-    it("com refresher, renova o token e repete a requisição uma vez", async () => {
-        const { request, setTokenRefresher, setToken, getToken, fetchMock, headersOf } =
-            await setup()
-        setToken("velho")
-        const refresher = vi.fn().mockResolvedValue("novo")
-        setTokenRefresher(refresher)
+    it("com o refresh em 204, repete a requisição uma vez", async () => {
+        const { request, onUnauthorized, fetchMock, callsTo } = await setup()
+        const handler = vi.fn()
+        onUnauthorized(handler)
         fetchMock
             .mockResolvedValueOnce(jsonResponse(401))
+            .mockResolvedValueOnce(jsonResponse(204))
             .mockResolvedValueOnce(jsonResponse(200, { ok: true }))
 
         await expect(request("GET", "/x")).resolves.toEqual({ ok: true })
 
-        expect(refresher).toHaveBeenCalledTimes(1)
-        expect(getToken()).toBe("novo")
-        expect(fetchMock).toHaveBeenCalledTimes(2)
-        expect(headersOf(1).Authorization).toBe("Bearer novo")
+        expect(callsTo("http://api.test/x")).toHaveLength(2)
+        expect(callsTo(REFRESH_URL)).toHaveLength(1)
+        expect(handler).not.toHaveBeenCalled()
+    })
+
+    it("repete a requisição com o mesmo método, corpo e sinal depois do refresh", async () => {
+        const { request, fetchMock } = await setup()
+        const controller = new AbortController()
+        fetchMock
+            .mockResolvedValueOnce(jsonResponse(401))
+            .mockResolvedValueOnce(jsonResponse(204))
+            .mockResolvedValueOnce(jsonResponse(200, { ok: true }))
+
+        await request("PUT", "/x", { a: 1 }, { signal: controller.signal })
+
+        expect(fetchMock.mock.calls[2][0]).toBe("http://api.test/x")
+        expect(fetchMock.mock.calls[2][1]).toMatchObject({
+            method: "PUT",
+            body: '{"a":1}',
+            signal: controller.signal
+        })
+    })
+
+    it("faz o refresh com POST, sem corpo, com credenciais e sem Authorization", async () => {
+        const { request, fetchMock, callsTo } = await setup()
+        fetchMock
+            .mockResolvedValueOnce(jsonResponse(401))
+            .mockResolvedValueOnce(jsonResponse(204))
+            .mockResolvedValueOnce(jsonResponse(200, {}))
+
+        await request("GET", "/x")
+
+        const [, init] = callsTo(REFRESH_URL)[0]
+        expect(init).toMatchObject({ method: "POST", credentials: "include" })
+        expect(init.body).toBeUndefined()
+        expect(init.headers).not.toHaveProperty("Authorization")
     })
 
     it("não repete em loop quando a segunda tentativa também devolve 401", async () => {
-        const { request, setTokenRefresher, onUnauthorized, getToken, fetchMock } = await setup()
+        const { request, onUnauthorized, fetchMock, callsTo } = await setup()
         const handler = vi.fn()
         onUnauthorized(handler)
-        const refresher = vi.fn().mockResolvedValue("novo")
-        setTokenRefresher(refresher)
-        fetchMock.mockImplementation(async () => jsonResponse(401))
+        fetchMock.mockImplementation(async (url: string) =>
+            url === REFRESH_URL ? jsonResponse(204) : jsonResponse(401)
+        )
 
         await expect(request("GET", "/x")).rejects.toMatchObject({ status: 401 })
 
-        expect(refresher).toHaveBeenCalledTimes(1)
-        expect(fetchMock).toHaveBeenCalledTimes(2)
+        expect(callsTo(REFRESH_URL)).toHaveLength(1)
+        expect(callsTo("http://api.test/x")).toHaveLength(2)
         expect(handler).toHaveBeenCalledTimes(1)
-        expect(getToken()).toBeNull()
     })
 
-    it("quando o refresh falha, limpa o token e chama onUnauthorized sem repetir", async () => {
-        const { request, setTokenRefresher, onUnauthorized, setToken, getToken, fetchMock } =
-            await setup()
-        setToken("velho")
+    it("quando o refresh falha por rede, chama onUnauthorized sem repetir", async () => {
+        const { request, onUnauthorized, fetchMock, callsTo } = await setup()
         const handler = vi.fn()
         onUnauthorized(handler)
-        setTokenRefresher(vi.fn().mockRejectedValue(new Error("sem cookie")))
-        fetchMock.mockResolvedValue(jsonResponse(401))
+        fetchMock.mockImplementation(async (url: string) => {
+            if (url === REFRESH_URL) {
+                throw new TypeError("Failed to fetch")
+            }
+            return jsonResponse(401)
+        })
 
         await expect(request("GET", "/x")).rejects.toMatchObject({ status: 401 })
 
-        expect(fetchMock).toHaveBeenCalledTimes(1)
-        expect(getToken()).toBeNull()
+        expect(callsTo("http://api.test/x")).toHaveLength(1)
         expect(handler).toHaveBeenCalledTimes(1)
+    })
+
+    it("com skipSessionRenewal, o 401 rejeita sem refresh nem onUnauthorized", async () => {
+        const { request, onUnauthorized, HttpError, fetchMock } = await setup()
+        const handler = vi.fn()
+        onUnauthorized(handler)
+        fetchMock.mockResolvedValue(
+            jsonResponse(401, { error: { code: "UNAUTHORIZED", message: "senha errada" } })
+        )
+
+        const error = await request("POST", "/login", { a: 1 }, { skipSessionRenewal: true }).catch(
+            (caught: unknown) => caught
+        )
+
+        expect(error).toBeInstanceOf(HttpError)
+        expect(error).toMatchObject({ status: 401, code: "UNAUTHORIZED" })
+        expect(fetchMock).toHaveBeenCalledTimes(1)
+        expect(handler).not.toHaveBeenCalled()
     })
 
     it("compartilha um único refresh entre requisições simultâneas", async () => {
-        const { request, setTokenRefresher, fetchMock } = await setup()
-        const refresh = Promise.withResolvers<string | null>()
-        const refresher = vi.fn(() => refresh.promise)
-        setTokenRefresher(refresher)
-        fetchMock
-            .mockResolvedValueOnce(jsonResponse(401))
-            .mockResolvedValueOnce(jsonResponse(401))
-            .mockImplementation(async () => jsonResponse(200, {}))
+        const { request, fetchMock, callsTo } = await setup()
+        const refresh = Promise.withResolvers<Response>()
+        let firstAttempts = 0
+        fetchMock.mockImplementation((url: string) => {
+            if (url === REFRESH_URL) {
+                return refresh.promise
+            }
+            firstAttempts += 1
+            return Promise.resolve(firstAttempts <= 2 ? jsonResponse(401) : jsonResponse(200, {}))
+        })
 
         const requests = Promise.all([request("GET", "/a"), request("GET", "/b")])
-        await vi.waitFor(() => expect(refresher).toHaveBeenCalled())
+        await vi.waitFor(() => expect(callsTo(REFRESH_URL)).toHaveLength(1))
         await new Promise((resolve) => setTimeout(resolve, 0))
-        refresh.resolve("novo")
+        refresh.resolve(jsonResponse(204))
         await requests
 
-        expect(refresher).toHaveBeenCalledTimes(1)
-        expect(fetchMock).toHaveBeenCalledTimes(4)
+        expect(callsTo(REFRESH_URL)).toHaveLength(1)
+        expect(fetchMock).toHaveBeenCalledTimes(5)
     })
 })

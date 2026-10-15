@@ -6,7 +6,30 @@
         "options": "Minha conta",
         "changePassword": "Alterar minha senha",
         "logout": "Sair",
+        "logoutFailed": "Não foi possível sair agora. Tente de novo.",
         "nameWithAdmin": "{{name}} <badge>ADMIN</badge>"
+    },
+    "errors": {
+        "invalidOrigin": "O painel foi aberto por um endereço não autorizado. Acesse pelo endereço oficial do painel."
+    },
+    "changePassword": {
+        "title": "Alterar minha senha",
+        "description": "{{email}} · A nova senha vale a partir do próximo acesso.",
+        "current": "Senha atual",
+        "new": "Nova senha",
+        "newPlaceholder": "Mínimo de 8 caracteres",
+        "confirm": "Confirmar senha",
+        "cancel": "Cancelar",
+        "save": "Salvar senha",
+        "success": "Sua senha foi alterada.",
+        "errors": {
+            "tooShort": "A senha deve ter no mínimo 8 caracteres.",
+            "mismatch": "As senhas não coincidem.",
+            "tooLong": "A senha é longa demais.",
+            "wrongCurrent": "A senha atual está incorreta.",
+            "rejected": "A nova senha não foi aceita. Use de 8 a 72 caracteres.",
+            "unavailable": "Não foi possível alterar a senha agora. Tente de novo."
+        }
     },
     "confirmDialog": {
         "cancel": "Voltar"

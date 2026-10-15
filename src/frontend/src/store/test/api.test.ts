@@ -12,7 +12,6 @@ async function setup() {
     vi.stubEnv("VITE_API_URL", "https://api.example.com")
     vi.resetModules()
     const { default: api } = await import("@/store/api")
-    const { default: setToken } = await import("@/services/session/setToken")
     const fetchMock = vi.fn().mockImplementation(async () => jsonResponse({ id: "1" }))
     vi.stubGlobal("fetch", fetchMock)
 
@@ -26,7 +25,7 @@ async function setup() {
         middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(api.middleware)
     })
 
-    return { itemsApi, store, fetchMock, setToken }
+    return { itemsApi, store, fetchMock }
 }
 
 function requestOf(fetchMock: ReturnType<typeof vi.fn>): Request {
@@ -69,12 +68,12 @@ describe("api", () => {
         expect(requestOf(fetchMock).headers.get("Authorization")).toBeNull()
     })
 
-    it("envia o token como Bearer quando há sessão", async () => {
-        const { itemsApi, store, fetchMock, setToken } = await setup()
-        setToken("abc")
+    it("não envia Authorization", async () => {
+        const { itemsApi, store, fetchMock } = await setup()
 
         await store.dispatch(itemsApi.endpoints.getItem.initiate())
 
-        expect(requestOf(fetchMock).headers.get("Authorization")).toBe("Bearer abc")
+        expect(requestOf(fetchMock).credentials).toBe("include")
+        expect(requestOf(fetchMock).headers.get("Authorization")).toBeNull()
     })
 })

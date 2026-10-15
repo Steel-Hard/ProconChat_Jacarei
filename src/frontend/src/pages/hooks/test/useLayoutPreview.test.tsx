@@ -7,6 +7,7 @@ import renderWithStore from "@/testUtils/renderWithStore"
 import type PanelAccount from "@/types/account/PanelAccount.types"
 
 const realAccount: PanelAccount = {
+    id: 2,
     name: "Bruno Lima",
     email: "bruno@exemplo.gov.br",
     isAdmin: false,
@@ -28,7 +29,11 @@ function renderPreview(account: PanelAccount | null) {
         <ToastProvider>
             <PreviewProbe />
         </ToastProvider>,
-        { preloadedState: { account: { current: account } } }
+        {
+            preloadedState: {
+                account: { current: account, status: account ? "authenticated" : "unknown" }
+            }
+        }
     )
 }
 

@@ -2,23 +2,9 @@ import getLanguage from "@/i18n/getLanguage"
 import API_URL from "@/services/http/apiUrl"
 import authHandlers from "@/services/http/authHandlers"
 import parseResponse from "@/services/http/parseResponse"
-import clearToken from "@/services/session/clearToken"
-import getToken from "@/services/session/getToken"
-import setToken from "@/services/session/setToken"
+import refreshSession from "@/services/http/refreshSession"
 import type HttpMethod from "@/types/http/HttpMethod.types"
 import type HttpOptions from "@/types/http/HttpOptions.types"
-import type TokenRefresher from "@/types/http/TokenRefresher.types"
-
-function refreshOnce(refresher: TokenRefresher): Promise<string | null> {
-    if (!authHandlers.pendingRefresh) {
-        authHandlers.pendingRefresh = refresher()
-            .catch(() => null)
-            .finally(() => {
-                authHandlers.pendingRefresh = null
-            })
-    }
-    return authHandlers.pendingRefresh
-}
 
 function send(
     method: HttpMethod,
@@ -29,11 +15,6 @@ function send(
     const headers: Record<string, string> = {
         Accept: "application/json",
         "Accept-Language": getLanguage()
-    }
-    const token = getToken()
-
-    if (token) {
-        headers.Authorization = `Bearer ${token}`
     }
 
     if (body !== undefined) {
@@ -50,7 +31,6 @@ function send(
 }
 
 async function rejectUnauthorized(response: Response): Promise<never> {
-    clearToken()
     authHandlers.unauthorizedHandler?.()
     return parseResponse<never>(response)
 }
@@ -64,23 +44,20 @@ async function request<T>(
 ): Promise<T> {
     const response = await send(method, path, body, options)
 
-    if (response.status !== 401) {
+    if (response.status !== 401 || options?.skipSessionRenewal) {
         return parseResponse<T>(response)
     }
 
-    const refresher = authHandlers.tokenRefresher
-
-    if (isRetry || !refresher) {
+    if (isRetry) {
         return rejectUnauthorized(response)
     }
 
-    const newToken = await refreshOnce(refresher)
+    const renewed = await refreshSession()
 
-    if (!newToken) {
+    if (!renewed) {
         return rejectUnauthorized(response)
     }
 
-    setToken(newToken)
     return request<T>(method, path, body, options, true)
 }
 

@@ -1,24 +1,9 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react"
-import getLanguage from "@/i18n/getLanguage"
-import API_URL from "@/services/http/apiUrl"
-import getToken from "@/services/session/getToken"
+import { createApi } from "@reduxjs/toolkit/query/react"
+import baseQueryWithSessionRenewal from "@/store/baseQueryWithSessionRenewal"
 
 const api = createApi({
     reducerPath: "api",
-    baseQuery: fetchBaseQuery({
-        baseUrl: API_URL,
-        credentials: "include",
-        prepareHeaders: (headers) => {
-            headers.set("Accept-Language", getLanguage())
-            const token = getToken()
-
-            if (token) {
-                headers.set("Authorization", `Bearer ${token}`)
-            }
-
-            return headers
-        }
-    }),
+    baseQuery: baseQueryWithSessionRenewal,
     tagTypes: [],
     endpoints: () => ({})
 })

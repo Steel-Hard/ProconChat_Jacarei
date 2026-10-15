@@ -7,7 +7,22 @@ import type NavBadges from "@/types/navigation/NavBadges.types"
 import ROUTES from "@/routers/paths"
 import type PanelAccount from "@/types/account/PanelAccount.types"
 
+vi.mock("@/navigation/navItemsReady", () => ({
+    default: {
+        dashboard: true,
+        appointments: true,
+        reports: true,
+        content: true,
+        sessions: true,
+        schedule: true,
+        documents: true,
+        users: true,
+        whatsapp: true
+    }
+}))
+
 const admin: PanelAccount = {
+    id: 1,
     name: "Ana Paula Souza",
     email: "ana@exemplo.gov.br",
     isAdmin: true,

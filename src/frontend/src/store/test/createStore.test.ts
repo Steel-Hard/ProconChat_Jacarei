@@ -10,7 +10,7 @@ describe("createStore", () => {
         const store = createStore()
 
         expect(store.getState()).toHaveProperty("api")
-        expect(store.getState()).toHaveProperty("account", { current: null })
+        expect(store.getState()).toHaveProperty("account", { current: null, status: "unknown" })
     })
 
     it("devolve uma store nova a cada chamada", () => {
