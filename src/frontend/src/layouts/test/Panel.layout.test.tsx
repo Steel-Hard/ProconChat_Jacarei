@@ -12,6 +12,20 @@ import setViewportWidth from "@/testUtils/setViewportWidth"
 import renderWithStore from "@/testUtils/renderWithStore"
 import type PanelAccount from "@/types/account/PanelAccount.types"
 
+vi.mock("@/navigation/navItemsReady", () => ({
+    default: {
+        dashboard: true,
+        appointments: true,
+        reports: true,
+        content: true,
+        sessions: true,
+        schedule: true,
+        documents: true,
+        users: true,
+        whatsapp: true
+    }
+}))
+
 const admin: PanelAccount = {
     id: 1,
     name: "Ana Paula Souza",

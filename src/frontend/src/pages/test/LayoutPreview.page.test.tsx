@@ -2,6 +2,20 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { screen } from "@testing-library/react"
 import { createMemoryRouter, RouterProvider, type RouteObject } from "react-router-dom"
 
+vi.mock("@/navigation/navItemsReady", () => ({
+    default: {
+        dashboard: true,
+        appointments: true,
+        reports: true,
+        content: true,
+        sessions: true,
+        schedule: true,
+        documents: true,
+        users: true,
+        whatsapp: true
+    }
+}))
+
 const PREVIEW_PATH = "/dev/layout"
 const LAZY_TIMEOUT_MS = 4000
 

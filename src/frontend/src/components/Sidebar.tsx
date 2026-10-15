@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next"
 import { useLocation } from "react-router-dom"
 import SidebarGroup from "@/components/SidebarGroup"
 import activeNavKey from "@/navigation/activeNavKey"
-import visibleNavGroups from "@/navigation/visibleNavGroups"
+import sidebarNavGroups from "@/navigation/sidebarNavGroups"
 import type PanelAccount from "@/types/account/PanelAccount.types"
 import type NavBadges from "@/types/navigation/NavBadges.types"
 import css from "@/styles/components/sidebar.module.css"
@@ -26,7 +26,7 @@ function Sidebar({ account, badges, onNavigate, id }: SidebarProps) {
                 <p className={css.brandSub}>{t("sidebar.subtitle")}</p>
             </div>
             <div className={css.groups}>
-                {visibleNavGroups(account).map((group) => (
+                {sidebarNavGroups(account).map((group) => (
                     <SidebarGroup
                         key={group.key}
                         group={group}
