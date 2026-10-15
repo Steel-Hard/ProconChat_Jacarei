@@ -113,7 +113,7 @@ function useWhatsAppSettings() {
     const [switching, setSwitching] = useState(false)
     const [pauseDialogOpen, setPauseDialogOpen] = useState(false)
     const [actionError, setActionError] = useState<ActionError | null>(null)
-    const [renderedAt] = useState(() => Date.now())
+    const [renderedAt, setRenderedAt] = useState(() => Date.now())
     const [messageTime] = useState(() => formatTime(new Date()))
     const testInFlight = useRef(false)
     const saveInFlight = useRef(false)
@@ -210,6 +210,10 @@ function useWhatsAppSettings() {
         return ID_PATTERN.test(value) ? null : t("test.invalidId", { field })
     }
 
+    function refreshClock() {
+        setRenderedAt(Date.now())
+    }
+
     function remember(outcome: TestOutcome, forSignature = signature) {
         setStored({ signature: forSignature, outcome })
     }
@@ -264,6 +268,7 @@ function useWhatsAppSettings() {
         } finally {
             testInFlight.current = false
             setTesting(false)
+            refreshClock()
         }
     }
 
@@ -291,6 +296,7 @@ function useWhatsAppSettings() {
             )
             setDraft(EMPTY_DRAFT)
             setStored(null)
+            refreshClock()
             showToast(t("toasts.saved"))
         } catch (caught) {
             handleSaveError(caught)

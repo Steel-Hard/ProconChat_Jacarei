@@ -1068,6 +1068,57 @@ describe("useWhatsAppSettings", () => {
             expect(callsTo(calls, "GET", "/api/v1/whatsapp/settings")).toHaveLength(1)
         })
 
+        it("um novo teste de conexão atualiza o relógio e mostra que o token expirou", async () => {
+            const HOUR_MS = 60 * 60 * 1000
+            const { result } = await setup(
+                { "POST /api/v1/whatsapp/settings/test": okTest(UNKNOWN_LIFETIME) },
+                settingsView({
+                    accessTokenLifetime: expiring(
+                        new Date(NOW.getTime() + 2 * HOUR_MS).toISOString()
+                    )
+                })
+            )
+            await ready(result)
+            const before = result.current.tokenHint?.text
+            vi.setSystemTime(new Date(NOW.getTime() + 3 * HOUR_MS))
+
+            await act(() => result.current.runTest())
+
+            expect(before).toMatch(/^Este token expira em 15\/10\/2026 às 11:00/)
+            expect(result.current.tokenHint).toEqual({
+                text: 'Este token expirou em 15/10/2026 às 11:00 (horário de Brasília). Gere um token permanente de usuário do sistema, use "Substituir", teste e salve.',
+                tone: "danger"
+            })
+        })
+
+        it("salvar atualiza o relógio do aviso do token", async () => {
+            const HOUR_MS = 60 * 60 * 1000
+            const expiresAt = new Date(NOW.getTime() + 2 * HOUR_MS).toISOString()
+            const { result } = await setup(
+                {
+                    "POST /api/v1/whatsapp/settings/test": okTest(expiring(expiresAt)),
+                    "PUT /api/v1/whatsapp/settings": () => ({
+                        status: 200,
+                        body: {
+                            data: settingsView({
+                                phoneNumberId: "100000000000009",
+                                accessTokenLifetime: expiring(expiresAt)
+                            })
+                        }
+                    })
+                },
+                settingsView({ accessTokenLifetime: expiring(expiresAt) })
+            )
+            await ready(result)
+            act(() => result.current.setPhoneNumberId("100000000000009"))
+            await act(() => result.current.runTest())
+            vi.setSystemTime(new Date(NOW.getTime() + 3 * HOUR_MS))
+
+            await act(() => result.current.save())
+
+            expect(result.current.tokenHint?.text).toMatch(/^Este token expirou em 15\/10\/2026/)
+        })
+
         it("o teste ok dos valores salvos sem saber o tipo mantém o tipo da leitura", async () => {
             const { result } = await setup(
                 { "POST /api/v1/whatsapp/settings/test": okTest(UNKNOWN_LIFETIME) },
