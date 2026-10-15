@@ -1,13 +1,12 @@
 import WhatsAppCopyField from "@/components/WhatsAppCopyField"
 import type WhatsAppCopyItem from "@/types/whatsapp/WhatsAppCopyItem.types"
-import type WhatsAppSetupStep from "@/types/whatsapp/WhatsAppSetupStep.types"
 import css from "@/styles/components/whatsappMetaSetup.module.css"
 
 type WhatsAppMetaSetupProps = {
     heading: string
     items: WhatsAppCopyItem[]
     copyLabel: string
-    steps: WhatsAppSetupStep[]
+    steps: string[]
     onCopy: (value: string) => void
 }
 
@@ -25,9 +24,7 @@ function WhatsAppMetaSetup({ heading, items, copyLabel, steps, onCopy }: WhatsAp
             ))}
             <ol className={css.steps}>
                 {steps.map((step) => (
-                    <li key={step.text} className={step.highlight ? css.highlight : undefined}>
-                        {step.text}
-                    </li>
+                    <li key={step}>{step}</li>
                 ))}
             </ol>
         </div>

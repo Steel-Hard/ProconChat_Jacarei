@@ -23,12 +23,3 @@
     line-height: 1.5;
     color: var(--text-strong);
 }
-
-.highlight {
-    padding: 8px 10px;
-    border: 1px solid var(--warn-border);
-    border-radius: 8px;
-    background: var(--warn-bg);
-    color: var(--warn-text-strong);
-    font-weight: 600;
-}

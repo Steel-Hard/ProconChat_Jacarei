@@ -15,10 +15,7 @@ describe("WhatsAppMetaSetup", () => {
                     { label: "URL do webhook", value: null, missingText: "Sem URL pública." },
                     { label: "Token de verificação", value: "token-de-verificacao" }
                 ]}
-                steps={[
-                    { text: "Primeiro", highlight: true },
-                    { text: "Segundo", highlight: false }
-                ]}
+                steps={["Primeiro", "Segundo"]}
                 onCopy={onCopy}
             />
         )

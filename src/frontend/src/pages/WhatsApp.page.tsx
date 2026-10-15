@@ -191,11 +191,11 @@ function WhatsAppPage() {
                                     { label: t("metaSetup.verifyToken"), value: view.verifyToken }
                                 ]}
                                 steps={[
-                                    { text: t("metaSetup.steps.permanentToken"), highlight: true },
-                                    { text: t("metaSetup.steps.openApp"), highlight: false },
-                                    { text: t("metaSetup.steps.webhook"), highlight: false },
-                                    { text: t("metaSetup.steps.verify"), highlight: false },
-                                    { text: t("metaSetup.steps.ids"), highlight: false }
+                                    t("metaSetup.steps.permanentToken"),
+                                    t("metaSetup.steps.openApp"),
+                                    t("metaSetup.steps.webhook"),
+                                    t("metaSetup.steps.verify"),
+                                    t("metaSetup.steps.ids")
                                 ]}
                                 onCopy={(value) => void page.copy(value)}
                             />
