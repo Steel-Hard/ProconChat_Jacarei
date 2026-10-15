@@ -7,6 +7,7 @@ export default defineConfig({
         env: {
             DB_URL: "postgres://test:test@localhost:5432/proconchat_test",
             PHONE_HASH_SECRET: "test-only-phone-hash-secret",
+            CPF_HASH_SECRET: "test-only-cpf-hash-secret",
             GATEWAY_INTERNAL_TOKEN: "test-only-internal-token",
             AUTH_TOKEN_SECRET: "test-only-auth-token-secret-with-32-chars",
             ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",

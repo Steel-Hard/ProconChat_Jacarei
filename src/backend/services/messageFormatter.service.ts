@@ -1,5 +1,6 @@
 import { OutgoingMessage, ListRow, ReplyButton } from "../types/message.types"
 import { Categoria, Pergunta, RespostaFinalOutput } from "../types/motorDecisao.types"
+import { AvailableSlot } from "../types/schedule.types"
 
 export const SAUDACAO =
     "Olá! Sou o assistente virtual do PROCON Jacareí. As orientações a seguir têm caráter informativo e não substituem o atendimento formal.\n\n" +
@@ -30,7 +31,55 @@ export const RESPOSTA_RECUSA_AGENDAMENTO =
     "Tudo bem! Se mudar de ideia ou precisar de novas orientações, estamos à sua disposição. O PROCON Jacareí agradece seu contato."
 
 export const RESPOSTA_INICIO_AGENDAMENTO =
-    "Vamos iniciar o agendamento presencial. Quem irá comparecer ao atendimento?\n1. Eu mesmo\n2. Um representante"
+    "Vamos iniciar o agendamento presencial. Quem irá comparecer ao atendimento?\n1. Eu mesmo\n2. Outra pessoa por mim"
+
+export const ERRO_ATTENDEE =
+    "Por favor, escolha uma das opções abaixo para indicar quem comparecerá ao atendimento:"
+
+export const PROMPT_NOME =
+    "Por favor, digite o nome completo do titular do atendimento:"
+
+export const ERRO_NOME =
+    "Por favor, digite um nome válido (entre 2 e 150 caracteres):"
+
+export const PROMPT_CPF =
+    "Agora, digite o CPF do titular (somente os 11 números ou com pontos e traço):"
+
+export const ERRO_CPF =
+    "CPF inválido. Por favor, digite um CPF válido com 11 dígitos:"
+
+export const MENSAGEM_SEM_HORARIOS =
+    "No momento não há horários disponíveis para agendamento presencial na janela de atendimento. Por favor, tente novamente mais tarde."
+
+export const ERRO_SLOT_OCUPADO =
+    "O horário selecionado acabou de ser preenchido por outro atendimento. Por favor, escolha outro horário disponível:"
+
+export const ERRO_DUPLICATE_APPOINTMENT =
+    "Você já possui um agendamento ativo para este mesmo horário. Por favor, escolha outro horário disponível:"
+
+export const ERRO_FALHA_AGENDAMENTO =
+    "Não foi possível concluir o seu agendamento no momento devido a uma instabilidade. O agendamento não foi gravado. Por favor, tente novamente mais tarde."
+
+export const MENSAGEM_RASCUNHO_INCOMPLETO =
+    "Houve uma inconsistência nos dados do agendamento. Vamos recomeçar:"
+
+export const PROMPT_SLOTS =
+    "Escolha um dos horários disponíveis para o atendimento presencial:"
+
+export const ERRO_SLOTS =
+    "Por favor, escolha um dos horários disponíveis na lista abaixo:"
+
+export interface ConfirmacaoAgendamentoInput {
+    protocol: string
+    quando: string
+    unitAddress: string
+    unitAddressComplement?: string | null
+    byRepresentative: boolean
+    groupDocuments: string[]
+    questionDocuments: string[]
+    reminderEnabled: boolean
+    reminderHours: number
+}
 
 export const MENSAGEM_ATENDIMENTO_PAUSADO =
     "O atendimento automático do PROCON Jacareí está temporariamente indisponível. Tente novamente mais tarde."
@@ -191,6 +240,77 @@ export function formatarErroPergunta(
 
 export function formatarCategoriaSemPerguntas(): string {
     return "No momento não há perguntas cadastradas para essa categoria. Digite o número de outra categoria."
+}
+
+export function formatarListaSlots(
+    slots: AvailableSlot[],
+    pagina: number = 1,
+): string {
+    if (slots.length === 0) {
+        return MENSAGEM_SEM_HORARIOS
+    }
+
+    const formatados = slots.map((s) => s.formatted)
+    const paginacao = paginarItens(formatados, pagina)
+    const listaFormatada = formatarListaPaginada(paginacao)
+
+    return `${PROMPT_SLOTS}\n${listaFormatada}`
+}
+
+export function formatarErroSlot(
+    slots: AvailableSlot[],
+    pagina: number = 1,
+): string {
+    if (slots.length === 0) {
+        return MENSAGEM_SEM_HORARIOS
+    }
+
+    const formatados = slots.map((s) => s.formatted)
+    const paginacao = paginarItens(formatados, pagina)
+    const listaFormatada = formatarListaPaginada(paginacao)
+
+    return `${ERRO_SLOTS}\n${listaFormatada}`
+}
+
+export function formatarConfirmacaoAgendamento(input: ConfirmacaoAgendamentoInput): string {
+    const linhas: string[] = [
+        "Agendamento realizado",
+        `Protocolo: ${input.protocol}`,
+        `Data e hora: ${input.quando}`,
+    ]
+
+    const endereco =
+        input.unitAddress.trim() +
+        (input.unitAddressComplement?.trim() ? ` (${input.unitAddressComplement.trim()})` : "")
+    linhas.push(`Endereço: ${endereco}`)
+
+    if (input.groupDocuments.length > 0) {
+        linhas.push("")
+        const tituloGrupo = input.byRepresentative
+            ? "A pessoa que comparecer em seu nome deve levar:"
+            : "Leve ao atendimento:"
+        linhas.push(tituloGrupo)
+        for (const doc of input.groupDocuments) {
+            linhas.push(`• ${doc}`)
+        }
+    }
+
+    if (input.questionDocuments.length > 0) {
+        linhas.push("")
+        linhas.push("Documentos úteis para esta dúvida:")
+        for (const doc of input.questionDocuments) {
+            linhas.push(`• ${doc}`)
+        }
+    }
+
+    linhas.push("")
+    const horasTexto = input.reminderHours === 1 ? "1 hora" : `${input.reminderHours} horas`
+    const avisoTexto = input.reminderEnabled
+        ? `Você receberá neste número avisos sobre este agendamento, como um lembrete ${horasTexto} antes do atendimento e o aviso em caso de cancelamento.`
+        : "Você receberá neste número avisos sobre este agendamento, como o aviso em caso de cancelamento."
+    linhas.push(avisoTexto)
+
+    return linhas.join("\n")
 }
 
 export function formatarRespostaFinal(resposta: RespostaFinalOutput): string {
@@ -357,3 +477,79 @@ export function criarBotoesOfertaAgendamento(): ReplyButton[] {
         { id: "schedule_no", title: "Agora não" },
     ]
 }
+
+export function criarBotoesAttendee(): ReplyButton[] {
+    return [
+        { id: "attendee_self", title: "Eu mesmo" },
+        { id: "attendee_rep", title: "Outra pessoa por mim" },
+    ]
+}
+
+export function formatarTituloSlot(slot: AvailableSlot): string {
+    if (slot.dateStr && slot.timeStr) {
+        const parts = slot.dateStr.split("-")
+        const m = parts[1] ?? ""
+        const d = parts[2] ?? ""
+        const [yNum, mNum, dNum] = parts.map(Number)
+        const dt = new Date(Date.UTC(yNum!, mNum! - 1, dNum!, 12, 0, 0))
+        const dow = dt.getUTCDay()
+        const abrevs = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
+        const sem = abrevs[dow] ?? ""
+        return limitarString(`${sem}, ${d}/${m} às ${slot.timeStr}`, 24)
+    }
+    return limitarString(slot.formatted, 24)
+}
+
+export function criarMensagensSlots(
+    slots: AvailableSlot[],
+    pagina: number = 1,
+): OutgoingMessage[] {
+    if (slots.length === 0) {
+        return [{ type: "text", text: MENSAGEM_SEM_HORARIOS }]
+    }
+
+    const paginacao = paginarItens(slots, pagina)
+    const rows: ListRow[] = paginacao.itensPagina.map((s) => ({
+        id: `slot_${s.datetime.toISOString()}`,
+        title: formatarTituloSlot(s),
+        description: limitarString(
+            s.remainingSeats === 1 ? "1 vaga disponível" : `${s.remainingSeats} vagas disponíveis`,
+            72,
+        ),
+    }))
+
+    if (paginacao.opcaoAnterior !== undefined && paginacao.opcaoProxima !== undefined) {
+        rows.push({
+            id: `page_${paginacao.paginaAtual - 1}`,
+            title: "Voltar opções",
+            description: "Ver horários anteriores",
+        })
+        rows.push({
+            id: `page_${paginacao.paginaAtual + 1}`,
+            title: "Ver mais opções",
+            description: "Exibir mais horários",
+        })
+    } else if (paginacao.opcaoProxima !== undefined) {
+        rows.push({
+            id: `page_${paginacao.paginaAtual + 1}`,
+            title: "Ver mais opções",
+            description: "Exibir mais horários",
+        })
+    } else if (paginacao.opcaoAnterior !== undefined) {
+        rows.push({
+            id: `page_${paginacao.paginaAtual - 1}`,
+            title: "Voltar opções",
+            description: "Ver horários anteriores",
+        })
+    }
+
+    return [
+        {
+            type: "list",
+            text: PROMPT_SLOTS,
+            buttonText: "Ver horários",
+            rows,
+        },
+    ]
+}
+

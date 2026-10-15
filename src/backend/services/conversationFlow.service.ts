@@ -1,6 +1,8 @@
 import { hashPhone } from "./whatsappSession.service"
 import {
+  ActiveSession,
   sessionRepository,
+  SessionDraft,
   SessionRepository,
   SessionStep,
 } from "../repositories/session.repository"
@@ -13,26 +15,49 @@ import {
 } from "../types/motorDecisao.types"
 import { OutgoingMessage } from "../types/message.types"
 import {
+  criarBotoesAttendee,
   criarBotoesOfertaAgendamento,
   criarBotoesResolvida,
   criarMensagensCategorias,
   criarMensagensPerguntas,
+  criarMensagensSlots,
+  ERRO_ATTENDEE,
+  ERRO_CPF,
+  ERRO_DUPLICATE_APPOINTMENT,
+  ERRO_FALHA_AGENDAMENTO,
+  ERRO_NOME,
   ERRO_OFERTA_AGENDAMENTO,
   ERRO_RESOLVIDA,
+  ERRO_SLOT_OCUPADO,
   formatarCategoriaSemPerguntas,
+  formatarConfirmacaoAgendamento,
   formatarErroCategoria,
   formatarErroPergunta,
+  formatarErroSlot,
   formatarListaCategorias,
   formatarListaPerguntas,
+  formatarListaSlots,
   formatarRespostaFinal,
+  MENSAGEM_RASCUNHO_INCOMPLETO,
+  MENSAGEM_SEM_HORARIOS,
   MENSAGEM_ATENDIMENTO_PAUSADO,
   OFERTA_AGENDAMENTO,
   paginarItens,
   PERGUNTA_RESOLVIDA,
+  PROMPT_CPF,
+  PROMPT_NOME,
   RESPOSTA_INICIO_AGENDAMENTO,
   RESPOSTA_RECUSA_AGENDAMENTO,
   RESPOSTA_RESOLVIDA_SIM,
 } from "./messageFormatter.service"
+import { cleanCpf, hashCpf, maskCpf, validateCpf } from "../utils/cpf.utils"
+import {
+  AvailableSlot,
+  BookAppointmentInput,
+  BookAppointmentResult,
+} from "../types/schedule.types"
+import { createScheduleService } from "./schedule.service"
+import { scheduleRepository } from "../repositories/schedule.repository"
 import {
   conversationEventFailureLog,
   ConversationEventLogger,
@@ -40,6 +65,8 @@ import {
   ConversationEventService,
 } from "./conversationEvent.service"
 import type { SessionClosing } from "../types/conversationEvent.types"
+import { SlotFullError } from "../errors/SlotFullError"
+import { DuplicateAppointmentError } from "../errors/DuplicateAppointmentError"
 import { whatsappSettingsService } from "./whatsappSettings.service"
 
 export interface ConversationFlowInput {
@@ -81,10 +108,16 @@ export interface MotorDecisao {
   processarPergunta(perguntaId: number): Promise<RespostaFinalOutput>
 }
 
+export interface ScheduleProvider {
+  getAvailableSlots(now?: Date): Promise<AvailableSlot[]>
+  bookSlot(input: BookAppointmentInput): Promise<BookAppointmentResult>
+}
+
 interface ConversationFlowDependencies {
   sessions: SessionRepository
   events: ConversationEventService
   motor: MotorDecisao
+  schedule: ScheduleProvider
   hashPhone: (phone: string) => string
   logger: ConversationEventLogger
   isAutoReplyPaused: () => Promise<boolean>
@@ -175,6 +208,7 @@ export function createConversationFlowService({
   sessions,
   events,
   motor,
+  schedule,
   hashPhone: hashPhoneOf,
   logger,
   isAutoReplyPaused,
@@ -194,6 +228,7 @@ export function createConversationFlowService({
       currentCategoryId: null,
       currentQuestionId: null,
       listPage: 1,
+      draft: null,
     })
 
     return {
@@ -560,7 +595,7 @@ export function createConversationFlowService({
   }
 
   async function handleAwaitingResolved(
-    sessionId: string,
+    session: ActiveSession,
     text: string | undefined,
     optionId: string | undefined,
   ): Promise<ConversationFlowResult> {
@@ -575,16 +610,16 @@ export function createConversationFlowService({
         },
       }
       try {
-        await events.finish(sessionId, closing)
+        await events.finish(session.id, closing)
       } catch (error) {
         logger.error(
           "Failed to finish conversation session",
-          conversationEventFailureLog(sessionId, closing.event, error),
+          conversationEventFailureLog(session.id, closing.event, error),
         )
       }
 
       return {
-        sessionId,
+        sessionId: session.id,
         newSession: false,
         reply: {
           text: RESPOSTA_RESOLVIDA_SIM,
@@ -595,23 +630,24 @@ export function createConversationFlowService({
     }
 
     if (resolvida === false) {
-      await events.record(sessionId, {
+      await events.record(session.id, {
         type: "RESOLVED_ANSWERED",
         resolved: false,
       })
 
-      await events.record(sessionId, {
+      await events.record(session.id, {
         type: "SCHEDULE_OFFERED",
         reason: "NOT_RESOLVED",
       })
 
-      await sessions.updateNavigationState(sessionId, {
+      await sessions.updateNavigationState(session.id, {
         currentStep: "AWAITING_SCHEDULE_OFFER",
         currentCategoryId: null,
+        currentQuestionId: session.currentQuestionId ?? null,
       })
 
       return {
-        sessionId,
+        sessionId: session.id,
         newSession: false,
         reply: {
           text: OFERTA_AGENDAMENTO,
@@ -628,7 +664,7 @@ export function createConversationFlowService({
     }
 
     return {
-      sessionId,
+      sessionId: session.id,
       newSession: false,
       reply: {
         text: ERRO_RESOLVIDA,
@@ -645,7 +681,7 @@ export function createConversationFlowService({
   }
 
   async function handleAwaitingScheduleOffer(
-    sessionId: string,
+    session: ActiveSession,
     text: string | undefined,
     optionId: string | undefined,
   ): Promise<ConversationFlowResult> {
@@ -659,16 +695,16 @@ export function createConversationFlowService({
         },
       }
       try {
-        await events.finish(sessionId, closing)
+        await events.finish(session.id, closing)
       } catch (error) {
         logger.error(
           "Failed to finish conversation session",
-          conversationEventFailureLog(sessionId, closing.event, error),
+          conversationEventFailureLog(session.id, closing.event, error),
         )
       }
 
       return {
-        sessionId,
+        sessionId: session.id,
         newSession: false,
         reply: {
           text: RESPOSTA_RECUSA_AGENDAMENTO,
@@ -679,13 +715,14 @@ export function createConversationFlowService({
     }
 
     if (querAgendar === true) {
-      await sessions.updateNavigationState(sessionId, {
+      await sessions.updateNavigationState(session.id, {
         currentStep: "AWAITING_ATTENDEE",
         currentCategoryId: null,
+        currentQuestionId: session.currentQuestionId ?? null,
       })
 
       return {
-        sessionId,
+        sessionId: session.id,
         newSession: false,
         reply: {
           text: RESPOSTA_INICIO_AGENDAMENTO,
@@ -694,10 +731,7 @@ export function createConversationFlowService({
             {
               type: "buttons",
               text: "Vamos iniciar o agendamento presencial. Quem irá comparecer ao atendimento?",
-              buttons: [
-                { id: "attendee_self", title: "Eu mesmo" },
-                { id: "attendee_rep", title: "Um representante" },
-              ],
+              buttons: criarBotoesAttendee(),
             },
           ],
         },
@@ -705,7 +739,7 @@ export function createConversationFlowService({
     }
 
     return {
-      sessionId,
+      sessionId: session.id,
       newSession: false,
       reply: {
         text: ERRO_OFERTA_AGENDAMENTO,
@@ -717,6 +751,434 @@ export function createConversationFlowService({
             buttons: criarBotoesOfertaAgendamento(),
           },
         ],
+      },
+    }
+  }
+
+  async function handleAwaitingAttendee(
+    session: ActiveSession,
+    _text: string | undefined,
+    optionId: string | undefined,
+  ): Promise<ConversationFlowResult> {
+    let byRepresentative: boolean | null = null
+
+    if (optionId === "attendee_self") {
+      byRepresentative = false
+    } else if (optionId === "attendee_rep") {
+      byRepresentative = true
+    }
+
+    if (byRepresentative === null) {
+      return {
+        sessionId: session.id,
+        newSession: false,
+        reply: {
+          text: ERRO_ATTENDEE,
+          step: "AWAITING_ATTENDEE",
+          messages: [
+            {
+              type: "buttons",
+              text: ERRO_ATTENDEE,
+              buttons: criarBotoesAttendee(),
+            },
+          ],
+        },
+      }
+    }
+
+    await events.record(session.id, {
+      type: "ATTENDEE_CHOSEN",
+      byRepresentative,
+    })
+
+    await sessions.updateNavigationState(session.id, {
+      currentStep: "AWAITING_HOLDER_NAME",
+      currentCategoryId: null,
+      currentQuestionId: session.currentQuestionId ?? null,
+      draft: {
+        ...session.draft,
+        by_representative: byRepresentative,
+      },
+    })
+
+    return {
+      sessionId: session.id,
+      newSession: false,
+      reply: {
+        text: PROMPT_NOME,
+        step: "AWAITING_HOLDER_NAME",
+        messages: [{ type: "text", text: PROMPT_NOME }],
+      },
+    }
+  }
+
+  async function handleAwaitingHolderName(
+    session: ActiveSession,
+    text: string | undefined,
+  ): Promise<ConversationFlowResult> {
+    const name = text?.trim()
+
+    if (!name || name.length < 2 || name.length > 150 || /\d/.test(name)) {
+      return {
+        sessionId: session.id,
+        newSession: false,
+        reply: {
+          text: ERRO_NOME,
+          step: "AWAITING_HOLDER_NAME",
+          messages: [{ type: "text", text: ERRO_NOME }],
+        },
+      }
+    }
+
+    await sessions.updateNavigationState(session.id, {
+      currentStep: "AWAITING_HOLDER_CPF",
+      currentCategoryId: null,
+      currentQuestionId: session.currentQuestionId ?? null,
+      draft: {
+        ...session.draft,
+        holder_name: name,
+      },
+    })
+
+    return {
+      sessionId: session.id,
+      newSession: false,
+      reply: {
+        text: PROMPT_CPF,
+        step: "AWAITING_HOLDER_CPF",
+        messages: [{ type: "text", text: PROMPT_CPF }],
+      },
+    }
+  }
+
+  async function handleAwaitingHolderCpf(
+    session: ActiveSession,
+    text: string | undefined,
+  ): Promise<ConversationFlowResult> {
+    if (!validateCpf(text)) {
+      return {
+        sessionId: session.id,
+        newSession: false,
+        reply: {
+          text: ERRO_CPF,
+          step: "AWAITING_HOLDER_CPF",
+          messages: [{ type: "text", text: ERRO_CPF }],
+        },
+      }
+    }
+
+    const cleaned = cleanCpf(text!)
+    const cpfHash = hashCpf(cleaned)
+    const cpfMasked = maskCpf(cleaned)
+
+    const updatedDraft: SessionDraft = {
+      ...session.draft,
+      cpf_hash: cpfHash,
+      cpf_masked: cpfMasked,
+    }
+
+    const slots = await schedule.getAvailableSlots()
+
+    if (slots.length === 0) {
+      const closing: SessionClosing = {
+        outcome: "NO_SLOT",
+        event: {
+          type: "NO_SLOT",
+        },
+      }
+      try {
+        await events.finish(session.id, closing)
+      } catch (error) {
+        logger.error(
+          "Failed to finish conversation session",
+          conversationEventFailureLog(session.id, closing.event, error),
+        )
+      }
+
+      return {
+        sessionId: session.id,
+        newSession: false,
+        reply: {
+          text: MENSAGEM_SEM_HORARIOS,
+          step: "FINISHED",
+          messages: [{ type: "text", text: MENSAGEM_SEM_HORARIOS }],
+        },
+      }
+    }
+
+    await sessions.updateNavigationState(session.id, {
+      currentStep: "AWAITING_SLOT",
+      currentCategoryId: null,
+      currentQuestionId: session.currentQuestionId ?? null,
+      listPage: 1,
+      draft: updatedDraft,
+    })
+
+    return {
+      sessionId: session.id,
+      newSession: false,
+      reply: {
+        text: formatarListaSlots(slots, 1),
+        step: "AWAITING_SLOT",
+        messages: criarMensagensSlots(slots, 1),
+      },
+    }
+  }
+
+  async function bookChosenSlot(
+    session: ActiveSession,
+    phone: string,
+    chosenSlot: AvailableSlot,
+    slots: AvailableSlot[],
+    currentPage: number,
+  ): Promise<ConversationFlowResult> {
+    const questionId = Number(session.currentQuestionId)
+    const hasValidQuestion = Number.isSafeInteger(questionId) && questionId > 0
+    const hasValidDraft =
+      Boolean(session.draft?.holder_name) &&
+      Boolean(session.draft?.cpf_hash) &&
+      Boolean(session.draft?.cpf_masked) &&
+      session.draft?.by_representative !== undefined
+
+    if (!hasValidQuestion || !hasValidDraft) {
+      await sessions.updateNavigationState(session.id, {
+        currentStep: "AWAITING_ATTENDEE",
+        currentCategoryId: null,
+        currentQuestionId: session.currentQuestionId ?? null,
+        draft: null,
+      })
+
+      return {
+        sessionId: session.id,
+        newSession: false,
+        reply: {
+          text: MENSAGEM_RASCUNHO_INCOMPLETO,
+          step: "AWAITING_ATTENDEE",
+          messages: [
+            {
+              type: "buttons",
+              text: MENSAGEM_RASCUNHO_INCOMPLETO,
+              buttons: criarBotoesAttendee(),
+            },
+          ],
+        },
+      }
+    }
+
+    const perguntaResp = await motor.processarPergunta(questionId)
+    const reason = perguntaResp.requer_presencial
+      ? "REQUIRES_IN_PERSON"
+      : "NOT_RESOLVED"
+
+    try {
+      const bookResult = await schedule.bookSlot({
+        sessionId: session.id,
+        questionId,
+        reason,
+        name: session.draft!.holder_name!,
+        cpfHash: session.draft!.cpf_hash!,
+        cpfMasked: session.draft!.cpf_masked!,
+        phone,
+        byRepresentative: session.draft!.by_representative!,
+        appointmentDatetime: chosenSlot.datetime,
+      })
+
+      const confirmationText = formatarConfirmacaoAgendamento({
+        protocol: bookResult.protocol,
+        quando: chosenSlot.formatted,
+        unitAddress: bookResult.unitAddress,
+        unitAddressComplement: bookResult.unitAddressComplement,
+        byRepresentative: session.draft!.by_representative!,
+        groupDocuments: bookResult.documentsSent.group,
+        questionDocuments: bookResult.documentsSent.question,
+        reminderEnabled: bookResult.reminderEnabled,
+        reminderHours: bookResult.reminderHours,
+      })
+
+      return {
+        sessionId: session.id,
+        newSession: false,
+        reply: {
+          text: confirmationText,
+          step: "FINISHED",
+          messages: [{ type: "text", text: confirmationText }],
+        },
+      }
+    } catch (err: unknown) {
+      if (err instanceof SlotFullError) {
+        const updatedSlots = await schedule.getAvailableSlots()
+        if (updatedSlots.length === 0) {
+          const closing: SessionClosing = {
+            outcome: "NO_SLOT",
+            event: { type: "NO_SLOT" },
+          }
+          try {
+            await events.finish(session.id, closing)
+          } catch (finishErr) {
+            logger.error(
+              "Failed to finish conversation session",
+              conversationEventFailureLog(session.id, closing.event, finishErr),
+            )
+          }
+          return {
+            sessionId: session.id,
+            newSession: false,
+            reply: {
+              text: MENSAGEM_SEM_HORARIOS,
+              step: "FINISHED",
+              messages: [{ type: "text", text: MENSAGEM_SEM_HORARIOS }],
+            },
+          }
+        }
+
+        await sessions.updateNavigationState(session.id, {
+          currentStep: "AWAITING_SLOT",
+          currentCategoryId: null,
+          currentQuestionId: session.currentQuestionId ?? null,
+          listPage: 1,
+        })
+
+        return {
+          sessionId: session.id,
+          newSession: false,
+          reply: {
+            text: `${ERRO_SLOT_OCUPADO}\n${formatarListaSlots(updatedSlots, 1)}`,
+            step: "AWAITING_SLOT",
+            messages: [
+              { type: "text", text: ERRO_SLOT_OCUPADO },
+              ...criarMensagensSlots(updatedSlots, 1),
+            ],
+          },
+        }
+      }
+
+      if (err instanceof DuplicateAppointmentError) {
+        return {
+          sessionId: session.id,
+          newSession: false,
+          reply: {
+            text: `${ERRO_DUPLICATE_APPOINTMENT}\n${formatarListaSlots(slots, currentPage)}`,
+            step: "AWAITING_SLOT",
+            messages: [
+              { type: "text", text: ERRO_DUPLICATE_APPOINTMENT },
+              ...criarMensagensSlots(slots, currentPage),
+            ],
+          },
+        }
+      }
+
+      logger.error(
+        "Failed to book appointment",
+        conversationEventFailureLog(session.id, { type: "APPOINTMENT_CREATED" }, err),
+      )
+
+      return {
+        sessionId: session.id,
+        newSession: false,
+        reply: {
+          text: ERRO_FALHA_AGENDAMENTO,
+          step: "AWAITING_SLOT",
+          messages: [{ type: "text", text: ERRO_FALHA_AGENDAMENTO }],
+        },
+      }
+    }
+  }
+
+  async function handleAwaitingSlot(
+    session: ActiveSession,
+    phone: string,
+    _text: string | undefined,
+    optionId: string | undefined,
+  ): Promise<ConversationFlowResult> {
+    const slots = await schedule.getAvailableSlots()
+
+    if (slots.length === 0) {
+      const closing: SessionClosing = {
+        outcome: "NO_SLOT",
+        event: {
+          type: "NO_SLOT",
+        },
+      }
+      try {
+        await events.finish(session.id, closing)
+      } catch (error) {
+        logger.error(
+          "Failed to finish conversation session",
+          conversationEventFailureLog(session.id, closing.event, error),
+        )
+      }
+
+      return {
+        sessionId: session.id,
+        newSession: false,
+        reply: {
+          text: MENSAGEM_SEM_HORARIOS,
+          step: "FINISHED",
+          messages: [{ type: "text", text: MENSAGEM_SEM_HORARIOS }],
+        },
+      }
+    }
+
+    const currentPage = session.listPage || 1
+    const paginacao = paginarItens(slots, currentPage)
+
+    if (optionId) {
+      if (optionId.startsWith("page_")) {
+        const targetPage = Number(optionId.replace("page_", ""))
+        if (targetPage >= 1 && targetPage <= paginacao.totalPaginas) {
+          await sessions.updateNavigationState(session.id, {
+            currentStep: "AWAITING_SLOT",
+            currentCategoryId: null,
+            currentQuestionId: session.currentQuestionId ?? null,
+            listPage: targetPage,
+          })
+          return {
+            sessionId: session.id,
+            newSession: false,
+            reply: {
+              text: formatarListaSlots(slots, targetPage),
+              step: "AWAITING_SLOT",
+              messages: criarMensagensSlots(slots, targetPage),
+            },
+          }
+        }
+      }
+
+      if (optionId.startsWith("slot_")) {
+        const slotIso = optionId.replace("slot_", "")
+        const chosenSlot = slots.find((s) => s.datetime.toISOString() === slotIso)
+        if (chosenSlot) {
+          return bookChosenSlot(session, phone, chosenSlot, slots, currentPage)
+        }
+
+        await sessions.updateNavigationState(session.id, {
+          currentStep: "AWAITING_SLOT",
+          currentCategoryId: null,
+          currentQuestionId: session.currentQuestionId ?? null,
+          listPage: 1,
+        })
+        return {
+          sessionId: session.id,
+          newSession: false,
+          reply: {
+            text: `${ERRO_SLOT_OCUPADO}\n${formatarListaSlots(slots, 1)}`,
+            step: "AWAITING_SLOT",
+            messages: [
+              { type: "text", text: ERRO_SLOT_OCUPADO },
+              ...criarMensagensSlots(slots, 1),
+            ],
+          },
+        }
+      }
+    }
+
+    return {
+      sessionId: session.id,
+      newSession: false,
+      reply: {
+        text: formatarErroSlot(slots, paginacao.paginaAtual),
+        step: "AWAITING_SLOT",
+        messages: criarMensagensSlots(slots, paginacao.paginaAtual),
       },
     }
   }
@@ -755,11 +1217,27 @@ export function createConversationFlowService({
     }
 
     if (session.currentStep === "AWAITING_RESOLVED") {
-      return handleAwaitingResolved(session.id, text, optionId)
+      return handleAwaitingResolved(session, text, optionId)
     }
 
     if (session.currentStep === "AWAITING_SCHEDULE_OFFER") {
-      return handleAwaitingScheduleOffer(session.id, text, optionId)
+      return handleAwaitingScheduleOffer(session, text, optionId)
+    }
+
+    if (session.currentStep === "AWAITING_ATTENDEE") {
+      return handleAwaitingAttendee(session, text, optionId)
+    }
+
+    if (session.currentStep === "AWAITING_HOLDER_NAME") {
+      return handleAwaitingHolderName(session, text)
+    }
+
+    if (session.currentStep === "AWAITING_HOLDER_CPF") {
+      return handleAwaitingHolderCpf(session, text)
+    }
+
+    if (session.currentStep === "AWAITING_SLOT") {
+      return handleAwaitingSlot(session, phone, text, optionId)
     }
 
     // Se estiver em outro step futuro ou inesperado, recomeça
@@ -781,6 +1259,7 @@ export const processIncomingMessage = createConversationFlowService({
   sessions: sessionRepository,
   events: conversationEventService,
   motor: new MotorDecisaoService(new PgMotorDecisaoRepository()),
+  schedule: createScheduleService(scheduleRepository),
   hashPhone,
   logger: console,
   isAutoReplyPaused: () => whatsappSettingsService.isAutoReplyPaused(),

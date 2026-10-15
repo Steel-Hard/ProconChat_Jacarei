@@ -4,15 +4,18 @@ import validateEnv from "./validateEnv"
 describe("validateEnv", () => {
     let originalDbUrl: string | undefined
     let originalPhoneHashSecret: string | undefined
+    let originalCpfHashSecret: string | undefined
     let originalGatewayInternalToken: string | undefined
     let originalAuthTokenSecret: string | undefined
 
     beforeEach(() => {
         originalDbUrl = process.env.DB_URL
         originalPhoneHashSecret = process.env.PHONE_HASH_SECRET
+        originalCpfHashSecret = process.env.CPF_HASH_SECRET
         originalGatewayInternalToken = process.env.GATEWAY_INTERNAL_TOKEN
         originalAuthTokenSecret = process.env.AUTH_TOKEN_SECRET
         process.env.PHONE_HASH_SECRET = "test-secret"
+        process.env.CPF_HASH_SECRET = "test-cpf-secret"
         process.env.GATEWAY_INTERNAL_TOKEN = "test-internal-token"
         process.env.AUTH_TOKEN_SECRET = "test-only-auth-token-secret-with-32-chars"
     })
@@ -27,6 +30,11 @@ describe("validateEnv", () => {
             delete process.env.PHONE_HASH_SECRET
         } else {
             process.env.PHONE_HASH_SECRET = originalPhoneHashSecret
+        }
+        if (originalCpfHashSecret === undefined) {
+            delete process.env.CPF_HASH_SECRET
+        } else {
+            process.env.CPF_HASH_SECRET = originalCpfHashSecret
         }
         if (originalGatewayInternalToken === undefined) {
             delete process.env.GATEWAY_INTERNAL_TOKEN
@@ -72,6 +80,17 @@ describe("validateEnv", () => {
 
         expect(exitSpy).toHaveBeenCalledWith(1)
         expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("PHONE_HASH_SECRET"))
+    })
+
+    it("exits with code 1 when CPF_HASH_SECRET is missing", () => {
+        delete process.env.CPF_HASH_SECRET
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never)
+        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+        validateEnv()
+
+        expect(exitSpy).toHaveBeenCalledWith(1)
+        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("CPF_HASH_SECRET"))
     })
 
     it("exits with code 1 when GATEWAY_INTERNAL_TOKEN is missing", () => {

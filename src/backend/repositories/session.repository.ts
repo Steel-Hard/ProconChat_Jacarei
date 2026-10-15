@@ -1,6 +1,6 @@
 import getPool from "../db/connection"
 import InternalServerError from "../errors/InternalServerError"
-import type { SessionClosing } from "../types/conversationEvent.types"
+import type { ConversationEvent, SessionClosing } from "../types/conversationEvent.types"
 import { isClosingCompatible } from "../utils/conversationEventData"
 import { insertConversationEvent, Queryable } from "./conversationEvent.repository"
 
@@ -20,6 +20,14 @@ export type SessionStep =
 
 export type ActiveSessionStep = Exclude<SessionStep, "FINISHED">
 
+export interface SessionDraft {
+    by_representative?: boolean
+    holder_name?: string
+    cpf_hash?: string
+    cpf_masked?: string
+    target_appointment_id?: number | string
+}
+
 export interface ActiveSession {
     id: string
     created: boolean
@@ -27,6 +35,7 @@ export interface ActiveSession {
     currentCategoryId: string | null
     currentQuestionId?: string | null
     listPage?: number
+    draft?: SessionDraft | null
 }
 
 export interface NavigationState {
@@ -34,6 +43,7 @@ export interface NavigationState {
     currentCategoryId: string | null
     currentQuestionId?: string | null
     listPage?: number
+    draft?: SessionDraft | null
 }
 
 export interface SessionRepository {
@@ -42,6 +52,14 @@ export interface SessionRepository {
     touch(sessionId: string): Promise<void>
     finish(sessionId: string, closing: SessionClosing): Promise<void>
     sweepAbandonedSessions(): Promise<number>
+}
+
+export async function recordEventWith(
+    db: Queryable,
+    sessionId: string,
+    event: ConversationEvent,
+): Promise<void> {
+    await insertConversationEvent(db, sessionId, event)
 }
 
 export async function finishSessionWith(
@@ -105,11 +123,12 @@ export const sessionRepository: SessionRepository = {
                 current_category_id: string | null
                 current_question_id: string | null
                 list_page: number
+                draft?: SessionDraft | null
             }>(
                 `INSERT INTO Sessions (phone_hash)
                  VALUES ($1)
                  ON CONFLICT (phone_hash) WHERE status = 'IN_PROGRESS' DO NOTHING
-                 RETURNING id, current_step, current_category_id, current_question_id, list_page`,
+                 RETURNING id, current_step, current_category_id, current_question_id, list_page, draft`,
                 [phoneHash],
             )
 
@@ -122,8 +141,9 @@ export const sessionRepository: SessionRepository = {
                     created: true,
                     currentStep: created.current_step,
                     currentCategoryId: created.current_category_id,
-                    currentQuestionId: created.current_question_id,
-                    listPage: created.list_page,
+                    ...(created.current_question_id !== undefined ? { currentQuestionId: created.current_question_id } : {}),
+                    ...(created.list_page !== undefined ? { listPage: created.list_page } : {}),
+                    ...(created.draft !== undefined ? { draft: created.draft } : {}),
                 }
             }
 
@@ -133,8 +153,9 @@ export const sessionRepository: SessionRepository = {
                 current_category_id: string | null
                 current_question_id: string | null
                 list_page: number
+                draft?: SessionDraft | null
             }>(
-                `SELECT id, current_step, current_category_id, current_question_id, list_page FROM Sessions
+                `SELECT id, current_step, current_category_id, current_question_id, list_page, draft FROM Sessions
                  WHERE phone_hash = $1 AND status = 'IN_PROGRESS'
                  LIMIT 1`,
                 [phoneHash],
@@ -151,8 +172,9 @@ export const sessionRepository: SessionRepository = {
                 created: false,
                 currentStep: session.current_step,
                 currentCategoryId: session.current_category_id,
-                currentQuestionId: session.current_question_id,
-                listPage: session.list_page,
+                ...(session.current_question_id !== undefined ? { currentQuestionId: session.current_question_id } : {}),
+                ...(session.list_page !== undefined ? { listPage: session.list_page } : {}),
+                ...(session.draft !== undefined ? { draft: session.draft } : {}),
             }
         } catch (error) {
             await client.query("ROLLBACK")
@@ -164,21 +186,30 @@ export const sessionRepository: SessionRepository = {
 
     async updateNavigationState(sessionId: string, state: NavigationState): Promise<void> {
         const pool = getPool()
+        const hasDraftUpdate = state.draft !== undefined
+        const draftJson = state.draft ? JSON.stringify(state.draft) : null
+        const hasCategoryUpdate = state.currentCategoryId !== undefined
+        const hasQuestionUpdate = state.currentQuestionId !== undefined
 
         const result = await pool.query(
             `UPDATE Sessions
              SET current_step = $1,
-                 current_category_id = $2,
-                 current_question_id = $3,
-                 list_page = $4,
+                 current_category_id = CASE WHEN $2::boolean THEN $3 ELSE current_category_id END,
+                 current_question_id = CASE WHEN $4::boolean THEN $5 ELSE current_question_id END,
+                 list_page = $6,
+                 draft = CASE WHEN $7::boolean THEN $8::jsonb ELSE draft END,
                  last_interaction_at = now()
-             WHERE id = $5
+             WHERE id = $9
                AND status = 'IN_PROGRESS'`,
             [
                 state.currentStep,
+                hasCategoryUpdate,
                 state.currentCategoryId ?? null,
+                hasQuestionUpdate,
                 state.currentQuestionId ?? null,
                 state.listPage ?? 1,
+                hasDraftUpdate,
+                draftJson,
                 sessionId,
             ],
         )

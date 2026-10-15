@@ -58,6 +58,7 @@ services:
       DB_URL: postgresql://${POSTGRES_USER:-proconchat}:${POSTGRES_PASSWORD:-proconchat_dev}@postgres:5432/proconchat
       PORT: 3000
       PHONE_HASH_SECRET: ${PHONE_HASH_SECRET:-development-only-secret}
+      CPF_HASH_SECRET: ${CPF_HASH_SECRET:-development-only-cpf-hash-secret}
       GATEWAY_INTERNAL_TOKEN: ${GATEWAY_INTERNAL_TOKEN:-development-internal-token}
       AUTH_TOKEN_SECRET: ${AUTH_TOKEN_SECRET:-development-only-auth-token-secret-32chars}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?defina ENCRYPTION_KEY no .env}

@@ -1,20 +1,42 @@
 import { beforeEach, describe, expect, test, vi } from "vitest"
 import { MockConversationEventRepository } from "../repositories/mock/conversationEventMock.repository"
-import { SessionRepository } from "../repositories/session.repository"
+import { ActiveSession, SessionRepository } from "../repositories/session.repository"
 import { Categoria, Pergunta, RespostaFinalOutput } from "../types/motorDecisao.types"
-import { createConversationFlowService, MotorDecisao } from "./conversationFlow.service"
-import { ConversationEventService, createConversationEventService } from "./conversationEvent.service"
 import {
+    createConversationFlowService,
+    MotorDecisao,
+    ScheduleProvider,
+} from "./conversationFlow.service"
+import {
+    ConversationEventService,
+    createConversationEventService,
+} from "./conversationEvent.service"
+import {
+    ERRO_ATTENDEE,
+    ERRO_CPF,
+    ERRO_DUPLICATE_APPOINTMENT,
+    ERRO_FALHA_AGENDAMENTO,
+    ERRO_NOME,
     ERRO_OFERTA_AGENDAMENTO,
     ERRO_RESOLVIDA,
+    ERRO_SLOT_OCUPADO,
+    ERRO_SLOTS,
     formatarListaPerguntas,
+    formatarListaSlots,
+    MENSAGEM_RASCUNHO_INCOMPLETO,
+    MENSAGEM_SEM_HORARIOS,
     OFERTA_AGENDAMENTO,
     PERGUNTA_RESOLVIDA,
+    PROMPT_CPF,
+    PROMPT_NOME,
     RESPOSTA_INICIO_AGENDAMENTO,
     RESPOSTA_RECUSA_AGENDAMENTO,
     RESPOSTA_RESOLVIDA_SIM,
     MENSAGEM_ATENDIMENTO_PAUSADO,
 } from "./messageFormatter.service"
+import { AvailableSlot, BookAppointmentResult } from "../types/schedule.types"
+import { SlotFullError } from "../errors/SlotFullError"
+import { DuplicateAppointmentError } from "../errors/DuplicateAppointmentError"
 
 const categorias: Categoria[] = [
     { id: 1, title: "Contrato", short_title: "Contrato", active: true },
@@ -90,7 +112,39 @@ const respostaPresencial: RespostaFinalOutput = {
     fora_de_escopo: false,
 }
 
-describe("conversationFlow.service (Issue #55 - Novo fluxo da dúvida)", () => {
+const mockSlots: AvailableSlot[] = [
+    {
+        datetime: new Date("2026-10-06T08:00:00-03:00"),
+        dateStr: "2026-10-06",
+        timeStr: "08:00",
+        formatted: "Terça-feira, 06/10 às 08:00",
+        remainingSeats: 2,
+    },
+    {
+        datetime: new Date("2026-10-06T08:30:00-03:00"),
+        dateStr: "2026-10-06",
+        timeStr: "08:30",
+        formatted: "Terça-feira, 06/10 às 08:30",
+        remainingSeats: 1,
+    },
+]
+
+const mockBookResult: BookAppointmentResult = {
+    id: "1",
+    appointmentCode: "a3f9c21b-0000-0000-0000-000000000000",
+    protocol: "A3F9C21B",
+    appointmentDatetime: new Date("2026-10-06T08:00:00-03:00"),
+    unitAddress: "Rua do Procon, 100",
+    unitAddressComplement: "Centro",
+    documentsSent: {
+        group: ["RG", "CPF"],
+        question: ["Contrato"],
+    },
+    reminderEnabled: true,
+    reminderHours: 24,
+}
+
+describe("conversationFlow.service", () => {
     const findOrCreateActive = vi.fn()
     const updateNavigationState = vi.fn()
     const touch = vi.fn()
@@ -118,12 +172,17 @@ describe("conversationFlow.service (Issue #55 - Novo fluxo da dúvida)", () => {
     const processarPergunta = vi.fn()
     const motor: MotorDecisao = { iniciarSessao, escolherCategoria, processarPergunta }
 
+    const getAvailableSlots = vi.fn()
+    const bookSlot = vi.fn()
+    const schedule: ScheduleProvider = { getAvailableSlots, bookSlot }
+
     const hashPhone = (phone: string) => `hash-${phone}`
 
     const processIncomingMessage = createConversationFlowService({
         sessions,
         events,
         motor,
+        schedule,
         hashPhone,
         logger,
         isAutoReplyPaused: async () => false,
@@ -140,6 +199,7 @@ describe("conversationFlow.service (Issue #55 - Novo fluxo da dúvida)", () => {
             currentStep: "AWAITING_CATEGORY",
             currentCategoryId: null,
             listPage: 1,
+            draft: null,
         })
         iniciarSessao.mockResolvedValueOnce(categorias)
 
@@ -152,6 +212,7 @@ describe("conversationFlow.service (Issue #55 - Novo fluxo da dúvida)", () => {
             currentCategoryId: null,
             currentQuestionId: null,
             listPage: 1,
+            draft: null,
         })
         expect(recordEvent).not.toHaveBeenCalled()
         expect(result.reply.text).toContain("LGPD")
@@ -167,6 +228,7 @@ describe("conversationFlow.service (Issue #55 - Novo fluxo da dúvida)", () => {
             currentStep: "AWAITING_CATEGORY",
             currentCategoryId: null,
             listPage: 1,
+            draft: null,
         })
         iniciarSessao.mockResolvedValueOnce(categorias)
         escolherCategoria.mockResolvedValueOnce(perguntas)
@@ -200,6 +262,7 @@ describe("conversationFlow.service (Issue #55 - Novo fluxo da dúvida)", () => {
             currentStep: "AWAITING_CATEGORY",
             currentCategoryId: null,
             listPage: 1,
+            draft: null,
         })
         iniciarSessao.mockResolvedValueOnce(muitasCategorias)
 
@@ -221,6 +284,7 @@ describe("conversationFlow.service (Issue #55 - Novo fluxo da dúvida)", () => {
             currentStep: "AWAITING_QUESTION",
             currentCategoryId: "1",
             listPage: 1,
+            draft: null,
         })
         escolherCategoria.mockResolvedValueOnce(perguntas)
         processarPergunta.mockResolvedValueOnce(respostaPadrao)
@@ -256,6 +320,7 @@ describe("conversationFlow.service (Issue #55 - Novo fluxo da dúvida)", () => {
             currentStep: "AWAITING_QUESTION",
             currentCategoryId: "1",
             listPage: 1,
+            draft: null,
         })
         escolherCategoria.mockResolvedValueOnce(perguntas)
         processarPergunta.mockResolvedValueOnce(respostaForaEscopo)
@@ -277,17 +342,19 @@ describe("conversationFlow.service (Issue #55 - Novo fluxo da dúvida)", () => {
             },
         })
         expect(result.reply.step).toBe("FINISHED")
+        expect(result.reply.text).toContain("fora do escopo")
         expect(result.reply.text).not.toContain(PERGUNTA_RESOLVIDA)
         expect(result.reply.text).not.toContain(OFERTA_AGENDAMENTO)
     })
 
-    test("AWAITING_QUESTION: pergunta presencial pula 'resolveu?' e oferece agendamento direto", async () => {
+    test("AWAITING_QUESTION: pergunta que requer presencial grava SCHEDULE_OFFERED ('REQUIRES_IN_PERSON') e avança para AWAITING_SCHEDULE_OFFER", async () => {
         findOrCreateActive.mockResolvedValueOnce({
             id: "s1",
             created: false,
             currentStep: "AWAITING_QUESTION",
             currentCategoryId: "1",
             listPage: 1,
+            draft: null,
         })
         escolherCategoria.mockResolvedValueOnce(perguntas)
         processarPergunta.mockResolvedValueOnce(respostaPresencial)
@@ -319,13 +386,14 @@ describe("conversationFlow.service (Issue #55 - Novo fluxo da dúvida)", () => {
         expect(result.reply.text).not.toContain(PERGUNTA_RESOLVIDA)
     })
 
-    test("AWAITING_RESOLVED: Sim (1) finaliza a sessão com RESOLVED e grava RESOLVED_ANSWERED (true)", async () => {
+    test("AWAITING_RESOLVED: Sim encerra sessão com RESOLVED", async () => {
         findOrCreateActive.mockResolvedValueOnce({
             id: "s1",
             created: false,
             currentStep: "AWAITING_RESOLVED",
             currentCategoryId: "1",
             listPage: 1,
+            draft: null,
         })
 
         const result = await processIncomingMessage({ phone: "5511999999999", text: "1" })
@@ -341,13 +409,15 @@ describe("conversationFlow.service (Issue #55 - Novo fluxo da dúvida)", () => {
         expect(result.reply.text).toBe(RESPOSTA_RESOLVIDA_SIM)
     })
 
-    test("AWAITING_RESOLVED: Não (2) avança para AWAITING_SCHEDULE_OFFER e grava eventos", async () => {
+    test("AWAITING_RESOLVED: Não grava RESOLVED_ANSWERED (false) + SCHEDULE_OFFERED ('NOT_RESOLVED') e avança para AWAITING_SCHEDULE_OFFER", async () => {
         findOrCreateActive.mockResolvedValueOnce({
             id: "s1",
             created: false,
             currentStep: "AWAITING_RESOLVED",
             currentCategoryId: "1",
+            currentQuestionId: "10",
             listPage: 1,
+            draft: null,
         })
 
         const result = await processIncomingMessage({ phone: "5511999999999", text: "2" })
@@ -363,6 +433,7 @@ describe("conversationFlow.service (Issue #55 - Novo fluxo da dúvida)", () => {
         expect(updateNavigationState).toHaveBeenCalledWith("s1", {
             currentStep: "AWAITING_SCHEDULE_OFFER",
             currentCategoryId: null,
+            currentQuestionId: "10",
         })
         expect(result.reply.step).toBe("AWAITING_SCHEDULE_OFFER")
         expect(result.reply.text).toBe(OFERTA_AGENDAMENTO)
@@ -375,7 +446,9 @@ describe("conversationFlow.service (Issue #55 - Novo fluxo da dúvida)", () => {
             created: false,
             currentStep: "AWAITING_RESOLVED",
             currentCategoryId: "1",
+            currentQuestionId: "10",
             listPage: 1,
+            draft: null,
         })
 
         const result = await processIncomingMessage({ phone: "5511999999999", text: "invalido" })
@@ -384,13 +457,14 @@ describe("conversationFlow.service (Issue #55 - Novo fluxo da dúvida)", () => {
         expect(result.reply.text).toBe(ERRO_RESOLVIDA)
     })
 
-    test("AWAITING_SCHEDULE_OFFER: Agora não (2) finaliza com DECLINED e grava SCHEDULE_DECLINED", async () => {
+    test("AWAITING_SCHEDULE_OFFER: Recusar agendamento encerra com DECLINED", async () => {
         findOrCreateActive.mockResolvedValueOnce({
             id: "s1",
             created: false,
             currentStep: "AWAITING_SCHEDULE_OFFER",
             currentCategoryId: "1",
             listPage: 1,
+            draft: null,
         })
 
         const result = await processIncomingMessage({ phone: "5511999999999", text: "2" })
@@ -405,13 +479,15 @@ describe("conversationFlow.service (Issue #55 - Novo fluxo da dúvida)", () => {
         expect(result.reply.text).toBe(RESPOSTA_RECUSA_AGENDAMENTO)
     })
 
-    test("AWAITING_SCHEDULE_OFFER: Agendar (1) avança para AWAITING_ATTENDEE", async () => {
+    test("AWAITING_SCHEDULE_OFFER: Aceitar agendamento avança para AWAITING_ATTENDEE", async () => {
         findOrCreateActive.mockResolvedValueOnce({
             id: "s1",
             created: false,
             currentStep: "AWAITING_SCHEDULE_OFFER",
             currentCategoryId: "1",
+            currentQuestionId: "10",
             listPage: 1,
+            draft: null,
         })
 
         const result = await processIncomingMessage({ phone: "5511999999999", text: "1" })
@@ -419,6 +495,7 @@ describe("conversationFlow.service (Issue #55 - Novo fluxo da dúvida)", () => {
         expect(updateNavigationState).toHaveBeenCalledWith("s1", {
             currentStep: "AWAITING_ATTENDEE",
             currentCategoryId: null,
+            currentQuestionId: "10",
         })
         expect(result.reply.step).toBe("AWAITING_ATTENDEE")
         expect(result.reply.text).toBe(RESPOSTA_INICIO_AGENDAMENTO)
@@ -430,13 +507,532 @@ describe("conversationFlow.service (Issue #55 - Novo fluxo da dúvida)", () => {
             created: false,
             currentStep: "AWAITING_SCHEDULE_OFFER",
             currentCategoryId: "1",
+            currentQuestionId: "10",
             listPage: 1,
+            draft: null,
         })
 
         const result = await processIncomingMessage({ phone: "5511999999999", text: "99" })
 
         expect(result.reply.step).toBe("AWAITING_SCHEDULE_OFFER")
         expect(result.reply.text).toBe(ERRO_OFERTA_AGENDAMENTO)
+    })
+
+    describe("Fluxo de Agendamento Presencial (#56)", () => {
+        test("AWAITING_ATTENDEE: opção interativa attendee_self grava ATTENDEE_CHOSEN (false) e avança para AWAITING_HOLDER_NAME", async () => {
+            findOrCreateActive.mockResolvedValueOnce({
+                id: "s1",
+                created: false,
+                currentStep: "AWAITING_ATTENDEE",
+                currentCategoryId: "1",
+                currentQuestionId: "10",
+                listPage: 1,
+                draft: null,
+            })
+
+            const result = await processIncomingMessage({ phone: "5511999999999", optionId: "attendee_self" })
+
+            expect(recordEvent).toHaveBeenCalledWith("s1", {
+                type: "ATTENDEE_CHOSEN",
+                byRepresentative: false,
+            })
+            expect(updateNavigationState).toHaveBeenCalledWith("s1", {
+                currentStep: "AWAITING_HOLDER_NAME",
+                currentCategoryId: null,
+                currentQuestionId: "10",
+                draft: { by_representative: false },
+            })
+            expect(result.reply.step).toBe("AWAITING_HOLDER_NAME")
+            expect(result.reply.text).toBe(PROMPT_NOME)
+        })
+
+        test("AWAITING_ATTENDEE: opção interativa attendee_rep grava ATTENDEE_CHOSEN (true) e avança para AWAITING_HOLDER_NAME", async () => {
+            findOrCreateActive.mockResolvedValueOnce({
+                id: "s1",
+                created: false,
+                currentStep: "AWAITING_ATTENDEE",
+                currentCategoryId: "1",
+                currentQuestionId: "10",
+                listPage: 1,
+                draft: null,
+            })
+
+            const result = await processIncomingMessage({ phone: "5511999999999", optionId: "attendee_rep" })
+
+            expect(recordEvent).toHaveBeenCalledWith("s1", {
+                type: "ATTENDEE_CHOSEN",
+                byRepresentative: true,
+            })
+            expect(updateNavigationState).toHaveBeenCalledWith("s1", {
+                currentStep: "AWAITING_HOLDER_NAME",
+                currentCategoryId: null,
+                currentQuestionId: "10",
+                draft: { by_representative: true },
+            })
+            expect(result.reply.step).toBe("AWAITING_HOLDER_NAME")
+            expect(result.reply.text).toBe(PROMPT_NOME)
+        })
+
+        test("AWAITING_ATTENDEE: texto livre é rejeitado e re-solicita escolha com botões", async () => {
+            findOrCreateActive.mockResolvedValueOnce({
+                id: "s1",
+                created: false,
+                currentStep: "AWAITING_ATTENDEE",
+                currentCategoryId: "1",
+                currentQuestionId: "10",
+                listPage: 1,
+                draft: null,
+            })
+
+            const result = await processIncomingMessage({ phone: "5511999999999", text: "1" })
+
+            expect(result.reply.step).toBe("AWAITING_ATTENDEE")
+            expect(result.reply.text).toBe(ERRO_ATTENDEE)
+            expect(result.reply.messages?.[0]?.type).toBe("buttons")
+        })
+
+        test("AWAITING_ATTENDEE: opção inválida re-solicita escolha com botões", async () => {
+            findOrCreateActive.mockResolvedValueOnce({
+                id: "s1",
+                created: false,
+                currentStep: "AWAITING_ATTENDEE",
+                currentCategoryId: "1",
+                currentQuestionId: "10",
+                listPage: 1,
+                draft: null,
+            })
+
+            const result = await processIncomingMessage({ phone: "5511999999999", optionId: "invalido" })
+
+            expect(result.reply.step).toBe("AWAITING_ATTENDEE")
+            expect(result.reply.text).toBe(ERRO_ATTENDEE)
+            expect(result.reply.messages?.[0]?.type).toBe("buttons")
+        })
+
+        test("AWAITING_HOLDER_NAME: nome válido salva draft e avança para AWAITING_HOLDER_CPF preservando currentQuestionId", async () => {
+            findOrCreateActive.mockResolvedValueOnce({
+                id: "s1",
+                created: false,
+                currentStep: "AWAITING_HOLDER_NAME",
+                currentCategoryId: "1",
+                currentQuestionId: "10",
+                listPage: 1,
+                draft: { by_representative: false },
+            })
+
+            const result = await processIncomingMessage({ phone: "5511999999999", text: "Maria da Silva" })
+
+            expect(updateNavigationState).toHaveBeenCalledWith("s1", {
+                currentStep: "AWAITING_HOLDER_CPF",
+                currentCategoryId: null,
+                currentQuestionId: "10",
+                draft: {
+                    by_representative: false,
+                    holder_name: "Maria da Silva",
+                },
+            })
+            expect(result.reply.step).toBe("AWAITING_HOLDER_CPF")
+            expect(result.reply.text).toBe(PROMPT_CPF)
+        })
+
+        test("AWAITING_HOLDER_NAME: nome inválido (vazio ou 1 caractere) re-solicita nome", async () => {
+            findOrCreateActive.mockResolvedValueOnce({
+                id: "s1",
+                created: false,
+                currentStep: "AWAITING_HOLDER_NAME",
+                currentCategoryId: "1",
+                currentQuestionId: "10",
+                listPage: 1,
+                draft: { by_representative: false },
+            })
+
+            const result = await processIncomingMessage({ phone: "5511999999999", text: "A" })
+
+            expect(result.reply.step).toBe("AWAITING_HOLDER_NAME")
+            expect(result.reply.text).toBe(ERRO_NOME)
+        })
+
+        test("AWAITING_HOLDER_NAME: nome com dígitos é recusado para proteger CPF", async () => {
+            findOrCreateActive.mockResolvedValueOnce({
+                id: "s1",
+                created: false,
+                currentStep: "AWAITING_HOLDER_NAME",
+                currentCategoryId: "1",
+                currentQuestionId: "10",
+                listPage: 1,
+                draft: { by_representative: false },
+            })
+
+            const result = await processIncomingMessage({ phone: "5511999999999", text: "Maria 529.982.247-25" })
+
+            expect(result.reply.step).toBe("AWAITING_HOLDER_NAME")
+            expect(result.reply.text).toBe(ERRO_NOME)
+            expect(updateNavigationState).not.toHaveBeenCalled()
+        })
+
+        test("AWAITING_HOLDER_CPF: CPF inválido re-solicita CPF", async () => {
+            findOrCreateActive.mockResolvedValueOnce({
+                id: "s1",
+                created: false,
+                currentStep: "AWAITING_HOLDER_CPF",
+                currentCategoryId: "1",
+                currentQuestionId: "10",
+                listPage: 1,
+                draft: { by_representative: false, holder_name: "Maria da Silva" },
+            })
+
+            const result = await processIncomingMessage({ phone: "5511999999999", text: "123.456.789-00" })
+
+            expect(result.reply.step).toBe("AWAITING_HOLDER_CPF")
+            expect(result.reply.text).toBe(ERRO_CPF)
+        })
+
+        test("AWAITING_HOLDER_CPF: CPF válido com horários avança para AWAITING_SLOT sem gravar PHONE_NOTICE_SHOWN antes da reserva", async () => {
+            findOrCreateActive.mockResolvedValueOnce({
+                id: "s1",
+                created: false,
+                currentStep: "AWAITING_HOLDER_CPF",
+                currentCategoryId: "1",
+                currentQuestionId: "10",
+                listPage: 1,
+                draft: { by_representative: false, holder_name: "Maria da Silva" },
+            })
+            getAvailableSlots.mockResolvedValueOnce(mockSlots)
+
+            const result = await processIncomingMessage({ phone: "5511999999999", text: "529.982.247-25" })
+
+            expect(recordEvent).not.toHaveBeenCalledWith("s1", {
+                type: "PHONE_NOTICE_SHOWN",
+            })
+            expect(updateNavigationState).toHaveBeenCalledWith("s1", expect.objectContaining({
+                currentStep: "AWAITING_SLOT",
+                currentCategoryId: null,
+                currentQuestionId: "10",
+                listPage: 1,
+                draft: expect.objectContaining({
+                    holder_name: "Maria da Silva",
+                    cpf_masked: "***.982.247-**",
+                }),
+            }))
+            expect(result.reply.step).toBe("AWAITING_SLOT")
+            expect(result.reply.text).toEqual(formatarListaSlots(mockSlots, 1))
+            expect(result.reply.messages).toBeDefined()
+        })
+
+        test("AWAITING_HOLDER_CPF: CPF válido mas sem horários disponíveis encerra com NO_SLOT", async () => {
+            findOrCreateActive.mockResolvedValueOnce({
+                id: "s1",
+                created: false,
+                currentStep: "AWAITING_HOLDER_CPF",
+                currentCategoryId: "1",
+                currentQuestionId: "10",
+                listPage: 1,
+                draft: { by_representative: false, holder_name: "Maria da Silva" },
+            })
+            getAvailableSlots.mockResolvedValueOnce([])
+
+            const result = await processIncomingMessage({ phone: "5511999999999", text: "52998224725" })
+
+            expect(finishEvent).toHaveBeenCalledWith("s1", {
+                outcome: "NO_SLOT",
+                event: { type: "NO_SLOT" },
+            })
+            expect(result.reply.step).toBe("FINISHED")
+            expect(result.reply.text).toBe(MENSAGEM_SEM_HORARIOS)
+        })
+
+        test("AWAITING_SLOT: escolhe slot válido por optionId realiza agendamento e retorna confirmação", async () => {
+            findOrCreateActive.mockResolvedValueOnce({
+                id: "s1",
+                created: false,
+                currentStep: "AWAITING_SLOT",
+                currentCategoryId: "1",
+                currentQuestionId: "10",
+                listPage: 1,
+                draft: {
+                    by_representative: false,
+                    holder_name: "Maria da Silva",
+                    cpf_hash: "a".repeat(64),
+                    cpf_masked: "***.982.247-**",
+                },
+            })
+            getAvailableSlots.mockResolvedValueOnce(mockSlots)
+            processarPergunta.mockResolvedValueOnce(respostaPadrao)
+            bookSlot.mockResolvedValueOnce(mockBookResult)
+
+            const result = await processIncomingMessage({
+                phone: "5511999999999",
+                optionId: `slot_${mockSlots[0]?.datetime.toISOString()}`,
+            })
+
+            expect(bookSlot).toHaveBeenCalledWith(expect.objectContaining({
+                sessionId: "s1",
+                questionId: 10,
+                name: "Maria da Silva",
+                cpfHash: "a".repeat(64),
+                cpfMasked: "***.982.247-**",
+                phone: "5511999999999",
+                byRepresentative: false,
+                appointmentDatetime: mockSlots[0]?.datetime,
+            }))
+
+            expect(result.reply.step).toBe("FINISHED")
+            expect(result.reply.text).toContain("Agendamento realizado")
+            expect(result.reply.text).toContain("Protocolo: A3F9C21B")
+            expect(result.reply.text).toContain("Data e hora: Terça-feira, 06/10 às 08:00")
+            expect(result.reply.text).toContain("Leve ao atendimento:")
+        })
+
+        test("AWAITING_SLOT: texto livre é rejeitado e re-solicita seleção pela lista", async () => {
+            findOrCreateActive.mockResolvedValueOnce({
+                id: "s1",
+                created: false,
+                currentStep: "AWAITING_SLOT",
+                currentCategoryId: "1",
+                currentQuestionId: "10",
+                listPage: 1,
+                draft: {
+                    by_representative: false,
+                    holder_name: "Maria da Silva",
+                    cpf_hash: "a".repeat(64),
+                    cpf_masked: "***.982.247-**",
+                },
+            })
+            getAvailableSlots.mockResolvedValueOnce(mockSlots)
+
+            const result = await processIncomingMessage({
+                phone: "5511999999999",
+                text: "1",
+            })
+
+            expect(bookSlot).not.toHaveBeenCalled()
+            expect(result.reply.step).toBe("AWAITING_SLOT")
+            expect(result.reply.text).toContain(ERRO_SLOTS)
+        })
+
+        test("AWAITING_SLOT: draft incompleto reinicia em AWAITING_ATTENDEE com mensagem amigável", async () => {
+            findOrCreateActive.mockResolvedValueOnce({
+                id: "s1",
+                created: false,
+                currentStep: "AWAITING_SLOT",
+                currentCategoryId: "1",
+                currentQuestionId: "10",
+                listPage: 1,
+                draft: {
+                    by_representative: false,
+                    cpf_hash: "a".repeat(64),
+                    cpf_masked: "***.982.247-**",
+                },
+            })
+            getAvailableSlots.mockResolvedValueOnce(mockSlots)
+
+            const result = await processIncomingMessage({
+                phone: "5511999999999",
+                optionId: `slot_${mockSlots[0]?.datetime.toISOString()}`,
+            })
+
+            expect(updateNavigationState).toHaveBeenCalledWith("s1", {
+                currentStep: "AWAITING_ATTENDEE",
+                currentCategoryId: null,
+                currentQuestionId: "10",
+                draft: null,
+            })
+            expect(result.reply.step).toBe("AWAITING_ATTENDEE")
+            expect(result.reply.text).toBe(MENSAGEM_RASCUNHO_INCOMPLETO)
+        })
+
+        test("AWAITING_SLOT: conflito de concorrência (SlotFullError) avisa e recarrega horários na página 1 atualizando estado", async () => {
+            findOrCreateActive.mockResolvedValueOnce({
+                id: "s1",
+                created: false,
+                currentStep: "AWAITING_SLOT",
+                currentCategoryId: "1",
+                currentQuestionId: "10",
+                listPage: 2,
+                draft: {
+                    by_representative: false,
+                    holder_name: "Maria da Silva",
+                    cpf_hash: "a".repeat(64),
+                    cpf_masked: "***.982.247-**",
+                },
+            })
+            getAvailableSlots.mockResolvedValueOnce(mockSlots)
+            processarPergunta.mockResolvedValueOnce(respostaPadrao)
+            bookSlot.mockRejectedValueOnce(new SlotFullError())
+            const remainingSlot = [mockSlots[1]!]
+            getAvailableSlots.mockResolvedValueOnce(remainingSlot)
+
+            const result = await processIncomingMessage({
+                phone: "5511999999999",
+                optionId: `slot_${mockSlots[0]?.datetime.toISOString()}`,
+            })
+
+            expect(updateNavigationState).toHaveBeenCalledWith("s1", {
+                currentStep: "AWAITING_SLOT",
+                currentCategoryId: null,
+                currentQuestionId: "10",
+                listPage: 1,
+            })
+            expect(result.reply.step).toBe("AWAITING_SLOT")
+            expect(result.reply.text).toContain(ERRO_SLOT_OCUPADO)
+            expect(result.reply.text).toContain("1. Terça-feira, 06/10 às 08:30")
+        })
+
+        test("AWAITING_SLOT: conflito de horário duplicado (DuplicateAppointmentError) avisa cidadão", async () => {
+            findOrCreateActive.mockResolvedValueOnce({
+                id: "s1",
+                created: false,
+                currentStep: "AWAITING_SLOT",
+                currentCategoryId: "1",
+                currentQuestionId: "10",
+                listPage: 1,
+                draft: {
+                    by_representative: false,
+                    holder_name: "Maria da Silva",
+                    cpf_hash: "a".repeat(64),
+                    cpf_masked: "***.982.247-**",
+                },
+            })
+            getAvailableSlots.mockResolvedValueOnce(mockSlots)
+            processarPergunta.mockResolvedValueOnce(respostaPadrao)
+            bookSlot.mockRejectedValueOnce(new DuplicateAppointmentError())
+
+            const result = await processIncomingMessage({
+                phone: "5511999999999",
+                optionId: `slot_${mockSlots[0]?.datetime.toISOString()}`,
+            })
+
+            expect(result.reply.step).toBe("AWAITING_SLOT")
+            expect(result.reply.text).toContain(ERRO_DUPLICATE_APPOINTMENT)
+        })
+
+        test("AWAITING_SLOT: falha inesperada na reserva avisa o cidadão que o agendamento não foi gravado", async () => {
+            findOrCreateActive.mockResolvedValueOnce({
+                id: "s1",
+                created: false,
+                currentStep: "AWAITING_SLOT",
+                currentCategoryId: "1",
+                currentQuestionId: "10",
+                listPage: 1,
+                draft: {
+                    by_representative: false,
+                    holder_name: "Maria da Silva",
+                    cpf_hash: "a".repeat(64),
+                    cpf_masked: "***.982.247-**",
+                },
+            })
+            getAvailableSlots.mockResolvedValueOnce(mockSlots)
+            processarPergunta.mockResolvedValueOnce(respostaPadrao)
+            bookSlot.mockRejectedValueOnce(new Error("Database connection lost"))
+
+            const result = await processIncomingMessage({
+                phone: "5511999999999",
+                optionId: `slot_${mockSlots[0]?.datetime.toISOString()}`,
+            })
+
+            expect(result.reply.step).toBe("AWAITING_SLOT")
+            expect(result.reply.text).toBe(ERRO_FALHA_AGENDAMENTO)
+            expect(logger.error).toHaveBeenCalledWith("Failed to book appointment", expect.any(Object))
+        })
+
+        test("fluxo completo mantendo estado: oi -> categoria -> pergunta -> agendar -> eu mesmo -> nome -> CPF -> horário -> agendamento concluído", async () => {
+            let sessionDb: ActiveSession | null = null
+
+            const statefulSessions: SessionRepository = {
+                findOrCreateActive: vi.fn(async (_phoneHash: string) => {
+                    if (!sessionDb) {
+                        sessionDb = {
+                            id: "sess_full_1",
+                            created: true,
+                            currentStep: "AWAITING_CATEGORY",
+                            currentCategoryId: null,
+                            currentQuestionId: null,
+                            listPage: 1,
+                            draft: null,
+                        }
+                        return sessionDb
+                    }
+                    return { ...sessionDb, created: false }
+                }),
+                updateNavigationState: vi.fn(async (_sessionId: string, input: Parameters<SessionRepository["updateNavigationState"]>[1]) => {
+                    sessionDb = {
+                        ...sessionDb!,
+                        currentStep: input.currentStep,
+                        currentCategoryId: input.currentCategoryId !== undefined ? input.currentCategoryId : sessionDb!.currentCategoryId,
+                        currentQuestionId: input.currentQuestionId !== undefined ? input.currentQuestionId : sessionDb!.currentQuestionId,
+                        listPage: input.listPage !== undefined ? input.listPage : sessionDb!.listPage,
+                        draft: input.draft !== undefined ? input.draft : sessionDb!.draft,
+                    }
+                }),
+                touch: vi.fn(async () => {}),
+                finish: vi.fn(async () => {}),
+                sweepAbandonedSessions: vi.fn(async () => 0),
+            }
+
+            const statefulFlow = createConversationFlowService({
+                sessions: statefulSessions,
+                events,
+                motor,
+                schedule,
+                hashPhone,
+                logger,
+                isAutoReplyPaused: async () => false,
+            })
+
+            iniciarSessao.mockResolvedValue(categorias)
+            escolherCategoria.mockResolvedValue(perguntas)
+            processarPergunta.mockResolvedValue(respostaPadrao)
+            getAvailableSlots.mockResolvedValue(mockSlots)
+            bookSlot.mockResolvedValue(mockBookResult)
+
+            const citizenPhone = "5512991112233"
+
+            const r1 = await statefulFlow({ phone: citizenPhone, text: "oi" })
+            expect(r1.reply.step).toBe("AWAITING_CATEGORY")
+
+            const r2 = await statefulFlow({ phone: citizenPhone, text: "1" })
+            expect(r2.reply.step).toBe("AWAITING_QUESTION")
+            expect(sessionDb.currentCategoryId).toBe("1")
+
+            const r3 = await statefulFlow({ phone: citizenPhone, text: "1" })
+            expect(r3.reply.step).toBe("AWAITING_RESOLVED")
+            expect(sessionDb.currentQuestionId).toBe("10")
+
+            const r4 = await statefulFlow({ phone: citizenPhone, text: "2" })
+            expect(r4.reply.step).toBe("AWAITING_SCHEDULE_OFFER")
+            expect(sessionDb.currentQuestionId).toBe("10")
+
+            const r5 = await statefulFlow({ phone: citizenPhone, text: "1" })
+            expect(r5.reply.step).toBe("AWAITING_ATTENDEE")
+            expect(sessionDb.currentQuestionId).toBe("10")
+
+            const r6 = await statefulFlow({ phone: citizenPhone, optionId: "attendee_self" })
+            expect(r6.reply.step).toBe("AWAITING_HOLDER_NAME")
+            expect(sessionDb.currentQuestionId).toBe("10")
+            expect(sessionDb.draft?.by_representative).toBe(false)
+
+            const r7 = await statefulFlow({ phone: citizenPhone, text: "Maria da Silva" })
+            expect(r7.reply.step).toBe("AWAITING_HOLDER_CPF")
+            expect(sessionDb.currentQuestionId).toBe("10")
+            expect(sessionDb.draft?.holder_name).toBe("Maria da Silva")
+
+            const r8 = await statefulFlow({ phone: citizenPhone, text: "529.982.247-25" })
+            expect(r8.reply.step).toBe("AWAITING_SLOT")
+            expect(sessionDb.currentQuestionId).toBe("10")
+            expect(sessionDb.draft?.cpf_masked).toBe("***.982.247-**")
+
+            const chosenIso = mockSlots[0]!.datetime.toISOString()
+            const r9 = await statefulFlow({ phone: citizenPhone, optionId: `slot_${chosenIso}` })
+            expect(r9.reply.step).toBe("FINISHED")
+            expect(r9.reply.text).toContain("Agendamento realizado")
+            expect(bookSlot).toHaveBeenCalledWith(expect.objectContaining({
+                sessionId: "sess_full_1",
+                questionId: 10,
+                name: "Maria da Silva",
+                byRepresentative: false,
+                phone: citizenPhone,
+            }))
+        })
     })
 
     test("suporta cliques interativos via optionId nos botões", async () => {
@@ -468,7 +1064,15 @@ describe("conversationFlow.service (Issue #55 - Novo fluxo da dúvida)", () => {
             sessions: { finish: vi.fn() },
             logger,
         })
-        const flow = createConversationFlowService({ sessions, events: realEvents, motor, hashPhone, logger, isAutoReplyPaused: async () => false })
+        const flow = createConversationFlowService({
+            sessions,
+            events: realEvents,
+            motor,
+            schedule,
+            hashPhone,
+            logger,
+            isAutoReplyPaused: async () => false,
+        })
         findOrCreateActive.mockResolvedValueOnce({
             id: "7",
             created: false,
