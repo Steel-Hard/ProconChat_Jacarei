@@ -15,7 +15,8 @@ const VIEW = {
     updatedBy: null,
     updatedAt: "2026-10-14T13:00:00.000Z",
     displayPhoneNumber: null,
-    verifiedName: null
+    verifiedName: null,
+    accessTokenLifetime: { kind: "UNKNOWN", expiresAt: null }
 }
 
 function jsonResponse(body: unknown) {

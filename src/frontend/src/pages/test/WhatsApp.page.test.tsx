@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import type WhatsAppSettings from "@/types/whatsapp/WhatsAppSettings.types"
 
 const NEW_TOKEN = "EAAG-token-novo-ficticio-77Zz"
+const UNKNOWN_LIFETIME = { kind: "UNKNOWN", expiresAt: null } as const
 const PAUSED_MESSAGE =
     "O atendimento automático do PROCON Jacareí está temporariamente indisponível. Tente novamente mais tarde."
 const NEED_TEST = "Teste a conexão com as credenciais novas antes de salvar."
@@ -26,6 +27,7 @@ function settingsView(overrides: Partial<WhatsAppSettings> = {}): WhatsAppSettin
         updatedAt: "2026-10-14T13:00:00.000Z",
         displayPhoneNumber: "+55 12 3955-9000",
         verifiedName: "PROCON Jacareí",
+        accessTokenLifetime: UNKNOWN_LIFETIME,
         ...overrides
     }
 }
@@ -43,7 +45,8 @@ const OK_TEST: Handler = () => ({
             ok: true,
             displayPhoneNumber: "+55 12 3955-9000",
             verifiedName: "PROCON Jacareí",
-            checkedAt: "2026-10-15T10:00:00.000Z"
+            checkedAt: "2026-10-15T10:00:00.000Z",
+            accessTokenLifetime: UNKNOWN_LIFETIME
         }
     }
 })
@@ -116,7 +119,12 @@ function group(name: string): HTMLElement {
     return screen.getByRole("group", { name })
 }
 
+function firstStep(): string | null {
+    return within(screen.getByRole("list")).getAllByRole("listitem")[0].textContent
+}
+
 afterEach(() => {
+    vi.useRealTimers()
     vi.unstubAllGlobals()
     vi.unstubAllEnvs()
     vi.resetModules()
@@ -275,7 +283,14 @@ describe("WhatsAppPage", () => {
         expect(screen.getByRole("button", { name: "Testar conexão" })).toBeDisabled()
         release({
             status: 200,
-            body: { data: { ok: false, reason: "INVALID_TOKEN", checkedAt: "x" } }
+            body: {
+                data: {
+                    ok: false,
+                    reason: "INVALID_TOKEN",
+                    checkedAt: "x",
+                    accessTokenLifetime: UNKNOWN_LIFETIME
+                }
+            }
         })
         expect(await screen.findByText("Token inválido ou expirado")).toBeInTheDocument()
         expect(screen.getByText("Falha no teste.")).toBeInTheDocument()
@@ -564,5 +579,62 @@ describe("WhatsAppPage", () => {
         expect(screen.queryByText("Modelos de mensagem")).not.toBeInTheDocument()
         expect(screen.queryByText("Histórico de alterações")).not.toBeInTheDocument()
         expect(screen.queryByText("Controles do protótipo")).not.toBeInTheDocument()
+    })
+
+    describe("texto do campo do token", () => {
+        const PERMANENT = { kind: "PERMANENT", expiresAt: null } as const
+        const GENERIC_HINT =
+            "Use um token permanente de usuário do sistema; o token temporário expira em 24 horas."
+        const PERMANENT_STEP =
+            "Use um token permanente de usuário do sistema (Gerenciador de Negócios › Usuários do sistema › Gerar token). O token temporário do painel de desenvolvedor expira em 24 horas e o chatbot para de funcionar."
+
+        it("com token permanente salvo mostra que não expira, sem o aviso de token temporário", async () => {
+            await renderPage({}, settingsView({ accessTokenLifetime: PERMANENT }))
+            await loaded()
+
+            const token = group("Token de acesso")
+
+            expect(within(token).getByText("Token permanente: não expira.")).toBeInTheDocument()
+            expect(within(token).queryByText(GENERIC_HINT)).not.toBeInTheDocument()
+            expect(firstStep()).toBe(PERMANENT_STEP)
+        })
+
+        it("ao substituir mostra o aviso genérico e ao cancelar volta ao token permanente", async () => {
+            const { user } = await renderPage({}, settingsView({ accessTokenLifetime: PERMANENT }))
+            await loaded()
+
+            await user.click(
+                within(group("Token de acesso")).getByRole("button", { name: "Substituir" })
+            )
+            const replacing = within(group("Token de acesso")).getByText(GENERIC_HINT)
+            await user.click(
+                within(group("Token de acesso")).getByRole("button", { name: "Cancelar" })
+            )
+
+            expect(replacing).toBeInTheDocument()
+            expect(
+                within(group("Token de acesso")).getByText("Token permanente: não expira.")
+            ).toBeInTheDocument()
+            expect(firstStep()).toBe(PERMANENT_STEP)
+        })
+
+        it("com token que expira mostra a data e a hora de Brasília", async () => {
+            vi.useFakeTimers({ toFake: ["Date"] })
+            vi.setSystemTime(new Date("2026-10-15T12:00:00.000Z"))
+            await renderPage(
+                {},
+                settingsView({
+                    accessTokenLifetime: { kind: "EXPIRING", expiresAt: "2026-10-20T15:30:00.000Z" }
+                })
+            )
+            await loaded()
+
+            expect(
+                within(group("Token de acesso")).getByText(
+                    "Este token expira em 20/10/2026 às 12:30 (horário de Brasília). Gere um token permanente de usuário do sistema para o chatbot não parar de responder."
+                )
+            ).toBeInTheDocument()
+            expect(firstStep()).toBe(PERMANENT_STEP)
+        })
     })
 })

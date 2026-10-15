@@ -1,4 +1,5 @@
 import { useId } from "react"
+import type WhatsAppHint from "@/types/whatsapp/WhatsAppHint.types"
 import type WhatsAppSecretValue from "@/types/whatsapp/WhatsAppSecretValue.types"
 import css from "@/styles/components/whatsappSecretField.module.css"
 
@@ -11,10 +12,18 @@ type WhatsAppSecretFieldProps = {
     placeholder: string
     storedNote: string
     hint?: string
+    hintTone?: WhatsAppHint["tone"]
     disabled?: boolean
     onReplace: () => void
     onCancel: () => void
     onChange: (value: string) => void
+}
+
+const HINT_TONE_CLASS: Record<WhatsAppHint["tone"], string> = {
+    neutral: css.hintNeutral,
+    warning: css.hintWarning,
+    danger: css.hintDanger,
+    success: css.hintSuccess
 }
 
 function WhatsAppSecretField({
@@ -26,6 +35,7 @@ function WhatsAppSecretField({
     placeholder,
     storedNote,
     hint,
+    hintTone = "warning",
     disabled = false,
     onReplace,
     onCancel,
@@ -85,7 +95,9 @@ function WhatsAppSecretField({
                 </div>
             )}
             {secret.configured ? <span className={css.note}>{storedNote}</span> : null}
-            {hint ? <span className={css.hint}>{hint}</span> : null}
+            {hint ? (
+                <span className={`${css.hint} ${HINT_TONE_CLASS[hintTone]}`}>{hint}</span>
+            ) : null}
         </fieldset>
     )
 }

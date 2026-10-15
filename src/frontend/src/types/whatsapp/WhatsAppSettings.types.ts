@@ -1,3 +1,5 @@
+import type WhatsAppAccessTokenLifetime from "@/types/whatsapp/WhatsAppAccessTokenLifetime.types"
+
 type WhatsAppSettings = {
     phoneNumberId: string | null
     businessAccountId: string | null
@@ -14,6 +16,7 @@ type WhatsAppSettings = {
     updatedAt: string
     displayPhoneNumber: string | null
     verifiedName: string | null
+    accessTokenLifetime: WhatsAppAccessTokenLifetime
 }
 
 export default WhatsAppSettings

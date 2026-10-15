@@ -47,13 +47,14 @@ describe("testWhatsAppConnection", () => {
         )
     })
 
-    it("devolve o data do envelope com o resultado do teste", async () => {
+    it("devolve o data do envelope com o resultado do teste e o tipo do token", async () => {
         const { testWhatsAppConnection, fetchMock } = await setup()
         const result = {
             ok: true,
             displayPhoneNumber: "+55 12 3955-9000",
             verifiedName: "PROCON Jacareí",
-            checkedAt: "2026-10-14T13:00:00.000Z"
+            checkedAt: "2026-10-14T13:00:00.000Z",
+            accessTokenLifetime: { kind: "EXPIRING", expiresAt: "2026-11-20T15:00:00.000Z" }
         }
         fetchMock.mockResolvedValue(jsonResponse(200, { data: result }))
 

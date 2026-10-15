@@ -1,11 +1,12 @@
 import type { ReactNode } from "react"
 import { Provider } from "react-redux"
 import { act, renderHook, waitFor } from "@testing-library/react"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type useWhatsAppSettingsHook from "@/pages/hooks/useWhatsAppSettings"
 import type WhatsAppSettings from "@/types/whatsapp/WhatsAppSettings.types"
 
 const NEW_TOKEN = "EAAG-token-novo-ficticio-77Zz"
+const UNKNOWN_LIFETIME = { kind: "UNKNOWN", expiresAt: null } as const
 
 function settingsView(overrides: Partial<WhatsAppSettings> = {}): WhatsAppSettings {
     return {
@@ -24,6 +25,7 @@ function settingsView(overrides: Partial<WhatsAppSettings> = {}): WhatsAppSettin
         updatedAt: "2026-10-14T13:00:00.000Z",
         displayPhoneNumber: "+55 12 3955-9000",
         verifiedName: "PROCON Jacareí",
+        accessTokenLifetime: UNKNOWN_LIFETIME,
         ...overrides
     }
 }
@@ -100,7 +102,27 @@ function callsTo(calls: Call[], method: string, path: string): Call[] {
     return calls.filter((call) => call.method === method && call.path === path)
 }
 
+function expiring(expiresAt: string) {
+    return { kind: "EXPIRING", expiresAt } as const
+}
+
+function okTest(lifetime: unknown): Handler {
+    return () => ({
+        status: 200,
+        body: {
+            data: {
+                ok: true,
+                displayPhoneNumber: "+55",
+                verifiedName: "X",
+                checkedAt: "x",
+                accessTokenLifetime: lifetime
+            }
+        }
+    })
+}
+
 afterEach(() => {
+    vi.useRealTimers()
     vi.unstubAllGlobals()
     vi.unstubAllEnvs()
     vi.resetModules()
@@ -163,7 +185,8 @@ describe("useWhatsAppSettings", () => {
                         ok: true,
                         displayPhoneNumber: "+55 12 3955-9000",
                         verifiedName: "PROCON Jacareí",
-                        checkedAt: "x"
+                        checkedAt: "x",
+                        accessTokenLifetime: UNKNOWN_LIFETIME
                     }
                 }
             })
@@ -183,7 +206,8 @@ describe("useWhatsAppSettings", () => {
         expect(result.current.testResult).toEqual({
             kind: "ok",
             displayPhoneNumber: "+55 12 3955-9000",
-            verifiedName: "PROCON Jacareí"
+            verifiedName: "PROCON Jacareí",
+            accessTokenLifetime: UNKNOWN_LIFETIME
         })
         expect(result.current.saveDisabled).toBe(false)
     })
@@ -192,7 +216,14 @@ describe("useWhatsAppSettings", () => {
         const { result } = await setup({
             "POST /api/v1/whatsapp/settings/test": () => ({
                 status: 200,
-                body: { data: { ok: false, reason: "INVALID_TOKEN", checkedAt: "x" } }
+                body: {
+                    data: {
+                        ok: false,
+                        reason: "INVALID_TOKEN",
+                        checkedAt: "x",
+                        accessTokenLifetime: UNKNOWN_LIFETIME
+                    }
+                }
             })
         })
         await ready(result)
@@ -223,7 +254,14 @@ describe("useWhatsAppSettings", () => {
         await act(() => result.current.runTest())
         release({
             status: 200,
-            body: { data: { ok: false, reason: "META_ERROR", checkedAt: "x" } }
+            body: {
+                data: {
+                    ok: false,
+                    reason: "META_ERROR",
+                    checkedAt: "x",
+                    accessTokenLifetime: UNKNOWN_LIFETIME
+                }
+            }
         })
         await act(() => pending)
 
@@ -250,7 +288,13 @@ describe("useWhatsAppSettings", () => {
         release({
             status: 200,
             body: {
-                data: { ok: true, displayPhoneNumber: "+55", verifiedName: "X", checkedAt: "x" }
+                data: {
+                    ok: true,
+                    displayPhoneNumber: "+55",
+                    verifiedName: "X",
+                    checkedAt: "x",
+                    accessTokenLifetime: UNKNOWN_LIFETIME
+                }
             }
         })
         await act(() => pending)
@@ -264,7 +308,13 @@ describe("useWhatsAppSettings", () => {
             "POST /api/v1/whatsapp/settings/test": () => ({
                 status: 200,
                 body: {
-                    data: { ok: true, displayPhoneNumber: "+55", verifiedName: "X", checkedAt: "x" }
+                    data: {
+                        ok: true,
+                        displayPhoneNumber: "+55",
+                        verifiedName: "X",
+                        checkedAt: "x",
+                        accessTokenLifetime: UNKNOWN_LIFETIME
+                    }
                 }
             })
         })
@@ -290,7 +340,13 @@ describe("useWhatsAppSettings", () => {
             "POST /api/v1/whatsapp/settings/test": () => ({
                 status: 200,
                 body: {
-                    data: { ok: true, displayPhoneNumber: "+55", verifiedName: "X", checkedAt: "x" }
+                    data: {
+                        ok: true,
+                        displayPhoneNumber: "+55",
+                        verifiedName: "X",
+                        checkedAt: "x",
+                        accessTokenLifetime: UNKNOWN_LIFETIME
+                    }
                 }
             })
         })
@@ -313,7 +369,13 @@ describe("useWhatsAppSettings", () => {
             "POST /api/v1/whatsapp/settings/test": () => ({
                 status: 200,
                 body: {
-                    data: { ok: true, displayPhoneNumber: "+55", verifiedName: "X", checkedAt: "x" }
+                    data: {
+                        ok: true,
+                        displayPhoneNumber: "+55",
+                        verifiedName: "X",
+                        checkedAt: "x",
+                        accessTokenLifetime: UNKNOWN_LIFETIME
+                    }
                 }
             })
         })
@@ -446,7 +508,13 @@ describe("useWhatsAppSettings", () => {
             "POST /api/v1/whatsapp/settings/test": () => ({
                 status: 200,
                 body: {
-                    data: { ok: true, displayPhoneNumber: "+55", verifiedName: "X", checkedAt: "x" }
+                    data: {
+                        ok: true,
+                        displayPhoneNumber: "+55",
+                        verifiedName: "X",
+                        checkedAt: "x",
+                        accessTokenLifetime: UNKNOWN_LIFETIME
+                    }
                 }
             }),
             "PUT /api/v1/whatsapp/settings": () => ({ status: 200, body: { data: saved } })
@@ -487,7 +555,13 @@ describe("useWhatsAppSettings", () => {
             "POST /api/v1/whatsapp/settings/test": () => ({
                 status: 200,
                 body: {
-                    data: { ok: true, displayPhoneNumber: "+55", verifiedName: "X", checkedAt: "x" }
+                    data: {
+                        ok: true,
+                        displayPhoneNumber: "+55",
+                        verifiedName: "X",
+                        checkedAt: "x",
+                        accessTokenLifetime: UNKNOWN_LIFETIME
+                    }
                 }
             }),
             "PUT /api/v1/whatsapp/settings": () => ({
@@ -514,7 +588,13 @@ describe("useWhatsAppSettings", () => {
             "POST /api/v1/whatsapp/settings/test": () => ({
                 status: 200,
                 body: {
-                    data: { ok: true, displayPhoneNumber: "+55", verifiedName: "X", checkedAt: "x" }
+                    data: {
+                        ok: true,
+                        displayPhoneNumber: "+55",
+                        verifiedName: "X",
+                        checkedAt: "x",
+                        accessTokenLifetime: UNKNOWN_LIFETIME
+                    }
                 }
             }),
             "PUT /api/v1/whatsapp/settings": () => ({
@@ -539,7 +619,13 @@ describe("useWhatsAppSettings", () => {
             "POST /api/v1/whatsapp/settings/test": () => ({
                 status: 200,
                 body: {
-                    data: { ok: true, displayPhoneNumber: "+55", verifiedName: "X", checkedAt: "x" }
+                    data: {
+                        ok: true,
+                        displayPhoneNumber: "+55",
+                        verifiedName: "X",
+                        checkedAt: "x",
+                        accessTokenLifetime: UNKNOWN_LIFETIME
+                    }
                 }
             }),
             "PUT /api/v1/whatsapp/settings": () => ({
@@ -561,7 +647,14 @@ describe("useWhatsAppSettings", () => {
         const { result } = await setup({
             "POST /api/v1/whatsapp/settings/test": () => ({
                 status: 200,
-                body: { data: { ok: false, reason: "INVALID_TOKEN", checkedAt: "x" } }
+                body: {
+                    data: {
+                        ok: false,
+                        reason: "INVALID_TOKEN",
+                        checkedAt: "x",
+                        accessTokenLifetime: UNKNOWN_LIFETIME
+                    }
+                }
             })
         })
         await ready(result)
@@ -595,7 +688,13 @@ describe("useWhatsAppSettings", () => {
             "POST /api/v1/whatsapp/settings/test": () => ({
                 status: 200,
                 body: {
-                    data: { ok: true, displayPhoneNumber: "+55", verifiedName: "X", checkedAt: "x" }
+                    data: {
+                        ok: true,
+                        displayPhoneNumber: "+55",
+                        verifiedName: "X",
+                        checkedAt: "x",
+                        accessTokenLifetime: UNKNOWN_LIFETIME
+                    }
                 }
             }),
             "POST /api/v1/whatsapp/settings/pause": () => ({
@@ -703,7 +802,13 @@ describe("useWhatsAppSettings", () => {
             "POST /api/v1/whatsapp/settings/test": () => ({
                 status: 200,
                 body: {
-                    data: { ok: true, displayPhoneNumber: "+55", verifiedName: "X", checkedAt: "x" }
+                    data: {
+                        ok: true,
+                        displayPhoneNumber: "+55",
+                        verifiedName: "X",
+                        checkedAt: "x",
+                        accessTokenLifetime: UNKNOWN_LIFETIME
+                    }
                 }
             }),
             "PUT /api/v1/whatsapp/settings": () =>
@@ -761,7 +866,13 @@ describe("useWhatsAppSettings", () => {
             "POST /api/v1/whatsapp/settings/test": () => ({
                 status: 200,
                 body: {
-                    data: { ok: true, displayPhoneNumber: "+55", verifiedName: "X", checkedAt: "x" }
+                    data: {
+                        ok: true,
+                        displayPhoneNumber: "+55",
+                        verifiedName: "X",
+                        checkedAt: "x",
+                        accessTokenLifetime: UNKNOWN_LIFETIME
+                    }
                 }
             }),
             "PUT /api/v1/whatsapp/settings": () => ({ status: 200, body: { data: saved } })
@@ -797,5 +908,221 @@ describe("useWhatsAppSettings", () => {
             expect(result.current.situation).toBe(situation)
             unmount()
         }
+    })
+
+    describe("texto do campo do token", () => {
+        const NOW = new Date("2026-10-15T12:00:00.000Z")
+        const DAY_MS = 24 * 60 * 60 * 1000
+        const PERMANENT = { kind: "PERMANENT", expiresAt: null } as const
+        const GENERIC = {
+            text: "Use um token permanente de usuário do sistema; o token temporário expira em 24 horas.",
+            tone: "warning"
+        }
+        const PERMANENT_HINT = { text: "Token permanente: não expira.", tone: "success" }
+
+        function inDays(days: number): string {
+            return new Date(NOW.getTime() + days * DAY_MS).toISOString()
+        }
+
+        beforeEach(() => {
+            vi.useFakeTimers({ toFake: ["Date"] })
+            vi.setSystemTime(NOW)
+        })
+
+        it("segue a leitura com token permanente quando não há substituição", async () => {
+            const { result } = await setup({}, settingsView({ accessTokenLifetime: PERMANENT }))
+            await ready(result)
+
+            expect(result.current.tokenHint).toEqual(PERMANENT_HINT)
+        })
+
+        it("mostra o aviso genérico quando a leitura não sabe o tipo do token", async () => {
+            const { result } = await setup()
+            await ready(result)
+
+            expect(result.current.tokenHint).toEqual(GENERIC)
+        })
+
+        it("ao substituir ignora o tipo salvo, segue o teste ok do token novo e volta ao salvo ao cancelar", async () => {
+            const { result } = await setup(
+                {
+                    "POST /api/v1/whatsapp/settings/test": okTest(
+                        expiring("2026-10-16T14:00:00.000Z")
+                    )
+                },
+                settingsView({ accessTokenLifetime: PERMANENT })
+            )
+            await ready(result)
+
+            act(() => result.current.replaceSecret("accessToken"))
+            const replacing = result.current.tokenHint
+            act(() => result.current.setSecret("accessToken", NEW_TOKEN))
+            await act(() => result.current.runTest())
+            const tested = result.current.tokenHint
+            act(() => result.current.cancelSecret("accessToken"))
+
+            expect(replacing).toEqual(GENERIC)
+            expect(tested).toEqual({
+                text: "Este token expira em 16/10/2026 às 11:00 (horário de Brasília). Gere um token permanente de usuário do sistema para o chatbot não parar de responder.",
+                tone: "danger"
+            })
+            expect(tested.text).not.toContain(NEW_TOKEN)
+            expect(result.current.tokenHint).toEqual(PERMANENT_HINT)
+        })
+
+        it("volta ao aviso genérico quando o token muda depois do teste ok", async () => {
+            const { result } = await setup({
+                "POST /api/v1/whatsapp/settings/test": okTest(PERMANENT)
+            })
+            await ready(result)
+            act(() => result.current.replaceSecret("accessToken"))
+            act(() => result.current.setSecret("accessToken", NEW_TOKEN))
+            await act(() => result.current.runTest())
+            const tested = result.current.tokenHint
+
+            act(() => result.current.setSecret("accessToken", `${NEW_TOKEN}x`))
+
+            expect(tested).toEqual(PERMANENT_HINT)
+            expect(result.current.tokenHint).toEqual(GENERIC)
+        })
+
+        it("sem token configurado mostra o aviso genérico mesmo com a leitura dizendo permanente", async () => {
+            const { result } = await setup(
+                {},
+                settingsView({
+                    accessToken: { configured: false, last4: null },
+                    accessTokenLifetime: PERMANENT
+                })
+            )
+            await ready(result)
+
+            expect(result.current.tokenHint).toEqual(GENERIC)
+        })
+
+        it("mostra que o token expirou quando a data já passou", async () => {
+            const { result } = await setup(
+                {},
+                settingsView({ accessTokenLifetime: expiring("2026-10-14T23:30:00.000Z") })
+            )
+            await ready(result)
+
+            expect(result.current.tokenHint).toEqual({
+                text: 'Este token expirou em 14/10/2026 às 20:30 (horário de Brasília). Gere um token permanente de usuário do sistema, use "Substituir", teste e salve.',
+                tone: "danger"
+            })
+        })
+
+        it.each([
+            [8, "neutral", "Este token expira em 23/10/2026 às 09:00 (horário de Brasília)."],
+            [
+                7,
+                "warning",
+                "Este token expira em 22/10/2026 às 09:00 (horário de Brasília). Gere um token permanente de usuário do sistema para o chatbot não parar de responder."
+            ],
+            [
+                4,
+                "warning",
+                "Este token expira em 19/10/2026 às 09:00 (horário de Brasília). Gere um token permanente de usuário do sistema para o chatbot não parar de responder."
+            ],
+            [
+                3,
+                "danger",
+                "Este token expira em 18/10/2026 às 09:00 (horário de Brasília). Gere um token permanente de usuário do sistema para o chatbot não parar de responder."
+            ]
+        ])("com %i dias restantes usa o tom %s", async (days, tone, text) => {
+            const { result } = await setup(
+                {},
+                settingsView({ accessTokenLifetime: expiring(inDays(days)) })
+            )
+            await ready(result)
+
+            expect(result.current.tokenHint).toEqual({ text, tone })
+        })
+
+        it("o teste ok dos valores salvos vale sobre a leitura sem nova leitura", async () => {
+            const { result, calls } = await setup({
+                "POST /api/v1/whatsapp/settings/test": okTest(PERMANENT)
+            })
+            await ready(result)
+
+            await act(() => result.current.runTest())
+
+            expect(result.current.tokenHint).toEqual(PERMANENT_HINT)
+            expect(callsTo(calls, "GET", "/api/v1/whatsapp/settings")).toHaveLength(1)
+        })
+
+        it("o teste ok dos valores salvos sem saber o tipo mantém o tipo da leitura", async () => {
+            const { result } = await setup(
+                { "POST /api/v1/whatsapp/settings/test": okTest(UNKNOWN_LIFETIME) },
+                settingsView({ accessTokenLifetime: PERMANENT })
+            )
+            await ready(result)
+
+            await act(() => result.current.runTest())
+
+            expect(result.current.tokenHint).toEqual(PERMANENT_HINT)
+        })
+
+        it("depois de salvar segue o tipo da leitura devolvida", async () => {
+            const { result } = await setup({
+                "POST /api/v1/whatsapp/settings/test": okTest(PERMANENT),
+                "PUT /api/v1/whatsapp/settings": () => ({
+                    status: 200,
+                    body: {
+                        data: settingsView({
+                            accessToken: { configured: true, last4: "77Zz" },
+                            accessTokenLifetime: PERMANENT
+                        })
+                    }
+                })
+            })
+            await ready(result)
+            act(() => result.current.replaceSecret("accessToken"))
+            act(() => result.current.setSecret("accessToken", NEW_TOKEN))
+            await act(() => result.current.runTest())
+
+            await act(() => result.current.save())
+
+            expect(result.current.testResult).toBeNull()
+            expect(result.current.tokenHint).toEqual(PERMANENT_HINT)
+        })
+
+        it("descartar volta a seguir a leitura", async () => {
+            const { result } = await setup(
+                { "POST /api/v1/whatsapp/settings/test": okTest(expiring(inDays(2))) },
+                settingsView({ accessTokenLifetime: PERMANENT })
+            )
+            await ready(result)
+            act(() => result.current.replaceSecret("accessToken"))
+            act(() => result.current.setSecret("accessToken", NEW_TOKEN))
+            await act(() => result.current.runTest())
+            const tested = result.current.tokenHint.tone
+
+            act(() => result.current.discard())
+
+            expect(tested).toBe("danger")
+            expect(result.current.tokenHint).toEqual(PERMANENT_HINT)
+        })
+
+        it("no 422 do salvar volta ao aviso genérico do token digitado", async () => {
+            const { result } = await setup(
+                {
+                    "POST /api/v1/whatsapp/settings/test": okTest(PERMANENT),
+                    "PUT /api/v1/whatsapp/settings": () => ({
+                        status: 422,
+                        body: { error: { code: "INVALID_TOKEN", message: "x" } }
+                    })
+                },
+                settingsView({ accessTokenLifetime: PERMANENT })
+            )
+            await ready(result)
+            act(() => result.current.replaceSecret("accessToken"))
+            act(() => result.current.setSecret("accessToken", NEW_TOKEN))
+            await act(() => result.current.runTest())
+
+            await act(() => result.current.save())
+
+            expect(result.current.tokenHint).toEqual(GENERIC)
+        })
     })
 })

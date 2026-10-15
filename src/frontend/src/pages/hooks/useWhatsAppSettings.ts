@@ -8,10 +8,14 @@ import whatsappSettingsApi from "@/store/api/whatsappSettings.api"
 import useAppDispatch from "@/store/useAppDispatch"
 import type LastChange from "@/types/settings/LastChange.types"
 import type WhatsAppStatus from "@/types/status/WhatsAppStatus.types"
+import type WhatsAppAccessTokenLifetime from "@/types/whatsapp/WhatsAppAccessTokenLifetime.types"
 import type WhatsAppConnectionReason from "@/types/whatsapp/WhatsAppConnectionReason.types"
+import type WhatsAppHint from "@/types/whatsapp/WhatsAppHint.types"
 import type WhatsAppSettings from "@/types/whatsapp/WhatsAppSettings.types"
 import type WhatsAppSettingsInput from "@/types/whatsapp/WhatsAppSettingsInput.types"
 import type WhatsAppTestMessage from "@/types/whatsapp/WhatsAppTestMessage.types"
+import formatDate from "@/utils/formatDate"
+import formatTime from "@/utils/formatTime"
 
 type SecretKey = "accessToken" | "appSecret"
 type IdKey = "phoneNumberId" | "businessAccountId"
@@ -25,7 +29,12 @@ type Draft = {
 }
 
 type TestOutcome =
-    | { kind: "ok"; displayPhoneNumber: string; verifiedName: string }
+    | {
+          kind: "ok"
+          displayPhoneNumber: string
+          verifiedName: string
+          accessTokenLifetime: WhatsAppAccessTokenLifetime
+      }
     | { kind: "failed"; message: string }
     | { kind: "error"; message: string }
 
@@ -38,6 +47,10 @@ type ActionError = "errors.save" | "errors.pause" | "errors.resume" | "common:er
 const EMPTY_DRAFT: Draft = { accessToken: null, appSecret: null }
 const FIELD_ORDER: FieldKey[] = ["phoneNumberId", "businessAccountId", "accessToken", "appSecret"]
 const ID_PATTERN = /^\d{1,40}$/
+const DAY_MS = 24 * 60 * 60 * 1000
+const WARNING_DAYS = 7
+const DANGER_DAYS = 3
+const UNKNOWN_LIFETIME: WhatsAppAccessTokenLifetime = { kind: "UNKNOWN", expiresAt: null }
 const REASONS: WhatsAppConnectionReason[] = [
     "INVALID_TOKEN",
     "INVALID_APP_SECRET",
@@ -100,6 +113,7 @@ function useWhatsAppSettings() {
     const [switching, setSwitching] = useState(false)
     const [pauseDialogOpen, setPauseDialogOpen] = useState(false)
     const [actionError, setActionError] = useState<ActionError | null>(null)
+    const [renderedAt] = useState(() => Date.now())
     const testInFlight = useRef(false)
     const saveInFlight = useRef(false)
     const switchInFlight = useRef(false)
@@ -146,6 +160,8 @@ function useWhatsAppSettings() {
     })
     const testResult = stored !== null && stored.signature === signature ? stored.outcome : null
     const testOk = testResult?.kind === "ok"
+    const testedLifetime = testResult?.kind === "ok" ? testResult.accessTokenLifetime : null
+    const replacingToken = draft.accessToken !== null || !secrets.accessToken.configured
     const needTest = changes.length > 0 && !testOk
 
     function updateDraft(next: Partial<Draft>) {
@@ -226,7 +242,8 @@ function useWhatsAppSettings() {
                     ? {
                           kind: "ok",
                           displayPhoneNumber: result.displayPhoneNumber,
-                          verifiedName: result.verifiedName
+                          verifiedName: result.verifiedName,
+                          accessTokenLifetime: result.accessTokenLifetime
                       }
                     : failureFromReason(result.reason),
                 sentSignature
@@ -380,6 +397,56 @@ function useWhatsAppSettings() {
         return { tone: "error", title: outcome.message, detail: "" }
     }
 
+    function effectiveLifetime(): WhatsAppAccessTokenLifetime {
+        if (replacingToken) {
+            return testedLifetime ?? UNKNOWN_LIFETIME
+        }
+
+        if (testedLifetime !== null && testedLifetime.kind !== "UNKNOWN") {
+            return testedLifetime
+        }
+
+        return view?.accessTokenLifetime ?? UNKNOWN_LIFETIME
+    }
+
+    function expiringHint(expiresAt: string): WhatsAppHint {
+        const expires = new Date(expiresAt)
+        const date = formatDate(expiresAt)
+
+        if (date === null) {
+            return { text: t("credentials.tokenHint"), tone: "warning" }
+        }
+
+        const values = { date, time: formatTime(expires) }
+        const remaining = expires.getTime() - renderedAt
+
+        if (remaining <= 0) {
+            return { text: t("credentials.tokenExpired", values), tone: "danger" }
+        }
+
+        if (remaining <= DANGER_DAYS * DAY_MS) {
+            return { text: t("credentials.tokenExpires", values), tone: "danger" }
+        }
+
+        if (remaining <= WARNING_DAYS * DAY_MS) {
+            return { text: t("credentials.tokenExpires", values), tone: "warning" }
+        }
+
+        return { text: t("credentials.tokenExpiresInfo", values), tone: "neutral" }
+    }
+
+    function tokenHintOf(lifetime: WhatsAppAccessTokenLifetime): WhatsAppHint {
+        if (lifetime.kind === "PERMANENT") {
+            return { text: t("credentials.tokenPermanent"), tone: "success" }
+        }
+
+        if (lifetime.kind === "EXPIRING") {
+            return expiringHint(lifetime.expiresAt)
+        }
+
+        return { text: t("credentials.tokenHint"), tone: "warning" }
+    }
+
     const lastChange: LastChange | null =
         view?.updatedBy != null
             ? { changedBy: view.updatedBy.name, changedAt: view.updatedAt }
@@ -402,6 +469,7 @@ function useWhatsAppSettings() {
         changes,
         testResult,
         testMessage: messageOf(testResult),
+        tokenHint: tokenHintOf(effectiveLifetime()),
         testing,
         needTest,
         saveDisabled: needTest || testing,

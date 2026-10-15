@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 import WhatsAppSecretField from "@/components/WhatsAppSecretField"
+import css from "@/styles/components/whatsappSecretField.module.css"
 
 function renderField(secret: { configured: boolean; last4: string | null; value: string | null }) {
     const handlers = { onReplace: vi.fn(), onCancel: vi.fn(), onChange: vi.fn() }
@@ -57,5 +58,32 @@ describe("WhatsAppSecretField", () => {
         expect(
             screen.queryByText("Guardado criptografado. Não é possível visualizar o valor salvo.")
         ).not.toBeInTheDocument()
+    })
+
+    it.each([
+        ["success", css.hintSuccess],
+        ["neutral", css.hintNeutral],
+        ["warning", css.hintWarning],
+        ["danger", css.hintDanger]
+    ] as const)("mostra o texto de ajuda com o tom %s", (tone, toneClass) => {
+        render(
+            <WhatsAppSecretField
+                label="Token de acesso"
+                secret={{ configured: true, last4: "a91F", value: null }}
+                maskedText="••••••••a91F"
+                replaceLabel="Substituir"
+                cancelLabel="Cancelar"
+                placeholder="Cole o novo valor"
+                storedNote="Guardado criptografado. Não é possível visualizar o valor salvo."
+                hint="Token permanente: não expira."
+                hintTone={tone}
+                onReplace={vi.fn()}
+                onCancel={vi.fn()}
+                onChange={vi.fn()}
+            />
+        )
+
+        expect(toneClass).toEqual(expect.any(String))
+        expect(screen.getByText("Token permanente: não expira.")).toHaveClass(toneClass)
     })
 })

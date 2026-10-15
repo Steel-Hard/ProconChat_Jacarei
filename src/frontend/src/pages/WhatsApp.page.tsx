@@ -161,7 +161,8 @@ function WhatsAppPage() {
                                     label={t("credentials.fields.accessToken")}
                                     secret={page.secrets.accessToken}
                                     maskedText={masked(page.secrets.accessToken.last4)}
-                                    hint={t("credentials.tokenHint")}
+                                    hint={page.tokenHint.text}
+                                    hintTone={page.tokenHint.tone}
                                     disabled={page.saving}
                                     onReplace={() => page.replaceSecret("accessToken")}
                                     onCancel={() => page.cancelSecret("accessToken")}
