@@ -31,10 +31,10 @@ export const RESPOSTA_RECUSA_AGENDAMENTO =
     "Tudo bem! Se mudar de ideia ou precisar de novas orientações, estamos à sua disposição. O PROCON Jacareí agradece seu contato."
 
 export const RESPOSTA_INICIO_AGENDAMENTO =
-    "Vamos iniciar o agendamento presencial. Quem irá comparecer ao atendimento?\n1. Eu mesmo\n2. Um representante"
+    "Vamos iniciar o agendamento presencial. Quem irá comparecer ao atendimento?\n1. Eu mesmo\n2. Outra pessoa por mim"
 
 export const ERRO_ATTENDEE =
-    "Não entendi. Por favor, escolha quem comparecerá digitando o número:\n1. Eu mesmo\n2. Um representante"
+    "Por favor, escolha uma das opções abaixo para indicar quem comparecerá ao atendimento:"
 
 export const PROMPT_NOME =
     "Por favor, digite o nome completo do titular do atendimento:"
@@ -60,11 +60,14 @@ export const ERRO_DUPLICATE_APPOINTMENT =
 export const ERRO_FALHA_AGENDAMENTO =
     "Não foi possível concluir o seu agendamento no momento devido a uma instabilidade. O agendamento não foi gravado. Por favor, tente novamente mais tarde."
 
+export const MENSAGEM_RASCUNHO_INCOMPLETO =
+    "Houve uma inconsistência nos dados do agendamento. Vamos recomeçar:"
+
 export const PROMPT_SLOTS =
     "Escolha um dos horários disponíveis para o atendimento presencial:"
 
 export const ERRO_SLOTS =
-    "Não entendi. Por favor, escolha um dos horários digitando o número:"
+    "Por favor, escolha um dos horários disponíveis na lista abaixo:"
 
 export interface ConfirmacaoAgendamentoInput {
     protocol: string
@@ -77,6 +80,7 @@ export interface ConfirmacaoAgendamentoInput {
     reminderEnabled: boolean
     reminderHours: number
 }
+
 export const MENSAGEM_ATENDIMENTO_PAUSADO =
     "O atendimento automático do PROCON Jacareí está temporariamente indisponível. Tente novamente mais tarde."
 
@@ -162,7 +166,7 @@ export function paginarItens<T>(itens: T[], paginaSolicitada: number = 1): Pagin
     }
 }
 
-export function formatarListaPaginada(
+function formatarListaPaginada(
     paginacao: PaginatedResult<string>,
 ): string {
     const linhas: string[] = []
@@ -477,7 +481,7 @@ export function criarBotoesOfertaAgendamento(): ReplyButton[] {
 export function criarBotoesAttendee(): ReplyButton[] {
     return [
         { id: "attendee_self", title: "Eu mesmo" },
-        { id: "attendee_rep", title: "Um representante" },
+        { id: "attendee_rep", title: "Outra pessoa por mim" },
     ]
 }
 
@@ -505,20 +509,14 @@ export function criarMensagensSlots(
     }
 
     const paginacao = paginarItens(slots, pagina)
-    const rows: ListRow[] = paginacao.itensPagina.map((s, index) => {
-        let globalIndex = index + 1
-        if (paginacao.paginaAtual > 1) {
-            globalIndex = 9 + (paginacao.paginaAtual - 2) * 8 + (index + 1)
-        }
-        return {
-            id: `slot_${globalIndex}`,
-            title: formatarTituloSlot(s),
-            description: limitarString(
-                s.remainingSeats === 1 ? "1 vaga disponível" : `${s.remainingSeats} vagas disponíveis`,
-                72,
-            ),
-        }
-    })
+    const rows: ListRow[] = paginacao.itensPagina.map((s) => ({
+        id: `slot_${s.datetime.toISOString()}`,
+        title: formatarTituloSlot(s),
+        description: limitarString(
+            s.remainingSeats === 1 ? "1 vaga disponível" : `${s.remainingSeats} vagas disponíveis`,
+            72,
+        ),
+    }))
 
     if (paginacao.opcaoAnterior !== undefined && paginacao.opcaoProxima !== undefined) {
         rows.push({

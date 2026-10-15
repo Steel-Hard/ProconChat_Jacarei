@@ -44,7 +44,6 @@ Com os seletores **"Quem comparece"** (titular ou representante) e **"Pergunta d
 > [Documentos do grupo]
 > Documentos úteis para esta dúvida: [documentos da pergunta]
 > Você receberá neste número avisos sobre este agendamento, como um lembrete [N] horas antes do atendimento e o aviso em caso de cancelamento.
-> Se precisar remarcar ou cancelar, responda a esta mensagem.
 
 - O título é **"Agendamento realizado"**, e não "confirmado", para não confundir com o status interno **Confirmado** do painel (que significa que um funcionário assumiu).
 - Se o lembrete estiver desligado, a frase sobre avisos cita só o aviso de cancelamento.

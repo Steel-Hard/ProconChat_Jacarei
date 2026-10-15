@@ -5,7 +5,6 @@ import {
   BookAppointmentInput,
   BookAppointmentResult,
   ScheduleRange,
-  ScheduleSettings,
 } from "../types/schedule.types"
 
 const WEEKDAYS_PT = [
@@ -83,63 +82,76 @@ export function getLocalParts(d: Date, timeZone = "America/Sao_Paulo"): {
   }
 }
 
-export class ScheduleService {
-  constructor(private readonly repository: IScheduleRepository) {}
+export function parseLocalDate(
+  dateStr: string,
+  timeStr: string,
+  timeZone = "America/Sao_Paulo",
+): Date {
+  const [y, m, d] = dateStr.split("-").map(Number)
+  const [h, min] = timeStr.split(":").map(Number)
+  const utcCandidate = new Date(Date.UTC(y!, m! - 1, d!, h!, min!, 0))
+  const parts = getLocalParts(utcCandidate, timeZone)
+  const targetMinutes = (h ?? 0) * 60 + (min ?? 0)
+  const localMinutes = parts.hour * 60 + parts.minute
+  const diffMs = (localMinutes - targetMinutes) * 60 * 1000
+  return new Date(utcCandidate.getTime() - diffMs)
+}
 
-  /**
-   * Determina se uma data é considerada dia com atendimento configurado e não bloqueado.
-   */
-  private isBusinessDay(
-    dateStr: string,
-    ranges: ScheduleRange[],
-    blockedDates: BlockedDate[],
-    slotMinutes: number,
-  ): boolean {
-    const dow = getDowFromDateStr(dateStr)
-    const rangesForDay = ranges.filter((r) => r.weekday === dow)
-    if (rangesForDay.length === 0) {
-      return false
-    }
-
-    const fullDayBlocked = blockedDates.some(
-      (b) => b.date === dateStr && (!b.start_time || !b.end_time),
-    )
-    if (fullDayBlocked) {
-      return false
-    }
-
-    const partialBlocks = blockedDates.filter(
-      (b) => b.date === dateStr && b.start_time && b.end_time,
-    )
-
-    // Verifica se há pelo menos um slot possível que não esteja bloqueado
-    for (const range of rangesForDay) {
-      const startMin = toMinutes(range.start_time)
-      const endMin = toMinutes(range.end_time)
-
-      for (let t = startMin; t + slotMinutes <= endMin; t += slotMinutes) {
-        const slotStart = t
-        const slotEnd = t + slotMinutes
-        const isBlocked = partialBlocks.some((p) => {
-          const pStart = toMinutes(p.start_time!)
-          const pEnd = toMinutes(p.end_time!)
-          return slotStart < pEnd && slotEnd > pStart
-        })
-
-        if (!isBlocked) {
-          return true
-        }
-      }
-    }
-
+function isBusinessDay(
+  dateStr: string,
+  ranges: ScheduleRange[],
+  blockedDates: BlockedDate[],
+  slotMinutes: number,
+): boolean {
+  const dow = getDowFromDateStr(dateStr)
+  const rangesForDay = ranges.filter((r) => r.weekday === dow)
+  if (rangesForDay.length === 0) {
     return false
   }
 
-  /**
-   * Calcula todos os horários livres dentro da janela de agendamento.
-   */
-  async getAvailableSlots(now = new Date()): Promise<AvailableSlot[]> {
-    const settings = await this.repository.getSettings()
+  const fullDayBlocked = blockedDates.some(
+    (b) => b.date === dateStr && (!b.start_time || !b.end_time),
+  )
+  if (fullDayBlocked) {
+    return false
+  }
+
+  const partialBlocks = blockedDates.filter(
+    (b) => b.date === dateStr && b.start_time && b.end_time,
+  )
+
+  for (const range of rangesForDay) {
+    const startMin = toMinutes(range.start_time)
+    const endMin = toMinutes(range.end_time)
+
+    for (let t = startMin; t + slotMinutes <= endMin; t += slotMinutes) {
+      const slotStart = t
+      const slotEnd = t + slotMinutes
+      const isBlocked = partialBlocks.some((p) => {
+        const pStart = toMinutes(p.start_time!)
+        const pEnd = toMinutes(p.end_time!)
+        return slotStart < pEnd && slotEnd > pStart
+      })
+
+      if (!isBlocked) {
+        return true
+      }
+    }
+  }
+
+  return false
+}
+
+export interface IScheduleService {
+  getAvailableSlots(now?: Date): Promise<AvailableSlot[]>
+  bookSlot(input: BookAppointmentInput): Promise<BookAppointmentResult>
+}
+
+export function createScheduleService(
+  repository: IScheduleRepository,
+): IScheduleService {
+  async function getAvailableSlots(now = new Date()): Promise<AvailableSlot[]> {
+    const settings = await repository.getSettings()
     if (!settings) {
       return []
     }
@@ -147,26 +159,28 @@ export class ScheduleService {
     const { dateStr: todayStr, timeStr: nowTimeStr } = getLocalParts(now)
     const nowMinutes = toMinutes(nowTimeStr)
 
-    const ranges = await this.repository.getRanges()
+    const ranges = await repository.getRanges()
     if (ranges.length === 0) {
       return []
     }
 
     const maxDateStr = addDaysToDateStr(todayStr, settings.window_days + 15)
-    const blockedDates = await this.repository.getBlockedDates(
+    const blockedDates = await repository.getBlockedDates(
       todayStr,
       maxDateStr,
     )
 
-    // Cálculo da antecedência mínima (dias com atendimento e não bloqueados)
     let startDateStr = todayStr
     if (settings.min_notice_days > 0) {
       let n = 0
       let d = todayStr
-      while (n < settings.min_notice_days) {
+      let iterations = 0
+      const maxIterations = settings.window_days + 30
+      while (n < settings.min_notice_days && iterations < maxIterations) {
+        iterations++
         d = addDaysToDateStr(d, 1)
         if (
-          this.isBusinessDay(
+          isBusinessDay(
             d,
             ranges,
             blockedDates,
@@ -176,12 +190,14 @@ export class ScheduleService {
           n++
         }
       }
+      if (n < settings.min_notice_days) {
+        return []
+      }
       startDateStr = d
     }
 
     const endDateStr = addDaysToDateStr(todayStr, settings.window_days)
 
-    // Gera os slots candidatos no intervalo [startDateStr, endDateStr]
     interface CandidateSlot {
       datetime: Date
       dateStr: string
@@ -202,7 +218,7 @@ export class ScheduleService {
         (b) => b.date === curr && (!b.start_time || !b.end_time),
       )
 
-      if (!fullDayBlocked && rangesForDay.length > 0) {
+      if (rangesForDay.length > 0 && !fullDayBlocked) {
         const partialBlocks = blockedDates.filter(
           (b) => b.date === curr && b.start_time && b.end_time,
         )
@@ -216,7 +232,6 @@ export class ScheduleService {
             t + settings.slot_minutes <= endMin;
             t += settings.slot_minutes
           ) {
-            // Se for hoje, o horário não pode já ter passado
             if (curr === todayStr && t <= nowMinutes) {
               continue
             }
@@ -235,7 +250,7 @@ export class ScheduleService {
               const [_y, m, d] = curr.split("-")
               const weekdayName = WEEKDAYS_PT[dow] ?? ""
               const formatted = `${weekdayName}, ${d}/${m} às ${slotTimeStr}`
-              const datetime = new Date(`${curr}T${slotTimeStr}:00-03:00`)
+              const datetime = parseLocalDate(curr, slotTimeStr)
 
               candidateSlots.push({
                 datetime,
@@ -255,11 +270,10 @@ export class ScheduleService {
       return []
     }
 
-    // Busca contagem de agendamentos ativos por slot
     const firstDatetime = candidateSlots[0]!.datetime
     const lastDatetime = candidateSlots[candidateSlots.length - 1]!.datetime
 
-    const activeCounts = await this.repository.countActiveAppointmentsPerSlot(
+    const activeCounts = await repository.countActiveAppointmentsPerSlot(
       firstDatetime,
       lastDatetime,
     )
@@ -284,23 +298,30 @@ export class ScheduleService {
     return availableSlots
   }
 
-  /**
-   * Cria o agendamento presencial.
-   */
-  async bookSlot(input: BookAppointmentInput): Promise<BookAppointmentResult> {
-    return this.repository.bookAppointment(input)
+  async function bookSlot(
+    input: BookAppointmentInput,
+  ): Promise<BookAppointmentResult> {
+    return repository.bookAppointment(input)
   }
 
-  async getAttendanceDocuments(byRepresentative: boolean): Promise<string[]> {
-    const group = byRepresentative ? "REPRESENTATIVE" : "HOLDER"
-    return this.repository.getAttendanceDocuments(group)
+  return {
+    getAvailableSlots,
+    bookSlot,
+  }
+}
+
+export class ScheduleService implements IScheduleService {
+  private readonly inner: IScheduleService
+
+  constructor(repository: IScheduleRepository) {
+    this.inner = createScheduleService(repository)
   }
 
-  async getQuestionDocuments(questionId: number): Promise<string[]> {
-    return this.repository.getQuestionDocuments(questionId)
+  getAvailableSlots(now?: Date): Promise<AvailableSlot[]> {
+    return this.inner.getAvailableSlots(now)
   }
 
-  async getSettings(): Promise<ScheduleSettings | null> {
-    return this.repository.getSettings()
+  bookSlot(input: BookAppointmentInput): Promise<BookAppointmentResult> {
+    return this.inner.bookSlot(input)
   }
 }

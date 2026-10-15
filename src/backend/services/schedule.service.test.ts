@@ -147,4 +147,38 @@ describe("ScheduleService", () => {
     const slots = await service.getAvailableSlots()
     expect(slots).toEqual([])
   })
+
+  it("deve respeitar estritamente o limite da janela de agendamento (window_days)", async () => {
+    vi.mocked(repoMock.getSettings).mockResolvedValueOnce({
+      ...defaultSettings,
+      window_days: 2,
+      min_notice_days: 1,
+    })
+
+    // Segunda 05/10 -> notice days 1 pula segunda -> janela de 2 dias cobre terça 06/10 e quarta 07/10
+    const now = new Date("2026-10-05T09:00:00-03:00")
+    const slots = await service.getAvailableSlots(now)
+
+    const dates = Array.from(new Set(slots.map((s) => s.dateStr)))
+    expect(dates).toContain("2026-10-06")
+    expect(dates).toContain("2026-10-07")
+    expect(dates).not.toContain("2026-10-08")
+    expect(dates).not.toContain("2026-10-09")
+  })
+
+  it("não deve entrar em loop infinito se as faixas forem mais curtas que slot_minutes", async () => {
+    const shortRanges: ScheduleRange[] = [1, 2, 3, 4, 5].map((weekday) => ({
+      id: weekday,
+      weekday,
+      slot_index: 1,
+      start_time: "08:00:00",
+      end_time: "08:20:00",
+    }))
+    vi.mocked(repoMock.getRanges).mockResolvedValueOnce(shortRanges)
+
+    const now = new Date("2026-10-05T09:00:00-03:00")
+    const slots = await service.getAvailableSlots(now)
+
+    expect(slots).toEqual([])
+  })
 })

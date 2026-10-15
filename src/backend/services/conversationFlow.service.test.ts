@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from "vitest"
 import { MockConversationEventRepository } from "../repositories/mock/conversationEventMock.repository"
-import { SessionRepository } from "../repositories/session.repository"
+import { ActiveSession, SessionRepository } from "../repositories/session.repository"
 import { Categoria, Pergunta, RespostaFinalOutput } from "../types/motorDecisao.types"
 import {
     createConversationFlowService,
@@ -18,8 +18,10 @@ import {
     ERRO_FALHA_AGENDAMENTO,
     ERRO_NOME,
     ERRO_SLOT_OCUPADO,
+    ERRO_SLOTS,
     formatarListaPerguntas,
     formatarListaSlots,
+    MENSAGEM_RASCUNHO_INCOMPLETO,
     MENSAGEM_SEM_HORARIOS,
     OFERTA_AGENDAMENTO,
     PERGUNTA_RESOLVIDA,
@@ -31,7 +33,8 @@ import {
     MENSAGEM_ATENDIMENTO_PAUSADO,
 } from "./messageFormatter.service"
 import { AvailableSlot, BookAppointmentResult } from "../types/schedule.types"
-import BadRequestError from "../errors/BadRequestError"
+import { SlotFullError } from "../errors/SlotFullError"
+import { DuplicateAppointmentError } from "../errors/DuplicateAppointmentError"
 
 const categorias: Categoria[] = [
     { id: 1, title: "Contrato", short_title: "Contrato", active: true },
@@ -407,6 +410,7 @@ describe("conversationFlow.service", () => {
             created: false,
             currentStep: "AWAITING_RESOLVED",
             currentCategoryId: "1",
+            currentQuestionId: "10",
             listPage: 1,
             draft: null,
         })
@@ -424,6 +428,7 @@ describe("conversationFlow.service", () => {
         expect(updateNavigationState).toHaveBeenCalledWith("s1", {
             currentStep: "AWAITING_SCHEDULE_OFFER",
             currentCategoryId: null,
+            currentQuestionId: "10",
         })
         expect(result.reply.step).toBe("AWAITING_SCHEDULE_OFFER")
         expect(result.reply.text).toBe(OFERTA_AGENDAMENTO)
@@ -457,6 +462,7 @@ describe("conversationFlow.service", () => {
             created: false,
             currentStep: "AWAITING_SCHEDULE_OFFER",
             currentCategoryId: "1",
+            currentQuestionId: "10",
             listPage: 1,
             draft: null,
         })
@@ -466,13 +472,14 @@ describe("conversationFlow.service", () => {
         expect(updateNavigationState).toHaveBeenCalledWith("s1", {
             currentStep: "AWAITING_ATTENDEE",
             currentCategoryId: null,
+            currentQuestionId: "10",
         })
         expect(result.reply.step).toBe("AWAITING_ATTENDEE")
         expect(result.reply.text).toBe(RESPOSTA_INICIO_AGENDAMENTO)
     })
 
     describe("Fluxo de Agendamento Presencial (#56)", () => {
-        test("AWAITING_ATTENDEE: opção 1 (titular) grava ATTENDEE_CHOSEN (false) e avança para AWAITING_HOLDER_NAME", async () => {
+        test("AWAITING_ATTENDEE: opção interativa attendee_self grava ATTENDEE_CHOSEN (false) e avança para AWAITING_HOLDER_NAME", async () => {
             findOrCreateActive.mockResolvedValueOnce({
                 id: "s1",
                 created: false,
@@ -483,7 +490,7 @@ describe("conversationFlow.service", () => {
                 draft: null,
             })
 
-            const result = await processIncomingMessage({ phone: "5511999999999", text: "1" })
+            const result = await processIncomingMessage({ phone: "5511999999999", optionId: "attendee_self" })
 
             expect(recordEvent).toHaveBeenCalledWith("s1", {
                 type: "ATTENDEE_CHOSEN",
@@ -492,6 +499,7 @@ describe("conversationFlow.service", () => {
             expect(updateNavigationState).toHaveBeenCalledWith("s1", {
                 currentStep: "AWAITING_HOLDER_NAME",
                 currentCategoryId: null,
+                currentQuestionId: "10",
                 draft: { by_representative: false },
             })
             expect(result.reply.step).toBe("AWAITING_HOLDER_NAME")
@@ -518,10 +526,29 @@ describe("conversationFlow.service", () => {
             expect(updateNavigationState).toHaveBeenCalledWith("s1", {
                 currentStep: "AWAITING_HOLDER_NAME",
                 currentCategoryId: null,
+                currentQuestionId: "10",
                 draft: { by_representative: true },
             })
             expect(result.reply.step).toBe("AWAITING_HOLDER_NAME")
             expect(result.reply.text).toBe(PROMPT_NOME)
+        })
+
+        test("AWAITING_ATTENDEE: texto livre é rejeitado e re-solicita escolha com botões", async () => {
+            findOrCreateActive.mockResolvedValueOnce({
+                id: "s1",
+                created: false,
+                currentStep: "AWAITING_ATTENDEE",
+                currentCategoryId: "1",
+                currentQuestionId: "10",
+                listPage: 1,
+                draft: null,
+            })
+
+            const result = await processIncomingMessage({ phone: "5511999999999", text: "1" })
+
+            expect(result.reply.step).toBe("AWAITING_ATTENDEE")
+            expect(result.reply.text).toBe(ERRO_ATTENDEE)
+            expect(result.reply.messages?.[0]?.type).toBe("buttons")
         })
 
         test("AWAITING_ATTENDEE: opção inválida re-solicita escolha com botões", async () => {
@@ -535,14 +562,14 @@ describe("conversationFlow.service", () => {
                 draft: null,
             })
 
-            const result = await processIncomingMessage({ phone: "5511999999999", text: "invalido" })
+            const result = await processIncomingMessage({ phone: "5511999999999", optionId: "invalido" })
 
             expect(result.reply.step).toBe("AWAITING_ATTENDEE")
             expect(result.reply.text).toBe(ERRO_ATTENDEE)
             expect(result.reply.messages?.[0]?.type).toBe("buttons")
         })
 
-        test("AWAITING_HOLDER_NAME: nome válido salva draft e avança para AWAITING_HOLDER_CPF", async () => {
+        test("AWAITING_HOLDER_NAME: nome válido salva draft e avança para AWAITING_HOLDER_CPF preservando currentQuestionId", async () => {
             findOrCreateActive.mockResolvedValueOnce({
                 id: "s1",
                 created: false,
@@ -558,6 +585,7 @@ describe("conversationFlow.service", () => {
             expect(updateNavigationState).toHaveBeenCalledWith("s1", {
                 currentStep: "AWAITING_HOLDER_CPF",
                 currentCategoryId: null,
+                currentQuestionId: "10",
                 draft: {
                     by_representative: false,
                     holder_name: "Maria da Silva",
@@ -601,7 +629,7 @@ describe("conversationFlow.service", () => {
             expect(result.reply.text).toBe(ERRO_CPF)
         })
 
-        test("AWAITING_HOLDER_CPF: CPF válido com horários grava PHONE_NOTICE_SHOWN e avança para AWAITING_SLOT", async () => {
+        test("AWAITING_HOLDER_CPF: CPF válido com horários avança para AWAITING_SLOT sem gravar PHONE_NOTICE_SHOWN antes da reserva", async () => {
             findOrCreateActive.mockResolvedValueOnce({
                 id: "s1",
                 created: false,
@@ -616,12 +644,13 @@ describe("conversationFlow.service", () => {
             // CPF válido: 529.982.247-25
             const result = await processIncomingMessage({ phone: "5511999999999", text: "529.982.247-25" })
 
-            expect(recordEvent).toHaveBeenCalledWith("s1", {
+            expect(recordEvent).not.toHaveBeenCalledWith("s1", {
                 type: "PHONE_NOTICE_SHOWN",
             })
             expect(updateNavigationState).toHaveBeenCalledWith("s1", expect.objectContaining({
                 currentStep: "AWAITING_SLOT",
                 currentCategoryId: null,
+                currentQuestionId: "10",
                 listPage: 1,
                 draft: expect.objectContaining({
                     holder_name: "Maria da Silva",
@@ -655,7 +684,7 @@ describe("conversationFlow.service", () => {
             expect(result.reply.text).toBe(MENSAGEM_SEM_HORARIOS)
         })
 
-        test("AWAITING_SLOT: escolhe slot válido realiza agendamento e retorna confirmação", async () => {
+        test("AWAITING_SLOT: escolhe slot válido por optionId realiza agendamento e retorna confirmação", async () => {
             findOrCreateActive.mockResolvedValueOnce({
                 id: "s1",
                 created: false,
@@ -674,7 +703,10 @@ describe("conversationFlow.service", () => {
             processarPergunta.mockResolvedValueOnce(respostaPadrao)
             bookSlot.mockResolvedValueOnce(mockBookResult)
 
-            const result = await processIncomingMessage({ phone: "5511999999999", text: "1" })
+            const result = await processIncomingMessage({
+                phone: "5511999999999",
+                optionId: `slot_${mockSlots[0]?.datetime.toISOString()}`,
+            })
 
             expect(bookSlot).toHaveBeenCalledWith(expect.objectContaining({
                 sessionId: "s1",
@@ -694,27 +726,7 @@ describe("conversationFlow.service", () => {
             expect(result.reply.text).toContain("Leve ao atendimento:")
         })
 
-        test("AWAITING_SLOT: lança BadRequestError se draft estiver incompleto", async () => {
-            findOrCreateActive.mockResolvedValueOnce({
-                id: "s1",
-                created: false,
-                currentStep: "AWAITING_SLOT",
-                currentCategoryId: "1",
-                currentQuestionId: "10",
-                listPage: 1,
-                draft: {
-                    by_representative: false,
-                    // holder_name ausente
-                    cpf_hash: "a".repeat(64),
-                    cpf_masked: "***.982.247-**",
-                },
-            })
-            getAvailableSlots.mockResolvedValueOnce(mockSlots)
-
-            await expect(processIncomingMessage({ phone: "5511999999999", text: "1" })).rejects.toBeInstanceOf(BadRequestError)
-        })
-
-        test("AWAITING_SLOT: conflito de concorrência (SLOT_FULL) avisa e recarrega horários", async () => {
+        test("AWAITING_SLOT: texto livre é rejeitado e re-solicita seleção pela lista", async () => {
             findOrCreateActive.mockResolvedValueOnce({
                 id: "s1",
                 created: false,
@@ -730,19 +742,86 @@ describe("conversationFlow.service", () => {
                 },
             })
             getAvailableSlots.mockResolvedValueOnce(mockSlots)
+
+            const result = await processIncomingMessage({
+                phone: "5511999999999",
+                text: "1",
+            })
+
+            expect(bookSlot).not.toHaveBeenCalled()
+            expect(result.reply.step).toBe("AWAITING_SLOT")
+            expect(result.reply.text).toContain(ERRO_SLOTS)
+        })
+
+        test("AWAITING_SLOT: draft incompleto reinicia em AWAITING_ATTENDEE com mensagem amigável", async () => {
+            findOrCreateActive.mockResolvedValueOnce({
+                id: "s1",
+                created: false,
+                currentStep: "AWAITING_SLOT",
+                currentCategoryId: "1",
+                currentQuestionId: "10",
+                listPage: 1,
+                draft: {
+                    by_representative: false,
+                    cpf_hash: "a".repeat(64),
+                    cpf_masked: "***.982.247-**",
+                },
+            })
+            getAvailableSlots.mockResolvedValueOnce(mockSlots)
+
+            const result = await processIncomingMessage({
+                phone: "5511999999999",
+                optionId: `slot_${mockSlots[0]?.datetime.toISOString()}`,
+            })
+
+            expect(updateNavigationState).toHaveBeenCalledWith("s1", {
+                currentStep: "AWAITING_ATTENDEE",
+                currentCategoryId: null,
+                currentQuestionId: "10",
+                draft: null,
+            })
+            expect(result.reply.step).toBe("AWAITING_ATTENDEE")
+            expect(result.reply.text).toBe(MENSAGEM_RASCUNHO_INCOMPLETO)
+        })
+
+        test("AWAITING_SLOT: conflito de concorrência (SlotFullError) avisa e recarrega horários na página 1 atualizando estado", async () => {
+            findOrCreateActive.mockResolvedValueOnce({
+                id: "s1",
+                created: false,
+                currentStep: "AWAITING_SLOT",
+                currentCategoryId: "1",
+                currentQuestionId: "10",
+                listPage: 2,
+                draft: {
+                    by_representative: false,
+                    holder_name: "Maria da Silva",
+                    cpf_hash: "a".repeat(64),
+                    cpf_masked: "***.982.247-**",
+                },
+            })
+            getAvailableSlots.mockResolvedValueOnce(mockSlots)
             processarPergunta.mockResolvedValueOnce(respostaPadrao)
-            bookSlot.mockRejectedValueOnce(new Error("SLOT_FULL"))
+            bookSlot.mockRejectedValueOnce(new SlotFullError())
             const remainingSlot = [mockSlots[1]!]
             getAvailableSlots.mockResolvedValueOnce(remainingSlot)
 
-            const result = await processIncomingMessage({ phone: "5511999999999", text: "1" })
+            const result = await processIncomingMessage({
+                phone: "5511999999999",
+                optionId: `slot_${mockSlots[0]?.datetime.toISOString()}`,
+            })
 
+            expect(updateNavigationState).toHaveBeenCalledWith("s1", {
+                currentStep: "AWAITING_SLOT",
+                currentCategoryId: null,
+                currentQuestionId: "10",
+                listPage: 1,
+            })
             expect(result.reply.step).toBe("AWAITING_SLOT")
             expect(result.reply.text).toContain(ERRO_SLOT_OCUPADO)
             expect(result.reply.text).toContain("1. Terça-feira, 06/10 às 08:30")
         })
 
-        test("AWAITING_SLOT: conflito de horário duplicado (DUPLICATE_APPOINTMENT) avisa cidadão", async () => {
+        test("AWAITING_SLOT: conflito de horário duplicado (DuplicateAppointmentError) avisa cidadão", async () => {
             findOrCreateActive.mockResolvedValueOnce({
                 id: "s1",
                 created: false,
@@ -759,9 +838,12 @@ describe("conversationFlow.service", () => {
             })
             getAvailableSlots.mockResolvedValueOnce(mockSlots)
             processarPergunta.mockResolvedValueOnce(respostaPadrao)
-            bookSlot.mockRejectedValueOnce(new Error("DUPLICATE_APPOINTMENT"))
+            bookSlot.mockRejectedValueOnce(new DuplicateAppointmentError())
 
-            const result = await processIncomingMessage({ phone: "5511999999999", text: "1" })
+            const result = await processIncomingMessage({
+                phone: "5511999999999",
+                optionId: `slot_${mockSlots[0]?.datetime.toISOString()}`,
+            })
 
             expect(result.reply.step).toBe("AWAITING_SLOT")
             expect(result.reply.text).toContain(ERRO_DUPLICATE_APPOINTMENT)
@@ -786,11 +868,122 @@ describe("conversationFlow.service", () => {
             processarPergunta.mockResolvedValueOnce(respostaPadrao)
             bookSlot.mockRejectedValueOnce(new Error("Database connection lost"))
 
-            const result = await processIncomingMessage({ phone: "5511999999999", text: "1" })
+            const result = await processIncomingMessage({
+                phone: "5511999999999",
+                optionId: `slot_${mockSlots[0]?.datetime.toISOString()}`,
+            })
 
             expect(result.reply.step).toBe("AWAITING_SLOT")
             expect(result.reply.text).toBe(ERRO_FALHA_AGENDAMENTO)
             expect(logger.error).toHaveBeenCalledWith("Failed to book appointment", expect.any(Object))
+        })
+
+        test("fluxo completo mantendo estado: oi -> categoria -> pergunta -> agendar -> eu mesmo -> nome -> CPF -> horário -> agendamento concluído", async () => {
+            let sessionDb: ActiveSession | null = null
+
+            const statefulSessions: SessionRepository = {
+                findOrCreateActive: vi.fn(async (_phoneHash: string) => {
+                    if (!sessionDb) {
+                        sessionDb = {
+                            id: "sess_full_1",
+                            created: true,
+                            currentStep: "AWAITING_CATEGORY",
+                            currentCategoryId: null,
+                            currentQuestionId: null,
+                            listPage: 1,
+                            draft: null,
+                        }
+                        return sessionDb
+                    }
+                    return { ...sessionDb, created: false }
+                }),
+                updateNavigationState: vi.fn(async (_sessionId: string, input: Parameters<SessionRepository["updateNavigationState"]>[1]) => {
+                    sessionDb = {
+                        ...sessionDb!,
+                        currentStep: input.currentStep,
+                        currentCategoryId: input.currentCategoryId !== undefined ? input.currentCategoryId : sessionDb!.currentCategoryId,
+                        currentQuestionId: input.currentQuestionId !== undefined ? input.currentQuestionId : sessionDb!.currentQuestionId,
+                        listPage: input.listPage !== undefined ? input.listPage : sessionDb!.listPage,
+                        draft: input.draft !== undefined ? input.draft : sessionDb!.draft,
+                    }
+                }),
+                touch: vi.fn(async () => {}),
+                finish: vi.fn(async () => {}),
+                sweepAbandonedSessions: vi.fn(async () => 0),
+            }
+
+            const statefulFlow = createConversationFlowService({
+                sessions: statefulSessions,
+                events,
+                motor,
+                schedule,
+                hashPhone,
+                logger,
+                isAutoReplyPaused: async () => false,
+            })
+
+            iniciarSessao.mockResolvedValue(categorias)
+            escolherCategoria.mockResolvedValue(perguntas)
+            processarPergunta.mockResolvedValue(respostaPadrao)
+            getAvailableSlots.mockResolvedValue(mockSlots)
+            bookSlot.mockResolvedValue(mockBookResult)
+
+            const citizenPhone = "5512991112233"
+
+            // 1. Mensagem inicial
+            const r1 = await statefulFlow({ phone: citizenPhone, text: "oi" })
+            expect(r1.reply.step).toBe("AWAITING_CATEGORY")
+
+            // 2. Escolhe Categoria 1
+            const r2 = await statefulFlow({ phone: citizenPhone, text: "1" })
+            expect(r2.reply.step).toBe("AWAITING_QUESTION")
+            expect(sessionDb.currentCategoryId).toBe("1")
+
+            // 3. Escolhe Pergunta 1 (id: 10)
+            const r3 = await statefulFlow({ phone: citizenPhone, text: "1" })
+            expect(r3.reply.step).toBe("AWAITING_RESOLVED")
+            expect(sessionDb.currentQuestionId).toBe("10")
+
+            // 4. Dúvida não foi resolvida (responde 2)
+            const r4 = await statefulFlow({ phone: citizenPhone, text: "2" })
+            expect(r4.reply.step).toBe("AWAITING_SCHEDULE_OFFER")
+            expect(sessionDb.currentQuestionId).toBe("10")
+
+            // 5. Aceita oferta de agendamento (responde 1)
+            const r5 = await statefulFlow({ phone: citizenPhone, text: "1" })
+            expect(r5.reply.step).toBe("AWAITING_ATTENDEE")
+            expect(sessionDb.currentQuestionId).toBe("10")
+
+            // 6. Escolhe quem comparece via botão (attendee_self)
+            const r6 = await statefulFlow({ phone: citizenPhone, optionId: "attendee_self" })
+            expect(r6.reply.step).toBe("AWAITING_HOLDER_NAME")
+            expect(sessionDb.currentQuestionId).toBe("10")
+            expect(sessionDb.draft?.by_representative).toBe(false)
+
+            // 7. Envia nome completo
+            const r7 = await statefulFlow({ phone: citizenPhone, text: "Maria da Silva" })
+            expect(r7.reply.step).toBe("AWAITING_HOLDER_CPF")
+            expect(sessionDb.currentQuestionId).toBe("10")
+            expect(sessionDb.draft?.holder_name).toBe("Maria da Silva")
+
+            // 8. Envia CPF válido
+            const r8 = await statefulFlow({ phone: citizenPhone, text: "529.982.247-25" })
+            expect(r8.reply.step).toBe("AWAITING_SLOT")
+            expect(sessionDb.currentQuestionId).toBe("10")
+            expect(sessionDb.draft?.cpf_masked).toBe("***.982.247-**")
+
+            // 9. Seleciona horário via optionId com ISO timestamp
+            const chosenIso = mockSlots[0]!.datetime.toISOString()
+            const r9 = await statefulFlow({ phone: citizenPhone, optionId: `slot_${chosenIso}` })
+            expect(r9.reply.step).toBe("FINISHED")
+            expect(r9.reply.text).toContain("Agendamento realizado")
+            expect(bookSlot).toHaveBeenCalledWith(expect.objectContaining({
+                sessionId: "sess_full_1",
+                questionId: 10,
+                name: "Maria da Silva",
+                byRepresentative: false,
+                phone: citizenPhone,
+            }))
         })
     })
 

@@ -238,7 +238,7 @@ describe("messageFormatter.service", () => {
             const botoes = criarBotoesAttendee()
             expect(botoes).toHaveLength(2)
             expect(botoes[0]).toEqual({ id: "attendee_self", title: "Eu mesmo" })
-            expect(botoes[1]).toEqual({ id: "attendee_rep", title: "Um representante" })
+            expect(botoes[1]).toEqual({ id: "attendee_rep", title: "Outra pessoa por mim" })
             for (const btn of botoes) {
                 expect(btn.title.length).toBeLessThanOrEqual(24)
             }
@@ -262,7 +262,7 @@ describe("messageFormatter.service", () => {
             if (listMsg.type === "list") {
                 expect(listMsg.buttonText.length).toBeLessThanOrEqual(20)
                 expect(listMsg.rows).toHaveLength(1)
-                expect(listMsg.rows[0]?.id).toBe("slot_1")
+                expect(listMsg.rows[0]?.id).toBe(`slot_${slots[0]!.datetime.toISOString()}`)
                 expect(listMsg.rows[0]?.title.length).toBeLessThanOrEqual(24)
                 expect(listMsg.rows[0]?.description?.length).toBeLessThanOrEqual(72)
             }

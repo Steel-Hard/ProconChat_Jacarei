@@ -1,6 +1,6 @@
 import getPool from "../db/connection"
 import InternalServerError from "../errors/InternalServerError"
-import type { SessionClosing } from "../types/conversationEvent.types"
+import type { ConversationEvent, SessionClosing } from "../types/conversationEvent.types"
 import { isClosingCompatible } from "../utils/conversationEventData"
 import { insertConversationEvent, Queryable } from "./conversationEvent.repository"
 
@@ -52,6 +52,14 @@ export interface SessionRepository {
     touch(sessionId: string): Promise<void>
     finish(sessionId: string, closing: SessionClosing): Promise<void>
     sweepAbandonedSessions(): Promise<number>
+}
+
+export async function recordEventWith(
+    db: Queryable,
+    sessionId: string,
+    event: ConversationEvent,
+): Promise<void> {
+    await insertConversationEvent(db, sessionId, event)
 }
 
 export async function finishSessionWith(
@@ -180,20 +188,24 @@ export const sessionRepository: SessionRepository = {
         const pool = getPool()
         const hasDraftUpdate = state.draft !== undefined
         const draftJson = state.draft ? JSON.stringify(state.draft) : null
+        const hasCategoryUpdate = state.currentCategoryId !== undefined
+        const hasQuestionUpdate = state.currentQuestionId !== undefined
 
         const result = await pool.query(
             `UPDATE Sessions
              SET current_step = $1,
-                 current_category_id = $2,
-                 current_question_id = $3,
-                 list_page = $4,
-                 draft = CASE WHEN $5::boolean THEN $6::jsonb ELSE draft END,
+                 current_category_id = CASE WHEN $2::boolean THEN $3 ELSE current_category_id END,
+                 current_question_id = CASE WHEN $4::boolean THEN $5 ELSE current_question_id END,
+                 list_page = $6,
+                 draft = CASE WHEN $7::boolean THEN $8::jsonb ELSE draft END,
                  last_interaction_at = now()
-             WHERE id = $7
+             WHERE id = $9
                AND status = 'IN_PROGRESS'`,
             [
                 state.currentStep,
+                hasCategoryUpdate,
                 state.currentCategoryId ?? null,
+                hasQuestionUpdate,
                 state.currentQuestionId ?? null,
                 state.listPage ?? 1,
                 hasDraftUpdate,
