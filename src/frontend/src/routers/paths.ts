@@ -10,7 +10,6 @@ const ROUTES = {
     documents: "/documentos",
     users: "/usuarios",
     whatsapp: "/whatsapp",
-    forbidden: "/acesso-negado",
     notFound: "*"
 } as const
 

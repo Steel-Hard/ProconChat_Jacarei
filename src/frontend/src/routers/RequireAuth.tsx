@@ -1,12 +1,19 @@
-import { Navigate, Outlet } from "react-router-dom"
-import useAuth from "@/hooks/useAuth"
-import ROUTES from "@/routers/paths"
+import { useTranslation } from "react-i18next"
+import { Navigate, Outlet, useLocation } from "react-router-dom"
+import useSession from "@/hooks/useSession"
+import loginPathFor from "@/utils/loginPathFor"
 
 function RequireAuth() {
-    const { isAuthenticated } = useAuth()
+    const { t } = useTranslation()
+    const status = useSession()
+    const location = useLocation()
 
-    if (!isAuthenticated) {
-        return <Navigate to={ROUTES.forbidden} replace />
+    if (status === "unknown") {
+        return <p>{t("loading")}</p>
+    }
+
+    if (status === "anonymous") {
+        return <Navigate to={loginPathFor(location.pathname, location.search)} replace />
     }
 
     return <Outlet />

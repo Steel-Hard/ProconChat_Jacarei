@@ -1,14 +1,12 @@
 import { lazy } from "react"
-import { afterEach, beforeAll, describe, expect, it } from "vitest"
+import { beforeAll, describe, expect, it } from "vitest"
 import { act, screen } from "@testing-library/react"
 import userEvent, { type UserEvent } from "@testing-library/user-event"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import PanelLayout from "@/layouts/Panel.layout"
+import UnderConstructionPage from "@/pages/UnderConstruction.page"
 import routes from "@/routers/routes"
 import ROUTES from "@/routers/paths"
-import clearToken from "@/services/session/clearToken"
-import getToken from "@/services/session/getToken"
-import setToken from "@/services/session/setToken"
 import mockMatchMedia from "@/testUtils/mockMatchMedia"
 import setViewportWidth from "@/testUtils/setViewportWidth"
 import renderWithStore from "@/testUtils/renderWithStore"
@@ -27,7 +25,6 @@ const LAZY_TIMEOUT_MS = 4000
 const NeverResolves = lazy(() => new Promise<never>(() => {}))
 
 async function renderPanel(path: string = ROUTES.dashboard) {
-    setToken("abc")
     const router = createMemoryRouter(routes, { initialEntries: [path] })
 
     const result = renderWithStore(<RouterProvider router={router} />, {
@@ -49,10 +46,6 @@ async function openDrawer(user: UserEvent) {
 describe("PanelLayout", { timeout: 15000 }, () => {
     beforeAll(async () => {
         await import("@/pages/UnderConstruction.page")
-    })
-
-    afterEach(() => {
-        clearToken()
     })
 
     it("mostra o menu, o topo e a tela dentro do main", async () => {
@@ -166,7 +159,7 @@ describe("PanelLayout", { timeout: 15000 }, () => {
         expect(screen.queryByRole("link", { name: "Sessões" })).not.toBeInTheDocument()
     })
 
-    it("sai limpando o token e a conta e leva para o acesso negado", async () => {
+    it("sai limpando a conta e leva para a tela de entrada", async () => {
         const user = userEvent.setup()
         const { store } = await renderPanel()
 
@@ -174,13 +167,8 @@ describe("PanelLayout", { timeout: 15000 }, () => {
         await user.click(screen.getByRole("button", { name: "Sair" }))
 
         expect(
-            await screen.findByRole(
-                "heading",
-                { name: "Acesso negado." },
-                { timeout: LAZY_TIMEOUT_MS }
-            )
+            await screen.findByRole("heading", { name: "Entrar" }, { timeout: LAZY_TIMEOUT_MS })
         ).toBeInTheDocument()
-        expect(getToken()).toBeNull()
         expect(store.getState().account.current).toBeNull()
         expect(
             screen.queryByRole("button", { name: "Alterar minha senha" })
@@ -188,8 +176,20 @@ describe("PanelLayout", { timeout: 15000 }, () => {
     })
 
     it("não mostra links nem o bloco de conta quando não há conta", async () => {
-        setToken("abc")
-        const router = createMemoryRouter(routes, { initialEntries: [ROUTES.dashboard] })
+        const router = createMemoryRouter(
+            [
+                {
+                    element: <PanelLayout />,
+                    children: [
+                        {
+                            path: ROUTES.dashboard,
+                            element: <UnderConstructionPage titleKey="dashboard" />
+                        }
+                    ]
+                }
+            ],
+            { initialEntries: [ROUTES.dashboard] }
+        )
 
         renderWithStore(<RouterProvider router={router} />)
         await screen.findByText("Em construção.", {}, { timeout: LAZY_TIMEOUT_MS })
@@ -200,7 +200,6 @@ describe("PanelLayout", { timeout: 15000 }, () => {
     })
 
     it("mostra o carregamento dentro do main sem esconder o menu e o topo", () => {
-        setToken("abc")
         const router = createMemoryRouter(
             [{ element: <PanelLayout />, children: [{ path: "/", element: <NeverResolves /> }] }],
             { initialEntries: ["/"] }

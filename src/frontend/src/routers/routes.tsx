@@ -9,7 +9,6 @@ import type UnderConstructionTitle from "@/types/pages/UnderConstructionTitle.ty
 
 const UnderConstruction = lazy(() => import("@/pages/UnderConstruction.page"))
 const Login = lazy(() => import("@/pages/Login.page"))
-const Forbidden = lazy(() => import("@/pages/Forbidden.page"))
 const NotFound = lazy(() => import("@/pages/NotFound.page"))
 
 function previewRoutes(): RouteObject[] {
@@ -60,12 +59,11 @@ const routes: RouteObject[] = [
                             underConstruction(ROUTES.users, "users"),
                             underConstruction(ROUTES.whatsapp, "whatsapp")
                         ]
-                    }
+                    },
+                    { path: ROUTES.notFound, element: <NotFound /> }
                 ]
             },
-            ...previewRoutes(),
-            { path: ROUTES.forbidden, element: <Forbidden /> },
-            { path: ROUTES.notFound, element: <NotFound /> }
+            ...previewRoutes()
         ]
     }
 ]
