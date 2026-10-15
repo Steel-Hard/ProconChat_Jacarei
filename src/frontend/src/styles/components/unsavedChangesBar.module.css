@@ -41,6 +41,11 @@
     pointer-events: none;
 }
 
+.hint {
+    color: var(--warn-text);
+    font-size: 12.5px;
+}
+
 .discard,
 .save {
     border-radius: 8px;
