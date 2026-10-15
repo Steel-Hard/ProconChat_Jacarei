@@ -158,17 +158,6 @@
     background: var(--chat-bg);
 }
 
-.bubble {
-    max-width: 92%;
-    padding: 8px 10px;
-    border-radius: 2px 9px 9px 9px;
-    background: var(--bg-surface);
-    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
-    color: var(--chat-text);
-    font-size: 13px;
-    line-height: 1.5;
-}
-
 .sectionTitle {
     font: 700 16px var(--font-heading);
 }

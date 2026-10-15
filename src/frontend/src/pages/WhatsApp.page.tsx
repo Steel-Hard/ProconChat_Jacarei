@@ -1,19 +1,23 @@
+import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import ConfirmDialog from "@/components/ConfirmDialog"
 import LastChangeNote from "@/components/LastChangeNote"
 import StatusBadge from "@/components/StatusBadge"
 import UnsavedChangesBar from "@/components/UnsavedChangesBar"
 import WhatsAppConnectionTest from "@/components/WhatsAppConnectionTest"
+import WhatsAppMessageBubble from "@/components/WhatsAppMessageBubble"
 import WhatsAppMetaSetup from "@/components/WhatsAppMetaSetup"
 import WhatsAppPauseSwitch from "@/components/WhatsAppPauseSwitch"
 import WhatsAppSecretField from "@/components/WhatsAppSecretField"
 import useWhatsAppSettings from "@/pages/hooks/useWhatsAppSettings"
 import css from "@/styles/pages/whatsapp.module.css"
+import formatTime from "@/utils/formatTime"
 
 function WhatsAppPage() {
     const { t } = useTranslation(["whatsapp", "common"])
     const page = useWhatsAppSettings()
     const view = page.view
+    const [messageTime] = useState(() => formatTime(new Date()))
     const changed = (key: (typeof page.changedKeys)[number]) =>
         page.changedKeys.includes(key) ? `${css.input} ${css.inputChanged}` : css.input
     const secretTexts = {
@@ -113,7 +117,10 @@ function WhatsAppPage() {
                                 {t("summary.pausedMessageLabel")}
                             </span>
                             <div className={css.chat}>
-                                <p className={css.bubble}>{view.pausedMessage}</p>
+                                <WhatsAppMessageBubble
+                                    text={view.pausedMessage}
+                                    time={messageTime}
+                                />
                             </div>
                         </div>
                     </section>
@@ -215,7 +222,10 @@ function WhatsAppPage() {
                 <div className={css.preview}>
                     <span className={css.pausedMessageLabel}>{t("pauseDialog.previewLabel")}</span>
                     <div className={css.chat}>
-                        <p className={css.bubble}>{view?.pausedMessage}</p>
+                        <WhatsAppMessageBubble
+                            text={view?.pausedMessage ?? ""}
+                            time={messageTime}
+                        />
                     </div>
                 </div>
             </ConfirmDialog>
