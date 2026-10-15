@@ -310,6 +310,25 @@ a última configuração carregada até reiniciar. Depois de trocar a chave e re
 novo o token e o App Secret pela tela de WhatsApp (ou `PUT /api/v1/whatsapp/settings`, enviando os
 dois).
 
+## Agendamentos (/api/v1/appointments)
+
+Rotas de consulta e ações sobre agendamentos presenciais no painel administrativo, protegidas por autenticação via cookie (`requireAuth`) e permissões (`requirePermission`).
+
+### Rotas
+
+| Rota | Permissão | Descrição / Parâmetros | Sucesso | Erros |
+| --- | --- | --- | --- | --- |
+| `GET /api/v1/appointments/pending-count` | `appointments.view` | Retorna a quantidade de agendamentos com status `PENDING` | `200 { data: { count: number } }` | `401 UNAUTHORIZED`, `403 FORBIDDEN` |
+| `GET /api/v1/appointments` | `appointments.view` | Lista com filtros, busca, ordenação e paginação (20 por padrão). Query: `search` (mín. 2 chars), `status` (chips: `all`, `PENDING`, `CONFIRMED`, `ATTENDED`, `NO_SHOW`, `CANCELED`, `waiting_record`), `period` (`all`, `today`, `this_week`, `upcoming`, `past`), `responsible` (`all`, `unassigned`, `me`, ID numérico), `sortBy`, `sortOrder`, `page`, `limit` | `200 { data: { items: AppointmentListItem[], total, page, limit, totalPages, chipCounts } }` | `400 BAD_REQUEST`, `401 UNAUTHORIZED`, `403 FORBIDDEN` |
+| `GET /api/v1/appointments/:id` | `appointments.view` | Detalhe completo de um agendamento com histórico de eventos e linha do tempo de origem | `200 { data: AppointmentDetail }` | `400 BAD_REQUEST` (ID inválido/fora do limite bigint), `401`, `403`, `404 NOT_FOUND` |
+| `PATCH /api/v1/appointments/:id/status` | `appointments.manage` | Executa ação de status: `{ action: "claim" | "attended" | "no_show" }` | `200 { data: AppointmentDetail }` | `400 BAD_REQUEST`, `401`, `403`, `404 NOT_FOUND`, `409 CONFLICT` (códigos: `APPOINTMENT_ALREADY_CLAIMED`, `ALREADY_ATTENDED`, `ALREADY_NO_SHOW`, `APPOINTMENT_CANCELED`, `INVALID_STATUS_TRANSITION`) |
+
+### Regras de Negócio e Concorrência
+
+- **Busca por CPF:** Busca por CPF compara o HMAC SHA-256 com `CPF_HASH_SECRET`. CPF formatado (`111.444.777-35`) tem pontuações removidas para busca precisa sem expor dados.
+- **Precedência de Ordenação:** O chip de status tem precedência sobre o período selecionado: com `period=all`, Cancelados, Atendidos e Não compareceu saem do mais recente para o mais antigo; Pendentes, Confirmados e Aguardando registro saem do mais próximo para o mais distante.
+- **Concorrência atômica:** Ações de status usam `SELECT ... FOR UPDATE` para travar o registro do agendamento. Se duas ações simultâneas ocorrerem (ex.: Atendido e Não compareceu, ou duas ações de Assumir simultâneas), a segunda requisição identifica a transição inválida e retorna `409 CONFLICT` (`AppError`), garantindo que apenas um evento terminal seja registrado no banco.
+
 ## Eventos da conversa
 
 Os passos da conversa ficam em `ConversationEvents` (RF06, decisão 010) e o desfecho fica em

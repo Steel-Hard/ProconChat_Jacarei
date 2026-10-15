@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest"
 import BadRequestError from "./BadRequestError"
 import NotFoundError from "./NotFoundError"
 import InternalServerError from "./InternalServerError"
+import ConflictError from "./ConflictError"
 
 describe("AppError subclasses", () => {
     it("creates a BadRequestError with statusCode 400 and code BAD_REQUEST", () => {
@@ -30,5 +31,15 @@ describe("AppError subclasses", () => {
         expect(error.message).toBe("something went wrong")
         expect(error.statusCode).toBe(500)
         expect(error.code).toBe("INTERNAL_SERVER_ERROR")
+    })
+
+    it("creates a ConflictError with statusCode 409 and code CONFLICT", () => {
+        const error = new ConflictError("conflict detected")
+
+        expect(error).toBeInstanceOf(Error)
+        expect(error.name).toBe("ConflictError")
+        expect(error.message).toBe("conflict detected")
+        expect(error.statusCode).toBe(409)
+        expect(error.code).toBe("CONFLICT")
     })
 })
