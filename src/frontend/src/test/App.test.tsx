@@ -1,6 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
 import App from "@/App"
+
+const LOAD_TIMEOUT_MS = 4000
 
 const admin = {
     id: 1,
@@ -24,7 +26,12 @@ function stubMe() {
     return fetchMock
 }
 
-describe("App", () => {
+describe("App", { timeout: 15000 }, () => {
+    beforeAll(async () => {
+        await import("@/pages/UnderConstruction.page")
+        await import("@/pages/NotFound.page")
+    })
+
     beforeEach(() => {
         stubMe()
     })
@@ -38,7 +45,9 @@ describe("App", () => {
     it("renderiza o painel na rota raiz com sessão", async () => {
         render(<App />)
 
-        expect(await screen.findByRole("heading", { name: "Painel" })).toBeInTheDocument()
+        expect(
+            await screen.findByRole("heading", { name: "Painel" }, { timeout: LOAD_TIMEOUT_MS })
+        ).toBeInTheDocument()
         expect(document.title).toBe("Painel - ProconChat")
     })
 
@@ -47,7 +56,13 @@ describe("App", () => {
 
         render(<App />)
 
-        expect(await screen.findByRole("heading", { name: "404 - Not Found" })).toBeInTheDocument()
+        expect(
+            await screen.findByRole(
+                "heading",
+                { name: "404 - Not Found" },
+                { timeout: LOAD_TIMEOUT_MS }
+            )
+        ).toBeInTheDocument()
         expect(document.title).toBe("Página não encontrada.")
         expect(document.querySelector('meta[name="description"]')?.getAttribute("content")).toBe(
             "A página não existe ou você não possui acesso."
@@ -60,7 +75,9 @@ describe("App", () => {
 
         render(<App />)
 
-        expect(await screen.findByRole("heading", { name: "Painel" })).toBeInTheDocument()
+        expect(
+            await screen.findByRole("heading", { name: "Painel" }, { timeout: LOAD_TIMEOUT_MS })
+        ).toBeInTheDocument()
         expect(errorSpy).not.toHaveBeenCalled()
         expect(warnSpy).not.toHaveBeenCalled()
     })

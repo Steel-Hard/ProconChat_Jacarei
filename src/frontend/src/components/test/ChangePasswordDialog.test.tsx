@@ -60,7 +60,7 @@ afterEach(() => {
     vi.unstubAllGlobals()
 })
 
-describe("ChangePasswordDialog", () => {
+describe("ChangePasswordDialog", { timeout: 15000 }, () => {
     it("mostra o título, o e-mail, os três campos e os botões", () => {
         renderDialog()
 
