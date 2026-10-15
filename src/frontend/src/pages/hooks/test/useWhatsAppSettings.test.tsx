@@ -999,6 +999,16 @@ describe("useWhatsAppSettings", () => {
             expect(result.current.tokenHint).toEqual(GENERIC)
         })
 
+        it("volta ao aviso genérico quando a data de expiração é inválida", async () => {
+            const { result } = await setup(
+                {},
+                settingsView({ accessTokenLifetime: expiring("data-invalida") })
+            )
+            await ready(result)
+
+            expect(result.current.tokenHint).toEqual(GENERIC)
+        })
+
         it("mostra que o token expirou quando a data já passou", async () => {
             const { result } = await setup(
                 {},

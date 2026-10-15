@@ -581,6 +581,21 @@ describe("WhatsAppPage", () => {
         expect(screen.queryByText("Controles do protótipo")).not.toBeInTheDocument()
     })
 
+    it("mostra o horário de Brasília ao lado da mensagem fixa e da prévia da pausa", async () => {
+        vi.useFakeTimers({ toFake: ["Date"] })
+        vi.setSystemTime(new Date("2026-10-15T12:00:00.000Z"))
+        const { user } = await renderPage()
+        await loaded()
+        const summary = screen.getByText(PAUSED_MESSAGE).closest("p") as HTMLElement
+
+        await user.click(screen.getByRole("switch", { name: "Pausar respostas automáticas" }))
+        const dialog = screen.getByRole("dialog", { name: "Pausar respostas automáticas?" })
+        const preview = within(dialog).getByText(PAUSED_MESSAGE).closest("p") as HTMLElement
+
+        expect(within(summary).getByText("09:00")).toBeInTheDocument()
+        expect(within(preview).getByText("09:00")).toBeInTheDocument()
+    })
+
     describe("texto do campo do token", () => {
         const PERMANENT = { kind: "PERMANENT", expiresAt: null } as const
         const GENERIC_HINT =
