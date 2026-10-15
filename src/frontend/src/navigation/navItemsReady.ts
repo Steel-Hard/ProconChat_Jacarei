@@ -9,7 +9,7 @@ const NAV_ITEMS_READY: Record<NavKey, boolean> = {
     schedule: false,
     documents: false,
     users: false,
-    whatsapp: false
+    whatsapp: true
 }
 
 export default NAV_ITEMS_READY
