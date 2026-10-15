@@ -114,6 +114,7 @@ function useWhatsAppSettings() {
     const [pauseDialogOpen, setPauseDialogOpen] = useState(false)
     const [actionError, setActionError] = useState<ActionError | null>(null)
     const [renderedAt] = useState(() => Date.now())
+    const [messageTime] = useState(() => formatTime(new Date()))
     const testInFlight = useRef(false)
     const saveInFlight = useRef(false)
     const switchInFlight = useRef(false)
@@ -456,6 +457,7 @@ function useWhatsAppSettings() {
         status,
         view,
         situation: view ? situationOf(view) : null,
+        messageTime,
         lastChange,
         phoneNumberId,
         businessAccountId,

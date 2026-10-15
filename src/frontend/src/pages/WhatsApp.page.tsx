@@ -1,4 +1,3 @@
-import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import ConfirmDialog from "@/components/ConfirmDialog"
 import LastChangeNote from "@/components/LastChangeNote"
@@ -11,13 +10,11 @@ import WhatsAppPauseSwitch from "@/components/WhatsAppPauseSwitch"
 import WhatsAppSecretField from "@/components/WhatsAppSecretField"
 import useWhatsAppSettings from "@/pages/hooks/useWhatsAppSettings"
 import css from "@/styles/pages/whatsapp.module.css"
-import formatTime from "@/utils/formatTime"
 
 function WhatsAppPage() {
     const { t } = useTranslation(["whatsapp", "common"])
     const page = useWhatsAppSettings()
     const view = page.view
-    const [messageTime] = useState(() => formatTime(new Date()))
     const changed = (key: (typeof page.changedKeys)[number]) =>
         page.changedKeys.includes(key) ? `${css.input} ${css.inputChanged}` : css.input
     const secretTexts = {
@@ -119,7 +116,7 @@ function WhatsAppPage() {
                             <div className={css.chat}>
                                 <WhatsAppMessageBubble
                                     text={view.pausedMessage}
-                                    time={messageTime}
+                                    time={page.messageTime}
                                 />
                             </div>
                         </div>
@@ -225,7 +222,7 @@ function WhatsAppPage() {
                     <div className={css.chat}>
                         <WhatsAppMessageBubble
                             text={view?.pausedMessage ?? ""}
-                            time={messageTime}
+                            time={page.messageTime}
                         />
                     </div>
                 </div>

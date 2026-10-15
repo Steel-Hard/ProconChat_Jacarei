@@ -929,6 +929,13 @@ describe("useWhatsAppSettings", () => {
             vi.setSystemTime(NOW)
         })
 
+        it("devolve o horário de Brasília da prévia da mensagem fixa", async () => {
+            const { result } = await setup()
+            await ready(result)
+
+            expect(result.current.messageTime).toBe("09:00")
+        })
+
         it("segue a leitura com token permanente quando não há substituição", async () => {
             const { result } = await setup({}, settingsView({ accessTokenLifetime: PERMANENT }))
             await ready(result)
