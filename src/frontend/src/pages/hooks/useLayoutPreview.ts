@@ -8,6 +8,7 @@ import useAppSelector from "@/store/useAppSelector"
 import type PanelAccount from "@/types/account/PanelAccount.types"
 
 const PREVIEW_ACCOUNT: PanelAccount = {
+    id: 0,
     name: "Mariana Couto",
     email: "mariana.couto@exemplo.gov.br",
     isAdmin: true,

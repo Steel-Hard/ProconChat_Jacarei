@@ -4,6 +4,7 @@ import accountSlice from "@/store/slices/account.slice"
 import type PanelAccount from "@/types/account/PanelAccount.types"
 
 const account: PanelAccount = {
+    id: 7,
     name: "Ana Paula Souza",
     email: "ana@exemplo.gov.br",
     isAdmin: false,
@@ -11,13 +12,16 @@ const account: PanelAccount = {
 }
 
 describe("accountSlice", () => {
-    it("começa sem conta", () => {
-        expect(accountSlice.reducer(undefined, { type: "init" })).toEqual({ current: null })
+    it("começa sem conta e com a sessão desconhecida", () => {
+        expect(accountSlice.reducer(undefined, { type: "init" })).toEqual({
+            current: null,
+            status: "unknown"
+        })
     })
 
     it("guarda a conta carregada", () => {
         const state = accountSlice.reducer(
-            { current: null },
+            { current: null, status: "unknown" },
             accountSlice.actions.accountLoaded(account)
         )
 
@@ -26,11 +30,29 @@ describe("accountSlice", () => {
 
     it("limpa a conta", () => {
         const state = accountSlice.reducer(
-            { current: account },
+            { current: account, status: "authenticated" },
             accountSlice.actions.accountCleared()
         )
 
         expect(state.current).toBeNull()
+    })
+
+    it("marca a sessão como autenticada ao carregar a conta", () => {
+        const state = accountSlice.reducer(
+            { current: null, status: "anonymous" },
+            accountSlice.actions.accountLoaded(account)
+        )
+
+        expect(state).toEqual({ current: account, status: "authenticated" })
+    })
+
+    it("marca a sessão como anônima ao limpar a conta", () => {
+        const state = accountSlice.reducer(
+            { current: null, status: "unknown" },
+            accountSlice.actions.accountCleared()
+        )
+
+        expect(state).toEqual({ current: null, status: "anonymous" })
     })
 
     it("guarda a conta só em memória, sem usar armazenamento do navegador", () => {

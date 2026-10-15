@@ -8,6 +8,7 @@ import ROUTES from "@/routers/paths"
 import type PanelAccount from "@/types/account/PanelAccount.types"
 
 const admin: PanelAccount = {
+    id: 1,
     name: "Ana Paula Souza",
     email: "ana@exemplo.gov.br",
     isAdmin: true,

@@ -5,7 +5,7 @@ import type PermissionKey from "@/types/account/PermissionKey.types"
 import type NavKey from "@/types/navigation/NavKey.types"
 
 function account(permissions: PermissionKey[], isAdmin = false): PanelAccount {
-    return { name: "Conta Teste", email: "conta@exemplo.gov.br", isAdmin, permissions }
+    return { id: 1, name: "Conta Teste", email: "conta@exemplo.gov.br", isAdmin, permissions }
 }
 
 function visibleKeys(value: PanelAccount | null): NavKey[] {

@@ -15,6 +15,7 @@ import renderWithStore from "@/testUtils/renderWithStore"
 import type PanelAccount from "@/types/account/PanelAccount.types"
 
 const admin: PanelAccount = {
+    id: 1,
     name: "Ana Paula Souza",
     email: "ana@exemplo.gov.br",
     isAdmin: true,
@@ -30,7 +31,7 @@ async function renderPanel(path: string = ROUTES.dashboard) {
     const router = createMemoryRouter(routes, { initialEntries: [path] })
 
     const result = renderWithStore(<RouterProvider router={router} />, {
-        preloadedState: { account: { current: admin } }
+        preloadedState: { account: { current: admin, status: "authenticated" } }
     })
 
     await screen.findByText("Em construção.", {}, { timeout: LAZY_TIMEOUT_MS })
@@ -206,7 +207,7 @@ describe("PanelLayout", { timeout: 15000 }, () => {
         )
 
         renderWithStore(<RouterProvider router={router} />, {
-            preloadedState: { account: { current: admin } }
+            preloadedState: { account: { current: admin, status: "authenticated" } }
         })
 
         expect(screen.getByRole("main")).toHaveTextContent("Carregando...")

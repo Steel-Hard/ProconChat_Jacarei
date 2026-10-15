@@ -23,7 +23,9 @@ describe("useLogout", () => {
         const { store } = renderWithStore(<LogoutButton />, {
             preloadedState: {
                 account: {
+                    status: "authenticated",
                     current: {
+                        id: 1,
                         name: "Ana",
                         email: "ana@exemplo.gov.br",
                         isAdmin: true,

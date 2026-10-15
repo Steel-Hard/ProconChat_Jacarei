@@ -4,7 +4,7 @@ import type PanelAccount from "@/types/account/PanelAccount.types"
 import type PermissionKey from "@/types/account/PermissionKey.types"
 
 function account(permissions: PermissionKey[], isAdmin = false): PanelAccount {
-    return { name: "Conta Teste", email: "conta@exemplo.gov.br", isAdmin, permissions }
+    return { id: 1, name: "Conta Teste", email: "conta@exemplo.gov.br", isAdmin, permissions }
 }
 
 describe("firstAllowedPath", () => {
