@@ -1,0 +1,71 @@
+.block {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-top: 16px;
+    border-top: 1px solid var(--divider);
+}
+
+.button {
+    align-self: flex-start;
+    padding: 9px 14px;
+    border: 1px solid var(--border-accent);
+    border-radius: 8px;
+    background: var(--bg-surface);
+    color: var(--color-primary);
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.button:hover {
+    background: var(--bg-accent-soft);
+}
+
+.button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.result {
+    display: block;
+}
+
+.testing,
+.success,
+.error {
+    padding: 11px 13px;
+    border-radius: 9px;
+    font-size: 13.5px;
+    line-height: 1.5;
+}
+
+.testing {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg-accent-soft);
+    color: var(--color-primary-dark);
+}
+
+.spinner {
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--border-accent);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+}
+
+.success {
+    border: 1px solid var(--success-border);
+    background: var(--success-bg);
+    color: var(--success-text);
+}
+
+.error {
+    border: 1px solid var(--error-border);
+    background: var(--error-soft-bg);
+    color: var(--error-text);
+}
