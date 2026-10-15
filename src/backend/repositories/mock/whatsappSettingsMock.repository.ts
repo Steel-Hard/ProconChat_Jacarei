@@ -59,7 +59,7 @@ export class MockWhatsAppSettingsRepository implements WhatsAppSettingsRepositor
         this.row = {
             ...row,
             ...verified,
-            accessTokenLifetime: lifetime ?? row.accessTokenLifetime,
+            accessTokenLifetime: verified && lifetime ? lifetime : row.accessTokenLifetime,
             credentialsValid: valid,
             credentialsCheckedAt: this.clock(),
         }
