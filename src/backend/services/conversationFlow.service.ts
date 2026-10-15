@@ -818,7 +818,7 @@ export function createConversationFlowService({
   ): Promise<ConversationFlowResult> {
     const name = text?.trim()
 
-    if (!name || name.length < 2 || name.length > 150) {
+    if (!name || name.length < 2 || name.length > 150 || /\d/.test(name)) {
       return {
         sessionId: session.id,
         newSession: false,

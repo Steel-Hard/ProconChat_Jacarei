@@ -161,7 +161,7 @@ describe("messageFormatter.service", () => {
             expect(p2.itensPagina.length).toBe(2)
             expect(p2.temAnterior).toBe(true)
             expect(p2.temProxima).toBe(false)
-            expect(p2.opcaoAnterior).toBe(3) // 2 itens + voltar
+            expect(p2.opcaoAnterior).toBe(3)
         })
 
         test("Lista com 20 itens: 3 páginas (P1: 9, P2: 8, P3: 3)", () => {
@@ -240,7 +240,7 @@ describe("messageFormatter.service", () => {
             expect(botoes[0]).toEqual({ id: "attendee_self", title: "Eu mesmo" })
             expect(botoes[1]).toEqual({ id: "attendee_rep", title: "Outra pessoa por mim" })
             for (const btn of botoes) {
-                expect(btn.title.length).toBeLessThanOrEqual(24)
+                expect(btn.title.length).toBeLessThanOrEqual(20)
             }
         })
 
@@ -266,6 +266,45 @@ describe("messageFormatter.service", () => {
                 expect(listMsg.rows[0]?.title.length).toBeLessThanOrEqual(24)
                 expect(listMsg.rows[0]?.description?.length).toBeLessThanOrEqual(72)
             }
+        })
+
+        test("criarMensagensSlots e formatarListaSlots suportam paginação com Ver mais e Voltar opções", () => {
+            const slots = Array.from({ length: 15 }, (_, i) => {
+                const hour = String(8 + Math.floor(i / 2)).padStart(2, "0")
+                const minute = i % 2 === 0 ? "00" : "30"
+                return {
+                    datetime: new Date(`2026-10-06T${hour}:${minute}:00-03:00`),
+                    dateStr: "2026-10-06",
+                    timeStr: `${hour}:${minute}`,
+                    formatted: `Terça-feira, 06/10 às ${hour}:${minute}`,
+                    remainingSeats: 2,
+                }
+            })
+
+            const msgsPage1 = criarMensagensSlots(slots, 1)
+            expect(msgsPage1).toHaveLength(1)
+            const listMsg1 = msgsPage1[0]!
+            expect(listMsg1.type).toBe("list")
+            if (listMsg1.type === "list") {
+                expect(listMsg1.rows).toHaveLength(10)
+                const lastRow = listMsg1.rows[9]!
+                expect(lastRow.id).toBe("page_2")
+                expect(lastRow.title).toBe("Ver mais opções")
+            }
+
+            const textoPage1 = formatarListaSlots(slots, 1)
+            expect(textoPage1).toContain("Ver mais opções")
+
+            const msgsPage2 = criarMensagensSlots(slots, 2)
+            expect(msgsPage2).toHaveLength(1)
+            const listMsg2 = msgsPage2[0]!
+            expect(listMsg2.type).toBe("list")
+            if (listMsg2.type === "list") {
+                expect(listMsg2.rows.some((r) => r.id === "page_1" && r.title === "Voltar opções")).toBe(true)
+            }
+
+            const textoPage2 = formatarListaSlots(slots, 2)
+            expect(textoPage2).toContain("Voltar para opções anteriores")
         })
 
         test("formatarConfirmacaoAgendamento gera mensagem completa com documentos, endereco e avisos", () => {

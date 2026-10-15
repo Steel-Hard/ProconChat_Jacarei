@@ -28,6 +28,8 @@ function makeCpfHash(suffix: string): string {
 
 let testCategoryId: number
 let testQuestionId: number
+let savedOriginalSettings: Record<string, unknown> | null = null
+let insertedRanges = false
 const createdAppointmentIds: string[] = []
 const createdSessionIds: string[] = []
 
@@ -82,6 +84,27 @@ describe("Schedule integration tests (Postgres)", () => {
         await cleanup()
         const pool = getPool()
 
+        const existingSettings = await pool.query(
+            "SELECT * FROM ScheduleSettings WHERE id = 1",
+        )
+        savedOriginalSettings = existingSettings.rows[0] ?? null
+
+        const existingRanges = await pool.query("SELECT id FROM ScheduleRanges")
+        if (existingRanges.rows.length === 0) {
+            insertedRanges = true
+            const weekdays = [1, 2, 3, 4, 5]
+            for (const weekday of weekdays) {
+                await pool.query(
+                    "INSERT INTO ScheduleRanges (weekday, slot_index, start_time, end_time) VALUES ($1, 1, '08:00', '12:00')",
+                    [weekday],
+                )
+                await pool.query(
+                    "INSERT INTO ScheduleRanges (weekday, slot_index, start_time, end_time) VALUES ($1, 2, '13:00', '17:00')",
+                    [weekday],
+                )
+            }
+        }
+
         await pool.query(`
             INSERT INTO ScheduleSettings (
                 id, slot_minutes, seats_per_slot, window_days, min_notice_days,
@@ -90,11 +113,15 @@ describe("Schedule integration tests (Postgres)", () => {
                 1, 30, 2, 7, 1, 7, 'Rua do Procon, 100', 'Sala 1', true, 24
             )
             ON CONFLICT (id) DO UPDATE SET
-                slot_minutes = EXCLUDED.slot_minutes,
+                slot_minutes = 30,
                 seats_per_slot = 2,
                 window_days = 7,
                 min_notice_days = 1,
-                unit_address = EXCLUDED.unit_address
+                wait_alert_days = 7,
+                unit_address = 'Rua do Procon, 100',
+                unit_address_complement = 'Sala 1',
+                reminder_enabled = true,
+                reminder_hours = 24
         `)
 
         const catRes = await pool.query<{ id: number }>(
@@ -113,7 +140,39 @@ describe("Schedule integration tests (Postgres)", () => {
 
     afterAll(async () => {
         await cleanup()
-        await getPool().end()
+        const pool = getPool()
+        if (insertedRanges) {
+            await pool.query("DELETE FROM ScheduleRanges")
+        }
+        if (savedOriginalSettings) {
+            await pool.query(
+                `UPDATE ScheduleSettings SET
+                    slot_minutes = $1,
+                    seats_per_slot = $2,
+                    window_days = $3,
+                    min_notice_days = $4,
+                    wait_alert_days = $5,
+                    unit_address = $6,
+                    unit_address_complement = $7,
+                    reminder_enabled = $8,
+                    reminder_hours = $9
+                 WHERE id = 1`,
+                [
+                    savedOriginalSettings.slot_minutes,
+                    savedOriginalSettings.seats_per_slot,
+                    savedOriginalSettings.window_days,
+                    savedOriginalSettings.min_notice_days,
+                    savedOriginalSettings.wait_alert_days,
+                    savedOriginalSettings.unit_address,
+                    savedOriginalSettings.unit_address_complement,
+                    savedOriginalSettings.reminder_enabled,
+                    savedOriginalSettings.reminder_hours,
+                ],
+            )
+        } else {
+            await pool.query("DELETE FROM ScheduleSettings WHERE id = 1")
+        }
+        await pool.end()
     })
 
     it("grava evento CREATED em AppointmentEvents e documents_sent como jsonb", async () => {
@@ -220,42 +279,68 @@ describe("Schedule integration tests (Postgres)", () => {
     })
 
     it("executa rollback quando finishSessionWith falha, não deixando appointment nem evento órfão", async () => {
-        const fakeSessionId = "999999999"
+        const pool = getPool()
+        const rollbackPhoneHash = phoneHash(phones.rollback)
+
+        const sessRes = await pool.query<{ id: string }>(
+            `INSERT INTO Sessions (
+                phone_hash, status, outcome, current_step, ended_at, last_interaction_at
+             ) VALUES (
+                $1, 'FINISHED', 'RESOLVED', 'FINISHED', now(), now()
+             ) RETURNING id`,
+            [rollbackPhoneHash],
+        )
+        const finishedSessionId = sessRes.rows[0]!.id
+        createdSessionIds.push(finishedSessionId)
+
         const slotTime = new Date("2026-11-10T14:00:00.000Z")
+        const testCpfHash = makeCpfHash("999")
 
         await expect(
             scheduleRepository.bookAppointment({
-                sessionId: fakeSessionId,
+                sessionId: finishedSessionId,
                 questionId: testQuestionId,
                 reason: "REQUIRES_IN_PERSON",
                 name: "Rollback Citizen",
-                cpfHash: makeCpfHash("999"),
+                cpfHash: testCpfHash,
                 cpfMasked: "***.999.999-**",
                 phone: phones.rollback,
                 byRepresentative: false,
                 appointmentDatetime: slotTime,
             }),
-        ).rejects.toThrow()
+        ).rejects.toThrow("Conversation session was changed or finished")
 
-        const pool = getPool()
         const checkAppt = await pool.query(
-            "SELECT id FROM Appointments WHERE cpf_hash = $1",
-            [makeCpfHash("999")],
+            "SELECT id FROM Appointments WHERE cpf_hash = $1 OR session_id = $2",
+            [testCpfHash, finishedSessionId],
         )
         expect(checkAppt.rows.length).toBe(0)
+
+        const checkApptEvents = await pool.query(
+            "SELECT id FROM AppointmentEvents WHERE appointment_id IN (SELECT id FROM Appointments WHERE cpf_hash = $1)",
+            [testCpfHash],
+        )
+        expect(checkApptEvents.rows.length).toBe(0)
+
+        const checkConvEvents = await pool.query(
+            "SELECT id FROM ConversationEvents WHERE session_id = $1",
+            [finishedSessionId],
+        )
+        expect(checkConvEvents.rows.length).toBe(0)
     })
 
     it("respeita estritamente o limite da janela de agendamento (window_days)", async () => {
         const pool = getPool()
-        await pool.query("UPDATE ScheduleSettings SET window_days = 3 WHERE id = 1")
+        await pool.query("UPDATE ScheduleSettings SET window_days = 3, min_notice_days = 1 WHERE id = 1")
 
         const scheduleService = createScheduleService(scheduleRepository)
         const now = new Date("2026-10-05T09:00:00-03:00")
         const slots = await scheduleService.getAvailableSlots(now)
 
+        expect(slots.length).toBeGreaterThan(0)
         const distinctDates = Array.from(new Set(slots.map((s) => s.dateStr)))
-        expect(distinctDates.length).toBeLessThanOrEqual(3)
+        expect(distinctDates).toEqual(["2026-10-06", "2026-10-07", "2026-10-08"])
 
-        await pool.query("UPDATE ScheduleSettings SET window_days = 7 WHERE id = 1")
+        await pool.query("UPDATE ScheduleSettings SET window_days = 7, min_notice_days = 1 WHERE id = 1")
     })
 })

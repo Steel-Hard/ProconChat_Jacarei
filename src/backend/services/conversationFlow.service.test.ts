@@ -17,6 +17,8 @@ import {
     ERRO_DUPLICATE_APPOINTMENT,
     ERRO_FALHA_AGENDAMENTO,
     ERRO_NOME,
+    ERRO_OFERTA_AGENDAMENTO,
+    ERRO_RESOLVIDA,
     ERRO_SLOT_OCUPADO,
     ERRO_SLOTS,
     formatarListaPerguntas,
@@ -341,6 +343,8 @@ describe("conversationFlow.service", () => {
         })
         expect(result.reply.step).toBe("FINISHED")
         expect(result.reply.text).toContain("fora do escopo")
+        expect(result.reply.text).not.toContain(PERGUNTA_RESOLVIDA)
+        expect(result.reply.text).not.toContain(OFERTA_AGENDAMENTO)
     })
 
     test("AWAITING_QUESTION: pergunta que requer presencial grava SCHEDULE_OFFERED ('REQUIRES_IN_PERSON') e avança para AWAITING_SCHEDULE_OFFER", async () => {
@@ -379,6 +383,7 @@ describe("conversationFlow.service", () => {
         })
         expect(result.reply.step).toBe("AWAITING_SCHEDULE_OFFER")
         expect(result.reply.text).toContain(OFERTA_AGENDAMENTO)
+        expect(result.reply.text).not.toContain(PERGUNTA_RESOLVIDA)
     })
 
     test("AWAITING_RESOLVED: Sim encerra sessão com RESOLVED", async () => {
@@ -432,6 +437,24 @@ describe("conversationFlow.service", () => {
         })
         expect(result.reply.step).toBe("AWAITING_SCHEDULE_OFFER")
         expect(result.reply.text).toBe(OFERTA_AGENDAMENTO)
+        expect(finishEvent).not.toHaveBeenCalled()
+    })
+
+    test("AWAITING_RESOLVED: entrada inválida re-pergunta se foi resolvida", async () => {
+        findOrCreateActive.mockResolvedValueOnce({
+            id: "s1",
+            created: false,
+            currentStep: "AWAITING_RESOLVED",
+            currentCategoryId: "1",
+            currentQuestionId: "10",
+            listPage: 1,
+            draft: null,
+        })
+
+        const result = await processIncomingMessage({ phone: "5511999999999", text: "invalido" })
+
+        expect(result.reply.step).toBe("AWAITING_RESOLVED")
+        expect(result.reply.text).toBe(ERRO_RESOLVIDA)
     })
 
     test("AWAITING_SCHEDULE_OFFER: Recusar agendamento encerra com DECLINED", async () => {
@@ -476,6 +499,23 @@ describe("conversationFlow.service", () => {
         })
         expect(result.reply.step).toBe("AWAITING_ATTENDEE")
         expect(result.reply.text).toBe(RESPOSTA_INICIO_AGENDAMENTO)
+    })
+
+    test("AWAITING_SCHEDULE_OFFER: entrada inválida re-pergunta opção de agendamento", async () => {
+        findOrCreateActive.mockResolvedValueOnce({
+            id: "s1",
+            created: false,
+            currentStep: "AWAITING_SCHEDULE_OFFER",
+            currentCategoryId: "1",
+            currentQuestionId: "10",
+            listPage: 1,
+            draft: null,
+        })
+
+        const result = await processIncomingMessage({ phone: "5511999999999", text: "99" })
+
+        expect(result.reply.step).toBe("AWAITING_SCHEDULE_OFFER")
+        expect(result.reply.text).toBe(ERRO_OFERTA_AGENDAMENTO)
     })
 
     describe("Fluxo de Agendamento Presencial (#56)", () => {
@@ -612,6 +652,24 @@ describe("conversationFlow.service", () => {
             expect(result.reply.text).toBe(ERRO_NOME)
         })
 
+        test("AWAITING_HOLDER_NAME: nome com dígitos é recusado para proteger CPF", async () => {
+            findOrCreateActive.mockResolvedValueOnce({
+                id: "s1",
+                created: false,
+                currentStep: "AWAITING_HOLDER_NAME",
+                currentCategoryId: "1",
+                currentQuestionId: "10",
+                listPage: 1,
+                draft: { by_representative: false },
+            })
+
+            const result = await processIncomingMessage({ phone: "5511999999999", text: "Maria 529.982.247-25" })
+
+            expect(result.reply.step).toBe("AWAITING_HOLDER_NAME")
+            expect(result.reply.text).toBe(ERRO_NOME)
+            expect(updateNavigationState).not.toHaveBeenCalled()
+        })
+
         test("AWAITING_HOLDER_CPF: CPF inválido re-solicita CPF", async () => {
             findOrCreateActive.mockResolvedValueOnce({
                 id: "s1",
@@ -641,7 +699,6 @@ describe("conversationFlow.service", () => {
             })
             getAvailableSlots.mockResolvedValueOnce(mockSlots)
 
-            // CPF válido: 529.982.247-25
             const result = await processIncomingMessage({ phone: "5511999999999", text: "529.982.247-25" })
 
             expect(recordEvent).not.toHaveBeenCalledWith("s1", {
@@ -930,49 +987,40 @@ describe("conversationFlow.service", () => {
 
             const citizenPhone = "5512991112233"
 
-            // 1. Mensagem inicial
             const r1 = await statefulFlow({ phone: citizenPhone, text: "oi" })
             expect(r1.reply.step).toBe("AWAITING_CATEGORY")
 
-            // 2. Escolhe Categoria 1
             const r2 = await statefulFlow({ phone: citizenPhone, text: "1" })
             expect(r2.reply.step).toBe("AWAITING_QUESTION")
             expect(sessionDb.currentCategoryId).toBe("1")
 
-            // 3. Escolhe Pergunta 1 (id: 10)
             const r3 = await statefulFlow({ phone: citizenPhone, text: "1" })
             expect(r3.reply.step).toBe("AWAITING_RESOLVED")
             expect(sessionDb.currentQuestionId).toBe("10")
 
-            // 4. Dúvida não foi resolvida (responde 2)
             const r4 = await statefulFlow({ phone: citizenPhone, text: "2" })
             expect(r4.reply.step).toBe("AWAITING_SCHEDULE_OFFER")
             expect(sessionDb.currentQuestionId).toBe("10")
 
-            // 5. Aceita oferta de agendamento (responde 1)
             const r5 = await statefulFlow({ phone: citizenPhone, text: "1" })
             expect(r5.reply.step).toBe("AWAITING_ATTENDEE")
             expect(sessionDb.currentQuestionId).toBe("10")
 
-            // 6. Escolhe quem comparece via botão (attendee_self)
             const r6 = await statefulFlow({ phone: citizenPhone, optionId: "attendee_self" })
             expect(r6.reply.step).toBe("AWAITING_HOLDER_NAME")
             expect(sessionDb.currentQuestionId).toBe("10")
             expect(sessionDb.draft?.by_representative).toBe(false)
 
-            // 7. Envia nome completo
             const r7 = await statefulFlow({ phone: citizenPhone, text: "Maria da Silva" })
             expect(r7.reply.step).toBe("AWAITING_HOLDER_CPF")
             expect(sessionDb.currentQuestionId).toBe("10")
             expect(sessionDb.draft?.holder_name).toBe("Maria da Silva")
 
-            // 8. Envia CPF válido
             const r8 = await statefulFlow({ phone: citizenPhone, text: "529.982.247-25" })
             expect(r8.reply.step).toBe("AWAITING_SLOT")
             expect(sessionDb.currentQuestionId).toBe("10")
             expect(sessionDb.draft?.cpf_masked).toBe("***.982.247-**")
 
-            // 9. Seleciona horário via optionId com ISO timestamp
             const chosenIso = mockSlots[0]!.datetime.toISOString()
             const r9 = await statefulFlow({ phone: citizenPhone, optionId: `slot_${chosenIso}` })
             expect(r9.reply.step).toBe("FINISHED")
