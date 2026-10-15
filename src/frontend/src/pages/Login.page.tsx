@@ -17,9 +17,6 @@ function LoginPage() {
             <main className={css.main}>
                 <div className={css.container}>
                     <div className={css.brand}>
-                        <span className={css.logo} aria-hidden="true">
-                            {t("logo")}
-                        </span>
                         <div>
                             <p className={css.brandName}>{t("brand")}</p>
                             <p className={css.subtitle}>{t("subtitle")}</p>
