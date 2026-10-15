@@ -214,6 +214,53 @@ describe("PanelLayout", { timeout: 15000 }, () => {
         expect(screen.getByLabelText("Senha atual")).toHaveFocus()
     })
 
+    it("mostra a NotFound quando o login volta a uma tela que a conta não pode acessar", async () => {
+        const user = userEvent.setup()
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(
+                async () =>
+                    new Response(
+                        JSON.stringify({
+                            data: {
+                                user: {
+                                    id: 8,
+                                    name: "Bruno Lima",
+                                    email: "bruno@exemplo.gov.br",
+                                    isAdmin: false,
+                                    permissions: ["sessions.view"]
+                                }
+                            }
+                        }),
+                        { status: 200 }
+                    )
+            )
+        )
+        const router = createMemoryRouter(routes, {
+            initialEntries: ["/login?redirect=%2Fusuarios"]
+        })
+        renderWithStore(<RouterProvider router={router} />, {
+            preloadedState: { account: { current: null, status: "anonymous" } }
+        })
+
+        await user.type(
+            await screen.findByRole("textbox", { name: "E-mail" }, { timeout: LAZY_TIMEOUT_MS }),
+            "bruno@exemplo.gov.br"
+        )
+        await user.type(screen.getByLabelText("Senha"), "senha-segura")
+        await user.click(screen.getByRole("button", { name: "Entrar" }))
+
+        expect(
+            await screen.findByRole(
+                "heading",
+                { name: "404 - Not Found" },
+                { timeout: LAZY_TIMEOUT_MS }
+            )
+        ).toBeInTheDocument()
+        expect(router.state.location.pathname).toBe(ROUTES.users)
+        expect(screen.queryByRole("navigation", { name: "Menu principal" })).not.toBeInTheDocument()
+    })
+
     it("depois de sair, voltar a uma rota do painel leva ao login", async () => {
         const user = userEvent.setup()
         stubLogout(() => new Response(null, { status: 204 }))
