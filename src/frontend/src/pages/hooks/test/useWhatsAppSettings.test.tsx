@@ -273,10 +273,60 @@ describe("useWhatsAppSettings", () => {
         await act(() => result.current.runTest())
 
         act(() => result.current.setPhoneNumberId("100000000000008"))
+        const afterEdit = {
+            testResult: result.current.testResult,
+            saveDisabled: result.current.saveDisabled,
+            needTest: result.current.needTest
+        }
+        act(() => result.current.setPhoneNumberId("100000000000009"))
+
+        expect(afterEdit).toEqual({ testResult: null, saveDisabled: true, needTest: true })
+        expect(result.current.testResult?.kind).toBe("ok")
+        expect(result.current.saveDisabled).toBe(false)
+    })
+
+    it("editar o segredo depois de um teste ok invalida o resultado, mesmo voltando ao valor testado", async () => {
+        const { result } = await setup({
+            "POST /api/v1/whatsapp/settings/test": () => ({
+                status: 200,
+                body: {
+                    data: { ok: true, displayPhoneNumber: "+55", verifiedName: "X", checkedAt: "x" }
+                }
+            })
+        })
+        await ready(result)
+        act(() => result.current.replaceSecret("accessToken"))
+        act(() => result.current.setSecret("accessToken", NEW_TOKEN))
+        await act(() => result.current.runTest())
+        const tested = result.current.testResult?.kind
+
+        act(() => result.current.setSecret("accessToken", `${NEW_TOKEN}x`))
+        act(() => result.current.setSecret("accessToken", NEW_TOKEN))
+
+        expect(tested).toBe("ok")
+        expect(result.current.testResult).toBeNull()
+        expect(result.current.saveDisabled).toBe(true)
+    })
+
+    it("cancelar a substituição depois do teste ok invalida o resultado", async () => {
+        const { result } = await setup({
+            "POST /api/v1/whatsapp/settings/test": () => ({
+                status: 200,
+                body: {
+                    data: { ok: true, displayPhoneNumber: "+55", verifiedName: "X", checkedAt: "x" }
+                }
+            })
+        })
+        await ready(result)
+        act(() => result.current.setPhoneNumberId("100000000000009"))
+        act(() => result.current.replaceSecret("accessToken"))
+        act(() => result.current.setSecret("accessToken", NEW_TOKEN))
+        await act(() => result.current.runTest())
+
+        act(() => result.current.cancelSecret("accessToken"))
 
         expect(result.current.testResult).toBeNull()
         expect(result.current.saveDisabled).toBe(true)
-        expect(result.current.needTest).toBe(true)
     })
 
     it("não chama a API e pede o campo quando o ID da conta está vazio", async () => {

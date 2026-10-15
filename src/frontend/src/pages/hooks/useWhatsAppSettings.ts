@@ -93,6 +93,7 @@ function useWhatsAppSettings() {
     const [pauseReplies] = whatsappSettingsApi.usePauseWhatsAppRepliesMutation()
     const [resumeReplies] = whatsappSettingsApi.useResumeWhatsAppRepliesMutation()
     const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT)
+    const [secretRevisions, setSecretRevisions] = useState({ accessToken: 0, appSecret: 0 })
     const [stored, setStored] = useState<StoredOutcome | null>(null)
     const [testing, setTesting] = useState(false)
     const [saving, setSaving] = useState(false)
@@ -137,7 +138,12 @@ function useWhatsAppSettings() {
         accessToken: draft.accessToken,
         appSecret: draft.appSecret
     }
-    const signature = JSON.stringify(input)
+    const signature = JSON.stringify({
+        phoneNumberId: input.phoneNumberId,
+        businessAccountId: input.businessAccountId,
+        accessToken: draft.accessToken === null ? null : secretRevisions.accessToken,
+        appSecret: draft.appSecret === null ? null : secretRevisions.appSecret
+    })
     const testResult = stored !== null && stored.signature === signature ? stored.outcome : null
     const testOk = testResult?.kind === "ok"
     const needTest = changes.length > 0 && !testOk
@@ -145,6 +151,11 @@ function useWhatsAppSettings() {
     function updateDraft(next: Partial<Draft>) {
         setDraft((current) => ({ ...current, ...next }))
         setActionError(null)
+    }
+
+    function updateSecret(key: SecretKey, value: string | null) {
+        setSecretRevisions((current) => ({ ...current, [key]: current[key] + 1 }))
+        updateDraft({ [key]: value })
     }
 
     function localProblem(): string | null {
@@ -384,9 +395,9 @@ function useWhatsAppSettings() {
         setPhoneNumberId: (value: string) => updateDraft({ phoneNumberId: value }),
         setBusinessAccountId: (value: string) => updateDraft({ businessAccountId: value }),
         secrets,
-        replaceSecret: (key: SecretKey) => updateDraft({ [key]: "" }),
-        cancelSecret: (key: SecretKey) => updateDraft({ [key]: null }),
-        setSecret: (key: SecretKey, value: string) => updateDraft({ [key]: value }),
+        replaceSecret: (key: SecretKey) => updateSecret(key, ""),
+        cancelSecret: (key: SecretKey) => updateSecret(key, null),
+        setSecret: (key: SecretKey, value: string) => updateSecret(key, value),
         changedKeys,
         changes,
         testResult,
