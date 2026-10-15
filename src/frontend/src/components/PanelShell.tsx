@@ -1,86 +1,47 @@
-import { Suspense, useCallback, useEffect, useId, useRef, useState } from "react"
+import { Suspense } from "react"
 import { useTranslation } from "react-i18next"
 import { Outlet } from "react-router-dom"
 import ChangePasswordDialog from "@/components/ChangePasswordDialog"
 import Sidebar from "@/components/Sidebar"
 import Topbar from "@/components/Topbar"
-import useLogout from "@/hooks/useLogout"
-import useIsDocked from "@/hooks/useIsDocked"
-import useNavBadges from "@/hooks/useNavBadges"
-import useAppSelector from "@/store/useAppSelector"
+import usePanelShell from "@/hooks/usePanelShell"
 import css from "@/styles/layouts/panel.module.css"
+
+const SIDEBAR_CLASSES = {
+    docked: css.sidebarDocked,
+    drawer: css.drawer,
+    drawerOpen: `${css.drawer} ${css.drawerOpen}`
+}
 
 function PanelShell() {
     const { t } = useTranslation()
-    const account = useAppSelector((state) => state.account.current)
-    const handleLogout = useLogout()
-    const badges = useNavBadges()
-    const docked = useIsDocked()
-    const sidebarId = useId()
-    const [drawerOpen, setDrawerOpen] = useState(false)
-    const [passwordOpen, setPasswordOpen] = useState(false)
-    const [wasDocked, setWasDocked] = useState(docked)
-
-    if (docked !== wasDocked) {
-        setWasDocked(docked)
-
-        if (docked) {
-            setDrawerOpen(false)
-        }
-    }
-
-    const drawerVisible = !docked && drawerOpen
-    const drawerRef = useRef<HTMLDivElement>(null)
-    const menuButtonRef = useRef<HTMLButtonElement>(null)
-    const restoreFocus = useRef(false)
-
-    const closeDrawer = useCallback(() => setDrawerOpen(false), [])
-
-    const dismissDrawer = useCallback(() => {
-        restoreFocus.current = true
-        setDrawerOpen(false)
-    }, [])
-
-    useEffect(() => {
-        if (drawerVisible) {
-            drawerRef.current?.querySelector<HTMLElement>("a[href]")?.focus()
-            return
-        }
-
-        if (restoreFocus.current) {
-            restoreFocus.current = false
-            menuButtonRef.current?.focus()
-        }
-    }, [drawerVisible])
-
-    useEffect(() => {
-        if (!drawerVisible) {
-            return
-        }
-
-        function handleKeyDown(event: KeyboardEvent) {
-            if (event.key === "Escape") {
-                dismissDrawer()
-            }
-        }
-
-        document.addEventListener("keydown", handleKeyDown)
-
-        return () => {
-            document.removeEventListener("keydown", handleKeyDown)
-        }
-    }, [drawerVisible, dismissDrawer])
-
-    let sidebarClass = css.sidebarDocked
-
-    if (!docked) {
-        sidebarClass = drawerVisible ? `${css.drawer} ${css.drawerOpen}` : css.drawer
-    }
+    const {
+        account,
+        badges,
+        docked,
+        sidebarId,
+        sidebarMode,
+        drawerOpen,
+        drawerVisible,
+        drawerRef,
+        menuButtonRef,
+        passwordOpen,
+        openDrawer,
+        closeDrawer,
+        dismissDrawer,
+        openPassword,
+        closePassword,
+        handleLogout
+    } = usePanelShell()
 
     return (
         <>
             <div className={css.shell}>
-                <div ref={drawerRef} className={sidebarClass} hidden={!docked && !drawerOpen}>
+                <div
+                    ref={drawerRef}
+                    className={SIDEBAR_CLASSES[sidebarMode]}
+                    hidden={!docked && !drawerOpen}
+                >
                     <Sidebar
                         id={sidebarId}
                         account={account}
@@ -98,8 +59,8 @@ function PanelShell() {
                         menuOpen={drawerVisible}
                         menuControls={sidebarId}
                         menuButtonRef={menuButtonRef}
-                        onOpenMenu={() => setDrawerOpen(true)}
-                        onChangePassword={() => setPasswordOpen(true)}
+                        onOpenMenu={openDrawer}
+                        onChangePassword={openPassword}
                         onLogout={handleLogout}
                     />
                     <main className={css.main}>
@@ -113,7 +74,7 @@ function PanelShell() {
                 <ChangePasswordDialog
                     open={passwordOpen}
                     email={account.email}
-                    onClose={() => setPasswordOpen(false)}
+                    onClose={closePassword}
                 />
             ) : null}
         </>
