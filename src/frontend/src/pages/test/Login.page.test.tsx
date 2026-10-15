@@ -65,6 +65,14 @@ describe("LoginPage", () => {
         expect(screen.queryByText(/cadastr/i)).not.toBeInTheDocument()
     })
 
+    it("não mostra o quadrado com as iniciais PC acima da marca", async () => {
+        renderLogin()
+
+        await screen.findByRole("heading", { name: "Entrar" })
+
+        expect(screen.queryByText("PC")).not.toBeInTheDocument()
+    })
+
     it("define o título da página", async () => {
         renderLogin()
 

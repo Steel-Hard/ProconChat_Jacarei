@@ -57,4 +57,39 @@ describe("changePassword", () => {
 
         expect(handler).not.toHaveBeenCalled()
     })
+
+    it("chama onUnauthorized e rejeita o 401 quando a renovação da sessão falha", async () => {
+        const { changePassword, onUnauthorized, fetchMock } = await setup()
+        const handler = vi.fn()
+        onUnauthorized(handler)
+        fetchMock.mockResolvedValue(
+            jsonResponse(401, { error: { code: "UNAUTHORIZED", message: "x" } })
+        )
+
+        await expect(changePassword("atual-123", "nova-senha-123")).rejects.toMatchObject({
+            status: 401
+        })
+
+        expect(handler).toHaveBeenCalledTimes(1)
+        expect(fetchMock).toHaveBeenCalledTimes(2)
+    })
+
+    it("renova a sessão no 401 e repete a troca de senha uma vez", async () => {
+        const { changePassword, onUnauthorized, fetchMock } = await setup()
+        const handler = vi.fn()
+        onUnauthorized(handler)
+        fetchMock
+            .mockResolvedValueOnce(
+                jsonResponse(401, { error: { code: "UNAUTHORIZED", message: "x" } })
+            )
+            .mockResolvedValueOnce(new Response(null, { status: 204 }))
+            .mockResolvedValueOnce(jsonResponse(200, { data: { changed: true } }))
+
+        await changePassword("atual-123", "nova-senha-123")
+
+        expect(fetchMock).toHaveBeenCalledTimes(3)
+        expect(fetchMock.mock.calls[1][0]).toBe("http://api.test/api/v1/auth/refresh")
+        expect(fetchMock.mock.calls[2][0]).toBe("http://api.test/api/v1/auth/change-password")
+        expect(handler).not.toHaveBeenCalled()
+    })
 })

@@ -136,4 +136,25 @@ describe("useChangePasswordForm", () => {
         expect(result.current.confirmPassword).toBe("")
         expect(result.current.error).toBeNull()
     })
+
+    it("faz uma única requisição quando o envio é acionado duas vezes seguidas", async () => {
+        const response = Promise.withResolvers<Response>()
+        const fetchMock = vi.fn(() => response.promise)
+        vi.stubGlobal("fetch", fetchMock)
+        const { result } = renderForm()
+        fill(result, "atual-123", "nova-senha-123", "nova-senha-123")
+
+        let first: Promise<void> = Promise.resolve()
+        let second: Promise<void> = Promise.resolve()
+        act(() => {
+            first = result.current.submit()
+            second = result.current.submit()
+        })
+        await act(async () => {
+            response.resolve(jsonResponse(200, { data: { changed: true } }))
+            await Promise.all([first, second])
+        })
+
+        expect(fetchMock).toHaveBeenCalledTimes(1)
+    })
 })
