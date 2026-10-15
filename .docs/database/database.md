@@ -3,7 +3,7 @@
 > Persistência única em PostgreSQL, compartilhada entre o chatbot e o painel ([`../architecture/architecture.md`](../architecture/architecture.md)).
 >
 > Este documento tem duas partes:
-> 1. **[Schema atual](#parte-1--schema-atual-implementado)**: o que existe depois das migrations `01` a `09`, `010`, `11`, `12`, `13` e `14` (a `11_sprint2_schema.sql` é o schema da Sprint 2, issue #52; a `12_short_text_checks.sql` ajusta o limite dos títulos curtos, issue #61; a `13_conversation_events_data_checks.sql` limita as chaves e os valores de `ConversationEvents.data` e amarra `current_step = 'FINISHED'` às sessões encerradas, issue #16; a `14_whatsapp_settings_display_number.sql` guarda o número e o nome verificados do WhatsApp, issue #54).
+> 1. **[Schema atual](#parte-1--schema-atual-implementado)**: o que existe depois das migrations `01` a `09`, `010`, `11`, `12`, `13`, `14` e `15` (a `11_sprint2_schema.sql` é o schema da Sprint 2, issue #52; a `12_short_text_checks.sql` ajusta o limite dos títulos curtos, issue #61; a `13_conversation_events_data_checks.sql` limita as chaves e os valores de `ConversationEvents.data` e amarra `current_step = 'FINISHED'` às sessões encerradas, issue #16; a `14_whatsapp_settings_display_number.sql` guarda o número e o nome verificados do WhatsApp, issue #54; a `15_whatsapp_settings_access_token_lifetime.sql` guarda se o token de acesso do WhatsApp expira, issue #54).
 > 2. **[Schema planejado](#parte-2--schema-planejado-sprint-3)**: o que ainda falta criar, com a issue de cada parte.
 >
 > Antes de mexer no banco, leia também o SQL em `src/backend/db/schema/` e as convenções em [`migrations.md`](migrations.md): **toda mudança é uma migration nova**, nunca edição de migration antiga.
@@ -26,6 +26,7 @@
 | `12` | Títulos e descrições curtas medidos como gravados, sem espaço nas pontas (#61): apara os valores que já existiam e troca os três `CHECK` de tamanho, com os mesmos nomes |
 | `13` | Chaves e valores de `ConversationEvents.data` por tipo (#16): renomeia as chaves antigas `llmStatus` e `byRepresentative` das linhas que já existiam, aborta com mensagem clara se sobrar linha fora do contrato e cria `chk_conversation_events_data_keys` e `chk_conversation_events_data_values`. Em `Sessions`, põe `current_step = 'FINISHED'` nas sessões já encerradas que ainda guardavam outra etapa (a etapa do abandono continua em `abandoned_at_step`), aborta com mensagem clara se sobrar sessão `IN_PROGRESS` em `FINISHED` ou abandonada com `abandoned_at_step = 'FINISHED'` e cria `chk_sessions_step_finished` e `chk_sessions_abandoned_step_not_finished`. O `Down` remove só os quatro `CHECK` e não desfaz a troca de `current_step` |
 | `14` | Número e nome verificados do WhatsApp (#54): adiciona `display_phone_number VARCHAR(40)` e `verified_name VARCHAR(255)`, ambos opcionais, em `WhatsAppSettings`. A linha existente fica com os dois `NULL` até o próximo teste ou salvar bem-sucedido. O `Down` remove as duas colunas |
+| `15` | Tipo do token de acesso do WhatsApp (#54): adiciona `access_token_permanent BOOLEAN` e `access_token_expires_at TIMESTAMPTZ`, ambos opcionais, em `WhatsAppSettings`, com `chk_whatsapp_settings_access_token_lifetime` (as duas nulas, `TRUE` sem data ou `FALSE` com data). A linha existente fica com as duas `NULL` (tipo desconhecido) até o próximo teste dos valores salvos ou salvar bem-sucedido. O `Down` remove a constraint e as duas colunas |
 
 ### Diagrama
 
@@ -669,12 +670,19 @@ CREATE TABLE WhatsAppSettings (
     credentials_valid BOOLEAN,
     display_phone_number VARCHAR(40),
     verified_name VARCHAR(255),
+    access_token_permanent BOOLEAN,
+    access_token_expires_at TIMESTAMPTZ,
     last_webhook_event_at TIMESTAMPTZ,
     updated_by BIGINT REFERENCES Users(id),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT chk_whatsapp_settings_singleton CHECK (id = 1),
     CONSTRAINT chk_whatsapp_settings_access_token_encrypted CHECK (access_token_encrypted IS NULL OR access_token_encrypted ~ '^v1:[A-Za-z0-9+/]+={0,2}:[A-Za-z0-9+/]+={0,2}:[A-Za-z0-9+/]+={0,2}$'),
-    CONSTRAINT chk_whatsapp_settings_app_secret_encrypted CHECK (app_secret_encrypted IS NULL OR app_secret_encrypted ~ '^v1:[A-Za-z0-9+/]+={0,2}:[A-Za-z0-9+/]+={0,2}:[A-Za-z0-9+/]+={0,2}$')
+    CONSTRAINT chk_whatsapp_settings_app_secret_encrypted CHECK (app_secret_encrypted IS NULL OR app_secret_encrypted ~ '^v1:[A-Za-z0-9+/]+={0,2}:[A-Za-z0-9+/]+={0,2}:[A-Za-z0-9+/]+={0,2}$'),
+    CONSTRAINT chk_whatsapp_settings_access_token_lifetime CHECK (
+        (access_token_permanent IS NULL AND access_token_expires_at IS NULL)
+        OR (access_token_permanent IS TRUE AND access_token_expires_at IS NULL)
+        OR (access_token_permanent IS FALSE AND access_token_expires_at IS NOT NULL)
+    )
 );
 ```
 
@@ -684,6 +692,7 @@ CREATE TABLE WhatsAppSettings (
 - `auto_reply_paused` + `updated_by`/`updated_at` = pausa das respostas automáticas e última alteração.
 - `credentials_valid`: `NULL` enquanto nunca testadas; `TRUE` depois de salvar (o salvar refaz o teste com a Meta e só grava com sucesso) ou de um teste bem-sucedido dos valores salvos; `FALSE` quando um teste dos valores salvos falha por motivo definitivo (token, App Secret, IDs ou permissão). Falha de rede ou da Meta não grava. Teste de valores novos não grava nada. `credentials_checked_at` acompanha cada gravação de `credentials_valid`, sem mudar `updated_by`/`updated_at`.
 - `display_phone_number` e `verified_name` (#54): o número institucional e o nome verificado que a Meta devolveu no último salvar ou teste bem-sucedido dos valores salvos. `NULL` até o primeiro sucesso. Teste de valores novos ou que falha não muda os dois, e gravá-los não muda `updated_by`/`updated_at` quando vêm do teste.
+- `access_token_permanent` e `access_token_expires_at` (#54, migration `15`): o tipo do token de acesso salvo, descoberto pelo `debug_token` da Meta. `TRUE` sem data = não expira; `FALSE` com a data = expira nessa data; as duas `NULL` = não se sabe (nunca verificado ou a Meta não respondeu). O `CHECK` usa `IS TRUE`/`IS FALSE` porque, com `= TRUE`, uma data sem `access_token_permanent` daria `NULL` no `CHECK` e passaria. Um teste dos valores salvos só grava o tipo quando a Meta o informa; o salvar que troca o token sempre grava o tipo do token novo (inclusive desconhecido). Gravar pelo teste não muda `updated_by`/`updated_at`. A validade fica velha se o token for revogado direto na Meta; acompanhar isso é da #88.
 - `last_webhook_event_at` continua sem ser gravado até a #88 (estado do número).
 
 ### Dados pessoais e segredos (RNF03)
