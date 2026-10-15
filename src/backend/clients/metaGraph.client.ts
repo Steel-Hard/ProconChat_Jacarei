@@ -1,8 +1,9 @@
 import { createHmac } from "node:crypto"
-import { ConnectionCheckInput, ConnectionCheckResult, ConnectionTestReason } from "../types/whatsappSettings.types"
+import { AccessTokenLifetime, ConnectionCheckInput, ConnectionCheckResult, ConnectionTestReason } from "../types/whatsappSettings.types"
 import { MetaGraphClient } from "./metaGraph.client.interface"
 
 export const META_TIMEOUT_MS = 10_000
+export const META_TOKEN_INSPECTION_TIMEOUT_MS = 5_000
 const GRAPH_BASE_URL = "https://graph.facebook.com"
 const UNKNOWN_OBJECT_SUBCODE = 33
 
@@ -11,6 +12,7 @@ export type FetchFn = (url: string, init: RequestInit) => Promise<Pick<Response,
 interface MetaGraphClientDependencies {
     fetchFn?: FetchFn
     timeoutMs?: number
+    inspectionTimeoutMs?: number
     logger?: Pick<Console, "log">
 }
 
@@ -21,6 +23,10 @@ interface GraphError {
 }
 
 type CallKind = "phone" | "account"
+
+type InspectionFailure = { status?: number; code?: number }
+
+const UNKNOWN_LIFETIME: AccessTokenLifetime = { kind: "UNKNOWN", expiresAt: null }
 
 type CallOutcome = { ok: true; body: unknown } | { ok: false; reason: ConnectionTestReason; status?: number; code?: number }
 
@@ -48,6 +54,25 @@ function reasonForError(error: GraphError, kind: CallKind): ConnectionTestReason
     return "META_ERROR"
 }
 
+function lifetimeFrom(body: unknown): AccessTokenLifetime | null {
+    const data = isRecord(body) && isRecord(body.data) ? body.data : null
+    if (data === null || data.is_valid !== true) {
+        return null
+    }
+    const expiresAt = data.expires_at
+    if (typeof expiresAt !== "number" || !Number.isInteger(expiresAt) || expiresAt < 0) {
+        return null
+    }
+    if (expiresAt === 0) {
+        return { kind: "PERMANENT", expiresAt: null }
+    }
+    const date = new Date(expiresAt * 1000)
+    if (Number.isNaN(date.getTime())) {
+        return null
+    }
+    return { kind: "EXPIRING", expiresAt: date.toISOString() }
+}
+
 async function readJson(response: Pick<Response, "json">): Promise<unknown> {
     try {
         return await response.json()
@@ -59,8 +84,33 @@ async function readJson(response: Pick<Response, "json">): Promise<unknown> {
 export function createMetaGraphClient({
     fetchFn = (url, init) => fetch(url, init),
     timeoutMs = META_TIMEOUT_MS,
+    inspectionTimeoutMs = META_TOKEN_INSPECTION_TIMEOUT_MS,
     logger = console,
 }: MetaGraphClientDependencies = {}): MetaGraphClient {
+    function unknownLifetime(failure: InspectionFailure = {}): AccessTokenLifetime {
+        logger.log(JSON.stringify({ event: "meta_token_inspection", outcome: "unknown", status: failure.status, code: failure.code }))
+        return UNKNOWN_LIFETIME
+    }
+
+    async function requestInspection(input: ConnectionCheckInput): Promise<AccessTokenLifetime> {
+        const proof = createHmac("sha256", input.appSecret).update(input.accessToken).digest("hex")
+        const params = new URLSearchParams({ input_token: input.accessToken, appsecret_proof: proof })
+        const response = await fetchFn(
+            `${GRAPH_BASE_URL}/${encodeURIComponent(input.graphApiVersion)}/debug_token?${params.toString()}`,
+            {
+                method: "GET",
+                headers: { Authorization: `Bearer ${input.accessToken}` },
+                signal: AbortSignal.timeout(inspectionTimeoutMs),
+            },
+        )
+        const body = await readJson(response)
+        if (!response.ok) {
+            const error = isRecord(body) && isRecord(body.error) ? body.error : {}
+            return unknownLifetime({ status: response.status, code: typeof error.code === "number" ? error.code : undefined })
+        }
+        return lifetimeFrom(body) ?? unknownLifetime({ status: response.status })
+    }
+
     async function call(path: string, query: Record<string, string>, input: ConnectionCheckInput, kind: CallKind): Promise<CallOutcome> {
         const proof = createHmac("sha256", input.appSecret).update(input.accessToken).digest("hex")
         const params = new URLSearchParams({ ...query, appsecret_proof: proof })
@@ -136,6 +186,14 @@ export function createMetaGraphClient({
             }
 
             return { ok: true, displayPhoneNumber, verifiedName }
+        },
+
+        async inspectAccessToken(input) {
+            try {
+                return await requestInspection(input)
+            } catch {
+                return unknownLifetime()
+            }
         },
     }
 }

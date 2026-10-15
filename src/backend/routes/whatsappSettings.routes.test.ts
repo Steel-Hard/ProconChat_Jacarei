@@ -80,6 +80,7 @@ function savedView(overrides: Record<string, unknown> = {}) {
         updatedAt: NOW.toISOString(),
         displayPhoneNumber: null,
         verifiedName: null,
+        accessTokenLifetime: { kind: "UNKNOWN", expiresAt: null },
         ...overrides,
     }
 }
@@ -100,12 +101,15 @@ describe("/api/v1/whatsapp/settings", () => {
             credentialsValid: null,
             displayPhoneNumber: null,
             verifiedName: null,
+            accessTokenLifetime: { kind: "UNKNOWN", expiresAt: null },
             updatedBy: null,
             updatedAt: NOW,
         }
         settings.addUser(1, "Admin")
         meta.calls.length = 0
+        meta.inspectCalls.length = 0
         meta.respondWith({ ok: true, displayPhoneNumber: "+55 12 99999-0000", verifiedName: "PROCON Jacareí" })
+        meta.respondToInspectionWith({ kind: "PERMANENT", expiresAt: null })
         vi.mocked(authRepository.findActiveById).mockImplementation(async (id) => (id === admin.id ? admin : id === staff.id ? staff : null))
     })
 
@@ -148,6 +152,38 @@ describe("/api/v1/whatsapp/settings", () => {
         expect(response.text).not.toContain("v1:")
     })
 
+    test("GET devolve o tipo do token guardado sem consultar a Meta", async () => {
+        if (settings.row) {
+            settings.row.accessTokenLifetime = { kind: "EXPIRING", expiresAt: "2026-11-20T15:00:00.000Z" }
+        }
+
+        const response = await call("get", "/api/v1/whatsapp/settings")
+
+        expect(response.status).toBe(200)
+        expect(response.body).toEqual({
+            data: savedView({ accessTokenLifetime: { kind: "EXPIRING", expiresAt: "2026-11-20T15:00:00.000Z" } }),
+        })
+        expect(meta.inspectCalls).toHaveLength(0)
+    })
+
+    test("POST /test continua 200 ok com o tipo UNKNOWN quando a inspecao falha", async () => {
+        meta.respondToInspectionWith({ kind: "UNKNOWN", expiresAt: null })
+
+        const response = await call("post", "/api/v1/whatsapp/settings/test").send({ phoneNumberId: "100000000000001", accessToken: NEW_TOKEN })
+
+        expect(response.status).toBe(200)
+        expect(response.body).toEqual({
+            data: {
+                ok: true,
+                displayPhoneNumber: "+55 12 99999-0000",
+                verifiedName: "PROCON Jacareí",
+                checkedAt: NOW.toISOString(),
+                accessTokenLifetime: { kind: "UNKNOWN", expiresAt: null },
+            },
+        })
+        expect(response.text).not.toContain(NEW_TOKEN)
+    })
+
     test("POST /test devolve o resultado do teste ao Admin", async () => {
         const response = await call("post", "/api/v1/whatsapp/settings/test").send({ phoneNumberId: "100000000000001" })
 
@@ -158,6 +194,7 @@ describe("/api/v1/whatsapp/settings", () => {
                 displayPhoneNumber: "+55 12 99999-0000",
                 verifiedName: "PROCON Jacareí",
                 checkedAt: NOW.toISOString(),
+                accessTokenLifetime: { kind: "PERMANENT", expiresAt: null },
             },
         })
         expect(response.headers["cache-control"]).toBe("no-store")
@@ -191,6 +228,7 @@ describe("/api/v1/whatsapp/settings", () => {
                 updatedBy: { id: 1, name: "Admin" },
                 displayPhoneNumber: "+55 12 99999-0000",
                 verifiedName: "PROCON Jacareí",
+                accessTokenLifetime: { kind: "PERMANENT", expiresAt: null },
             }),
         })
         expect(response.headers["cache-control"]).toBe("no-store")

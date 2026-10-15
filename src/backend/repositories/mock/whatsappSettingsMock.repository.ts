@@ -1,4 +1,4 @@
-import { SaveCredentialsInput, VerifiedPhoneNumber, WhatsAppSettingsRow } from "../../types/whatsappSettings.types"
+import { AccessTokenLifetime, SaveCredentialsInput, VerifiedPhoneNumber, WhatsAppSettingsRow } from "../../types/whatsappSettings.types"
 import { WhatsAppSettingsRepository } from "../whatsappSettings.repository.interface"
 
 export class MockWhatsAppSettingsRepository implements WhatsAppSettingsRepository {
@@ -46,16 +46,23 @@ export class MockWhatsAppSettingsRepository implements WhatsAppSettingsRepositor
             credentialsCheckedAt: this.clock(),
             displayPhoneNumber: input.displayPhoneNumber,
             verifiedName: input.verifiedName,
+            accessTokenLifetime: input.accessTokenLifetime ?? row.accessTokenLifetime,
             updatedBy: this.userOf(input.updatedBy),
             updatedAt: this.clock(),
         }
         return { ...this.row }
     }
 
-    async recordCredentialsCheck(valid: boolean, verified?: VerifiedPhoneNumber): Promise<void> {
+    async recordCredentialsCheck(valid: boolean, verified?: VerifiedPhoneNumber, lifetime?: AccessTokenLifetime): Promise<void> {
         const row = this.requireRow()
         this.credentialChecks.push(valid)
-        this.row = { ...row, ...verified, credentialsValid: valid, credentialsCheckedAt: this.clock() }
+        this.row = {
+            ...row,
+            ...verified,
+            accessTokenLifetime: lifetime ?? row.accessTokenLifetime,
+            credentialsValid: valid,
+            credentialsCheckedAt: this.clock(),
+        }
     }
 
     async setAutoReplyPaused(paused: boolean, updatedBy: number): Promise<WhatsAppSettingsRow> {
@@ -87,6 +94,7 @@ export class MockWhatsAppSettingsRepository implements WhatsAppSettingsRepositor
             credentialsValid: null,
             displayPhoneNumber: null,
             verifiedName: null,
+            accessTokenLifetime: { kind: "UNKNOWN", expiresAt: null },
             updatedBy: null,
             updatedAt: this.clock(),
         }
