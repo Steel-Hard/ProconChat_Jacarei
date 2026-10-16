@@ -48,4 +48,4 @@ As **etapas de abandono** têm nomes fixos, usados em Sessões e em Relatórios:
 
 - `Sessions` ganha um campo de desfecho, com os 8 valores acima, e a lógica de timeout.
 - A máquina de estados do bot (`conversationFlow.service.ts`) ganha as etapas novas: "resolveu?", quem comparece, escolha de horário e o menu de retorno.
-- **Pendente (RF04):** incluir na resposta um trecho explícito de **próximos passos** ("O que fazer agora"). Ver [`../desafio/rastreabilidade.md`](../desafio/rastreabilidade.md).
+- **Resolvido (RF04):** a resposta final traz um trecho explícito de **próximos passos** ("O que fazer agora"). Ver [`../desafio/rastreabilidade.md`](../desafio/rastreabilidade.md).

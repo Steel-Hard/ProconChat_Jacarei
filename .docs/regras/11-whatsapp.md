@@ -8,15 +8,22 @@ Conectar o painel ao número institucional na **WhatsApp Cloud API** (oficial da
 
 **Só a conta Admin.**
 
+## Estado da tela
+
+**Entregue em parte (issue #54).** Já funcionam: topo com número e situação, pausa, credenciais, "Configure no painel da Meta" e teste de conexão. Ainda não construídos: **Estado do número** e **Histórico de alterações** (issue #88) e **Modelos de mensagem** (issue #67).
+
 ## O que a tela mostra
 
 ### Topo
 
-- Número institucional e a **situação** geral.
+- **Número institucional**: o número e o nome verificados pela Meta, guardados no sistema no último teste bem-sucedido das credenciais salvas ou ao salvar. Enquanto não houver número verificado, aparece "Número ainda não verificado. Teste a conexão."
+- **Situação** geral: **Operando**, **Respostas pausadas**, **Credenciais inválidas**, **Não verificado** (há ID do número, mas as credenciais ainda não foram verificadas com a Meta) ou **Não configurado** (sem ID do número).
 - Interruptor **"Pausar respostas automáticas"**.
 - Quando pausado, uma faixa no topo: "As respostas automáticas estão pausadas. O chatbot não está respondendo aos cidadãos", com o botão **"Reativar respostas"**.
 
 ### Estado do número
+
+**Ainda não construído (issue #88).** Hoje a tela mostra só a situação geral no topo.
 
 | Item | O que mostra |
 |---|---|
@@ -34,6 +41,7 @@ Conectar o painel ao número institucional na **WhatsApp Cloud API** (oficial da
 | Token de acesso | **Secreto** |
 | App Secret | **Secreto** |
 
+- **Todos os campos são obrigatórios.** Os IDs aceitam só números (até 40 dígitos); os campos secretos não podem ter espaços. A tela avisa antes de testar, por exemplo: "Preencha o campo "ID da conta WhatsApp Business" ou cancele a substituição antes de testar."
 - **Campos secretos nunca são exibidos depois de salvos.** Aparecem como `••••••••a91F` (só os últimos 4 caracteres), com o botão **"Substituir"**. A tela explica: "Guardado criptografado. Não é possível visualizar o valor salvo."
 - No campo do token, o sistema mostra o tipo do token, descoberto sozinho pela Meta no teste de conexão e no salvar:
   - token que não expira: nenhum aviso no campo (o Admin só precisa saber quando o token vai expirar);
@@ -47,6 +55,8 @@ Os valores **gerados pelo sistema** que o Admin cola no painel da Meta, com bot�
 - **URL do webhook**;
 - **token de verificação**.
 
+Se o endereço público do sistema não estiver configurado no servidor, no lugar da URL aparece: "A URL pública do sistema não está configurada no servidor. Peça à equipe técnica para definir PUBLIC_BASE_URL."
+
 E o passo a passo:
 1. Usar um **token permanente de usuário do sistema** (Gerenciador de Negócios › Usuários do sistema › Gerar token). O token temporário do painel de desenvolvedor expira em 24 horas e o chatbot para de funcionar.
 2. No painel de desenvolvedores da Meta, abrir o app e ir em WhatsApp › Configuração.
@@ -57,9 +67,12 @@ E o passo a passo:
 ### Testar conexão
 
 - Estados: **testando**, **sucesso** (mostra o número e o nome verificados) e **erro** (com mensagem clara, ex.: "Token inválido ou expirado").
-- **Credenciais novas só podem ser salvas depois de um teste bem-sucedido.**
+- **Credenciais novas só podem ser salvas depois de um teste bem-sucedido.** Ao salvar, o sistema testa de novo com a Meta; se a Meta recusar, nada é salvo e a tela mostra o motivo.
+- Motivos de erro mostrados: "Token inválido ou expirado", "App Secret inválido", "ID do número não encontrado ou sem acesso por este token", "ID da conta WhatsApp Business não encontrado ou sem acesso por este token", "O número não pertence a esta conta WhatsApp Business", "O token não tem permissão para gerenciar este número", "Não foi possível falar com a Meta. Tente de novo em instantes" e "A Meta recusou as credenciais".
 
 ### Modelos de mensagem
+
+**Ainda não construído (issue #67).**
 
 Mensagens enviadas fora da conversa precisam de modelo aprovado pela Meta ([decisão 005](../decisoes/005-mensagens-ao-cidadao.md)).
 
@@ -73,6 +86,8 @@ Mensagens enviadas fora da conversa precisam de modelo aprovado pela Meta ([deci
 
 ### Histórico de alterações
 
+**Ainda não construído (issue #88).** Hoje a tela mostra só "Última alteração por [nome] em [data]", que muda ao salvar credenciais e também ao pausar ou reativar as respostas.
+
 Quem alterou o quê e quando. **Os valores do token e do App Secret não são registrados.**
 
 ## O que dá para fazer
@@ -81,8 +96,9 @@ Quem alterou o quê e quando. **Os valores do token e do App Secret não são re
 |---|---|
 | Editar IDs, substituir segredos | **Segue o padrão de salvar** ([regras gerais](00-regras-gerais.md#3-salvar-descartar-e-registrar-quem-alterou)). Salvar credenciais novas exige teste bem-sucedido |
 | Testar conexão | Pode ser feito a qualquer momento |
-| Atualizar status dos modelos | Consulta a Meta |
+| Atualizar status dos modelos | Consulta a Meta. **Ainda não construído (issue #67)** |
 | **Pausar respostas automáticas** | **Age na hora**, sem passar pelo Salvar, porque é de emergência. Pede confirmação: "O chatbot deixará de responder aos cidadãos até ser reativado" |
+| **Reativar respostas** | Age na hora, sem confirmação |
 
 **Durante a pausa**, quem escreve para o número recebe esta mensagem fixa, que aparece na tela e no modal de confirmação:
 
@@ -98,5 +114,5 @@ Quem alterou o quê e quando. **Os valores do token e do App Secret não são re
 
 ## Relações
 
-- A **Saúde do chatbot** no [Dashboard](02-dashboard.md) (também só Admin) resume os itens de "Estado do número" e a pausa.
+- A **Saúde do chatbot** no [Dashboard](02-dashboard.md) (também só Admin) resume os itens de "Estado do número" e a pausa, quando o Dashboard (issue #71) e o Estado do número (issue #88) forem entregues.
 - Durante o desenvolvimento, o sistema usa um número de testes do time. O PROCON troca pelo próprio número por esta tela, seguindo o guia de passagem.

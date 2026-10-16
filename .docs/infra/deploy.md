@@ -8,6 +8,7 @@ Guia do ambiente de produção (issue #51). Ele cobre a criação da VM, o deplo
 - O Caddy é o único serviço exposto (portas 80 e 443). Ele emite o certificado HTTPS sozinho e encaminha:
   - `/webhooks/whatsapp` para o `gateway`;
   - `/api/v1/whatsapp/sessions` responde 404 (rota interna entre gateway e backend);
+  - `/api/v1/internal*` responde 404 (configuração do WhatsApp que o gateway lê do backend);
   - `/api/*` para o `backend`;
   - o resto para o `frontend` (painel).
 - O Postgres, o Ollama e o `/health` dos serviços não são acessíveis de fora.
@@ -223,6 +224,7 @@ O `.env` fica só em `/opt/proconchat/.env`, com dono `deploy` e permissão `600
 | `POSTGRES_USER` | Usuário do banco (`proconchat`) |
 | `POSTGRES_PASSWORD` | Senha do banco. **Nunca muda depois do primeiro deploy**: ela só vale na criação do volume |
 | `PHONE_HASH_SECRET` | Segredo do HMAC do telefone. **Nunca muda depois do primeiro deploy**: trocar faz as sessões existentes deixarem de ser encontradas |
+| `CPF_HASH_SECRET` | Segredo do HMAC do CPF dos agendamentos. **Nunca muda depois do primeiro deploy**: trocar faz a busca por CPF deixar de encontrar os agendamentos existentes |
 | `GATEWAY_INTERNAL_TOKEN` | Token entre gateway e backend |
 | `AUTH_TOKEN_SECRET` | Segredo que assina os cookies de sessão do painel, com 32 ou mais caracteres (`openssl rand -hex 32`). Trocar derruba todas as sessões abertas, mas só depois de recriar o container: `export IMAGE_TAG="$(tail -n 1 releases.log \| cut -d' ' -f2)"` e `docker compose -f compose.prod.yaml up -d backend`, ou o próximo deploy. `docker compose restart backend` não relê o `.env` e mantém o segredo antigo |
 | `ROOT_EMAIL` | E-mail da conta Admin do painel. O `seed` usa só enquanto a conta Admin não existe; depois ela fica como está |
@@ -330,7 +332,7 @@ O `deploy.sh <tag>` primeiro confere no `.env` (ou no ambiente do shell, que tem
 2. recria os serviços com `IMAGE_TAG=<tag>` (`up -d --remove-orphans`). O `migrate` aplica as migrations novas e o `seed` roda antes do `backend`; se o `migrate` falhar, o `backend` novo não sobe;
 3. espera `backend` e `gateway` ficarem `healthy` (até `DEPLOY_WAIT_TIMEOUT`, padrão 300 s). Não espera o `llm-pull`;
    depois recarrega o Caddy (`caddy reload`), porque o `Caddyfile` é montado como arquivo e uma mudança nele não recria o container. O `scp` do workflow sobrescreve o arquivo no lugar, então o container vê o conteúdo novo. Se o `Caddyfile` for trocado por outro meio que crie um arquivo novo (por exemplo `mv`), recrie o Caddy com `docker compose -f compose.prod.yaml up -d --force-recreate caddy`;
-4. confere pelo endereço público que `/` responde 200 e `/webhooks/whatsapp` responde 403, com até 12 tentativas;
+4. confere pelo endereço público que `/` responde 200, `/webhooks/whatsapp` responde 403 e `/api/v1/internal/whatsapp/config` responde 404, com até 12 tentativas;
 5. registra `<data UTC> <tag>` em `/opt/proconchat/releases.log`;
 6. remove as imagens sem container que chegaram à VM (por `pull` ou `build`) há mais de uma semana (`docker image prune -af --filter "until=168h"`). Com o armazenamento de imagens do containerd, padrão do Docker na VM, o `until` conta a partir da chegada da imagem na VM, não da data de criação dela. Imagens em uso nunca são removidas, e as da última semana ficam para um rollback rápido; uma tag mais antiga é baixada de novo do GHCR.
 

@@ -8,6 +8,10 @@ Definir **quais documentos o cidadão deve levar** ao atendimento presencial. O 
 
 **Configurar documentos para atendimento presencial.**
 
+## Estado da tela
+
+**Ainda não construída (issue #65).** Hoje o chatbot usa a lista inicial do sistema.
+
 ## Como funciona
 
 Existem **dois grupos**, porque às vezes quem comparece não é o próprio consumidor (ex.: um filho no lugar de um pai idoso):
@@ -40,9 +44,11 @@ Com os seletores **"Quem comparece"** (titular ou representante) e **"Pergunta d
 > **Agendamento realizado**
 > Protocolo: [protocolo]
 > Data e hora: [dia, dd/mm às hh:mm]
-> Endereço: [endereço da unidade]
-> [Documentos do grupo]
-> Documentos úteis para esta dúvida: [documentos da pergunta]
+> Endereço: [endereço da unidade] ([complemento], quando houver)
+> Leve ao atendimento: *(ou, para representante: "A pessoa que comparecer em seu nome deve levar:")*
+> • [documentos do grupo]
+> Documentos úteis para esta dúvida:
+> • [documentos da pergunta]
 > Você receberá neste número avisos sobre este agendamento, como um lembrete [N] horas antes do atendimento e o aviso em caso de cancelamento.
 
 - O título é **"Agendamento realizado"**, e não "confirmado", para não confundir com o status interno **Confirmado** do painel (que significa que um funcionário assumiu).

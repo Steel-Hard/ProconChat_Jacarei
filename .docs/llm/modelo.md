@@ -22,7 +22,7 @@ Se você rodar em CPU: o modelo roda na RAM. A resposta será aceitável (8 a 15
 
 2. **Excelente suporte ao português**: diferente de modelos antigos que traduziam o pensamento do inglês (gerando frases robóticas), o Llama 3.2 foi treinado nativamente com grandes volumes de dados em português. Entende gírias, contextos culturais e escreve de forma natural e fluida.
 
-3. **Capacidade de RAG (Retrieval-Augmented Generation)**: por ter 3 bilhões de parâmetros, é rápido o suficiente para analisar textos injetados em tempo real. É possível conectar uma base de dados ao prompt e o modelo responde estritamente com base nas informações fornecidas. Essa capacidade não é implementada nesta spec (fora de escopo — ver `spec.md` da `servico-llm`), mas é um motivo relevante da escolha.
+3. **Capacidade de RAG (Retrieval-Augmented Generation)**: por ter 3 bilhões de parâmetros, é rápido o suficiente para analisar textos injetados em tempo real. É possível conectar uma base de dados ao prompt e o modelo responde estritamente com base nas informações fornecidas. Essa capacidade não foi implementada no projeto (ficou fora do escopo da #7), mas é um motivo relevante da escolha.
 
 4. **Custo zero e privacidade total**: ao rodar em Docker localmente ou no servidor próprio, não é necessário pagar por token utilizado (como na API da OpenAI) e os dados dos usuários nunca saem da infraestrutura própria, atendendo RP05/RNF03 (LGPD).
 
@@ -50,7 +50,7 @@ O servidor interno do Ollama disponibiliza duas APIs paralelas na porta 11434: a
 
 - `GET /`: retorna o texto `Ollama is running`. É o teste mais simples para garantir que o serviço está online.
 - `POST /api/copy`: duplica um modelo local criando um novo nome/tag.
-- `POST /api/ps`: mostra quais modelos estão carregados na memória neste momento e quanta memória estão consumindo.
+- `GET /api/ps`: mostra quais modelos estão carregados na memória neste momento e quanta memória estão consumindo.
 
 ## Resultado do teste real de prompt
 

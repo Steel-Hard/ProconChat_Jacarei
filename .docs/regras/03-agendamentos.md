@@ -8,6 +8,10 @@ Ver e organizar os atendimentos presenciais que o chatbot marcou, e encontrar o 
 
 **Ver agendamentos.** As ações de gerenciar (ex.: "Assumir") só aparecem para quem tem **Gerenciar agendamentos**.
 
+## Estado da tela
+
+**Ainda não construída (issues #85 e #87).** A busca, os filtros, a ordenação e a paginação da lista já funcionam no servidor (issue #60). O calendário semanal é da issue #87.
+
 ## Como um agendamento nasce e muda
 
 Ver [decisão 006](../decisoes/006-ciclo-de-vida-do-agendamento.md).
@@ -59,7 +63,7 @@ Colunas: protocolo, titular (com CPF mascarado), categoria e pergunta de origem,
   | Atendidos, Não compareceu, Cancelados (mesmo com período Todos), ou período Anteriores a hoje | Mais recente primeiro (DESC) |
   | Chip de status Todos (ou sem chip) com período Todos, e resultados de busca | Ordem mista: os próximos primeiro (mais próximo no topo), depois os passados (mais recente primeiro) |
 
-- O chip de status tem precedência sobre o período selecionado: com `period=all`, Cancelados, Atendidos e Não compareceu saem do mais recente para o mais antigo; Pendentes, Confirmados e Aguardando registro saem do mais próximo para o mais distante. A ordem mista só é aplicada quando o chip "Todos" estiver ativo ou durante uma busca.
+- O chip de status tem precedência sobre o período selecionado: com o período Todos, Cancelados, Atendidos e Não compareceu saem do mais recente para o mais antigo; Pendentes, Confirmados e Aguardando registro saem do mais próximo para o mais distante. A ordem mista só é aplicada quando o chip "Todos" estiver ativo ou durante uma busca.
 - Empates são desfeitos por data e hora. Na ordenação crescente por responsável, "Sem responsável" vem primeiro.
 - Mudar filtro, busca ou período volta a ordenação ao padrão e a lista à página 1.
 

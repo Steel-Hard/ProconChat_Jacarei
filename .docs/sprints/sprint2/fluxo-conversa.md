@@ -7,56 +7,90 @@ registrar seus passos. As regras funcionais adotadas estão nas decisões
 
 ## Visão rápida
 
+Retrato do fluxo em 16/10/2026, depois das issues #16, #55 e #56. A volta de
+quem já tem agendamento (remarcar e cancelar) é da #59 e ainda não existe.
+
 ```text
 Mensagem recebida
+       |
+       +-- respostas automáticas pausadas --> mensagem fixa de pausa (sem sessão)
        |
        v
 Encontrar ou criar sessão pela identificação HMAC do telefone
        |
-       +-- sessão ativa há 30 min ou mais --> ABANDONED (etapa anterior)
-       |                                      |
-       |                                      v
-       |                                Criar sessão nova
+       +-- sessão ativa há 30 min ou mais --> ABANDONED (etapa anterior) e sessão nova
        |
-       +-- sessão nova ------------------> STARTED (na transação da criação)
-       |                                      |
-       |                                      v
-       |                                Mostrar categorias
+       +-- sessão nova ----------------------> STARTED e lista de categorias
        |
-       +-- aguardando categoria ----------> Registrar categoria escolhida
-       |                                      |
-       |                                      v
-       |                                Mostrar perguntas da categoria
+       +-- aguardando categoria -------------> CATEGORY_CHOSEN e lista de perguntas
        |
-       +-- aguardando pergunta -----------> Registrar pergunta escolhida
-                                              |
-                                              v
-                                        Obter resposta do catálogo
-                                              |
-                                              v
-                                        Encerrar sessão: ANSWER_SENT + desfecho
-                                        na mesma transação
+       +-- aguardando pergunta --------------> QUESTION_CHOSEN e resposta do catálogo
+                |
+                +-- fora do escopo ----------> ANSWER_SENT + desfecho OUT_OF_SCOPE
+                |
+                +-- exige presencial --------> ANSWER_SENT, SCHEDULE_OFFERED (REQUIRES_IN_PERSON)
+                |                              e oferta de agendamento
+                |
+                +-- pergunta comum ----------> ANSWER_SENT e "A dúvida foi resolvida?"
+                         |
+                         +-- Sim ------------> RESOLVED_ANSWERED (true) + desfecho RESOLVED
+                         |
+                         +-- Não ------------> RESOLVED_ANSWERED (false), SCHEDULE_OFFERED
+                                               (NOT_RESOLVED) e oferta de agendamento
+
+Oferta de agendamento
+       |
+       +-- Agora não ------------------------> SCHEDULE_DECLINED + desfecho DECLINED
+       |
+       +-- Agendar --------------------------> quem vai comparecer
+                |
+                v
+         ATTENDEE_CHOSEN --> nome do titular --> CPF do titular
+                |
+                +-- sem horário livre na janela --> NO_SLOT + desfecho NO_SLOT
+                |
+                +-- lista de horários livres --> horário escolhido
+                         |
+                         +-- reserva gravada --> PHONE_NOTICE_SHOWN, APPOINTMENT_CREATED
+                         |                       + desfecho SCHEDULED, na transação da reserva
+                         |
+                         +-- horário lotou e não sobrou nenhum --> NO_SLOT + desfecho NO_SLOT
 ```
 
 ## Passos atualmente executados
 
-1. O backend valida o telefone e calcula seu HMAC; o número não é usado como
-   identificador em claro para a sessão.
-2. O repositório procura uma sessão ativa. Se não houver uma, cria a sessão e
-   grava `STARTED` na mesma transação; o fluxo só apresenta as categorias e
-   nunca grava `STARTED` de novo na mesma sessão.
-3. Enquanto a sessão aguarda categoria, o bot interpreta a entrada como uma
-   opção numérica. Uma opção válida produz `CATEGORY_CHOSEN`, atualiza a etapa
-   e apresenta as perguntas daquela categoria.
-4. Enquanto aguarda pergunta, uma opção válida produz `QUESTION_CHOSEN`. O
-   motor obtém a resposta cadastrada.
-5. O fluxo encerra a sessão com `ANSWER_SENT` (`llm: "NOT_CALLED"`) como
-   evento de fechamento: `OUT_OF_SCOPE` para perguntas fora do escopo e
-   `RESOLVED` para as demais. O `RESOLVED` com `ANSWER_SENT` é uma exceção
-   provisória, que a #55 remove quando o fluxo passar a perguntar "A dúvida
-   foi resolvida?". O evento e o desfecho são gravados na mesma transação.
+1. Se as respostas automáticas estiverem pausadas na tela de WhatsApp, o bot
+   responde só a mensagem fixa de pausa e não abre nem altera sessão.
+2. O backend valida o telefone e calcula seu HMAC; o número não é usado como
+   identificador em claro para a sessão. As mensagens do mesmo telefone são
+   processadas uma por vez.
+3. O repositório procura uma sessão ativa. Se não houver uma, cria a sessão e
+   grava `STARTED` na mesma transação, e o bot mostra as categorias.
+4. Enquanto a sessão aguarda categoria ou pergunta, o bot aceita a opção da
+   lista interativa ou o número da opção. Listas com mais de 10 itens são
+   paginadas. Uma opção válida produz `CATEGORY_CHOSEN` ou `QUESTION_CHOSEN`.
+5. Com a pergunta escolhida, o motor obtém a resposta cadastrada, sempre
+   seguida do aviso de caráter não vinculante:
+   - fora do escopo: encerra com `ANSWER_SENT` e desfecho `OUT_OF_SCOPE`;
+   - exige atendimento presencial: grava `ANSWER_SENT` e
+     `SCHEDULE_OFFERED` (`REQUIRES_IN_PERSON`) e oferece o agendamento;
+   - demais perguntas: grava `ANSWER_SENT` e pergunta "A dúvida foi
+     resolvida?". "Sim" encerra com `RESOLVED_ANSWERED` (`resolved: true`) e
+     desfecho `RESOLVED`; "Não" grava `RESOLVED_ANSWERED` (`resolved: false`)
+     e `SCHEDULE_OFFERED` (`NOT_RESOLVED`) e oferece o agendamento.
+6. Na oferta, "Agora não" encerra com `SCHEDULE_DECLINED` e desfecho
+   `DECLINED`. "Agendar" pergunta quem vai comparecer e grava
+   `ATTENDEE_CHOSEN`.
+7. O bot pede o nome e o CPF do titular. Eles ficam no `draft` da sessão (o
+   CPF só como hash e versão mascarada) até a reserva, e o `draft` é apagado
+   quando a sessão termina.
+8. Sem horário livre na janela, encerra com `NO_SLOT`. Com horários, mostra a
+   lista; o horário escolhido é reservado e, na mesma transação, o sistema
+   grava `PHONE_NOTICE_SHOWN`, `APPOINTMENT_CREATED` e o desfecho `SCHEDULED`.
+   O cidadão recebe a confirmação "Agendamento realizado" com protocolo,
+   endereço e documentos.
 
-Entradas inválidas recebem novamente a lista de opções. O texto inválido não
+Entradas inválidas recebem novamente as opções da etapa. O texto inválido não
 é registrado como evento.
 
 ## Eventos e dados permitidos
@@ -109,7 +143,8 @@ a resposta. Uma falha no encerramento do fluxo atual também só vai para o log;
 a sessão fica em andamento e é abandonada pelo timeout. Já a criação do
 agendamento (#56) e a remarcação ou o cancelamento (#59) gravam o evento e o
 desfecho na mesma transação da reserva: se algo falhar, tudo volta e o cidadão
-é avisado de que o agendamento não foi gravado.
+é avisado de que o agendamento não foi gravado. A criação do agendamento já
+funciona; a remarcação e o cancelamento ainda não.
 
 ## Sessão, desfecho e abandono
 
@@ -117,8 +152,8 @@ Uma sessão em andamento tem `outcome = IN_PROGRESS`. O encerramento grava o
 evento de fechamento e, no mesmo `UPDATE`, `status = FINISHED`, o desfecho,
 `ended_at`, `current_step = FINISHED` e `draft = NULL`, só se a sessão ainda
 estiver em andamento. O evento de fechamento tem que casar com o desfecho
-(decisão 008): `RESOLVED` com `RESOLVED_ANSWERED` (`resolved: true`) ou,
-provisoriamente, `ANSWER_SENT`; `SCHEDULED` com `APPOINTMENT_CREATED`;
+(decisão 008): `RESOLVED` com `RESOLVED_ANSWERED` (`resolved: true`);
+`SCHEDULED` com `APPOINTMENT_CREATED`;
 `OUT_OF_SCOPE` com `ANSWER_SENT`; `NO_SLOT` com `NO_SLOT`; `DECLINED` com
 `SCHEDULE_DECLINED`; `MANAGED_APPOINTMENT` com `APPOINTMENT_RESCHEDULED` ou
 `APPOINTMENT_CANCELED`.
@@ -139,22 +174,28 @@ A etapa guardada deve ser a etapa que a sessão aguardava antes de expirar, não
 o cidadão enviou. A correspondência entre etapa e os nomes de abandono dos
 Relatórios é da #68.
 
-As sessões de quem nunca volta a escrever continuam em andamento até a
-varredura periódica da #55, que aplica a mesma regra.
+As sessões de quem nunca volta a escrever são encerradas pela varredura
+periódica, que roda a cada minuto e aplica a mesma regra.
 
 ## Eventos previstos para as próximas etapas
 
-O schema e o tipo compartilhado também contemplam eventos de resolução e de
-agendamento: `RESOLVED_ANSWERED`, `SCHEDULE_OFFERED`, `NO_SLOT`,
-`SCHEDULE_DECLINED`, `ATTENDEE_CHOSEN`, `PHONE_NOTICE_SHOWN`,
-`APPOINTMENT_CREATED`, `APPOINTMENT_CONSULTED`, `APPOINTMENT_RESCHEDULED` e
-`APPOINTMENT_CANCELED`.
+Os eventos de resolução e de agendamento novo já são emitidos pelo fluxo
+(`RESOLVED_ANSWERED`, `SCHEDULE_OFFERED`, `SCHEDULE_DECLINED`, `NO_SLOT`,
+`ATTENDEE_CHOSEN`, `PHONE_NOTICE_SHOWN` e `APPOINTMENT_CREATED`).
+
+Ainda faltam:
+
+- `APPOINTMENT_CONSULTED`, `APPOINTMENT_RESCHEDULED` e `APPOINTMENT_CANCELED`,
+  com o desfecho `MANAGED_APPOINTMENT`: dependem da conversa de retorno de
+  quem já tem agendamento (#59). As etapas `AWAITING_RETURN_CHOICE` e
+  `AWAITING_CANCEL_CONFIRMATION` já existem no schema, mas o fluxo ainda não
+  as usa;
+- `llm: "USED"` e `llm: "FAILED"` em `ANSWER_SENT`: dependem do complemento
+  por IA no fluxo (#66).
 
 Esses eventos só devem ser emitidos quando os respectivos passos estiverem
-ligados ao fluxo (#55, #56 e #59), pelas chamadas descritas no README do
-backend. A máquina atual ainda não implementa a pergunta “A dúvida
-foi resolvida?” nem a conversa de agendamento; não se deve inferir esses
-eventos a partir do texto livre ou gravá-los antecipadamente.
+ligados ao fluxo, pelas chamadas descritas no README do backend. Não se deve
+inferir eventos a partir do texto livre nem gravá-los antecipadamente.
 
 ## Indicadores derivados
 

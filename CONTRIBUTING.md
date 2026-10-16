@@ -56,9 +56,9 @@ Chore :see_no_evil: Atualiza .gitignore
 
 ## Pull Requests
 
-- Toda alteração passa por PR para a `main` — sem push direto.
+- Toda alteração passa por PR para a `develop` — sem push direto. A `main` só recebe merges da `develop`.
 - Ao abrir o PR, preencha: **assignees** e **labels** (use as labels já existentes no repositório: `bug`, `enhancement`, `documentation`, etc.).
     - **Assignee**: por padrão, o autor do PR se auto-atribui já na criação (ex.: `gh pr create --assignee @me`), sem depender de edição posterior.
-- Referencie a issue relacionada na descrição (ex.: `Closes #13`) para que ela seja fechada automaticamente no merge.
+- Referencie a issue relacionada na descrição (ex.: `Closes #13`). Como a `develop` não é a branch padrão do repositório, o GitHub não liga nem fecha a issue sozinho no merge: comente `PR: #<número-do-PR>` na issue e feche-a depois do merge.
 - O título do PR segue o mesmo padrão do commit principal (`<Tipo> <ícone> [#<número>] <descrição>`).
 - Ao fazer merge, mova o item correspondente para `Done` no board do [Project 6DSM](https://github.com/orgs/Steel-Hard/projects/2).
