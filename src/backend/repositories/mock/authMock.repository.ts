@@ -1,4 +1,4 @@
-import { AuthenticatedUser, PERMISSIONS, UserCredentials } from "../../types/auth.types"
+import { AuthenticatedUser, PERMISSIONS, Permission, UserCredentials } from "../../types/auth.types"
 import { AuthRepository } from "../auth.repository.interface"
 
 export interface MockUserInput {
@@ -8,6 +8,7 @@ export interface MockUserInput {
     name?: string
     active?: boolean
     isAdmin?: boolean
+    permissions?: Permission[]
     sessionVersion?: number
 }
 
@@ -33,7 +34,7 @@ export class MockAuthRepository implements AuthRepository {
             passwordHash: input.passwordHash,
             active: input.active ?? true,
             isAdmin,
-            permissions: isAdmin ? [...PERMISSIONS] : [],
+            permissions: input.permissions ?? (isAdmin ? [...PERMISSIONS] : []),
             sessionVersion: input.sessionVersion ?? 0,
         })
     }

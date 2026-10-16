@@ -90,6 +90,7 @@ jobs:
       DB_URL: postgresql://proconchat:proconchat_ci@localhost:5432/proconchat
       DB_TEST_URL: postgresql://proconchat:proconchat_ci@localhost:5432/proconchat
       PHONE_HASH_SECRET: ci-phone-hash-secret
+      CPF_HASH_SECRET: ci-cpf-hash-secret
       GATEWAY_INTERNAL_TOKEN: ci-internal-token
       AUTH_TOKEN_SECRET: ci-only-auth-token-secret-with-32-chars
       ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
