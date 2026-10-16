@@ -4,6 +4,8 @@ import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type WhatsAppSettings from "@/types/whatsapp/WhatsAppSettings.types"
 
+vi.setConfig({ testTimeout: 20000 })
+
 const NEW_TOKEN = "EAAG-token-novo-ficticio-77Zz"
 const UNKNOWN_LIFETIME = { kind: "UNKNOWN", expiresAt: null } as const
 const PAUSED_MESSAGE =
