@@ -8,6 +8,10 @@ Ver tudo sobre um agendamento e registrar o que aconteceu com ele.
 
 **Ver agendamentos** vê tudo, só para leitura, com o aviso "Sua conta pode apenas visualizar agendamentos". As ações exigem **Gerenciar agendamentos**.
 
+## Estado da tela
+
+**Ainda não construída (issues #86, #87 e #67).** O servidor já entrega o detalhe e as ações **Assumir para mim**, **Marcar como atendido** e **Marcar como não compareceu** (issue #60). Atribuir, observações internas e corrigir registro são da issue #87; cancelar com aviso ao cidadão é da issue #67.
+
 ## O que a tela mostra
 
 ### Cabeçalho

@@ -8,6 +8,10 @@ Criar as contas da equipe e definir o que cada pessoa pode fazer no painel.
 
 **Gerenciar usuários.** A conta Admin sempre acessa.
 
+## Estado da tela
+
+**Ainda não construída (issue #62).** Hoje só existe a conta Admin.
+
 ## O que a tela mostra
 
 **Lista de contas:** iniciais, nome (com o selo **ADMIN** na conta Admin), e-mail, quantas permissões tem ("Todas as permissões" ou "N de 8 permissões"), **último acesso** (ou "Nunca acessou") e o estado (Ativo/Inativo). Contas com alterações ainda não salvas mostram "Não salvo".

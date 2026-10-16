@@ -86,8 +86,8 @@ O projeto busca:
 | Banco | PostgreSQL 15, migrations com `node-pg-migrate` | Implementado |
 | LLM | Ollama + `llama3.2:3b`, local (RP05: nenhuma API externa de LLM) | Serviço implementado; ligado ao fluxo na Sprint 3 |
 | WhatsApp | **WhatsApp Cloud API** oficial | Implementado |
-| Painel web | React 19 + Vite + TypeScript, a partir do `template-react` | Sprint 2 |
-| Infraestrutura | Docker Compose, GitHub Actions (CI/CD), VM na nuvem com HTTPS | Docker implementado; CI/CD na Sprint 2 |
+| Painel web | React 19 + Vite + TypeScript, a partir do `template-react` | Parcial: login, "Minha conta" e tela de WhatsApp; demais telas na Sprint 3 |
+| Infraestrutura | Docker Compose, GitHub Actions (CI/CD), VM na nuvem com HTTPS | Implementado |
 
 Detalhes em [`.docs/architecture/architecture.md`](.docs/architecture/architecture.md).
 
@@ -98,8 +98,8 @@ Detalhes em [`.docs/architecture/architecture.md`](.docs/architecture/architectu
 | Sprint |  Início  |    Fim    |     Status     |          📉 Burndown Chart          | Sprint Backlog/Review |
 | :----: | :--------: | :--------: | :-------------: | :----------------------------------: | :-------------------: |
 |   1   | 10/08/2026 | 14/09/2026 | 🟢 Concluída | [Ver Gráfico](.docs/sprints/sprint1/burndown.svg) | [Ver](.docs/sprints/sprint1/README.md) |
-|   2   | 15/09/2026 | 19/10/2026 |   ⚪ Pendente   | [Ver Gráfico](assets/burndown_2.png) | [Ver](docs/sprint2.md) |
-|   3   | 20/10/2026 | 23/11/2026 |   ⚪ Pendente   | [Ver Gráfico](assets/burndown_3.png) | [Ver](docs/sprint3.md) |
+|   2   | 15/09/2026 | 19/10/2026 | 🟡 Em andamento | [Ver Gráfico](.docs/sprints/sprint2/burndown.svg) | [Ver](.docs/sprints/sprint2/README.md) |
+|   3   | 20/10/2026 | 23/11/2026 |   ⚪ Pendente   | — | — |
 
 > O gráfico e as tabelas de origem do burndown da Sprint 1 estão em
 > [`.docs/sprints/sprint1/05-burndown.md`](.docs/sprints/sprint1/05-burndown.md).
@@ -115,9 +115,9 @@ Detalhes em [`.docs/architecture/architecture.md`](.docs/architecture/architectu
 |  RF03  | Fluxos Decisórios        |       Apresentar perguntas e alternativas de maneira sequencial e compreensível.       | 🟢 Concluído |
 |  RF04  | Resposta Orientadora      |      Gerar ao final do fluxo um resumo do caso e os próximos passos recomendados.      | 🟢 Concluído |
 |  RF05  | Complemento com LLM       | Permitir geração textual explicativa por LLM dentro dos limites definidos pelo PROCON. | 🟡 Parcial |
-|  RF06  | Registro de Interações  |       Registrar interaçõies para análise posterior dos fluxos mais utilizados.       | ⚪ Pendente |
-|  RF07  | Agendamento Presencial    |       Realizar agendamento quando o chatbot não solucionar a dúvida do cidadão.       | ⚪ Pendente |
-|  RF08  | Gerenciamento Web         |       Disponibilizar interface web para gerenciamento dos atendimentos agendados.       | ⚪ Pendente |
+|  RF06  | Registro de Interações  |       Registrar interações para análise posterior dos fluxos mais utilizados.       | 🟡 Parcial |
+|  RF07  | Agendamento Presencial    |       Realizar agendamento quando o chatbot não solucionar a dúvida do cidadão.       | 🟡 Parcial |
+|  RF08  | Gerenciamento Web         |       Disponibilizar interface web para gerenciamento dos atendimentos agendados.       | 🟡 Parcial |
 
 | Número | Recurso Não-Funcional |                                   Síntese do Requisito                                   |   Status   |
 | :-----: | ---------------------- | :---------------------------------------------------------------------------------------: | :---------: |
@@ -128,7 +128,7 @@ Detalhes em [`.docs/architecture/architecture.md`](.docs/architecture/architectu
 |  RNF05  | Transparência LLM     |      Identificar claramente respostas geradas com auxílio de modelos de linguagem.      | ⚪ Pendente |
 |  RNF06  | Docker                 |                      Garantir a execução da aplicação em Docker                      | 🟢 Concluído |
 |  RNF07  | Documentação         |         Documentar instalação e requisitos necessários de hardware e software.         | 🟢 Concluído |
-|  RNF08  | Boas Práticas         | Adotar metodologia ágil, CI/CD, versionamento, testes e documentação técnica mínima. | 🟡 Parcial |
+|  RNF08  | Boas Práticas         | Adotar metodologia ágil, CI/CD, versionamento, testes e documentação técnica mínima. | 🟢 Concluído |
 
 > Detalhamento completo do que foi entregue, testado e do que ficou pendente/em risco no
 > [fechamento da Sprint 1](.docs/sprints/sprint1/README.md): [issues e PRs](.docs/sprints/sprint1/04-issues-e-prs.md),
@@ -206,13 +206,16 @@ Isso sobe, com um único comando, todo o ambiente do MVP:
 | --------------- | ------------------------------------------------------------------- | :------------------: |
 | `postgres`      | Banco de dados (persistência via volume `postgres_data`)           |    `127.0.0.1:5433`    |
 | `migrate`       | Aplica as migrations e encerra (`node-pg-migrate`)                  |           —           |
-| `backend`       | API/orquestrador (Motor de Decisão, Scheduler)                     |    `127.0.0.1:3000`    |
-| `gateway`       | Gateway WhatsApp — recebe o webhook e fala com o `backend`         |         `3001`         |
+| `seed`          | Carrega o conteúdo, a configuração inicial, a conta Admin e a configuração do WhatsApp, e encerra |           —           |
+| `backend`       | API/orquestrador (Motor de Decisão, agenda, API do painel)          |    `127.0.0.1:3000`    |
+| `frontend`      | Painel web da equipe (nginx)                                        |    `127.0.0.1:8081`    |
+| `gateway`       | Gateway WhatsApp — recebe o webhook e fala com o `backend`         |    `127.0.0.1:3001`    |
 | `ollama`        | LLM local (modelo definido por `LLM_MODEL` no `.env`)               |           —           |
 | `llm-pull`      | Baixa o modelo do Ollama e encerra                                  |           —           |
 
-Todas as variáveis sensíveis (senhas, tokens, segredos) vêm do `.env` — nunca
-hardcoded no `compose.yaml`. Veja `.env.example` para a lista completa.
+As variáveis sensíveis (senhas, tokens, segredos) vêm do `.env`. O `compose.yaml` só traz valores
+padrão de desenvolvimento para algumas delas (e nenhum para `ENCRYPTION_KEY`); no `compose.prod.yaml`
+todas são obrigatórias no `.env`. Veja `.env.example` para a lista completa.
 
 ### Documentação detalhada por serviço
 
@@ -248,16 +251,11 @@ Multiplataforma da **FATEC Jacareí**.
 
 ## 📌 Convenções de Commit
 
-Para manter a organização e padronização do histórico do projeto, a
-equipe deverá utilizar boas práticas de commits.
-
-Sugestão de referência:
-
-[Padrões de Commits](https://github.com/iuricode/padroes-de-commits)
+Os padrões de branch, commit e Pull Request estão em
+[`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ---
 
 ## 📄 Licença
 
-A definição da licença do projeto será realizada posteriormente pela
-equipe.
+Distribuído sob a licença Apache 2.0. Veja [`LICENSE`](LICENSE).
