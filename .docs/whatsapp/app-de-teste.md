@@ -82,8 +82,8 @@ e suba a stack com `docker compose up --build -d` (seção 1 do README do gatewa
 
 Depois da primeira subida, o `seed` mostra `WhatsApp: configuração inicial já existe, mantida` e
 ignora os `WHATSAPP_*`: rodar o seed de novo não muda nada. Troque as credenciais pela tela de WhatsApp
-do painel (#54) ou, enquanto ela não existe, pela API do backend com o cookie do Admin
-([README do backend](../../src/backend/README.md), "Configuração do WhatsApp").
+do painel (`http://localhost:8081/whatsapp`, só para o Admin) ou pela API do backend com o cookie do
+Admin ([README do backend](../../src/backend/README.md), "Configuração do WhatsApp"), como abaixo.
 
 Os exemplos usam o Admin e as portas padrão do `compose.yaml` (`ROOT_EMAIL`/`ROOT_PASSWORD` do `.env`,
 backend em `3000`, painel em `8081`). Leia os segredos sem ecoar na tela e sem gravar no histórico:

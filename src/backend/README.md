@@ -1,6 +1,6 @@
 # ProconChat — Backend
 
-Backend do chatbot de orientação ao consumidor via WhatsApp (PROCON Jacareí). Express + TypeScript, seguindo o padrão Controller → Service → Route.
+Backend do chatbot de orientação ao consumidor via WhatsApp (PROCON Jacareí). Express + TypeScript, em camadas Route → Controller → Service → Repository.
 
 ## Estrutura de pastas
 
@@ -10,11 +10,11 @@ Backend do chatbot de orientação ao consumidor via WhatsApp (PROCON Jacareí).
 - `controllers/` — cada controller é uma classe com as dependências injetadas pelo constructor (com valor padrão apontando para a instância já montada do service) e métodos `(req, res, next)` (ex.: `auth.controller.ts`, `whatsappSession.controller.ts`; o `health.controller.ts` não recebe dependências). Recebe a requisição HTTP, valida entrada básica, chama o service e formata a resposta (envelope `{ data }` ou erro via `next(error)`). Não acessa o banco diretamente.
 - `services/` — contém a lógica de negócio de cada recurso, sem depender do objeto `Request`/`Response` do Express. O service é criado por fábrica (`createXService({ ... })`) e exporta uma instância já montada (ex.: `createAuthService` e `authService` em `auth.service.ts`). O `HealthService` em classe é a exceção histórica.
 - `repositories/` — contratos e adaptadores de persistência; concentra o SQL e isola os services do PostgreSQL.
-- `errors/` — hierarquia de erros da aplicação: `AppError` (abstrata) e subclasses por status HTTP (`BadRequestError`, `UnauthorizedError`, `ForbiddenError`, `NotFoundError`, `TooManyRequestsError`, `InvalidOriginError`, `InvalidCurrentPasswordError`, `InternalServerError`). Lançar/`next()` uma dessas classes é o jeito padrão de sinalizar um erro esperado.
+- `errors/` — hierarquia de erros da aplicação: `AppError` (abstrata) e subclasses por status HTTP: `BadRequestError` (400), `InvalidCurrentPasswordError` (400 `INVALID_CURRENT_PASSWORD`), `UnauthorizedError` (401), `ForbiddenError` (403), `InvalidOriginError` (403 `INVALID_ORIGIN`), `NotFoundError` (404), `ConflictError` (409, código configurável), `DuplicateAppointmentError` (409 `DUPLICATE_APPOINTMENT`), `SlotFullError` (409 `SLOT_FULL`), `WhatsAppConnectionError` (422, com o `reason` do teste como código), `TooManyRequestsError` (429), `InternalServerError` (500), `BookingFailedError` (500 `BOOKING_FAILED`) e `ScheduleNotConfiguredError` (500 `SCHEDULE_NOT_CONFIGURED`). Lançar/`next()` uma dessas classes é o jeito padrão de sinalizar um erro esperado.
 - `middleware/` — middlewares do Express: `requestLogger.middleware.ts` (log estruturado por requisição, sem corpo nem cookies), `errorHandler.middleware.ts` (converte qualquer erro numa resposta JSON padronizada; corpo JSON malformado vira `400 BAD_REQUEST`), `trustedOrigin.middleware.ts` (proteção CSRF) e `auth.middleware.ts` (`requireAuth` e `requirePermission`).
 - `types/` — DTOs e formatos de resposta compartilhados (`successResponse.types.ts`, `errorResponse.types.ts`, tipos específicos de cada recurso).
 - `utils/` — utilitários que não pertencem a nenhum recurso específico, ex.: `validateEnv.ts` (validação de variáveis de ambiente obrigatórias na inicialização).
-- `db/` — `connection.ts`, conexão genérica ao PostgreSQL (via `pg`). Ainda não é usada por nenhuma rota — fica pronta para o primeiro recurso real que precisar de acesso ao banco.
+- `db/` — `connection.ts`, conexão ao PostgreSQL (via `pg`) usada pelos repositórios; também `migrations/`, `schema/`, `seeds/`, `scripts/` e `verify-migrations.cjs`.
 
 ## Padrão para adicionar um novo recurso
 
@@ -44,6 +44,13 @@ Copie `.env.example` para `.env` e preencha:
 | `WHATSAPP_GRAPH_API_VERSION` | Não (padrão `v26.0`) | Versão da Graph API da Meta no formato `v26.0`, usada no teste de conexão e repassada ao gateway pelo endpoint interno. Fora do formato, o servidor encerra na inicialização. |
 | `ROOT_EMAIL` | Só no `seed`, enquanto não existe a conta Admin | E-mail da conta Admin criada pelo seed. |
 | `ROOT_PASSWORD` | Só no `seed` (enquanto não existe Admin) e no `admin:reset-password` | Senha da conta Admin, de 8 caracteres a 72 bytes em UTF-8. |
+| `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_BUSINESS_ACCOUNT_ID` | Não; só no `seed`, enquanto `WhatsAppSettings` está vazia | IDs da Meta para a configuração inicial do WhatsApp. Preenchidos, só dígitos, até 40; senão o `seed` falha. |
+| `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET` | Não; só no `seed`, enquanto `WhatsAppSettings` está vazia | Segredos iniciais, gravados cifrados com `ENCRYPTION_KEY`. |
+| `WHATSAPP_VERIFY_TOKEN` | Não; só no `seed`, enquanto `WhatsAppSettings` está vazia | Token de verificação do webhook, de 1 a 64 caracteres visíveis sem espaço. Vazio, o `seed` gera um aleatório. |
+| `OLLAMA_URL` | Não (padrão `http://ollama:11434`) | Endereço do Ollama usado por `clients/ollamaLlm.client.ts`. |
+| `LLM_MODEL` | Não (padrão `llama3.2:3b`) | Modelo do Ollama. |
+| `LLM_TIMEOUT_MS` | Não (padrão `20000`) | Tempo limite da chamada ao Ollama, em milissegundos. |
+| `NODE_ENV` | Não | Com `production`, os cookies de sessão saem com `Secure` (seção "Cookies"). A imagem Docker já define `production`. |
 
 ## Como rodar
 
@@ -71,16 +78,9 @@ npm run db:migrate
 npm run test:integration
 ```
 
-Na raiz do repositório, o teste de integração usa o PostgreSQL do Compose e remove os próprios
-dados ao terminar:
-
-```bash
-docker compose --profile test run --rm --build backend-tests
-```
-
 `GET /health` responde `200` com `{ "data": { "status": "ok" } }` e não depende do banco de dados — serve como healthcheck de infraestrutura (Docker, load balancer) e como exemplo do padrão de código para copiar em novos recursos.
 
-`POST /api/v1/whatsapp/sessions` recebe `{ phone, text? }` do Gateway WhatsApp
+`POST /api/v1/whatsapp/sessions` recebe `{ phone, text?, optionId? }` do Gateway WhatsApp (`text` para mensagem digitada, `optionId` para toque numa lista ou botão)
 (`src/gateway/`), autenticado pelo header `X-Internal-Token` (comparado em tempo constante), e cria ou
 reutiliza uma sessão guardando somente o HMAC do telefone (nunca o número em texto puro). Com o
 atendimento automático pausado, responde o texto fixo sem tocar na sessão (seção "Pausa").
@@ -450,7 +450,7 @@ O par desfecho e evento tem que casar, senão lança `InternalServerError` sem c
 
 | Desfecho | Evento de fechamento aceito |
 | --- | --- |
-| `RESOLVED` | `RESOLVED_ANSWERED` com `resolved: true`. Provisoriamente também `ANSWER_SENT`, enquanto o fluxo da Sprint 1 não pergunta "A dúvida foi resolvida?". **A #55 remove essa exceção** em `isClosingCompatible` (`utils/conversationEventData.ts`) |
+| `RESOLVED` | `RESOLVED_ANSWERED` com `resolved: true` (`isClosingCompatible`, `utils/conversationEventData.ts`) |
 | `SCHEDULED` | `APPOINTMENT_CREATED` |
 | `OUT_OF_SCOPE` | `ANSWER_SENT` |
 | `NO_SLOT` | `NO_SLOT` |
@@ -477,9 +477,6 @@ O par desfecho e evento tem que casar, senão lança `InternalServerError` sem c
 | Consultou agendamento | #59 | `record` | `APPOINTMENT_CONSULTED` | — |
 | Remarcou / cancelou | #59 | `finishSessionWith(client, ...)` na transação da alteração; se falhar, a alteração volta e o cidadão é avisado | `APPOINTMENT_RESCHEDULED` / `APPOINTMENT_CANCELED` | `MANAGED_APPOINTMENT` |
 | 30 min sem interação | #16 na próxima mensagem do mesmo número; #55 na varredura periódica | — | `ABANDONED` | `ABANDONED` |
-
-Hoje o fluxo da Sprint 1 encerra a resposta com `finish` e `ANSWER_SENT` (`llm: "NOT_CALLED"`):
-`OUT_OF_SCOPE` para pergunta fora do escopo e `RESOLVED` (exceção provisória) para as demais.
 
 ### Encerramento dentro de uma transação
 
@@ -509,7 +506,7 @@ try {
 | Situação | Comportamento |
 | --- | --- |
 | Falha ao gravar evento comum com `record` (categoria, pergunta, resposta enviada, "resolveu?", oferta, quem comparece etc.), inclusive evento recusado pelo validador | `record` captura o erro, registra no log só o tipo do evento (ou `INVALID`), o id da sessão (ou `INVALID`) e o código do erro, e resolve normalmente. O cidadão recebe a resposta |
-| Encerramento do fluxo atual (`RESOLVED`/`OUT_OF_SCOPE` com `ANSWER_SENT`) | `finish` lança. O fluxo registra no log do mesmo jeito e entrega a resposta; a sessão continua `IN_PROGRESS`, sem evento de fechamento, e será abandonada pelo timeout |
+| Encerramento com `finish`, fora da transação de um agendamento (por exemplo `OUT_OF_SCOPE` com `ANSWER_SENT` e `RESOLVED` com `RESOLVED_ANSWERED`) | `finish` lança. O fluxo registra no log do mesmo jeito e entrega a resposta; a sessão continua `IN_PROGRESS`, sem evento de fechamento, e será abandonada pelo timeout |
 | Criação do agendamento e encerramentos ligados a ele (`APPOINTMENT_CREATED`/`SCHEDULED`, `APPOINTMENT_RESCHEDULED`/`APPOINTMENT_CANCELED`/`MANAGED_APPOINTMENT`) | `finishSessionWith(client, ...)` na mesma transação da reserva ou da alteração. Se a reserva, o evento ou o encerramento falhar, a transação inteira volta e o cidadão recebe uma mensagem clara de que o agendamento **não** foi gravado. A mensagem e o tratamento são do fluxo da #56 (e da #59 no retorno) |
 
 O log nunca leva `data`, texto do cidadão, telefone nem `draft`.
@@ -529,19 +526,7 @@ A migration `13` garante no banco que `current_step = 'FINISHED'` só existe em 
 `AWAITING_*`, e `ActiveSession.currentStep` e `NavigationState.currentStep` são
 `Exclude<SessionStep, "FINISHED">`.
 
-Esta regra só roda quando o mesmo número volta a escrever. A **varredura periódica** das sessões de
-quem nunca volta é da **#55** e precisa aplicar exatamente a mesma regra. A correspondência entre
-etapa e os nomes de abandono dos Relatórios é da #68.
-
-### O que cada branch troca no merge
-
-- **#55** (`feat/55-novo-fluxo-da-duvida`): fica com a versão da #16 de `findOrCreateActive` e de
-  `finish`, apaga o abandono próprio, faz a varredura reaproveitando a regra acima, emite os eventos
-  da tabela por passo com `record`/`finish` e remove a exceção provisória do `RESOLVED` em
-  `isClosingCompatible`.
-- **#56** (`feat/56-bot-agendamento-presencial`): troca o `INSERT` direto em `ConversationEvents` e o
-  `UPDATE Sessions` da reserva (`schedule.repository.ts`) por `finishSessionWith(client, ...)` com
-  `APPOINTMENT_CREATED`/`SCHEDULED`, e avisa o cidadão quando a transação falhar.
-- **#60** (`feat/60-api-agendamentos`): lê a linha do tempo da conversa de origem com `listBySession`
-  em vez de consultar `ConversationEvents` em `appointment.repository.ts`, fica com a versão da #16 de
-  `session.repository.ts` e aplica a mesma troca da #56 no `schedule.repository.ts` que carrega.
+Além da próxima mensagem do mesmo número, a **varredura periódica**
+(`services/abandonedSessionsSweep.service.ts`, a cada 60 s, iniciada em `index.ts`) aplica
+exatamente a mesma regra às sessões de quem nunca volta (`session.repository.ts`). A correspondência
+entre etapa e os nomes de abandono dos Relatórios é da #68.

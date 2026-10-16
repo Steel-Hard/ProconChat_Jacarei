@@ -1,5 +1,10 @@
 # Pesquisa: integração com o WhatsApp (RP01) — issue #3
 
+> **Registro histórico, substituído pela [decisão 003](../decisoes/003-migracao-whatsapp-cloud-api.md).**
+> A recomendação abaixo (manter a Evolution API) valeu só na Sprint 1. O projeto usa hoje apenas a
+> WhatsApp Cloud API oficial (#53), e a Evolution API e o Redis foram removidos na #82. O estado atual
+> está no [README do gateway](../../src/gateway/README.md) e no [guia do app de teste](app-de-teste.md).
+
 > **Escopo ajustado em relação ao texto original da issue #3:** o documento originalmente pedido
 > era uma pesquisa comparativa feita *antes* de qualquer implementação, pra guiar a escolha. Na
 > prática, a decisão já foi tomada de forma pragmática pela equipe (Vitor Francisco e Lucas
@@ -70,9 +75,8 @@ Business API.
   as garantias de um canal comercial oficial.
 - **Webhook de recebimento:** evento `messages.upsert` (entre outros), com payload documentado
   pela própria Evolution API — sem handshake de verificação prévio (diferente da Meta). Já
-  implementado, testado (unitário + integração) e validado rodando via Docker no PR #29 — ver
-  `.docs/.tasks/features/extrair-gateway-whatsapp/` para o plano de extração desse código para uma
-  aplicação própria (`src/gateway/`).
+  implementado, testado (unitário + integração) e validado rodando via Docker no PR #29. Depois,
+  esse código foi extraído para uma aplicação própria (`src/gateway/`, issue #4).
 - **Mensagens interativas:** suporte a listas/botões via WhatsApp Web tende a ser parcial e
   instável, dependendo da versão do protocolo suportado — diferente da API oficial, que suporta
   nativamente. **Isso não foi validado ainda** e é relevante para o fluxo guiado do Motor de
@@ -115,5 +119,5 @@ tentativa.
 
 - [Documentação da Evolution API — instalação via Docker](https://docs.evolutionfoundation.com.br/evolution-api/install/docker)
 - [`.docs/desafio/desafio-6dsm-2026-2.md`](../desafio/desafio-6dsm-2026-2.md) — RP01
-- [`.docs/.tasks/features/extrair-gateway-whatsapp/`](../.tasks/features/extrair-gateway-whatsapp/) — plano de extração do Gateway para app própria (issue #4)
+- Issue [#4](https://github.com/Steel-Hard/ProconChat_Jacarei/issues/4) — extração do Gateway para app própria
 - Issue [#3](https://github.com/Steel-Hard/ProconChat_Jacarei/issues/3) (comentário original de Vitor Francisco) e PR [#29](https://github.com/Steel-Hard/ProconChat_Jacarei/pull/29) (implementação, Lucas Roque)

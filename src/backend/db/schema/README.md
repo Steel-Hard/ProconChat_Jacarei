@@ -4,8 +4,8 @@ Este diretório contém o `CREATE TABLE` consolidado de cada tabela do modelo de
 por tabela, com os seus tipos, constraints e índices, conforme descrito em
 [`.docs/database/database.md`](../../../../.docs/database/database.md).
 
-Os arquivos refletem o **estado atual** do schema, depois da migration `13_conversation_events_data_checks.sql`
-(issue #16). Eles servem para leitura: o histórico executável está em `../migrations`, aplicado
+Os arquivos refletem o **estado atual** do schema, depois da migration `15_whatsapp_settings_access_token_lifetime.sql`
+(issue #54). Eles servem para leitura: o histórico executável está em `../migrations`, aplicado
 com node-pg-migrate. Toda mudança de schema entra como uma migration nova, e o arquivo da tabela
 aqui é atualizado junto. Consulte [o guia de migrations](../../../../.docs/database/migrations.md)
 para subir o PostgreSQL, aplicar as migrations e validar.
