@@ -83,6 +83,9 @@ describe("Repositorio da configuracao do WhatsApp com Postgres", () => {
         expect(first.verifyToken).toBe(VERIFY_TOKEN)
         expect(second.verifyToken).toBe(VERIFY_TOKEN)
         expect(second).toMatchObject({
+            displayPhoneNumber: null,
+            verifiedName: null,
+            accessTokenLifetime: { kind: "UNKNOWN", expiresAt: null },
             phoneNumberId: null,
             businessAccountId: null,
             accessTokenEncrypted: null,
@@ -105,6 +108,9 @@ describe("Repositorio da configuracao do WhatsApp com Postgres", () => {
             businessAccountId: null,
             accessTokenEncrypted,
             appSecretEncrypted,
+            displayPhoneNumber: "+55 12 3955-9000",
+            verifiedName: "PROCON Jacareí",
+            accessTokenLifetime: { kind: "PERMANENT", expiresAt: null },
             updatedBy: userId,
         })
 
@@ -114,9 +120,39 @@ describe("Repositorio da configuracao do WhatsApp com Postgres", () => {
             accessTokenEncrypted,
             appSecretEncrypted,
             credentialsValid: true,
+            displayPhoneNumber: "+55 12 3955-9000",
+            verifiedName: "PROCON Jacareí",
+            accessTokenLifetime: { kind: "PERMANENT", expiresAt: null },
             updatedBy: { id: userId, name: "Admin Integracao WhatsApp" },
         })
         expect(row.credentialsCheckedAt).toBeInstanceOf(Date)
+    })
+
+    test("saveCredentials grava o tipo do token, mantem com null e zera com UNKNOWN", async () => {
+        await whatsappSettingsRepository.ensureRow(VERIFY_TOKEN)
+        const base = {
+            phoneNumberId: "100000000000001",
+            businessAccountId: null,
+            accessTokenEncrypted: encrypt("token-ficticio-de-acesso"),
+            appSecretEncrypted: encrypt("segredo-ficticio-do-app"),
+            displayPhoneNumber: "+55 12 3955-9000",
+            verifiedName: "PROCON Jacareí",
+            updatedBy: userId,
+        }
+
+        const expiring = await whatsappSettingsRepository.saveCredentials({
+            ...base,
+            accessTokenLifetime: { kind: "EXPIRING", expiresAt: "2026-12-14T15:30:00.000Z" },
+        })
+        const kept = await whatsappSettingsRepository.saveCredentials({ ...base, accessTokenLifetime: null })
+        const cleared = await whatsappSettingsRepository.saveCredentials({
+            ...base,
+            accessTokenLifetime: { kind: "UNKNOWN", expiresAt: null },
+        })
+
+        expect(expiring.accessTokenLifetime).toEqual({ kind: "EXPIRING", expiresAt: "2026-12-14T15:30:00.000Z" })
+        expect(kept.accessTokenLifetime).toEqual({ kind: "EXPIRING", expiresAt: "2026-12-14T15:30:00.000Z" })
+        expect(cleared.accessTokenLifetime).toEqual({ kind: "UNKNOWN", expiresAt: null })
     })
 
     test("o banco recusa segredo em claro com 23514", async () => {
@@ -128,6 +164,9 @@ describe("Repositorio da configuracao do WhatsApp com Postgres", () => {
                 businessAccountId: null,
                 accessTokenEncrypted: "token-em-claro",
                 appSecretEncrypted: encrypt("segredo-ficticio-do-app"),
+                displayPhoneNumber: "+55 12 3955-9000",
+                verifiedName: "PROCON Jacareí",
+                accessTokenLifetime: null,
                 updatedBy: userId,
             }),
         ).rejects.toMatchObject({ code: "23514" })
@@ -157,6 +196,61 @@ describe("Repositorio da configuracao do WhatsApp com Postgres", () => {
         expect(after?.credentialsCheckedAt).toBeInstanceOf(Date)
         expect(after?.updatedAt.getTime()).toBe(before.updatedAt.getTime())
         expect(after?.updatedBy).toBeNull()
+    })
+
+    test("recordCredentialsCheck valido grava o numero e o nome verificados sem mudar updated_at nem updated_by", async () => {
+        const before = await whatsappSettingsRepository.ensureRow(VERIFY_TOKEN)
+
+        await whatsappSettingsRepository.recordCredentialsCheck(true, {
+            displayPhoneNumber: "+55 12 3955-9000",
+            verifiedName: "PROCON Jacareí",
+        })
+        const after = await whatsappSettingsRepository.findRow()
+
+        expect(after).toMatchObject({
+            credentialsValid: true,
+            displayPhoneNumber: "+55 12 3955-9000",
+            verifiedName: "PROCON Jacareí",
+            updatedBy: null,
+        })
+        expect(after?.updatedAt.getTime()).toBe(before.updatedAt.getTime())
+    })
+
+    test("recordCredentialsCheck com o tipo do token o grava sem mudar updated_at nem updated_by", async () => {
+        const before = await whatsappSettingsRepository.ensureRow(VERIFY_TOKEN)
+        const verified = { displayPhoneNumber: "+55 12 3955-9000", verifiedName: "PROCON Jacareí" }
+
+        await whatsappSettingsRepository.recordCredentialsCheck(true, verified, {
+            kind: "EXPIRING",
+            expiresAt: "2026-12-14T15:30:00.000Z",
+        })
+        const expiring = await whatsappSettingsRepository.findRow()
+        await whatsappSettingsRepository.recordCredentialsCheck(true, verified)
+        const kept = await whatsappSettingsRepository.findRow()
+        await whatsappSettingsRepository.recordCredentialsCheck(true, verified, { kind: "PERMANENT", expiresAt: null })
+        const permanent = await whatsappSettingsRepository.findRow()
+
+        expect(expiring?.accessTokenLifetime).toEqual({ kind: "EXPIRING", expiresAt: "2026-12-14T15:30:00.000Z" })
+        expect(kept?.accessTokenLifetime).toEqual({ kind: "EXPIRING", expiresAt: "2026-12-14T15:30:00.000Z" })
+        expect(permanent).toMatchObject({ accessTokenLifetime: { kind: "PERMANENT", expiresAt: null }, updatedBy: null })
+        expect(permanent?.updatedAt.getTime()).toBe(before.updatedAt.getTime())
+    })
+
+    test("recordCredentialsCheck sem o numero mantem o numero e o nome guardados", async () => {
+        await whatsappSettingsRepository.ensureRow(VERIFY_TOKEN)
+        await whatsappSettingsRepository.recordCredentialsCheck(true, {
+            displayPhoneNumber: "+55 12 3955-9000",
+            verifiedName: "PROCON Jacareí",
+        })
+
+        await whatsappSettingsRepository.recordCredentialsCheck(false)
+        const after = await whatsappSettingsRepository.findRow()
+
+        expect(after).toMatchObject({
+            credentialsValid: false,
+            displayPhoneNumber: "+55 12 3955-9000",
+            verifiedName: "PROCON Jacareí",
+        })
     })
 
     test("o seed cria a linha a partir do .env na primeira execucao e nao altera nada na segunda", async () => {

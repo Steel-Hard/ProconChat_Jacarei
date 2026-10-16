@@ -11,6 +11,7 @@ import type UnderConstructionTitle from "@/types/pages/UnderConstructionTitle.ty
 
 const UnderConstruction = lazy(() => import("@/pages/UnderConstruction.page"))
 const Login = lazy(() => import("@/pages/Login.page"))
+const WhatsApp = lazy(() => import("@/pages/WhatsApp.page"))
 
 function previewRoutes(): RouteObject[] {
     if (!import.meta.env.DEV) {
@@ -64,7 +65,7 @@ const routes: RouteObject[] = [
                                     underConstruction(ROUTES.schedule, "schedule"),
                                     underConstruction(ROUTES.documents, "documents"),
                                     underConstruction(ROUTES.users, "users"),
-                                    underConstruction(ROUTES.whatsapp, "whatsapp")
+                                    { path: ROUTES.whatsapp, element: <WhatsApp /> }
                                 ]
                             },
                             { path: ROUTES.notFound, element: <NotFoundPage /> }

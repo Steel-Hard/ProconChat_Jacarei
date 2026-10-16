@@ -110,6 +110,13 @@
             "MANAGED_APPOINTMENT": "Remarcou ou cancelou agendamento existente",
             "ABANDONED": "Abandonada",
             "IN_PROGRESS": "Em andamento"
+        },
+        "whatsapp": {
+            "OPERATING": "Operando",
+            "PAUSED": "Respostas pausadas",
+            "INVALID_CREDENTIALS": "Credenciais inválidas",
+            "NOT_VERIFIED": "Não verificado",
+            "NOT_CONFIGURED": "Não configurado"
         }
     },
     "topbar": {

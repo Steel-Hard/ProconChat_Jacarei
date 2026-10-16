@@ -35,7 +35,11 @@ Conectar o painel ao número institucional na **WhatsApp Cloud API** (oficial da
 | App Secret | **Secreto** |
 
 - **Campos secretos nunca são exibidos depois de salvos.** Aparecem como `••••••••a91F` (só os últimos 4 caracteres), com o botão **"Substituir"**. A tela explica: "Guardado criptografado. Não é possível visualizar o valor salvo."
-- No campo do token: **"Use um token permanente de usuário do sistema; o token temporário expira em 24 horas."**
+- No campo do token, o sistema mostra o tipo do token, descoberto sozinho pela Meta no teste de conexão e no salvar:
+  - token que não expira: nenhum aviso no campo (o Admin só precisa saber quando o token vai expirar);
+  - token com validade: **"Este token expira em [data] às [hora] (horário de Brasília)."** Com mais de 7 dias restantes, em tom neutro. De 4 a 7 dias, em amarelo e com o pedido **"Gere um token permanente de usuário do sistema para o chatbot não parar de responder."** Com 3 dias ou menos, em vermelho, com o mesmo pedido;
+  - token já expirado: **"Este token expirou em [data] às [hora] (horário de Brasília). Gere um token permanente de usuário do sistema, use "Substituir", teste e salve."**, em vermelho;
+  - quando o sistema não consegue saber o tipo (ou enquanto um token novo é digitado e ainda não foi testado): **"Use um token permanente de usuário do sistema; o token temporário expira em 24 horas."**
 
 ### Configure no painel da Meta
 

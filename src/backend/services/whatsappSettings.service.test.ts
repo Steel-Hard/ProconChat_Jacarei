@@ -12,6 +12,9 @@ const SAVED_SECRET = "segredo-salvo-ficticio-9c2e"
 const NEW_TOKEN = "EAAG-token-novo-ficticio-77Zz"
 const UNREADABLE = "v1:AAAAAAAAAAAAAAAA:AAAAAAAAAAAAAAAAAAAAAA==:AAAA"
 const VERIFY_TOKEN = "3f9a".repeat(16)
+const PERMANENT = { kind: "PERMANENT", expiresAt: null } as const
+const UNKNOWN = { kind: "UNKNOWN", expiresAt: null } as const
+const EXPIRING = { kind: "EXPIRING", expiresAt: "2026-11-20T15:00:00.000Z" } as const
 
 function savedRow(overrides: Partial<WhatsAppSettingsRow> = {}): Partial<WhatsAppSettingsRow> {
     return {
@@ -76,11 +79,32 @@ describe("whatsappSettings service", () => {
                 pausedMessage: MENSAGEM_ATENDIMENTO_PAUSADO,
                 updatedBy: { id: 1, name: "Admin" },
                 updatedAt: "2026-10-14T13:00:00.000Z",
+                displayPhoneNumber: null,
+                verifiedName: null,
+                accessTokenLifetime: UNKNOWN,
             })
             expect(serialized(view)).not.toContain(SAVED_TOKEN)
             expect(serialized(view)).not.toContain(SAVED_SECRET)
             expect(serialized(view)).not.toContain(settings.row?.accessTokenEncrypted as string)
             expect(serialized(view)).not.toContain("v1:")
+        })
+
+        it("devolve o numero e o nome verificados guardados", async () => {
+            const { service } = setup(savedRow({ displayPhoneNumber: "+55 12 3955-9000", verifiedName: "PROCON Jacareí" }))
+
+            const view = await service.getView()
+
+            expect(view).toMatchObject({ displayPhoneNumber: "+55 12 3955-9000", verifiedName: "PROCON Jacareí" })
+        })
+
+        it.each([PERMANENT, EXPIRING, UNKNOWN])("devolve o tipo do token guardado (%o) sem consultar a Meta", async (lifetime) => {
+            const { service, meta } = setup(savedRow({ accessTokenLifetime: lifetime }))
+
+            const view = await service.getView()
+
+            expect(view.accessTokenLifetime).toEqual(lifetime)
+            expect(meta.calls).toHaveLength(0)
+            expect(meta.inspectCalls).toHaveLength(0)
         })
 
         it("devolve last4 null para segredo de 8 caracteres ou menos", async () => {
@@ -140,6 +164,7 @@ describe("whatsappSettings service", () => {
                 displayPhoneNumber: "+55 12 99999-0000",
                 verifiedName: "PROCON Jacareí",
                 checkedAt: "2026-10-14T13:00:00.000Z",
+                accessTokenLifetime: PERMANENT,
             })
             expect(meta.calls).toEqual([
                 {
@@ -168,6 +193,102 @@ describe("whatsappSettings service", () => {
             expect(settings.credentialChecks).toEqual([true])
             expect(settings.row?.updatedBy).toBeNull()
             expect(settings.saveCalls).toBe(0)
+        })
+
+        it("grava o numero e o nome verificados no teste dos valores salvos sem mudar quem alterou nem quando", async () => {
+            const { service, settings } = setup(savedRow({ updatedAt: new Date("2026-10-01T10:00:00.000Z") }))
+
+            await service.testConnection({ phoneNumberId: "100000000000001" })
+
+            expect(settings.row).toMatchObject({
+                displayPhoneNumber: "+55 12 99999-0000",
+                verifiedName: "PROCON Jacareí",
+                updatedBy: null,
+                updatedAt: new Date("2026-10-01T10:00:00.000Z"),
+            })
+        })
+
+        it("mantem o numero e o nome guardados quando o teste dos valores salvos falha", async () => {
+            const { service, settings, meta } = setup(savedRow({ displayPhoneNumber: "+55 12 3955-9000", verifiedName: "PROCON Jacareí" }))
+            meta.respondWith({ ok: false, reason: "INVALID_TOKEN" })
+
+            await service.testConnection({ phoneNumberId: "100000000000001" })
+
+            expect(settings.row).toMatchObject({ displayPhoneNumber: "+55 12 3955-9000", verifiedName: "PROCON Jacareí" })
+        })
+
+        it("inspeciona o token com o mesmo token, App Secret e versao do teste", async () => {
+            const { service, meta } = setup()
+
+            await service.testConnection({ phoneNumberId: "100000000000001", accessToken: NEW_TOKEN })
+
+            expect(meta.inspectCalls).toEqual([
+                {
+                    phoneNumberId: "100000000000001",
+                    businessAccountId: null,
+                    accessToken: NEW_TOKEN,
+                    appSecret: SAVED_SECRET,
+                    graphApiVersion: "v26.0",
+                },
+            ])
+        })
+
+        it("nao inspeciona o token quando o teste falha e nao devolve o tipo", async () => {
+            const { service, meta } = setup()
+            meta.respondWith({ ok: false, reason: "INVALID_TOKEN" })
+
+            const result = await service.testConnection({ phoneNumberId: "100000000000001" })
+
+            expect(meta.inspectCalls).toHaveLength(0)
+            expect(result).not.toHaveProperty("accessTokenLifetime")
+        })
+
+        it("continua ok com o tipo UNKNOWN quando a inspecao nao descobre nada", async () => {
+            const { service, meta } = setup()
+            meta.respondToInspectionWith(UNKNOWN)
+
+            const result = await service.testConnection({ phoneNumberId: "100000000000001" })
+
+            expect(result).toEqual({
+                ok: true,
+                displayPhoneNumber: "+55 12 99999-0000",
+                verifiedName: "PROCON Jacareí",
+                checkedAt: "2026-10-14T13:00:00.000Z",
+                accessTokenLifetime: UNKNOWN,
+            })
+        })
+
+        it.each([PERMANENT, EXPIRING])("grava o tipo %o no teste dos valores salvos sem mudar quem alterou nem quando", async (lifetime) => {
+            const { service, settings, meta } = setup(savedRow({ updatedAt: new Date("2026-10-01T10:00:00.000Z") }))
+            meta.respondToInspectionWith(lifetime)
+
+            await service.testConnection({ phoneNumberId: "100000000000001" })
+
+            expect(settings.row).toMatchObject({
+                accessTokenLifetime: lifetime,
+                updatedBy: null,
+                updatedAt: new Date("2026-10-01T10:00:00.000Z"),
+            })
+        })
+
+        it("nao apaga o tipo guardado quando a inspecao dos valores salvos da UNKNOWN", async () => {
+            const { service, settings, meta } = setup(savedRow({ accessTokenLifetime: PERMANENT }))
+            meta.respondToInspectionWith(UNKNOWN)
+
+            await service.testConnection({ phoneNumberId: "100000000000001" })
+
+            expect(settings.row?.accessTokenLifetime).toEqual(PERMANENT)
+            expect(settings.credentialChecks).toEqual([true])
+        })
+
+        it("nao grava o tipo no teste de valores novos, mas o devolve", async () => {
+            const { service, settings, meta } = setup(savedRow({ accessTokenLifetime: PERMANENT }))
+            meta.respondToInspectionWith(EXPIRING)
+
+            const result = await service.testConnection({ phoneNumberId: "100000000000001", accessToken: NEW_TOKEN })
+
+            expect(result).toMatchObject({ ok: true, accessTokenLifetime: EXPIRING })
+            expect(settings.row?.accessTokenLifetime).toEqual(PERMANENT)
         })
 
         it.each(["INVALID_TOKEN", "INVALID_APP_SECRET", "PHONE_NUMBER_NOT_FOUND", "BUSINESS_ACCOUNT_NOT_FOUND", "PHONE_NOT_IN_ACCOUNT", "MISSING_PERMISSION"] as const)(
@@ -205,6 +326,14 @@ describe("whatsappSettings service", () => {
             expect(meta.calls).toHaveLength(1)
             expect(settings.credentialChecks).toEqual([])
             expect(settings.saveCalls).toBe(0)
+        })
+
+        it("nao grava o numero e o nome no teste de valores novos que da certo", async () => {
+            const { service, settings } = setup()
+
+            await service.testConnection({ phoneNumberId: "100000000000009" })
+
+            expect(settings.row).toMatchObject({ displayPhoneNumber: null, verifiedName: null })
         })
 
         it.each([
@@ -267,6 +396,57 @@ describe("whatsappSettings service", () => {
             expect(gateway.notifyConfigChanged).toHaveBeenCalledTimes(1)
         })
 
+        it("grava o numero e o nome verificados pelo teste refeito e os devolve na leitura", async () => {
+            const { service, settings, meta } = setup()
+            meta.respondWith({ ok: true, displayPhoneNumber: "+55 12 3955-9000", verifiedName: "PROCON Jacareí" })
+
+            const view = await service.save({ phoneNumberId: "100000000000001", accessToken: NEW_TOKEN }, 1)
+
+            expect(settings.row).toMatchObject({ displayPhoneNumber: "+55 12 3955-9000", verifiedName: "PROCON Jacareí" })
+            expect(view).toMatchObject({ displayPhoneNumber: "+55 12 3955-9000", verifiedName: "PROCON Jacareí" })
+        })
+
+        it("grava o tipo inspecionado do token novo e o devolve na leitura", async () => {
+            const { service, settings, meta } = setup(savedRow({ accessTokenLifetime: PERMANENT }))
+            meta.respondToInspectionWith(EXPIRING)
+
+            const view = await service.save({ phoneNumberId: "100000000000001", accessToken: NEW_TOKEN }, 1)
+
+            expect(meta.inspectCalls).toEqual([expect.objectContaining({ accessToken: NEW_TOKEN, appSecret: SAVED_SECRET })])
+            expect(settings.row?.accessTokenLifetime).toEqual(EXPIRING)
+            expect(view.accessTokenLifetime).toEqual(EXPIRING)
+        })
+
+        it("zera o tipo guardado quando troca o token e a inspecao da UNKNOWN", async () => {
+            const { service, settings, meta } = setup(savedRow({ accessTokenLifetime: PERMANENT }))
+            meta.respondToInspectionWith(UNKNOWN)
+
+            const view = await service.save({ phoneNumberId: "100000000000001", accessToken: NEW_TOKEN }, 1)
+
+            expect(settings.saveCalls).toBe(1)
+            expect(settings.row?.accessTokenLifetime).toEqual(UNKNOWN)
+            expect(view.accessTokenLifetime).toEqual(UNKNOWN)
+        })
+
+        it("mantem o tipo guardado quando nao troca o token e a inspecao da UNKNOWN", async () => {
+            const { service, settings, meta } = setup(savedRow({ accessTokenLifetime: PERMANENT }))
+            meta.respondToInspectionWith(UNKNOWN)
+
+            const view = await service.save({ phoneNumberId: "100000000000009" }, 1)
+
+            expect(settings.saveCalls).toBe(1)
+            expect(view.accessTokenLifetime).toEqual(PERMANENT)
+        })
+
+        it("grava o tipo novo quando nao troca o token e a inspecao o descobre", async () => {
+            const { service, settings, meta } = setup(savedRow({ accessTokenLifetime: PERMANENT }))
+            meta.respondToInspectionWith(EXPIRING)
+
+            await service.save({ phoneNumberId: "100000000000001", appSecret: "novo-segredo-ficticio" }, 1)
+
+            expect(settings.row?.accessTokenLifetime).toEqual(EXPIRING)
+        })
+
         it("refaz o teste com os valores efetivos antes de gravar", async () => {
             const { service, meta } = setup()
 
@@ -295,6 +475,7 @@ describe("whatsappSettings service", () => {
             })
             expect(settings.saveCalls).toBe(0)
             expect(settings.credentialChecks).toEqual([])
+            expect(meta.inspectCalls).toHaveLength(0)
             expect(settings.row).toEqual(before)
             expect(gateway.notifyConfigChanged).not.toHaveBeenCalled()
         })

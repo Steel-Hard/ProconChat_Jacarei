@@ -106,4 +106,62 @@ describe("UnsavedChangesBar", () => {
         await user.keyboard("{Enter}")
         expect(screen.getByRole("tooltip")).toBeInTheDocument()
     })
+
+    it("com saveDisabled desabilita Salvar mesmo com alterações e não chama onSave", async () => {
+        const user = userEvent.setup()
+        const onSave = vi.fn()
+        render(
+            <UnsavedChangesBar
+                changes={["Token de acesso"]}
+                onDiscard={vi.fn()}
+                onSave={onSave}
+                saveDisabled
+            />
+        )
+        const save = screen.getByRole("button", { name: "Salvar alterações" })
+
+        await user.click(save)
+
+        expect(save).toBeDisabled()
+        expect(onSave).not.toHaveBeenCalled()
+        expect(screen.getByRole("button", { name: "Descartar" })).toBeEnabled()
+    })
+
+    it("com saveHint mostra o texto e o liga como descrição acessível de Salvar", () => {
+        render(
+            <UnsavedChangesBar
+                changes={["Token de acesso"]}
+                onDiscard={vi.fn()}
+                onSave={vi.fn()}
+                saveDisabled
+                saveHint="Teste a conexão com as credenciais novas antes de salvar."
+            />
+        )
+
+        expect(
+            screen.getByText("Teste a conexão com as credenciais novas antes de salvar.")
+        ).toBeVisible()
+        expect(
+            screen.getByRole("button", { name: "Salvar alterações" })
+        ).toHaveAccessibleDescription("Teste a conexão com as credenciais novas antes de salvar.")
+    })
+
+    it("sem alterações não mostra o saveHint", () => {
+        render(
+            <UnsavedChangesBar
+                changes={[]}
+                onDiscard={vi.fn()}
+                onSave={vi.fn()}
+                saveDisabled
+                saveHint="Teste a conexão com as credenciais novas antes de salvar."
+            />
+        )
+
+        expect(
+            screen.queryByText("Teste a conexão com as credenciais novas antes de salvar.")
+        ).not.toBeInTheDocument()
+        expect(
+            screen.getByRole("button", { name: "Salvar alterações" })
+        ).not.toHaveAccessibleDescription()
+    })
 })

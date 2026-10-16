@@ -1,3 +1,8 @@
+export type AccessTokenLifetime =
+    | { kind: "PERMANENT"; expiresAt: null }
+    | { kind: "EXPIRING"; expiresAt: string }
+    | { kind: "UNKNOWN"; expiresAt: null }
+
 export interface WhatsAppSettingsUpdatedBy {
     id: number
     name: string
@@ -12,8 +17,16 @@ export interface WhatsAppSettingsRow {
     autoReplyPaused: boolean
     credentialsCheckedAt: Date | null
     credentialsValid: boolean | null
+    displayPhoneNumber: string | null
+    verifiedName: string | null
+    accessTokenLifetime: AccessTokenLifetime
     updatedBy: WhatsAppSettingsUpdatedBy | null
     updatedAt: Date
+}
+
+export interface VerifiedPhoneNumber {
+    displayPhoneNumber: string
+    verifiedName: string
 }
 
 export interface SaveCredentialsInput {
@@ -21,6 +34,9 @@ export interface SaveCredentialsInput {
     businessAccountId: string | null
     accessTokenEncrypted: string
     appSecretEncrypted: string
+    displayPhoneNumber: string
+    verifiedName: string
+    accessTokenLifetime: AccessTokenLifetime | null
     updatedBy: number
 }
 
@@ -43,6 +59,9 @@ export interface WhatsAppSettingsView {
     pausedMessage: string
     updatedBy: WhatsAppSettingsUpdatedBy | null
     updatedAt: string
+    displayPhoneNumber: string | null
+    verifiedName: string | null
+    accessTokenLifetime: AccessTokenLifetime
 }
 
 export interface WhatsAppSettingsInput {
@@ -75,7 +94,7 @@ export type ConnectionCheckResult =
     | { ok: false; reason: ConnectionTestReason }
 
 export type ConnectionTestResult =
-    | { ok: true; displayPhoneNumber: string; verifiedName: string; checkedAt: string }
+    | { ok: true; displayPhoneNumber: string; verifiedName: string; checkedAt: string; accessTokenLifetime: AccessTokenLifetime }
     | { ok: false; reason: ConnectionTestReason; checkedAt: string }
 
 export interface WhatsAppInternalConfig {

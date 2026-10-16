@@ -15,6 +15,8 @@ type UnsavedChangesBarProps = {
     onSave: () => void
     saving?: boolean
     saveLabel?: string
+    saveDisabled?: boolean
+    saveHint?: string
 }
 
 function UnsavedChangesBar({
@@ -22,14 +24,18 @@ function UnsavedChangesBar({
     onDiscard,
     onSave,
     saving = false,
-    saveLabel
+    saveLabel,
+    saveDisabled = false,
+    saveHint
 }: UnsavedChangesBarProps) {
     const { t } = useTranslation()
     const listId = useId()
+    const hintId = useId()
     const [listOpen, setListOpen] = useState(false)
     const press = useRef<{ pointerType: string; wasOpen: boolean } | null>(null)
     const count = changes.length
     const hasChanges = count > 0
+    const showHint = hasChanges && Boolean(saveHint)
 
     function handlePointerDown(event: PointerEvent<HTMLButtonElement>) {
         press.current = { pointerType: event.pointerType, wasOpen: listOpen }
@@ -93,11 +99,17 @@ function UnsavedChangesBar({
                     </button>
                 </>
             ) : null}
+            {showHint ? (
+                <span id={hintId} className={css.hint}>
+                    {saveHint}
+                </span>
+            ) : null}
             <button
                 type="button"
                 className={css.save}
-                disabled={!hasChanges || saving}
+                disabled={!hasChanges || saving || saveDisabled}
                 aria-busy={saving || undefined}
+                aria-describedby={showHint ? hintId : undefined}
                 onClick={onSave}
             >
                 {saveLabel ?? t("unsavedChangesBar.save")}

@@ -207,7 +207,7 @@ em `POST`/`PUT` sem origem confiável e `400 BAD_REQUEST` `"Malformed JSON body"
 | Rota | Corpo | Sucesso | Erros próprios |
 | --- | --- | --- | --- |
 | `GET /` | — | `200 { data: WhatsAppSettingsView }` | — |
-| `POST /test` | `{ phoneNumberId, businessAccountId?, accessToken?, appSecret? }` | `200 { data: { ok: true, displayPhoneNumber, verifiedName, checkedAt } }` ou `200 { data: { ok: false, reason, checkedAt } }` | `400` |
+| `POST /test` | `{ phoneNumberId, businessAccountId?, accessToken?, appSecret? }` | `200 { data: { ok: true, displayPhoneNumber, verifiedName, checkedAt, accessTokenLifetime } }` ou `200 { data: { ok: false, reason, checkedAt } }` | `400` |
 | `PUT /` | igual ao teste | `200 { data: WhatsAppSettingsView }` | `400`; `422 { error: { code: <reason>, message: "WhatsApp connection test failed" } }` |
 | `POST /pause` | — | `200 { data: WhatsAppSettingsView }` com `autoReplyPaused: true` | — |
 | `POST /resume` | — | `200 { data: WhatsAppSettingsView }` com `autoReplyPaused: false` | — |
@@ -228,12 +228,26 @@ em `POST`/`PUT` sem origem confiável e `400 BAD_REQUEST` `"Malformed JSON body"
     "autoReplyPaused": false,
     "pausedMessage": "O atendimento automático do PROCON Jacareí está temporariamente indisponível. Tente novamente mais tarde.",
     "updatedBy": { "id": 1, "name": "Admin" },
-    "updatedAt": "2026-10-14T13:00:00.000Z"
+    "updatedAt": "2026-10-14T13:00:00.000Z",
+    "displayPhoneNumber": "+55 12 3955-9000",
+    "verifiedName": "PROCON Jacareí",
+    "accessTokenLifetime": { "kind": "PERMANENT", "expiresAt": null }
 }
 ```
 
-- `phoneNumberId`, `businessAccountId`, `webhookUrl`, `credentialsValid`, `credentialsCheckedAt` e
-  `updatedBy` podem ser `null`. `webhookUrl` é `null` sem `PUBLIC_BASE_URL`.
+- `phoneNumberId`, `businessAccountId`, `webhookUrl`, `credentialsValid`, `credentialsCheckedAt`,
+  `updatedBy`, `displayPhoneNumber` e `verifiedName` podem ser `null`. `webhookUrl` é `null` sem
+  `PUBLIC_BASE_URL`.
+- `displayPhoneNumber` e `verifiedName` são o número institucional e o nome verificado que a Meta
+  devolveu no último teste ou salvar com `ok` dos valores salvos (colunas `display_phone_number` e
+  `verified_name`, migration `14`). Ficam `null` até o primeiro teste ou salvar bem-sucedido. Teste
+  de valores novos ou teste que falha não muda esses dois campos.
+- `accessTokenLifetime` é o tipo do token de acesso: `{ "kind": "PERMANENT", "expiresAt": null }`
+  (a Meta diz que não expira), `{ "kind": "EXPIRING", "expiresAt": "<ISO 8601 UTC>" }` ou
+  `{ "kind": "UNKNOWN", "expiresAt": null }` (não deu para saber ou nunca verificado). Na leitura, é o
+  tipo do token salvo, lido das colunas `access_token_permanent` e `access_token_expires_at`
+  (migration `15`, sem chamar a Meta). No `POST /test` com `ok: true`, é o tipo do token usado no
+  teste (o enviado ou o salvo). Com `ok: false`, o campo não vem.
 - `last4` é `null` quando o segredo não está configurado, tem 8 caracteres ou menos, ou não decifra
   (neste caso `configured` continua `true` e o log registra `whatsapp_settings_decrypt_failed` com o
   campo, sem o valor). A tela monta a máscara `••••••••a91F`.
@@ -247,11 +261,26 @@ em `POST`/`PUT` sem origem confiável e `400 BAD_REQUEST` `"Malformed JSON body"
   `GET /<phoneNumberId>?fields=display_phone_number,verified_name` sempre e, só com
   `businessAccountId`, `GET /<businessAccountId>/phone_numbers?fields=id&limit=100` para conferir
   que o número pertence à conta. Só quando os valores efetivos são iguais aos salvos (mesmos IDs,
-  nenhum segredo enviado) o teste grava `credentials_checked_at` e `credentials_valid`, sem mudar
-  `updated_by`/`updated_at`.
+  nenhum segredo enviado) o teste grava `credentials_checked_at` e `credentials_valid` e, se der
+  `ok`, também `display_phone_number` e `verified_name`, sem mudar `updated_by`/`updated_at`.
+- **Tipo do token:** depois de um teste com `ok` (e só nele), o cliente consulta
+  `GET /<versão>/debug_token?input_token=<token>&appsecret_proof=<prova>` com o próprio token no
+  `Authorization: Bearer` e timeout próprio de 5 s (`META_TOKEN_INSPECTION_TIMEOUT_MS`).
+  `data.is_valid === true` com `data.expires_at = 0` vira `PERMANENT`; com `expires_at` inteiro maior
+  que zero, `EXPIRING` com a data. Qualquer outra resposta (HTTP de erro, rede, timeout, JSON
+  inválido, `is_valid` diferente de `true`, `expires_at` ausente, negativo ou não inteiro) vira
+  `UNKNOWN`: a consulta nunca lança erro, nunca vira `422` e nunca impede o teste nem o salvar. O
+  resto da resposta (`scopes`, `user_id`, `app_id`) é descartado. Gravação:
+  - teste dos valores salvos com `ok`: grava o tipo se for `PERMANENT` ou `EXPIRING`; com `UNKNOWN`,
+    mantém o que já estava gravado;
+  - teste de valores novos: não grava o tipo, só o devolve;
+  - salvar que troca o token: grava o tipo inspecionado, inclusive `UNKNOWN` (as duas colunas
+    nulas), para o tipo do token antigo não ficar no novo;
+  - salvar que mantém o token: grava `PERMANENT`/`EXPIRING` e mantém o gravado com `UNKNOWN`.
 - **Salvar:** refaz o teste com os valores efetivos e só grava se der `ok`. Grava os IDs, cifra só os
   segredos enviados (o cifrado dos outros fica igual), `credentials_valid = true`,
-  `credentials_checked_at`, `updated_by` e `updated_at` numa única `UPDATE`, e depois avisa o gateway
+  `credentials_checked_at`, `display_phone_number` e `verified_name` do teste refeito, `updated_by` e
+  `updated_at` numa única `UPDATE`, e depois avisa o gateway
   (`POST <GATEWAY_INTERNAL_URL>/internal/whatsapp/config/reload`, timeout de 3 s). Uma falha no aviso
   não muda a resposta `200`; o gateway recarrega pelo TTL de 60 s.
 - **Pausar/retomar:** grava `auto_reply_paused`, `updated_by` e `updated_at`, é idempotente, não
@@ -271,7 +300,9 @@ Motivos (`reason`) do teste e textos sugeridos para a tela (#54):
 | `META_ERROR` | qualquer outra resposta de erro | "A Meta recusou as credenciais" | não grava |
 
 O cliente da Meta loga só `{ event: "meta_connection_test", reason, status, code }`, nunca o token, o
-App Secret, a prova ou a URL.
+App Secret, a prova ou a URL. Quando a consulta do tipo do token dá `UNKNOWN` por falha, ele loga só
+`{ event: "meta_token_inspection", outcome: "unknown", status?, code? }`: o `debug_token` leva o
+token na query (`input_token`), então a URL e o erro capturado nunca são registrados nem repassados.
 
 ### Pausa
 

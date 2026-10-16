@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto"
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { createMetaGraphClient, FetchFn } from "./metaGraph.client"
+import { createMetaGraphClient, FetchFn, META_TOKEN_INSPECTION_TIMEOUT_MS } from "./metaGraph.client"
 import { ConnectionCheckInput } from "../types/whatsappSettings.types"
 
 const ACCESS_TOKEN = "EAAG-token-ficticio-de-acesso"
@@ -170,5 +170,157 @@ describe("metaGraph client", () => {
         expect(output).not.toContain(APP_SECRET)
         expect(output).not.toContain(PROOF)
         expect(output).not.toContain("graph.facebook.com")
+    })
+
+    describe("inspectAccessToken", () => {
+        const UNKNOWN = { kind: "UNKNOWN", expiresAt: null }
+
+        function debugResponse(data: unknown) {
+            return jsonResponse(200, { data })
+        }
+
+        it("consulta o debug_token com o proprio token, o Bearer e o appsecret_proof", async () => {
+            const fetchFn = fetchSequence(debugResponse({ is_valid: true, expires_at: 0 }))
+
+            await createMetaGraphClient({ fetchFn }).inspectAccessToken(input)
+
+            expect(fetchFn).toHaveBeenCalledTimes(1)
+            const [url, init] = fetchFn.mock.calls[0] ?? []
+            expect(url).toBe(
+                `https://graph.facebook.com/v26.0/debug_token?input_token=${ACCESS_TOKEN}&appsecret_proof=${PROOF}`,
+            )
+            expect(init?.method).toBe("GET")
+            expect(init?.headers).toEqual({ Authorization: `Bearer ${ACCESS_TOKEN}` })
+            expect(init?.signal).toBeInstanceOf(AbortSignal)
+        })
+
+        it("usa o tempo limite proprio de 5 segundos", () => {
+            expect(META_TOKEN_INSPECTION_TIMEOUT_MS).toBe(5_000)
+        })
+
+        it("devolve PERMANENT quando a Meta diz que o token valido nao expira", async () => {
+            const fetchFn = fetchSequence(debugResponse({ is_valid: true, expires_at: 0, type: "SYSTEM_USER", scopes: ["whatsapp_business_messaging"] }))
+
+            const result = await createMetaGraphClient({ fetchFn }).inspectAccessToken(input)
+
+            expect(result).toEqual({ kind: "PERMANENT", expiresAt: null })
+        })
+
+        it("devolve EXPIRING com a data em ISO quando a Meta devolve a expiracao", async () => {
+            const fetchFn = fetchSequence(debugResponse({ is_valid: true, expires_at: 1792152000, user_id: "123" }))
+
+            const result = await createMetaGraphClient({ fetchFn }).inspectAccessToken(input)
+
+            expect(result).toEqual({ kind: "EXPIRING", expiresAt: new Date(1792152000 * 1000).toISOString() })
+        })
+
+        it.each([
+            ["is_valid false", debugResponse({ is_valid: false, expires_at: 0 })],
+            ["is_valid ausente", debugResponse({ expires_at: 0 })],
+            ["is_valid como texto", debugResponse({ is_valid: "true", expires_at: 0 })],
+            ["expires_at ausente", debugResponse({ is_valid: true })],
+            ["expires_at negativo", debugResponse({ is_valid: true, expires_at: -1 })],
+            ["expires_at fracionario", debugResponse({ is_valid: true, expires_at: 1.5 })],
+            ["expires_at como texto", debugResponse({ is_valid: true, expires_at: "0" })],
+            ["expires_at fora do intervalo de datas", debugResponse({ is_valid: true, expires_at: 9e15 })],
+            ["data ausente", jsonResponse(200, {})],
+            ["data que nao e objeto", jsonResponse(200, { data: "texto" })],
+            ["HTTP 400", graphError(100)],
+            ["HTTP 500", jsonResponse(500, {})],
+        ])("devolve UNKNOWN para %s", async (_label, response) => {
+            const fetchFn = fetchSequence(response)
+
+            const result = await createMetaGraphClient({ fetchFn, logger: { log: vi.fn() } }).inspectAccessToken(input)
+
+            expect(result).toEqual(UNKNOWN)
+        })
+
+        it("devolve UNKNOWN quando o corpo nao e JSON", async () => {
+            const fetchFn = vi.fn<FetchFn>().mockResolvedValue({
+                ok: true,
+                status: 200,
+                json: async () => {
+                    throw new SyntaxError("Unexpected token")
+                },
+            })
+
+            const result = await createMetaGraphClient({ fetchFn, logger: { log: vi.fn() } }).inspectAccessToken(input)
+
+            expect(result).toEqual(UNKNOWN)
+        })
+
+        it("devolve UNKNOWN em erro de rede sem lancar", async () => {
+            const fetchFn = vi.fn<FetchFn>().mockRejectedValue(new TypeError(`fetch failed ${ACCESS_TOKEN}`))
+
+            const result = await createMetaGraphClient({ fetchFn, logger: { log: vi.fn() } }).inspectAccessToken(input)
+
+            expect(result).toEqual(UNKNOWN)
+        })
+
+        it("devolve UNKNOWN quando a Meta nao responde no tempo limite da inspecao", async () => {
+            const fetchFn = vi.fn<FetchFn>(
+                (_url, init) =>
+                    new Promise((_resolve, reject) => {
+                        init.signal?.addEventListener("abort", () => reject(init.signal?.reason))
+                    }),
+            )
+
+            const result = await createMetaGraphClient({
+                fetchFn,
+                timeoutMs: 60_000,
+                inspectionTimeoutMs: 5,
+                logger: { log: vi.fn() },
+            }).inspectAccessToken(input)
+
+            expect(result).toEqual(UNKNOWN)
+        })
+
+        it("loga a falha so com evento, resultado, status e codigo", async () => {
+            const logger = { log: vi.fn() }
+            const fetchFn = fetchSequence(graphError(190, { message: `Token ${ACCESS_TOKEN} invalido` }))
+
+            await createMetaGraphClient({ fetchFn, logger }).inspectAccessToken(input)
+
+            expect(logger.log).toHaveBeenCalledTimes(1)
+            expect(JSON.parse(String(logger.log.mock.calls[0]?.[0]))).toEqual({
+                event: "meta_token_inspection",
+                outcome: "unknown",
+                status: 400,
+                code: 190,
+            })
+        })
+
+        it("nao loga nada quando descobre o tipo do token", async () => {
+            const logger = { log: vi.fn() }
+            const fetchFn = fetchSequence(debugResponse({ is_valid: true, expires_at: 0 }))
+
+            await createMetaGraphClient({ fetchFn, logger }).inspectAccessToken(input)
+
+            expect(logger.log).not.toHaveBeenCalled()
+        })
+
+        it("nao loga token, App Secret, prova, URL nem o erro capturado em nenhuma falha", async () => {
+            const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined)
+            const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+            const failures: FetchFn[] = [
+                vi.fn<FetchFn>().mockRejectedValue(new TypeError(`fetch failed https://graph.facebook.com/v26.0/debug_token?input_token=${ACCESS_TOKEN}&appsecret_proof=${PROOF}`)),
+                fetchSequence(graphError(190, { message: `Token ${ACCESS_TOKEN} invalido` })),
+                fetchSequence(debugResponse({ is_valid: false, expires_at: 0, error: { message: ACCESS_TOKEN } })),
+                fetchSequence(debugResponse({ is_valid: true, expires_at: 9e15 })),
+            ]
+
+            for (const fetchFn of failures) {
+                await createMetaGraphClient({ fetchFn }).inspectAccessToken(input)
+            }
+
+            const output = loggedOutput(logSpy) + loggedOutput(errorSpy)
+            expect(logSpy).toHaveBeenCalledTimes(failures.length)
+            expect(output).not.toContain(ACCESS_TOKEN)
+            expect(output).not.toContain(APP_SECRET)
+            expect(output).not.toContain(PROOF)
+            expect(output).not.toContain("input_token")
+            expect(output).not.toContain("graph.facebook.com")
+            expect(output).not.toContain("fetch failed")
+        })
     })
 })

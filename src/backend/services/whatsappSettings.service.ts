@@ -167,6 +167,9 @@ export function createWhatsAppSettingsService({
             pausedMessage: MENSAGEM_ATENDIMENTO_PAUSADO,
             updatedBy: row.updatedBy,
             updatedAt: row.updatedAt.toISOString(),
+            displayPhoneNumber: row.displayPhoneNumber,
+            verifiedName: row.verifiedName,
+            accessTokenLifetime: row.accessTokenLifetime,
         }
     }
 
@@ -231,14 +234,21 @@ export function createWhatsAppSettingsService({
             const prepared = await prepareCheck(body)
             const result = await meta.checkConnection(prepared.check)
             const checkedAt = now().toISOString()
-            if (matchesSaved(prepared)) {
-                if (result.ok) {
-                    await settings.recordCredentialsCheck(true)
-                } else if (DEFINITIVE_FAILURES.has(result.reason)) {
+            if (!result.ok) {
+                if (matchesSaved(prepared) && DEFINITIVE_FAILURES.has(result.reason)) {
                     await settings.recordCredentialsCheck(false)
                 }
+                return { ...result, checkedAt }
             }
-            return { ...result, checkedAt }
+            const accessTokenLifetime = await meta.inspectAccessToken(prepared.check)
+            if (matchesSaved(prepared)) {
+                await settings.recordCredentialsCheck(
+                    true,
+                    { displayPhoneNumber: result.displayPhoneNumber, verifiedName: result.verifiedName },
+                    accessTokenLifetime.kind === "UNKNOWN" ? undefined : accessTokenLifetime,
+                )
+            }
+            return { ...result, checkedAt, accessTokenLifetime }
         },
 
         async save(body, userId) {
@@ -247,11 +257,15 @@ export function createWhatsAppSettingsService({
             if (!result.ok) {
                 throw new WhatsAppConnectionError(result.reason)
             }
+            const accessTokenLifetime = await meta.inspectAccessToken(check)
             const saved = await settings.saveCredentials({
                 phoneNumberId: input.phoneNumberId,
                 businessAccountId: input.businessAccountId,
                 accessTokenEncrypted: input.accessToken === null ? (row.accessTokenEncrypted as string) : encrypt(input.accessToken),
                 appSecretEncrypted: input.appSecret === null ? (row.appSecretEncrypted as string) : encrypt(input.appSecret),
+                displayPhoneNumber: result.displayPhoneNumber,
+                verifiedName: result.verifiedName,
+                accessTokenLifetime: input.accessToken === null && accessTokenLifetime.kind === "UNKNOWN" ? null : accessTokenLifetime,
                 updatedBy: userId,
             })
             await notifyGateway()
