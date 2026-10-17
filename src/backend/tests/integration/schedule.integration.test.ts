@@ -1,10 +1,22 @@
-import { createHmac } from "crypto"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import getPool from "../../db/connection"
 import { SlotFullError } from "../../errors/SlotFullError"
 import { scheduleRepository } from "../../repositories/schedule.repository"
 import { sessionRepository } from "../../repositories/session.repository"
 import { createScheduleService } from "../../services/schedule.service"
+import { BookAppointmentResult } from "../../types/schedule.types"
+import { hashPhone as phoneHash } from "./helpers/phone"
+import {
+    cleanupScheduleTestData,
+    countRows,
+    createTestQuestion,
+    restoreScheduleConfig,
+    ScheduleConfigSnapshot,
+    ScheduleRangeInput,
+    ScheduleSettingsInput,
+    snapshotScheduleConfig,
+    useScheduleConfig,
+} from "./helpers/scheduleDb"
 
 const phones = {
     c1: "5512999990001",
@@ -14,165 +26,60 @@ const phones = {
     rollback: "5512999990004",
 }
 
-function phoneHash(phone: string): string {
-    const secret = process.env.PHONE_HASH_SECRET
-    if (!secret) {
-        throw new Error("PHONE_HASH_SECRET is required")
-    }
-    return createHmac("sha256", secret).update(phone).digest("hex")
-}
-
 function makeCpfHash(suffix: string): string {
     return suffix.padStart(64, "0")
 }
 
-let testCategoryId: number
+const testSettings: ScheduleSettingsInput = {
+    slot_minutes: 30,
+    seats_per_slot: 2,
+    window_days: 7,
+    min_notice_days: 1,
+    wait_alert_days: 7,
+    unit_address: "Rua do Procon, 100",
+    unit_address_complement: "Sala 1",
+    reminder_enabled: true,
+    reminder_hours: 24,
+}
+
+const testRanges: ScheduleRangeInput[] = [1, 2, 3, 4, 5].flatMap((weekday) => [
+    { weekday, slot_index: 1, start_time: "08:00", end_time: "12:00" },
+    { weekday, slot_index: 2, start_time: "13:00", end_time: "17:00" },
+])
+
 let testQuestionId: number
-let savedOriginalSettings: Record<string, unknown> | null = null
-let insertedRanges = false
+let savedScheduleConfig: ScheduleConfigSnapshot | null = null
 const createdAppointmentIds: string[] = []
 const createdSessionIds: string[] = []
 
 async function cleanup(): Promise<void> {
-    const pool = getPool()
-    const hashes = Object.values(phones).map(phoneHash)
-
-    const sessResult = await pool.query<{ id: string }>(
-        "SELECT id FROM Sessions WHERE phone_hash = ANY($1::text[])",
-        [hashes],
-    )
-    const sessionIds = sessResult.rows.map((r) => r.id)
-
-    const apptResult = await pool.query<{ id: string }>(
-        "SELECT id FROM Appointments WHERE session_id = ANY($1::bigint[]) OR id = ANY($2::bigint[])",
-        [
-            sessionIds.length > 0 ? sessionIds : [-1],
-            createdAppointmentIds.length > 0 ? createdAppointmentIds : [-1],
-        ],
-    )
-    const allApptIds = apptResult.rows.map((r) => r.id)
-
-    if (allApptIds.length > 0) {
-        await pool.query("DELETE FROM ConversationEvents WHERE appointment_id = ANY($1::bigint[])", [
-            allApptIds,
-        ])
-        await pool.query("DELETE FROM AppointmentEvents WHERE appointment_id = ANY($1::bigint[])", [
-            allApptIds,
-        ])
-        await pool.query("DELETE FROM Appointments WHERE id = ANY($1::bigint[])", [
-            allApptIds,
-        ])
-    }
-
-    if (sessionIds.length > 0) {
-        await pool.query("DELETE FROM ConversationEvents WHERE session_id = ANY($1::bigint[])", [
-            sessionIds,
-        ])
-        await pool.query("DELETE FROM Sessions WHERE id = ANY($1::bigint[])", [
-            sessionIds,
-        ])
-    }
-
-    if (testCategoryId) {
-        await pool.query("DELETE FROM Questions WHERE category_id = $1", [testCategoryId])
-        await pool.query("DELETE FROM Categories WHERE id = $1", [testCategoryId])
-    }
+    await cleanupScheduleTestData({
+        phoneHashes: Object.values(phones).map(phoneHash),
+        appointmentIds: createdAppointmentIds,
+    })
 }
 
 describe("Schedule integration tests (Postgres)", () => {
     beforeAll(async () => {
         await cleanup()
-        const pool = getPool()
-
-        const existingSettings = await pool.query(
-            "SELECT * FROM ScheduleSettings WHERE id = 1",
-        )
-        savedOriginalSettings = existingSettings.rows[0] ?? null
-
-        const existingRanges = await pool.query("SELECT id FROM ScheduleRanges")
-        if (existingRanges.rows.length === 0) {
-            insertedRanges = true
-            const weekdays = [1, 2, 3, 4, 5]
-            for (const weekday of weekdays) {
-                await pool.query(
-                    "INSERT INTO ScheduleRanges (weekday, slot_index, start_time, end_time) VALUES ($1, 1, '08:00', '12:00')",
-                    [weekday],
-                )
-                await pool.query(
-                    "INSERT INTO ScheduleRanges (weekday, slot_index, start_time, end_time) VALUES ($1, 2, '13:00', '17:00')",
-                    [weekday],
-                )
-            }
-        }
-
-        await pool.query(`
-            INSERT INTO ScheduleSettings (
-                id, slot_minutes, seats_per_slot, window_days, min_notice_days,
-                wait_alert_days, unit_address, unit_address_complement, reminder_enabled, reminder_hours
-            ) VALUES (
-                1, 30, 2, 7, 1, 7, 'Rua do Procon, 100', 'Sala 1', true, 24
-            )
-            ON CONFLICT (id) DO UPDATE SET
-                slot_minutes = 30,
-                seats_per_slot = 2,
-                window_days = 7,
-                min_notice_days = 1,
-                wait_alert_days = 7,
-                unit_address = 'Rua do Procon, 100',
-                unit_address_complement = 'Sala 1',
-                reminder_enabled = true,
-                reminder_hours = 24
-        `)
-
-        const catRes = await pool.query<{ id: number }>(
-            "INSERT INTO Categories (title, short_title) VALUES ('Categoria Agenda Teste', 'Agenda') RETURNING id",
-        )
-        testCategoryId = catRes.rows[0]!.id
-
-        const qRes = await pool.query<{ id: number }>(
-            `INSERT INTO Questions (category_id, question, answer, short_title, out_of_scope, requires_in_person, llm_allowed)
-             VALUES ($1, 'Pergunta Agenda Teste', 'Compareça ao Procon.', 'Agenda', false, true, false)
-             RETURNING id`,
-            [testCategoryId],
-        )
-        testQuestionId = qRes.rows[0]!.id
+        savedScheduleConfig = await snapshotScheduleConfig()
+        await useScheduleConfig({ settings: testSettings, ranges: testRanges })
+        const created = await createTestQuestion()
+        testQuestionId = created.questionId
     })
 
     afterAll(async () => {
-        await cleanup()
-        const pool = getPool()
-        if (insertedRanges) {
-            await pool.query("DELETE FROM ScheduleRanges")
+        try {
+            await cleanup()
+        } finally {
+            try {
+                if (savedScheduleConfig) {
+                    await restoreScheduleConfig(savedScheduleConfig)
+                }
+            } finally {
+                await getPool().end()
+            }
         }
-        if (savedOriginalSettings) {
-            await pool.query(
-                `UPDATE ScheduleSettings SET
-                    slot_minutes = $1,
-                    seats_per_slot = $2,
-                    window_days = $3,
-                    min_notice_days = $4,
-                    wait_alert_days = $5,
-                    unit_address = $6,
-                    unit_address_complement = $7,
-                    reminder_enabled = $8,
-                    reminder_hours = $9
-                 WHERE id = 1`,
-                [
-                    savedOriginalSettings.slot_minutes,
-                    savedOriginalSettings.seats_per_slot,
-                    savedOriginalSettings.window_days,
-                    savedOriginalSettings.min_notice_days,
-                    savedOriginalSettings.wait_alert_days,
-                    savedOriginalSettings.unit_address,
-                    savedOriginalSettings.unit_address_complement,
-                    savedOriginalSettings.reminder_enabled,
-                    savedOriginalSettings.reminder_hours,
-                ],
-            )
-        } else {
-            await pool.query("DELETE FROM ScheduleSettings WHERE id = 1")
-        }
-        await pool.end()
     })
 
     it("grava evento CREATED em AppointmentEvents e documents_sent como jsonb", async () => {
@@ -236,7 +143,7 @@ describe("Schedule integration tests (Postgres)", () => {
                 name: "Concorrente 1",
                 cpfHash: makeCpfHash("201"),
                 cpfMasked: "***.201.201-**",
-                phone: phones.c1,
+                phone: phones.c1_slot,
                 byRepresentative: false,
                 appointmentDatetime: slotTime,
             }),
@@ -265,7 +172,7 @@ describe("Schedule integration tests (Postgres)", () => {
         ])
 
         const fulfilled = results.filter(
-            (r): r is PromiseFulfilledResult<{ id: string }> => r.status === "fulfilled",
+            (r): r is PromiseFulfilledResult<BookAppointmentResult> => r.status === "fulfilled",
         )
         const rejected = results.filter((r) => r.status === "rejected") as PromiseRejectedResult[]
 
@@ -295,6 +202,9 @@ describe("Schedule integration tests (Postgres)", () => {
 
         const slotTime = new Date("2026-11-10T14:00:00.000Z")
         const testCpfHash = makeCpfHash("999")
+        const appointmentsBefore = await countRows("Appointments")
+        const appointmentEventsBefore = await countRows("AppointmentEvents")
+        const conversationEventsBefore = await countRows("ConversationEvents")
 
         await expect(
             scheduleRepository.bookAppointment({
@@ -327,11 +237,18 @@ describe("Schedule integration tests (Postgres)", () => {
             [finishedSessionId],
         )
         expect(checkConvEvents.rows.length).toBe(0)
+
+        expect(await countRows("Appointments")).toBe(appointmentsBefore)
+        expect(await countRows("AppointmentEvents")).toBe(appointmentEventsBefore)
+        expect(await countRows("ConversationEvents")).toBe(conversationEventsBefore)
     })
 
     it("respeita estritamente o limite da janela de agendamento (window_days)", async () => {
-        const pool = getPool()
-        await pool.query("UPDATE ScheduleSettings SET window_days = 3, min_notice_days = 1 WHERE id = 1")
+        await useScheduleConfig({
+            settings: { ...testSettings, window_days: 3, min_notice_days: 1 },
+            ranges: testRanges,
+            blockedDates: [],
+        })
 
         const scheduleService = createScheduleService(scheduleRepository)
         const now = new Date("2026-10-05T09:00:00-03:00")
@@ -341,6 +258,6 @@ describe("Schedule integration tests (Postgres)", () => {
         const distinctDates = Array.from(new Set(slots.map((s) => s.dateStr)))
         expect(distinctDates).toEqual(["2026-10-06", "2026-10-07", "2026-10-08"])
 
-        await pool.query("UPDATE ScheduleSettings SET window_days = 7, min_notice_days = 1 WHERE id = 1")
+        await useScheduleConfig({ settings: testSettings, ranges: testRanges })
     })
 })
