@@ -1,33 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { IScheduleRepository } from "../repositories/schedule.repository.interface"
-import {
-    BlockedDate,
-    ScheduleRange,
-    ScheduleSettings,
-} from "../types/schedule.types"
 import { createScheduleService, IScheduleService } from "./schedule.service"
+import {
+    buildScheduleSettings,
+    fullDayBlock,
+    partialBlock,
+    weekdayRanges,
+} from "./mock/schedule.fixtures"
 
 describe("ScheduleService", () => {
-    const defaultSettings: ScheduleSettings = {
-        id: 1,
-        slot_minutes: 30,
-        seats_per_slot: 2,
-        window_days: 7,
-        min_notice_days: 1,
-        wait_alert_days: 7,
-        unit_address: "Rua do Procon, 100",
-        unit_address_complement: "Sala 2",
-        reminder_enabled: true,
-        reminder_hours: 24,
-    }
+    const defaultSettings = buildScheduleSettings()
 
-    const defaultRanges: ScheduleRange[] = [1, 2, 3, 4, 5].map((weekday) => ({
-        id: weekday,
-        weekday,
-        slot_index: 1,
-        start_time: "08:00:00",
-        end_time: "10:00:00",
-    }))
+    const defaultRanges = weekdayRanges("08:00:00", "10:00:00")
 
     let repoMock: IScheduleRepository
     let service: IScheduleService
@@ -67,10 +51,7 @@ describe("ScheduleService", () => {
     })
 
     it("conta a antecedência em dias com atendimento, não em dias corridos, a partir de sexta", async () => {
-        vi.mocked(repoMock.getSettings).mockResolvedValueOnce({
-            ...defaultSettings,
-            min_notice_days: 2,
-        })
+        vi.mocked(repoMock.getSettings).mockResolvedValueOnce(buildScheduleSettings({ min_notice_days: 2 }))
 
         const now = new Date("2026-10-09T09:00:00-03:00")
         const slots = await service.getAvailableSlots(now)
@@ -80,19 +61,8 @@ describe("ScheduleService", () => {
     })
 
     it("não conta dia bloqueado dentro do período de antecedência", async () => {
-        vi.mocked(repoMock.getSettings).mockResolvedValueOnce({
-            ...defaultSettings,
-            min_notice_days: 2,
-        })
-        const blocked: BlockedDate[] = [
-            {
-                id: 1,
-                date: "2026-10-06",
-                start_time: null,
-                end_time: null,
-                description: "Feriado Municipal",
-            },
-        ]
+        vi.mocked(repoMock.getSettings).mockResolvedValueOnce(buildScheduleSettings({ min_notice_days: 2 }))
+        const blocked = [fullDayBlock("2026-10-06")]
         vi.mocked(repoMock.getBlockedDates).mockResolvedValueOnce(blocked)
 
         const now = new Date("2026-10-05T09:00:00-03:00")
@@ -104,10 +74,7 @@ describe("ScheduleService", () => {
     })
 
     it("deve oferecer horários no mesmo dia se min_notice_days for 0 e horário for futuro", async () => {
-        vi.mocked(repoMock.getSettings).mockResolvedValueOnce({
-            ...defaultSettings,
-            min_notice_days: 0,
-        })
+        vi.mocked(repoMock.getSettings).mockResolvedValueOnce(buildScheduleSettings({ min_notice_days: 0 }))
 
         const now = new Date("2026-10-05T08:15:00-03:00")
         const slots = await service.getAvailableSlots(now)
@@ -118,15 +85,7 @@ describe("ScheduleService", () => {
     })
 
     it("deve ignorar dias inteiros bloqueados em BlockedDates", async () => {
-        const blocked: BlockedDate[] = [
-            {
-                id: 1,
-                date: "2026-10-06",
-                start_time: null,
-                end_time: null,
-                description: "Feriado Municipal",
-            },
-        ]
+        const blocked = [fullDayBlock("2026-10-06")]
         vi.mocked(repoMock.getBlockedDates).mockResolvedValueOnce(blocked)
 
         const now = new Date("2026-10-05T09:00:00-03:00")
@@ -137,15 +96,7 @@ describe("ScheduleService", () => {
     })
 
     it("deve filtrar slots que colidem com bloqueios parciais", async () => {
-        const blocked: BlockedDate[] = [
-            {
-                id: 2,
-                date: "2026-10-06",
-                start_time: "08:30:00",
-                end_time: "09:30:00",
-                description: "Manutenção",
-            },
-        ]
+        const blocked = [partialBlock("2026-10-06", "08:30:00", "09:30:00")]
         vi.mocked(repoMock.getBlockedDates).mockResolvedValueOnce(blocked)
 
         const now = new Date("2026-10-05T09:00:00-03:00")
@@ -182,11 +133,9 @@ describe("ScheduleService", () => {
     })
 
     it("deve respeitar estritamente o limite da janela de agendamento (window_days)", async () => {
-        vi.mocked(repoMock.getSettings).mockResolvedValueOnce({
-            ...defaultSettings,
-            window_days: 2,
-            min_notice_days: 1,
-        })
+        vi.mocked(repoMock.getSettings).mockResolvedValueOnce(
+            buildScheduleSettings({ window_days: 2, min_notice_days: 1 }),
+        )
 
         const now = new Date("2026-10-05T09:00:00-03:00")
         const slots = await service.getAvailableSlots(now)
@@ -199,13 +148,7 @@ describe("ScheduleService", () => {
     })
 
     it("não deve entrar em loop infinito se as faixas forem mais curtas que slot_minutes", async () => {
-        const shortRanges: ScheduleRange[] = [1, 2, 3, 4, 5].map((weekday) => ({
-            id: weekday,
-            weekday,
-            slot_index: 1,
-            start_time: "08:00:00",
-            end_time: "08:20:00",
-        }))
+        const shortRanges = weekdayRanges("08:00:00", "08:20:00")
         vi.mocked(repoMock.getRanges).mockResolvedValueOnce(shortRanges)
 
         const now = new Date("2026-10-05T09:00:00-03:00")
