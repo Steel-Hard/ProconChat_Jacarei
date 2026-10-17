@@ -242,9 +242,10 @@ export function formatarCategoriaSemPerguntas(): string {
     return "No momento não há perguntas cadastradas para essa categoria. Digite o número de outra categoria."
 }
 
-export function formatarListaSlots(
+function formatarSlotsComCabecalho(
     slots: AvailableSlot[],
-    pagina: number = 1,
+    pagina: number,
+    cabecalho: string,
 ): string {
     if (slots.length === 0) {
         return MENSAGEM_SEM_HORARIOS
@@ -254,22 +255,21 @@ export function formatarListaSlots(
     const paginacao = paginarItens(formatados, pagina)
     const listaFormatada = formatarListaPaginada(paginacao)
 
-    return `${PROMPT_SLOTS}\n${listaFormatada}`
+    return `${cabecalho}\n${listaFormatada}`
+}
+
+export function formatarListaSlots(
+    slots: AvailableSlot[],
+    pagina: number = 1,
+): string {
+    return formatarSlotsComCabecalho(slots, pagina, PROMPT_SLOTS)
 }
 
 export function formatarErroSlot(
     slots: AvailableSlot[],
     pagina: number = 1,
 ): string {
-    if (slots.length === 0) {
-        return MENSAGEM_SEM_HORARIOS
-    }
-
-    const formatados = slots.map((s) => s.formatted)
-    const paginacao = paginarItens(formatados, pagina)
-    const listaFormatada = formatarListaPaginada(paginacao)
-
-    return `${ERRO_SLOTS}\n${listaFormatada}`
+    return formatarSlotsComCabecalho(slots, pagina, ERRO_SLOTS)
 }
 
 export function formatarConfirmacaoAgendamento(input: ConfirmacaoAgendamentoInput): string {
@@ -363,6 +363,32 @@ function limitarString(texto: string | undefined | null, max: number): string {
     return Array.from(trimmed).slice(0, max).join("")
 }
 
+function linhasDeNavegacao<T>(
+    paginacao: PaginatedResult<T>,
+    descricaoAnteriores: string,
+    descricaoMais: string,
+): ListRow[] {
+    const linhas: ListRow[] = []
+
+    if (paginacao.opcaoAnterior !== undefined) {
+        linhas.push({
+            id: `page_${paginacao.paginaAtual - 1}`,
+            title: "Voltar opções",
+            description: descricaoAnteriores,
+        })
+    }
+
+    if (paginacao.opcaoProxima !== undefined) {
+        linhas.push({
+            id: `page_${paginacao.paginaAtual + 1}`,
+            title: "Ver mais opções",
+            description: descricaoMais,
+        })
+    }
+
+    return linhas
+}
+
 export function criarMensagensCategorias(
     categorias: Categoria[],
     pagina: number = 1,
@@ -378,30 +404,7 @@ export function criarMensagensCategorias(
         description: c.description ? limitarString(c.description, 72) : undefined,
     }))
 
-    if (paginacao.opcaoAnterior !== undefined && paginacao.opcaoProxima !== undefined) {
-        rows.push({
-            id: `page_${paginacao.paginaAtual - 1}`,
-            title: "Voltar opções",
-            description: "Ver categorias anteriores",
-        })
-        rows.push({
-            id: `page_${paginacao.paginaAtual + 1}`,
-            title: "Ver mais opções",
-            description: "Exibir mais categorias",
-        })
-    } else if (paginacao.opcaoProxima !== undefined) {
-        rows.push({
-            id: `page_${paginacao.paginaAtual + 1}`,
-            title: "Ver mais opções",
-            description: "Exibir mais categorias",
-        })
-    } else if (paginacao.opcaoAnterior !== undefined) {
-        rows.push({
-            id: `page_${paginacao.paginaAtual - 1}`,
-            title: "Voltar opções",
-            description: "Ver categorias anteriores",
-        })
-    }
+    rows.push(...linhasDeNavegacao(paginacao, "Ver categorias anteriores", "Exibir mais categorias"))
 
     return [
         { type: "text", text: SAUDACAO },
@@ -429,30 +432,7 @@ export function criarMensagensPerguntas(
         description: p.short_description ? limitarString(p.short_description, 72) : undefined,
     }))
 
-    if (paginacao.opcaoAnterior !== undefined && paginacao.opcaoProxima !== undefined) {
-        rows.push({
-            id: `page_${paginacao.paginaAtual - 1}`,
-            title: "Voltar opções",
-            description: "Ver perguntas anteriores",
-        })
-        rows.push({
-            id: `page_${paginacao.paginaAtual + 1}`,
-            title: "Ver mais opções",
-            description: "Exibir mais perguntas",
-        })
-    } else if (paginacao.opcaoProxima !== undefined) {
-        rows.push({
-            id: `page_${paginacao.paginaAtual + 1}`,
-            title: "Ver mais opções",
-            description: "Exibir mais perguntas",
-        })
-    } else if (paginacao.opcaoAnterior !== undefined) {
-        rows.push({
-            id: `page_${paginacao.paginaAtual - 1}`,
-            title: "Voltar opções",
-            description: "Ver perguntas anteriores",
-        })
-    }
+    rows.push(...linhasDeNavegacao(paginacao, "Ver perguntas anteriores", "Exibir mais perguntas"))
 
     return [
         {
@@ -518,30 +498,7 @@ export function criarMensagensSlots(
         ),
     }))
 
-    if (paginacao.opcaoAnterior !== undefined && paginacao.opcaoProxima !== undefined) {
-        rows.push({
-            id: `page_${paginacao.paginaAtual - 1}`,
-            title: "Voltar opções",
-            description: "Ver horários anteriores",
-        })
-        rows.push({
-            id: `page_${paginacao.paginaAtual + 1}`,
-            title: "Ver mais opções",
-            description: "Exibir mais horários",
-        })
-    } else if (paginacao.opcaoProxima !== undefined) {
-        rows.push({
-            id: `page_${paginacao.paginaAtual + 1}`,
-            title: "Ver mais opções",
-            description: "Exibir mais horários",
-        })
-    } else if (paginacao.opcaoAnterior !== undefined) {
-        rows.push({
-            id: `page_${paginacao.paginaAtual - 1}`,
-            title: "Voltar opções",
-            description: "Ver horários anteriores",
-        })
-    }
+    rows.push(...linhasDeNavegacao(paginacao, "Ver horários anteriores", "Exibir mais horários"))
 
     return [
         {
