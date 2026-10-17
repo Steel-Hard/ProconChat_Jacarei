@@ -97,28 +97,30 @@ export function parseLocalDate(
     return new Date(utcCandidate.getTime() - diffMs)
 }
 
-function isBusinessDay(
+function freeSlotStartsOfDay(
     dateStr: string,
     ranges: ScheduleRange[],
     blockedDates: BlockedDate[],
     slotMinutes: number,
-): boolean {
+): number[] {
     const dow = getDowFromDateStr(dateStr)
-    const rangesForDay = ranges.filter((r) => r.weekday === dow)
-    if (rangesForDay.length === 0) {
-        return false
-    }
+    const rangesForDay = ranges
+        .filter((r) => r.weekday === dow)
+        .sort((a, b) => a.slot_index - b.slot_index)
 
     const fullDayBlocked = blockedDates.some(
         (b) => b.date === dateStr && (!b.start_time || !b.end_time),
     )
-    if (fullDayBlocked) {
-        return false
+
+    if (rangesForDay.length === 0 || fullDayBlocked) {
+        return []
     }
 
     const partialBlocks = blockedDates.filter(
         (b) => b.date === dateStr && b.start_time && b.end_time,
     )
+
+    const starts: number[] = []
 
     for (const range of rangesForDay) {
         const startMin = toMinutes(range.start_time)
@@ -134,12 +136,21 @@ function isBusinessDay(
             })
 
             if (!isBlocked) {
-                return true
+                starts.push(t)
             }
         }
     }
 
-    return false
+    return starts
+}
+
+function isBusinessDay(
+    dateStr: string,
+    ranges: ScheduleRange[],
+    blockedDates: BlockedDate[],
+    slotMinutes: number,
+): boolean {
+    return freeSlotStartsOfDay(dateStr, ranges, blockedDates, slotMinutes).length > 0
 }
 
 export interface IScheduleService {
@@ -210,57 +221,30 @@ export function createScheduleService(
 
         while (curr <= endDateStr) {
             const dow = getDowFromDateStr(curr)
-            const rangesForDay = ranges
-                .filter((r) => r.weekday === dow)
-                .sort((a, b) => a.slot_index - b.slot_index)
-
-            const fullDayBlocked = blockedDates.some(
-                (b) => b.date === curr && (!b.start_time || !b.end_time),
+            const freeStarts = freeSlotStartsOfDay(
+                curr,
+                ranges,
+                blockedDates,
+                settings.slot_minutes,
             )
 
-            if (rangesForDay.length > 0 && !fullDayBlocked) {
-                const partialBlocks = blockedDates.filter(
-                    (b) => b.date === curr && b.start_time && b.end_time,
-                )
-
-                for (const range of rangesForDay) {
-                    const startMin = toMinutes(range.start_time)
-                    const endMin = toMinutes(range.end_time)
-
-                    for (
-                        let t = startMin;
-                        t + settings.slot_minutes <= endMin;
-                        t += settings.slot_minutes
-                    ) {
-                        if (curr === todayStr && t <= nowMinutes) {
-                            continue
-                        }
-
-                        const slotStart = t
-                        const slotEnd = t + settings.slot_minutes
-
-                        const isBlocked = partialBlocks.some((p) => {
-                            const pStart = toMinutes(p.start_time!)
-                            const pEnd = toMinutes(p.end_time!)
-                            return slotStart < pEnd && slotEnd > pStart
-                        })
-
-                        if (!isBlocked) {
-                            const slotTimeStr = fromMinutes(t)
-                            const [_y, m, d] = curr.split("-")
-                            const weekdayName = WEEKDAYS_PT[dow] ?? ""
-                            const formatted = `${weekdayName}, ${d}/${m} às ${slotTimeStr}`
-                            const datetime = parseLocalDate(curr, slotTimeStr)
-
-                            candidateSlots.push({
-                                datetime,
-                                dateStr: curr,
-                                timeStr: slotTimeStr,
-                                formatted,
-                            })
-                        }
-                    }
+            for (const t of freeStarts) {
+                if (curr === todayStr && t <= nowMinutes) {
+                    continue
                 }
+
+                const slotTimeStr = fromMinutes(t)
+                const [_y, m, d] = curr.split("-")
+                const weekdayName = WEEKDAYS_PT[dow] ?? ""
+                const formatted = `${weekdayName}, ${d}/${m} às ${slotTimeStr}`
+                const datetime = parseLocalDate(curr, slotTimeStr)
+
+                candidateSlots.push({
+                    datetime,
+                    dateStr: curr,
+                    timeStr: slotTimeStr,
+                    formatted,
+                })
             }
 
             curr = addDaysToDateStr(curr, 1)
