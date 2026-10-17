@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import getPool from "../../db/connection"
-import { SlotFullError } from "../../errors/SlotFullError"
+import SlotFullError from "../../errors/SlotFullError"
 import { scheduleRepository } from "../../repositories/schedule.repository"
 import { sessionRepository } from "../../repositories/session.repository"
 import { createScheduleService } from "../../services/schedule.service"

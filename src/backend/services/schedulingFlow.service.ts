@@ -36,8 +36,8 @@ import type {
     ScheduleProvider,
 } from "../types/conversationFlow.types"
 import type { SessionCloser } from "./conversationClosing.service"
-import { SlotFullError } from "../errors/SlotFullError"
-import { DuplicateAppointmentError } from "../errors/DuplicateAppointmentError"
+import SlotFullError from "../errors/SlotFullError"
+import DuplicateAppointmentError from "../errors/DuplicateAppointmentError"
 
 interface SchedulingFlowDependencies {
     sessions: SessionRepository

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from "vitest"
-import { DuplicateAppointmentError } from "../errors/DuplicateAppointmentError"
-import { SlotFullError } from "../errors/SlotFullError"
+import DuplicateAppointmentError from "../errors/DuplicateAppointmentError"
+import SlotFullError from "../errors/SlotFullError"
 import type { ActiveSession } from "../repositories/session.repository"
 import {
     ERRO_ATTENDEE,
