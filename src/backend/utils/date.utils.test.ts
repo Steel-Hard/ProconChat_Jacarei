@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { parseLocalDate } from "../services/schedule.service"
 import {
     getThisWeekBounds,
     getTodayBounds,
@@ -77,6 +78,20 @@ describe("date.utils", () => {
 
             expect(bounds.start.toISOString()).toBe("2026-09-27T03:00:00.000Z")
             expect(bounds.end.toISOString()).toBe("2026-10-04T02:59:59.999Z")
+        })
+    })
+
+    describe("parseLocalDate", () => {
+        it("converte 08:00 de São Paulo para 11:00 UTC", () => {
+            expect(parseLocalDate("2026-10-20", "08:00").toISOString()).toBe("2026-10-20T11:00:00.000Z")
+        })
+
+        it("converte a meia-noite local para 03:00 UTC do mesmo dia", () => {
+            expect(parseLocalDate("2026-10-20", "00:00").toISOString()).toBe("2026-10-20T03:00:00.000Z")
+        })
+
+        it("converte 23:59 local para 02:59 UTC do dia seguinte", () => {
+            expect(parseLocalDate("2026-10-20", "23:59").toISOString()).toBe("2026-10-21T02:59:00.000Z")
         })
     })
 })

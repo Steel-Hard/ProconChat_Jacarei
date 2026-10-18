@@ -91,10 +91,10 @@ export function parseLocalDate(
     const [h, min] = timeStr.split(":").map(Number)
     const utcCandidate = new Date(Date.UTC(y!, m! - 1, d!, h!, min!, 0))
     const parts = getLocalParts(utcCandidate, timeZone)
-    const targetMinutes = (h ?? 0) * 60 + (min ?? 0)
-    const localMinutes = parts.hour * 60 + parts.minute
-    const diffMs = (localMinutes - targetMinutes) * 60 * 1000
-    return new Date(utcCandidate.getTime() - diffMs)
+    const [ly, lm, ld] = parts.dateStr.split("-").map(Number)
+    const localAsUtc = Date.UTC(ly!, lm! - 1, ld!, parts.hour, parts.minute, 0)
+    const offsetMs = localAsUtc - utcCandidate.getTime()
+    return new Date(utcCandidate.getTime() - offsetMs)
 }
 
 function freeSlotStartsOfDay(
