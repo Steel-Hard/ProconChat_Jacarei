@@ -8,6 +8,7 @@ import {
     AppointmentListResponse,
     ConversationTimelineStep,
 } from "../types/appointment.types"
+import { errorCodeOf } from "../utils/conversationEventLog"
 import { availableActions } from "./appointmentTransitions"
 import {
     conversationEventService as defaultConversationEventService,
@@ -107,12 +108,23 @@ function buildTimeline(
     })
 }
 
+export interface AppointmentTimelineFailureLog {
+    appointmentId: string
+    code: string
+}
+
+export interface AppointmentServiceLogger {
+    error(message: string, details: AppointmentTimelineFailureLog): void
+}
+
 export function createAppointmentService(deps?: {
     repository?: AppointmentRepository
     conversationEvents?: ConversationEventService
+    logger?: AppointmentServiceLogger
 }): AppointmentService {
     const repository = deps?.repository ?? defaultAppointmentRepository
     const conversationEvents = deps?.conversationEvents ?? defaultConversationEventService
+    const logger = deps?.logger ?? console
 
     async function getAppointmentDetail(
         idOrCode: number | string,
@@ -143,7 +155,10 @@ export function createAppointmentService(deps?: {
                     appointment.timeline = buildTimeline(events, appointment, titles)
                 }
             } catch (error) {
-                console.error("Erro ao listar eventos da conversa para a linha do tempo:", error)
+                logger.error("Erro ao listar eventos da conversa para a linha do tempo", {
+                    appointmentId: appointment.id,
+                    code: errorCodeOf(error),
+                })
             }
         }
 

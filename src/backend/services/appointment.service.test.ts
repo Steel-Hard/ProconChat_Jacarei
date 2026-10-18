@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import { MockAppointmentRepository } from "../repositories/mock/appointmentMock.repository"
 import { AppointmentService, createAppointmentService } from "./appointment.service"
 import { toLocalDateString } from "../utils/date.utils"
@@ -167,6 +167,27 @@ describe("appointment.service", () => {
 
             const detailNormal = await service.getAppointmentDetail(1)
             expect(detailNormal.is_documents_config_different).toBe(false)
+        })
+
+        it("registra só o código do erro quando a linha do tempo falha", async () => {
+            const logger = { error: vi.fn() }
+            const failure = Object.assign(new Error("falha com dado sensível 5500000000999"), { code: "ECONNREFUSED" })
+            const failingService = createAppointmentService({
+                repository,
+                conversationEvents: {
+                    record: vi.fn(),
+                    finish: vi.fn(),
+                    listBySession: vi.fn().mockRejectedValue(failure),
+                },
+                logger,
+            })
+
+            const detail = await failingService.getAppointmentDetail(1)
+
+            expect(detail.timeline).toEqual([])
+            expect(logger.error).toHaveBeenCalledTimes(1)
+            expect(logger.error).toHaveBeenCalledWith(expect.any(String), { appointmentId: "1", code: "ECONNREFUSED" })
+            expect(JSON.stringify(logger.error.mock.calls)).not.toContain("5500000000999")
         })
 
         it("lança NotFoundError para agendamento inexistente", async () => {
