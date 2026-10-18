@@ -804,7 +804,7 @@ O par desfecho e evento tem que casar, senão lança `InternalServerError` sem c
 
 | Desfecho | Evento de fechamento aceito |
 | --- | --- |
-| `RESOLVED` | `RESOLVED_ANSWERED` com `resolved: true`. Provisoriamente também `ANSWER_SENT`, enquanto o fluxo da Sprint 1 não pergunta "A dúvida foi resolvida?". **A #55 remove essa exceção** em `isClosingCompatible` (`utils/conversationEventData.ts`) |
+| `RESOLVED` | `RESOLVED_ANSWERED` com `resolved: true`, conferido em `isClosingCompatible` (`utils/conversationEventData.ts`) |
 | `SCHEDULED` | `APPOINTMENT_CREATED` |
 | `OUT_OF_SCOPE` | `ANSWER_SENT` |
 | `NO_SLOT` | `NO_SLOT` |
@@ -830,7 +830,7 @@ O par desfecho e evento tem que casar, senão lança `InternalServerError` sem c
 | Agendamento criado | #56 | `finishSessionWith(client, ...)` na transação da reserva; se falhar, a reserva volta e o cidadão é avisado | `APPOINTMENT_CREATED` | `SCHEDULED` |
 | Consultou agendamento | #59 | `record` | `APPOINTMENT_CONSULTED` | — |
 | Remarcou / cancelou | #59 | `finishSessionWith(client, ...)` na transação da alteração; se falhar, a alteração volta e o cidadão é avisado | `APPOINTMENT_RESCHEDULED` / `APPOINTMENT_CANCELED` | `MANAGED_APPOINTMENT` |
-| 30 min sem interação | #16 na próxima mensagem do mesmo número; #55 na varredura periódica | — | `ABANDONED` | `ABANDONED` |
+| 30 min sem interação | #16 na próxima mensagem do mesmo número; varredura periódica (`services/abandonedSessionsSweep.service.ts`) | — | `ABANDONED` | `ABANDONED` |
 
 Hoje o fluxo da Sprint 1 encerra a resposta com `finish` e `ANSWER_SENT` (`llm: "NOT_CALLED"`):
 `OUT_OF_SCOPE` para pergunta fora do escopo e `RESOLVED` (exceção provisória) para as demais.
@@ -883,6 +883,7 @@ A migration `13` garante no banco que `current_step = 'FINISHED'` só existe em 
 `AWAITING_*`, e `ActiveSession.currentStep` e `NavigationState.currentStep` são
 `Exclude<SessionStep, "FINISHED">`.
 
-Esta regra só roda quando o mesmo número volta a escrever. A **varredura periódica** das sessões de
-quem nunca volta é da **#55** e precisa aplicar exatamente a mesma regra. A correspondência entre
+Esta regra roda quando o mesmo número volta a escrever. A **varredura periódica**
+(`services/abandonedSessionsSweep.service.ts`, iniciada em `index.ts`) cuida das sessões de quem nunca
+volta e aplica exatamente a mesma regra. A correspondência entre
 etapa e os nomes de abandono dos Relatórios é da #68.
