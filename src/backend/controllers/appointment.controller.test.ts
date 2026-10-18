@@ -4,6 +4,7 @@ import { AppointmentController, createAppointmentController } from "./appointmen
 import { AppointmentService, createAppointmentService } from "../services/appointment.service"
 import { MockAppointmentRepository } from "../repositories/mock/appointmentMock.repository"
 import { AuthenticatedUser } from "../types/auth.types"
+import { listAppointmentsQuerySchema } from "../schemas/appointment.schema"
 
 describe("appointment.controller", () => {
     let controller: AppointmentController
@@ -49,7 +50,7 @@ describe("appointment.controller", () => {
 
     it("listAppointments chama o serviço e devolve 200 com envelope { data }", async () => {
         const req = {
-            query: { page: "1", limit: "10" },
+            query: listAppointmentsQuerySchema.parse({ page: "1", limit: "10" }),
             authUser: mockAdminUser,
         } as unknown as Request
         const res = mockResponse()

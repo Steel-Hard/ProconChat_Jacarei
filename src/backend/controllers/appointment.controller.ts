@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express"
 import { appointmentService as defaultAppointmentService, AppointmentService } from "../services/appointment.service"
-import { listAppointmentsQuerySchema, UpdateStatusBody } from "../schemas/appointment.schema"
+import { ListAppointmentsQuery, UpdateStatusBody } from "../schemas/appointment.schema"
 import { AppointmentListFilters } from "../types/appointment.types"
 import UnauthorizedError from "../errors/UnauthorizedError"
 
@@ -15,7 +15,7 @@ export function createAppointmentController(service: AppointmentService = defaul
     return {
         async listAppointments(req: Request, res: Response, next: NextFunction): Promise<void> {
             try {
-                const query = listAppointmentsQuerySchema.parse(req.query)
+                const query = req.query as unknown as ListAppointmentsQuery
                 const filters: AppointmentListFilters = {
                     search: query.search,
                     status: query.status,
