@@ -23,6 +23,7 @@ describe("Agendamentos com Postgres (integração)", () => {
     let adminCookie: string
 
     const createdAppointmentIds: number[] = []
+    const createdUserIds: number[] = []
 
     beforeAll(async () => {
         const pool = getPool()
@@ -86,6 +87,9 @@ describe("Agendamentos com Postgres (integração)", () => {
         }
         if (createdAdminId) {
             await pool.query(`DELETE FROM Users WHERE id = $1`, [createdAdminId])
+        }
+        if (createdUserIds.length > 0) {
+            await pool.query(`DELETE FROM Users WHERE id = ANY($1::bigint[])`, [createdUserIds])
         }
         await pool.end()
     })
@@ -405,6 +409,39 @@ describe("Agendamentos com Postgres (integração)", () => {
         expect(detailRes.body.data.protocol).toBe(botProtocol)
         const listed = listRes.body.data.items.find((item: { id: string }) => item.id === String(apptId))
         expect(listed.protocol).toBe(botProtocol)
+    })
+
+    it("conta os chips respeitando período e responsável, e Aguardando registro só pelo responsável", async () => {
+        const pool = getPool()
+        const userRes = await pool.query<{ id: string }>(
+            `INSERT INTO Users (name, email, password_hash, is_admin, active, session_version)
+             VALUES ('Atendente Chips', $1, 'hash', false, true, 0)
+             RETURNING id`,
+            [`chips.integration-${process.pid}-${Date.now()}@teste.local`],
+        )
+        const userId = Number(userRes.rows[0].id)
+        createdUserIds.push(userId)
+        const day = 86400000
+        await createAppointment({ name: "Chip Confirmado Futuro", status: "CONFIRMED", assignedUserId: userId, appointmentDatetime: new Date(Date.now() + day), cpf: "11122233396" })
+        await createAppointment({ name: "Chip Cancelado Futuro", status: "CANCELED", assignedUserId: userId, appointmentDatetime: new Date(Date.now() + 2 * day), cpf: "11122233396" })
+        await createAppointment({ name: "Chip Confirmado Passado", status: "CONFIRMED", assignedUserId: userId, appointmentDatetime: new Date(Date.now() - 3 * day), cpf: "11122233396" })
+        await createAppointment({ name: "Chip Faltou Passado", status: "NO_SHOW", assignedUserId: userId, appointmentDatetime: new Date(Date.now() - 2 * day), cpf: "11122233396" })
+        await createAppointment({ name: "Chip Pendente Outro", status: "PENDING", appointmentDatetime: new Date(Date.now() + day), cpf: "11122233396" })
+
+        const upcoming = await request(app)
+            .get(`/api/v1/appointments?period=upcoming&responsible=${userId}`)
+            .set("Cookie", adminCookie)
+        const past = await request(app)
+            .get(`/api/v1/appointments?period=past&responsible=${userId}&status=NO_SHOW`)
+            .set("Cookie", adminCookie)
+        const searching = await request(app)
+            .get(`/api/v1/appointments?period=upcoming&responsible=${userId}&search=Chip`)
+            .set("Cookie", adminCookie)
+
+        const upcomingChips = { all: 2, pending: 0, confirmed: 1, attended: 0, no_show: 0, canceled: 1, waiting_record: 1 }
+        expect(upcoming.body.data.chipCounts).toEqual(upcomingChips)
+        expect(past.body.data.chipCounts).toEqual({ all: 2, pending: 0, confirmed: 1, attended: 0, no_show: 1, canceled: 0, waiting_record: 1 })
+        expect(searching.body.data.chipCounts).toEqual(upcomingChips)
     })
 
     it("retorna 400 para id não numérico ou acima do limite de bigint", async () => {

@@ -137,7 +137,7 @@ describe("appointment.routes (HTTP)", () => {
             expect(res.body.data.items).toBeInstanceOf(Array)
             expect(res.body.data.total).toBe(6)
             expect(res.body.data.chipCounts).toBeDefined()
-            expect(res.body.data.chipCounts.all).toBe(9)
+            expect(res.body.data.chipCounts.all).toBe(6)
         })
 
         it("retorna todos os agendamentos quando period=all", async () => {

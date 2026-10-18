@@ -23,6 +23,54 @@ import { AppointmentRepository } from "./appointment.repository.interface"
 const MAX_BIGINT = 9223372036854775807n
 const CPF_SEARCH_PATTERN = /^[\d.\-\s]+$/
 
+function periodCondition(
+    period: AppointmentListFilters["period"],
+    now: Date,
+    params: unknown[],
+): string | null {
+    if (!period || period === "all") {
+        return null
+    }
+    const todayBounds = getTodayBounds(now)
+    if (period === "today") {
+        params.push(todayBounds.start, todayBounds.end)
+        return `a.appointment_datetime >= $${params.length - 1} AND a.appointment_datetime <= $${params.length}`
+    }
+    if (period === "this_week") {
+        const weekBounds = getThisWeekBounds(now)
+        params.push(weekBounds.start, weekBounds.end)
+        return `a.appointment_datetime >= $${params.length - 1} AND a.appointment_datetime <= $${params.length}`
+    }
+    if (period === "upcoming") {
+        params.push(todayBounds.start)
+        return `a.appointment_datetime >= $${params.length}`
+    }
+    params.push(todayBounds.start)
+    return `a.appointment_datetime < $${params.length}`
+}
+
+function responsibleCondition(filters: AppointmentListFilters, params: unknown[]): string | null {
+    const responsible = filters.responsible
+    if (!responsible || responsible === "all") {
+        return null
+    }
+    if (responsible === "unassigned") {
+        return "a.assigned_user_id IS NULL"
+    }
+    if (responsible === "me") {
+        if (!filters.currentUserId) {
+            return null
+        }
+        params.push(filters.currentUserId)
+        return `a.assigned_user_id = $${params.length}`
+    }
+    if (/^\d+$/.test(responsible)) {
+        params.push(Number(responsible))
+        return `a.assigned_user_id = $${params.length}`
+    }
+    return null
+}
+
 async function lockAndDecide(
     client: PoolClient,
     action: AppointmentActionType,
@@ -223,6 +271,11 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             total: number
             chipCounts: AppointmentChipCounts
         }> {
+            const chipParams: unknown[] = []
+            const chipResponsible = responsibleCondition(filters, chipParams)
+            const chipPeriod = periodCondition(filters.period, now, chipParams) ?? "TRUE"
+            chipParams.push(now)
+            const waitingRecordParam = `$${chipParams.length}`
             const chipResult = await pool.query<{
                 all: string
                 pending: string
@@ -233,15 +286,16 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                 waiting_record: string
             }>(
                 `SELECT
-                     COUNT(*)::text as all,
-                     COUNT(*) FILTER (WHERE status = 'PENDING')::text as pending,
-                     COUNT(*) FILTER (WHERE status = 'CONFIRMED')::text as confirmed,
-                     COUNT(*) FILTER (WHERE status = 'ATTENDED')::text as attended,
-                     COUNT(*) FILTER (WHERE status = 'NO_SHOW')::text as no_show,
-                     COUNT(*) FILTER (WHERE status = 'CANCELED')::text as canceled,
-                     COUNT(*) FILTER (WHERE status = 'CONFIRMED' AND appointment_datetime < $1)::text as waiting_record
-                 FROM Appointments`,
-                [now],
+                     COUNT(*) FILTER (WHERE ${chipPeriod})::text as all,
+                     COUNT(*) FILTER (WHERE ${chipPeriod} AND a.status = 'PENDING')::text as pending,
+                     COUNT(*) FILTER (WHERE ${chipPeriod} AND a.status = 'CONFIRMED')::text as confirmed,
+                     COUNT(*) FILTER (WHERE ${chipPeriod} AND a.status = 'ATTENDED')::text as attended,
+                     COUNT(*) FILTER (WHERE ${chipPeriod} AND a.status = 'NO_SHOW')::text as no_show,
+                     COUNT(*) FILTER (WHERE ${chipPeriod} AND a.status = 'CANCELED')::text as canceled,
+                     COUNT(*) FILTER (WHERE a.status = 'CONFIRMED' AND a.appointment_datetime < ${waitingRecordParam})::text as waiting_record
+                 FROM Appointments a
+                 ${chipResponsible ? `WHERE ${chipResponsible}` : ""}`,
+                chipParams,
             )
 
             const chipRow = chipResult.rows[0]
@@ -292,40 +346,16 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                     }
                 }
 
-                if (filters.period && filters.period !== "all") {
-                    const todayBounds = getTodayBounds(now)
-                    const weekBounds = getThisWeekBounds(now)
-
-                    if (filters.period === "today") {
-                        conditions.push(
-                            `a.appointment_datetime >= $${paramIndex++} AND a.appointment_datetime <= $${paramIndex++}`,
-                        )
-                        params.push(todayBounds.start, todayBounds.end)
-                    } else if (filters.period === "this_week") {
-                        conditions.push(
-                            `a.appointment_datetime >= $${paramIndex++} AND a.appointment_datetime <= $${paramIndex++}`,
-                        )
-                        params.push(weekBounds.start, weekBounds.end)
-                    } else if (filters.period === "upcoming") {
-                        conditions.push(`a.appointment_datetime >= $${paramIndex++}`)
-                        params.push(todayBounds.start)
-                    } else if (filters.period === "past") {
-                        conditions.push(`a.appointment_datetime < $${paramIndex++}`)
-                        params.push(todayBounds.start)
-                    }
+                const period = periodCondition(filters.period, now, params)
+                if (period) {
+                    conditions.push(period)
                 }
 
-                if (filters.responsible && filters.responsible !== "all") {
-                    if (filters.responsible === "unassigned") {
-                        conditions.push(`a.assigned_user_id IS NULL`)
-                    } else if (filters.responsible === "me" && filters.currentUserId) {
-                        conditions.push(`a.assigned_user_id = $${paramIndex++}`)
-                        params.push(filters.currentUserId)
-                    } else if (/^\d+$/.test(filters.responsible)) {
-                        conditions.push(`a.assigned_user_id = $${paramIndex++}`)
-                        params.push(Number(filters.responsible))
-                    }
+                const responsible = responsibleCondition(filters, params)
+                if (responsible) {
+                    conditions.push(responsible)
                 }
+                paramIndex = params.length + 1
             }
 
             const whereClause =

@@ -522,6 +522,49 @@ export class MockAppointmentRepository implements AppointmentRepository {
         }
     }
 
+    private matchesPeriod(
+        appt: MockAppointmentRecord,
+        period: AppointmentListFilters["period"],
+        now: Date,
+    ): boolean {
+        if (!period || period === "all") {
+            return true
+        }
+        const todayBounds = getTodayBounds(now)
+        if (period === "today") {
+            return (
+                appt.appointment_datetime >= todayBounds.start &&
+                appt.appointment_datetime <= todayBounds.end
+            )
+        }
+        if (period === "this_week") {
+            const weekBounds = getThisWeekBounds(now)
+            return (
+                appt.appointment_datetime >= weekBounds.start &&
+                appt.appointment_datetime <= weekBounds.end
+            )
+        }
+        if (period === "upcoming") {
+            return appt.appointment_datetime >= todayBounds.start
+        }
+        return appt.appointment_datetime < todayBounds.start
+    }
+
+    private matchesResponsible(appt: MockAppointmentRecord, filters: AppointmentListFilters): boolean {
+        const responsible = filters.responsible
+        if (!responsible || responsible === "all") {
+            return true
+        }
+        if (responsible === "unassigned") {
+            return appt.assigned_user_id === null
+        }
+        if (responsible === "me") {
+            return filters.currentUserId ? appt.assigned_user_id === filters.currentUserId : true
+        }
+        const respId = Number(responsible)
+        return isNaN(respId) ? true : appt.assigned_user_id === respId
+    }
+
     async findList(
         filters: AppointmentListFilters,
         now: Date = new Date(),
@@ -530,14 +573,16 @@ export class MockAppointmentRepository implements AppointmentRepository {
         total: number
         chipCounts: AppointmentChipCounts
     }> {
+        const byResponsible = this.appointments.filter((a) => this.matchesResponsible(a, filters))
+        const inScope = byResponsible.filter((a) => this.matchesPeriod(a, filters.period, now))
         const chipCounts: AppointmentChipCounts = {
-            all: this.appointments.length,
-            pending: this.appointments.filter((a) => a.status === "PENDING").length,
-            confirmed: this.appointments.filter((a) => a.status === "CONFIRMED").length,
-            attended: this.appointments.filter((a) => a.status === "ATTENDED").length,
-            no_show: this.appointments.filter((a) => a.status === "NO_SHOW").length,
-            canceled: this.appointments.filter((a) => a.status === "CANCELED").length,
-            waiting_record: this.appointments.filter(
+            all: inScope.length,
+            pending: inScope.filter((a) => a.status === "PENDING").length,
+            confirmed: inScope.filter((a) => a.status === "CONFIRMED").length,
+            attended: inScope.filter((a) => a.status === "ATTENDED").length,
+            no_show: inScope.filter((a) => a.status === "NO_SHOW").length,
+            canceled: inScope.filter((a) => a.status === "CANCELED").length,
+            waiting_record: byResponsible.filter(
                 (a) => a.status === "CONFIRMED" && isDatetimePast(a.appointment_datetime, now),
             ).length,
         }
@@ -578,41 +623,9 @@ export class MockAppointmentRepository implements AppointmentRepository {
                 }
             }
 
-            if (filters.period && filters.period !== "all") {
-                const todayBounds = getTodayBounds(now)
-                const weekBounds = getThisWeekBounds(now)
-
-                if (filters.period === "today") {
-                    filtered = filtered.filter(
-                        (a) =>
-                            a.appointment_datetime >= todayBounds.start &&
-                            a.appointment_datetime <= todayBounds.end,
-                    )
-                } else if (filters.period === "this_week") {
-                    filtered = filtered.filter(
-                        (a) =>
-                            a.appointment_datetime >= weekBounds.start &&
-                            a.appointment_datetime <= weekBounds.end,
-                    )
-                } else if (filters.period === "upcoming") {
-                    filtered = filtered.filter((a) => a.appointment_datetime >= todayBounds.start)
-                } else if (filters.period === "past") {
-                    filtered = filtered.filter((a) => a.appointment_datetime < todayBounds.start)
-                }
-            }
-
-            if (filters.responsible && filters.responsible !== "all") {
-                if (filters.responsible === "unassigned") {
-                    filtered = filtered.filter((a) => a.assigned_user_id === null)
-                } else if (filters.responsible === "me" && filters.currentUserId) {
-                    filtered = filtered.filter((a) => a.assigned_user_id === filters.currentUserId)
-                } else {
-                    const respId = Number(filters.responsible)
-                    if (!isNaN(respId)) {
-                        filtered = filtered.filter((a) => a.assigned_user_id === respId)
-                    }
-                }
-            }
+            filtered = filtered.filter(
+                (a) => this.matchesPeriod(a, filters.period, now) && this.matchesResponsible(a, filters),
+            )
         }
 
         const isSearching = Boolean(filters.search && filters.search.trim().length > 0)
