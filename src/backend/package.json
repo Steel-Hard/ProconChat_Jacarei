@@ -8,6 +8,7 @@
         "build": "tsc -p tsconfig.json --outDir dist",
         "start": "node dist/index.js",
         "test": "vitest run",
+        "typecheck:test": "tsc -p tsconfig.test.json",
         "test:integration": "vitest run --config vitest.integration.config.mts",
         "test:db": "node db/verify-migrations.cjs",
         "db:migrate": "node-pg-migrate up --database-url-var DB_URL --migrations-dir db/migrations",
