@@ -631,4 +631,31 @@ describe("Agendamentos com Postgres (integração)", () => {
         expect(resOverflow.status).toBe(400)
         expect(resOverflow.body.error.code).toBe("BAD_REQUEST")
     })
+
+    it("recusa com 403 INVALID_ORIGIN o PATCH sem Origin mesmo com sessão válida, sem mudar o agendamento", async () => {
+        const apptId = await createAppointment({ name: "Cidadão Sem Origem", cpf: "14714714725" })
+
+        const res = await request(app)
+            .patch(`/api/v1/appointments/${apptId}/status`)
+            .set("Cookie", adminCookie)
+            .send({ action: "claim" })
+
+        expect(res.status).toBe(403)
+        expect(res.body).toEqual({ error: { code: "INVALID_ORIGIN", message: "Request origin is not allowed" } })
+        const stored = await getPool().query<{ status: string; assigned_user_id: string | null }>(
+            "SELECT status, assigned_user_id FROM Appointments WHERE id = $1",
+            [apptId],
+        )
+        expect(firstRow(stored.rows)).toEqual({ status: "PENDING", assigned_user_id: null })
+    })
+
+    it("recusa com 401 a lista pedida só com cabeçalhos x-user-id e x-user-is-admin, sem cookie", async () => {
+        const res = await request(app)
+            .get("/api/v1/appointments")
+            .set("x-user-id", "1")
+            .set("x-user-is-admin", "true")
+
+        expect(res.status).toBe(401)
+        expect(res.body).toEqual({ error: { code: "UNAUTHORIZED", message: "Authentication required" } })
+    })
 })
