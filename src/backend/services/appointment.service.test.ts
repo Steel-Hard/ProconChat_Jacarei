@@ -148,17 +148,17 @@ describe("appointment.service", () => {
                 expect(step.data).not.toHaveProperty("createdAt")
             }
             const byType = Object.fromEntries(detail.timeline.map((step) => [step.type, step]))
-            expect(byType.CATEGORY_CHOSEN.data).toEqual({ categoryId: 10, category_title: "Cobrança" })
-            expect(byType.QUESTION_CHOSEN.data).toEqual({
+            expect(byType.CATEGORY_CHOSEN?.data).toEqual({ categoryId: 10, category_title: "Cobrança" })
+            expect(byType.QUESTION_CHOSEN?.data).toEqual({
                 categoryId: 10,
                 category_title: "Cobrança",
                 questionId: 1,
                 question_title: "Cobrança indevida de serviço não contratado",
             })
-            expect(byType.ANSWER_SENT.generated_by_ai).toBe(true)
-            expect(byType.RESOLVED_ANSWERED.data).toEqual({ resolved: false })
-            expect(byType.RESOLVED_ANSWERED.generated_by_ai).toBe(false)
-            expect(byType.STARTED.data).toEqual({})
+            expect(byType.ANSWER_SENT?.generated_by_ai).toBe(true)
+            expect(byType.RESOLVED_ANSWERED?.data).toEqual({ resolved: false })
+            expect(byType.RESOLVED_ANSWERED?.generated_by_ai).toBe(false)
+            expect(byType.STARTED?.data).toEqual({})
         })
 
         it("detecta quando a lista de documentos enviada difere da configuração atual", async () => {
