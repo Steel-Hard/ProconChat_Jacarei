@@ -202,6 +202,18 @@ describe("appointment.routes (HTTP)", () => {
             expect(res.body.data.timeline).toBeInstanceOf(Array)
         })
 
+        it("devolve o protocolo em maiúsculas no detalhe e na lista", async () => {
+            const detailRes = await request(app)
+                .get("/api/v1/appointments/1")
+                .set("Cookie", accessCookieFor(1))
+            const listRes = await request(app)
+                .get("/api/v1/appointments?search=a1b2c3d4")
+                .set("Cookie", accessCookieFor(1))
+
+            expect(detailRes.body.data.protocol).toBe("A1B2C3D4")
+            expect(listRes.body.data.items[0].protocol).toBe("A1B2C3D4")
+        })
+
         it("retorna 404 para ID inexistente", async () => {
             const res = await request(app)
                 .get("/api/v1/appointments/9999")

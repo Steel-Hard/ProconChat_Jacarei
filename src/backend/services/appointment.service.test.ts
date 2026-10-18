@@ -124,7 +124,7 @@ describe("appointment.service", () => {
         it("retorna detalhes completos com eventos e timeline da sessão com rótulos amigáveis", async () => {
             const detail = await service.getAppointmentDetail(1)
             expect(detail.id).toBe("1")
-            expect(detail.protocol).toBe("a1b2c3d4")
+            expect(detail.protocol).toBe("A1B2C3D4")
             expect(detail.name).toBe("Maria Silva")
             expect(detail.category_name).toBe("Cobrança")
             expect(detail.documents_sent).toHaveProperty("group")

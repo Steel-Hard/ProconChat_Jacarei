@@ -104,7 +104,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                 SELECT
                     a.id,
                     a.appointment_code,
-                    SUBSTRING(a.appointment_code::text, 1, 8) as protocol,
+                    UPPER(SUBSTRING(a.appointment_code::text, 1, 8)) as protocol,
                     a.session_id,
                     a.status,
                     a.name,
@@ -405,7 +405,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                 SELECT
                     a.id,
                     a.appointment_code,
-                    SUBSTRING(a.appointment_code::text, 1, 8) as protocol,
+                    UPPER(SUBSTRING(a.appointment_code::text, 1, 8)) as protocol,
                     a.name,
                     a.cpf_masked,
                     c.title as category_name,

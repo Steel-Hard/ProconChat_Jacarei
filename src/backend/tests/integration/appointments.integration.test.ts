@@ -379,6 +379,27 @@ describe("Agendamentos com Postgres (integração)", () => {
         expect(labels).not.toContain("Categoria selecionada: Cat Int")
     })
 
+    it("o protocolo vem em maiúsculas na lista e no detalhe, igual ao que o bot envia", async () => {
+        const apptId = await createAppointment({ name: "Cidadão Protocolo Maiúsculo", cpf: "10120230344" })
+        const codeRes = await getPool().query<{ appointment_code: string }>(
+            "SELECT appointment_code::text AS appointment_code FROM Appointments WHERE id = $1",
+            [apptId],
+        )
+        const botProtocol = codeRes.rows[0].appointment_code.slice(0, 8).toUpperCase()
+
+        const detailRes = await request(app)
+            .get(`/api/v1/appointments/${apptId}`)
+            .set("Cookie", adminCookie)
+        const listRes = await request(app)
+            .get(`/api/v1/appointments?search=${botProtocol}`)
+            .set("Cookie", adminCookie)
+
+        expect(detailRes.body.data.protocol).toMatch(/^[0-9A-F]{8}$/)
+        expect(detailRes.body.data.protocol).toBe(botProtocol)
+        const listed = listRes.body.data.items.find((item: { id: string }) => item.id === String(apptId))
+        expect(listed.protocol).toBe(botProtocol)
+    })
+
     it("retorna 400 para id não numérico ou acima do limite de bigint", async () => {
         const resText = await request(app)
             .get("/api/v1/appointments/abc")

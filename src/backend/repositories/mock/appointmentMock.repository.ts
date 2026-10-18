@@ -498,7 +498,7 @@ export class MockAppointmentRepository implements AppointmentRepository {
         return {
             id: appt.id.toString(),
             appointment_code: appt.appointment_code,
-            protocol: appt.appointment_code.slice(0, 8),
+            protocol: appt.appointment_code.slice(0, 8).toUpperCase(),
             session_id: appt.session_id.toString(),
             status: appt.status,
             name: appt.name,
@@ -703,7 +703,7 @@ export class MockAppointmentRepository implements AppointmentRepository {
 
         const items: AppointmentListItem[] = paged.map((a) => ({
             id: a.id.toString(),
-            protocol: a.appointment_code.slice(0, 8),
+            protocol: a.appointment_code.slice(0, 8).toUpperCase(),
             appointment_code: a.appointment_code,
             name: a.name,
             cpf_masked: a.cpf_masked,
