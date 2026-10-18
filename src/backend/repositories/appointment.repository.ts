@@ -1,6 +1,7 @@
 import { Pool, PoolClient } from "pg"
 import getPool from "../db/connection"
 import NotFoundError from "../errors/NotFoundError"
+import { isValidAppointmentId } from "../schemas/appointment.schema"
 import { decideTransition } from "../services/appointmentTransitions"
 import {
     AppointmentActionType,
@@ -20,7 +21,6 @@ import {
 } from "../utils/date.utils"
 import { AppointmentRepository } from "./appointment.repository.interface"
 
-const MAX_BIGINT = 9223372036854775807n
 const CPF_SEARCH_PATTERN = /^[\d.\-\s]+$/
 
 function periodCondition(
@@ -98,6 +98,33 @@ async function lockAndDecide(
 }
 
 export function createAppointmentRepository(pool: Pool = getPool()): AppointmentRepository {
+    async function getCurrentDocumentsConfig(
+        byRepresentative: boolean,
+        questionId: number,
+    ): Promise<{ group: string[]; question: string[] }> {
+        const groupEnum = byRepresentative ? "REPRESENTATIVE" : "HOLDER"
+        const groupResult = await pool.query<{ description: string }>(
+            `SELECT description
+             FROM AttendanceDocuments
+             WHERE attendee_group = $1
+             ORDER BY position ASC, id ASC`,
+            [groupEnum],
+        )
+
+        const questionResult = await pool.query<{ description: string }>(
+            `SELECT description
+             FROM RequiredDocuments
+             WHERE question_id = $1
+             ORDER BY position ASC, id ASC`,
+            [questionId],
+        )
+
+        return {
+            group: groupResult.rows.map((r) => r.description),
+            question: questionResult.rows.map((r) => r.description),
+        }
+    }
+
     return {
         async countPending(): Promise<number> {
             const result = await pool.query<{ count: string }>(
@@ -106,45 +133,11 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             return Number(result.rows[0]?.count ?? 0)
         },
 
-        async getCurrentDocumentsConfig(
-            byRepresentative: boolean,
-            questionId: number,
-        ): Promise<{ group: string[]; question: string[] }> {
-            const groupEnum = byRepresentative ? "REPRESENTATIVE" : "HOLDER"
-            const groupResult = await pool.query<{ description: string }>(
-                `SELECT description
-                 FROM AttendanceDocuments
-                 WHERE attendee_group = $1
-                 ORDER BY position ASC, id ASC`,
-                [groupEnum],
-            )
-
-            const questionResult = await pool.query<{ description: string }>(
-                `SELECT description
-                 FROM RequiredDocuments
-                 WHERE question_id = $1
-                 ORDER BY position ASC, id ASC`,
-                [questionId],
-            )
-
-            return {
-                group: groupResult.rows.map((r) => r.description),
-                question: questionResult.rows.map((r) => r.description),
-            }
-        },
+        getCurrentDocumentsConfig,
 
         async findById(idOrCode: number | string): Promise<AppointmentDetailRecord | null> {
             const idStr = String(idOrCode).trim()
-            if (!/^\d+$/.test(idStr)) {
-                return null
-            }
-
-            try {
-                const n = BigInt(idStr)
-                if (n <= 0n || n > MAX_BIGINT) {
-                    return null
-                }
-            } catch {
+            if (!isValidAppointmentId(idStr)) {
                 return null
             }
 
@@ -183,7 +176,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                 return null
             }
 
-            const currentDocs = await this.getCurrentDocumentsConfig(
+            const currentDocs = await getCurrentDocumentsConfig(
                 row.by_representative,
                 Number(row.question_id),
             )

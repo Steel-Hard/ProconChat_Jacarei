@@ -2,6 +2,18 @@ import { z } from "zod"
 
 const MAX_BIGINT = 9223372036854775807n
 
+export function isValidAppointmentId(val: string): boolean {
+    if (!/^\d+$/.test(val)) {
+        return false
+    }
+    try {
+        const n = BigInt(val)
+        return n > 0n && n <= MAX_BIGINT
+    } catch {
+        return false
+    }
+}
+
 export const listAppointmentsQuerySchema = z.object({
     search: z
         .string()
@@ -50,20 +62,7 @@ export const appointmentIdParamSchema = z.object({
     id: z
         .string()
         .trim()
-        .refine(
-            (val: string) => {
-                if (!/^\d+$/.test(val)) {
-                    return false
-                }
-                try {
-                    const n = BigInt(val)
-                    return n > 0n && n <= MAX_BIGINT
-                } catch {
-                    return false
-                }
-            },
-            { message: "ID do agendamento inválido" },
-        ),
+        .refine(isValidAppointmentId, { message: "ID do agendamento inválido" }),
 })
 
 export type AppointmentIdParam = z.infer<typeof appointmentIdParamSchema>
