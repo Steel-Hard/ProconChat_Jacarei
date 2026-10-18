@@ -197,6 +197,10 @@ describe("appointment.service", () => {
             await expect(service.markAttended(1, 42)).rejects.toThrow(
                 "Disponível a partir do dia do atendimento",
             )
+            await expect(service.markAttended(1, 42)).rejects.toMatchObject({
+                statusCode: 409,
+                code: "ATTENDANCE_NOT_YET_AVAILABLE",
+            })
         })
 
         it("recusa se agendamento já foi atendido, cancelado ou não compareceu", async () => {
@@ -238,6 +242,10 @@ describe("appointment.service", () => {
             await expect(service.markNoShow(8, 42, now)).rejects.toThrow(
                 "Disponível apenas após o horário do agendamento",
             )
+            await expect(service.markNoShow(8, 42, now)).rejects.toMatchObject({
+                statusCode: 409,
+                code: "NO_SHOW_NOT_YET_AVAILABLE",
+            })
         })
     })
 })

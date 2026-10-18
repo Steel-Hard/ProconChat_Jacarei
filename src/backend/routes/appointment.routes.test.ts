@@ -246,23 +246,25 @@ describe("appointment.routes (HTTP)", () => {
             expect(res.body.data.status).toBe("ATTENDED")
         })
 
-        it("retorna 400 ao tentar marcar attended para agendamento futuro", async () => {
+        it("retorna 409 com ATTENDANCE_NOT_YET_AVAILABLE ao tentar marcar attended para agendamento futuro", async () => {
             const res = await request(app)
                 .patch("/api/v1/appointments/1/status")
                 .set("Cookie", accessCookieFor(10))
                 .send({ action: "attended" })
 
-            expect(res.status).toBe(400)
+            expect(res.status).toBe(409)
+            expect(res.body.error.code).toBe("ATTENDANCE_NOT_YET_AVAILABLE")
             expect(res.body.error.message).toBe("Disponível a partir do dia do atendimento")
         })
 
-        it("retorna 400 ao tentar marcar no_show para agendamento futuro", async () => {
+        it("retorna 409 com NO_SHOW_NOT_YET_AVAILABLE ao tentar marcar no_show para agendamento futuro", async () => {
             const res = await request(app)
                 .patch("/api/v1/appointments/8/status")
                 .set("Cookie", accessCookieFor(10))
                 .send({ action: "no_show" })
 
-            expect(res.status).toBe(400)
+            expect(res.status).toBe(409)
+            expect(res.body.error.code).toBe("NO_SHOW_NOT_YET_AVAILABLE")
             expect(res.body.error.message).toBe("Disponível apenas após o horário do agendamento")
         })
 

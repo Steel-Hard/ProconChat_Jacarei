@@ -1,5 +1,4 @@
 import AppError from "../errors/AppError"
-import BadRequestError from "../errors/BadRequestError"
 import ConflictError from "../errors/ConflictError"
 import type { AppointmentActionType, AppointmentStatus } from "../types/appointment.types"
 import { isDateOnOrBeforeToday, isDatetimePast } from "../utils/date.utils"
@@ -77,7 +76,12 @@ function decideAttended(target: TransitionTarget, now: Date): TransitionDecision
         return statusDecision
     }
     if (!isDateOnOrBeforeToday(target.appointmentDatetime, now)) {
-        return refuse(new BadRequestError("Disponível a partir do dia do atendimento"))
+        return refuse(
+            new ConflictError(
+                "Disponível a partir do dia do atendimento",
+                "ATTENDANCE_NOT_YET_AVAILABLE",
+            ),
+        )
     }
     return ALLOWED
 }
@@ -91,7 +95,12 @@ function decideNoShow(target: TransitionTarget, now: Date): TransitionDecision {
         return statusDecision
     }
     if (!isDatetimePast(target.appointmentDatetime, now)) {
-        return refuse(new BadRequestError("Disponível apenas após o horário do agendamento"))
+        return refuse(
+            new ConflictError(
+                "Disponível apenas após o horário do agendamento",
+                "NO_SHOW_NOT_YET_AVAILABLE",
+            ),
+        )
     }
     return ALLOWED
 }
