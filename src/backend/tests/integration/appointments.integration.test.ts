@@ -211,6 +211,69 @@ describe("Agendamentos com Postgres (integração)", () => {
         ])
     })
 
+    it("ordena period=all sem status com os próximos primeiro e os passados do mais recente ao mais antigo", async () => {
+        const idFarFuture = await createAppointment({
+            name: "Ordem +2d",
+            status: "CONFIRMED",
+            appointmentDatetime: new Date(Date.now() + 2 * 86400000),
+            cpf: "11122233300",
+        })
+        const idNearFuture = await createAppointment({
+            name: "Ordem +1d",
+            status: "CONFIRMED",
+            appointmentDatetime: new Date(Date.now() + 1 * 86400000),
+            cpf: "11122233311",
+        })
+        const idRecentPast = await createAppointment({
+            name: "Ordem -1d",
+            status: "CONFIRMED",
+            appointmentDatetime: new Date(Date.now() - 1 * 86400000),
+            cpf: "11122233322",
+        })
+        const idOldPast = await createAppointment({
+            name: "Ordem -2d",
+            status: "CONFIRMED",
+            appointmentDatetime: new Date(Date.now() - 2 * 86400000),
+            cpf: "11122233333",
+        })
+
+        const order = await listOrderAcrossPages("period=all", [
+            idFarFuture,
+            idNearFuture,
+            idRecentPast,
+            idOldPast,
+        ])
+
+        expect(order).toEqual([
+            String(idNearFuture),
+            String(idFarFuture),
+            String(idRecentPast),
+            String(idOldPast),
+        ])
+    })
+
+    it("ordena por responsável com os sem responsável primeiro no crescente e por último no decrescente", async () => {
+        const idUnassigned = await createAppointment({
+            name: "Sem responsável",
+            status: "PENDING",
+            appointmentDatetime: new Date(Date.now() + 86400000),
+            cpf: "22233344400",
+        })
+        const idAssigned = await createAppointment({
+            name: "Com responsável",
+            status: "CONFIRMED",
+            appointmentDatetime: new Date(Date.now() + 86400000),
+            cpf: "22233344411",
+        })
+        const ids = [idUnassigned, idAssigned]
+
+        const ascending = await listOrderAcrossPages("period=all&sortBy=responsible&sortOrder=asc", ids)
+        const descending = await listOrderAcrossPages("period=all&sortBy=responsible&sortOrder=desc", ids)
+
+        expect(ascending).toEqual([String(idUnassigned), String(idAssigned)])
+        expect(descending).toEqual([String(idAssigned), String(idUnassigned)])
+    })
+
     it("concorrência entre Atendido e Não compareceu grava apenas um evento terminal e devolve 409 para o segundo", async () => {
         const todayPastTime = new Date(Date.now() - 3600000)
         const apptId = await createAppointment({
