@@ -10,8 +10,8 @@ Backend do chatbot de orientação ao consumidor via WhatsApp (PROCON Jacareí).
 - `controllers/` — cada controller é uma classe com as dependências injetadas pelo constructor (com valor padrão apontando para a instância já montada do service) e métodos `(req, res, next)` (ex.: `auth.controller.ts`, `whatsappSession.controller.ts`; o `health.controller.ts` não recebe dependências). Recebe a requisição HTTP, valida entrada básica, chama o service e formata a resposta (envelope `{ data }` ou erro via `next(error)`). Não acessa o banco diretamente.
 - `services/` — contém a lógica de negócio de cada recurso, sem depender do objeto `Request`/`Response` do Express. O service é criado por fábrica (`createXService({ ... })`) e exporta uma instância já montada (ex.: `createAuthService` e `authService` em `auth.service.ts`). O `HealthService` em classe é a exceção histórica.
 - `repositories/` — contratos e adaptadores de persistência; concentra o SQL e isola os services do PostgreSQL.
-- `errors/` — hierarquia de erros da aplicação: `AppError` (abstrata) e subclasses por status HTTP (`BadRequestError`, `UnauthorizedError`, `ForbiddenError`, `NotFoundError`, `TooManyRequestsError`, `InvalidOriginError`, `InvalidCurrentPasswordError`, `InternalServerError`). Lançar/`next()` uma dessas classes é o jeito padrão de sinalizar um erro esperado.
-- `middleware/` — middlewares do Express: `requestLogger.middleware.ts` (log estruturado por requisição, sem corpo nem cookies), `errorHandler.middleware.ts` (converte qualquer erro numa resposta JSON padronizada; corpo JSON malformado vira `400 BAD_REQUEST`), `trustedOrigin.middleware.ts` (proteção CSRF) e `auth.middleware.ts` (`requireAuth` e `requirePermission`).
+- `errors/` — hierarquia de erros da aplicação: `AppError` (abstrata) e subclasses por status HTTP (`BadRequestError`, `UnauthorizedError`, `ForbiddenError`, `NotFoundError`, `ConflictError`, `TooManyRequestsError`, `InvalidOriginError`, `InvalidCurrentPasswordError`, `WhatsAppConnectionError`, `InternalServerError`), mais os quatro erros da reserva do bot (`SlotFullError`, `DuplicateAppointmentError`, `BookingFailedError`, `ScheduleNotConfiguredError`). Cada arquivo exporta a classe só como `default`. Lançar/`next()` uma dessas classes é o jeito padrão de sinalizar um erro esperado.
+- `middleware/` — middlewares do Express: `requestLogger.middleware.ts` (log estruturado por requisição, sem corpo nem cookies), `errorHandler.middleware.ts` (converte qualquer erro numa resposta JSON padronizada; corpo JSON malformado vira `400 BAD_REQUEST`), `trustedOrigin.middleware.ts` (proteção CSRF), `auth.middleware.ts` (`requireAuth` e `requirePermission`) e `validateRequest.middleware.ts` (`validateRequest({ query, params, body })`, que valida com zod, troca `req.query`/`req.params`/`req.body` pelo valor validado e devolve `400 BAD_REQUEST` com `Dados inválidos: ...`).
 - `types/` — DTOs e formatos de resposta compartilhados (`successResponse.types.ts`, `errorResponse.types.ts`, tipos específicos de cada recurso).
 - `utils/` — utilitários que não pertencem a nenhum recurso específico, ex.: `validateEnv.ts` (validação de variáveis de ambiente obrigatórias na inicialização).
 - `db/` — `connection.ts`, conexão genérica ao PostgreSQL (via `pg`). Ainda não é usada por nenhuma rota — fica pronta para o primeiro recurso real que precisar de acesso ao banco.
@@ -21,9 +21,18 @@ Backend do chatbot de orientação ao consumidor via WhatsApp (PROCON Jacareí).
 - Service em fábrica: `services/<recurso>.service.ts` com `createXService({ ... })` e a instância padrão exportada.
 - Controller em classe, com as dependências injetadas pelo constructor e valor padrão apontando para a instância do service, como `controllers/auth.controller.ts` ou `controllers/whatsappSession.controller.ts`. O `controllers/health.controller.ts` serve só de modelo de formato (classe, campo `private`, `export default` no fim) e não injeta nada. Variáveis de ambiente são lidas na requisição, nunca no constructor.
 - Rotas em classe, como `routes/health.routes.ts`, exportando o `Router` de `getRouter()`.
+- Entrada validada na rota com os schemas zod de `schemas/<recurso>.schema.ts` e `validateRequest` (`middleware/validateRequest.middleware.ts`), como `routes/appointment.routes.ts`. O controller lê `req.query`/`req.params`/`req.body` já validados, sem validar de novo.
 - Montagem em `app.ts`, sob o prefixo `/api/v1` (exceto casos como `/health`, que ficam fora do versionamento por serem consumidos por infraestrutura).
 - Teste unitário do controller em `controllers/<recurso>.controller.test.ts`: instancia a classe com dublês, monta `req`/`res`/`next` falsos e chama os métodos direto, sem `supertest` (ex.: `controllers/auth.controller.test.ts`).
 - Teste de montagem em `routes/<recurso>.routes.test.ts` com `supertest` contra o `app` exportado por `app.ts`, principalmente para caminho, middlewares e ordem, CORS, CSRF, cabeçalhos e envelope de erro (ex.: `routes/health.routes.test.ts`). Temas maiores ficam em arquivos irmãos `routes/<recurso>.<tema>.test.ts` (ex.: `auth.endpoints`, `auth.loginLimiter`, `auth.sessionLifetime`, `auth.frontendOrigin`). O dublê de uma dependência num teste de rota entra por `vi.mock` ou por injeção no constructor, não por `vi.spyOn` na exportação do módulo, porque o controller guarda o service padrão quando é construído.
+
+## Organização dos testes
+
+- **Unidade** (`npm test`, `vitest.config.mts`): arquivos `*.test.ts` ao lado do código testado. Um assunto grande vira arquivos irmãos `<recurso>.<tema>.test.ts`, como `routes/auth.*.test.ts` e `services/conversationFlow.service.test.ts` (dúvida), `conversationFlow.scheduling.test.ts`, `conversationFlow.fullFlow.test.ts` e `conversationFlow.paused.test.ts`. O contrato da API de agendamentos tem o próprio arquivo, `routes/appointment.contract.test.ts`, que fixa as chaves exatas de cada resposta.
+- **Dublês de repositório** em `repositories/mock/` (`*Mock.repository.ts`), como `InMemorySessionRepository` (`sessionMock.repository.ts`, com a mesma regra de página do repositório real e teste próprio) e `MockAppointmentRepository`.
+- **Fixtures e harness dos services** em `services/mock/`: `conversationFlow.fixtures.ts` e `schedule.fixtures.ts` (dados e builders, sem `vitest`) e `conversationFlowHarness.ts` (o fluxo da conversa montado com `vi.fn`). Essas pastas entram no `dist`, porque o build só exclui `*.test.ts`; código de produção nunca importa delas.
+- **Integração** (`npm run test:integration`, `vitest.integration.config.mts`, em série): `tests/integration/*.test.ts` contra Postgres real, com os apoios em `tests/integration/helpers/` (`scheduleDb.ts`, `appointmentsDb.ts` e `phone.ts`).
+- **Tipos dos testes:** o build não compila os testes. `npm run typecheck:test` (`tsconfig.test.json`) checa os tipos de todo `.ts`, inclusive os testes, e roda no CI.
 
 ## Variáveis de ambiente
 
@@ -38,7 +47,7 @@ Copie `.env.example` para `.env` e preencha:
 | `GATEWAY_INTERNAL_TOKEN` | Sim | Token esperado no header `X-Internal-Token` das chamadas do Gateway WhatsApp (`src/gateway/`) a `POST /api/v1/whatsapp/sessions`. |
 | `AUTH_TOKEN_SECRET` | Sim, com 32 ou mais caracteres | Segredo HS256 dos cookies de sessão do painel. O servidor encerra na inicialização sem ele ou com ele curto. Trocar derruba todas as sessões. |
 | `FRONTEND_ORIGIN` | Não (padrão `http://localhost:5173`) | Origem do painel (esquema, host e porta), usada no CORS e na proteção CSRF. Precisa ser uma URL `http` ou `https`, senão o servidor encerra na inicialização. É normalizada na leitura com `new URL(valor).origin`: barra no fim, caminho e maiúsculas no esquema ou no host são descartados. No Compose local é `http://localhost:8081`; em produção, `https://<SITE_ADDRESS>`. |
-| `ENCRYPTION_KEY` | Sim, exatamente 64 caracteres hexadecimais | Chave-mestra AES-256-GCM dos segredos guardados no banco (`utils/crypto.utils.ts`, formato `v1:<iv>:<tag>:<cifrado>`). Gere com `openssl rand -hex 32`. O servidor encerra na inicialização sem ela ou fora do formato, e o `seed` falha se precisar cifrar algo sem ela. Não tem valor padrão em nenhum Compose: sem ela no `.env`, o `docker compose` recusa subir. |
+| `ENCRYPTION_KEY` | Sim, exatamente 64 caracteres hexadecimais | Chave-mestra AES-256-GCM dos segredos guardados no banco (`utils/crypto.utils.ts`, formato `v1:<iv>:<tag>:<cifrado>`). Também cifra o telefone do agendamento (`Appointments.phone_encrypted`), gravado pela reserva do bot. Gere com `openssl rand -hex 32`. O servidor encerra na inicialização sem ela ou fora do formato, e o `seed` falha se precisar cifrar algo sem ela. Não tem valor padrão em nenhum Compose: sem ela no `.env`, o `docker compose` recusa subir. |
 | `PUBLIC_BASE_URL` | Não | URL pública do sistema (`http` ou `https`), usada para montar a URL do webhook mostrada na tela de WhatsApp (`<PUBLIC_BASE_URL>/webhooks/whatsapp`). Sem ela, a leitura devolve `webhookUrl: null`. Vazia conta como ausente. Em produção é `https://<SITE_ADDRESS>`; no desenvolvimento, a URL do túnel HTTPS (README do gateway). |
 | `GATEWAY_INTERNAL_URL` | Não | Endereço interno do gateway (`http` ou `https`), avisado depois que o Admin salva a configuração do WhatsApp para recarregar sem reiniciar. Sem ela, o aviso não é enviado e o gateway recarrega pelo TTL de 60 s. No Compose é `http://gateway:3001`. |
 | `WHATSAPP_GRAPH_API_VERSION` | Não (padrão `v26.0`) | Versão da Graph API da Meta no formato `v26.0`, usada no teste de conexão e repassada ao gateway pelo endpoint interno. Fora do formato, o servidor encerra na inicialização. |
@@ -56,6 +65,7 @@ npm run dev     # sobe o servidor em modo desenvolvimento (nodemon + ts-node)
 npm run build   # compila para dist/
 npm start       # roda a versão compilada (dist/index.js)
 npm test        # roda a suíte de testes (Vitest + Supertest)
+npm run typecheck:test  # checa os tipos de todo o código, inclusive dos testes
 ```
 
 Rode `npm run test:integration` num **banco separado**, só com as migrations aplicadas (sem o
@@ -71,12 +81,14 @@ npm run db:migrate
 npm run test:integration
 ```
 
-Na raiz do repositório, o teste de integração usa o PostgreSQL do Compose e remove os próprios
-dados ao terminar:
-
-```bash
-docker compose --profile test run --rm --build backend-tests
-```
+Os testes de integração da agenda (`schedule.integration.test.ts`) e da API de agendamentos
+(`appointments.integration.test.ts`) não dependem do conteúdo do banco e também passam num banco com
+o seed. O da agenda guarda `ScheduleSettings`, `ScheduleRanges` e `BlockedDates`, troca pela
+configuração do teste e restaura as três tabelas com os mesmos `id`s no fim (`snapshotScheduleConfig`
+e `restoreScheduleConfig` em `tests/integration/helpers/scheduleDb.ts`). Os dois apagam o que
+criam (categorias, perguntas, sessões com os seus eventos, agendamentos e usuários de teste); o da API
+usa o Admin que já existe ou cria um "Admin Teste" e o apaga no fim. Se a execução for interrompida, a configuração da agenda
+pode ficar trocada: rode num banco descartável, como acima.
 
 `GET /health` responde `200` com `{ "data": { "status": "ok" } }` e não depende do banco de dados — serve como healthcheck de infraestrutura (Docker, load balancer) e como exemplo do padrão de código para copiar em novos recursos.
 
@@ -343,22 +355,361 @@ dois).
 
 ## Agendamentos (/api/v1/appointments)
 
-Rotas de consulta e ações sobre agendamentos presenciais no painel administrativo, protegidas por autenticação via cookie (`requireAuth`) e permissões (`requirePermission`).
+Rotas de consulta e ações sobre agendamentos presenciais no painel (telas #85 e #86). Todas exigem
+sessão (`requireAuth`) e permissão (`requirePermission`). O `PATCH` também passa pela proteção CSRF
+(`403 INVALID_ORIGIN` quando a origem não é o `FRONTEND_ORIGIN`). O controller e as rotas seguem o
+padrão em classe (`AppointmentController`, `AppointmentRoutes.getRouter()`), e a entrada é validada
+por `validateRequest` (`middleware/validateRequest.middleware.ts`) com os schemas zod de
+`schemas/appointment.schema.ts`. A regra de transição de status fica num helper puro,
+`services/appointmentTransitions.ts` (`decideTransition` e `availableActions`), usado pelo
+repositório dentro da transação, pelo mock e pelo detalhe.
 
 ### Rotas
 
-| Rota | Permissão | Descrição / Parâmetros | Sucesso | Erros |
+| Rota | Permissão | O que faz | Sucesso | Erros |
 | --- | --- | --- | --- | --- |
-| `GET /api/v1/appointments/pending-count` | `appointments.view` | Retorna a quantidade de agendamentos com status `PENDING` | `200 { data: { count: number } }` | `401 UNAUTHORIZED`, `403 FORBIDDEN` |
-| `GET /api/v1/appointments` | `appointments.view` | Lista com filtros, busca, ordenação e paginação (20 por padrão). Query: `search` (mín. 2 chars), `status` (chips: `all`, `PENDING`, `CONFIRMED`, `ATTENDED`, `NO_SHOW`, `CANCELED`, `waiting_record`), `period` (`all`, `today`, `this_week`, `upcoming`, `past`), `responsible` (`all`, `unassigned`, `me`, ID numérico), `sortBy`, `sortOrder`, `page`, `limit` | `200 { data: { items: AppointmentListItem[], total, page, limit, totalPages, chipCounts } }` | `400 BAD_REQUEST`, `401 UNAUTHORIZED`, `403 FORBIDDEN` |
-| `GET /api/v1/appointments/:id` | `appointments.view` | Detalhe completo de um agendamento com histórico de eventos e linha do tempo de origem | `200 { data: AppointmentDetail }` | `400 BAD_REQUEST` (ID inválido/fora do limite bigint), `401`, `403`, `404 NOT_FOUND` |
-| `PATCH /api/v1/appointments/:id/status` | `appointments.manage` | Executa ação de status: `{ action: "claim" | "attended" | "no_show" }` | `200 { data: AppointmentDetail }` | `400 BAD_REQUEST`, `401`, `403`, `404 NOT_FOUND`, `409 CONFLICT` (códigos: `APPOINTMENT_ALREADY_CLAIMED`, `ALREADY_ATTENDED`, `ALREADY_NO_SHOW`, `APPOINTMENT_CANCELED`, `INVALID_STATUS_TRANSITION`) |
+| `GET /api/v1/appointments/pending-count` | `appointments.view` | Quantidade de agendamentos `PENDING` (badge do menu). Como `chk_appointments_pending_unassigned` impede pendente com responsável, é o mesmo que "pendentes sem responsável" | `200 { data: { count } }` | `401 UNAUTHORIZED`, `403 FORBIDDEN` |
+| `GET /api/v1/appointments` | `appointments.view` | Lista com busca, filtros, ordenação, paginação e contagem dos chips (query abaixo) | `200 { data: { items, total, page, limit, totalPages, chipCounts } }` | `400 BAD_REQUEST`, `401`, `403` |
+| `GET /api/v1/appointments/:id` | `appointments.view` | Detalhe com histórico (`events`), linha do tempo da conversa de origem (`timeline`) e ações disponíveis (`available_actions`) | `200 { data: AppointmentDetail }` | `400 BAD_REQUEST` (id que não é inteiro positivo ou passa do limite do `bigint`), `401`, `403`, `404 NOT_FOUND` |
+| `PATCH /api/v1/appointments/:id/status` | `appointments.manage` | Executa uma ação. Corpo: `{ "action": "claim" \| "attended" \| "no_show" }` | `200 { data: AppointmentDetail }`, o mesmo objeto que um `GET /:id` feito em seguida | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN`, `403 INVALID_ORIGIN`, `404 NOT_FOUND`, `409` (codes na tabela de ações) |
 
-### Regras de Negócio e Concorrência
+Erros sempre no envelope `{ "error": { "code": "...", "message": "..." } }`. O painel traduz pelo
+`code`; a `message` é só para log e depuração. Exemplos reais:
 
-- **Busca por CPF:** Busca por CPF compara o HMAC SHA-256 com `CPF_HASH_SECRET`. CPF formatado (`111.444.777-35`) tem pontuações removidas para busca precisa sem expor dados.
-- **Precedência de Ordenação:** O chip de status tem precedência sobre o período selecionado: com `period=all`, Cancelados, Atendidos e Não compareceu saem do mais recente para o mais antigo; Pendentes, Confirmados e Aguardando registro saem do mais próximo para o mais distante.
-- **Concorrência atômica:** Ações de status usam `SELECT ... FOR UPDATE` para travar o registro do agendamento. Se duas ações simultâneas ocorrerem (ex.: Atendido e Não compareceu, ou duas ações de Assumir simultâneas), a segunda requisição identifica a transição inválida e retorna `409 CONFLICT` (`AppError`), garantindo que apenas um evento terminal seja registrado no banco.
+```json
+{ "error": { "code": "BAD_REQUEST", "message": "Dados inválidos: id: ID do agendamento inválido" } }
+{ "error": { "code": "NOT_FOUND", "message": "Agendamento não encontrado" } }
+{ "error": { "code": "APPOINTMENT_ALREADY_CLAIMED", "message": "Apenas agendamentos pendentes podem ser assumidos" } }
+```
+
+### Query da lista
+
+| Parâmetro | Valores | Padrão |
+| --- | --- | --- |
+| `search` | texto com 2 ou mais caracteres depois do `trim` (vazio conta como ausente) | — |
+| `status` | `all`, `PENDING`, `CONFIRMED`, `ATTENDED`, `NO_SHOW`, `CANCELED`, `waiting_record` | `all` |
+| `period` | `all`, `today`, `this_week`, `upcoming`, `past` | `upcoming` |
+| `responsible` | `all`, `unassigned`, `me` (a conta logada) ou o id numérico de um funcionário | `all` |
+| `sortBy` | `name`, `appointment_datetime`, `responsible`, `status` | ordem padrão do filtro (abaixo) |
+| `sortOrder` | `asc`, `desc` | `asc` quando há `sortBy` |
+| `page` | inteiro ≥ 1 | `1` |
+| `limit` | inteiro de 1 a 100 | `20` |
+
+Valor fora da lista devolve `400 BAD_REQUEST` com `Dados inválidos: <campo>: <motivo>`.
+
+- **Busca.** Com `search`, `status`, `period` e `responsible` são ignorados e `total` conta só o
+  resultado da busca (a tela abre o agendamento direto quando `total === 1`). O termo é tratado como
+  CPF só quando tem apenas dígitos, pontos, hífens e espaços (`/^[\d.\-\s]+$/`) e soma 11 dígitos:
+  aí a busca compara o HMAC-SHA256 do CPF (`CPF_HASH_SECRET`), nunca o CPF em claro. Qualquer outro
+  termo procura no nome (sem diferenciar maiúsculas e acentos, `unaccent`) e no início do
+  `appointment_code` (`ILIKE`, então o protocolo em maiúsculas também acha). Um código com letras e
+  11 dígitos não entra no modo CPF.
+- **Período e fuso.** Datas saem em ISO 8601 UTC. "Hoje" e "Esta semana" são calculados no fuso
+  `America/Sao_Paulo` (`utils/date.utils.ts`, por `Intl`, sem offset fixo); `upcoming` é a partir
+  do início de hoje e `past` é antes do início de hoje. O painel formata as datas em
+  `America/Sao_Paulo`.
+- **Ordem padrão.** Com `sortBy`, desempata por data e id. Sem `sortBy`: o chip de status tem
+  precedência sobre o período. Cancelados, Atendidos e Não compareceu saem do mais recente para o mais
+  antigo; Pendentes, Confirmados e Aguardando registro, do mais próximo para o mais distante; `today`,
+  `this_week` e `upcoming` em ordem crescente; `past` em ordem decrescente; `all` e a busca mostram
+  primeiro os futuros (crescente) e depois os passados (decrescente). Em `sortBy=responsible`, "Sem
+  responsável" vem primeiro no `asc`.
+- **Chips (`chipCounts`).** Contam respeitando o `period` e o `responsible` da requisição;
+  `waiting_record` (confirmados com horário já passado) respeita só o `responsible`. A busca e o
+  `status` não mudam os chips.
+- **"Um funcionário específico".** A rota aceita `responsible=<id>`, mas ainda não existe rota que
+  liste funcionários: depende da #62 (contas e permissões). Até lá, a #85 oferece só Todos, Sem
+  responsável e Atribuídos a mim.
+
+Item da lista (`GET /api/v1/appointments`, resposta real do smoke, dados fictícios):
+
+```json
+{
+    "data": {
+        "items": [
+            {
+                "id": "1",
+                "protocol": "F10464F0",
+                "appointment_code": "f10464f0-81f5-400c-b45b-e841ab409255",
+                "name": "Maria Fictícia",
+                "cpf_masked": "***.982.247-**",
+                "category_name": "Cobrança/Desconto Indevido",
+                "question_title": "Prescrição de dívida",
+                "appointment_datetime": "2026-10-19T11:00:00.000Z",
+                "by_representative": false,
+                "assigned_user_id": "1",
+                "assigned_user_name": "Admin",
+                "status": "CONFIRMED",
+                "off_grid": false,
+                "waiting_record": false
+            }
+        ],
+        "total": 1,
+        "page": 1,
+        "limit": 20,
+        "totalPages": 1,
+        "chipCounts": {
+            "all": 1,
+            "pending": 0,
+            "confirmed": 1,
+            "attended": 0,
+            "no_show": 0,
+            "canceled": 0,
+            "waiting_record": 0
+        }
+    }
+}
+```
+
+`protocol` são os 8 primeiros caracteres do `appointment_code` em maiúsculas, iguais aos que o bot
+envia ao cidadão. `off_grid` marca o agendamento fora da grade atual, e `waiting_record`, o confirmado
+cujo horário já passou.
+
+### Detalhe e resposta do `PATCH`
+
+Resposta real de `PATCH /api/v1/appointments/1/status` com `{ "action": "claim" }`, igual ao `GET`
+feito em seguida (só `available_actions` é recalculado a cada resposta):
+
+```json
+{
+    "data": {
+        "id": "1",
+        "appointment_code": "f10464f0-81f5-400c-b45b-e841ab409255",
+        "protocol": "F10464F0",
+        "session_id": "1",
+        "status": "CONFIRMED",
+        "name": "Maria Fictícia",
+        "cpf_masked": "***.982.247-**",
+        "by_representative": false,
+        "reason": "NOT_RESOLVED",
+        "appointment_datetime": "2026-10-19T11:00:00.000Z",
+        "rescheduled_from": null,
+        "off_grid": false,
+        "request_datetime": "2026-10-18T13:46:05.141Z",
+        "assigned_user_id": "1",
+        "assigned_user_name": "Admin",
+        "category_id": "1",
+        "category_name": "Cobrança/Desconto Indevido",
+        "question_id": "5",
+        "question_title": "Prescrição de dívida",
+        "documents_sent": {
+            "group": [
+                "RG ou outro documento oficial com foto",
+                "CPF",
+                "Comprovante de endereço",
+                "Comprovante da reclamação (nota fiscal, contrato, fatura ou protocolo)"
+            ],
+            "question": []
+        },
+        "is_documents_config_different": false,
+        "events": [
+            {
+                "id": "2",
+                "type": "CLAIMED",
+                "actor_user_id": "1",
+                "actor_user_name": "Admin",
+                "data": {},
+                "created_at": "2026-10-18T13:46:05.537Z"
+            },
+            {
+                "id": "1",
+                "type": "CREATED",
+                "actor_user_id": null,
+                "actor_user_name": null,
+                "data": {},
+                "created_at": "2026-10-18T13:46:05.141Z"
+            }
+        ],
+        "timeline": [
+            {
+                "id": "1",
+                "type": "STARTED",
+                "created_at": "2026-10-18T13:46:04.464Z",
+                "generated_by_ai": false,
+                "data": {}
+            },
+            {
+                "id": "2",
+                "type": "CATEGORY_CHOSEN",
+                "created_at": "2026-10-18T13:46:04.611Z",
+                "generated_by_ai": false,
+                "data": {
+                    "categoryId": 1,
+                    "category_title": "Cobrança/Desconto Indevido"
+                }
+            },
+            {
+                "id": "3",
+                "type": "QUESTION_CHOSEN",
+                "created_at": "2026-10-18T13:46:04.648Z",
+                "generated_by_ai": false,
+                "data": {
+                    "categoryId": 1,
+                    "questionId": 5,
+                    "category_title": "Cobrança/Desconto Indevido",
+                    "question_title": "Prescrição de dívida"
+                }
+            },
+            {
+                "id": "4",
+                "type": "ANSWER_SENT",
+                "created_at": "2026-10-18T13:46:04.658Z",
+                "generated_by_ai": false,
+                "data": {
+                    "categoryId": 1,
+                    "questionId": 5,
+                    "llm": "NOT_CALLED",
+                    "category_title": "Cobrança/Desconto Indevido",
+                    "question_title": "Prescrição de dívida"
+                }
+            },
+            {
+                "id": "5",
+                "type": "RESOLVED_ANSWERED",
+                "created_at": "2026-10-18T13:46:04.717Z",
+                "generated_by_ai": false,
+                "data": {
+                    "resolved": false
+                }
+            },
+            {
+                "id": "6",
+                "type": "SCHEDULE_OFFERED",
+                "created_at": "2026-10-18T13:46:04.745Z",
+                "generated_by_ai": false,
+                "data": {
+                    "reason": "NOT_RESOLVED"
+                }
+            },
+            {
+                "id": "7",
+                "type": "ATTENDEE_CHOSEN",
+                "created_at": "2026-10-18T13:46:04.843Z",
+                "generated_by_ai": false,
+                "data": {
+                    "byRepresentative": false
+                }
+            },
+            {
+                "id": "8",
+                "type": "PHONE_NOTICE_SHOWN",
+                "created_at": "2026-10-18T13:46:05.141Z",
+                "generated_by_ai": false,
+                "data": {}
+            },
+            {
+                "id": "9",
+                "type": "APPOINTMENT_CREATED",
+                "created_at": "2026-10-18T13:46:05.141Z",
+                "generated_by_ai": false,
+                "data": {
+                    "appointmentId": 1
+                }
+            }
+        ],
+        "available_actions": {
+            "claim": {
+                "allowed": false,
+                "code": "APPOINTMENT_ALREADY_CLAIMED"
+            },
+            "attended": {
+                "allowed": false,
+                "code": "ATTENDANCE_NOT_YET_AVAILABLE"
+            },
+            "no_show": {
+                "allowed": false,
+                "code": "NO_SHOW_NOT_YET_AVAILABLE"
+            }
+        }
+    }
+}
+```
+
+- `events` é o histórico do agendamento (`AppointmentEvents`), do mais recente ao mais antigo, com
+  desempate por `id DESC` (o `CLAIMED` automático e o `ATTENDED`/`NO_SHOW` são gravados no mesmo
+  instante). `actor_user_id` nulo significa o cidadão ou o sistema. O `CLAIMED` automático tem
+  `data: { "auto_claimed": true }`.
+- `timeline` são os passos da conversa de origem (`listBySession`), em ordem cronológica. Não há texto
+  pronto: o painel monta o rótulo a partir de `type` e `data`. `data` tem só os campos do evento
+  (`categoryId`, `questionId`, `llm`, `resolved`, `reason`, `byRepresentative`, `step`, `from`, `to`,
+  `appointmentId`, conforme o tipo; os ids aqui são números) e, quando o evento cita categoria ou
+  pergunta, `category_title` e `question_title` resolvidos com o mesmo título de `category_name` e
+  `question_title` do detalhe. `generated_by_ai` é `true` só em `ANSWER_SENT` com `llm: "USED"` (o
+  painel mostra "Gerado com auxílio de IA"). O `id` do passo é a posição na lista. Se a leitura da
+  linha do tempo falhar, a resposta continua `200` com `timeline: []`, e o log registra só o id do
+  agendamento e o `code` do erro.
+- `available_actions` tem uma entrada por ação, `{ "allowed": boolean, "code": string | null }`. Com
+  `allowed: false`, `code` é o mesmo que o `PATCH` devolveria naquele instante (tabela abaixo). Não há
+  texto em português: o painel traduz o `code`.
+- Nenhuma resposta traz `cpf_hash`, `phone_encrypted` ou `phone_hash`.
+
+### Ações × status atual
+
+O repositório trava a linha com `SELECT ... FOR UPDATE` e decide com `decideTransition` dentro da
+transação. Todas as recusas são `409`:
+
+| Ação | `PENDING` | `CONFIRMED` | `ATTENDED` | `NO_SHOW` | `CANCELED` |
+| --- | --- | --- | --- | --- | --- |
+| `claim` | vira `CONFIRMED` com a conta logada como responsável (`CLAIMED`) | `409 APPOINTMENT_ALREADY_CLAIMED` | `409 ALREADY_ATTENDED` | `409 ALREADY_NO_SHOW` | `409 APPOINTMENT_CANCELED` |
+| `attended` | assume automaticamente (`CLAIMED` com `auto_claimed`) e vira `ATTENDED` | vira `ATTENDED` | `409 ALREADY_ATTENDED` | `409 ALREADY_NO_SHOW` | `409 APPOINTMENT_CANCELED` |
+| `no_show` | assume automaticamente e vira `NO_SHOW` | vira `NO_SHOW` | `409 ALREADY_ATTENDED` | `409 ALREADY_NO_SHOW` | `409 APPOINTMENT_CANCELED` |
+
+Regra de data, conferida depois do status: `attended` só a partir do dia do atendimento em
+`America/Sao_Paulo` (antes disso, `409 ATTENDANCE_NOT_YET_AVAILABLE`), e `no_show` só depois do
+horário marcado (antes disso, `409 NO_SHOW_NOT_YET_AVAILABLE`).
+
+Se duas ações chegam juntas (por exemplo, Atendido e Não compareceu), a segunda espera a trava, lê o
+status já alterado e recebe o `409` coerente com a ação que ganhou (`ALREADY_ATTENDED` ou
+`ALREADY_NO_SHOW`). Só um evento terminal é gravado.
+
+**Dívida aceita:** os testes usam um único atendente (o Admin), porque uma conta sem `is_admin` ainda
+não tem permissões (`repositories/auth.repository.ts`). Testes com dois atendentes distintos ficam
+para depois da #62.
+
+## Agendamento pelo chat (#56)
+
+Quando o cidadão aceita a oferta de agendamento (`schedule_yes` em `AWAITING_SCHEDULE_OFFER`), o
+fluxo da conversa (`services/conversationFlow.service.ts`) passa as etapas abaixo para
+`services/schedulingFlow.service.ts` (`createSchedulingFlow`). Os encerramentos fora de transação
+passam por `services/conversationClosing.service.ts` (`finishOrLog`), e os tipos do fluxo ficam em
+`types/conversationFlow.types.ts`.
+
+| Etapa | O que o bot espera | Próxima etapa |
+| --- | --- | --- |
+| `AWAITING_ATTENDEE` | botão `attendee_self` (titular) ou `attendee_rep` (representante). Grava `ATTENDEE_CHOSEN` | `AWAITING_HOLDER_NAME` |
+| `AWAITING_HOLDER_NAME` | nome do titular (regra abaixo) | `AWAITING_HOLDER_CPF` |
+| `AWAITING_HOLDER_CPF` | CPF válido, com ou sem pontuação. Vai para o rascunho só como hash e máscara | `AWAITING_SLOT` (ou encerra com `NO_SLOT` se não houver horário) |
+| `AWAITING_SLOT` | linha `slot_<ISO 8601 UTC>` da lista ou `page_<n>` para paginar | `FINISHED` com desfecho `SCHEDULED` |
+
+O rascunho fica em `Sessions.draft`, com as chaves `by_representative`, `holder_name`, `cpf_hash` e
+`cpf_masked` (`target_appointment_id` é da #59). O `chk_sessions_draft_keys` recusa qualquer outra.
+O motivo do agendamento (`REQUIRES_IN_PERSON` ou `NOT_RESOLVED`) é recalculado na reserva pela
+pergunta da sessão.
+
+**Regra do nome.** O bot aplica `trim()` e `normalize("NFC")`, exige de 2 a 150 caracteres e aceita
+só letras de qualquer alfabeto (inclusive `º` e `ª`, que o Unicode trata como letras), marcas de
+acentuação, espaço, apóstrofo reto e curvo, ponto, vírgula e hífen (`/^[\p{L}\p{M}\s'’.,-]+$/u`). O
+nome é gravado já normalizado. Dígitos (também os de largura total), `@`, `_`, parênteses, barra,
+`&` e emoji são recusados, o que impede que um CPF digitado no lugar do nome seja gravado.
+
+| Situação | Mensagem (`services/messageFormatter.service.ts`) | Etapa seguinte |
+| --- | --- | --- |
+| Botão de quem comparece inválido | `ERRO_ATTENDEE` | `AWAITING_ATTENDEE` |
+| Nome recusado | `ERRO_NOME`: "Por favor, digite o nome completo usando apenas letras (entre 2 e 150 caracteres):" | `AWAITING_HOLDER_NAME` |
+| CPF inválido | `ERRO_CPF` | `AWAITING_HOLDER_CPF` |
+| Nenhum horário livre (ao listar ou depois de um horário lotado) | `MENSAGEM_SEM_HORARIOS`; encerra com `NO_SLOT` | `FINISHED` |
+| Texto ou opção que não é da lista | `ERRO_SLOTS` com a página atual | `AWAITING_SLOT` |
+| Horário lotado (`SlotFullError`) ou `slot_` que não está mais na lista | `ERRO_SLOT_OCUPADO` com a lista atualizada, voltando à página 1 | `AWAITING_SLOT` |
+| Já existe agendamento ativo do mesmo CPF no mesmo horário (`DuplicateAppointmentError`) | `ERRO_DUPLICATE_APPOINTMENT` com a página atual | `AWAITING_SLOT` |
+| Rascunho incompleto ou pergunta inválida | `MENSAGEM_RASCUNHO_INCOMPLETO`; o rascunho é limpo | `AWAITING_ATTENDEE` |
+| Qualquer outra falha da reserva (inclusive `ScheduleNotConfiguredError` e `BookingFailedError`) | `ERRO_FALHA_AGENDAMENTO` ("O agendamento não foi gravado"); o log leva só o tipo do evento, o id da sessão e o código do erro | `AWAITING_SLOT` |
+
+A reserva (`bookAppointment` em `repositories/schedule.repository.ts`) roda numa transação, nesta
+ordem: trava do horário (`pg_advisory_xact_lock`), leitura da configuração, recontagem das vagas,
+checagem de duplicidade por CPF e horário, documentos, `INSERT` do agendamento (telefone cifrado com
+`ENCRYPTION_KEY`), evento `CREATED` em `AppointmentEvents`, `PHONE_NOTICE_SHOWN` por
+`insertConversationEvent(client, ...)` e encerramento por `finishSessionWith(client, ...)` com
+`APPOINTMENT_CREATED`/`SCHEDULED`. Qualquer falha desfaz tudo.
 
 ## Eventos da conversa
 
@@ -373,7 +724,7 @@ Nenhum evento guarda texto digitado pelo cidadão (RNF03): só tipos, ids e valo
 | `conversationEventService.record(sessionId, event)` | `services/conversationEvent.service.ts` | Evento comum de um passo. Nunca lança (ver "Falhas de gravação") |
 | `conversationEventService.finish(sessionId, { outcome, event })` | `services/conversationEvent.service.ts` | Encerramento fora de transação. Abre a própria transação e lança se falhar |
 | `finishSessionWith(client, sessionId, { outcome, event })` | `repositories/session.repository.ts` | Encerramento dentro da transação de outro repositório (reserva da #56, remarcação e cancelamento da #59). Lança e não desfaz nada: quem abriu a transação faz o `ROLLBACK` |
-| `insertConversationEvent(client, sessionId, event)` | `repositories/conversationEvent.repository.ts` | Evento comum dentro de uma transação aberta |
+| `insertConversationEvent(client, sessionId, event)` | `repositories/conversationEvent.repository.ts` | Evento comum dentro de uma transação aberta (ex.: `PHONE_NOTICE_SHOWN` na reserva da #56) |
 | `conversationEventService.listBySession(sessionId)` | `services/conversationEvent.service.ts` | Leitura tipada, em ordem cronológica, com `createdAt`, para a linha do tempo (#60, #72, #86). Chaves desconhecidas vindas do banco são descartadas. Uma linha fora do contrato é descartada e registrada no log, sem derrubar a lista (ver "Leitura") |
 
 `insertConversationEvent` e `finishSessionWith` são o **único** caminho de escrita em
@@ -472,7 +823,7 @@ O par desfecho e evento tem que casar, senão lança `InternalServerError` sem c
 | Recusou agendar | #55 | `finish` | `SCHEDULE_DECLINED` | `DECLINED` |
 | Quem comparece | #56 | `record` | `ATTENDEE_CHOSEN` | — |
 | Sem horário | #56 | `finish` | `NO_SLOT` | `NO_SLOT` |
-| Aviso de mensagens neste número | #56 | `record` | `PHONE_NOTICE_SHOWN` | — |
+| Aviso de mensagens neste número | #56 | `insertConversationEvent(client, ...)` na transação da reserva, logo antes do encerramento | `PHONE_NOTICE_SHOWN` | — |
 | Agendamento criado | #56 | `finishSessionWith(client, ...)` na transação da reserva; se falhar, a reserva volta e o cidadão é avisado | `APPOINTMENT_CREATED` | `SCHEDULED` |
 | Consultou agendamento | #59 | `record` | `APPOINTMENT_CONSULTED` | — |
 | Remarcou / cancelou | #59 | `finishSessionWith(client, ...)` na transação da alteração; se falhar, a alteração volta e o cidadão é avisado | `APPOINTMENT_RESCHEDULED` / `APPOINTMENT_CANCELED` | `MANAGED_APPOINTMENT` |
@@ -510,7 +861,7 @@ try {
 | --- | --- |
 | Falha ao gravar evento comum com `record` (categoria, pergunta, resposta enviada, "resolveu?", oferta, quem comparece etc.), inclusive evento recusado pelo validador | `record` captura o erro, registra no log só o tipo do evento (ou `INVALID`), o id da sessão (ou `INVALID`) e o código do erro, e resolve normalmente. O cidadão recebe a resposta |
 | Encerramento do fluxo atual (`RESOLVED`/`OUT_OF_SCOPE` com `ANSWER_SENT`) | `finish` lança. O fluxo registra no log do mesmo jeito e entrega a resposta; a sessão continua `IN_PROGRESS`, sem evento de fechamento, e será abandonada pelo timeout |
-| Criação do agendamento e encerramentos ligados a ele (`APPOINTMENT_CREATED`/`SCHEDULED`, `APPOINTMENT_RESCHEDULED`/`APPOINTMENT_CANCELED`/`MANAGED_APPOINTMENT`) | `finishSessionWith(client, ...)` na mesma transação da reserva ou da alteração. Se a reserva, o evento ou o encerramento falhar, a transação inteira volta e o cidadão recebe uma mensagem clara de que o agendamento **não** foi gravado. A mensagem e o tratamento são do fluxo da #56 (e da #59 no retorno) |
+| Criação do agendamento e encerramentos ligados a ele (`PHONE_NOTICE_SHOWN`, `APPOINTMENT_CREATED`/`SCHEDULED`, `APPOINTMENT_RESCHEDULED`/`APPOINTMENT_CANCELED`/`MANAGED_APPOINTMENT`) | `insertConversationEvent(client, ...)` e `finishSessionWith(client, ...)` na mesma transação da reserva ou da alteração. Se a reserva, o evento ou o encerramento falhar, a transação inteira volta e o cidadão recebe uma mensagem clara de que o agendamento **não** foi gravado. A mensagem e o tratamento são do fluxo da #56 (e da #59 no retorno) |
 
 O log nunca leva `data`, texto do cidadão, telefone nem `draft`.
 
@@ -539,9 +890,3 @@ etapa e os nomes de abandono dos Relatórios é da #68.
   `finish`, apaga o abandono próprio, faz a varredura reaproveitando a regra acima, emite os eventos
   da tabela por passo com `record`/`finish` e remove a exceção provisória do `RESOLVED` em
   `isClosingCompatible`.
-- **#56** (`feat/56-bot-agendamento-presencial`): troca o `INSERT` direto em `ConversationEvents` e o
-  `UPDATE Sessions` da reserva (`schedule.repository.ts`) por `finishSessionWith(client, ...)` com
-  `APPOINTMENT_CREATED`/`SCHEDULED`, e avisa o cidadão quando a transação falhar.
-- **#60** (`feat/60-api-agendamentos`): lê a linha do tempo da conversa de origem com `listBySession`
-  em vez de consultar `ConversationEvents` em `appointment.repository.ts`, fica com a versão da #16 de
-  `session.repository.ts` e aplica a mesma troca da #56 no `schedule.repository.ts` que carrega.
