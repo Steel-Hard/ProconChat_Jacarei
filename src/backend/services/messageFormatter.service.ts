@@ -40,7 +40,7 @@ export const PROMPT_NOME =
     "Por favor, digite o nome completo do titular do atendimento:"
 
 export const ERRO_NOME =
-    "Por favor, digite um nome válido (entre 2 e 150 caracteres):"
+    "Por favor, digite o nome completo usando apenas letras (entre 2 e 150 caracteres):"
 
 export const PROMPT_CPF =
     "Agora, digite o CPF do titular (somente os 11 números ou com pontos e traço):"

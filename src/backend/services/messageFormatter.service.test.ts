@@ -16,6 +16,7 @@ import {
     criarMensagensPerguntas,
     criarMensagensSlots,
     formatarErroSlot,
+    ERRO_NOME,
 } from "./messageFormatter.service"
 import type { OutgoingMessage } from "../types/message.types"
 import type { AvailableSlot } from "../types/schedule.types"
@@ -216,6 +217,10 @@ describe("messageFormatter.service", () => {
     })
 
     describe("Formatação de Agendamento (#56)", () => {
+        test("ERRO_NOME explica ao cidadão que o nome deve ter apenas letras", () => {
+            expect(ERRO_NOME).toBe("Por favor, digite o nome completo usando apenas letras (entre 2 e 150 caracteres):")
+        })
+
         test("formatarListaSlots formata slots disponíveis com paginação", () => {
             const slots = [
                 {
