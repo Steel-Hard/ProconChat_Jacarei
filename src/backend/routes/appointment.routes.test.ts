@@ -6,7 +6,7 @@ import { createRequireAuth } from "../middleware/auth.middleware"
 import { MockAppointmentRepository } from "../repositories/mock/appointmentMock.repository"
 import { MockAuthRepository } from "../repositories/mock/authMock.repository"
 import { sessionTokens } from "../utils/sessionToken"
-import { createAppointmentRoutes } from "./appointment.routes"
+import { AppointmentRoutes } from "./appointment.routes"
 
 const authUsers = new MockAuthRepository([
     {
@@ -55,7 +55,10 @@ describe("appointment.routes (HTTP)", () => {
         const authMiddleware = createRequireAuth({ users: authUsers, tokens: sessionTokens })
         const built = express()
         built.use(express.json())
-        built.use("/api/v1/appointments", createAppointmentRoutes(repository, conversationEvents, authMiddleware))
+        built.use(
+            "/api/v1/appointments",
+            new AppointmentRoutes({ repository, conversationEvents, authMiddleware }).getRouter(),
+        )
         built.use(errorHandler)
         return built
     }
