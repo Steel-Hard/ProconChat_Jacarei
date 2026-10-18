@@ -6,6 +6,7 @@ import {
     BookAppointmentResult,
     ScheduleRange,
 } from "../types/schedule.types"
+import { getLocalParts, parseLocalDate } from "../utils/date.utils"
 
 const WEEKDAYS_PT = [
     "Domingo",
@@ -38,63 +39,6 @@ export function getDowFromDateStr(dateStr: string): number {
     const [y, m, d] = dateStr.split("-").map(Number)
     const dt = new Date(Date.UTC(y!, m! - 1, d!, 12, 0, 0))
     return dt.getUTCDay()
-}
-
-export function getLocalParts(d: Date, timeZone = "America/Sao_Paulo"): {
-    dateStr: string
-    timeStr: string
-    hour: number
-    minute: number
-} {
-    const parts = new Intl.DateTimeFormat("en-US", {
-        timeZone,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-    }).formatToParts(d)
-
-    let year = 0
-    let month = 0
-    let day = 0
-    let hour = 0
-    let minute = 0
-    for (const part of parts) {
-        if (part.type === "year") year = Number(part.value)
-        if (part.type === "month") month = Number(part.value)
-        if (part.type === "day") day = Number(part.value)
-        if (part.type === "hour") hour = Number(part.value) % 24
-        if (part.type === "minute") minute = Number(part.value)
-    }
-
-    const mm = String(month).padStart(2, "0")
-    const dd = String(day).padStart(2, "0")
-    const hh = String(hour).padStart(2, "0")
-    const min = String(minute).padStart(2, "0")
-
-    return {
-        dateStr: `${year}-${mm}-${dd}`,
-        timeStr: `${hh}:${min}`,
-        hour,
-        minute,
-    }
-}
-
-export function parseLocalDate(
-    dateStr: string,
-    timeStr: string,
-    timeZone = "America/Sao_Paulo",
-): Date {
-    const [y, m, d] = dateStr.split("-").map(Number)
-    const [h, min] = timeStr.split(":").map(Number)
-    const utcCandidate = new Date(Date.UTC(y!, m! - 1, d!, h!, min!, 0))
-    const parts = getLocalParts(utcCandidate, timeZone)
-    const [ly, lm, ld] = parts.dateStr.split("-").map(Number)
-    const localAsUtc = Date.UTC(ly!, lm! - 1, ld!, parts.hour, parts.minute, 0)
-    const offsetMs = localAsUtc - utcCandidate.getTime()
-    return new Date(utcCandidate.getTime() - offsetMs)
 }
 
 function freeSlotStartsOfDay(

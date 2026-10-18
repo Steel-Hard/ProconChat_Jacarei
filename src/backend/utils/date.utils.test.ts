@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest"
-import { parseLocalDate } from "../services/schedule.service"
 import {
     getThisWeekBounds,
     getTodayBounds,
     isDateOnOrBeforeToday,
     isDatetimePast,
+    parseLocalDate,
     toLocalDateString,
 } from "./date.utils"
 
