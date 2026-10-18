@@ -459,7 +459,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             id: string,
             actorUserId: number,
             now: Date = new Date(),
-        ): Promise<AppointmentDetail> {
+        ): Promise<void> {
             const client = await pool.connect()
             try {
                 await client.query("BEGIN")
@@ -486,15 +486,13 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             } finally {
                 client.release()
             }
-
-            return (await this.findById(id))!
         },
 
         async markAttended(
             id: string,
             actorUserId: number,
             now: Date = new Date(),
-        ): Promise<AppointmentDetail> {
+        ): Promise<void> {
             const client = await pool.connect()
             try {
                 await client.query("BEGIN")
@@ -538,15 +536,13 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             } finally {
                 client.release()
             }
-
-            return (await this.findById(id))!
         },
 
         async markNoShow(
             id: string,
             actorUserId: number,
             now: Date = new Date(),
-        ): Promise<AppointmentDetail> {
+        ): Promise<void> {
             const client = await pool.connect()
             try {
                 await client.query("BEGIN")
@@ -590,8 +586,6 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             } finally {
                 client.release()
             }
-
-            return (await this.findById(id))!
         },
 
         async resolveTitles(

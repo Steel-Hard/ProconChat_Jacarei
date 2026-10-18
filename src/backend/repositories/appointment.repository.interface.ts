@@ -23,19 +23,19 @@ export interface AppointmentRepository {
         id: string,
         actorUserId: number,
         now?: Date,
-    ): Promise<AppointmentDetail>
+    ): Promise<void>
 
     markAttended(
         id: string,
         actorUserId: number,
         now?: Date,
-    ): Promise<AppointmentDetail>
+    ): Promise<void>
 
     markNoShow(
         id: string,
         actorUserId: number,
         now?: Date,
-    ): Promise<AppointmentDetail>
+    ): Promise<void>
 
     getCurrentDocumentsConfig(
         byRepresentative: boolean,

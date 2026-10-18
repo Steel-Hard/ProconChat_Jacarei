@@ -9,8 +9,9 @@ import {
     AppointmentListItem,
     AppointmentReason,
     AppointmentStatus,
-    ConversationTimelineStep,
 } from "../../types/appointment.types"
+import type { RecordedConversationEvent } from "../../types/conversationEvent.types"
+import type { ConversationEventService } from "../../services/conversationEvent.service"
 import { cleanCpf, hashCpf } from "../../utils/cpf.utils"
 import {
     addDaysToDateString,
@@ -373,21 +374,21 @@ export class MockAppointmentRepository implements AppointmentRepository {
                 id: 2,
                 session_id: 101,
                 type: "CATEGORY_CHOSEN",
-                data: { category_name: "Cobrança" },
+                data: { categoryId: 10 },
                 created_at: baseDate,
             },
             {
                 id: 3,
                 session_id: 101,
                 type: "QUESTION_CHOSEN",
-                data: { question_title: "Cobrança indevida de serviço não contratado" },
+                data: { categoryId: 10, questionId: 1 },
                 created_at: baseDate,
             },
             {
                 id: 4,
                 session_id: 101,
                 type: "ANSWER_SENT",
-                data: { generated_by_ai: true },
+                data: { categoryId: 10, questionId: 1, llm: "USED" },
                 created_at: baseDate,
             },
             {
@@ -401,24 +402,43 @@ export class MockAppointmentRepository implements AppointmentRepository {
                 id: 6,
                 session_id: 101,
                 type: "SCHEDULE_OFFERED",
-                data: {},
+                data: { reason: "NOT_RESOLVED" },
                 created_at: baseDate,
             },
             {
                 id: 7,
                 session_id: 101,
                 type: "ATTENDEE_CHOSEN",
-                data: { by_representative: false },
+                data: { byRepresentative: false },
                 created_at: baseDate,
             },
             {
                 id: 8,
                 session_id: 101,
                 type: "APPOINTMENT_CREATED",
-                data: { protocol: "a1b2c3d4" },
+                data: { appointmentId: 1 },
                 created_at: baseDate,
             },
         ]
+    }
+
+    conversationEventService(): ConversationEventService {
+        return {
+            record: async () => {},
+            finish: async () => {},
+            listBySession: async (sessionId: string) =>
+                this.conversationEvents
+                    .filter((ce) => String(ce.session_id) === sessionId)
+                    .sort((a, b) => a.created_at.getTime() - b.created_at.getTime() || a.id - b.id)
+                    .map(
+                        (ce) =>
+                            ({
+                                type: ce.type,
+                                ...ce.data,
+                                createdAt: ce.created_at,
+                            }) as RecordedConversationEvent,
+                    ),
+        }
     }
 
     async countPending(): Promise<number> {
@@ -475,30 +495,6 @@ export class MockAppointmentRepository implements AppointmentRepository {
                 created_at: e.created_at.toISOString(),
             }))
 
-        const sessionTimeline = this.conversationEvents
-            .filter((ce) => ce.session_id === appt.session_id)
-            .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
-            .map((ce) => {
-                let label = ce.type
-                if (ce.type === "STARTED") label = "Início do atendimento"
-                if (ce.type === "CATEGORY_CHOSEN") label = `Categoria selecionada: ${ce.data.category_name || ""}`
-                if (ce.type === "QUESTION_CHOSEN") label = `Pergunta selecionada: ${ce.data.question_title || ""}`
-                if (ce.type === "ANSWER_SENT") label = "Orientação enviada"
-                if (ce.type === "RESOLVED_ANSWERED") label = ce.data.resolved ? "Cidadão respondeu que a dúvida foi resolvida" : "Cidadão respondeu que a dúvida não foi resolvida"
-                if (ce.type === "SCHEDULE_OFFERED") label = "Opção de agendamento presencial oferecida"
-                if (ce.type === "ATTENDEE_CHOSEN") label = ce.data.by_representative ? "Comparecimento por representante" : "Titular comparece"
-                if (ce.type === "APPOINTMENT_CREATED") label = "Agendamento concluído"
-
-                return {
-                    id: ce.id.toString(),
-                    type: ce.type,
-                    created_at: ce.created_at.toISOString(),
-                    data: ce.data,
-                    label,
-                    generated_by_ai: Boolean(ce.data.generated_by_ai),
-                } as ConversationTimelineStep
-            })
-
         return {
             id: appt.id.toString(),
             appointment_code: appt.appointment_code,
@@ -522,7 +518,7 @@ export class MockAppointmentRepository implements AppointmentRepository {
             documents_sent: appt.documents_sent,
             is_documents_config_different: isDifferent,
             events: apptEvents,
-            timeline: sessionTimeline,
+            timeline: [],
         }
     }
 
@@ -733,7 +729,7 @@ export class MockAppointmentRepository implements AppointmentRepository {
         id: string,
         actorUserId: number,
         now: Date = new Date(),
-    ): Promise<AppointmentDetail> {
+    ): Promise<void> {
         const appt = this.lockAndDecide("claim", id, now)
 
         appt.status = "CONFIRMED"
@@ -749,15 +745,13 @@ export class MockAppointmentRepository implements AppointmentRepository {
             data: {},
             created_at: now,
         })
-
-        return (await this.findById(id))!
     }
 
     async markAttended(
         id: string,
         actorUserId: number,
         now: Date = new Date(),
-    ): Promise<AppointmentDetail> {
+    ): Promise<void> {
         const appt = this.lockAndDecide("attended", id, now)
 
         const autoClaim = appt.status === "PENDING"
@@ -790,15 +784,13 @@ export class MockAppointmentRepository implements AppointmentRepository {
             data: {},
             created_at: now,
         })
-
-        return (await this.findById(id))!
     }
 
     async markNoShow(
         id: string,
         actorUserId: number,
         now: Date = new Date(),
-    ): Promise<AppointmentDetail> {
+    ): Promise<void> {
         const appt = this.lockAndDecide("no_show", id, now)
 
         const autoClaim = appt.status === "PENDING"
@@ -831,8 +823,6 @@ export class MockAppointmentRepository implements AppointmentRepository {
             data: {},
             created_at: now,
         })
-
-        return (await this.findById(id))!
     }
 
     private lockAndDecide(

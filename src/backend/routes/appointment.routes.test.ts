@@ -51,13 +51,18 @@ describe("appointment.routes (HTTP)", () => {
         listBySession: vi.fn().mockResolvedValue([]),
     }
 
+    function buildApp(conversationEvents: ConversationEventService): express.Express {
+        const authMiddleware = createRequireAuth({ users: authUsers, tokens: sessionTokens })
+        const built = express()
+        built.use(express.json())
+        built.use("/api/v1/appointments", createAppointmentRoutes(repository, conversationEvents, authMiddleware))
+        built.use(errorHandler)
+        return built
+    }
+
     beforeEach(() => {
         repository = new MockAppointmentRepository(true)
-        const authMiddleware = createRequireAuth({ users: authUsers, tokens: sessionTokens })
-        app = express()
-        app.use(express.json())
-        app.use("/api/v1/appointments", createAppointmentRoutes(repository, mockConversationEvents, authMiddleware))
-        app.use(errorHandler)
+        app = buildApp(mockConversationEvents)
     })
 
     describe("Autenticação e Permissões", () => {
@@ -225,6 +230,23 @@ describe("appointment.routes (HTTP)", () => {
     })
 
     describe("Ações de Status (PATCH /status)", () => {
+        it("o PATCH devolve o mesmo detalhe que o GET em seguida, com linha do tempo e histórico", async () => {
+            const appWithTimeline = buildApp(repository.conversationEventService())
+
+            const patchRes = await request(appWithTimeline)
+                .patch("/api/v1/appointments/1/status")
+                .set("Cookie", accessCookieFor(10))
+                .send({ action: "claim" })
+            const getRes = await request(appWithTimeline)
+                .get("/api/v1/appointments/1")
+                .set("Cookie", accessCookieFor(10))
+
+            expect(patchRes.status).toBe(200)
+            expect(patchRes.body.data.timeline.length).toBeGreaterThan(0)
+            expect(patchRes.body.data.events[0].type).toBe("CLAIMED")
+            expect(patchRes.body.data).toEqual(getRes.body.data)
+        })
+
         it("executa ação claim via PATCH /status", async () => {
             const res = await request(app)
                 .patch("/api/v1/appointments/1/status")

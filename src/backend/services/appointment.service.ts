@@ -139,6 +139,39 @@ export function createAppointmentService(deps?: {
     const repository = deps?.repository ?? defaultAppointmentRepository
     const conversationEvents = deps?.conversationEvents ?? defaultConversationEventService
 
+    async function getAppointmentDetail(
+        idOrCode: number | string,
+    ): Promise<AppointmentDetail> {
+        const appointment = await repository.findById(idOrCode)
+        if (!appointment) {
+            throw new NotFoundError("Agendamento não encontrado")
+        }
+
+        if (appointment.session_id) {
+            try {
+                const events = await conversationEvents.listBySession(appointment.session_id)
+                if (events && events.length > 0) {
+                    const categoryIds: number[] = []
+                    const questionIds: number[] = []
+                    for (const ev of events) {
+                        if (ev.type === "CATEGORY_CHOSEN" && typeof ev.categoryId === "number") {
+                            categoryIds.push(ev.categoryId)
+                        }
+                        if (ev.type === "QUESTION_CHOSEN" && typeof ev.questionId === "number") {
+                            questionIds.push(ev.questionId)
+                        }
+                    }
+                    const titles = await repository.resolveTitles(categoryIds, questionIds)
+                    appointment.timeline = buildTimeline(events, appointment, titles)
+                }
+            } catch (error) {
+                console.error("Erro ao listar eventos da conversa para a linha do tempo:", error)
+            }
+        }
+
+        return appointment
+    }
+
     return {
         async listAppointments(
             filters: AppointmentListFilters,
@@ -169,45 +202,15 @@ export function createAppointmentService(deps?: {
             return { count }
         },
 
-        async getAppointmentDetail(
-            idOrCode: number | string,
-        ): Promise<AppointmentDetail> {
-            const appointment = await repository.findById(idOrCode)
-            if (!appointment) {
-                throw new NotFoundError("Agendamento não encontrado")
-            }
-
-            if (appointment.session_id) {
-                try {
-                    const events = await conversationEvents.listBySession(appointment.session_id)
-                    if (events && events.length > 0) {
-                        const categoryIds: number[] = []
-                        const questionIds: number[] = []
-                        for (const ev of events) {
-                            if (ev.type === "CATEGORY_CHOSEN" && typeof ev.categoryId === "number") {
-                                categoryIds.push(ev.categoryId)
-                            }
-                            if (ev.type === "QUESTION_CHOSEN" && typeof ev.questionId === "number") {
-                                questionIds.push(ev.questionId)
-                            }
-                        }
-                        const titles = await repository.resolveTitles(categoryIds, questionIds)
-                        appointment.timeline = buildTimeline(events, appointment, titles)
-                    }
-                } catch (error) {
-                    console.error("Erro ao listar eventos da conversa para a linha do tempo:", error)
-                }
-            }
-
-            return appointment
-        },
+        getAppointmentDetail,
 
         async claimAppointment(
             idOrCode: number | string,
             actorUserId: number,
             now: Date = new Date(),
         ): Promise<AppointmentDetail> {
-            return repository.claim(String(idOrCode), actorUserId, now)
+            await repository.claim(String(idOrCode), actorUserId, now)
+            return getAppointmentDetail(idOrCode)
         },
 
         async markAttended(
@@ -215,7 +218,8 @@ export function createAppointmentService(deps?: {
             actorUserId: number,
             now: Date = new Date(),
         ): Promise<AppointmentDetail> {
-            return repository.markAttended(String(idOrCode), actorUserId, now)
+            await repository.markAttended(String(idOrCode), actorUserId, now)
+            return getAppointmentDetail(idOrCode)
         },
 
         async markNoShow(
@@ -223,7 +227,8 @@ export function createAppointmentService(deps?: {
             actorUserId: number,
             now: Date = new Date(),
         ): Promise<AppointmentDetail> {
-            return repository.markNoShow(String(idOrCode), actorUserId, now)
+            await repository.markNoShow(String(idOrCode), actorUserId, now)
+            return getAppointmentDetail(idOrCode)
         },
     }
 }

@@ -3,6 +3,7 @@ import request from "supertest"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import app from "../../app"
 import getPool from "../../db/connection"
+import { insertConversationEvent } from "../../repositories/conversationEvent.repository"
 import { sessionTokens } from "../../utils/sessionToken"
 
 const testSecret = process.env.CPF_HASH_SECRET ?? "test-only-cpf-hash-secret"
@@ -307,6 +308,23 @@ describe("Agendamentos com Postgres (integração)", () => {
             [apptId],
         )
         expect(eventsRes.rows).toHaveLength(1)
+    })
+
+    it("o PATCH devolve a linha do tempo da conversa e o histórico com a ação nova", async () => {
+        const pool = getPool()
+        await insertConversationEvent(pool, String(sessionId), { type: "STARTED" })
+        await insertConversationEvent(pool, String(sessionId), { type: "CATEGORY_CHOSEN", categoryId })
+        const apptId = await createAppointment({ name: "Cidadão Linha do Tempo", cpf: "77711144455" })
+
+        const res = await request(app)
+            .patch(`/api/v1/appointments/${apptId}/status`)
+            .set("Origin", ORIGIN)
+            .set("Cookie", adminCookie)
+            .send({ action: "claim" })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.timeline.length).toBeGreaterThan(0)
+        expect(res.body.data.events[0].type).toBe("CLAIMED")
     })
 
     it("retorna 400 para id não numérico ou acima do limite de bigint", async () => {

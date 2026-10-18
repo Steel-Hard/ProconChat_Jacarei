@@ -1,21 +1,18 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it } from "vitest"
 import { MockAppointmentRepository } from "../repositories/mock/appointmentMock.repository"
 import { AppointmentService, createAppointmentService } from "./appointment.service"
 import { toLocalDateString } from "../utils/date.utils"
-import { ConversationEventService } from "./conversationEvent.service"
 
 describe("appointment.service", () => {
     let repository: MockAppointmentRepository
     let service: AppointmentService
-    const mockConversationEvents: ConversationEventService = {
-        record: vi.fn(),
-        finish: vi.fn(),
-        listBySession: vi.fn().mockResolvedValue([]),
-    }
 
     beforeEach(() => {
         repository = new MockAppointmentRepository(true)
-        service = createAppointmentService({ repository, conversationEvents: mockConversationEvents })
+        service = createAppointmentService({
+            repository,
+            conversationEvents: repository.conversationEventService(),
+        })
     })
 
     describe("listAppointments & Filtros", () => {
