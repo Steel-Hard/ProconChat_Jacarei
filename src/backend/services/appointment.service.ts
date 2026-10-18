@@ -44,90 +44,62 @@ export interface AppointmentService {
     ): Promise<AppointmentDetail>
 }
 
+type TimelineTitles = { categories: Record<number, string>; questions: Record<number, string> }
+
+function idOf(ev: RecordedConversationEvent, key: "categoryId" | "questionId"): number | null {
+    const value = (ev as Record<string, unknown>)[key]
+    return typeof value === "number" ? value : null
+}
+
+function categoryTitle(
+    categoryId: number,
+    appointment: AppointmentDetail,
+    titles: TimelineTitles,
+): string | null {
+    return (
+        titles.categories[categoryId] ??
+        (Number(appointment.category_id) === categoryId ? appointment.category_name : null)
+    )
+}
+
+function questionTitle(
+    questionId: number,
+    appointment: AppointmentDetail,
+    titles: TimelineTitles,
+): string | null {
+    return (
+        titles.questions[questionId] ??
+        (Number(appointment.question_id) === questionId ? appointment.question_title : null)
+    )
+}
+
 function buildTimeline(
     events: RecordedConversationEvent[],
     appointment: AppointmentDetail,
-    titles?: { categories: Record<number, string>; questions: Record<number, string> },
+    titles: TimelineTitles,
 ): ConversationTimelineStep[] {
     return events.map((ev, index) => {
-        let label: string = ev.type
-        let generatedByAi = false
+        const { type, createdAt, ...fields } = ev
+        const data: Record<string, unknown> = { ...fields }
 
-        switch (ev.type) {
-            case "STARTED":
-                label = "Início do atendimento"
-                break
-            case "CATEGORY_CHOSEN": {
-                const catName =
-                    (typeof ev.categoryId === "number" && titles?.categories[ev.categoryId]) ||
-                    (Number(appointment.category_id) === ev.categoryId ? appointment.category_name : null)
-                label = catName
-                    ? `Categoria selecionada: ${catName}`
-                    : `Categoria selecionada: ${ev.categoryId}`
-                break
-            }
-            case "QUESTION_CHOSEN": {
-                const qTitle =
-                    (typeof ev.questionId === "number" && titles?.questions[ev.questionId]) ||
-                    (Number(appointment.question_id) === ev.questionId ? appointment.question_title : null)
-                label = qTitle
-                    ? `Pergunta selecionada: ${qTitle}`
-                    : `Pergunta selecionada: ${ev.questionId}`
-                break
-            }
-            case "ANSWER_SENT":
-                label = "Orientação enviada"
-                generatedByAi = ev.llm === "USED"
-                break
-            case "RESOLVED_ANSWERED":
-                label = ev.resolved
-                    ? "Cidadão respondeu que a dúvida foi resolvida"
-                    : "Cidadão respondeu que a dúvida não foi resolvida"
-                break
-            case "SCHEDULE_OFFERED":
-                label = "Opção de agendamento presencial oferecida"
-                break
-            case "ATTENDEE_CHOSEN":
-                label = ev.byRepresentative
-                    ? "Comparecimento por representante"
-                    : "Titular comparece"
-                break
-            case "PHONE_NOTICE_SHOWN":
-                label = "Aviso de contato pelo WhatsApp exibido"
-                break
-            case "APPOINTMENT_CREATED":
-                label = "Agendamento concluído"
-                break
-            case "APPOINTMENT_CONSULTED":
-                label = "Agendamento consultado"
-                break
-            case "APPOINTMENT_RESCHEDULED":
-                label = `Agendamento remarcado: de ${ev.from} para ${ev.to}`
-                break
-            case "APPOINTMENT_CANCELED":
-                label = "Agendamento cancelado"
-                break
-            case "NO_SLOT":
-                label = "Sem horários disponíveis"
-                break
-            case "SCHEDULE_DECLINED":
-                label = "Agendamento presencial recusado"
-                break
-            case "ABANDONED":
-                label = `Atendimento abandonado na etapa ${ev.step}`
-                break
+        const categoryId = idOf(ev, "categoryId")
+        if (categoryId !== null) {
+            data.category_title = categoryTitle(categoryId, appointment, titles)
+        }
+        const questionId = idOf(ev, "questionId")
+        if (questionId !== null) {
+            data.question_title = questionTitle(questionId, appointment, titles)
         }
 
         return {
             id: String(index + 1),
-            type: ev.type,
+            type,
             created_at:
-                ev.createdAt instanceof Date
-                    ? ev.createdAt.toISOString()
-                    : new Date(ev.createdAt).toISOString(),
-            data: { ...(ev as unknown as Record<string, unknown>) },
-            label,
-            generated_by_ai: generatedByAi,
+                createdAt instanceof Date
+                    ? createdAt.toISOString()
+                    : new Date(createdAt).toISOString(),
+            generated_by_ai: ev.type === "ANSWER_SENT" && ev.llm === "USED",
+            data,
         }
     })
 }
@@ -154,11 +126,13 @@ export function createAppointmentService(deps?: {
                     const categoryIds: number[] = []
                     const questionIds: number[] = []
                     for (const ev of events) {
-                        if (ev.type === "CATEGORY_CHOSEN" && typeof ev.categoryId === "number") {
-                            categoryIds.push(ev.categoryId)
+                        const categoryId = idOf(ev, "categoryId")
+                        if (categoryId !== null && !categoryIds.includes(categoryId)) {
+                            categoryIds.push(categoryId)
                         }
-                        if (ev.type === "QUESTION_CHOSEN" && typeof ev.questionId === "number") {
-                            questionIds.push(ev.questionId)
+                        const questionId = idOf(ev, "questionId")
+                        if (questionId !== null && !questionIds.includes(questionId)) {
+                            questionIds.push(questionId)
                         }
                     }
                     const titles = await repository.resolveTitles(categoryIds, questionIds)

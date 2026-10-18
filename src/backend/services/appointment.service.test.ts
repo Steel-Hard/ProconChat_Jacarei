@@ -121,7 +121,7 @@ describe("appointment.service", () => {
     })
 
     describe("getAppointmentDetail", () => {
-        it("retorna detalhes completos com eventos e timeline da sessão com rótulos amigáveis", async () => {
+        it("retorna detalhes completos com eventos e timeline da sessão com títulos resolvidos", async () => {
             const detail = await service.getAppointmentDetail(1)
             expect(detail.id).toBe("1")
             expect(detail.protocol).toBe("A1B2C3D4")
@@ -135,8 +135,30 @@ describe("appointment.service", () => {
 
             const catStep = detail.timeline.find((t) => t.type === "CATEGORY_CHOSEN")
             if (catStep) {
-                expect(catStep.label).toContain("Cobrança")
+                expect(catStep.data.category_title).toContain("Cobrança")
             }
+        })
+
+        it("a linha do tempo não traz texto pronto e traz os títulos resolvidos", async () => {
+            const detail = await service.getAppointmentDetail(1)
+
+            for (const step of detail.timeline) {
+                expect(Object.keys(step).sort()).toEqual(["created_at", "data", "generated_by_ai", "id", "type"])
+                expect(step.data).not.toHaveProperty("type")
+                expect(step.data).not.toHaveProperty("createdAt")
+            }
+            const byType = Object.fromEntries(detail.timeline.map((step) => [step.type, step]))
+            expect(byType.CATEGORY_CHOSEN.data).toEqual({ categoryId: 10, category_title: "Cobrança" })
+            expect(byType.QUESTION_CHOSEN.data).toEqual({
+                categoryId: 10,
+                category_title: "Cobrança",
+                questionId: 1,
+                question_title: "Cobrança indevida de serviço não contratado",
+            })
+            expect(byType.ANSWER_SENT.generated_by_ai).toBe(true)
+            expect(byType.RESOLVED_ANSWERED.data).toEqual({ resolved: false })
+            expect(byType.RESOLVED_ANSWERED.generated_by_ai).toBe(false)
+            expect(byType.STARTED.data).toEqual({})
         })
 
         it("detecta quando a lista de documentos enviada difere da configuração atual", async () => {

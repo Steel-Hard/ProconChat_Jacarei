@@ -373,10 +373,17 @@ describe("Agendamentos com Postgres (integração)", () => {
 
         expect(res.status).toBe(200)
         expect(res.body.data.category_name).toBe("Categoria Integracao")
-        const labels = res.body.data.timeline.map((step: { label: string }) => step.label)
-        expect(labels).toContain(`Categoria selecionada: ${res.body.data.category_name}`)
-        expect(labels).toContain(`Pergunta selecionada: ${res.body.data.question_title}`)
-        expect(labels).not.toContain("Categoria selecionada: Cat Int")
+        const steps: { type: string; data: Record<string, unknown> }[] = res.body.data.timeline
+        const categorySteps = steps.filter((step) => step.type === "CATEGORY_CHOSEN")
+        const questionSteps = steps.filter((step) => step.type === "QUESTION_CHOSEN")
+        expect(categorySteps.length).toBeGreaterThan(0)
+        expect(questionSteps.length).toBeGreaterThan(0)
+        for (const step of [...categorySteps, ...questionSteps]) {
+            expect(step.data.category_title).toBe(res.body.data.category_name)
+        }
+        for (const step of questionSteps) {
+            expect(step.data.question_title).toBe(res.body.data.question_title)
+        }
     })
 
     it("o protocolo vem em maiúsculas na lista e no detalhe, igual ao que o bot envia", async () => {

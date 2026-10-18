@@ -98,9 +98,8 @@ export interface ConversationTimelineStep {
     id: string
     type: string
     created_at: string
+    generated_by_ai: boolean
     data: Record<string, unknown>
-    label: string
-    generated_by_ai?: boolean
 }
 
 export interface AppointmentDetail {
