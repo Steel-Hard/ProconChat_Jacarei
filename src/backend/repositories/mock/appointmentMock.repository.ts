@@ -485,7 +485,7 @@ export class MockAppointmentRepository implements AppointmentRepository {
 
         const apptEvents = this.events
             .filter((e) => e.appointment_id === appt.id)
-            .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
+            .sort((a, b) => b.created_at.getTime() - a.created_at.getTime() || b.id - a.id)
             .map((e) => ({
                 id: e.id.toString(),
                 type: e.type,

@@ -343,6 +343,24 @@ describe("Agendamentos com Postgres (integração)", () => {
         expect(res.body.data.events[0].type).toBe("CLAIMED")
     })
 
+    it("o histórico mostra o ATTENDED antes do CLAIMED automático gravado no mesmo instante", async () => {
+        const apptId = await createAppointment({
+            name: "Cidadão Histórico",
+            status: "PENDING",
+            appointmentDatetime: new Date(Date.now() - 60000),
+            cpf: "88822255566",
+        })
+
+        const res = await request(app)
+            .patch(`/api/v1/appointments/${apptId}/status`)
+            .set("Origin", ORIGIN)
+            .set("Cookie", adminCookie)
+            .send({ action: "attended" })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.events.map((e: { type: string }) => e.type)).toEqual(["ATTENDED", "CLAIMED"])
+    })
+
     it("retorna 400 para id não numérico ou acima do limite de bigint", async () => {
         const resText = await request(app)
             .get("/api/v1/appointments/abc")

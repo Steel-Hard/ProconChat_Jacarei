@@ -166,7 +166,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                  FROM AppointmentEvents e
                  LEFT JOIN Users u ON u.id = e.actor_user_id
                  WHERE e.appointment_id = $1
-                 ORDER BY e.created_at DESC`,
+                 ORDER BY e.created_at DESC, e.id DESC`,
                 [row.id],
             )
 
