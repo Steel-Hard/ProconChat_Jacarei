@@ -5,6 +5,7 @@ import type {
     AppointmentActionType,
     AppointmentAvailableActions,
     AppointmentStatus,
+    TransitionErrorCode,
 } from "../types/appointment.types"
 import { isDateOnOrBeforeToday, isDatetimePast } from "../utils/date.utils"
 
@@ -13,61 +14,41 @@ export interface TransitionTarget {
     appointmentDatetime: Date
 }
 
-export type TransitionDecision = { allowed: true } | { allowed: false; error: AppError }
+export type TransitionDecision =
+    | { allowed: true }
+    | { allowed: false; error: AppError; code: TransitionErrorCode }
 
 const ALLOWED: TransitionDecision = { allowed: true }
 
-function refuse(error: AppError): TransitionDecision {
-    return { allowed: false, error }
+function refuse(message: string, code: TransitionErrorCode): TransitionDecision {
+    return { allowed: false, error: new ConflictError(message, code), code }
 }
 
 function decideClaim(status: AppointmentStatus): TransitionDecision {
     if (status === "CANCELED") {
-        return refuse(
-            new ConflictError(
-                "Não é possível assumir um agendamento cancelado",
-                "APPOINTMENT_CANCELED",
-            ),
-        )
+        return refuse("Não é possível assumir um agendamento cancelado", "APPOINTMENT_CANCELED")
     }
     if (status === "ATTENDED") {
-        return refuse(new ConflictError("Agendamento já foi atendido", "ALREADY_ATTENDED"))
+        return refuse("Agendamento já foi atendido", "ALREADY_ATTENDED")
     }
     if (status === "NO_SHOW") {
-        return refuse(
-            new ConflictError(
-                "Agendamento já registrado como não compareceu",
-                "ALREADY_NO_SHOW",
-            ),
-        )
+        return refuse("Agendamento já registrado como não compareceu", "ALREADY_NO_SHOW")
     }
     if (status !== "PENDING") {
-        return refuse(
-            new ConflictError(
-                "Apenas agendamentos pendentes podem ser assumidos",
-                "APPOINTMENT_ALREADY_CLAIMED",
-            ),
-        )
+        return refuse("Apenas agendamentos pendentes podem ser assumidos", "APPOINTMENT_ALREADY_CLAIMED")
     }
     return ALLOWED
 }
 
 function decideRecordStatus(status: AppointmentStatus, canceledMessage: string): TransitionDecision | null {
     if (status === "ATTENDED") {
-        return refuse(
-            new ConflictError("Agendamento já foi marcado como atendido", "ALREADY_ATTENDED"),
-        )
+        return refuse("Agendamento já foi marcado como atendido", "ALREADY_ATTENDED")
     }
     if (status === "NO_SHOW") {
-        return refuse(
-            new ConflictError(
-                "Agendamento já foi registrado como não compareceu",
-                "ALREADY_NO_SHOW",
-            ),
-        )
+        return refuse("Agendamento já foi registrado como não compareceu", "ALREADY_NO_SHOW")
     }
     if (status === "CANCELED") {
-        return refuse(new ConflictError(canceledMessage, "APPOINTMENT_CANCELED"))
+        return refuse(canceledMessage, "APPOINTMENT_CANCELED")
     }
     return null
 }
@@ -81,12 +62,7 @@ function decideAttended(target: TransitionTarget, now: Date): TransitionDecision
         return statusDecision
     }
     if (!isDateOnOrBeforeToday(target.appointmentDatetime, now)) {
-        return refuse(
-            new ConflictError(
-                "Disponível a partir do dia do atendimento",
-                "ATTENDANCE_NOT_YET_AVAILABLE",
-            ),
-        )
+        return refuse("Disponível a partir do dia do atendimento", "ATTENDANCE_NOT_YET_AVAILABLE")
     }
     return ALLOWED
 }
@@ -100,12 +76,7 @@ function decideNoShow(target: TransitionTarget, now: Date): TransitionDecision {
         return statusDecision
     }
     if (!isDatetimePast(target.appointmentDatetime, now)) {
-        return refuse(
-            new ConflictError(
-                "Disponível apenas após o horário do agendamento",
-                "NO_SHOW_NOT_YET_AVAILABLE",
-            ),
-        )
+        return refuse("Disponível apenas após o horário do agendamento", "NO_SHOW_NOT_YET_AVAILABLE")
     }
     return ALLOWED
 }
@@ -127,7 +98,7 @@ export function decideTransition(
 function availabilityOf(decision: TransitionDecision): AppointmentActionAvailability {
     return decision.allowed
         ? { allowed: true, code: null }
-        : { allowed: false, code: decision.error.code }
+        : { allowed: false, code: decision.code }
 }
 
 export function availableActions(target: TransitionTarget, now: Date): AppointmentAvailableActions {

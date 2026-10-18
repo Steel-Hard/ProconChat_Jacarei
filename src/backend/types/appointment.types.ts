@@ -102,9 +102,17 @@ export interface ConversationTimelineStep {
     data: Record<string, unknown>
 }
 
+export type TransitionErrorCode =
+    | "APPOINTMENT_ALREADY_CLAIMED"
+    | "ALREADY_ATTENDED"
+    | "ALREADY_NO_SHOW"
+    | "APPOINTMENT_CANCELED"
+    | "ATTENDANCE_NOT_YET_AVAILABLE"
+    | "NO_SHOW_NOT_YET_AVAILABLE"
+
 export interface AppointmentActionAvailability {
     allowed: boolean
-    code: string | null
+    code: TransitionErrorCode | null
 }
 
 export type AppointmentAvailableActions = Record<AppointmentActionType, AppointmentActionAvailability>
