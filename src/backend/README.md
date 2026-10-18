@@ -14,7 +14,7 @@ Backend do chatbot de orientação ao consumidor via WhatsApp (PROCON Jacareí).
 - `middleware/` — middlewares do Express: `requestLogger.middleware.ts` (log estruturado por requisição, sem corpo nem cookies), `errorHandler.middleware.ts` (converte qualquer erro numa resposta JSON padronizada; corpo JSON malformado vira `400 BAD_REQUEST`), `trustedOrigin.middleware.ts` (proteção CSRF), `auth.middleware.ts` (`requireAuth` e `requirePermission`) e `validateRequest.middleware.ts` (`validateRequest({ query, params, body })`, que valida com zod, troca `req.query`/`req.params`/`req.body` pelo valor validado e devolve `400 BAD_REQUEST` com `Dados inválidos: ...`).
 - `types/` — DTOs e formatos de resposta compartilhados (`successResponse.types.ts`, `errorResponse.types.ts`, tipos específicos de cada recurso).
 - `utils/` — utilitários que não pertencem a nenhum recurso específico, ex.: `validateEnv.ts` (validação de variáveis de ambiente obrigatórias na inicialização).
-- `db/` — `connection.ts`, conexão genérica ao PostgreSQL (via `pg`). Ainda não é usada por nenhuma rota — fica pronta para o primeiro recurso real que precisar de acesso ao banco.
+- `db/` — `connection.ts`, com o `getPool()` que devolve o único `Pool` do PostgreSQL (via `pg`), usado por todos os repositórios de `repositories/` que acessam o banco. Também guarda as migrations (`migrations/`), o schema consolidado (`schema/`), o seed (`seeds/`), os scripts de manutenção (`scripts/`) e o `verify-migrations.cjs` (`npm run test:db`).
 
 ## Padrão para adicionar um novo recurso
 
@@ -24,15 +24,15 @@ Backend do chatbot de orientação ao consumidor via WhatsApp (PROCON Jacareí).
 - Entrada validada na rota com os schemas zod de `schemas/<recurso>.schema.ts` e `validateRequest` (`middleware/validateRequest.middleware.ts`), como `routes/appointment.routes.ts`. O controller lê `req.query`/`req.params`/`req.body` já validados, sem validar de novo.
 - Montagem em `app.ts`, sob o prefixo `/api/v1` (exceto casos como `/health`, que ficam fora do versionamento por serem consumidos por infraestrutura).
 - Teste unitário do controller em `controllers/<recurso>.controller.test.ts`: instancia a classe com dublês, monta `req`/`res`/`next` falsos e chama os métodos direto, sem `supertest` (ex.: `controllers/auth.controller.test.ts`).
-- Teste de montagem em `routes/<recurso>.routes.test.ts` com `supertest` contra o `app` exportado por `app.ts`, principalmente para caminho, middlewares e ordem, CORS, CSRF, cabeçalhos e envelope de erro (ex.: `routes/health.routes.test.ts`). Temas maiores ficam em arquivos irmãos `routes/<recurso>.<tema>.test.ts` (ex.: `auth.endpoints`, `auth.loginLimiter`, `auth.sessionLifetime`, `auth.frontendOrigin`). O dublê de uma dependência num teste de rota entra por `vi.mock` ou por injeção no constructor, não por `vi.spyOn` na exportação do módulo, porque o controller guarda o service padrão quando é construído.
+- Teste de montagem em `routes/<recurso>.routes.test.ts` com `supertest` contra o `app` exportado por `app.ts`, principalmente para caminho, middlewares e ordem, CORS, CSRF, cabeçalhos e envelope de erro (ex.: `routes/health.routes.test.ts`). A exceção são os testes de agendamentos (desde a #60): `routes/appointment.routes.test.ts` monta um `express()` próprio com `AppointmentRoutes` (repositório em memória e `createRequireAuth` com dublês) e o `errorHandler`, sem a proteção de origem; `routes/appointment.contract.test.ts` monta o mesmo e acrescenta `createRequireTrustedOrigin`. Temas maiores ficam em arquivos irmãos `routes/<recurso>.<tema>.test.ts` (ex.: `auth.endpoints`, `auth.loginLimiter`, `auth.sessionLifetime`, `auth.frontendOrigin`). O dublê de uma dependência num teste de rota entra por `vi.mock` ou por injeção no constructor, não por `vi.spyOn` na exportação do módulo, porque o controller guarda o service padrão quando é construído.
 
 ## Organização dos testes
 
 - **Unidade** (`npm test`, `vitest.config.mts`): arquivos `*.test.ts` ao lado do código testado. Um assunto grande vira arquivos irmãos `<recurso>.<tema>.test.ts`, como `routes/auth.*.test.ts` e `services/conversationFlow.service.test.ts` (dúvida), `conversationFlow.scheduling.test.ts`, `conversationFlow.fullFlow.test.ts` e `conversationFlow.paused.test.ts`. O contrato da API de agendamentos tem o próprio arquivo, `routes/appointment.contract.test.ts`, que fixa as chaves exatas de cada resposta.
 - **Dublês de repositório** em `repositories/mock/` (`*Mock.repository.ts`), como `InMemorySessionRepository` (`sessionMock.repository.ts`, com a mesma regra de página do repositório real e teste próprio) e `MockAppointmentRepository`.
-- **Fixtures e harness dos services** em `services/mock/`: `conversationFlow.fixtures.ts` e `schedule.fixtures.ts` (dados e builders, sem `vitest`) e `conversationFlowHarness.ts` (o fluxo da conversa montado com `vi.fn`). Essas pastas entram no `dist`, porque o build só exclui `*.test.ts`; código de produção nunca importa delas.
-- **Integração** (`npm run test:integration`, `vitest.integration.config.mts`, em série): `tests/integration/*.test.ts` contra Postgres real, com os apoios em `tests/integration/helpers/` (`scheduleDb.ts`, `appointmentsDb.ts` e `phone.ts`).
-- **Tipos dos testes:** o build não compila os testes. `npm run typecheck:test` (`tsconfig.test.json`) checa os tipos de todo `.ts`, inclusive os testes, e roda no CI.
+- **Fixtures e harness dos services** em `services/mock/`: `conversationFlow.fixtures.ts` e `schedule.fixtures.ts` (dados e builders, sem `vitest`) e `conversationFlowHarness.ts` (o fluxo da conversa montado com `vi.fn`). Essas pastas entram no `dist`, porque o build só exclui `*.test.ts` e `tests/**`; código de produção nunca importa delas.
+- **Integração** (`npm run test:integration`, `vitest.integration.config.mts`, em série): `tests/integration/*.test.ts` contra Postgres real, com os apoios em `tests/integration/helpers/` (`scheduleDb.ts`, `appointmentsDb.ts` e `phone.ts`). A pasta `tests/` inteira fica fora do build (`exclude` do `tsconfig.json`), então esses apoios, que apagam e recriam dados, não vão para o `dist` nem para a imagem.
+- **Tipos dos testes:** o build não compila os testes nem `tests/`. `npm run typecheck:test` (`tsconfig.test.json`) checa os tipos de todo `.ts`, inclusive os testes, e roda no CI.
 
 ## Variáveis de ambiente
 
@@ -688,9 +688,12 @@ pergunta da sessão.
 
 **Regra do nome.** O bot aplica `trim()` e `normalize("NFC")`, exige de 2 a 150 caracteres e aceita
 só letras de qualquer alfabeto (inclusive `º` e `ª`, que o Unicode trata como letras), marcas de
-acentuação, espaço, apóstrofo reto e curvo, ponto, vírgula e hífen (`/^[\p{L}\p{M}\s'’.,-]+$/u`). O
-nome é gravado já normalizado. Dígitos (também os de largura total), `@`, `_`, parênteses, barra,
-`&` e emoji são recusados, o que impede que um CPF digitado no lugar do nome seja gravado.
+acentuação, espaço comum, apóstrofo reto e curvo, ponto, vírgula e hífen
+(`/^[\p{L}\p{M} '’.,-]+$/u`), com ao menos uma letra (`/\p{L}/u`). O nome é gravado já normalizado.
+Dígitos (também os de largura total), `@`, `_`, parênteses, barra, `&` e emoji são recusados, o que
+impede que um CPF digitado no lugar do nome seja gravado. Também são recusados o nome só de
+pontuação (`..`, `- -`, `''`) e a quebra de linha ou a tabulação no meio do nome: entre as palavras,
+só o espaço comum.
 
 | Situação | Mensagem (`services/messageFormatter.service.ts`) | Etapa seguinte |
 | --- | --- | --- |
@@ -883,10 +886,3 @@ A migration `13` garante no banco que `current_step = 'FINISHED'` só existe em 
 Esta regra só roda quando o mesmo número volta a escrever. A **varredura periódica** das sessões de
 quem nunca volta é da **#55** e precisa aplicar exatamente a mesma regra. A correspondência entre
 etapa e os nomes de abandono dos Relatórios é da #68.
-
-### O que cada branch troca no merge
-
-- **#55** (`feat/55-novo-fluxo-da-duvida`): fica com a versão da #16 de `findOrCreateActive` e de
-  `finish`, apaga o abandono próprio, faz a varredura reaproveitando a regra acima, emite os eventos
-  da tabela por passo com `record`/`finish` e remove a exceção provisória do `RESOLVED` em
-  `isClosingCompatible`.
