@@ -6,7 +6,7 @@ import {
     BookAppointmentResult,
     ScheduleRange,
 } from "../types/schedule.types"
-import { getLocalParts, parseLocalDate } from "../utils/date.utils"
+import { addDaysToDateString, getLocalParts, parseLocalDate } from "../utils/date.utils"
 
 const WEEKDAYS_PT = [
     "Domingo",
@@ -27,12 +27,6 @@ export function fromMinutes(mins: number): string {
     const h = Math.floor(mins / 60)
     const m = mins % 60
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
-}
-
-export function addDaysToDateStr(dateStr: string, days: number): string {
-    const [y, m, d] = dateStr.split("-").map(Number)
-    const dt = new Date(Date.UTC(y!, m! - 1, d! + days, 12, 0, 0))
-    return dt.toISOString().slice(0, 10)
 }
 
 export function getDowFromDateStr(dateStr: string): number {
@@ -119,7 +113,7 @@ export function createScheduleService(
             return []
         }
 
-        const maxDateStr = addDaysToDateStr(todayStr, settings.window_days + 15)
+        const maxDateStr = addDaysToDateString(todayStr, settings.window_days + 15)
         const blockedDates = await repository.getBlockedDates(
             todayStr,
             maxDateStr,
@@ -133,7 +127,7 @@ export function createScheduleService(
             const maxIterations = settings.window_days + 30
             while (n < settings.min_notice_days && iterations < maxIterations) {
                 iterations++
-                d = addDaysToDateStr(d, 1)
+                d = addDaysToDateString(d, 1)
                 if (
                     isBusinessDay(
                         d,
@@ -151,7 +145,7 @@ export function createScheduleService(
             startDateStr = d
         }
 
-        const endDateStr = addDaysToDateStr(todayStr, settings.window_days)
+        const endDateStr = addDaysToDateString(todayStr, settings.window_days)
 
         interface CandidateSlot {
             datetime: Date
@@ -191,7 +185,7 @@ export function createScheduleService(
                 })
             }
 
-            curr = addDaysToDateStr(curr, 1)
+            curr = addDaysToDateString(curr, 1)
         }
 
         if (candidateSlots.length === 0) {
