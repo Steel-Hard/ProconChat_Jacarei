@@ -324,6 +324,38 @@ describe("appointment.routes (HTTP)", () => {
             expect(patchRes.body.data).toEqual(getRes.body.data)
         })
 
+        it.each([
+            { action: "attended", id: 7, status: "ATTENDED", terminalEvent: "ATTENDED" },
+            { action: "no_show", id: 3, status: "NO_SHOW", terminalEvent: "NO_SHOW" },
+        ])(
+            "o PATCH $action devolve o mesmo detalhe que o GET em seguida, com linha do tempo e histórico",
+            async ({ action, id, status, terminalEvent }) => {
+                const events: ConversationEventService = {
+                    record: vi.fn(),
+                    finish: vi.fn(),
+                    listBySession: vi.fn().mockResolvedValue([
+                        { type: "STARTED", createdAt: new Date() },
+                        { type: "CATEGORY_CHOSEN", createdAt: new Date() },
+                    ]),
+                }
+                const appWithTimeline = buildApp(events)
+
+                const patchRes = await request(appWithTimeline)
+                    .patch(`/api/v1/appointments/${id}/status`)
+                    .set("Cookie", accessCookieFor(10))
+                    .send({ action })
+                const getRes = await request(appWithTimeline)
+                    .get(`/api/v1/appointments/${id}`)
+                    .set("Cookie", accessCookieFor(10))
+
+                expect(patchRes.status).toBe(200)
+                expect(patchRes.body.data.status).toBe(status)
+                expect(patchRes.body.data.timeline).toHaveLength(2)
+                expect(patchRes.body.data.events[0].type).toBe(terminalEvent)
+                expect(patchRes.body.data).toEqual(getRes.body.data)
+            },
+        )
+
         it("executa ação claim via PATCH /status", async () => {
             const res = await request(app)
                 .patch("/api/v1/appointments/1/status")

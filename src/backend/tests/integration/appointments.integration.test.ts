@@ -343,6 +343,39 @@ describe("Agendamentos com Postgres (integração)", () => {
         expect(res.body.data.events.map((e: { type: string }) => e.type)).toEqual(["ATTENDED", "CLAIMED"])
     })
 
+    it.each([
+        { action: "attended", terminalEvent: "ATTENDED", cpf: "99933366677" },
+        { action: "no_show", terminalEvent: "NO_SHOW", cpf: "99933366688" },
+    ])(
+        "o PATCH $action devolve a linha do tempo da conversa e o histórico igual ao do GET",
+        async ({ action, terminalEvent, cpf }) => {
+            const pool = getPool()
+            await insertConversationEvent(pool, String(sessionId), { type: "STARTED" })
+            await insertConversationEvent(pool, String(sessionId), { type: "CATEGORY_CHOSEN", categoryId })
+            const apptId = await createAppointment({
+                name: "Cidadão Ação Terminal",
+                status: "CONFIRMED",
+                appointmentDatetime: new Date(Date.now() - 3600000),
+                cpf,
+            })
+
+            const patchRes = await request(app)
+                .patch(`/api/v1/appointments/${apptId}/status`)
+                .set("Origin", ORIGIN)
+                .set("Cookie", adminCookie)
+                .send({ action })
+            const getRes = await request(app)
+                .get(`/api/v1/appointments/${apptId}`)
+                .set("Cookie", adminCookie)
+
+            expect(patchRes.status).toBe(200)
+            expect(patchRes.body.data.timeline.length).toBeGreaterThan(0)
+            expect(patchRes.body.data.events[0].type).toBe(terminalEvent)
+            expect(patchRes.body.data.timeline).toEqual(getRes.body.data.timeline)
+            expect(patchRes.body.data.events).toEqual(getRes.body.data.events)
+        },
+    )
+
     it("a linha do tempo usa o mesmo título de categoria e pergunta do detalhe", async () => {
         const pool = getPool()
         await insertConversationEvent(pool, String(sessionId), { type: "CATEGORY_CHOSEN", categoryId })
