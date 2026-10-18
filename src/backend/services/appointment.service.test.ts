@@ -35,7 +35,7 @@ describe("appointment.service", () => {
                 waiting_record: expect.any(Number),
             })
 
-            const first = response.items[0]
+            const first = response.items[0]!
             expect(first).toHaveProperty("protocol")
             expect(first.protocol).toHaveLength(8)
             expect(first).toHaveProperty("cpf_masked")
@@ -55,21 +55,21 @@ describe("appointment.service", () => {
         it("busca por protocolo pelo início", async () => {
             const response = await service.listAppointments({ search: "a1b2c3d4" })
             expect(response.items).toHaveLength(1)
-            expect(response.items[0].name).toBe("Maria Silva")
+            expect(response.items[0]!.name).toBe("Maria Silva")
         })
 
         it("busca por CPF de 11 dígitos compara por hash e preserva sigilo", async () => {
             const response = await service.listAppointments({ search: "11144477735" })
             expect(response.items).toHaveLength(1)
-            expect(response.items[0].name).toBe("Maria Silva")
-            expect(response.items[0].cpf_masked).toBe("***.444.777-**")
+            expect(response.items[0]!.name).toBe("Maria Silva")
+            expect(response.items[0]!.cpf_masked).toBe("***.444.777-**")
         })
 
         it("busca por CPF formatado limpa a pontuação e encontra o cidadão", async () => {
             const response = await service.listAppointments({ search: "111.444.777-35" })
             expect(response.items).toHaveLength(1)
-            expect(response.items[0].name).toBe("Maria Silva")
-            expect(response.items[0].cpf_masked).toBe("***.444.777-**")
+            expect(response.items[0]!.name).toBe("Maria Silva")
+            expect(response.items[0]!.cpf_masked).toBe("***.444.777-**")
         })
 
         it("filtra por status PENDING e CONFIRMED", async () => {
@@ -100,14 +100,14 @@ describe("appointment.service", () => {
             expect(names).toEqual(sortedNames)
 
             const descRes = await service.listAppointments({ sortBy: "name", sortOrder: "desc" })
-            expect(descRes.items[0].name).toBe(sortedNames[sortedNames.length - 1])
+            expect(descRes.items[0]!.name).toBe(sortedNames[sortedNames.length - 1])
         })
 
         it("com period=all e chip ATTENDED ordena do mais recente para o mais antigo", async () => {
             const res = await service.listAppointments({ status: "ATTENDED", period: "all" })
             for (let i = 1; i < res.items.length; i++) {
-                const prev = new Date(res.items[i - 1].appointment_datetime).getTime()
-                const curr = new Date(res.items[i].appointment_datetime).getTime()
+                const prev = new Date(res.items[i - 1]!.appointment_datetime).getTime()
+                const curr = new Date(res.items[i]!.appointment_datetime).getTime()
                 expect(prev).toBeGreaterThanOrEqual(curr)
             }
         })
