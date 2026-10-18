@@ -194,6 +194,12 @@ describe("conversationFlow.service", () => {
             { caso: "com e comercial", nome: "Maria & João" },
             { caso: "com menos de 2 caracteres", nome: "A" },
             { caso: "com mais de 150 caracteres", nome: "A".repeat(151) },
+            { caso: "só com pontos", nome: ".." },
+            { caso: "só com hífens e espaço", nome: "- -" },
+            { caso: "só com vírgula, espaço e ponto", nome: ", ." },
+            { caso: "só com apóstrofos", nome: "''" },
+            { caso: "com quebra de linha", nome: "Maria\nSilva" },
+            { caso: "com tabulação", nome: "Maria\tSilva" },
         ])("AWAITING_HOLDER_NAME: recusa o nome $caso e pede de novo", async ({ nome }) => {
             findOrCreateActive.mockResolvedValueOnce(
                 sessionAt("AWAITING_HOLDER_NAME", { draft: { by_representative: false } }),

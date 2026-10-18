@@ -64,7 +64,8 @@ export interface SchedulingFlow {
     ): Promise<ConversationFlowResult>
 }
 
-const HOLDER_NAME_PATTERN = /^[\p{L}\p{M}\s'’.,-]+$/u
+const HOLDER_NAME_PATTERN = /^[\p{L}\p{M} '’.,-]+$/u
+const HOLDER_NAME_LETTER = /\p{L}/u
 
 function keepQuestion(session: ActiveSession): Pick<NavigationState, "currentCategoryId" | "currentQuestionId"> {
     return {
@@ -163,7 +164,13 @@ export function createSchedulingFlow({
     ): Promise<ConversationFlowResult> {
         const name = text?.trim().normalize("NFC")
 
-        if (!name || name.length < 2 || name.length > 150 || !HOLDER_NAME_PATTERN.test(name)) {
+        if (
+            !name ||
+            name.length < 2 ||
+            name.length > 150 ||
+            !HOLDER_NAME_PATTERN.test(name) ||
+            !HOLDER_NAME_LETTER.test(name)
+        ) {
             return {
                 sessionId: session.id,
                 newSession: false,
