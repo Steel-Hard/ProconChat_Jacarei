@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto"
 import request from "supertest"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import app from "../../app"
@@ -108,7 +109,10 @@ describe("Agendamentos com Postgres (integração)", () => {
 
     it("busca por CPF com hash HMAC encontra agendamento digitado com e sem pontuação", async () => {
         const cpfDigits = "52998224725"
-        const id = await createAppointment({ name: "Maria CPF HMAC", cpf: cpfDigits })
+        const cpfHash = createHmac("sha256", process.env.CPF_HASH_SECRET as string)
+            .update(cpfDigits, "utf8")
+            .digest("hex")
+        const id = await createAppointment({ name: "Maria CPF HMAC", cpf: cpfDigits, cpfHash })
 
         const resRaw = await request(app)
             .get(`/api/v1/appointments?search=${cpfDigits}`)

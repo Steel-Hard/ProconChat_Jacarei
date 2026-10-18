@@ -1,5 +1,5 @@
-import { createHmac } from "node:crypto"
 import getPool from "../../../db/connection"
+import { hashCpf } from "../../../utils/cpf.utils"
 import { sessionTokens } from "../../../utils/sessionToken"
 import type { AppointmentStatus } from "../../../types/appointment.types"
 
@@ -19,6 +19,7 @@ export interface TestAppointmentScope {
 export interface TestAppointmentOverrides {
     name?: string
     cpf?: string
+    cpfHash?: string
     status?: AppointmentStatus
     appointmentDatetime?: Date
     assignedUserId?: number | null
@@ -31,11 +32,6 @@ export function firstRow<T>(rows: T[]): T {
         throw new Error("Consulta sem linhas")
     }
     return row
-}
-
-export function testCpfHash(cpf: string): string {
-    const secret = process.env.CPF_HASH_SECRET ?? "test-only-cpf-hash-secret"
-    return createHmac("sha256", secret).update(cpf.replace(/\D/g, ""), "utf8").digest("hex").toLowerCase()
 }
 
 export async function loginAdmin(): Promise<AdminLogin> {
@@ -74,7 +70,7 @@ export async function createTestAppointment(
 ): Promise<number> {
     const pool = getPool()
     const cpf = overrides.cpf ?? "52998224725"
-    const cpfHash = testCpfHash(cpf)
+    const cpfHash = overrides.cpfHash ?? hashCpf(cpf)
     const name = overrides.name ?? "Cidadão Teste"
     const status = overrides.status ?? "PENDING"
     const apptDate = overrides.appointmentDatetime ?? new Date(Date.now() + 86400000)
