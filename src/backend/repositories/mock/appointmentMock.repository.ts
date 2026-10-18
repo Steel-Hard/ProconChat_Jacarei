@@ -1,22 +1,22 @@
-import BadRequestError from "../../errors/BadRequestError"
-import ConflictError from "../../errors/ConflictError"
 import NotFoundError from "../../errors/NotFoundError"
+import { decideTransition } from "../../services/appointmentTransitions"
 import {
+    AppointmentActionType,
     AppointmentChipCounts,
-    AppointmentDetail,
+    AppointmentDetailRecord,
     AppointmentEventType,
     AppointmentListFilters,
     AppointmentListItem,
     AppointmentReason,
     AppointmentStatus,
-    ConversationTimelineStep,
 } from "../../types/appointment.types"
+import type { RecordedConversationEvent } from "../../types/conversationEvent.types"
+import type { ConversationEventService } from "../../services/conversationEvent.service"
 import { cleanCpf, hashCpf } from "../../utils/cpf.utils"
 import {
     addDaysToDateString,
     getThisWeekBounds,
     getTodayBounds,
-    isDateOnOrBeforeToday,
     isDatetimePast,
     toLocalDateString,
 } from "../../utils/date.utils"
@@ -374,21 +374,21 @@ export class MockAppointmentRepository implements AppointmentRepository {
                 id: 2,
                 session_id: 101,
                 type: "CATEGORY_CHOSEN",
-                data: { category_name: "Cobrança" },
+                data: { categoryId: 10 },
                 created_at: baseDate,
             },
             {
                 id: 3,
                 session_id: 101,
                 type: "QUESTION_CHOSEN",
-                data: { question_title: "Cobrança indevida de serviço não contratado" },
+                data: { categoryId: 10, questionId: 1 },
                 created_at: baseDate,
             },
             {
                 id: 4,
                 session_id: 101,
                 type: "ANSWER_SENT",
-                data: { generated_by_ai: true },
+                data: { categoryId: 10, questionId: 1, llm: "USED" },
                 created_at: baseDate,
             },
             {
@@ -402,24 +402,43 @@ export class MockAppointmentRepository implements AppointmentRepository {
                 id: 6,
                 session_id: 101,
                 type: "SCHEDULE_OFFERED",
-                data: {},
+                data: { reason: "NOT_RESOLVED" },
                 created_at: baseDate,
             },
             {
                 id: 7,
                 session_id: 101,
                 type: "ATTENDEE_CHOSEN",
-                data: { by_representative: false },
+                data: { byRepresentative: false },
                 created_at: baseDate,
             },
             {
                 id: 8,
                 session_id: 101,
                 type: "APPOINTMENT_CREATED",
-                data: { protocol: "a1b2c3d4" },
+                data: { appointmentId: 1 },
                 created_at: baseDate,
             },
         ]
+    }
+
+    conversationEventService(): ConversationEventService {
+        return {
+            record: async () => {},
+            finish: async () => {},
+            listBySession: async (sessionId: string) =>
+                this.conversationEvents
+                    .filter((ce) => String(ce.session_id) === sessionId)
+                    .sort((a, b) => a.created_at.getTime() - b.created_at.getTime() || a.id - b.id)
+                    .map(
+                        (ce) =>
+                            ({
+                                type: ce.type,
+                                ...ce.data,
+                                createdAt: ce.created_at,
+                            }) as RecordedConversationEvent,
+                    ),
+        }
     }
 
     async countPending(): Promise<number> {
@@ -439,7 +458,7 @@ export class MockAppointmentRepository implements AppointmentRepository {
         return { group: groupDocs, question: questionDocs }
     }
 
-    async findById(idOrCode: number | string): Promise<AppointmentDetail | null> {
+    async findById(idOrCode: number | string): Promise<AppointmentDetailRecord | null> {
         const idStr = String(idOrCode).trim()
         const appt = this.appointments.find((a) =>
             typeof idOrCode === "number"
@@ -466,7 +485,7 @@ export class MockAppointmentRepository implements AppointmentRepository {
 
         const apptEvents = this.events
             .filter((e) => e.appointment_id === appt.id)
-            .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
+            .sort((a, b) => b.created_at.getTime() - a.created_at.getTime() || b.id - a.id)
             .map((e) => ({
                 id: e.id.toString(),
                 type: e.type,
@@ -476,34 +495,10 @@ export class MockAppointmentRepository implements AppointmentRepository {
                 created_at: e.created_at.toISOString(),
             }))
 
-        const sessionTimeline = this.conversationEvents
-            .filter((ce) => ce.session_id === appt.session_id)
-            .sort((a, b) => a.created_at.getTime() - b.created_at.getTime())
-            .map((ce) => {
-                let label = ce.type
-                if (ce.type === "STARTED") label = "Início do atendimento"
-                if (ce.type === "CATEGORY_CHOSEN") label = `Categoria selecionada: ${ce.data.category_name || ""}`
-                if (ce.type === "QUESTION_CHOSEN") label = `Pergunta selecionada: ${ce.data.question_title || ""}`
-                if (ce.type === "ANSWER_SENT") label = "Orientação enviada"
-                if (ce.type === "RESOLVED_ANSWERED") label = ce.data.resolved ? "Cidadão respondeu que a dúvida foi resolvida" : "Cidadão respondeu que a dúvida não foi resolvida"
-                if (ce.type === "SCHEDULE_OFFERED") label = "Opção de agendamento presencial oferecida"
-                if (ce.type === "ATTENDEE_CHOSEN") label = ce.data.by_representative ? "Comparecimento por representante" : "Titular comparece"
-                if (ce.type === "APPOINTMENT_CREATED") label = "Agendamento concluído"
-
-                return {
-                    id: ce.id.toString(),
-                    type: ce.type,
-                    created_at: ce.created_at.toISOString(),
-                    data: ce.data,
-                    label,
-                    generated_by_ai: Boolean(ce.data.generated_by_ai),
-                } as ConversationTimelineStep
-            })
-
         return {
             id: appt.id.toString(),
             appointment_code: appt.appointment_code,
-            protocol: appt.appointment_code.slice(0, 8),
+            protocol: appt.appointment_code.slice(0, 8).toUpperCase(),
             session_id: appt.session_id.toString(),
             status: appt.status,
             name: appt.name,
@@ -523,8 +518,51 @@ export class MockAppointmentRepository implements AppointmentRepository {
             documents_sent: appt.documents_sent,
             is_documents_config_different: isDifferent,
             events: apptEvents,
-            timeline: sessionTimeline,
+            timeline: [],
         }
+    }
+
+    private matchesPeriod(
+        appt: MockAppointmentRecord,
+        period: AppointmentListFilters["period"],
+        now: Date,
+    ): boolean {
+        if (!period || period === "all") {
+            return true
+        }
+        const todayBounds = getTodayBounds(now)
+        if (period === "today") {
+            return (
+                appt.appointment_datetime >= todayBounds.start &&
+                appt.appointment_datetime <= todayBounds.end
+            )
+        }
+        if (period === "this_week") {
+            const weekBounds = getThisWeekBounds(now)
+            return (
+                appt.appointment_datetime >= weekBounds.start &&
+                appt.appointment_datetime <= weekBounds.end
+            )
+        }
+        if (period === "upcoming") {
+            return appt.appointment_datetime >= todayBounds.start
+        }
+        return appt.appointment_datetime < todayBounds.start
+    }
+
+    private matchesResponsible(appt: MockAppointmentRecord, filters: AppointmentListFilters): boolean {
+        const responsible = filters.responsible
+        if (!responsible || responsible === "all") {
+            return true
+        }
+        if (responsible === "unassigned") {
+            return appt.assigned_user_id === null
+        }
+        if (responsible === "me") {
+            return filters.currentUserId ? appt.assigned_user_id === filters.currentUserId : true
+        }
+        const respId = Number(responsible)
+        return isNaN(respId) ? true : appt.assigned_user_id === respId
     }
 
     async findList(
@@ -535,14 +573,16 @@ export class MockAppointmentRepository implements AppointmentRepository {
         total: number
         chipCounts: AppointmentChipCounts
     }> {
+        const byResponsible = this.appointments.filter((a) => this.matchesResponsible(a, filters))
+        const inScope = byResponsible.filter((a) => this.matchesPeriod(a, filters.period, now))
         const chipCounts: AppointmentChipCounts = {
-            all: this.appointments.length,
-            pending: this.appointments.filter((a) => a.status === "PENDING").length,
-            confirmed: this.appointments.filter((a) => a.status === "CONFIRMED").length,
-            attended: this.appointments.filter((a) => a.status === "ATTENDED").length,
-            no_show: this.appointments.filter((a) => a.status === "NO_SHOW").length,
-            canceled: this.appointments.filter((a) => a.status === "CANCELED").length,
-            waiting_record: this.appointments.filter(
+            all: inScope.length,
+            pending: inScope.filter((a) => a.status === "PENDING").length,
+            confirmed: inScope.filter((a) => a.status === "CONFIRMED").length,
+            attended: inScope.filter((a) => a.status === "ATTENDED").length,
+            no_show: inScope.filter((a) => a.status === "NO_SHOW").length,
+            canceled: inScope.filter((a) => a.status === "CANCELED").length,
+            waiting_record: byResponsible.filter(
                 (a) => a.status === "CONFIRMED" && isDatetimePast(a.appointment_datetime, now),
             ).length,
         }
@@ -553,7 +593,7 @@ export class MockAppointmentRepository implements AppointmentRepository {
             const term = filters.search.trim()
             const cleanedDigits = cleanCpf(term)
 
-            if (cleanedDigits.length === 11) {
+            if (/^[\d.\-\s]+$/.test(term) && cleanedDigits.length === 11) {
                 const hashed = hashCpf(cleanedDigits)
                 filtered = filtered.filter((a) => a.cpf_hash === hashed)
             } else {
@@ -583,41 +623,9 @@ export class MockAppointmentRepository implements AppointmentRepository {
                 }
             }
 
-            if (filters.period && filters.period !== "all") {
-                const todayBounds = getTodayBounds(now)
-                const weekBounds = getThisWeekBounds(now)
-
-                if (filters.period === "today") {
-                    filtered = filtered.filter(
-                        (a) =>
-                            a.appointment_datetime >= todayBounds.start &&
-                            a.appointment_datetime <= todayBounds.end,
-                    )
-                } else if (filters.period === "this_week") {
-                    filtered = filtered.filter(
-                        (a) =>
-                            a.appointment_datetime >= weekBounds.start &&
-                            a.appointment_datetime <= weekBounds.end,
-                    )
-                } else if (filters.period === "upcoming") {
-                    filtered = filtered.filter((a) => a.appointment_datetime >= todayBounds.start)
-                } else if (filters.period === "past") {
-                    filtered = filtered.filter((a) => a.appointment_datetime < todayBounds.start)
-                }
-            }
-
-            if (filters.responsible && filters.responsible !== "all") {
-                if (filters.responsible === "unassigned") {
-                    filtered = filtered.filter((a) => a.assigned_user_id === null)
-                } else if (filters.responsible === "me" && filters.currentUserId) {
-                    filtered = filtered.filter((a) => a.assigned_user_id === filters.currentUserId)
-                } else {
-                    const respId = Number(filters.responsible)
-                    if (!isNaN(respId)) {
-                        filtered = filtered.filter((a) => a.assigned_user_id === respId)
-                    }
-                }
-            }
+            filtered = filtered.filter(
+                (a) => this.matchesPeriod(a, filters.period, now) && this.matchesResponsible(a, filters),
+            )
         }
 
         const isSearching = Boolean(filters.search && filters.search.trim().length > 0)
@@ -708,7 +716,7 @@ export class MockAppointmentRepository implements AppointmentRepository {
 
         const items: AppointmentListItem[] = paged.map((a) => ({
             id: a.id.toString(),
-            protocol: a.appointment_code.slice(0, 8),
+            protocol: a.appointment_code.slice(0, 8).toUpperCase(),
             appointment_code: a.appointment_code,
             name: a.name,
             cpf_masked: a.cpf_masked,
@@ -731,39 +739,11 @@ export class MockAppointmentRepository implements AppointmentRepository {
     }
 
     async claim(
-        id: number,
+        id: string,
         actorUserId: number,
         now: Date = new Date(),
-    ): Promise<AppointmentDetail> {
-        const appt = this.appointments.find((a) => a.id === id)
-        if (!appt) {
-            throw new NotFoundError("Agendamento não encontrado")
-        }
-
-        if (appt.status === "CANCELED") {
-            throw new ConflictError(
-                "Não é possível assumir um agendamento cancelado",
-                "APPOINTMENT_CANCELED",
-            )
-        }
-        if (appt.status === "ATTENDED") {
-            throw new ConflictError(
-                "Agendamento já foi atendido",
-                "ALREADY_ATTENDED",
-            )
-        }
-        if (appt.status === "NO_SHOW") {
-            throw new ConflictError(
-                "Agendamento já registrado como não compareceu",
-                "ALREADY_NO_SHOW",
-            )
-        }
-        if (appt.status !== "PENDING") {
-            throw new ConflictError(
-                "Apenas agendamentos pendentes podem ser assumidos",
-                "APPOINTMENT_ALREADY_CLAIMED",
-            )
-        }
+    ): Promise<void> {
+        const appt = this.lockAndDecide("claim", id, now)
 
         appt.status = "CONFIRMED"
         appt.assigned_user_id = actorUserId
@@ -778,48 +758,14 @@ export class MockAppointmentRepository implements AppointmentRepository {
             data: {},
             created_at: now,
         })
-
-        return (await this.findById(id))!
     }
 
     async markAttended(
-        id: number,
+        id: string,
         actorUserId: number,
         now: Date = new Date(),
-    ): Promise<AppointmentDetail> {
-        const appt = this.appointments.find((a) => a.id === id)
-        if (!appt) {
-            throw new NotFoundError("Agendamento não encontrado")
-        }
-
-        if (appt.status === "ATTENDED") {
-            throw new ConflictError(
-                "Agendamento já foi marcado como atendido",
-                "ALREADY_ATTENDED",
-            )
-        }
-        if (appt.status === "NO_SHOW") {
-            throw new ConflictError(
-                "Agendamento já foi registrado como não compareceu",
-                "ALREADY_NO_SHOW",
-            )
-        }
-        if (appt.status === "CANCELED") {
-            throw new ConflictError(
-                "Não é possível registrar atendimento para um agendamento cancelado",
-                "APPOINTMENT_CANCELED",
-            )
-        }
-        if (appt.status !== "PENDING" && appt.status !== "CONFIRMED") {
-            throw new ConflictError(
-                `Ação não permitida para agendamentos com status ${appt.status}`,
-                "INVALID_STATUS_TRANSITION",
-            )
-        }
-
-        if (!isDateOnOrBeforeToday(appt.appointment_datetime, now)) {
-            throw new BadRequestError("Disponível a partir do dia do atendimento")
-        }
+    ): Promise<void> {
+        const appt = this.lockAndDecide("attended", id, now)
 
         const autoClaim = appt.status === "PENDING"
         if (autoClaim) {
@@ -851,48 +797,14 @@ export class MockAppointmentRepository implements AppointmentRepository {
             data: {},
             created_at: now,
         })
-
-        return (await this.findById(id))!
     }
 
     async markNoShow(
-        id: number,
+        id: string,
         actorUserId: number,
         now: Date = new Date(),
-    ): Promise<AppointmentDetail> {
-        const appt = this.appointments.find((a) => a.id === id)
-        if (!appt) {
-            throw new NotFoundError("Agendamento não encontrado")
-        }
-
-        if (appt.status === "ATTENDED") {
-            throw new ConflictError(
-                "Agendamento já foi marcado como atendido",
-                "ALREADY_ATTENDED",
-            )
-        }
-        if (appt.status === "NO_SHOW") {
-            throw new ConflictError(
-                "Agendamento já foi registrado como não compareceu",
-                "ALREADY_NO_SHOW",
-            )
-        }
-        if (appt.status === "CANCELED") {
-            throw new ConflictError(
-                "Não é possível registrar como não compareceu para um agendamento cancelado",
-                "APPOINTMENT_CANCELED",
-            )
-        }
-        if (appt.status !== "PENDING" && appt.status !== "CONFIRMED") {
-            throw new ConflictError(
-                `Ação não permitida para agendamentos com status ${appt.status}`,
-                "INVALID_STATUS_TRANSITION",
-            )
-        }
-
-        if (!isDatetimePast(appt.appointment_datetime, now)) {
-            throw new BadRequestError("Disponível apenas após o horário do agendamento")
-        }
+    ): Promise<void> {
+        const appt = this.lockAndDecide("no_show", id, now)
 
         const autoClaim = appt.status === "PENDING"
         if (autoClaim) {
@@ -924,8 +836,27 @@ export class MockAppointmentRepository implements AppointmentRepository {
             data: {},
             created_at: now,
         })
+    }
 
-        return (await this.findById(id))!
+    private lockAndDecide(
+        action: AppointmentActionType,
+        id: string,
+        now: Date,
+    ): MockAppointmentRecord {
+        const appt = this.appointments.find((a) => String(a.id) === id)
+        if (!appt) {
+            throw new NotFoundError("Agendamento não encontrado")
+        }
+
+        const decision = decideTransition(
+            action,
+            { status: appt.status, appointmentDatetime: appt.appointment_datetime },
+            now,
+        )
+        if (!decision.allowed) {
+            throw decision.error
+        }
+        return appt
     }
 
     async resolveTitles(

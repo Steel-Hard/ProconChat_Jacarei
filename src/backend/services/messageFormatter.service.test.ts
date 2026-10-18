@@ -12,8 +12,14 @@ import {
     formatarRespostaFinal,
     paginarItens,
     criarBotoesAttendee,
+    criarMensagensCategorias,
+    criarMensagensPerguntas,
     criarMensagensSlots,
+    formatarErroSlot,
+    ERRO_NOME,
 } from "./messageFormatter.service"
+import type { OutgoingMessage } from "../types/message.types"
+import type { AvailableSlot } from "../types/schedule.types"
 
 const categorias: Categoria[] = [
     { id: 1, title: "Contrato", active: true },
@@ -211,6 +217,10 @@ describe("messageFormatter.service", () => {
     })
 
     describe("Formatação de Agendamento (#56)", () => {
+        test("ERRO_NOME explica ao cidadão que o nome deve ter apenas letras", () => {
+            expect(ERRO_NOME).toBe("Por favor, digite o nome completo usando apenas letras (entre 2 e 150 caracteres):")
+        })
+
         test("formatarListaSlots formata slots disponíveis com paginação", () => {
             const slots = [
                 {
@@ -349,6 +359,170 @@ describe("messageFormatter.service", () => {
             expect(texto).toContain("• Procuração")
             expect(texto).not.toContain("Documentos úteis para esta dúvida:")
             expect(texto).toContain("como o aviso em caso de cancelamento")
+        })
+    })
+
+    describe("Linhas de paginação das listas do bot", () => {
+        const vinteCategorias: Categoria[] = Array.from({ length: 20 }, (_, i) => ({
+            id: i + 1,
+            title: `Categoria ${i + 1}`,
+            description: `Descrição ${i + 1}`,
+            active: true,
+        }))
+
+        const vintePerguntas: Pergunta[] = Array.from({ length: 20 }, (_, i) => ({
+            id: 100 + i,
+            category_id: 1,
+            question: `Pergunta ${i + 1}`,
+            legal_basis: null,
+            answer: "Resposta.",
+            requires_in_person: false,
+            out_of_scope: false,
+            active: true,
+        }))
+
+        const vinteSlots: AvailableSlot[] = Array.from({ length: 20 }, (_, i) => {
+            const hora = `${String(8 + Math.floor(i / 2)).padStart(2, "0")}:${i % 2 === 0 ? "00" : "30"}`
+            return {
+                datetime: new Date(`2026-10-06T${hora}:00-03:00`),
+                dateStr: "2026-10-06",
+                timeStr: hora,
+                formatted: `Terça-feira, 06/10 às ${hora}`,
+                remainingSeats: i % 2 === 0 ? 2 : 1,
+            }
+        })
+
+        function linhasDaLista(mensagens: OutgoingMessage[]) {
+            const lista = mensagens.find((mensagem) => mensagem.type === "list")
+            return lista?.type === "list" ? lista.rows : []
+        }
+
+        test("criarMensagensCategorias na primeira página de 20 itens termina com Ver mais opções", () => {
+            const linhas = linhasDaLista(criarMensagensCategorias(vinteCategorias, 1))
+
+            expect(linhas).toEqual([
+                { id: "cat_1", title: "Categoria 1", description: "Descrição 1" },
+                { id: "cat_2", title: "Categoria 2", description: "Descrição 2" },
+                { id: "cat_3", title: "Categoria 3", description: "Descrição 3" },
+                { id: "cat_4", title: "Categoria 4", description: "Descrição 4" },
+                { id: "cat_5", title: "Categoria 5", description: "Descrição 5" },
+                { id: "cat_6", title: "Categoria 6", description: "Descrição 6" },
+                { id: "cat_7", title: "Categoria 7", description: "Descrição 7" },
+                { id: "cat_8", title: "Categoria 8", description: "Descrição 8" },
+                { id: "cat_9", title: "Categoria 9", description: "Descrição 9" },
+                { id: "page_2", title: "Ver mais opções", description: "Exibir mais categorias" },
+            ])
+        })
+
+        test("criarMensagensCategorias numa página do meio traz Voltar opções e Ver mais opções", () => {
+            const linhas = linhasDaLista(criarMensagensCategorias(vinteCategorias, 2))
+
+            expect(linhas).toEqual([
+                { id: "cat_10", title: "Categoria 10", description: "Descrição 10" },
+                { id: "cat_11", title: "Categoria 11", description: "Descrição 11" },
+                { id: "cat_12", title: "Categoria 12", description: "Descrição 12" },
+                { id: "cat_13", title: "Categoria 13", description: "Descrição 13" },
+                { id: "cat_14", title: "Categoria 14", description: "Descrição 14" },
+                { id: "cat_15", title: "Categoria 15", description: "Descrição 15" },
+                { id: "cat_16", title: "Categoria 16", description: "Descrição 16" },
+                { id: "cat_17", title: "Categoria 17", description: "Descrição 17" },
+                { id: "page_1", title: "Voltar opções", description: "Ver categorias anteriores" },
+                { id: "page_3", title: "Ver mais opções", description: "Exibir mais categorias" },
+            ])
+        })
+
+        test("criarMensagensPerguntas na última página termina só com Voltar opções", () => {
+            const linhas = linhasDaLista(criarMensagensPerguntas(vintePerguntas, 3))
+
+            expect(linhas).toEqual([
+                { id: "q_117", title: "Pergunta 18", description: undefined },
+                { id: "q_118", title: "Pergunta 19", description: undefined },
+                { id: "q_119", title: "Pergunta 20", description: undefined },
+                { id: "page_2", title: "Voltar opções", description: "Ver perguntas anteriores" },
+            ])
+        })
+
+        test("criarMensagensSlots numa página do meio traz Voltar opções e Ver mais opções", () => {
+            const linhas = linhasDaLista(criarMensagensSlots(vinteSlots, 2))
+
+            expect(linhas).toEqual([
+                {
+                    id: `slot_${new Date("2026-10-06T12:30:00-03:00").toISOString()}`,
+                    title: "Ter, 06/10 às 12:30",
+                    description: "1 vaga disponível",
+                },
+                {
+                    id: `slot_${new Date("2026-10-06T13:00:00-03:00").toISOString()}`,
+                    title: "Ter, 06/10 às 13:00",
+                    description: "2 vagas disponíveis",
+                },
+                {
+                    id: `slot_${new Date("2026-10-06T13:30:00-03:00").toISOString()}`,
+                    title: "Ter, 06/10 às 13:30",
+                    description: "1 vaga disponível",
+                },
+                {
+                    id: `slot_${new Date("2026-10-06T14:00:00-03:00").toISOString()}`,
+                    title: "Ter, 06/10 às 14:00",
+                    description: "2 vagas disponíveis",
+                },
+                {
+                    id: `slot_${new Date("2026-10-06T14:30:00-03:00").toISOString()}`,
+                    title: "Ter, 06/10 às 14:30",
+                    description: "1 vaga disponível",
+                },
+                {
+                    id: `slot_${new Date("2026-10-06T15:00:00-03:00").toISOString()}`,
+                    title: "Ter, 06/10 às 15:00",
+                    description: "2 vagas disponíveis",
+                },
+                {
+                    id: `slot_${new Date("2026-10-06T15:30:00-03:00").toISOString()}`,
+                    title: "Ter, 06/10 às 15:30",
+                    description: "1 vaga disponível",
+                },
+                {
+                    id: `slot_${new Date("2026-10-06T16:00:00-03:00").toISOString()}`,
+                    title: "Ter, 06/10 às 16:00",
+                    description: "2 vagas disponíveis",
+                },
+                { id: "page_1", title: "Voltar opções", description: "Ver horários anteriores" },
+                { id: "page_3", title: "Ver mais opções", description: "Exibir mais horários" },
+            ])
+        })
+
+        test("formatarListaSlots numa página do meio numera os horários e as opções de navegação", () => {
+            const texto = formatarListaSlots(vinteSlots, 2)
+
+            expect(texto).toEqual(
+                [
+                    "Escolha um dos horários disponíveis para o atendimento presencial:",
+                    "1. Terça-feira, 06/10 às 12:30",
+                    "2. Terça-feira, 06/10 às 13:00",
+                    "3. Terça-feira, 06/10 às 13:30",
+                    "4. Terça-feira, 06/10 às 14:00",
+                    "5. Terça-feira, 06/10 às 14:30",
+                    "6. Terça-feira, 06/10 às 15:00",
+                    "7. Terça-feira, 06/10 às 15:30",
+                    "8. Terça-feira, 06/10 às 16:00",
+                    "9. Voltar para opções anteriores",
+                    "10. Ver mais opções",
+                ].join("\n"),
+            )
+        })
+
+        test("formatarErroSlot na última página repete os horários com a opção de voltar", () => {
+            const texto = formatarErroSlot(vinteSlots, 3)
+
+            expect(texto).toEqual(
+                [
+                    "Por favor, escolha um dos horários disponíveis na lista abaixo:",
+                    "1. Terça-feira, 06/10 às 16:30",
+                    "2. Terça-feira, 06/10 às 17:00",
+                    "3. Terça-feira, 06/10 às 17:30",
+                    "4. Voltar para opções anteriores",
+                ].join("\n"),
+            )
         })
     })
 })

@@ -7,7 +7,8 @@ describe("Whatsapp session service", () => {
     const updateNavigationState = vi.fn()
     const touch = vi.fn()
     const finish = vi.fn()
-    const sessions: SessionRepository = { findOrCreateActive, updateNavigationState, touch, finish }
+    const sweepAbandonedSessions = vi.fn()
+    const sessions: SessionRepository = { findOrCreateActive, updateNavigationState, touch, finish, sweepAbandonedSessions }
     const resolveWhatsappSession = createWhatsappSessionService({ sessions })
 
     beforeEach(() => {

@@ -416,7 +416,7 @@ CREATE INDEX idx_conversation_events_appointment ON ConversationEvents(appointme
 | `SCHEDULE_OFFERED` | `{ "reason": "REQUIRES_IN_PERSON" \| "NOT_RESOLVED" }` |
 | `NO_SLOT`, `SCHEDULE_DECLINED` | — |
 | `ATTENDEE_CHOSEN` | `{ "by_representative": true \| false }` |
-| `PHONE_NOTICE_SHOWN` | — (o cidadão foi informado de que receberá avisos neste número, decisão 002, item 5) |
+| `PHONE_NOTICE_SHOWN` | — (o cidadão foi informado de que receberá avisos neste número, decisão 002, item 5). Gravado na transação da reserva, logo antes do `APPOINTMENT_CREATED` |
 | `APPOINTMENT_CREATED`, `APPOINTMENT_CONSULTED`, `APPOINTMENT_CANCELED` | — (`appointment_id`) |
 | `APPOINTMENT_RESCHEDULED` | `{ "from": "<ISO 8601>", "to": "<ISO 8601>" }`: data e hora antiga e nova, em texto ISO 8601 com fuso (`Z` ou `±hh:mm`) |
 | `ABANDONED` | `{ "step": "<session_step>" }` |
@@ -557,7 +557,7 @@ CREATE INDEX idx_appointment_events_appointment ON AppointmentEvents(appointment
 | Tipo | `data` |
 |---|---|
 | `CREATED` | — |
-| `CLAIMED` | — ("Assumir para mim"; marcar um pendente como atendido grava `CLAIMED` + `ATTENDED`) |
+| `CLAIMED` | — ("Assumir para mim"). Marcar um pendente como atendido ou não compareceu assume automaticamente: grava `CLAIMED` com `{ "auto_claimed": true }` + `ATTENDED`/`NO_SHOW`, no mesmo instante |
 | `ASSIGNED` | `{ "assignee_user_id": ... }` ("Atribuir a outro funcionário") |
 | `RESCHEDULED` | `{ "from": ..., "to": ... }` |
 | `BACK_TO_PENDING` | `{ "reason": "RESCHEDULED" \| "USER_DEACTIVATED" \| ... }` |
@@ -701,7 +701,7 @@ CREATE TABLE WhatsAppSettings (
 |---|---|---|---|
 | Telefone (sessão) | `Sessions.phone_hash` | HMAC-SHA256 hex | — |
 | Telefone (agendamento) | `Appointments.phone_encrypted` | Cifrado, anulável (apagado quando o agendamento termina, #69) | `CHECK` de formato `v1:...` |
-| CPF | `Appointments.cpf_hash` + `cpf_masked` | Hash hex de 64 + `***.456.789-**` | `CHECK` de formato nas duas |
+| CPF | `Appointments.cpf_hash` + `cpf_masked` | HMAC-SHA256 com `CPF_HASH_SECRET`, em hex de 64 + `***.456.789-**` | `CHECK` de formato nas duas |
 | Nome do titular | `Appointments.name` | Texto (decisão 002: a equipe precisa identificar a pessoa) | — |
 | Segredos da Cloud API | `WhatsAppSettings.*_encrypted` | Cifrado | `CHECK` de formato `v1:...` |
 | Texto livre do cidadão | — | **Não existe coluna** | Eventos só com `data` estruturado |

@@ -1,6 +1,6 @@
 import getPool from "../db/connection"
 import InternalServerError from "../errors/InternalServerError"
-import type { ConversationEvent, SessionClosing } from "../types/conversationEvent.types"
+import type { SessionClosing } from "../types/conversationEvent.types"
 import { isClosingCompatible } from "../utils/conversationEventData"
 import { insertConversationEvent, Queryable } from "./conversationEvent.repository"
 
@@ -52,14 +52,6 @@ export interface SessionRepository {
     touch(sessionId: string): Promise<void>
     finish(sessionId: string, closing: SessionClosing): Promise<void>
     sweepAbandonedSessions(): Promise<number>
-}
-
-export async function recordEventWith(
-    db: Queryable,
-    sessionId: string,
-    event: ConversationEvent,
-): Promise<void> {
-    await insertConversationEvent(db, sessionId, event)
 }
 
 export async function finishSessionWith(

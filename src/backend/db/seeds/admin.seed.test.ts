@@ -4,7 +4,7 @@ import { seedAdminAccount } from "./admin.seed"
 import { PasswordHasher } from "../../utils/passwordHasher"
 
 function fakeClient(adminExists: boolean) {
-    const query = vi.fn(async (sql: string) => {
+    const query = vi.fn(async (sql: string, _params?: unknown[]) => {
         if (sql.startsWith("SELECT")) {
             return { rowCount: adminExists ? 1 : 0, rows: adminExists ? [{ id: 1 }] : [] }
         }

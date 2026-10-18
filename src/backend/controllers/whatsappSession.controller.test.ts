@@ -54,7 +54,7 @@ describe("WhatsappSessionController", () => {
         await controller.create(buildRequest({}), res, next)
 
         expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError))
-        expect(next.mock.calls[0][0].message).toBe("Invalid gateway internal token")
+        expect(next.mock.calls[0]?.[0].message).toBe("Invalid gateway internal token")
         expect(processMessage).not.toHaveBeenCalled()
         expect(res.status).not.toHaveBeenCalled()
     })
@@ -66,7 +66,7 @@ describe("WhatsappSessionController", () => {
         await controller.create(buildRequest({ "x-internal-token": "token-errado" }), res, next)
 
         expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError))
-        expect(next.mock.calls[0][0].message).toBe("Invalid gateway internal token")
+        expect(next.mock.calls[0]?.[0].message).toBe("Invalid gateway internal token")
         expect(processMessage).not.toHaveBeenCalled()
         expect(res.status).not.toHaveBeenCalled()
     })

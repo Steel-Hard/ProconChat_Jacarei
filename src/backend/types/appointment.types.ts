@@ -98,10 +98,24 @@ export interface ConversationTimelineStep {
     id: string
     type: string
     created_at: string
+    generated_by_ai: boolean
     data: Record<string, unknown>
-    label: string
-    generated_by_ai?: boolean
 }
+
+export type TransitionErrorCode =
+    | "APPOINTMENT_ALREADY_CLAIMED"
+    | "ALREADY_ATTENDED"
+    | "ALREADY_NO_SHOW"
+    | "APPOINTMENT_CANCELED"
+    | "ATTENDANCE_NOT_YET_AVAILABLE"
+    | "NO_SHOW_NOT_YET_AVAILABLE"
+
+export interface AppointmentActionAvailability {
+    allowed: boolean
+    code: TransitionErrorCode | null
+}
+
+export type AppointmentAvailableActions = Record<AppointmentActionType, AppointmentActionAvailability>
 
 export interface AppointmentDetail {
     id: string
@@ -133,7 +147,10 @@ export interface AppointmentDetail {
 
     events: AppointmentEventItem[]
     timeline: ConversationTimelineStep[]
+    available_actions: AppointmentAvailableActions
 }
+
+export type AppointmentDetailRecord = Omit<AppointmentDetail, "available_actions">
 
 export interface AppointmentListFilters {
     search?: string

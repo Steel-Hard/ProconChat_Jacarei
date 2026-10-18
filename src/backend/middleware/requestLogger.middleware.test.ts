@@ -6,7 +6,7 @@ import requestLoggerMiddleware from "./requestLogger.middleware"
 function buildApp() {
     const app = express()
     app.use(requestLoggerMiddleware)
-    app.get("/ping", (req, res) => res.status(200).json({ ok: true }))
+    app.get("/ping", (_req, res) => res.status(200).json({ ok: true }))
     return app
 }
 

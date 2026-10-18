@@ -107,7 +107,7 @@ describe("AuthController", () => {
             await controller.login(req, res, next)
 
             expect(next).toHaveBeenCalledWith(expect.any(BadRequestError))
-            expect(next.mock.calls[0][0].message).toBe("email and password must be non-empty strings")
+            expect(next.mock.calls[0]?.[0].message).toBe("email and password must be non-empty strings")
             expect(auth.login).not.toHaveBeenCalled()
             expect(res.status).not.toHaveBeenCalled()
         },
@@ -123,7 +123,7 @@ describe("AuthController", () => {
 
         expect(email.length).toBe(255)
         expect(next).toHaveBeenCalledWith(expect.any(BadRequestError))
-        expect(next.mock.calls[0][0].message).toBe("email must not exceed 254 characters")
+        expect(next.mock.calls[0]?.[0].message).toBe("email must not exceed 254 characters")
         expect(auth.login).not.toHaveBeenCalled()
     })
 
@@ -263,7 +263,7 @@ describe("AuthController", () => {
 
         expect(res.status).toHaveBeenCalledWith(200)
         expect(res.json).toHaveBeenCalledWith({ data: user })
-        expect(vi.mocked(res.json).mock.calls[0][0].data).not.toHaveProperty("sessionVersion")
+        expect(vi.mocked(res.json).mock.calls[0]?.[0].data).not.toHaveProperty("sessionVersion")
         expect(next).not.toHaveBeenCalled()
     })
 
@@ -274,7 +274,7 @@ describe("AuthController", () => {
         controller.me(buildRequest(), res, next)
 
         expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError))
-        expect(next.mock.calls[0][0].message).toBe("Authentication required")
+        expect(next.mock.calls[0]?.[0].message).toBe("Authentication required")
         expect(res.status).not.toHaveBeenCalled()
     })
 
@@ -309,7 +309,7 @@ describe("AuthController", () => {
         await controller.changePassword(req, res, next)
 
         expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError))
-        expect(next.mock.calls[0][0].message).toBe("Authentication required")
+        expect(next.mock.calls[0]?.[0].message).toBe("Authentication required")
         expect(auth.changePassword).not.toHaveBeenCalled()
     })
 
@@ -321,7 +321,7 @@ describe("AuthController", () => {
         await controller.changePassword(req, res, next)
 
         expect(next).toHaveBeenCalledWith(expect.any(BadRequestError))
-        expect(next.mock.calls[0][0].message).toBe("currentPassword and newPassword must be non-empty strings")
+        expect(next.mock.calls[0]?.[0].message).toBe("currentPassword and newPassword must be non-empty strings")
         expect(auth.changePassword).not.toHaveBeenCalled()
     })
 

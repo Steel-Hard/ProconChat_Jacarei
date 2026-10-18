@@ -1,28 +1,130 @@
-import { Pool } from "pg"
+import { Pool, PoolClient } from "pg"
 import getPool from "../db/connection"
-import BadRequestError from "../errors/BadRequestError"
-import ConflictError from "../errors/ConflictError"
 import NotFoundError from "../errors/NotFoundError"
+import { isValidAppointmentId } from "../schemas/appointment.schema"
+import { decideTransition } from "../services/appointmentTransitions"
 import {
+    AppointmentActionType,
     AppointmentChipCounts,
-    AppointmentDetail,
+    AppointmentDetailRecord,
     AppointmentEventItem,
     AppointmentListFilters,
     AppointmentListItem,
+    AppointmentStatus,
     ConversationTimelineStep,
 } from "../types/appointment.types"
 import { cleanCpf, hashCpf } from "../utils/cpf.utils"
 import {
     getThisWeekBounds,
     getTodayBounds,
-    isDateOnOrBeforeToday,
     isDatetimePast,
 } from "../utils/date.utils"
 import { AppointmentRepository } from "./appointment.repository.interface"
 
-const MAX_BIGINT = 9223372036854775807n
+const CPF_SEARCH_PATTERN = /^[\d.\-\s]+$/
+
+function periodCondition(
+    period: AppointmentListFilters["period"],
+    now: Date,
+    params: unknown[],
+): string | null {
+    if (!period || period === "all") {
+        return null
+    }
+    const todayBounds = getTodayBounds(now)
+    if (period === "today") {
+        params.push(todayBounds.start, todayBounds.end)
+        return `a.appointment_datetime >= $${params.length - 1} AND a.appointment_datetime <= $${params.length}`
+    }
+    if (period === "this_week") {
+        const weekBounds = getThisWeekBounds(now)
+        params.push(weekBounds.start, weekBounds.end)
+        return `a.appointment_datetime >= $${params.length - 1} AND a.appointment_datetime <= $${params.length}`
+    }
+    if (period === "upcoming") {
+        params.push(todayBounds.start)
+        return `a.appointment_datetime >= $${params.length}`
+    }
+    params.push(todayBounds.start)
+    return `a.appointment_datetime < $${params.length}`
+}
+
+function responsibleCondition(filters: AppointmentListFilters, params: unknown[]): string | null {
+    const responsible = filters.responsible
+    if (!responsible || responsible === "all") {
+        return null
+    }
+    if (responsible === "unassigned") {
+        return "a.assigned_user_id IS NULL"
+    }
+    if (responsible === "me") {
+        if (!filters.currentUserId) {
+            return null
+        }
+        params.push(filters.currentUserId)
+        return `a.assigned_user_id = $${params.length}`
+    }
+    if (/^\d+$/.test(responsible)) {
+        params.push(Number(responsible))
+        return `a.assigned_user_id = $${params.length}`
+    }
+    return null
+}
+
+async function lockAndDecide(
+    client: PoolClient,
+    action: AppointmentActionType,
+    id: string,
+    now: Date,
+): Promise<{ status: AppointmentStatus }> {
+    const check = await client.query<{ status: AppointmentStatus; appointment_datetime: Date }>(
+        "SELECT id, status, assigned_user_id, appointment_datetime FROM Appointments WHERE id = $1 FOR UPDATE",
+        [id],
+    )
+    const current = check.rows[0]
+    if (!current) {
+        throw new NotFoundError("Agendamento não encontrado")
+    }
+
+    const decision = decideTransition(
+        action,
+        { status: current.status, appointmentDatetime: new Date(current.appointment_datetime) },
+        now,
+    )
+    if (!decision.allowed) {
+        throw decision.error
+    }
+    return current
+}
 
 export function createAppointmentRepository(pool: Pool = getPool()): AppointmentRepository {
+    async function getCurrentDocumentsConfig(
+        byRepresentative: boolean,
+        questionId: number,
+    ): Promise<{ group: string[]; question: string[] }> {
+        const groupEnum = byRepresentative ? "REPRESENTATIVE" : "HOLDER"
+        const groupResult = await pool.query<{ description: string }>(
+            `SELECT description
+             FROM AttendanceDocuments
+             WHERE attendee_group = $1
+             ORDER BY position ASC, id ASC`,
+            [groupEnum],
+        )
+
+        const questionResult = await pool.query<{ description: string }>(
+            `SELECT description
+             FROM RequiredDocuments
+             WHERE question_id = $1
+             ORDER BY position ASC, id ASC`,
+            [questionId],
+        )
+
+        return {
+            group: groupResult.rows.map((r) => r.description),
+            question: questionResult.rows.map((r) => r.description),
+        }
+    }
+
     return {
         async countPending(): Promise<number> {
             const result = await pool.query<{ count: string }>(
@@ -31,45 +133,11 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             return Number(result.rows[0]?.count ?? 0)
         },
 
-        async getCurrentDocumentsConfig(
-            byRepresentative: boolean,
-            questionId: number,
-        ): Promise<{ group: string[]; question: string[] }> {
-            const groupEnum = byRepresentative ? "REPRESENTATIVE" : "HOLDER"
-            const groupResult = await pool.query<{ description: string }>(
-                `SELECT description
-                 FROM AttendanceDocuments
-                 WHERE attendee_group = $1
-                 ORDER BY position ASC, id ASC`,
-                [groupEnum],
-            )
+        getCurrentDocumentsConfig,
 
-            const questionResult = await pool.query<{ description: string }>(
-                `SELECT description
-                 FROM RequiredDocuments
-                 WHERE question_id = $1
-                 ORDER BY position ASC, id ASC`,
-                [questionId],
-            )
-
-            return {
-                group: groupResult.rows.map((r) => r.description),
-                question: questionResult.rows.map((r) => r.description),
-            }
-        },
-
-        async findById(idOrCode: number | string): Promise<AppointmentDetail | null> {
+        async findById(idOrCode: number | string): Promise<AppointmentDetailRecord | null> {
             const idStr = String(idOrCode).trim()
-            if (!/^\d+$/.test(idStr)) {
-                return null
-            }
-
-            try {
-                const n = BigInt(idStr)
-                if (n <= 0n || n > MAX_BIGINT) {
-                    return null
-                }
-            } catch {
+            if (!isValidAppointmentId(idStr)) {
                 return null
             }
 
@@ -77,7 +145,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                 SELECT
                     a.id,
                     a.appointment_code,
-                    SUBSTRING(a.appointment_code::text, 1, 8) as protocol,
+                    UPPER(SUBSTRING(a.appointment_code::text, 1, 8)) as protocol,
                     a.session_id,
                     a.status,
                     a.name,
@@ -108,7 +176,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                 return null
             }
 
-            const currentDocs = await this.getCurrentDocumentsConfig(
+            const currentDocs = await getCurrentDocumentsConfig(
                 row.by_representative,
                 Number(row.question_id),
             )
@@ -139,7 +207,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                  FROM AppointmentEvents e
                  LEFT JOIN Users u ON u.id = e.actor_user_id
                  WHERE e.appointment_id = $1
-                 ORDER BY e.created_at DESC`,
+                 ORDER BY e.created_at DESC, e.id DESC`,
                 [row.id],
             )
 
@@ -196,6 +264,11 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             total: number
             chipCounts: AppointmentChipCounts
         }> {
+            const chipParams: unknown[] = []
+            const chipResponsible = responsibleCondition(filters, chipParams)
+            const chipPeriod = periodCondition(filters.period, now, chipParams) ?? "TRUE"
+            chipParams.push(now)
+            const waitingRecordParam = `$${chipParams.length}`
             const chipResult = await pool.query<{
                 all: string
                 pending: string
@@ -206,15 +279,16 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                 waiting_record: string
             }>(
                 `SELECT
-                     COUNT(*)::text as all,
-                     COUNT(*) FILTER (WHERE status = 'PENDING')::text as pending,
-                     COUNT(*) FILTER (WHERE status = 'CONFIRMED')::text as confirmed,
-                     COUNT(*) FILTER (WHERE status = 'ATTENDED')::text as attended,
-                     COUNT(*) FILTER (WHERE status = 'NO_SHOW')::text as no_show,
-                     COUNT(*) FILTER (WHERE status = 'CANCELED')::text as canceled,
-                     COUNT(*) FILTER (WHERE status = 'CONFIRMED' AND appointment_datetime < $1)::text as waiting_record
-                 FROM Appointments`,
-                [now],
+                     COUNT(*) FILTER (WHERE ${chipPeriod})::text as all,
+                     COUNT(*) FILTER (WHERE ${chipPeriod} AND a.status = 'PENDING')::text as pending,
+                     COUNT(*) FILTER (WHERE ${chipPeriod} AND a.status = 'CONFIRMED')::text as confirmed,
+                     COUNT(*) FILTER (WHERE ${chipPeriod} AND a.status = 'ATTENDED')::text as attended,
+                     COUNT(*) FILTER (WHERE ${chipPeriod} AND a.status = 'NO_SHOW')::text as no_show,
+                     COUNT(*) FILTER (WHERE ${chipPeriod} AND a.status = 'CANCELED')::text as canceled,
+                     COUNT(*) FILTER (WHERE a.status = 'CONFIRMED' AND a.appointment_datetime < ${waitingRecordParam})::text as waiting_record
+                 FROM Appointments a
+                 ${chipResponsible ? `WHERE ${chipResponsible}` : ""}`,
+                chipParams,
             )
 
             const chipRow = chipResult.rows[0]
@@ -238,7 +312,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                 const term = filters.search!.trim()
                 const cleanedDigits = cleanCpf(term)
 
-                if (cleanedDigits.length === 11) {
+                if (CPF_SEARCH_PATTERN.test(term) && cleanedDigits.length === 11) {
                     const cpfHashed = hashCpf(cleanedDigits)
                     conditions.push(`a.cpf_hash = $${paramIndex++}`)
                     params.push(cpfHashed)
@@ -265,40 +339,16 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                     }
                 }
 
-                if (filters.period && filters.period !== "all") {
-                    const todayBounds = getTodayBounds(now)
-                    const weekBounds = getThisWeekBounds(now)
-
-                    if (filters.period === "today") {
-                        conditions.push(
-                            `a.appointment_datetime >= $${paramIndex++} AND a.appointment_datetime <= $${paramIndex++}`,
-                        )
-                        params.push(todayBounds.start, todayBounds.end)
-                    } else if (filters.period === "this_week") {
-                        conditions.push(
-                            `a.appointment_datetime >= $${paramIndex++} AND a.appointment_datetime <= $${paramIndex++}`,
-                        )
-                        params.push(weekBounds.start, weekBounds.end)
-                    } else if (filters.period === "upcoming") {
-                        conditions.push(`a.appointment_datetime >= $${paramIndex++}`)
-                        params.push(todayBounds.start)
-                    } else if (filters.period === "past") {
-                        conditions.push(`a.appointment_datetime < $${paramIndex++}`)
-                        params.push(todayBounds.start)
-                    }
+                const period = periodCondition(filters.period, now, params)
+                if (period) {
+                    conditions.push(period)
                 }
 
-                if (filters.responsible && filters.responsible !== "all") {
-                    if (filters.responsible === "unassigned") {
-                        conditions.push(`a.assigned_user_id IS NULL`)
-                    } else if (filters.responsible === "me" && filters.currentUserId) {
-                        conditions.push(`a.assigned_user_id = $${paramIndex++}`)
-                        params.push(filters.currentUserId)
-                    } else if (/^\d+$/.test(filters.responsible)) {
-                        conditions.push(`a.assigned_user_id = $${paramIndex++}`)
-                        params.push(Number(filters.responsible))
-                    }
+                const responsible = responsibleCondition(filters, params)
+                if (responsible) {
+                    conditions.push(responsible)
                 }
+                paramIndex = params.length + 1
             }
 
             const whereClause =
@@ -378,7 +428,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                 SELECT
                     a.id,
                     a.appointment_code,
-                    SUBSTRING(a.appointment_code::text, 1, 8) as protocol,
+                    UPPER(SUBSTRING(a.appointment_code::text, 1, 8)) as protocol,
                     a.name,
                     a.cpf_masked,
                     c.title as category_name,
@@ -430,46 +480,15 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
         },
 
         async claim(
-            id: number,
+            id: string,
             actorUserId: number,
             now: Date = new Date(),
-        ): Promise<AppointmentDetail> {
+        ): Promise<void> {
             const client = await pool.connect()
             try {
                 await client.query("BEGIN")
 
-                const check = await client.query(
-                    "SELECT id, status FROM Appointments WHERE id = $1 FOR UPDATE",
-                    [id],
-                )
-                if (check.rows.length === 0) {
-                    throw new NotFoundError("Agendamento não encontrado")
-                }
-                const currentStatus = check.rows[0].status
-                if (currentStatus === "CANCELED") {
-                    throw new ConflictError(
-                        "Não é possível assumir um agendamento cancelado",
-                        "APPOINTMENT_CANCELED",
-                    )
-                }
-                if (currentStatus === "ATTENDED") {
-                    throw new ConflictError(
-                        "Agendamento já foi atendido",
-                        "ALREADY_ATTENDED",
-                    )
-                }
-                if (currentStatus === "NO_SHOW") {
-                    throw new ConflictError(
-                        "Agendamento já registrado como não compareceu",
-                        "ALREADY_NO_SHOW",
-                    )
-                }
-                if (currentStatus !== "PENDING") {
-                    throw new ConflictError(
-                        "Apenas agendamentos pendentes podem ser assumidos",
-                        "APPOINTMENT_ALREADY_CLAIMED",
-                    )
-                }
+                await lockAndDecide(client, "claim", id, now)
 
                 await client.query(
                     `UPDATE Appointments
@@ -491,57 +510,18 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             } finally {
                 client.release()
             }
-
-            return (await this.findById(id))!
         },
 
         async markAttended(
-            id: number,
+            id: string,
             actorUserId: number,
             now: Date = new Date(),
-        ): Promise<AppointmentDetail> {
+        ): Promise<void> {
             const client = await pool.connect()
             try {
                 await client.query("BEGIN")
 
-                const check = await client.query(
-                    "SELECT id, status, assigned_user_id, appointment_datetime FROM Appointments WHERE id = $1 FOR UPDATE",
-                    [id],
-                )
-                if (check.rows.length === 0) {
-                    throw new NotFoundError("Agendamento não encontrado")
-                }
-
-                const current = check.rows[0]
-                if (current.status === "ATTENDED") {
-                    throw new ConflictError(
-                        "Agendamento já foi marcado como atendido",
-                        "ALREADY_ATTENDED",
-                    )
-                }
-                if (current.status === "NO_SHOW") {
-                    throw new ConflictError(
-                        "Agendamento já foi registrado como não compareceu",
-                        "ALREADY_NO_SHOW",
-                    )
-                }
-                if (current.status === "CANCELED") {
-                    throw new ConflictError(
-                        "Não é possível registrar atendimento para um agendamento cancelado",
-                        "APPOINTMENT_CANCELED",
-                    )
-                }
-                if (current.status !== "PENDING" && current.status !== "CONFIRMED") {
-                    throw new ConflictError(
-                        `Ação não permitida para agendamentos com status ${current.status}`,
-                        "INVALID_STATUS_TRANSITION",
-                    )
-                }
-
-                const apptDate = new Date(current.appointment_datetime)
-                if (!isDateOnOrBeforeToday(apptDate, now)) {
-                    throw new BadRequestError("Disponível a partir do dia do atendimento")
-                }
+                const current = await lockAndDecide(client, "attended", id, now)
 
                 const isAutoClaim = current.status === "PENDING"
                 if (isAutoClaim) {
@@ -580,57 +560,18 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             } finally {
                 client.release()
             }
-
-            return (await this.findById(id))!
         },
 
         async markNoShow(
-            id: number,
+            id: string,
             actorUserId: number,
             now: Date = new Date(),
-        ): Promise<AppointmentDetail> {
+        ): Promise<void> {
             const client = await pool.connect()
             try {
                 await client.query("BEGIN")
 
-                const check = await client.query(
-                    "SELECT id, status, assigned_user_id, appointment_datetime FROM Appointments WHERE id = $1 FOR UPDATE",
-                    [id],
-                )
-                if (check.rows.length === 0) {
-                    throw new NotFoundError("Agendamento não encontrado")
-                }
-
-                const current = check.rows[0]
-                if (current.status === "ATTENDED") {
-                    throw new ConflictError(
-                        "Agendamento já foi marcado como atendido",
-                        "ALREADY_ATTENDED",
-                    )
-                }
-                if (current.status === "NO_SHOW") {
-                    throw new ConflictError(
-                        "Agendamento já foi registrado como não compareceu",
-                        "ALREADY_NO_SHOW",
-                    )
-                }
-                if (current.status === "CANCELED") {
-                    throw new ConflictError(
-                        "Não é possível registrar como não compareceu para um agendamento cancelado",
-                        "APPOINTMENT_CANCELED",
-                    )
-                }
-                if (current.status !== "PENDING" && current.status !== "CONFIRMED") {
-                    throw new ConflictError(
-                        `Ação não permitida para agendamentos com status ${current.status}`,
-                        "INVALID_STATUS_TRANSITION",
-                    )
-                }
-
-                const apptDatetime = new Date(current.appointment_datetime)
-                if (!isDatetimePast(apptDatetime, now)) {
-                    throw new BadRequestError("Disponível apenas após o horário do agendamento")
-                }
+                const current = await lockAndDecide(client, "no_show", id, now)
 
                 const isAutoClaim = current.status === "PENDING"
                 if (isAutoClaim) {
@@ -669,8 +610,6 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             } finally {
                 client.release()
             }
-
-            return (await this.findById(id))!
         },
 
         async resolveTitles(
@@ -684,12 +623,12 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             const questions: Record<number, string> = {}
 
             if (categoryIds.length > 0) {
-                const catResult = await pool.query<{ id: string; title: string; short_title: string | null }>(
-                    `SELECT id, title, short_title FROM Categories WHERE id = ANY($1::bigint[])`,
+                const catResult = await pool.query<{ id: string; title: string }>(
+                    `SELECT id, title FROM Categories WHERE id = ANY($1::bigint[])`,
                     [categoryIds],
                 )
                 for (const row of catResult.rows) {
-                    categories[Number(row.id)] = row.short_title || row.title
+                    categories[Number(row.id)] = row.title
                 }
             }
 
@@ -699,7 +638,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                     [questionIds],
                 )
                 for (const row of qResult.rows) {
-                    questions[Number(row.id)] = row.short_title || row.question
+                    questions[Number(row.id)] = row.short_title ?? row.question
                 }
             }
 

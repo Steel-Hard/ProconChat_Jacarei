@@ -1,12 +1,13 @@
 import express from "express"
 import request from "supertest"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import errorHandler from "../middleware/errorHandler.middleware"
 import { createRequireAuth } from "../middleware/auth.middleware"
 import { MockAppointmentRepository } from "../repositories/mock/appointmentMock.repository"
 import { MockAuthRepository } from "../repositories/mock/authMock.repository"
+import type { ConversationEventService } from "../services/conversationEvent.service"
 import { sessionTokens } from "../utils/sessionToken"
-import { createAppointmentRoutes } from "./appointment.routes"
+import { AppointmentRoutes } from "./appointment.routes"
 
 const authUsers = new MockAuthRepository([
     {
@@ -51,13 +52,21 @@ describe("appointment.routes (HTTP)", () => {
         listBySession: vi.fn().mockResolvedValue([]),
     }
 
+    function buildApp(conversationEvents: ConversationEventService): express.Express {
+        const authMiddleware = createRequireAuth({ users: authUsers, tokens: sessionTokens })
+        const built = express()
+        built.use(express.json())
+        built.use(
+            "/api/v1/appointments",
+            new AppointmentRoutes({ repository, conversationEvents, authMiddleware }).getRouter(),
+        )
+        built.use(errorHandler)
+        return built
+    }
+
     beforeEach(() => {
         repository = new MockAppointmentRepository(true)
-        const authMiddleware = createRequireAuth({ users: authUsers, tokens: sessionTokens })
-        app = express()
-        app.use(express.json())
-        app.use("/api/v1/appointments", createAppointmentRoutes(repository, mockConversationEvents, authMiddleware))
-        app.use(errorHandler)
+        app = buildApp(mockConversationEvents)
     })
 
     describe("Autenticação e Permissões", () => {
@@ -132,7 +141,7 @@ describe("appointment.routes (HTTP)", () => {
             expect(res.body.data.items).toBeInstanceOf(Array)
             expect(res.body.data.total).toBe(6)
             expect(res.body.data.chipCounts).toBeDefined()
-            expect(res.body.data.chipCounts.all).toBe(9)
+            expect(res.body.data.chipCounts.all).toBe(6)
         })
 
         it("retorna todos os agendamentos quando period=all", async () => {
@@ -185,7 +194,7 @@ describe("appointment.routes (HTTP)", () => {
 
     describe("GET /api/v1/appointments/:id", () => {
         it("retorna detalhe completo do agendamento", async () => {
-            const res = await request(app)
+            const res = await request(buildApp(repository.conversationEventService()))
                 .get("/api/v1/appointments/1")
                 .set("Cookie", accessCookieFor(1))
 
@@ -195,6 +204,79 @@ describe("appointment.routes (HTTP)", () => {
             expect(res.body.data.documents_sent).toBeDefined()
             expect(res.body.data.events).toBeInstanceOf(Array)
             expect(res.body.data.timeline).toBeInstanceOf(Array)
+            expect(res.body.data.events.map((e: { type: string }) => e.type)).toEqual(["CREATED"])
+            expect(res.body.data.timeline.map((step: { type: string }) => step.type)).toEqual([
+                "STARTED",
+                "CATEGORY_CHOSEN",
+                "QUESTION_CHOSEN",
+                "ANSWER_SENT",
+                "RESOLVED_ANSWERED",
+                "SCHEDULE_OFFERED",
+                "ATTENDEE_CHOSEN",
+                "APPOINTMENT_CREATED",
+            ])
+            expect(res.body.data.timeline[1].data).toEqual({ categoryId: 10, category_title: "Cobrança" })
+            expect(res.body.data.timeline[3].generated_by_ai).toBe(true)
+        })
+
+        it("devolve o protocolo em maiúsculas no detalhe e na lista", async () => {
+            const detailRes = await request(app)
+                .get("/api/v1/appointments/1")
+                .set("Cookie", accessCookieFor(1))
+            const listRes = await request(app)
+                .get("/api/v1/appointments?search=a1b2c3d4")
+                .set("Cookie", accessCookieFor(1))
+
+            expect(detailRes.body.data.protocol).toBe("A1B2C3D4")
+            expect(listRes.body.data.items[0].protocol).toBe("A1B2C3D4")
+        })
+
+        describe("ações disponíveis", () => {
+            afterEach(() => {
+                vi.useRealTimers()
+            })
+
+            it("informa as ações disponíveis de um pendente futuro", async () => {
+                const res = await request(app)
+                    .get("/api/v1/appointments/1")
+                    .set("Cookie", accessCookieFor(1))
+
+                expect(res.body.data.available_actions).toEqual({
+                    claim: { allowed: true, code: null },
+                    attended: { allowed: false, code: "ATTENDANCE_NOT_YET_AVAILABLE" },
+                    no_show: { allowed: false, code: "NO_SHOW_NOT_YET_AVAILABLE" },
+                })
+            })
+
+            it("informa as ações disponíveis de um confirmado de hoje antes do horário", async () => {
+                vi.useFakeTimers({ toFake: ["Date"] })
+                vi.setSystemTime(new Date("2026-10-20T10:00:00-03:00"))
+                repository.appointments.find((a) => a.id === 2)!.appointment_datetime = new Date(
+                    "2026-10-20T15:00:00-03:00",
+                )
+
+                const res = await request(app)
+                    .get("/api/v1/appointments/2")
+                    .set("Cookie", accessCookieFor(1))
+
+                expect(res.body.data.available_actions).toEqual({
+                    claim: { allowed: false, code: "APPOINTMENT_ALREADY_CLAIMED" },
+                    attended: { allowed: true, code: null },
+                    no_show: { allowed: false, code: "NO_SHOW_NOT_YET_AVAILABLE" },
+                })
+            })
+
+            it("informa as ações disponíveis de um confirmado que já passou", async () => {
+                const res = await request(app)
+                    .get("/api/v1/appointments/3")
+                    .set("Cookie", accessCookieFor(1))
+
+                expect(res.body.data.available_actions).toEqual({
+                    claim: { allowed: false, code: "APPOINTMENT_ALREADY_CLAIMED" },
+                    attended: { allowed: true, code: null },
+                    no_show: { allowed: true, code: null },
+                })
+            })
         })
 
         it("retorna 404 para ID inexistente", async () => {
@@ -225,6 +307,55 @@ describe("appointment.routes (HTTP)", () => {
     })
 
     describe("Ações de Status (PATCH /status)", () => {
+        it("o PATCH devolve o mesmo detalhe que o GET em seguida, com linha do tempo e histórico", async () => {
+            const appWithTimeline = buildApp(repository.conversationEventService())
+
+            const patchRes = await request(appWithTimeline)
+                .patch("/api/v1/appointments/1/status")
+                .set("Cookie", accessCookieFor(10))
+                .send({ action: "claim" })
+            const getRes = await request(appWithTimeline)
+                .get("/api/v1/appointments/1")
+                .set("Cookie", accessCookieFor(10))
+
+            expect(patchRes.status).toBe(200)
+            expect(patchRes.body.data.timeline.length).toBeGreaterThan(0)
+            expect(patchRes.body.data.events[0].type).toBe("CLAIMED")
+            expect(patchRes.body.data).toEqual(getRes.body.data)
+        })
+
+        it.each([
+            { action: "attended", id: 7, status: "ATTENDED", terminalEvent: "ATTENDED" },
+            { action: "no_show", id: 3, status: "NO_SHOW", terminalEvent: "NO_SHOW" },
+        ])(
+            "o PATCH $action devolve o mesmo detalhe que o GET em seguida, com linha do tempo e histórico",
+            async ({ action, id, status, terminalEvent }) => {
+                const events: ConversationEventService = {
+                    record: vi.fn(),
+                    finish: vi.fn(),
+                    listBySession: vi.fn().mockResolvedValue([
+                        { type: "STARTED", createdAt: new Date() },
+                        { type: "CATEGORY_CHOSEN", createdAt: new Date() },
+                    ]),
+                }
+                const appWithTimeline = buildApp(events)
+
+                const patchRes = await request(appWithTimeline)
+                    .patch(`/api/v1/appointments/${id}/status`)
+                    .set("Cookie", accessCookieFor(10))
+                    .send({ action })
+                const getRes = await request(appWithTimeline)
+                    .get(`/api/v1/appointments/${id}`)
+                    .set("Cookie", accessCookieFor(10))
+
+                expect(patchRes.status).toBe(200)
+                expect(patchRes.body.data.status).toBe(status)
+                expect(patchRes.body.data.timeline).toHaveLength(2)
+                expect(patchRes.body.data.events[0].type).toBe(terminalEvent)
+                expect(patchRes.body.data).toEqual(getRes.body.data)
+            },
+        )
+
         it("executa ação claim via PATCH /status", async () => {
             const res = await request(app)
                 .patch("/api/v1/appointments/1/status")
@@ -234,6 +365,8 @@ describe("appointment.routes (HTTP)", () => {
             expect(res.status).toBe(200)
             expect(res.body.data.status).toBe("CONFIRMED")
             expect(res.body.data.assigned_user_id).toBe("10")
+            expect(res.body.data.events[0].type).toBe("CLAIMED")
+            expect(res.body.data.events[0].actor_user_id).toBe("10")
         })
 
         it("executa ação attended com sucesso para agendamento de hoje", async () => {
@@ -246,23 +379,25 @@ describe("appointment.routes (HTTP)", () => {
             expect(res.body.data.status).toBe("ATTENDED")
         })
 
-        it("retorna 400 ao tentar marcar attended para agendamento futuro", async () => {
+        it("retorna 409 com ATTENDANCE_NOT_YET_AVAILABLE ao tentar marcar attended para agendamento futuro", async () => {
             const res = await request(app)
                 .patch("/api/v1/appointments/1/status")
                 .set("Cookie", accessCookieFor(10))
                 .send({ action: "attended" })
 
-            expect(res.status).toBe(400)
+            expect(res.status).toBe(409)
+            expect(res.body.error.code).toBe("ATTENDANCE_NOT_YET_AVAILABLE")
             expect(res.body.error.message).toBe("Disponível a partir do dia do atendimento")
         })
 
-        it("retorna 400 ao tentar marcar no_show para agendamento futuro", async () => {
+        it("retorna 409 com NO_SHOW_NOT_YET_AVAILABLE ao tentar marcar no_show para agendamento futuro", async () => {
             const res = await request(app)
                 .patch("/api/v1/appointments/8/status")
                 .set("Cookie", accessCookieFor(10))
                 .send({ action: "no_show" })
 
-            expect(res.status).toBe(400)
+            expect(res.status).toBe(409)
+            expect(res.body.error.code).toBe("NO_SHOW_NOT_YET_AVAILABLE")
             expect(res.body.error.message).toBe("Disponível apenas após o horário do agendamento")
         })
 

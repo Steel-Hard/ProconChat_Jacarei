@@ -6,6 +6,7 @@ import {
     BookAppointmentResult,
     ScheduleRange,
 } from "../types/schedule.types"
+import { addDaysToDateString, getLocalParts, parseLocalDate } from "../utils/date.utils"
 
 const WEEKDAYS_PT = [
     "Domingo",
@@ -28,97 +29,36 @@ export function fromMinutes(mins: number): string {
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
 }
 
-export function addDaysToDateStr(dateStr: string, days: number): string {
-    const [y, m, d] = dateStr.split("-").map(Number)
-    const dt = new Date(Date.UTC(y!, m! - 1, d! + days, 12, 0, 0))
-    return dt.toISOString().slice(0, 10)
-}
-
 export function getDowFromDateStr(dateStr: string): number {
     const [y, m, d] = dateStr.split("-").map(Number)
     const dt = new Date(Date.UTC(y!, m! - 1, d!, 12, 0, 0))
     return dt.getUTCDay()
 }
 
-export function getLocalParts(d: Date, timeZone = "America/Sao_Paulo"): {
-    dateStr: string
-    timeStr: string
-    hour: number
-    minute: number
-} {
-    const parts = new Intl.DateTimeFormat("en-US", {
-        timeZone,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-    }).formatToParts(d)
-
-    let year = 0
-    let month = 0
-    let day = 0
-    let hour = 0
-    let minute = 0
-    for (const part of parts) {
-        if (part.type === "year") year = Number(part.value)
-        if (part.type === "month") month = Number(part.value)
-        if (part.type === "day") day = Number(part.value)
-        if (part.type === "hour") hour = Number(part.value) % 24
-        if (part.type === "minute") minute = Number(part.value)
-    }
-
-    const mm = String(month).padStart(2, "0")
-    const dd = String(day).padStart(2, "0")
-    const hh = String(hour).padStart(2, "0")
-    const min = String(minute).padStart(2, "0")
-
-    return {
-        dateStr: `${year}-${mm}-${dd}`,
-        timeStr: `${hh}:${min}`,
-        hour,
-        minute,
-    }
-}
-
-export function parseLocalDate(
-    dateStr: string,
-    timeStr: string,
-    timeZone = "America/Sao_Paulo",
-): Date {
-    const [y, m, d] = dateStr.split("-").map(Number)
-    const [h, min] = timeStr.split(":").map(Number)
-    const utcCandidate = new Date(Date.UTC(y!, m! - 1, d!, h!, min!, 0))
-    const parts = getLocalParts(utcCandidate, timeZone)
-    const targetMinutes = (h ?? 0) * 60 + (min ?? 0)
-    const localMinutes = parts.hour * 60 + parts.minute
-    const diffMs = (localMinutes - targetMinutes) * 60 * 1000
-    return new Date(utcCandidate.getTime() - diffMs)
-}
-
-function isBusinessDay(
+function freeSlotStartsOfDay(
     dateStr: string,
     ranges: ScheduleRange[],
     blockedDates: BlockedDate[],
     slotMinutes: number,
-): boolean {
+): number[] {
     const dow = getDowFromDateStr(dateStr)
-    const rangesForDay = ranges.filter((r) => r.weekday === dow)
-    if (rangesForDay.length === 0) {
-        return false
-    }
+    const rangesForDay = ranges
+        .filter((r) => r.weekday === dow)
+        .sort((a, b) => a.slot_index - b.slot_index)
 
     const fullDayBlocked = blockedDates.some(
         (b) => b.date === dateStr && (!b.start_time || !b.end_time),
     )
-    if (fullDayBlocked) {
-        return false
+
+    if (rangesForDay.length === 0 || fullDayBlocked) {
+        return []
     }
 
     const partialBlocks = blockedDates.filter(
         (b) => b.date === dateStr && b.start_time && b.end_time,
     )
+
+    const starts: number[] = []
 
     for (const range of rangesForDay) {
         const startMin = toMinutes(range.start_time)
@@ -134,12 +74,21 @@ function isBusinessDay(
             })
 
             if (!isBlocked) {
-                return true
+                starts.push(t)
             }
         }
     }
 
-    return false
+    return starts
+}
+
+function isBusinessDay(
+    dateStr: string,
+    ranges: ScheduleRange[],
+    blockedDates: BlockedDate[],
+    slotMinutes: number,
+): boolean {
+    return freeSlotStartsOfDay(dateStr, ranges, blockedDates, slotMinutes).length > 0
 }
 
 export interface IScheduleService {
@@ -164,7 +113,7 @@ export function createScheduleService(
             return []
         }
 
-        const maxDateStr = addDaysToDateStr(todayStr, settings.window_days + 15)
+        const maxDateStr = addDaysToDateString(todayStr, settings.window_days + 15)
         const blockedDates = await repository.getBlockedDates(
             todayStr,
             maxDateStr,
@@ -178,7 +127,7 @@ export function createScheduleService(
             const maxIterations = settings.window_days + 30
             while (n < settings.min_notice_days && iterations < maxIterations) {
                 iterations++
-                d = addDaysToDateStr(d, 1)
+                d = addDaysToDateString(d, 1)
                 if (
                     isBusinessDay(
                         d,
@@ -196,7 +145,7 @@ export function createScheduleService(
             startDateStr = d
         }
 
-        const endDateStr = addDaysToDateStr(todayStr, settings.window_days)
+        const endDateStr = addDaysToDateString(todayStr, settings.window_days)
 
         interface CandidateSlot {
             datetime: Date
@@ -210,60 +159,33 @@ export function createScheduleService(
 
         while (curr <= endDateStr) {
             const dow = getDowFromDateStr(curr)
-            const rangesForDay = ranges
-                .filter((r) => r.weekday === dow)
-                .sort((a, b) => a.slot_index - b.slot_index)
-
-            const fullDayBlocked = blockedDates.some(
-                (b) => b.date === curr && (!b.start_time || !b.end_time),
+            const freeStarts = freeSlotStartsOfDay(
+                curr,
+                ranges,
+                blockedDates,
+                settings.slot_minutes,
             )
 
-            if (rangesForDay.length > 0 && !fullDayBlocked) {
-                const partialBlocks = blockedDates.filter(
-                    (b) => b.date === curr && b.start_time && b.end_time,
-                )
-
-                for (const range of rangesForDay) {
-                    const startMin = toMinutes(range.start_time)
-                    const endMin = toMinutes(range.end_time)
-
-                    for (
-                        let t = startMin;
-                        t + settings.slot_minutes <= endMin;
-                        t += settings.slot_minutes
-                    ) {
-                        if (curr === todayStr && t <= nowMinutes) {
-                            continue
-                        }
-
-                        const slotStart = t
-                        const slotEnd = t + settings.slot_minutes
-
-                        const isBlocked = partialBlocks.some((p) => {
-                            const pStart = toMinutes(p.start_time!)
-                            const pEnd = toMinutes(p.end_time!)
-                            return slotStart < pEnd && slotEnd > pStart
-                        })
-
-                        if (!isBlocked) {
-                            const slotTimeStr = fromMinutes(t)
-                            const [_y, m, d] = curr.split("-")
-                            const weekdayName = WEEKDAYS_PT[dow] ?? ""
-                            const formatted = `${weekdayName}, ${d}/${m} às ${slotTimeStr}`
-                            const datetime = parseLocalDate(curr, slotTimeStr)
-
-                            candidateSlots.push({
-                                datetime,
-                                dateStr: curr,
-                                timeStr: slotTimeStr,
-                                formatted,
-                            })
-                        }
-                    }
+            for (const t of freeStarts) {
+                if (curr === todayStr && t <= nowMinutes) {
+                    continue
                 }
+
+                const slotTimeStr = fromMinutes(t)
+                const [_y, m, d] = curr.split("-")
+                const weekdayName = WEEKDAYS_PT[dow] ?? ""
+                const formatted = `${weekdayName}, ${d}/${m} às ${slotTimeStr}`
+                const datetime = parseLocalDate(curr, slotTimeStr)
+
+                candidateSlots.push({
+                    datetime,
+                    dateStr: curr,
+                    timeStr: slotTimeStr,
+                    formatted,
+                })
             }
 
-            curr = addDaysToDateStr(curr, 1)
+            curr = addDaysToDateString(curr, 1)
         }
 
         if (candidateSlots.length === 0) {

@@ -1,3 +1,4 @@
+import type { PoolClient } from "pg"
 import getPool from "../db/connection"
 import BookingFailedError from "../errors/BookingFailedError"
 import DuplicateAppointmentError from "../errors/DuplicateAppointmentError"
@@ -12,12 +13,12 @@ import {
     ScheduleSettings,
 } from "../types/schedule.types"
 import { encrypt } from "../utils/crypto.utils"
-import { finishSessionWith, recordEventWith } from "./session.repository"
+import { insertConversationEvent, Queryable } from "./conversationEvent.repository"
+import { finishSessionWith } from "./session.repository"
 import { IScheduleRepository } from "./schedule.repository.interface"
 
-async function getSettings(): Promise<ScheduleSettings | null> {
-    const pool = getPool()
-    const result = await pool.query<ScheduleSettings>(
+async function selectSettings(db: Queryable): Promise<ScheduleSettings | null> {
+    const result = await db.query<ScheduleSettings>(
         `SELECT id, slot_minutes, seats_per_slot, window_days, min_notice_days,
                 wait_alert_days, unit_address, unit_address_complement,
                 reminder_enabled, reminder_hours
@@ -25,6 +26,10 @@ async function getSettings(): Promise<ScheduleSettings | null> {
          WHERE id = 1`,
     )
     return result.rows[0] ?? null
+}
+
+async function getSettings(): Promise<ScheduleSettings | null> {
+    return selectSettings(getPool())
 }
 
 async function getRanges(): Promise<ScheduleRange[]> {
@@ -80,6 +85,118 @@ async function countActiveAppointmentsPerSlot(
     return map
 }
 
+async function lockSlot(client: PoolClient, slotIso: string): Promise<void> {
+    await client.query(
+        "SELECT pg_advisory_xact_lock(hashtext('slot:' || $1::text))",
+        [slotIso],
+    )
+}
+
+async function countActiveInSlot(client: PoolClient, appointmentDatetime: Date): Promise<number> {
+    const countResult = await client.query<{ count: string }>(
+        `SELECT COUNT(*)::text as count
+         FROM Appointments
+         WHERE appointment_datetime = $1
+           AND status IN ('PENDING', 'CONFIRMED')`,
+        [appointmentDatetime],
+    )
+    return Number(countResult.rows[0]?.count ?? 0)
+}
+
+async function hasActiveAppointmentForCpf(
+    client: PoolClient,
+    cpfHash: string,
+    appointmentDatetime: Date,
+): Promise<boolean> {
+    const duplicateCheck = await client.query(
+        `SELECT 1 FROM Appointments
+         WHERE cpf_hash = $1
+           AND appointment_datetime = $2
+           AND status IN ('PENDING', 'CONFIRMED')`,
+        [cpfHash, appointmentDatetime],
+    )
+    return (duplicateCheck.rowCount ?? 0) > 0
+}
+
+async function loadDocumentsSent(
+    client: PoolClient,
+    byRepresentative: boolean,
+    questionId: number,
+): Promise<DocumentsSent> {
+    const attendeeGroup = byRepresentative
+        ? "REPRESENTATIVE"
+        : "HOLDER"
+    const groupDocsResult = await client.query<{ description: string }>(
+        `SELECT description
+         FROM AttendanceDocuments
+         WHERE attendee_group = $1
+         ORDER BY position ASC, id ASC`,
+        [attendeeGroup],
+    )
+    const groupDocs = groupDocsResult.rows.map((r) => r.description)
+
+    const qDocsResult = await client.query<{ description: string }>(
+        `SELECT description
+         FROM RequiredDocuments
+         WHERE question_id = $1
+         ORDER BY position ASC, id ASC`,
+        [questionId],
+    )
+    const questionDocs = qDocsResult.rows.map((r) => r.description)
+
+    return {
+        group: groupDocs,
+        question: questionDocs,
+    }
+}
+
+async function insertAppointment(
+    client: PoolClient,
+    input: BookAppointmentInput,
+    documentsSent: DocumentsSent,
+): Promise<{ id: string; appointment_code: string; appointment_datetime: Date }> {
+    const phoneEncrypted = input.phone ? encrypt(input.phone) : null
+
+    const insertResult = await client.query<{
+        id: string
+        appointment_code: string
+        appointment_datetime: Date
+    }>(
+        `INSERT INTO Appointments (
+           session_id, question_id, reason, name, cpf_hash, cpf_masked,
+           phone_encrypted, by_representative, documents_sent, appointment_datetime, status
+         ) VALUES (
+           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'PENDING'
+         ) RETURNING id, appointment_code, appointment_datetime`,
+        [
+            input.sessionId,
+            input.questionId,
+            input.reason,
+            input.name,
+            input.cpfHash,
+            input.cpfMasked,
+            phoneEncrypted,
+            input.byRepresentative,
+            JSON.stringify(documentsSent),
+            input.appointmentDatetime,
+        ],
+    )
+
+    const created = insertResult.rows[0]
+    if (!created) {
+        throw new BookingFailedError()
+    }
+    return created
+}
+
+async function insertCreatedEvent(client: PoolClient, appointmentId: string): Promise<void> {
+    await client.query(
+        `INSERT INTO AppointmentEvents (appointment_id, type, data)
+         VALUES ($1, 'CREATED', '{}'::jsonb)`,
+        [appointmentId],
+    )
+}
+
 async function bookAppointment(
     input: BookAppointmentInput,
 ): Promise<BookAppointmentResult> {
@@ -89,113 +206,29 @@ async function bookAppointment(
     try {
         await client.query("BEGIN")
 
-        const slotIso = input.appointmentDatetime.toISOString()
-        await client.query(
-            "SELECT pg_advisory_xact_lock(hashtext('slot:' || $1::text))",
-            [slotIso],
-        )
+        await lockSlot(client, input.appointmentDatetime.toISOString())
 
-        const settingsResult = await client.query<ScheduleSettings>(
-            `SELECT id, slot_minutes, seats_per_slot, window_days, min_notice_days,
-                    wait_alert_days, unit_address, unit_address_complement,
-                    reminder_enabled, reminder_hours
-             FROM ScheduleSettings
-             WHERE id = 1`,
-        )
-        const settings = settingsResult.rows[0]
+        const settings = await selectSettings(client)
         if (!settings) {
             throw new ScheduleNotConfiguredError()
         }
 
-        const countResult = await client.query<{ count: string }>(
-            `SELECT COUNT(*)::text as count
-             FROM Appointments
-             WHERE appointment_datetime = $1
-               AND status IN ('PENDING', 'CONFIRMED')`,
-            [input.appointmentDatetime],
-        )
-        const currentActiveCount = Number(countResult.rows[0]?.count ?? 0)
-
+        const currentActiveCount = await countActiveInSlot(client, input.appointmentDatetime)
         if (currentActiveCount >= settings.seats_per_slot) {
             throw new SlotFullError()
         }
 
-        const duplicateCheck = await client.query(
-            `SELECT 1 FROM Appointments
-             WHERE cpf_hash = $1
-               AND appointment_datetime = $2
-               AND status IN ('PENDING', 'CONFIRMED')`,
-            [input.cpfHash, input.appointmentDatetime],
-        )
-        if ((duplicateCheck.rowCount ?? 0) > 0) {
+        if (await hasActiveAppointmentForCpf(client, input.cpfHash, input.appointmentDatetime)) {
             throw new DuplicateAppointmentError()
         }
 
-        const attendeeGroup = input.byRepresentative
-            ? "REPRESENTATIVE"
-            : "HOLDER"
-        const groupDocsResult = await client.query<{ description: string }>(
-            `SELECT description
-             FROM AttendanceDocuments
-             WHERE attendee_group = $1
-             ORDER BY position ASC, id ASC`,
-            [attendeeGroup],
-        )
-        const groupDocs = groupDocsResult.rows.map((r) => r.description)
+        const documentsSent = await loadDocumentsSent(client, input.byRepresentative, input.questionId)
 
-        const qDocsResult = await client.query<{ description: string }>(
-            `SELECT description
-             FROM RequiredDocuments
-             WHERE question_id = $1
-             ORDER BY position ASC, id ASC`,
-            [input.questionId],
-        )
-        const questionDocs = qDocsResult.rows.map((r) => r.description)
+        const created = await insertAppointment(client, input, documentsSent)
 
-        const documentsSent: DocumentsSent = {
-            group: groupDocs,
-            question: questionDocs,
-        }
+        await insertCreatedEvent(client, created.id)
 
-        const phoneEncrypted = input.phone ? encrypt(input.phone) : null
-
-        const insertResult = await client.query<{
-            id: string
-            appointment_code: string
-            appointment_datetime: Date
-        }>(
-            `INSERT INTO Appointments (
-               session_id, question_id, reason, name, cpf_hash, cpf_masked,
-               phone_encrypted, by_representative, documents_sent, appointment_datetime, status
-             ) VALUES (
-               $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'PENDING'
-             ) RETURNING id, appointment_code, appointment_datetime`,
-            [
-                input.sessionId,
-                input.questionId,
-                input.reason,
-                input.name,
-                input.cpfHash,
-                input.cpfMasked,
-                phoneEncrypted,
-                input.byRepresentative,
-                JSON.stringify(documentsSent),
-                input.appointmentDatetime,
-            ],
-        )
-
-        const created = insertResult.rows[0]
-        if (!created) {
-            throw new BookingFailedError()
-        }
-
-        await client.query(
-            `INSERT INTO AppointmentEvents (appointment_id, type, data)
-             VALUES ($1, 'CREATED', '{}'::jsonb)`,
-            [created.id],
-        )
-
-        await recordEventWith(client, input.sessionId, {
+        await insertConversationEvent(client, input.sessionId, {
             type: "PHONE_NOTICE_SHOWN",
         })
 
