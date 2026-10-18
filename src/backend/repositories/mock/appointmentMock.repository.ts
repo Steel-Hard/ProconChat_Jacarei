@@ -1,7 +1,7 @@
-import BadRequestError from "../../errors/BadRequestError"
-import ConflictError from "../../errors/ConflictError"
 import NotFoundError from "../../errors/NotFoundError"
+import { decideTransition } from "../../services/appointmentTransitions"
 import {
+    AppointmentActionType,
     AppointmentChipCounts,
     AppointmentDetail,
     AppointmentEventType,
@@ -16,7 +16,6 @@ import {
     addDaysToDateString,
     getThisWeekBounds,
     getTodayBounds,
-    isDateOnOrBeforeToday,
     isDatetimePast,
     toLocalDateString,
 } from "../../utils/date.utils"
@@ -731,39 +730,11 @@ export class MockAppointmentRepository implements AppointmentRepository {
     }
 
     async claim(
-        id: number,
+        id: string,
         actorUserId: number,
         now: Date = new Date(),
     ): Promise<AppointmentDetail> {
-        const appt = this.appointments.find((a) => a.id === id)
-        if (!appt) {
-            throw new NotFoundError("Agendamento não encontrado")
-        }
-
-        if (appt.status === "CANCELED") {
-            throw new ConflictError(
-                "Não é possível assumir um agendamento cancelado",
-                "APPOINTMENT_CANCELED",
-            )
-        }
-        if (appt.status === "ATTENDED") {
-            throw new ConflictError(
-                "Agendamento já foi atendido",
-                "ALREADY_ATTENDED",
-            )
-        }
-        if (appt.status === "NO_SHOW") {
-            throw new ConflictError(
-                "Agendamento já registrado como não compareceu",
-                "ALREADY_NO_SHOW",
-            )
-        }
-        if (appt.status !== "PENDING") {
-            throw new ConflictError(
-                "Apenas agendamentos pendentes podem ser assumidos",
-                "APPOINTMENT_ALREADY_CLAIMED",
-            )
-        }
+        const appt = this.lockAndDecide("claim", id, now)
 
         appt.status = "CONFIRMED"
         appt.assigned_user_id = actorUserId
@@ -783,43 +754,11 @@ export class MockAppointmentRepository implements AppointmentRepository {
     }
 
     async markAttended(
-        id: number,
+        id: string,
         actorUserId: number,
         now: Date = new Date(),
     ): Promise<AppointmentDetail> {
-        const appt = this.appointments.find((a) => a.id === id)
-        if (!appt) {
-            throw new NotFoundError("Agendamento não encontrado")
-        }
-
-        if (appt.status === "ATTENDED") {
-            throw new ConflictError(
-                "Agendamento já foi marcado como atendido",
-                "ALREADY_ATTENDED",
-            )
-        }
-        if (appt.status === "NO_SHOW") {
-            throw new ConflictError(
-                "Agendamento já foi registrado como não compareceu",
-                "ALREADY_NO_SHOW",
-            )
-        }
-        if (appt.status === "CANCELED") {
-            throw new ConflictError(
-                "Não é possível registrar atendimento para um agendamento cancelado",
-                "APPOINTMENT_CANCELED",
-            )
-        }
-        if (appt.status !== "PENDING" && appt.status !== "CONFIRMED") {
-            throw new ConflictError(
-                `Ação não permitida para agendamentos com status ${appt.status}`,
-                "INVALID_STATUS_TRANSITION",
-            )
-        }
-
-        if (!isDateOnOrBeforeToday(appt.appointment_datetime, now)) {
-            throw new BadRequestError("Disponível a partir do dia do atendimento")
-        }
+        const appt = this.lockAndDecide("attended", id, now)
 
         const autoClaim = appt.status === "PENDING"
         if (autoClaim) {
@@ -856,43 +795,11 @@ export class MockAppointmentRepository implements AppointmentRepository {
     }
 
     async markNoShow(
-        id: number,
+        id: string,
         actorUserId: number,
         now: Date = new Date(),
     ): Promise<AppointmentDetail> {
-        const appt = this.appointments.find((a) => a.id === id)
-        if (!appt) {
-            throw new NotFoundError("Agendamento não encontrado")
-        }
-
-        if (appt.status === "ATTENDED") {
-            throw new ConflictError(
-                "Agendamento já foi marcado como atendido",
-                "ALREADY_ATTENDED",
-            )
-        }
-        if (appt.status === "NO_SHOW") {
-            throw new ConflictError(
-                "Agendamento já foi registrado como não compareceu",
-                "ALREADY_NO_SHOW",
-            )
-        }
-        if (appt.status === "CANCELED") {
-            throw new ConflictError(
-                "Não é possível registrar como não compareceu para um agendamento cancelado",
-                "APPOINTMENT_CANCELED",
-            )
-        }
-        if (appt.status !== "PENDING" && appt.status !== "CONFIRMED") {
-            throw new ConflictError(
-                `Ação não permitida para agendamentos com status ${appt.status}`,
-                "INVALID_STATUS_TRANSITION",
-            )
-        }
-
-        if (!isDatetimePast(appt.appointment_datetime, now)) {
-            throw new BadRequestError("Disponível apenas após o horário do agendamento")
-        }
+        const appt = this.lockAndDecide("no_show", id, now)
 
         const autoClaim = appt.status === "PENDING"
         if (autoClaim) {
@@ -926,6 +833,27 @@ export class MockAppointmentRepository implements AppointmentRepository {
         })
 
         return (await this.findById(id))!
+    }
+
+    private lockAndDecide(
+        action: AppointmentActionType,
+        id: string,
+        now: Date,
+    ): MockAppointmentRecord {
+        const appt = this.appointments.find((a) => String(a.id) === id)
+        if (!appt) {
+            throw new NotFoundError("Agendamento não encontrado")
+        }
+
+        const decision = decideTransition(
+            action,
+            { status: appt.status, appointmentDatetime: appt.appointment_datetime },
+            now,
+        )
+        if (!decision.allowed) {
+            throw decision.error
+        }
+        return appt
     }
 
     async resolveTitles(

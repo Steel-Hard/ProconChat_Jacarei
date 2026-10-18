@@ -1,26 +1,52 @@
-import { Pool } from "pg"
+import { Pool, PoolClient } from "pg"
 import getPool from "../db/connection"
-import BadRequestError from "../errors/BadRequestError"
-import ConflictError from "../errors/ConflictError"
 import NotFoundError from "../errors/NotFoundError"
+import { decideTransition } from "../services/appointmentTransitions"
 import {
+    AppointmentActionType,
     AppointmentChipCounts,
     AppointmentDetail,
     AppointmentEventItem,
     AppointmentListFilters,
     AppointmentListItem,
+    AppointmentStatus,
     ConversationTimelineStep,
 } from "../types/appointment.types"
 import { cleanCpf, hashCpf } from "../utils/cpf.utils"
 import {
     getThisWeekBounds,
     getTodayBounds,
-    isDateOnOrBeforeToday,
     isDatetimePast,
 } from "../utils/date.utils"
 import { AppointmentRepository } from "./appointment.repository.interface"
 
 const MAX_BIGINT = 9223372036854775807n
+
+async function lockAndDecide(
+    client: PoolClient,
+    action: AppointmentActionType,
+    id: string,
+    now: Date,
+): Promise<{ status: AppointmentStatus }> {
+    const check = await client.query<{ status: AppointmentStatus; appointment_datetime: Date }>(
+        "SELECT id, status, assigned_user_id, appointment_datetime FROM Appointments WHERE id = $1 FOR UPDATE",
+        [id],
+    )
+    const current = check.rows[0]
+    if (!current) {
+        throw new NotFoundError("Agendamento não encontrado")
+    }
+
+    const decision = decideTransition(
+        action,
+        { status: current.status, appointmentDatetime: new Date(current.appointment_datetime) },
+        now,
+    )
+    if (!decision.allowed) {
+        throw decision.error
+    }
+    return current
+}
 
 export function createAppointmentRepository(pool: Pool = getPool()): AppointmentRepository {
     return {
@@ -430,7 +456,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
         },
 
         async claim(
-            id: number,
+            id: string,
             actorUserId: number,
             now: Date = new Date(),
         ): Promise<AppointmentDetail> {
@@ -438,38 +464,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             try {
                 await client.query("BEGIN")
 
-                const check = await client.query(
-                    "SELECT id, status FROM Appointments WHERE id = $1 FOR UPDATE",
-                    [id],
-                )
-                if (check.rows.length === 0) {
-                    throw new NotFoundError("Agendamento não encontrado")
-                }
-                const currentStatus = check.rows[0].status
-                if (currentStatus === "CANCELED") {
-                    throw new ConflictError(
-                        "Não é possível assumir um agendamento cancelado",
-                        "APPOINTMENT_CANCELED",
-                    )
-                }
-                if (currentStatus === "ATTENDED") {
-                    throw new ConflictError(
-                        "Agendamento já foi atendido",
-                        "ALREADY_ATTENDED",
-                    )
-                }
-                if (currentStatus === "NO_SHOW") {
-                    throw new ConflictError(
-                        "Agendamento já registrado como não compareceu",
-                        "ALREADY_NO_SHOW",
-                    )
-                }
-                if (currentStatus !== "PENDING") {
-                    throw new ConflictError(
-                        "Apenas agendamentos pendentes podem ser assumidos",
-                        "APPOINTMENT_ALREADY_CLAIMED",
-                    )
-                }
+                await lockAndDecide(client, "claim", id, now)
 
                 await client.query(
                     `UPDATE Appointments
@@ -496,7 +491,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
         },
 
         async markAttended(
-            id: number,
+            id: string,
             actorUserId: number,
             now: Date = new Date(),
         ): Promise<AppointmentDetail> {
@@ -504,44 +499,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             try {
                 await client.query("BEGIN")
 
-                const check = await client.query(
-                    "SELECT id, status, assigned_user_id, appointment_datetime FROM Appointments WHERE id = $1 FOR UPDATE",
-                    [id],
-                )
-                if (check.rows.length === 0) {
-                    throw new NotFoundError("Agendamento não encontrado")
-                }
-
-                const current = check.rows[0]
-                if (current.status === "ATTENDED") {
-                    throw new ConflictError(
-                        "Agendamento já foi marcado como atendido",
-                        "ALREADY_ATTENDED",
-                    )
-                }
-                if (current.status === "NO_SHOW") {
-                    throw new ConflictError(
-                        "Agendamento já foi registrado como não compareceu",
-                        "ALREADY_NO_SHOW",
-                    )
-                }
-                if (current.status === "CANCELED") {
-                    throw new ConflictError(
-                        "Não é possível registrar atendimento para um agendamento cancelado",
-                        "APPOINTMENT_CANCELED",
-                    )
-                }
-                if (current.status !== "PENDING" && current.status !== "CONFIRMED") {
-                    throw new ConflictError(
-                        `Ação não permitida para agendamentos com status ${current.status}`,
-                        "INVALID_STATUS_TRANSITION",
-                    )
-                }
-
-                const apptDate = new Date(current.appointment_datetime)
-                if (!isDateOnOrBeforeToday(apptDate, now)) {
-                    throw new BadRequestError("Disponível a partir do dia do atendimento")
-                }
+                const current = await lockAndDecide(client, "attended", id, now)
 
                 const isAutoClaim = current.status === "PENDING"
                 if (isAutoClaim) {
@@ -585,7 +543,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
         },
 
         async markNoShow(
-            id: number,
+            id: string,
             actorUserId: number,
             now: Date = new Date(),
         ): Promise<AppointmentDetail> {
@@ -593,44 +551,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             try {
                 await client.query("BEGIN")
 
-                const check = await client.query(
-                    "SELECT id, status, assigned_user_id, appointment_datetime FROM Appointments WHERE id = $1 FOR UPDATE",
-                    [id],
-                )
-                if (check.rows.length === 0) {
-                    throw new NotFoundError("Agendamento não encontrado")
-                }
-
-                const current = check.rows[0]
-                if (current.status === "ATTENDED") {
-                    throw new ConflictError(
-                        "Agendamento já foi marcado como atendido",
-                        "ALREADY_ATTENDED",
-                    )
-                }
-                if (current.status === "NO_SHOW") {
-                    throw new ConflictError(
-                        "Agendamento já foi registrado como não compareceu",
-                        "ALREADY_NO_SHOW",
-                    )
-                }
-                if (current.status === "CANCELED") {
-                    throw new ConflictError(
-                        "Não é possível registrar como não compareceu para um agendamento cancelado",
-                        "APPOINTMENT_CANCELED",
-                    )
-                }
-                if (current.status !== "PENDING" && current.status !== "CONFIRMED") {
-                    throw new ConflictError(
-                        `Ação não permitida para agendamentos com status ${current.status}`,
-                        "INVALID_STATUS_TRANSITION",
-                    )
-                }
-
-                const apptDatetime = new Date(current.appointment_datetime)
-                if (!isDatetimePast(apptDatetime, now)) {
-                    throw new BadRequestError("Disponível apenas após o horário do agendamento")
-                }
+                const current = await lockAndDecide(client, "no_show", id, now)
 
                 const isAutoClaim = current.status === "PENDING"
                 if (isAutoClaim) {

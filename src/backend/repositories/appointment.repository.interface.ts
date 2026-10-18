@@ -20,19 +20,19 @@ export interface AppointmentRepository {
     findById(id: number | string): Promise<AppointmentDetail | null>
 
     claim(
-        id: number,
+        id: string,
         actorUserId: number,
         now?: Date,
     ): Promise<AppointmentDetail>
 
     markAttended(
-        id: number,
+        id: string,
         actorUserId: number,
         now?: Date,
     ): Promise<AppointmentDetail>
 
     markNoShow(
-        id: number,
+        id: string,
         actorUserId: number,
         now?: Date,
     ): Promise<AppointmentDetail>

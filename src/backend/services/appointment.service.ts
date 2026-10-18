@@ -1,5 +1,3 @@
-import BadRequestError from "../errors/BadRequestError"
-import ConflictError from "../errors/ConflictError"
 import NotFoundError from "../errors/NotFoundError"
 import { AppointmentRepository } from "../repositories/appointment.repository.interface"
 import { appointmentRepository as defaultAppointmentRepository } from "../repositories/appointment.repository"
@@ -9,10 +7,6 @@ import {
     AppointmentListResponse,
     ConversationTimelineStep,
 } from "../types/appointment.types"
-import {
-    isDateOnOrBeforeToday,
-    isDatetimePast,
-} from "../utils/date.utils"
 import {
     conversationEventService as defaultConversationEventService,
     ConversationEventService,
@@ -213,32 +207,7 @@ export function createAppointmentService(deps?: {
             actorUserId: number,
             now: Date = new Date(),
         ): Promise<AppointmentDetail> {
-            const appointment = await this.getAppointmentDetail(idOrCode)
-            if (appointment.status === "CANCELED") {
-                throw new ConflictError(
-                    "Não é possível assumir um agendamento cancelado",
-                    "APPOINTMENT_CANCELED",
-                )
-            }
-            if (appointment.status === "ATTENDED") {
-                throw new ConflictError(
-                    "Agendamento já foi atendido",
-                    "ALREADY_ATTENDED",
-                )
-            }
-            if (appointment.status === "NO_SHOW") {
-                throw new ConflictError(
-                    "Agendamento já registrado como não compareceu",
-                    "ALREADY_NO_SHOW",
-                )
-            }
-            if (appointment.status !== "PENDING") {
-                throw new ConflictError(
-                    "Apenas agendamentos pendentes podem ser assumidos",
-                    "APPOINTMENT_ALREADY_CLAIMED",
-                )
-            }
-            return repository.claim(Number(appointment.id), actorUserId, now)
+            return repository.claim(String(idOrCode), actorUserId, now)
         },
 
         async markAttended(
@@ -246,36 +215,7 @@ export function createAppointmentService(deps?: {
             actorUserId: number,
             now: Date = new Date(),
         ): Promise<AppointmentDetail> {
-            const appointment = await this.getAppointmentDetail(idOrCode)
-            if (appointment.status === "ATTENDED") {
-                throw new ConflictError(
-                    "Agendamento já foi marcado como atendido",
-                    "ALREADY_ATTENDED",
-                )
-            }
-            if (appointment.status === "NO_SHOW") {
-                throw new ConflictError(
-                    "Agendamento já foi registrado como não compareceu",
-                    "ALREADY_NO_SHOW",
-                )
-            }
-            if (appointment.status === "CANCELED") {
-                throw new ConflictError(
-                    "Não é possível registrar atendimento para um agendamento cancelado",
-                    "APPOINTMENT_CANCELED",
-                )
-            }
-            if (appointment.status !== "PENDING" && appointment.status !== "CONFIRMED") {
-                throw new ConflictError(
-                    `Ação não permitida para agendamentos com status ${appointment.status}`,
-                    "INVALID_STATUS_TRANSITION",
-                )
-            }
-            const apptDate = new Date(appointment.appointment_datetime)
-            if (!isDateOnOrBeforeToday(apptDate, now)) {
-                throw new BadRequestError("Disponível a partir do dia do atendimento")
-            }
-            return repository.markAttended(Number(appointment.id), actorUserId, now)
+            return repository.markAttended(String(idOrCode), actorUserId, now)
         },
 
         async markNoShow(
@@ -283,36 +223,7 @@ export function createAppointmentService(deps?: {
             actorUserId: number,
             now: Date = new Date(),
         ): Promise<AppointmentDetail> {
-            const appointment = await this.getAppointmentDetail(idOrCode)
-            if (appointment.status === "ATTENDED") {
-                throw new ConflictError(
-                    "Agendamento já foi marcado como atendido",
-                    "ALREADY_ATTENDED",
-                )
-            }
-            if (appointment.status === "NO_SHOW") {
-                throw new ConflictError(
-                    "Agendamento já foi registrado como não compareceu",
-                    "ALREADY_NO_SHOW",
-                )
-            }
-            if (appointment.status === "CANCELED") {
-                throw new ConflictError(
-                    "Não é possível registrar como não compareceu para um agendamento cancelado",
-                    "APPOINTMENT_CANCELED",
-                )
-            }
-            if (appointment.status !== "PENDING" && appointment.status !== "CONFIRMED") {
-                throw new ConflictError(
-                    `Ação não permitida para agendamentos com status ${appointment.status}`,
-                    "INVALID_STATUS_TRANSITION",
-                )
-            }
-            const apptDatetime = new Date(appointment.appointment_datetime)
-            if (!isDatetimePast(apptDatetime, now)) {
-                throw new BadRequestError("Disponível apenas após o horário do agendamento")
-            }
-            return repository.markNoShow(Number(appointment.id), actorUserId, now)
+            return repository.markNoShow(String(idOrCode), actorUserId, now)
         },
     }
 }
