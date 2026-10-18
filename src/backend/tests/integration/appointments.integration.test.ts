@@ -252,6 +252,47 @@ describe("Agendamentos com Postgres (integração)", () => {
         ])
     })
 
+    it("ordena o resultado da busca com os próximos primeiro e os passados do mais recente ao mais antigo", async () => {
+        const idFarFuture = await createAppointment({
+            name: "Zeta Busca Ordem +2d",
+            status: "CONFIRMED",
+            appointmentDatetime: new Date(Date.now() + 2 * 86400000),
+            cpf: "33344455500",
+        })
+        const idNearFuture = await createAppointment({
+            name: "Zeta Busca Ordem +1d",
+            status: "CONFIRMED",
+            appointmentDatetime: new Date(Date.now() + 1 * 86400000),
+            cpf: "33344455511",
+        })
+        const idRecentPast = await createAppointment({
+            name: "Zeta Busca Ordem -1d",
+            status: "CANCELED",
+            appointmentDatetime: new Date(Date.now() - 1 * 86400000),
+            cpf: "33344455522",
+        })
+        const idOldPast = await createAppointment({
+            name: "Zeta Busca Ordem -2d",
+            status: "CONFIRMED",
+            appointmentDatetime: new Date(Date.now() - 2 * 86400000),
+            cpf: "33344455533",
+        })
+
+        const order = await listOrderAcrossPages("search=Zeta%20Busca%20Ordem", [
+            idFarFuture,
+            idNearFuture,
+            idRecentPast,
+            idOldPast,
+        ])
+
+        expect(order).toEqual([
+            String(idNearFuture),
+            String(idFarFuture),
+            String(idRecentPast),
+            String(idOldPast),
+        ])
+    })
+
     it("ordena por responsável com os sem responsável primeiro no crescente e por último no decrescente", async () => {
         const idUnassigned = await createAppointment({
             name: "Sem responsável",
