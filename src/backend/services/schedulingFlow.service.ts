@@ -64,6 +64,8 @@ export interface SchedulingFlow {
     ): Promise<ConversationFlowResult>
 }
 
+const HOLDER_NAME_PATTERN = /^[\p{L}\p{M}\s'’.,-]+$/u
+
 function keepQuestion(session: ActiveSession): Pick<NavigationState, "currentCategoryId" | "currentQuestionId"> {
     return {
         currentCategoryId: null,
@@ -159,9 +161,9 @@ export function createSchedulingFlow({
         session: ActiveSession,
         text: string | undefined,
     ): Promise<ConversationFlowResult> {
-        const name = text?.trim()
+        const name = text?.trim().normalize("NFC")
 
-        if (!name || name.length < 2 || name.length > 150 || /\d/.test(name)) {
+        if (!name || name.length < 2 || name.length > 150 || !HOLDER_NAME_PATTERN.test(name)) {
             return {
                 sessionId: session.id,
                 newSession: false,

@@ -149,6 +149,63 @@ describe("conversationFlow.service", () => {
             expect(updateNavigationState).not.toHaveBeenCalled()
         })
 
+        test.each([
+            { caso: "Maria da Silva", nome: "Maria da Silva", gravado: "Maria da Silva" },
+            { caso: "José em NFC", nome: "Jos\u00e9", gravado: "Jos\u00e9" },
+            { caso: "José em NFD", nome: "Jose\u0301", gravado: "Jos\u00e9" },
+            { caso: "D'Ávila", nome: "D'Ávila", gravado: "D'Ávila" },
+            { caso: "D’Ávila", nome: "D’Ávila", gravado: "D’Ávila" },
+            { caso: "Ana-Maria", nome: "Ana-Maria", gravado: "Ana-Maria" },
+            { caso: "João Pedro Jr.", nome: "João Pedro Jr.", gravado: "João Pedro Jr." },
+            { caso: "Müller", nome: "Müller", gravado: "Müller" },
+            { caso: "李小龍", nome: "李小龍", gravado: "李小龍" },
+            { caso: "Silva, João", nome: "Silva, João", gravado: "Silva, João" },
+            { caso: "Maria ª", nome: "Maria ª", gravado: "Maria ª" },
+            { caso: "Antônio º", nome: "Antônio º", gravado: "Antônio º" },
+            { caso: "www.site.com", nome: "www.site.com", gravado: "www.site.com" },
+        ])("AWAITING_HOLDER_NAME: aceita o nome $caso e grava a forma normalizada", async ({ nome, gravado }) => {
+            findOrCreateActive.mockResolvedValueOnce(
+                sessionAt("AWAITING_HOLDER_NAME", { draft: { by_representative: false } }),
+            )
+
+            const result = await processIncomingMessage({ phone: "5511999999999", text: nome })
+
+            expect(result.reply.step).toBe("AWAITING_HOLDER_CPF")
+            expect(updateNavigationState).toHaveBeenCalledWith("s1", {
+                currentStep: "AWAITING_HOLDER_CPF",
+                currentCategoryId: null,
+                currentQuestionId: "10",
+                draft: {
+                    by_representative: false,
+                    holder_name: gravado,
+                },
+            })
+        })
+
+        test.each([
+            { caso: "com CPF", nome: "Maria 529.982.247-25" },
+            { caso: "com dígito e ordinal", nome: "Maria 2ª" },
+            { caso: "com dígitos de largura total", nome: "Maria ５２９" },
+            { caso: "com endereço eletrônico", nome: "maria@email.com" },
+            { caso: "com emoji", nome: "João 😀" },
+            { caso: "com sublinhado", nome: "Maria_Silva" },
+            { caso: "com parênteses", nome: "Maria (Mary)" },
+            { caso: "com barra", nome: "João/Maria" },
+            { caso: "com e comercial", nome: "Maria & João" },
+            { caso: "com menos de 2 caracteres", nome: "A" },
+            { caso: "com mais de 150 caracteres", nome: "A".repeat(151) },
+        ])("AWAITING_HOLDER_NAME: recusa o nome $caso e pede de novo", async ({ nome }) => {
+            findOrCreateActive.mockResolvedValueOnce(
+                sessionAt("AWAITING_HOLDER_NAME", { draft: { by_representative: false } }),
+            )
+
+            const result = await processIncomingMessage({ phone: "5511999999999", text: nome })
+
+            expect(result.reply.step).toBe("AWAITING_HOLDER_NAME")
+            expect(result.reply.text).toBe(ERRO_NOME)
+            expect(updateNavigationState).not.toHaveBeenCalled()
+        })
+
         test("AWAITING_HOLDER_CPF: CPF inválido re-solicita CPF", async () => {
             findOrCreateActive.mockResolvedValueOnce(
                 sessionAt("AWAITING_HOLDER_CPF", {
