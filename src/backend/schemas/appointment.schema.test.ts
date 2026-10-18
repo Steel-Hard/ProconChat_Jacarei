@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest"
+import { validateSchema } from "../middleware/validateRequest.middleware"
 import {
     appointmentIdParamSchema,
     listAppointmentsQuerySchema,
     updateStatusBodySchema,
-    validateSchema,
 } from "./appointment.schema"
 
 describe("appointment.schema", () => {

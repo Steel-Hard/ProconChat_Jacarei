@@ -3,11 +3,11 @@ import { createAppointmentController } from "../controllers/appointment.controll
 import { requireAuth, requirePermission } from "../middleware/auth.middleware"
 import { appointmentRepository as defaultAppointmentRepository } from "../repositories/appointment.repository"
 import { AppointmentRepository } from "../repositories/appointment.repository.interface"
+import { validateRequest } from "../middleware/validateRequest.middleware"
 import {
     appointmentIdParamSchema,
     listAppointmentsQuerySchema,
     updateStatusBodySchema,
-    validateRequest,
 } from "../schemas/appointment.schema"
 import { createAppointmentService } from "../services/appointment.service"
 import { conversationEventService as defaultConversationEventService, ConversationEventService } from "../services/conversationEvent.service"
