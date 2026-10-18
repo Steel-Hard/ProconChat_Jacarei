@@ -422,6 +422,61 @@ describe("Agendamentos com Postgres (integração)", () => {
         expect(searching.body.data.chipCounts).toEqual(upcomingChips)
     })
 
+    it("a lista e o detalhe do Postgres têm exatamente as chaves do contrato", async () => {
+        const apptId = await createAppointment({ name: "Cidadão Contrato Chaves", cpf: "12312312387" })
+
+        const listRes = await request(app)
+            .get("/api/v1/appointments?search=Contrato%20Chaves")
+            .set("Cookie", adminCookie)
+        const detailRes = await request(app)
+            .get(`/api/v1/appointments/${apptId}`)
+            .set("Cookie", adminCookie)
+
+        const item = listRes.body.data.items.find((i: { id: string }) => i.id === String(apptId))
+        expect(Object.keys(item).sort()).toEqual([
+            "appointment_code",
+            "appointment_datetime",
+            "assigned_user_id",
+            "assigned_user_name",
+            "by_representative",
+            "category_name",
+            "cpf_masked",
+            "id",
+            "name",
+            "off_grid",
+            "protocol",
+            "question_title",
+            "status",
+            "waiting_record",
+        ])
+        expect(Object.keys(detailRes.body.data).sort()).toEqual([
+            "appointment_code",
+            "appointment_datetime",
+            "assigned_user_id",
+            "assigned_user_name",
+            "available_actions",
+            "by_representative",
+            "category_id",
+            "category_name",
+            "cpf_masked",
+            "documents_sent",
+            "events",
+            "id",
+            "is_documents_config_different",
+            "name",
+            "off_grid",
+            "protocol",
+            "question_id",
+            "question_title",
+            "reason",
+            "request_datetime",
+            "rescheduled_from",
+            "session_id",
+            "status",
+            "timeline",
+        ])
+    })
+
     it("retorna 400 para id não numérico ou acima do limite de bigint", async () => {
         const resText = await request(app)
             .get("/api/v1/appointments/abc")
