@@ -102,6 +102,13 @@ export interface ConversationTimelineStep {
     data: Record<string, unknown>
 }
 
+export interface AppointmentActionAvailability {
+    allowed: boolean
+    code: string | null
+}
+
+export type AppointmentAvailableActions = Record<AppointmentActionType, AppointmentActionAvailability>
+
 export interface AppointmentDetail {
     id: string
     appointment_code: string
@@ -132,7 +139,10 @@ export interface AppointmentDetail {
 
     events: AppointmentEventItem[]
     timeline: ConversationTimelineStep[]
+    available_actions: AppointmentAvailableActions
 }
+
+export type AppointmentDetailRecord = Omit<AppointmentDetail, "available_actions">
 
 export interface AppointmentListFilters {
     search?: string

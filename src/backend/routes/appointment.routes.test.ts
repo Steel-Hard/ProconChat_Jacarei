@@ -1,6 +1,6 @@
 import express from "express"
 import request from "supertest"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import errorHandler from "../middleware/errorHandler.middleware"
 import { createRequireAuth } from "../middleware/auth.middleware"
 import { MockAppointmentRepository } from "../repositories/mock/appointmentMock.repository"
@@ -212,6 +212,54 @@ describe("appointment.routes (HTTP)", () => {
 
             expect(detailRes.body.data.protocol).toBe("A1B2C3D4")
             expect(listRes.body.data.items[0].protocol).toBe("A1B2C3D4")
+        })
+
+        describe("ações disponíveis", () => {
+            afterEach(() => {
+                vi.useRealTimers()
+            })
+
+            it("informa as ações disponíveis de um pendente futuro", async () => {
+                const res = await request(app)
+                    .get("/api/v1/appointments/1")
+                    .set("Cookie", accessCookieFor(1))
+
+                expect(res.body.data.available_actions).toEqual({
+                    claim: { allowed: true, code: null },
+                    attended: { allowed: false, code: "ATTENDANCE_NOT_YET_AVAILABLE" },
+                    no_show: { allowed: false, code: "NO_SHOW_NOT_YET_AVAILABLE" },
+                })
+            })
+
+            it("informa as ações disponíveis de um confirmado de hoje antes do horário", async () => {
+                vi.useFakeTimers({ toFake: ["Date"] })
+                vi.setSystemTime(new Date("2026-10-20T10:00:00-03:00"))
+                repository.appointments.find((a) => a.id === 2)!.appointment_datetime = new Date(
+                    "2026-10-20T15:00:00-03:00",
+                )
+
+                const res = await request(app)
+                    .get("/api/v1/appointments/2")
+                    .set("Cookie", accessCookieFor(1))
+
+                expect(res.body.data.available_actions).toEqual({
+                    claim: { allowed: false, code: "APPOINTMENT_ALREADY_CLAIMED" },
+                    attended: { allowed: true, code: null },
+                    no_show: { allowed: false, code: "NO_SHOW_NOT_YET_AVAILABLE" },
+                })
+            })
+
+            it("informa as ações disponíveis de um confirmado que já passou", async () => {
+                const res = await request(app)
+                    .get("/api/v1/appointments/3")
+                    .set("Cookie", accessCookieFor(1))
+
+                expect(res.body.data.available_actions).toEqual({
+                    claim: { allowed: false, code: "APPOINTMENT_ALREADY_CLAIMED" },
+                    attended: { allowed: true, code: null },
+                    no_show: { allowed: true, code: null },
+                })
+            })
         })
 
         it("retorna 404 para ID inexistente", async () => {

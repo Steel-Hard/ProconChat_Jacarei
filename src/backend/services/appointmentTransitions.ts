@@ -1,6 +1,11 @@
 import AppError from "../errors/AppError"
 import ConflictError from "../errors/ConflictError"
-import type { AppointmentActionType, AppointmentStatus } from "../types/appointment.types"
+import type {
+    AppointmentActionAvailability,
+    AppointmentActionType,
+    AppointmentAvailableActions,
+    AppointmentStatus,
+} from "../types/appointment.types"
 import { isDateOnOrBeforeToday, isDatetimePast } from "../utils/date.utils"
 
 export interface TransitionTarget {
@@ -117,4 +122,18 @@ export function decideTransition(
         return decideAttended(target, now)
     }
     return decideNoShow(target, now)
+}
+
+function availabilityOf(decision: TransitionDecision): AppointmentActionAvailability {
+    return decision.allowed
+        ? { allowed: true, code: null }
+        : { allowed: false, code: decision.error.code }
+}
+
+export function availableActions(target: TransitionTarget, now: Date): AppointmentAvailableActions {
+    return {
+        claim: availabilityOf(decideTransition("claim", target, now)),
+        attended: availabilityOf(decideTransition("attended", target, now)),
+        no_show: availabilityOf(decideTransition("no_show", target, now)),
+    }
 }

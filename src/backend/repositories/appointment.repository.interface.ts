@@ -1,6 +1,6 @@
 import {
     AppointmentChipCounts,
-    AppointmentDetail,
+    AppointmentDetailRecord,
     AppointmentListFilters,
     AppointmentListItem,
 } from "../types/appointment.types"
@@ -17,7 +17,7 @@ export interface AppointmentRepository {
 
     countPending(): Promise<number>
 
-    findById(id: number | string): Promise<AppointmentDetail | null>
+    findById(id: number | string): Promise<AppointmentDetailRecord | null>
 
     claim(
         id: string,

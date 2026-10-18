@@ -5,7 +5,7 @@ import { decideTransition } from "../services/appointmentTransitions"
 import {
     AppointmentActionType,
     AppointmentChipCounts,
-    AppointmentDetail,
+    AppointmentDetailRecord,
     AppointmentEventItem,
     AppointmentListFilters,
     AppointmentListItem,
@@ -85,7 +85,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             }
         },
 
-        async findById(idOrCode: number | string): Promise<AppointmentDetail | null> {
+        async findById(idOrCode: number | string): Promise<AppointmentDetailRecord | null> {
             const idStr = String(idOrCode).trim()
             if (!/^\d+$/.test(idStr)) {
                 return null

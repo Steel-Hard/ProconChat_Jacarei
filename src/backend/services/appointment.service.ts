@@ -3,10 +3,12 @@ import { AppointmentRepository } from "../repositories/appointment.repository.in
 import { appointmentRepository as defaultAppointmentRepository } from "../repositories/appointment.repository"
 import {
     AppointmentDetail,
+    AppointmentDetailRecord,
     AppointmentListFilters,
     AppointmentListResponse,
     ConversationTimelineStep,
 } from "../types/appointment.types"
+import { availableActions } from "./appointmentTransitions"
 import {
     conversationEventService as defaultConversationEventService,
     ConversationEventService,
@@ -23,6 +25,7 @@ export interface AppointmentService {
 
     getAppointmentDetail(
         idOrCode: number | string,
+        now?: Date,
     ): Promise<AppointmentDetail>
 
     claimAppointment(
@@ -53,7 +56,7 @@ function idOf(ev: RecordedConversationEvent, key: "categoryId" | "questionId"): 
 
 function categoryTitle(
     categoryId: number,
-    appointment: AppointmentDetail,
+    appointment: AppointmentDetailRecord,
     titles: TimelineTitles,
 ): string | null {
     return (
@@ -64,7 +67,7 @@ function categoryTitle(
 
 function questionTitle(
     questionId: number,
-    appointment: AppointmentDetail,
+    appointment: AppointmentDetailRecord,
     titles: TimelineTitles,
 ): string | null {
     return (
@@ -75,7 +78,7 @@ function questionTitle(
 
 function buildTimeline(
     events: RecordedConversationEvent[],
-    appointment: AppointmentDetail,
+    appointment: AppointmentDetailRecord,
     titles: TimelineTitles,
 ): ConversationTimelineStep[] {
     return events.map((ev, index) => {
@@ -113,6 +116,7 @@ export function createAppointmentService(deps?: {
 
     async function getAppointmentDetail(
         idOrCode: number | string,
+        now: Date = new Date(),
     ): Promise<AppointmentDetail> {
         const appointment = await repository.findById(idOrCode)
         if (!appointment) {
@@ -143,7 +147,16 @@ export function createAppointmentService(deps?: {
             }
         }
 
-        return appointment
+        return {
+            ...appointment,
+            available_actions: availableActions(
+                {
+                    status: appointment.status,
+                    appointmentDatetime: new Date(appointment.appointment_datetime),
+                },
+                now,
+            ),
+        }
     }
 
     return {
@@ -184,7 +197,7 @@ export function createAppointmentService(deps?: {
             now: Date = new Date(),
         ): Promise<AppointmentDetail> {
             await repository.claim(String(idOrCode), actorUserId, now)
-            return getAppointmentDetail(idOrCode)
+            return getAppointmentDetail(idOrCode, now)
         },
 
         async markAttended(
@@ -193,7 +206,7 @@ export function createAppointmentService(deps?: {
             now: Date = new Date(),
         ): Promise<AppointmentDetail> {
             await repository.markAttended(String(idOrCode), actorUserId, now)
-            return getAppointmentDetail(idOrCode)
+            return getAppointmentDetail(idOrCode, now)
         },
 
         async markNoShow(
@@ -202,7 +215,7 @@ export function createAppointmentService(deps?: {
             now: Date = new Date(),
         ): Promise<AppointmentDetail> {
             await repository.markNoShow(String(idOrCode), actorUserId, now)
-            return getAppointmentDetail(idOrCode)
+            return getAppointmentDetail(idOrCode, now)
         },
     }
 }

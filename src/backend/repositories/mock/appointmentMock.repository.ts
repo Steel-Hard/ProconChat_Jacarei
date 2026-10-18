@@ -3,7 +3,7 @@ import { decideTransition } from "../../services/appointmentTransitions"
 import {
     AppointmentActionType,
     AppointmentChipCounts,
-    AppointmentDetail,
+    AppointmentDetailRecord,
     AppointmentEventType,
     AppointmentListFilters,
     AppointmentListItem,
@@ -458,7 +458,7 @@ export class MockAppointmentRepository implements AppointmentRepository {
         return { group: groupDocs, question: questionDocs }
     }
 
-    async findById(idOrCode: number | string): Promise<AppointmentDetail | null> {
+    async findById(idOrCode: number | string): Promise<AppointmentDetailRecord | null> {
         const idStr = String(idOrCode).trim()
         const appt = this.appointments.find((a) =>
             typeof idOrCode === "number"
