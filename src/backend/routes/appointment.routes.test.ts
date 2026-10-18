@@ -5,6 +5,7 @@ import errorHandler from "../middleware/errorHandler.middleware"
 import { createRequireAuth } from "../middleware/auth.middleware"
 import { MockAppointmentRepository } from "../repositories/mock/appointmentMock.repository"
 import { MockAuthRepository } from "../repositories/mock/authMock.repository"
+import type { ConversationEventService } from "../services/conversationEvent.service"
 import { sessionTokens } from "../utils/sessionToken"
 import { AppointmentRoutes } from "./appointment.routes"
 
@@ -193,7 +194,7 @@ describe("appointment.routes (HTTP)", () => {
 
     describe("GET /api/v1/appointments/:id", () => {
         it("retorna detalhe completo do agendamento", async () => {
-            const res = await request(app)
+            const res = await request(buildApp(repository.conversationEventService()))
                 .get("/api/v1/appointments/1")
                 .set("Cookie", accessCookieFor(1))
 
@@ -203,6 +204,19 @@ describe("appointment.routes (HTTP)", () => {
             expect(res.body.data.documents_sent).toBeDefined()
             expect(res.body.data.events).toBeInstanceOf(Array)
             expect(res.body.data.timeline).toBeInstanceOf(Array)
+            expect(res.body.data.events.map((e: { type: string }) => e.type)).toEqual(["CREATED"])
+            expect(res.body.data.timeline.map((step: { type: string }) => step.type)).toEqual([
+                "STARTED",
+                "CATEGORY_CHOSEN",
+                "QUESTION_CHOSEN",
+                "ANSWER_SENT",
+                "RESOLVED_ANSWERED",
+                "SCHEDULE_OFFERED",
+                "ATTENDEE_CHOSEN",
+                "APPOINTMENT_CREATED",
+            ])
+            expect(res.body.data.timeline[1].data).toEqual({ categoryId: 10, category_title: "Cobrança" })
+            expect(res.body.data.timeline[3].generated_by_ai).toBe(true)
         })
 
         it("devolve o protocolo em maiúsculas no detalhe e na lista", async () => {
@@ -319,6 +333,8 @@ describe("appointment.routes (HTTP)", () => {
             expect(res.status).toBe(200)
             expect(res.body.data.status).toBe("CONFIRMED")
             expect(res.body.data.assigned_user_id).toBe("10")
+            expect(res.body.data.events[0].type).toBe("CLAIMED")
+            expect(res.body.data.events[0].actor_user_id).toBe("10")
         })
 
         it("executa ação attended com sucesso para agendamento de hoje", async () => {
