@@ -548,7 +548,7 @@ export class MockAppointmentRepository implements AppointmentRepository {
             const term = filters.search.trim()
             const cleanedDigits = cleanCpf(term)
 
-            if (cleanedDigits.length === 11) {
+            if (/^[\d.\-\s]+$/.test(term) && cleanedDigits.length === 11) {
                 const hashed = hashCpf(cleanedDigits)
                 filtered = filtered.filter((a) => a.cpf_hash === hashed)
             } else {

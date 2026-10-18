@@ -21,6 +21,7 @@ import {
 import { AppointmentRepository } from "./appointment.repository.interface"
 
 const MAX_BIGINT = 9223372036854775807n
+const CPF_SEARCH_PATTERN = /^[\d.\-\s]+$/
 
 async function lockAndDecide(
     client: PoolClient,
@@ -264,7 +265,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                 const term = filters.search!.trim()
                 const cleanedDigits = cleanCpf(term)
 
-                if (cleanedDigits.length === 11) {
+                if (CPF_SEARCH_PATTERN.test(term) && cleanedDigits.length === 11) {
                     const cpfHashed = hashCpf(cleanedDigits)
                     conditions.push(`a.cpf_hash = $${paramIndex++}`)
                     params.push(cpfHashed)

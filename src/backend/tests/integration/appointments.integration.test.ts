@@ -96,6 +96,7 @@ describe("Agendamentos com Postgres (integração)", () => {
         status?: "PENDING" | "CONFIRMED" | "ATTENDED" | "NO_SHOW" | "CANCELED"
         appointmentDatetime?: Date
         assignedUserId?: number | null
+        appointmentCode?: string
     }): Promise<number> {
         const pool = getPool()
         const cpf = overrides.cpf ?? "52998224725"
@@ -108,12 +109,14 @@ describe("Agendamentos com Postgres (integração)", () => {
         const res = await pool.query<{ id: string }>(
             `INSERT INTO Appointments (
                 session_id, question_id, reason, name, cpf_hash, cpf_masked,
-                by_representative, documents_sent, appointment_datetime, status, assigned_user_id
+                by_representative, documents_sent, appointment_datetime, status, assigned_user_id,
+                appointment_code
              ) VALUES (
                 $1, $2, 'NOT_RESOLVED', $3, $4, '***.982.247-**',
-                false, '{"group": [], "question": []}'::jsonb, $5, $6, $7
+                false, '{"group": [], "question": []}'::jsonb, $5, $6, $7,
+                COALESCE($8::uuid, gen_random_uuid())
              ) RETURNING id`,
-            [sessionId, questionId, name, cpfHash, apptDate, status, assignedUserId],
+            [sessionId, questionId, name, cpfHash, apptDate, status, assignedUserId, overrides.appointmentCode ?? null],
         )
 
         const id = Number(res.rows[0].id)
@@ -136,6 +139,19 @@ describe("Agendamentos com Postgres (integração)", () => {
             .set("Cookie", adminCookie)
         expect(resFormatted.status).toBe(200)
         expect(resFormatted.body.data.items.some((item: { id: string }) => item.id === String(id))).toBe(true)
+    })
+
+    it("busca com letras e 11 dígitos procura pelo protocolo e não pelo CPF", async () => {
+        const suffix = String(process.pid % 1000000).padStart(6, "0") + String(Date.now() % 1000000).padStart(6, "0")
+        const appointmentCode = `12345678-90ab-4cde-8f01-${suffix}`
+        const id = await createAppointment({ name: "Cidadão Protocolo", cpf: "12345678909", appointmentCode })
+
+        const res = await request(app)
+            .get("/api/v1/appointments?search=12345678-90ab-4c")
+            .set("Cookie", adminCookie)
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.items.some((item: { id: string }) => item.id === String(id))).toBe(true)
     })
 
     it("busca textual escapa corretamente caracteres especiais % e _", async () => {
