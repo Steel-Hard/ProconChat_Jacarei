@@ -600,12 +600,12 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             const questions: Record<number, string> = {}
 
             if (categoryIds.length > 0) {
-                const catResult = await pool.query<{ id: string; title: string; short_title: string | null }>(
-                    `SELECT id, title, short_title FROM Categories WHERE id = ANY($1::bigint[])`,
+                const catResult = await pool.query<{ id: string; title: string }>(
+                    `SELECT id, title FROM Categories WHERE id = ANY($1::bigint[])`,
                     [categoryIds],
                 )
                 for (const row of catResult.rows) {
-                    categories[Number(row.id)] = row.short_title || row.title
+                    categories[Number(row.id)] = row.title
                 }
             }
 
@@ -615,7 +615,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                     [questionIds],
                 )
                 for (const row of qResult.rows) {
-                    questions[Number(row.id)] = row.short_title || row.question
+                    questions[Number(row.id)] = row.short_title ?? row.question
                 }
             }
 

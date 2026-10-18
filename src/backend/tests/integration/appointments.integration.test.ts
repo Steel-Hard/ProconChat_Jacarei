@@ -361,6 +361,24 @@ describe("Agendamentos com Postgres (integração)", () => {
         expect(res.body.data.events.map((e: { type: string }) => e.type)).toEqual(["ATTENDED", "CLAIMED"])
     })
 
+    it("a linha do tempo usa o mesmo título de categoria e pergunta do detalhe", async () => {
+        const pool = getPool()
+        await insertConversationEvent(pool, String(sessionId), { type: "CATEGORY_CHOSEN", categoryId })
+        await insertConversationEvent(pool, String(sessionId), { type: "QUESTION_CHOSEN", categoryId, questionId })
+        const apptId = await createAppointment({ name: "Cidadão Títulos", cpf: "99933366677" })
+
+        const res = await request(app)
+            .get(`/api/v1/appointments/${apptId}`)
+            .set("Cookie", adminCookie)
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.category_name).toBe("Categoria Integracao")
+        const labels = res.body.data.timeline.map((step: { label: string }) => step.label)
+        expect(labels).toContain(`Categoria selecionada: ${res.body.data.category_name}`)
+        expect(labels).toContain(`Pergunta selecionada: ${res.body.data.question_title}`)
+        expect(labels).not.toContain("Categoria selecionada: Cat Int")
+    })
+
     it("retorna 400 para id não numérico ou acima do limite de bigint", async () => {
         const resText = await request(app)
             .get("/api/v1/appointments/abc")
