@@ -1,26 +1,26 @@
-import { createHmac } from "node:crypto"
 import request from "supertest"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import app from "../../app"
 import getPool from "../../db/connection"
 import { insertConversationEvent } from "../../repositories/conversationEvent.repository"
-import { sessionTokens } from "../../utils/sessionToken"
+import {
+    createTestAppointment,
+    firstRow,
+    loginAdmin,
+    TestAppointmentOverrides,
+    TestAppointmentScope,
+} from "./helpers/appointmentsDb"
 
-const testSecret = process.env.CPF_HASH_SECRET ?? "test-only-cpf-hash-secret"
 const ORIGIN = process.env.FRONTEND_ORIGIN ?? "http://localhost:5173"
 
-function computeHmac(cpf: string): string {
-    return createHmac("sha256", testSecret).update(cpf.replace(/\D/g, ""), "utf8").digest("hex").toLowerCase()
-}
-
 describe("Agendamentos com Postgres (integração)", () => {
-    let adminUserId: number
     let createdAdminId: number | null = null
     let categoryId: number
     let questionId: number
     let sessionId: number
 
     let adminCookie: string
+    let scope: TestAppointmentScope
 
     const createdAppointmentIds: number[] = []
     const createdUserIds: number[] = []
@@ -28,31 +28,16 @@ describe("Agendamentos com Postgres (integração)", () => {
     beforeAll(async () => {
         const pool = getPool()
 
-        const existingAdmin = await pool.query<{ id: string; session_version: number }>(
-            "SELECT id, session_version FROM Users WHERE is_admin LIMIT 1",
-        )
-        if (existingAdmin.rows.length > 0) {
-            adminUserId = Number(existingAdmin.rows[0].id)
-            const sessionVersion = Number(existingAdmin.rows[0].session_version ?? 0)
-            adminCookie = `proconchat_access=${sessionTokens.signAccessToken({ userId: adminUserId, sessionVersion })}`
-        } else {
-            const userAdminRes = await pool.query<{ id: string; session_version: number }>(
-                `INSERT INTO Users (name, email, password_hash, is_admin, active, session_version)
-                 VALUES ('Admin Teste', $1, 'hash', true, true, 0)
-                 RETURNING id, session_version`,
-                [`admin.integration-${process.pid}-${Date.now()}@teste.local`],
-            )
-            adminUserId = Number(userAdminRes.rows[0].id)
-            createdAdminId = adminUserId
-            adminCookie = `proconchat_access=${sessionTokens.signAccessToken({ userId: adminUserId, sessionVersion: 0 })}`
-        }
+        const login = await loginAdmin()
+        adminCookie = login.adminCookie
+        createdAdminId = login.createdAdminId
 
         const catRes = await pool.query<{ id: string }>(
             `INSERT INTO Categories (title, short_title, position, seed_key)
              VALUES ('Categoria Integracao', 'Cat Int', 99, 'cat_integration_test')
              RETURNING id`,
         )
-        categoryId = Number(catRes.rows[0].id)
+        categoryId = Number(firstRow(catRes.rows).id)
 
         const qRes = await pool.query<{ id: string }>(
             `INSERT INTO Questions (category_id, question, short_title, answer, requires_in_person, out_of_scope, llm_allowed, position, seed_key)
@@ -60,14 +45,16 @@ describe("Agendamentos com Postgres (integração)", () => {
              RETURNING id`,
             [categoryId],
         )
-        questionId = Number(qRes.rows[0].id)
+        questionId = Number(firstRow(qRes.rows).id)
 
         const sessRes = await pool.query<{ id: string }>(
             `INSERT INTO Sessions (phone_hash, status, outcome, current_step)
              VALUES ('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef', 'FINISHED', 'SCHEDULED', 'FINISHED')
              RETURNING id`,
         )
-        sessionId = Number(sessRes.rows[0].id)
+        sessionId = Number(firstRow(sessRes.rows).id)
+
+        scope = { sessionId, questionId, adminUserId: login.adminUserId, createdAppointmentIds }
     })
 
     afterAll(async () => {
@@ -94,38 +81,29 @@ describe("Agendamentos com Postgres (integração)", () => {
         await pool.end()
     })
 
-    async function createAppointment(overrides: {
-        name?: string
-        cpf?: string
-        status?: "PENDING" | "CONFIRMED" | "ATTENDED" | "NO_SHOW" | "CANCELED"
-        appointmentDatetime?: Date
-        assignedUserId?: number | null
-        appointmentCode?: string
-    }): Promise<number> {
-        const pool = getPool()
-        const cpf = overrides.cpf ?? "52998224725"
-        const cpfHash = computeHmac(cpf)
-        const name = overrides.name ?? "Cidadão Teste"
-        const status = overrides.status ?? "PENDING"
-        const apptDate = overrides.appointmentDatetime ?? new Date(Date.now() + 86400000)
-        const assignedUserId = status === "PENDING" ? null : (overrides.assignedUserId ?? adminUserId)
+    function createAppointment(overrides: TestAppointmentOverrides): Promise<number> {
+        return createTestAppointment(scope, overrides)
+    }
 
-        const res = await pool.query<{ id: string }>(
-            `INSERT INTO Appointments (
-                session_id, question_id, reason, name, cpf_hash, cpf_masked,
-                by_representative, documents_sent, appointment_datetime, status, assigned_user_id,
-                appointment_code
-             ) VALUES (
-                $1, $2, 'NOT_RESOLVED', $3, $4, '***.982.247-**',
-                false, '{"group": [], "question": []}'::jsonb, $5, $6, $7,
-                COALESCE($8::uuid, gen_random_uuid())
-             ) RETURNING id`,
-            [sessionId, questionId, name, cpfHash, apptDate, status, assignedUserId, overrides.appointmentCode ?? null],
-        )
-
-        const id = Number(res.rows[0].id)
-        createdAppointmentIds.push(id)
-        return id
+    async function listOrderAcrossPages(query: string, ids: number[]): Promise<string[]> {
+        const wanted = ids.map(String)
+        const found: string[] = []
+        let page = 1
+        let totalPages = 1
+        do {
+            const res = await request(app)
+                .get(`/api/v1/appointments?${query}&limit=100&page=${page}`)
+                .set("Cookie", adminCookie)
+            expect(res.status).toBe(200)
+            for (const item of res.body.data.items as { id: string }[]) {
+                if (wanted.includes(item.id)) {
+                    found.push(item.id)
+                }
+            }
+            totalPages = res.body.data.totalPages
+            page++
+        } while (page <= totalPages)
+        return found
     }
 
     it("busca por CPF com hash HMAC encontra agendamento digitado com e sem pontuação", async () => {
@@ -191,14 +169,12 @@ describe("Agendamentos com Postgres (integração)", () => {
             cpf: "30303030303",
         })
 
-        const resCanceled = await request(app)
-            .get("/api/v1/appointments?status=CANCELED&period=all&limit=100")
-            .set("Cookie", adminCookie)
-        expect(resCanceled.status).toBe(200)
-        const canceledItems = resCanceled.body.data.items.filter((i: { id: string }) =>
-            [String(idCanceled1), String(idCanceled2), String(idCanceled3)].includes(i.id),
-        )
-        expect(canceledItems.map((i: { id: string }) => i.id)).toEqual([
+        const canceledOrder = await listOrderAcrossPages("status=CANCELED&period=all", [
+            idCanceled1,
+            idCanceled2,
+            idCanceled3,
+        ])
+        expect(canceledOrder).toEqual([
             String(idCanceled1),
             String(idCanceled2),
             String(idCanceled3),
@@ -223,14 +199,12 @@ describe("Agendamentos com Postgres (integração)", () => {
             cpf: "60606060606",
         })
 
-        const resPending = await request(app)
-            .get("/api/v1/appointments?status=PENDING&period=all&limit=100")
-            .set("Cookie", adminCookie)
-        expect(resPending.status).toBe(200)
-        const pendingItems = resPending.body.data.items.filter((i: { id: string }) =>
-            [String(idPending1), String(idPending2), String(idPending3)].includes(i.id),
-        )
-        expect(pendingItems.map((i: { id: string }) => i.id)).toEqual([
+        const pendingOrder = await listOrderAcrossPages("status=PENDING&period=all", [
+            idPending1,
+            idPending2,
+            idPending3,
+        ])
+        expect(pendingOrder).toEqual([
             String(idPending3),
             String(idPending2),
             String(idPending1),
@@ -271,6 +245,10 @@ describe("Agendamentos com Postgres (integração)", () => {
 
             const statuses = [resAttended.status, resNoShow.status].sort()
             expect(statuses).toEqual([200, 409])
+
+            const attendedWon = resAttended.status === 200
+            const conflictRes = attendedWon ? resNoShow : resAttended
+            expect(conflictRes.body.error.code).toBe(attendedWon ? "ALREADY_ATTENDED" : "ALREADY_NO_SHOW")
         } finally {
             lockClient.release()
         }
@@ -396,7 +374,7 @@ describe("Agendamentos com Postgres (integração)", () => {
             "SELECT appointment_code::text AS appointment_code FROM Appointments WHERE id = $1",
             [apptId],
         )
-        const botProtocol = codeRes.rows[0].appointment_code.slice(0, 8).toUpperCase()
+        const botProtocol = firstRow(codeRes.rows).appointment_code.slice(0, 8).toUpperCase()
 
         const detailRes = await request(app)
             .get(`/api/v1/appointments/${apptId}`)
@@ -419,7 +397,7 @@ describe("Agendamentos com Postgres (integração)", () => {
              RETURNING id`,
             [`chips.integration-${process.pid}-${Date.now()}@teste.local`],
         )
-        const userId = Number(userRes.rows[0].id)
+        const userId = Number(firstRow(userRes.rows).id)
         createdUserIds.push(userId)
         const day = 86400000
         await createAppointment({ name: "Chip Confirmado Futuro", status: "CONFIRMED", assignedUserId: userId, appointmentDatetime: new Date(Date.now() + day), cpf: "11122233396" })
