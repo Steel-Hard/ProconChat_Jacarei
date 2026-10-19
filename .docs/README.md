@@ -22,7 +22,7 @@ Chatbot de orientação ao consumidor via WhatsApp, desenvolvido para o PROCON d
 | [`database/`](database/) | Modelo de dados (schema atual e planejado), migrations e o FAQ real do PROCON (`Dúvidas Frequentes.odt`) | Atual |
 | [`llm/`](llm/) | Contrato e escolha do modelo do serviço de LLM | Atual |
 | [`whatsapp/`](whatsapp/) | Pesquisa de integração com o WhatsApp (issue #3) e [guia do app de teste da Meta](whatsapp/app-de-teste.md) para desenvolvimento | Atual como pesquisa; a decisão final está em [003](decisoes/003-migracao-whatsapp-cloud-api.md) |
-| [`sprints/`](sprints/) | Fechamento da Sprint 1 e acompanhamento da Sprint 2 (retrato de 16/10/2026; o fechamento sai em 19/10) | Atual |
+| [`sprints/`](sprints/) | Fechamento da Sprint 1 e acompanhamento da Sprint 2 (retrato de 19/10/2026, último dia da sprint) | Atual |
 | [`historico/`](historico/) | Documentos superados, mantidos só para contexto | Não usar como referência |
 | `.tasks/` | Pasta local, fora do Git, com as specs e tasks do fluxo de planejamento (`sdd` → `executor` → `reviewer`) | Local, não versionada |
 

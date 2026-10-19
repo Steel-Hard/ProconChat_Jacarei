@@ -872,7 +872,7 @@ try {
 | Situação | Comportamento |
 | --- | --- |
 | Falha ao gravar evento comum com `record` (categoria, pergunta, resposta enviada, "resolveu?", oferta, quem comparece etc.), inclusive evento recusado pelo validador | `record` captura o erro, registra no log só o tipo do evento (ou `INVALID`), o id da sessão (ou `INVALID`) e o código do erro, e resolve normalmente. O cidadão recebe a resposta |
-| Encerramento do fluxo atual (`RESOLVED`/`OUT_OF_SCOPE` com `ANSWER_SENT`) | `finish` lança. O fluxo registra no log do mesmo jeito e entrega a resposta; a sessão continua `IN_PROGRESS`, sem evento de fechamento, e será abandonada pelo timeout |
+| Encerramento com `finish`, fora da transação de um agendamento (`OUT_OF_SCOPE` com `ANSWER_SENT`, `RESOLVED` com `RESOLVED_ANSWERED`, `DECLINED`, `NO_SLOT`), por `finishOrLog` (`services/conversationClosing.service.ts`) | `finish` lança. O fluxo registra no log do mesmo jeito e entrega a resposta; a sessão continua `IN_PROGRESS`, sem evento de fechamento, e será abandonada pelo timeout |
 | Criação do agendamento e encerramentos ligados a ele (`PHONE_NOTICE_SHOWN`, `APPOINTMENT_CREATED`/`SCHEDULED`, `APPOINTMENT_RESCHEDULED`/`APPOINTMENT_CANCELED`/`MANAGED_APPOINTMENT`) | `insertConversationEvent(client, ...)` e `finishSessionWith(client, ...)` na mesma transação da reserva ou da alteração. Se a reserva, o evento ou o encerramento falhar, a transação inteira volta e o cidadão recebe uma mensagem clara de que o agendamento **não** foi gravado. A mensagem e o tratamento são do fluxo da #56 (e da #59 no retorno) |
 
 O log nunca leva `data`, texto do cidadão, telefone nem `draft`.

@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="860" height="440" viewBox="0 0 860 440" role="img" aria-labelledby="t d" font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif">
 <title id="t">Burndown da Sprint 2 — ProconChat Jacareí</title>
-<desc id="d">Issues abertas da Sprint 2 por dia entre 28/09 e 19/10/2026, com dados até 16/10. Começa com 18 issues, cai para 14 em 28/09, fica em 14 até 08/10, cai para 13 em 09/10, 10 em 10/10, 8 em 13/10, 5 em 14/10 e 2 em 15/10, e segue em 2 em 16/10. A linha ideal vai de 18 em 28/09 a 0 em 19/10.</desc>
+<desc id="d">Issues abertas da Sprint 2 por dia entre 28/09 e 19/10/2026, com dados até 19/10. Começa com 18 issues, cai para 14 em 28/09, fica em 14 até 08/10, cai para 13 em 09/10, 10 em 10/10, 8 em 13/10, 5 em 14/10 e 2 em 15/10, fica em 2 até 18/10 e chega a 0 em 19/10. A linha ideal vai de 18 em 28/09 a 0 em 19/10.</desc>
 <rect width="100%" height="100%" fill="#fcfcfb"/>
-<text x="64" y="30" font-size="17" font-weight="700" fill="#0b0b0b">Burndown da Sprint 2 (parcial)</text>
-<text x="64" y="50" font-size="12.5" fill="#52514e">Issues abertas no fim de cada dia · 28/09 a 19/10/2026 · dados até 16/10 · fonte: gh issue list</text>
+<text x="64" y="30" font-size="17" font-weight="700" fill="#0b0b0b">Burndown da Sprint 2</text>
+<text x="64" y="50" font-size="12.5" fill="#52514e">Issues abertas no fim de cada dia · 28/09 a 19/10/2026 · dados até 19/10 · fonte: gh issue list</text>
 <line x1="64" x2="700" y1="376.0" y2="376.0" stroke="#e7e6e2" stroke-width="1"/>
 <text x="54" y="376.0" font-size="11.5" fill="#52514e" text-anchor="end" dominant-baseline="middle">0</text>
 <line x1="64" x2="700" y1="299.5" y2="299.5" stroke="#e7e6e2" stroke-width="1"/>
@@ -23,11 +23,11 @@
 <text x="518.3" y="396" font-size="11" fill="#52514e" text-anchor="middle">13/10</text>
 <text x="609.1" y="396" font-size="11" fill="#52514e" text-anchor="middle">16/10</text>
 <text x="700.0" y="396" font-size="11" fill="#52514e" text-anchor="middle">19/10</text>
-<line x1="609.1" x2="609.1" y1="70" y2="376" stroke="#c9c8c3" stroke-width="1" stroke-dasharray="2 4"/>
-<text x="609.1" y="64" font-size="11.5" fill="#52514e" text-anchor="middle">hoje (16/10)</text>
+<line x1="700.0" x2="700.0" y1="70" y2="376" stroke="#c9c8c3" stroke-width="1" stroke-dasharray="2 4"/>
+<text x="700.0" y="64" font-size="11.5" fill="#52514e" text-anchor="middle">hoje (19/10)</text>
 <line x1="64.0" y1="100.6" x2="700.0" y2="376.0" stroke="#8f8e89" stroke-width="1.5" stroke-dasharray="6 5"/>
 <text x="712.0" y="376.0" font-size="12" fill="#52514e" dominant-baseline="middle">Ideal</text>
-<polyline points="64.0,100.6 64.0,161.8 94.3,161.8 124.6,161.8 154.9,161.8 185.1,161.8 215.4,161.8 245.7,161.8 276.0,161.8 306.3,161.8 336.6,161.8 366.9,161.8 397.1,177.1 427.4,223.0 457.7,223.0 488.0,223.0 518.3,253.6 548.6,299.5 578.9,345.4 609.1,345.4" fill="none" stroke="#2a78d6" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="64.0,100.6 64.0,161.8 94.3,161.8 124.6,161.8 154.9,161.8 185.1,161.8 215.4,161.8 245.7,161.8 276.0,161.8 306.3,161.8 336.6,161.8 366.9,161.8 397.1,177.1 427.4,223.0 457.7,223.0 488.0,223.0 518.3,253.6 548.6,299.5 578.9,345.4 609.1,345.4 639.4,345.4 669.7,345.4 700.0,376.0" fill="none" stroke="#2a78d6" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="64.0" cy="161.8" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>28/09: 14 abertas</title></circle>
 <circle cx="94.3" cy="161.8" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>29/09: 14 abertas</title></circle>
 <circle cx="124.6" cy="161.8" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>30/09: 14 abertas</title></circle>
@@ -47,7 +47,11 @@
 <circle cx="548.6" cy="299.5" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>14/10: 5 abertas</title></circle>
 <circle cx="578.9" cy="345.4" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>15/10: 2 abertas</title></circle>
 <circle cx="609.1" cy="345.4" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>16/10: 2 abertas</title></circle>
-<text x="621.1" y="331.4" font-size="12" font-weight="600" fill="#0b0b0b" dominant-baseline="middle">Abertas: 2</text>
+<circle cx="639.4" cy="345.4" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>17/10: 2 abertas</title></circle>
+<circle cx="669.7" cy="345.4" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>18/10: 2 abertas</title></circle>
+<circle cx="700.0" cy="376.0" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>19/10: 0 abertas</title></circle>
+<text x="712.0" y="356.0" font-size="12" font-weight="600" fill="#0b0b0b" dominant-baseline="middle">Abertas: 0</text>
+<text x="692.0" y="319.4" font-size="11.5" fill="#52514e" text-anchor="end" dominant-baseline="middle">19/10: 2 fechadas</text>
 <text x="72.0" y="88.6" font-size="11.5" fill="#52514e">Backlog criado (18 issues)</text>
 <text x="74.0" y="177.8" font-size="11.5" fill="#52514e" dominant-baseline="middle">28/09: 4 fechadas</text>
 <text x="419.4" y="147.8" font-size="11.5" fill="#52514e" text-anchor="end" dominant-baseline="middle">09–10/10: 4 fechadas</text>

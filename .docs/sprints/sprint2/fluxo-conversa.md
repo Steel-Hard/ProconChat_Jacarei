@@ -7,7 +7,7 @@ registrar seus passos. As regras funcionais adotadas estão nas decisões
 
 ## Visão rápida
 
-Retrato do fluxo em 16/10/2026, depois das issues #16, #55 e #56. A volta de
+Retrato do fluxo em 19/10/2026, depois das issues #16, #55 e #56 e da reorganização do bot nos PRs #111 e #112. A volta de
 quem já tem agendamento (remarcar e cancelar) é da #59 e ainda não existe.
 
 ```text
@@ -209,6 +209,8 @@ inferir eventos a partir do texto livre nem gravá-los antecipadamente.
 ## Código relacionado
 
 - Fluxo e validação das opções: `src/backend/services/conversationFlow.service.ts`
+- Conversa de agendamento: `src/backend/services/schedulingFlow.service.ts`
+- Encerramento das sessões: `src/backend/services/conversationClosing.service.ts`
 - Contrato e gravação de eventos: `src/backend/types/conversationEvent.types.ts`,
   `src/backend/utils/conversationEventData.ts`,
   `src/backend/services/conversationEvent.service.ts` e

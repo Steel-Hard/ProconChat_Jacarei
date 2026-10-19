@@ -10,7 +10,7 @@ Qualquer conta que tenha **pelo menos uma** das permissões Ver agendamentos, Ve
 
 ## Estado da tela
 
-**Ainda não construída (issue #71).** O endereço da tela mostra "Em construção.".
+**Ainda não construída (issue #71).** Até lá, a tela inicial do painel abre direto em [Agendamentos](03-agendamentos.md).
 
 ## Cabeçalho
 

@@ -6,7 +6,7 @@ Como cada requisito do [documento do desafio](desafio-6dsm-2026-2.md) é atendid
 - **Desenho:** o que foi decidido e desenhado (registros em [`../decisoes/`](../decisoes/) e protótipo do painel no Claude Design);
 - **Situação:** ✅ atendido ou bem coberto · ⚠️ parcial ou com risco · ❌ não atendido · 🔴 risco alto.
 
-Revisão feita em 27/09/2026, no início da Sprint 2 (15/09 a 19/10/2026), e coluna **Código** atualizada em 16/10/2026. A entrega final (Review Meeting) é em 23/11/2026.
+Revisão feita em 27/09/2026, no início da Sprint 2 (15/09 a 19/10/2026), e coluna **Código** atualizada em 19/10/2026, no fechamento da Sprint 2. A entrega final (Review Meeting) é em 23/11/2026.
 
 ## Requisitos funcionais
 
@@ -19,7 +19,7 @@ Revisão feita em 27/09/2026, no início da Sprint 2 (15/09 a 19/10/2026), e col
 | **RF05** Complemento por LLM | Cliente e serviço prontos, sem chamador no fluxo | Opção por pergunta, rótulo, fallback ([009](../decisoes/009-complemento-por-llm.md)) | ⚠️ Nota 3 |
 | **RF06** Registrar interações e analisar fluxos | Eventos tipados e desfechos gravados (#16, #55) | Sessões, Relatórios ([010](../decisoes/010-registro-de-interacoes-e-relatorios.md)) | ⚠️ Falta a análise |
 | **RF07** Agendamento quando a resposta não resolve | Agendamento pelo bot, com horários da agenda e controle de vagas (#56) | Remarcar e cancelar pelo bot, agenda configurável pelo painel ([006](../decisoes/006-ciclo-de-vida-do-agendamento.md), [007](../decisoes/007-agenda-configuravel.md), [008](../decisoes/008-fluxo-da-conversa-e-desfechos.md)) | ⚠️ Parcial |
-| **RF08** Interface web de gerenciamento dos agendamentos | Painel com login e tela de WhatsApp; API de agendamentos (lista, detalhe, assumir, atendido, não compareceu, #60) | 10 telas aprovadas no protótipo | ⚠️ Nota 4 |
+| **RF08** Interface web de gerenciamento dos agendamentos | Painel com login, "Minha conta", Agendamentos (lista com busca, filtros e "Assumir", #85), Detalhe do agendamento (assumir, atendido, não compareceu, #86) e WhatsApp (#54), sobre a API de agendamentos (#60) | Demais telas do protótipo (10 aprovadas) | ⚠️ Nota 4 |
 
 **Nota 1: interpretação de "tabela de decisões" e "fluxos decisórios".** O nosso modelo tem dois níveis (categoria → pergunta → resposta), mais os passos de agendamento. É defensável, porque segue o material entregue pelo PROCON, que tem formato de FAQ. Mas um avaliador pode esperar árvores com ramificações ("tem nota fiscal? sim/não"). **Ação:** confirmar com o professor e com o parceiro antes da Sprint 3.
 
@@ -27,7 +27,7 @@ Revisão feita em 27/09/2026, no início da Sprint 2 (15/09 a 19/10/2026), e col
 
 **Nota 3: tempo de resposta do LLM.** Em CPU, de 23 a 38 s por resposta. **Ação:** decidir o envio assíncrono proposto em [009](../decisoes/009-complemento-por-llm.md) antes de ligar o LLM ao fluxo.
 
-**Nota 4: painel em construção.** O stack foi decidido (React 19 + Vite, a partir do `template-react`). Hoje só o login, "Minha conta" e a tela de WhatsApp estão prontos; as telas de agendamentos e as demais estão "Em construção".
+**Nota 4: painel em construção.** O stack foi decidido (React 19 + Vite, a partir do `template-react`). Estão prontos o login, "Minha conta", Agendamentos, Detalhe do agendamento e WhatsApp; enquanto não há Dashboard, a tela inicial (`/`) leva a Agendamentos (PR #115). Dashboard, Relatórios, Conteúdo, Sessões, Horários, Documentos e Usuários continuam "Em construção". O cancelamento pela equipe e as observações internas do agendamento ainda não existem na API.
 
 ## Requisitos não funcionais
 

@@ -1,6 +1,6 @@
 # Arquitetura — ProconChat Jacareí
 
-> Atualizado em 16/10/2026, com o estado de `develop` depois das issues #16, #51 a #58, #60, #61, #81 a #84. A arquitetura alvo foi definida em 27/09/2026, na revisão do protótipo do painel. Este documento descreve a arquitetura **alvo da entrega (23/11/2026)** e marca o que já está implementado. As decisões que levaram a ela estão em [`../decisoes/`](../decisoes/); as regras de cada tela, em [`../regras/`](../regras/).
+> Atualizado em 19/10/2026, no fechamento da Sprint 2, com o estado de `develop` depois das issues #16, #51 a #58, #60, #61, #81 a #86 e do PR #115. A arquitetura alvo foi definida em 27/09/2026, na revisão do protótipo do painel. Este documento descreve a arquitetura **alvo da entrega (23/11/2026)** e marca o que já está implementado. As decisões que levaram a ela estão em [`../decisoes/`](../decisoes/); as regras de cada tela, em [`../regras/`](../regras/).
 
 **Legenda de estado:** ✅ implementado em `develop` · 🟡 planejado para a Sprint 2 · 🟠 planejado para a Sprint 3.
 
@@ -51,7 +51,7 @@ O LLM Service só recebe chamadas do Backend e não tem acesso ao banco nem à s
 |---|---|---|---|
 | **Gateway WhatsApp** | Recebe o webhook da Meta, valida a assinatura, deduplica, processa em fila por telefone e repassa ao Backend; envia as respostas do Backend (texto, lista, botões); lê a configuração do WhatsApp no Backend; envio de modelos e repasse dos status de entrega | `gateway` | ✅ Cloud API, respostas e configuração (#53, #83) · 🟠 modelos (S3-06) e status de entrega (#88): hoje os eventos de status são descartados |
 | **Backend API** | Orquestrador: conversa, Motor de Decisão, agenda, mensagens ao cidadão, registro de eventos, API do painel, autenticação e permissões | `backend` | ✅ parcial (ver módulos) · 🟠 demais módulos |
-| **Frontend (painel)** | Painel da equipe do PROCON (RF08), a partir do `template-react` | `frontend` (nginx) | ✅ estrutura, layout, login, "Minha conta" e tela de WhatsApp (#58, #81, #84, #54) · 🟠 demais telas (hoje "Em construção") |
+| **Frontend (painel)** | Painel da equipe do PROCON (RF08), a partir do `template-react` | `frontend` (nginx) | ✅ estrutura, layout, login, "Minha conta", Agendamentos, Detalhe do agendamento e WhatsApp (#58, #81, #84, #85, #86, #54); `/` redireciona para Agendamentos enquanto não há Dashboard (PR #115) · 🟠 Dashboard, Relatórios, Conteúdo, Sessões, Horários, Documentos e Usuários (hoje "Em construção") |
 | **LLM Service** | Ollama com `llama3.2:3b`; gera só o texto complementar (RF05) | `ollama` + `llm-pull` | ✅ serviço pronto · 🟠 ligado ao fluxo (S3-05) |
 | **PostgreSQL** | Persistência única | `postgres` (+ `migrate`, `seed`) | ✅ schema da Sprint 2 (#52) e migrations até a `15` |
 | **Proxy HTTPS** | Certificado e roteamento para painel, API e webhook; responde 404 nas rotas internas `/api/v1/whatsapp/sessions` e `/api/v1/internal*` | `caddy` | ✅ (`compose.prod.yaml`, `deploy/Caddyfile`) |
@@ -68,7 +68,7 @@ Não são containers separados: são módulos de código, organizados no padrão
 | **Agenda** | Calcula horários livres a partir da configuração; cria, remarca e cancela agendamentos; controla vagas com concorrência | ✅ horários livres e reserva com trava por horário (#56) · 🟠 remarcar e cancelar (#59) |
 | **Mensagens ao cidadão** | Monta os textos fixos (confirmação, pausa) e os modelos (cancelamento, lembrete); registra falhas de envio | ✅ textos fixos de confirmação e de pausa · 🟠 modelos (S3-06) e falhas de envio (#88) |
 | **Registro de eventos** | Grava cada passo da conversa e o desfecho da sessão | ✅ (#16) |
-| **API do painel** | Agendamentos, conteúdo, configuração, usuários, relatórios, configuração do WhatsApp | ✅ agendamentos: lista, detalhe, assumir, atendido e não compareceu (#60); configuração do WhatsApp (#83) · 🟠 demais |
+| **API do painel** | Agendamentos, conteúdo, configuração, usuários, relatórios, configuração do WhatsApp | ✅ agendamentos: lista, detalhe, assumir, atendido e não compareceu (#60), usados pelas telas de Agendamentos e Detalhe (#85, #86); configuração do WhatsApp (#83) · 🟠 demais |
 | **Autenticação e permissões** | Login, sessão, `requirePermission` com 8 permissões; na Sprint 2 só a conta Admin | ✅ login, sessão, troca de senha e `requirePermission`, só a conta Admin (#57, #84) · 🟠 permissões por conta (#62) |
 | **LLM** | Cliente do Ollama com fallback; envio do complemento com rótulo | ✅ cliente · 🟠 ligado ao fluxo (S3-05, #66) |
 
@@ -121,7 +121,7 @@ As credenciais da Cloud API ficam no banco, **criptografadas com uma chave-mestr
 | **Desenvolvimento** | Máquina de cada pessoa (`docker compose up`) + túnel HTTPS | App de teste próprio na Meta, com o número de teste gratuito da Meta |
 | **Produção / demonstração** | VM AWS EC2 `t4g.small` (arm64, 2 GB + 2 GB de swap) em `us-east-2`, com `compose.prod.yaml`: `caddy`, `postgres`, `migrate`, `seed`, `backend`, `gateway` e `frontend`. Sem Evolution e Redis. O Ollama (`ollama` e `llm-pull`, perfil `llm`) fica desligado até haver uma VM com mais memória (#66) | Número real da equipe; depois das sprints, o número do PROCON |
 
-- **CI** (✅ #58, `.github/workflows/ci.yml`): GitHub Actions roda, em todo PR e push para `develop` e `main`, formatação, lint, build e testes do frontend; lint, build e testes do backend e do gateway; e, com um Postgres, as migrations, os testes de integração e o `test:db` do backend. O CI verde é obrigatório para o merge.
+- **CI** (✅ #58, `.github/workflows/ci.yml`): GitHub Actions roda, em todo PR e push para `develop` e `main`, formatação, lint, build e testes do frontend; lint, build e testes do backend (com `typecheck:test`) e do gateway; e, com um Postgres, as migrations, os testes de integração e o `test:db` do backend. O CI verde é obrigatório para o merge.
 - **CD** (✅ #51): push com CI verde na branch de `DEPLOY_BRANCH` (hoje `develop`; `main` no fim do semestre) gera as imagens no GitHub Container Registry e atualiza a VM por SSH com `deploy/deploy.sh <sha>`. As migrations rodam pelo serviço `migrate`. Operação, rollback e backup: [`infra/deploy.md`](../infra/deploy.md).
 - **Segredos:** no GitHub, só os de acesso SSH (environment `production`); os da aplicação ficam no `.env` da VM. Continuam no `.env`: banco, `PHONE_HASH_SECRET`, `CPF_HASH_SECRET`, segredo dos cookies de sessão do painel (`AUTH_TOKEN_SECRET`), conta Admin inicial (`ROOT_EMAIL`, `ROOT_PASSWORD`), token interno Gateway ↔ Backend (`GATEWAY_INTERNAL_TOKEN`), chave-mestra de criptografia (`ENCRYPTION_KEY`) e URL pública (`PUBLIC_BASE_URL`, derivada de `SITE_ADDRESS` em produção).
 

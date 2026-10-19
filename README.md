@@ -86,7 +86,7 @@ O projeto busca:
 | Banco | PostgreSQL 15, migrations com `node-pg-migrate` | Implementado |
 | LLM | Ollama + `llama3.2:3b`, local (RP05: nenhuma API externa de LLM) | Serviço implementado; ligado ao fluxo na Sprint 3 |
 | WhatsApp | **WhatsApp Cloud API** oficial | Implementado |
-| Painel web | React 19 + Vite + TypeScript, a partir do `template-react` | Parcial: login, "Minha conta" e tela de WhatsApp; demais telas na Sprint 3 |
+| Painel web | React 19 + Vite + TypeScript, a partir do `template-react` | Parcial: login, "Minha conta", Agendamentos, Detalhe do agendamento e WhatsApp; demais telas na Sprint 3 |
 | Infraestrutura | Docker Compose, GitHub Actions (CI/CD), VM na nuvem com HTTPS | Implementado |
 
 Detalhes em [`.docs/architecture/architecture.md`](.docs/architecture/architecture.md).
@@ -98,11 +98,12 @@ Detalhes em [`.docs/architecture/architecture.md`](.docs/architecture/architectu
 | Sprint |  Início  |    Fim    |     Status     |          📉 Burndown Chart          | Sprint Backlog/Review |
 | :----: | :--------: | :--------: | :-------------: | :----------------------------------: | :-------------------: |
 |   1   | 10/08/2026 | 14/09/2026 | 🟢 Concluída | [Ver Gráfico](.docs/sprints/sprint1/burndown.svg) | [Ver](.docs/sprints/sprint1/README.md) |
-|   2   | 15/09/2026 | 19/10/2026 | 🟡 Em andamento | [Ver Gráfico](.docs/sprints/sprint2/burndown.svg) | [Ver](.docs/sprints/sprint2/README.md) |
+|   2   | 15/09/2026 | 19/10/2026 | 🟢 Concluída | [Ver Gráfico](.docs/sprints/sprint2/burndown.svg) | [Ver](.docs/sprints/sprint2/README.md) |
 |   3   | 20/10/2026 | 23/11/2026 |   ⚪ Pendente   | — | — |
 
 > O gráfico e as tabelas de origem do burndown da Sprint 1 estão em
-> [`.docs/sprints/sprint1/05-burndown.md`](.docs/sprints/sprint1/05-burndown.md).
+> [`.docs/sprints/sprint1/05-burndown.md`](.docs/sprints/sprint1/05-burndown.md). Os da Sprint 2 (18 de 18
+> issues concluídas) estão em [`.docs/sprints/sprint2/burndown.md`](.docs/sprints/sprint2/burndown.md).
 
 ---
 

@@ -20,8 +20,8 @@ A referência visual é o protótipo navegável aprovado no Claude Design, copia
 | [00-regras-gerais.md](00-regras-gerais.md) | Regras que valem para o painel inteiro: permissões, salvar/descartar, dados pessoais, mensagens ao cidadão | — |
 | [01-login-e-conta.md](01-login-e-conta.md) | Login, "Minha conta" e menu | Entregue (#84) |
 | [02-dashboard.md](02-dashboard.md) | Dashboard | Pendente (#71) |
-| [03-agendamentos.md](03-agendamentos.md) | Agendamentos: lista, calendário e busca | Pendente (#85, #87). A API da lista já existe (#60) |
-| [04-detalhe-do-agendamento.md](04-detalhe-do-agendamento.md) | Detalhe do agendamento | Pendente (#86, #87, #67). A API do detalhe e das ações Assumir, Atendido e Não compareceu já existe (#60) |
+| [03-agendamentos.md](03-agendamentos.md) | Agendamentos: lista, calendário e busca | Entregue (#85). Calendário semanal: #87 |
+| [04-detalhe-do-agendamento.md](04-detalhe-do-agendamento.md) | Detalhe do agendamento | Entregue (#86). Atribuir, observações internas e corrigir registro: #87. Cancelar com aviso ao cidadão: #67 |
 | [05-relatorios.md](05-relatorios.md) | Relatórios | Pendente (#68, #73) |
 | [06-conteudo.md](06-conteudo.md) | Conteúdo do chatbot | Pendente (#63) |
 | [07-sessoes.md](07-sessoes.md) | Sessões | Pendente (#72, #76) |
@@ -30,6 +30,6 @@ A referência visual é o protótipo navegável aprovado no Claude Design, copia
 | [10-usuarios.md](10-usuarios.md) | Usuários | Pendente (#62) |
 | [11-whatsapp.md](11-whatsapp.md) | WhatsApp | Entregue em parte (#54). Estado do número e histórico de alterações: #88. Modelos de mensagem: #67 |
 
-Enquanto uma tela está pendente, o item dela não aparece no menu e o endereço da tela mostra "Em construção.". Cada arquivo de tela pendente descreve como a tela **vai** funcionar.
+Enquanto uma tela está pendente, o item dela não aparece no menu e o endereço da tela mostra "Em construção.". A exceção é o Dashboard: enquanto ele não existe, a tela inicial abre direto em Agendamentos. Cada arquivo de tela pendente descreve como a tela **vai** funcionar.
 
 O comportamento do **chatbot** (o que o cidadão vê no WhatsApp) está descrito em [`../decisoes/008-fluxo-da-conversa-e-desfechos.md`](../decisoes/008-fluxo-da-conversa-e-desfechos.md) e [`../decisoes/005-mensagens-ao-cidadao.md`](../decisoes/005-mensagens-ao-cidadao.md).

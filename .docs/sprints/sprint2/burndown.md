@@ -1,6 +1,6 @@
 # Sprint 2 · Burndown
 
-> Parte do [acompanhamento da Sprint 2](README.md). Dados até **16/10/2026**; a sprint termina em 19/10.
+> Parte do [acompanhamento da Sprint 2](README.md). Dados até **19/10/2026**, último dia da sprint.
 
 ![Burndown da Sprint 2](burndown.svg)
 
@@ -26,8 +26,8 @@ Datas no fuso de Brasília. As 17 issues novas foram criadas em 28/09; a #16 vei
 | #82 | P | 28/09 | 10/10 | Done |
 | #83 | M | 28/09 | 14/10 | Done |
 | #84 | P | 28/09 | 14/10 | Done |
-| #85 | M | 28/09 | *(aberta)* | Ready |
-| #86 | M | 28/09 | *(aberta)* | Ready |
+| #85 | M | 28/09 | 19/10 | Done |
+| #86 | M | 28/09 | 19/10 | Done |
 
 O GitHub registra o fechamento em UTC. Cinco issues fecharam depois das 21:00 de Brasília e por isso aparecem um dia antes do que mostra o GitHub: #16 (13/10 21:04), #57 (13/10 23:36), #84 (14/10 23:56), #54 (15/10 21:09) e #60 (15/10 22:07).
 
@@ -55,7 +55,10 @@ A linha ideal vai de 18 em 28/09 a 0 em 19/10 (21 dias, cerca de 0,86 issue por 
 | 13/10 | 2 (#16, #57) | **8** | 5,1 | 3 atrás |
 | 14/10 | 3 (#55, #83, #84) | **5** | 4,3 | 1 atrás |
 | 15/10 | 3 (#56, #54, #60) | **2** | 3,4 | 1 à frente |
-| 16/10 | 0 (até o retrato) | **2** | 2,6 | em dia |
+| 16/10 | 0 | **2** | 2,6 | em dia |
+| 17/10 | 0 | **2** | 1,7 | em dia |
+| 18/10 | 0 | **2** | 0,9 | 1 atrás |
+| 19/10 | 2 (#85, #86) | **0** | 0,0 | em dia |
 
 ## 3. Leitura do burndown
 
@@ -65,6 +68,7 @@ A linha ideal vai de 18 em 28/09 a 0 em 19/10 (21 dias, cerca de 0,86 issue por 
 - **09/10 e 10/10:** 4 fechamentos em dois dias (#53, #51, #82, #81) reduziram o atraso para cerca de 2 issues.
 - **11/10 e 12/10:** sem fechamentos; o atraso voltou a 4 issues.
 - **13/10 a 15/10:** 8 fechamentos em três dias. Primeiro saíram os gargalos (#16 e #57); em seguida, o que dependia deles (#55, #83, #84, #56, #54, #60). A sprint passou de 4 atrás para 1 à frente.
-- **16/10:** restam #85 e #86, as telas de agendamento, ambas desbloqueadas e ainda não iniciadas.
+- **16/10 a 18/10:** sem fechamentos; restavam #85 e #86, as telas de agendamento.
+- **19/10:** #85 e #86 fecharam às 17:14, e a sprint terminou com as 18 issues concluídas.
 
-**Padrão observado:** igual à Sprint 1, o burndown é em degraus, com fechamentos concentrados em poucos dias e um platô longo no meio. Para zerar até 19/10 é preciso fechar as 2 issues restantes em 3 dias.
+**Padrão observado:** igual à Sprint 1, o burndown é em degraus, com fechamentos concentrados em poucos dias e um platô longo no meio. A sprint zerou no último dia.
