@@ -50,7 +50,7 @@ function useAppointmentDetail() {
     const failed = settled && !notFound
     const loading = detail === undefined && !notFound && !failed
     const view = useAppointmentDetailView(detail)
-    const actions = useAppointmentActions({ detail, canManage, refetch: query.refetch })
+    const actions = useAppointmentActions({ detail, canManage })
 
     return {
         title: view?.title ?? t("meta.fallbackTitle"),

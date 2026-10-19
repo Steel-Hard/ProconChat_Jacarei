@@ -399,3 +399,37 @@ describe("AppointmentDetail.page: rede", () => {
         )
     })
 })
+
+type RejectionListener = (reason: unknown) => void
+
+type NodeProcess = {
+    on: (event: "unhandledRejection", listener: RejectionListener) => void
+    off: (event: "unhandledRejection", listener: RejectionListener) => void
+}
+
+const nodeProcess = (globalThis as unknown as { process: NodeProcess }).process
+
+describe("AppointmentDetail.page: saída da tela", () => {
+    it("não estoura quando a ação falha depois que a pessoa saiu da tela", async () => {
+        const rejections: unknown[] = []
+        const track = (reason: unknown) => rejections.push(reason)
+        nodeProcess.on("unhandledRejection", track)
+        const reply = Promise.withResolvers<Reply>()
+        const page = await renderActions(PENDING, () => reply.promise)
+        await page.user.click(screen.getByRole("button", { name: "Assumir para mim" }))
+        await page.user.click(
+            within(screen.getByRole("dialog")).getByRole("button", { name: "Assumir para mim" })
+        )
+        await waitFor(() => expect(page.requests("PATCH", STATUS_PATH)).toHaveLength(1))
+        await page.router.navigate("/agendamentos")
+        await screen.findByRole("heading", { level: 1, name: "Lista de agendamentos" })
+
+        reply.resolve(failure(500, "INTERNAL_ERROR"))
+
+        await waitFor(() => expect(page.requests("GET", DETAIL_PATH)).toHaveLength(2))
+        await new Promise((resolve) => setTimeout(resolve, 300))
+        nodeProcess.off("unhandledRejection", track)
+        expect(rejections).toEqual([])
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument()
+    })
+})

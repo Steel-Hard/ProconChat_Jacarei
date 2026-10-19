@@ -1,7 +1,8 @@
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import useToast from "@/hooks/useToast"
 import appointmentsApi from "@/store/api/appointments.api"
+import useAppDispatch from "@/store/useAppDispatch"
 import type AppointmentAction from "@/types/appointments/AppointmentAction.types"
 import type AppointmentActionItemView from "@/types/appointments/AppointmentActionItemView.types"
 import type AppointmentActionsView from "@/types/appointments/AppointmentActionsView.types"
@@ -15,7 +16,6 @@ type ErrorKey = ReturnType<typeof appointmentActionErrorKey>
 type Options = {
     detail: AppointmentDetail | undefined
     canManage: boolean
-    refetch: () => Promise<unknown>
 }
 
 const ACTIONS: AppointmentAction[] = ["claim", "attended", "no_show"]
@@ -46,14 +46,24 @@ function statusOf(error: unknown): unknown {
     return typeof error === "object" && error !== null && "status" in error ? error.status : null
 }
 
-function useAppointmentActions({ detail, canManage, refetch }: Options) {
+function useAppointmentActions({ detail, canManage }: Options) {
     const { t } = useTranslation(["appointmentDetail", "common"])
     const { showToast } = useToast()
+    const dispatch = useAppDispatch()
     const [updateStatus] = appointmentsApi.useUpdateAppointmentStatusMutation()
     const [pending, setPending] = useState<AppointmentAction | null>(null)
     const [busy, setBusy] = useState(false)
     const [errorKey, setErrorKey] = useState<ErrorKey | null>(null)
     const inFlight = useRef(false)
+    const mounted = useRef(false)
+
+    useEffect(() => {
+        mounted.current = true
+
+        return () => {
+            mounted.current = false
+        }
+    }, [])
 
     const open = useCallback((action: AppointmentAction) => setPending(action), [])
 
@@ -82,15 +92,25 @@ function useAppointmentActions({ detail, canManage, refetch }: Options) {
             const status = statusOf(result.error)
 
             if (status !== 403 && status !== 404) {
-                await refetch()
+                await dispatch(
+                    appointmentsApi.endpoints.getAppointment.initiate(detail.id, {
+                        subscribe: false,
+                        forceRefetch: true
+                    })
+                )
             }
 
-            setErrorKey(appointmentActionErrorKey(result.error))
+            if (mounted.current) {
+                setErrorKey(appointmentActionErrorKey(result.error))
+            }
         }
 
         inFlight.current = false
-        setBusy(false)
-        setPending(null)
+
+        if (mounted.current) {
+            setBusy(false)
+            setPending(null)
+        }
     }
 
     let view: AppointmentActionsView | null = null
