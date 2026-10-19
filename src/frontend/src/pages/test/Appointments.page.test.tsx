@@ -90,6 +90,16 @@ describe("Appointments.page: lista", () => {
         expect(two.getByText("Fora da grade atual")).toBeInTheDocument()
     })
 
+    it("mostra Fora da grade atual num agendamento pendente", async () => {
+        await renderList(buildAppointmentList([buildAppointmentListItem({ off_grid: true })]))
+
+        const row = (await screen.findByText("Maria Aparecida Santos")).closest("tr")
+
+        expect(row).not.toBeNull()
+        expect(within(row as HTMLElement).getByText("Pendente")).toBeInTheDocument()
+        expect(within(row as HTMLElement).getByText("Fora da grade atual")).toBeInTheDocument()
+    })
+
     it("não mostra Fora da grade atual num agendamento encerrado", async () => {
         await renderList(
             buildAppointmentList([buildAppointmentListItem({ status: "ATTENDED", off_grid: true })])
