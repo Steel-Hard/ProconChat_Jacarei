@@ -1,10 +1,19 @@
 import express from "express"
 import request from "supertest"
-import { beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import errorHandler from "../middleware/errorHandler.middleware"
 import { createRequireAuth } from "../middleware/auth.middleware"
 import { createRequireTrustedOrigin } from "../middleware/trustedOrigin.middleware"
-import { MockAppointmentRepository } from "../repositories/mock/appointmentMock.repository"
+import {
+    buildAppointmentDetail,
+    buildChipCounts,
+    buildListItem,
+    conversationEventsOf,
+    conversationTimelineEvents,
+    FIXED_DATES,
+    FIXED_NOW,
+} from "../repositories/mock/appointment.builders"
+import { AppointmentRepositoryStub } from "../repositories/mock/appointmentStub.repository"
 import { MockAuthRepository } from "../repositories/mock/authMock.repository"
 import { sessionTokens } from "../utils/sessionToken"
 import { AppointmentRoutes } from "./appointment.routes"
@@ -107,12 +116,54 @@ function expectErrorEnvelope(body: unknown, code: string): void {
     expect(typeof error.message).toBe("string")
 }
 
+function contractScenario(): AppointmentRepositoryStub {
+    const carlos = { assigned_user_id: "2", assigned_user_name: "Carlos Atendente" }
+    return new AppointmentRepositoryStub({
+        details: [
+            buildAppointmentDetail(),
+            buildAppointmentDetail({ id: "2", status: "CONFIRMED", appointment_datetime: FIXED_DATES.afterTomorrow, ...carlos }),
+            buildAppointmentDetail({ id: "4", status: "ATTENDED", appointment_datetime: FIXED_DATES.threeDaysAgo, ...carlos }),
+            buildAppointmentDetail({ id: "5", status: "NO_SHOW", appointment_datetime: FIXED_DATES.fourDaysAgo, ...carlos }),
+            buildAppointmentDetail({ id: "6", status: "CANCELED", appointment_datetime: FIXED_DATES.inThreeDays }),
+        ],
+        list: {
+            items: [buildListItem(), buildListItem({ id: "2", status: "CONFIRMED", ...carlos })],
+            total: 2,
+            chipCounts: buildChipCounts({ all: 2, pending: 1, confirmed: 1 }),
+        },
+        pendingCount: 1,
+        titles: {
+            categories: { 10: "Cobrança" },
+            questions: { 1: "Cobrança indevida de serviço não contratado" },
+        },
+        afterAction: (call, current) => ({
+            ...current,
+            status: "CONFIRMED",
+            assigned_user_id: String(call.actorUserId),
+            assigned_user_name: "Admin",
+            events: [
+                {
+                    id: "2",
+                    type: "CLAIMED",
+                    actor_user_id: String(call.actorUserId),
+                    actor_user_name: "Admin",
+                    data: {},
+                    created_at: (call.now ?? FIXED_NOW).toISOString(),
+                },
+                ...current.events,
+            ],
+        }),
+    })
+}
+
 describe("contrato da API de agendamentos", () => {
     let app: express.Express
-    let repository: MockAppointmentRepository
+    let repository: AppointmentRepositoryStub
 
     beforeEach(() => {
-        repository = new MockAppointmentRepository(true)
+        vi.useFakeTimers({ toFake: ["Date"] })
+        vi.setSystemTime(FIXED_NOW)
+        repository = contractScenario()
         app = express()
         app.use(express.json())
         app.use("/api/v1", createRequireTrustedOrigin(ORIGIN))
@@ -120,11 +171,15 @@ describe("contrato da API de agendamentos", () => {
             "/api/v1/appointments",
             new AppointmentRoutes({
                 repository,
-                conversationEvents: repository.conversationEventService(),
+                conversationEvents: conversationEventsOf(conversationTimelineEvents("101")),
                 authMiddleware: createRequireAuth({ users: authUsers, tokens: sessionTokens }),
             }).getRouter(),
         )
         app.use(errorHandler)
+    })
+
+    afterEach(() => {
+        vi.useRealTimers()
     })
 
     function get(path: string, userId = 1): request.Test {
