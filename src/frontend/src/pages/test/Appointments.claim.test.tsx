@@ -144,6 +144,39 @@ describe("Appointments.page: Assumir", () => {
         expect(screen.getByRole("button", { name: "Assumir" })).toBeEnabled()
     })
 
+    it("avisa e rebusca a página atual quando o Assumir termina depois da troca de página", async () => {
+        const reply = Promise.withResolvers<Reply>()
+        const page = await renderAppointmentsPage({
+            handlers: {
+                "GET /api/v1/appointments": ({ url }) => ({
+                    status: 200,
+                    body: {
+                        data: buildAppointmentList(
+                            url.searchParams.get("page") === "2" ? [CONFIRMED] : [PENDING],
+                            { total: 30, page: Number(url.searchParams.get("page")), totalPages: 2 }
+                        )
+                    }
+                }),
+                "PATCH /api/v1/appointments/11/status": () => reply.promise
+            }
+        })
+        await screen.findByText("Maria Aparecida Santos")
+        await page.user.click(screen.getByRole("button", { name: "Assumir" }))
+        await page.user.click(screen.getByRole("button", { name: "Próxima ›" }))
+        await screen.findByText("João Pereira Lima")
+        const secondPage = () =>
+            page.listRequests().filter((params) => params.get("page") === "2").length
+        const before = secondPage()
+
+        reply.resolve({ status: 200, body: { data: { ...PENDING, status: "CONFIRMED" } } })
+
+        expect(
+            await screen.findByText("Agendamento AG-0011 assumido por você.")
+        ).toBeInTheDocument()
+        await waitFor(() => expect(secondPage()).toBe(before + 1))
+        expect(page.router.state.location.search).toBe("?page=2")
+    })
+
     it("com 403 INVALID_ORIGIN avisa a origem não autorizada", async () => {
         const page = await renderClaim(() => ({
             status: 403,

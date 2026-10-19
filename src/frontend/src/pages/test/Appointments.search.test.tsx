@@ -178,6 +178,35 @@ describe("Appointments.page: busca", () => {
         expect(page.router.state.location.pathname).toBe("/agendamentos")
     })
 
+    it("mostra só o resultado do termo atual quando a resposta da busca antiga chega depois", async () => {
+        const old = Promise.withResolvers<Reply>()
+        const latest = Promise.withResolvers<Reply>()
+        const page = await renderAppointmentsPage({
+            handlers: searchReplies({ Ma: () => old.promise, Mar: () => latest.promise })
+        })
+        await screen.findByText("Maria Aparecida Santos")
+        await page.user.type(searchBox(), "Ma")
+        await waitFor(() => expect(page.listRequests().at(-1)?.get("search")).toBe("Ma"), {
+            timeout: 5000
+        })
+        await page.user.type(searchBox(), "r")
+        await waitFor(() => expect(page.listRequests().at(-1)?.get("search")).toBe("Mar"), {
+            timeout: 5000
+        })
+
+        latest.resolve(found(MARIO)())
+        await screen.findByText("Mário Souza")
+        old.resolve(found(MARIA)())
+
+        await new Promise((resolve) => setTimeout(resolve, 100))
+
+        expect(screen.getByText("Mário Souza")).toBeInTheDocument()
+        expect(screen.queryByText("Maria Aparecida Santos")).not.toBeInTheDocument()
+        expect(
+            screen.getByText(/^1 resultado em todos os períodos, status e responsáveis/)
+        ).toBeInTheDocument()
+    })
+
     it("Esc limpa a busca e volta aos filtros da URL", async () => {
         const page = await renderAppointmentsPage({
             initialEntry: "/agendamentos?status=CONFIRMED",
