@@ -2,16 +2,16 @@ import { useCallback, useEffect, useState } from "react"
 import appointmentSearchSlice from "@/store/slices/appointmentSearch.slice"
 import useAppDispatch from "@/store/useAppDispatch"
 import useAppSelector from "@/store/useAppSelector"
+import MIN_APPOINTMENT_SEARCH_LENGTH from "@/utils/minAppointmentSearchLength"
 
 const SEARCH_DELAY_MS = 300
-const MIN_SEARCH_LENGTH = 2
 const CPF_LIKE = /^[\d.\-\s]+$/
 const CPF_DIGITS = 11
 
 function effectiveTerm(value: string): string | undefined {
     const trimmed = value.trim()
 
-    return trimmed.length >= MIN_SEARCH_LENGTH ? trimmed : undefined
+    return trimmed.length >= MIN_APPOINTMENT_SEARCH_LENGTH ? trimmed : undefined
 }
 
 function isPartialCpf(value: string): boolean {

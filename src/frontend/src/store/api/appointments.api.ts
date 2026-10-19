@@ -3,6 +3,7 @@ import type AppointmentAction from "@/types/appointments/AppointmentAction.types
 import type AppointmentDetail from "@/types/appointments/AppointmentDetail.types"
 import type AppointmentList from "@/types/appointments/AppointmentList.types"
 import type AppointmentListFilters from "@/types/appointments/AppointmentListFilters.types"
+import MIN_APPOINTMENT_SEARCH_LENGTH from "@/utils/minAppointmentSearchLength"
 
 type Envelope<T> = { data: T }
 
@@ -10,7 +11,6 @@ type UpdateStatusArgs = { id: string; action: AppointmentAction }
 
 const APPOINTMENTS_PATH = "/api/v1/appointments"
 const PAGE_SIZE = 20
-const MIN_SEARCH_LENGTH = 2
 
 function unwrap<T>(response: Envelope<T>): T {
     return response.data
@@ -20,7 +20,7 @@ function listQuery(filters: AppointmentListFilters): string {
     const params = new URLSearchParams()
     const search = filters.search?.trim() ?? ""
 
-    if (search.length >= MIN_SEARCH_LENGTH) {
+    if (search.length >= MIN_APPOINTMENT_SEARCH_LENGTH) {
         params.set("search", search)
     }
 

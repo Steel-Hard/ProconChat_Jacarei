@@ -1,22 +1,11 @@
 import type AppointmentListFilters from "@/types/appointments/AppointmentListFilters.types"
-import type AppointmentPeriod from "@/types/appointments/AppointmentPeriod.types"
-import type AppointmentResponsibleFilter from "@/types/appointments/AppointmentResponsibleFilter.types"
 import type AppointmentSortBy from "@/types/appointments/AppointmentSortBy.types"
 import type AppointmentSortOrder from "@/types/appointments/AppointmentSortOrder.types"
-import type AppointmentStatusFilter from "@/types/appointments/AppointmentStatusFilter.types"
 import APPOINTMENT_LIST_DEFAULTS from "@/utils/appointmentListDefaults"
+import APPOINTMENT_PERIODS from "@/utils/appointmentPeriods"
+import APPOINTMENT_RESPONSIBLE_FILTERS from "@/utils/appointmentResponsibleFilters"
+import APPOINTMENT_STATUS_FILTERS from "@/utils/appointmentStatusFilters"
 
-const STATUSES: readonly AppointmentStatusFilter[] = [
-    "all",
-    "PENDING",
-    "CONFIRMED",
-    "ATTENDED",
-    "NO_SHOW",
-    "CANCELED",
-    "waiting_record"
-]
-const PERIODS: readonly AppointmentPeriod[] = ["all", "today", "this_week", "upcoming", "past"]
-const RESPONSIBLES: readonly AppointmentResponsibleFilter[] = ["all", "unassigned", "me"]
 const SORT_BYS: readonly AppointmentSortBy[] = [
     "name",
     "appointment_datetime",
@@ -42,10 +31,13 @@ function parsePage(value: string | null): number {
 
 function parseAppointmentListParams(params: URLSearchParams): AppointmentListFilters {
     const filters: AppointmentListFilters = {
-        status: pick(STATUSES, params.get("status")) ?? APPOINTMENT_LIST_DEFAULTS.status,
-        period: pick(PERIODS, params.get("period")) ?? APPOINTMENT_LIST_DEFAULTS.period,
+        status:
+            pick(APPOINTMENT_STATUS_FILTERS, params.get("status")) ??
+            APPOINTMENT_LIST_DEFAULTS.status,
+        period: pick(APPOINTMENT_PERIODS, params.get("period")) ?? APPOINTMENT_LIST_DEFAULTS.period,
         responsible:
-            pick(RESPONSIBLES, params.get("responsible")) ?? APPOINTMENT_LIST_DEFAULTS.responsible,
+            pick(APPOINTMENT_RESPONSIBLE_FILTERS, params.get("responsible")) ??
+            APPOINTMENT_LIST_DEFAULTS.responsible,
         page: parsePage(params.get("page"))
     }
     const sortBy = pick(SORT_BYS, params.get("sortBy"))

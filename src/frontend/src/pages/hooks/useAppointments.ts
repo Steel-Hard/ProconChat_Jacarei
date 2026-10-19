@@ -21,6 +21,9 @@ import type AppointmentSortBy from "@/types/appointments/AppointmentSortBy.types
 import type AppointmentStatusFilter from "@/types/appointments/AppointmentStatusFilter.types"
 import parseAppointmentListParams from "@/utils/appointmentListParams"
 import appointmentActionErrorKey from "@/utils/appointmentActionErrorKey"
+import APPOINTMENT_PERIODS from "@/utils/appointmentPeriods"
+import APPOINTMENT_RESPONSIBLE_FILTERS from "@/utils/appointmentResponsibleFilters"
+import APPOINTMENT_STATUS_FILTERS from "@/utils/appointmentStatusFilters"
 import defaultSortMode from "@/utils/defaultSortMode"
 import formatDayMonth from "@/utils/formatDayMonth"
 import formatTime from "@/utils/formatTime"
@@ -48,9 +51,6 @@ const CHIP_COUNT_KEYS: Record<AppointmentStatusFilter, keyof AppointmentChipCoun
     waiting_record: "waiting_record"
 }
 
-const STATUS_FILTERS = Object.keys(CHIP_COUNT_KEYS) as AppointmentStatusFilter[]
-const PERIODS: AppointmentPeriod[] = ["all", "today", "this_week", "upcoming", "past"]
-const RESPONSIBLES: AppointmentResponsibleFilter[] = ["all", "unassigned", "me"]
 const SORT_OPTIONS = [
     "default",
     "appointment_datetime:asc",
@@ -187,18 +187,18 @@ function useAppointments() {
 
     const rows = useMemo(() => (data ? data.items.map(toRow) : []), [data, toRow])
 
-    const chips: AppointmentChip[] = STATUS_FILTERS.map((value) => ({
+    const chips: AppointmentChip[] = APPOINTMENT_STATUS_FILTERS.map((value) => ({
         value,
         label: t(`chips.${value}`),
         count: list.data ? list.data.chipCounts[CHIP_COUNT_KEYS[value]] : 0
     }))
 
-    const periodOptions = PERIODS.map((value) => ({
+    const periodOptions = APPOINTMENT_PERIODS.map((value) => ({
         value,
         label: t(`filters.periods.${value}`)
     }))
 
-    const responsibleOptions = RESPONSIBLES.map((value) => ({
+    const responsibleOptions = APPOINTMENT_RESPONSIBLE_FILTERS.map((value) => ({
         value,
         label: t(`filters.responsibles.${value}`)
     }))
