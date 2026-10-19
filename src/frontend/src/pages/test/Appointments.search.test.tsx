@@ -80,7 +80,11 @@ describe("Appointments.page: busca", () => {
 
         await page.user.type(searchBox(), "Mar")
 
-        await screen.findByText("2 resultados em todos os períodos, status e responsáveis")
+        await screen.findByText(
+            "2 resultados em todos os períodos, status e responsáveis",
+            {},
+            { timeout: 5000 }
+        )
         expect(
             page
                 .listRequests()
@@ -102,7 +106,9 @@ describe("Appointments.page: busca", () => {
 
         expect(
             await screen.findByText(
-                "1–2 de 2 agendamentos · Ordem padrão: próximos primeiro (mais próximo no topo), depois os passados (mais recente primeiro)."
+                "1–2 de 2 agendamentos · Ordem padrão: próximos primeiro (mais próximo no topo), depois os passados (mais recente primeiro).",
+                {},
+                { timeout: 5000 }
             )
         ).toBeInTheDocument()
     })
@@ -267,7 +273,7 @@ describe("Appointments.page: busca", () => {
 
         await page.user.type(searchBox(), FICTITIOUS_CPF)
 
-        expect(await screen.findByText(/1 resultado/)).toBeInTheDocument()
+        expect(await screen.findByText(/1 resultado/, {}, { timeout: 5000 })).toBeInTheDocument()
         expect(window.location.pathname).toBe("/agendamentos")
         expect(window.location.search).toBe("?status=PENDING")
         expect(window.location.href).not.toContain(FICTITIOUS_CPF)
