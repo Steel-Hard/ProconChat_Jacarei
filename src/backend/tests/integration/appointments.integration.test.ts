@@ -790,6 +790,29 @@ describe("Agendamentos com Postgres (integração)", () => {
         expect(items.get(String(idPendingPast))?.waiting_record).toBe(false)
     })
 
+    it("filtra os itens da lista pelo período: próximos por padrão, passados e todos", async () => {
+        const day = 86400000
+        const idPast = await createAppointment({
+            name: "Período Passado",
+            appointmentDatetime: new Date(Date.now() - 3 * day),
+            cpf: "31231231229",
+        })
+        const idFuture = await createAppointment({
+            name: "Período Futuro",
+            appointmentDatetime: new Date(Date.now() + 3 * day),
+            cpf: "31231231230",
+        })
+        const ids = [idPast, idFuture]
+
+        const withoutPeriod = await listOrderAcrossPages("responsible=all", ids)
+        const past = await listOrderAcrossPages("period=past", ids)
+        const all = await listOrderAcrossPages("period=all", ids)
+
+        expect(withoutPeriod).toEqual([String(idFuture)])
+        expect(past).toEqual([String(idPast)])
+        expect(all).toEqual([String(idFuture), String(idPast)])
+    })
+
     it("filtra a lista por responsável: sem responsável e um funcionário pelo id", async () => {
         const userA = await createStaffUser("Atendente Filtro A")
         const userB = await createStaffUser("Atendente Filtro B")
