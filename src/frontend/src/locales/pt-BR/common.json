@@ -85,7 +85,9 @@
             }
         },
         "appointmentDetail": "Detalhe do agendamento",
-        "itemWithBadge": "<label>{{label}}</label> <count>{{count}}</count> <hidden>{{badgeLabel}}</hidden>"
+        "itemWithBadge": "<label>{{label}}</label> <count>{{count}}</count> <hidden>{{badgeLabel}}</hidden>",
+        "pendingBadge_one": "agendamento pendente",
+        "pendingBadge_other": "agendamentos pendentes"
     },
     "sidebar": {
         "label": "Menu principal",

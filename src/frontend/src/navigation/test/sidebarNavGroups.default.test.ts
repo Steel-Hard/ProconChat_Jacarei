@@ -22,21 +22,24 @@ const staffWithAllPermissions: PanelAccount = {
 }
 
 describe("sidebarNavGroups com as flags de produção", () => {
-    it("só o WhatsApp está liberado", () => {
+    it("Agendamentos e WhatsApp estão liberados", () => {
         expect(
             Object.entries(NAV_ITEMS_READY)
                 .filter(([, ready]) => ready)
                 .map(([key]) => key)
-        ).toEqual(["whatsapp"])
+        ).toEqual(["appointments", "whatsapp"])
     })
 
-    it("o Admin vê só o WhatsApp em Configurações", () => {
+    it("o Admin vê Agendamentos em Operação e WhatsApp em Configurações", () => {
         expect(sidebarNavGroups(admin)).toEqual([
+            { key: "operation", items: [{ key: "appointments", path: ROUTES.appointments }] },
             { key: "settings", items: [{ key: "whatsapp", path: ROUTES.whatsapp }] }
         ])
     })
 
-    it("um funcionário com todas as permissões não vê item nenhum", () => {
-        expect(sidebarNavGroups(staffWithAllPermissions)).toEqual([])
+    it("um funcionário com todas as permissões vê só Agendamentos em Operação", () => {
+        expect(sidebarNavGroups(staffWithAllPermissions)).toEqual([
+            { key: "operation", items: [{ key: "appointments", path: ROUTES.appointments }] }
+        ])
     })
 })

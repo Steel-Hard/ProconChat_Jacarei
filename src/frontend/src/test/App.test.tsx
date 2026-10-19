@@ -14,10 +14,17 @@ const admin = {
 
 function stubMe() {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-        const url = typeof input === "string" ? input : input.toString()
+        const url = input instanceof Request ? input.url : input.toString()
 
         if (url.endsWith("/api/v1/auth/me")) {
             return new Response(JSON.stringify({ data: admin }), { status: 200 })
+        }
+
+        if (url.endsWith("/api/v1/appointments/pending-count")) {
+            return new Response(JSON.stringify({ data: { count: 0 } }), {
+                status: 200,
+                headers: { "Content-Type": "application/json" }
+            })
         }
 
         return new Response(null, { status: 404 })
@@ -39,6 +46,7 @@ describe("App", { timeout: 15000 }, () => {
     afterEach(() => {
         window.history.pushState({}, "", "/")
         vi.unstubAllGlobals()
+        vi.unstubAllEnvs()
         vi.restoreAllMocks()
     })
 
@@ -72,8 +80,11 @@ describe("App", { timeout: 15000 }, () => {
     it("renderiza dentro do Provider da store sem avisos no console", async () => {
         const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
         const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined)
+        vi.stubEnv("VITE_API_URL", "http://api.test")
+        vi.resetModules()
+        const { default: FreshApp } = await import("@/App")
 
-        render(<App />)
+        render(<FreshApp />)
 
         expect(
             await screen.findByRole("heading", { name: "Painel" }, { timeout: LOAD_TIMEOUT_MS })

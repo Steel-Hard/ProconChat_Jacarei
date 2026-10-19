@@ -71,6 +71,7 @@ describe("PanelLayout", { timeout: 15000 }, () => {
 
     afterEach(() => {
         vi.unstubAllGlobals()
+        vi.unstubAllEnvs()
     })
 
     it("mostra o menu, o topo e a tela dentro do main", async () => {
@@ -348,5 +349,33 @@ describe("PanelLayout", { timeout: 15000 }, () => {
         expect(screen.getByRole("main")).toHaveTextContent("Carregando...")
         expect(screen.getByRole("navigation", { name: "Menu principal" })).toBeInTheDocument()
         expect(screen.getByRole("banner")).toBeInTheDocument()
+    })
+    it("mostra no menu o número de agendamentos pendentes vindo da API", async () => {
+        vi.stubEnv("VITE_API_URL", "http://api.test")
+        vi.resetModules()
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(
+                async () =>
+                    new Response(JSON.stringify({ data: { count: 3 } }), {
+                        status: 200,
+                        headers: { "Content-Type": "application/json" }
+                    })
+            )
+        )
+        const { default: FreshPanelLayout } = await import("@/layouts/Panel.layout")
+        const { default: freshRenderWithStore } = await import("@/testUtils/renderWithStore")
+        const router = createMemoryRouter(
+            [{ element: <FreshPanelLayout />, children: [{ path: "/", element: <p /> }] }],
+            { initialEntries: ["/"] }
+        )
+
+        freshRenderWithStore(<RouterProvider router={router} />, {
+            preloadedState: { account: { current: admin, status: "authenticated" } }
+        })
+
+        expect(
+            await screen.findByRole("link", { name: "Agendamentos 3 agendamentos pendentes" })
+        ).toBeInTheDocument()
     })
 })
