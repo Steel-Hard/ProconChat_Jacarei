@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react"
+import { act, screen, waitFor, within } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import buildAppointmentList from "@/testUtils/buildAppointmentList"
 import buildAppointmentListItem from "@/testUtils/buildAppointmentListItem"
@@ -205,5 +205,22 @@ describe("Appointments.page: Assumir", () => {
         expect(
             await screen.findByText("Não foi possível concluir a ação. Tente de novo.")
         ).toBeInTheDocument()
+    })
+    it("manda um único PATCH num clique duplo em Assumir", async () => {
+        const reply = Promise.withResolvers<Reply>()
+        const page = await renderClaim(() => reply.promise)
+        await screen.findByText("Maria Aparecida Santos")
+
+        const button = screen.getByRole("button", { name: "Assumir" })
+        act(() => {
+            button.click()
+            button.click()
+        })
+        reply.resolve({ status: 200, body: { data: { ...PENDING, status: "CONFIRMED" } } })
+
+        expect(
+            await screen.findByText("Agendamento AG-0011 assumido por você.")
+        ).toBeInTheDocument()
+        expect(page.calls.filter((call) => call.method === "PATCH")).toHaveLength(1)
     })
 })

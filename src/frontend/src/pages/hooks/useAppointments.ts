@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
 import { useTranslation } from "react-i18next"
 import { generatePath, useLocation, useNavigate, useSearchParams } from "react-router-dom"
 import useCompactTable from "@/hooks/useCompactTable"
@@ -95,6 +95,7 @@ function useAppointments() {
     const [searchParams, setSearchParams] = useSearchParams()
     const filters = useMemo(() => parseAppointmentListParams(searchParams), [searchParams])
     const [claimingIds, setClaimingIds] = useState<string[]>([])
+    const claimsInFlight = useRef(new Set<string>())
 
     const applyFilters = useCallback(
         (next: AppointmentListFilters, replace = false) => {
@@ -245,8 +246,14 @@ function useAppointments() {
     }
 
     const claim = async (row: AppointmentRowView) => {
+        if (claimsInFlight.current.has(row.id)) {
+            return
+        }
+
+        claimsInFlight.current.add(row.id)
         setClaimingIds((ids) => [...ids, row.id])
         const result = await updateStatus({ id: row.id, action: "claim" })
+        claimsInFlight.current.delete(row.id)
         setClaimingIds((ids) => ids.filter((id) => id !== row.id))
 
         if ("data" in result) {
