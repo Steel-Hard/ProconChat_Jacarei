@@ -372,3 +372,30 @@ describe("AppointmentDetail.page: erros da ação", () => {
         await screen.findByText("Agendamento F10464F0 assumido por você.")
     })
 })
+
+describe("AppointmentDetail.page: rede", () => {
+    it("com falha de rede espera reler o detalhe antes de mostrar o erro", async () => {
+        const second = Promise.withResolvers<Reply>()
+        let reads = 0
+        const page = await renderActions(
+            () => {
+                reads += 1
+
+                return reads === 1 ? ok(PENDING) : second.promise
+            },
+            () => Promise.reject(new TypeError("Failed to fetch"))
+        )
+        await page.user.click(screen.getByRole("button", { name: "Assumir para mim" }))
+
+        await page.user.click(
+            within(screen.getByRole("dialog")).getByRole("button", { name: "Assumir para mim" })
+        )
+
+        await waitFor(() => expect(page.requests("GET", DETAIL_PATH)).toHaveLength(2))
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument()
+        second.resolve(ok(PENDING))
+        expect(await screen.findByRole("alert")).toHaveTextContent(
+            "Não foi possível concluir a ação. Tente de novo."
+        )
+    })
+})
