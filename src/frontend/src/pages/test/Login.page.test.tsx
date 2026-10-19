@@ -3,9 +3,12 @@ import { screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import LANGUAGE_STORAGE_KEY from "@/i18n/languageStorageKey"
+import buildAppointmentList from "@/testUtils/buildAppointmentList"
 import loadPanelRoutes from "@/testUtils/loadPanelRoutes"
 import withPendingCount from "@/testUtils/withPendingCount"
 import type RootState from "@/types/store/RootState.types"
+
+type FetchHandler = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
 
 const admin = {
     id: 1,
@@ -19,7 +22,21 @@ const anonymous: Partial<RootState> = { account: { current: null, status: "anony
 
 function stubLogin(response: () => Response | Promise<Response>) {
     const fetchMock = vi.fn(() => Promise.resolve(response()))
-    vi.stubGlobal("fetch", vi.fn(withPendingCount(fetchMock)))
+    const handler: FetchHandler = (input) => {
+        const url = input instanceof Request ? input.url : String(input)
+
+        if (url.includes("/api/v1/appointments?")) {
+            return Promise.resolve(
+                new Response(JSON.stringify({ data: buildAppointmentList([]) }), {
+                    status: 200,
+                    headers: { "Content-Type": "application/json" }
+                })
+            )
+        }
+
+        return fetchMock()
+    }
+    vi.stubGlobal("fetch", vi.fn(withPendingCount(handler)))
     return fetchMock
 }
 
