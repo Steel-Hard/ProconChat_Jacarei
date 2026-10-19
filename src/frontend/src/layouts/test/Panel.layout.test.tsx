@@ -42,7 +42,7 @@ let panel: Awaited<ReturnType<typeof loadPanelRoutes>>
 let PanelLayout: typeof PanelLayoutComponent
 let UnderConstructionPage: typeof UnderConstructionComponent
 
-async function renderPanel(path: string = ROUTES.dashboard) {
+async function renderPanel(path: string = ROUTES.sessions) {
     const router = createMemoryRouter(panel.routes, { initialEntries: [path] })
 
     const result = panel.renderWithStore(<RouterProvider router={router} />, {
@@ -95,7 +95,7 @@ describe("PanelLayout", { timeout: 15000 }, () => {
         expect(screen.getByRole("navigation", { name: "Menu principal" })).toBeInTheDocument()
         expect(screen.getByRole("banner")).toBeInTheDocument()
         expect(screen.getByRole("main")).toContainElement(
-            screen.getByRole("heading", { name: "Painel" })
+            screen.getByRole("heading", { name: "Sessões" })
         )
     })
 

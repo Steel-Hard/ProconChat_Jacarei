@@ -1,6 +1,7 @@
 import type { ComponentType } from "react"
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
+import buildAppointmentList from "@/testUtils/buildAppointmentList"
 
 const LOAD_TIMEOUT_MS = 4000
 
@@ -29,6 +30,13 @@ function stubMe() {
             })
         }
 
+        if (url.includes("/api/v1/appointments?")) {
+            return new Response(JSON.stringify({ data: buildAppointmentList([]) }), {
+                status: 200,
+                headers: { "Content-Type": "application/json" }
+            })
+        }
+
         return new Response(null, { status: 404 })
     })
     vi.stubGlobal("fetch", fetchMock)
@@ -41,6 +49,7 @@ describe("App", { timeout: 15000 }, () => {
         vi.resetModules()
         App = (await import("@/App")).default
         await import("@/pages/UnderConstruction.page")
+        await import("@/pages/Appointments.page")
         await import("@/pages/NotFound.page")
     })
 
@@ -62,9 +71,13 @@ describe("App", { timeout: 15000 }, () => {
         render(<App />)
 
         expect(
-            await screen.findByRole("heading", { name: "Painel" }, { timeout: LOAD_TIMEOUT_MS })
+            await screen.findByRole(
+                "heading",
+                { name: "Agendamentos" },
+                { timeout: LOAD_TIMEOUT_MS }
+            )
         ).toBeInTheDocument()
-        expect(document.title).toBe("Painel - ProconChat")
+        expect(document.title).toBe("Agendamentos - ProconChat")
     })
 
     it("usa o título e a meta description de NotFound.page numa rota desconhecida", async () => {
@@ -92,7 +105,11 @@ describe("App", { timeout: 15000 }, () => {
         render(<App />)
 
         expect(
-            await screen.findByRole("heading", { name: "Painel" }, { timeout: LOAD_TIMEOUT_MS })
+            await screen.findByRole(
+                "heading",
+                { name: "Agendamentos" },
+                { timeout: LOAD_TIMEOUT_MS }
+            )
         ).toBeInTheDocument()
         expect(errorSpy).not.toHaveBeenCalled()
         expect(warnSpy).not.toHaveBeenCalled()

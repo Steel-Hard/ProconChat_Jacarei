@@ -42,7 +42,8 @@ async function signIn() {
 beforeAll(async () => {
     panel = await loadPanelRoutes([
         () => import("@/pages/Login.page"),
-        () => import("@/pages/UnderConstruction.page")
+        () => import("@/pages/UnderConstruction.page"),
+        () => import("@/pages/Appointments.page")
     ])
 })
 
@@ -133,23 +134,23 @@ describe("LoginPage", () => {
         expect(router.state.location.pathname).toBe("/sessoes")
     })
 
-    it("ignora um redirect para outro site e abre o Dashboard", async () => {
+    it("ignora um redirect para outro site e abre Agendamentos", async () => {
         stubLogin(() => new Response(JSON.stringify({ data: { user: admin } }), { status: 200 }))
         const { router } = renderLogin("/login?redirect=%2F%2Fevil.com")
 
         await signIn()
 
-        expect(await screen.findByRole("heading", { name: "Painel" })).toBeInTheDocument()
-        expect(router.state.location.pathname).toBe("/")
+        expect(await screen.findByRole("heading", { name: "Agendamentos" })).toBeInTheDocument()
+        expect(router.state.location.pathname).toBe("/agendamentos")
     })
 
-    it("abre o Dashboard quando o Admin entra sem redirect", async () => {
+    it("abre Agendamentos quando o Admin entra sem redirect", async () => {
         stubLogin(() => new Response(JSON.stringify({ data: { user: admin } }), { status: 200 }))
         renderLogin()
 
         await signIn()
 
-        expect(await screen.findByRole("heading", { name: "Painel" })).toBeInTheDocument()
+        expect(await screen.findByRole("heading", { name: "Agendamentos" })).toBeInTheDocument()
     })
 
     it("não grava sessão nem conta no navegador depois de entrar", async () => {
@@ -157,7 +158,7 @@ describe("LoginPage", () => {
         renderLogin()
 
         await signIn()
-        await screen.findByRole("heading", { name: "Painel" })
+        await screen.findByRole("heading", { name: "Agendamentos" })
 
         const keys = Object.keys(window.localStorage)
         expect(keys.filter((key) => key !== LANGUAGE_STORAGE_KEY)).toEqual([])

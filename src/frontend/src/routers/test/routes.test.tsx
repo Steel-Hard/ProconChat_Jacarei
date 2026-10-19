@@ -217,6 +217,6 @@ describe("routes", () => {
 
         await user.click(await screen.findByRole("link", { name: "Vá para a página inicial." }))
 
-        expect(await screen.findByRole("heading", { name: "Painel" })).toBeInTheDocument()
+        expect(await screen.findByRole("heading", { name: "Agendamentos" })).toBeInTheDocument()
     })
 })
