@@ -1,3 +1,4 @@
+import AppointmentHistoryEntry from "@/components/AppointmentHistoryEntry"
 import type AppointmentHistoryEntryView from "@/types/appointments/AppointmentHistoryEntryView.types"
 import css from "@/styles/components/appointmentDetailSection.module.css"
 
@@ -12,14 +13,7 @@ function AppointmentHistory({ title, entries }: AppointmentHistoryProps) {
             <h2 className={css.title}>{title}</h2>
             <ol className={css.history}>
                 {entries.map((entry) => (
-                    <li
-                        key={entry.id}
-                        className={entry.highlight ? `${css.entry} ${css.failed}` : css.entry}
-                        data-highlight={entry.highlight || undefined}
-                    >
-                        <span className={css.entryText}>{entry.text}</span>
-                        <span className={css.entryWhen}>{entry.when}</span>
-                    </li>
+                    <AppointmentHistoryEntry key={entry.id} entry={entry} />
                 ))}
             </ol>
         </section>
