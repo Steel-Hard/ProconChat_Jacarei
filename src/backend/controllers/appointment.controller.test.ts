@@ -1,15 +1,16 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { Request, Response } from "express"
 import AppointmentController from "./appointment.controller"
 import { AppointmentService, createAppointmentService } from "../services/appointment.service"
-import { MockAppointmentRepository } from "../repositories/mock/appointmentMock.repository"
+import { buildAppointmentDetail, buildChipCounts, buildListItem, FIXED_NOW } from "../repositories/mock/appointment.builders"
+import { AppointmentRepositoryStub } from "../repositories/mock/appointmentStub.repository"
 import { AuthenticatedUser } from "../types/auth.types"
 import { listAppointmentsQuerySchema } from "../schemas/appointment.schema"
 
 describe("appointment.controller", () => {
     let controller: AppointmentController
     let service: AppointmentService
-    let repository: MockAppointmentRepository
+    let repository: AppointmentRepositoryStub
 
     const mockAdminUser: AuthenticatedUser = {
         id: 1,
@@ -36,9 +37,24 @@ describe("appointment.controller", () => {
     }
 
     beforeEach(() => {
-        repository = new MockAppointmentRepository(true)
+        vi.useFakeTimers({ toFake: ["Date"] })
+        vi.setSystemTime(FIXED_NOW)
+        repository = new AppointmentRepositoryStub({
+            details: [buildAppointmentDetail()],
+            list: { items: [buildListItem()], total: 1, chipCounts: buildChipCounts({ all: 1, pending: 1 }) },
+            pendingCount: 1,
+            afterAction: (call, current) => ({
+                ...current,
+                status: "CONFIRMED",
+                assigned_user_id: String(call.actorUserId),
+            }),
+        })
         service = createAppointmentService({ repository, conversationEvents: mockConversationEvents })
         controller = new AppointmentController({ service })
+    })
+
+    afterEach(() => {
+        vi.useRealTimers()
     })
 
     function mockResponse(): Response {
@@ -121,6 +137,7 @@ describe("appointment.controller", () => {
                 }),
             }),
         )
+        expect(repository.actionCalls).toEqual([{ action: "claim", id: "1", actorUserId: 10, now: FIXED_NOW }])
     })
 
     it("propaga erro para o middleware next se o serviço lançar", async () => {
