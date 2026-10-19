@@ -403,6 +403,7 @@ describe("appointment.routes (HTTP)", () => {
                 expect(patchRes.body.data.timeline).toHaveLength(2)
                 expect(patchRes.body.data.events[0].type).toBe(terminalEvent)
                 expect(patchRes.body.data).toEqual(getRes.body.data)
+                expect(repository.actionCalls).toEqual([{ action, id: String(id), actorUserId: 10, now: FIXED_NOW }])
             },
         )
 
@@ -417,6 +418,7 @@ describe("appointment.routes (HTTP)", () => {
             expect(res.body.data.assigned_user_id).toBe("10")
             expect(res.body.data.events[0].type).toBe("CLAIMED")
             expect(res.body.data.events[0].actor_user_id).toBe("10")
+            expect(repository.actionCalls).toEqual([{ action: "claim", id: "1", actorUserId: 10, now: FIXED_NOW }])
         })
 
         it("executa ação attended com sucesso para agendamento de hoje", async () => {
@@ -427,6 +429,7 @@ describe("appointment.routes (HTTP)", () => {
 
             expect(res.status).toBe(200)
             expect(res.body.data.status).toBe("ATTENDED")
+            expect(repository.actionCalls).toEqual([{ action: "attended", id: "7", actorUserId: 10, now: FIXED_NOW }])
         })
 
         it("retorna 409 com ATTENDANCE_NOT_YET_AVAILABLE ao tentar marcar attended para agendamento futuro", async () => {

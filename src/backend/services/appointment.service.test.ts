@@ -180,6 +180,7 @@ describe("appointment.service", () => {
             const claimedEvent = result.events.find((e) => e.type === "CLAIMED")
             expect(claimedEvent).toBeDefined()
             expect(claimedEvent?.actor_user_id).toBe("42")
+            expect(repository.actionCalls).toEqual([{ action: "claim", id: "1", actorUserId: 42, now: FIXED_NOW }])
         })
 
         it("recusa assumir agendamento que não esteja Pendente", async () => {
@@ -197,6 +198,7 @@ describe("appointment.service", () => {
 
             const attendedEvent = result.events.find((e) => e.type === "ATTENDED")
             expect(attendedEvent).toBeDefined()
+            expect(repository.actionCalls).toEqual([{ action: "attended", id: "7", actorUserId: 42, now: FIXED_NOW }])
         })
 
         it("recusa marcar como atendido se for para data futura", async () => {
@@ -228,6 +230,7 @@ describe("appointment.service", () => {
 
             const noShowEvent = result.events.find((e) => e.type === "NO_SHOW")
             expect(noShowEvent).toBeDefined()
+            expect(repository.actionCalls).toEqual([{ action: "no_show", id: "7", actorUserId: 42, now }])
         })
 
         it("recusa marcar como não compareceu se o horário ainda não passou", async () => {
