@@ -684,8 +684,12 @@ passam por `services/conversationClosing.service.ts` (`finishOrLog`), e os tipos
 
 O rascunho fica em `Sessions.draft`, com as chaves `by_representative`, `holder_name`, `cpf_hash` e
 `cpf_masked` (`target_appointment_id` é da #59). O `chk_sessions_draft_keys` recusa qualquer outra.
-O motivo do agendamento (`REQUIRES_IN_PERSON` ou `NOT_RESOLVED`) é recalculado na reserva pela
-pergunta da sessão.
+O motivo do agendamento (`REQUIRES_IN_PERSON` ou `NOT_RESOLVED`) é o do último `SCHEDULE_OFFERED`
+da sessão registrado depois da última pergunta escolhida (`QUESTION_CHOSEN`), lido na reserva por
+`services/scheduleOfferReason.ts`. Assim o agendamento guarda o motivo que o bot mostrou na oferta,
+mesmo se a pergunta mudar no painel antes do clique no horário. Só quando esse evento não existe ou a
+leitura dos eventos falha o motivo é recalculado pela pergunta da sessão; na falha de leitura, o log
+traz só `{ type, sessionId, code }`.
 
 **Regra do nome.** O bot aplica `trim()` e `normalize("NFC")`, exige de 2 a 150 caracteres e aceita
 só letras de qualquer alfabeto (inclusive `º` e `ª`, que o Unicode trata como letras), marcas de
