@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { screen } from "@testing-library/react"
 import { createMemoryRouter, RouterProvider, type RouteObject } from "react-router-dom"
+import loadPanelRoutes from "@/testUtils/loadPanelRoutes"
+import withPendingCount from "@/testUtils/withPendingCount"
 
 vi.mock("@/navigation/navItemsReady", () => ({
     default: {
@@ -25,14 +27,16 @@ function hasPath(routes: RouteObject[], path: string): boolean {
 
 describe("LayoutPreviewPage", { timeout: 15000 }, () => {
     afterEach(() => {
+        vi.unstubAllGlobals()
         vi.unstubAllEnvs()
         vi.resetModules()
     })
 
     it("mostra um exemplo de cada componente dentro do layout em desenvolvimento", async () => {
-        await import("@/pages/LayoutPreview.page")
-        const { default: routes } = await import("@/routers/routes")
-        const { default: renderWithStore } = await import("@/testUtils/renderWithStore")
+        vi.stubGlobal("fetch", vi.fn(withPendingCount()))
+        const { routes, renderWithStore } = await loadPanelRoutes([
+            () => import("@/pages/LayoutPreview.page")
+        ])
         const router = createMemoryRouter(routes, { initialEntries: [PREVIEW_PATH] })
 
         renderWithStore(<RouterProvider router={router} />)

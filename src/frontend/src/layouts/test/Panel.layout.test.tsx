@@ -1,15 +1,15 @@
 import { lazy } from "react"
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 import { act, screen } from "@testing-library/react"
 import userEvent, { type UserEvent } from "@testing-library/user-event"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
-import PanelLayout from "@/layouts/Panel.layout"
-import UnderConstructionPage from "@/pages/UnderConstruction.page"
-import routes from "@/routers/routes"
+import type PanelLayoutComponent from "@/layouts/Panel.layout"
+import type UnderConstructionComponent from "@/pages/UnderConstruction.page"
 import ROUTES from "@/routers/paths"
 import mockMatchMedia from "@/testUtils/mockMatchMedia"
 import setViewportWidth from "@/testUtils/setViewportWidth"
-import renderWithStore from "@/testUtils/renderWithStore"
+import loadPanelRoutes from "@/testUtils/loadPanelRoutes"
+import withPendingCount from "@/testUtils/withPendingCount"
 import type PanelAccount from "@/types/account/PanelAccount.types"
 
 vi.mock("@/navigation/navItemsReady", () => ({
@@ -38,10 +38,14 @@ const LAZY_TIMEOUT_MS = 4000
 
 const NeverResolves = lazy(() => new Promise<never>(() => {}))
 
-async function renderPanel(path: string = ROUTES.dashboard) {
-    const router = createMemoryRouter(routes, { initialEntries: [path] })
+let panel: Awaited<ReturnType<typeof loadPanelRoutes>>
+let PanelLayout: typeof PanelLayoutComponent
+let UnderConstructionPage: typeof UnderConstructionComponent
 
-    const result = renderWithStore(<RouterProvider router={router} />, {
+async function renderPanel(path: string = ROUTES.dashboard) {
+    const router = createMemoryRouter(panel.routes, { initialEntries: [path] })
+
+    const result = panel.renderWithStore(<RouterProvider router={router} />, {
         preloadedState: { account: { current: admin, status: "authenticated" } }
     })
 
@@ -51,8 +55,10 @@ async function renderPanel(path: string = ROUTES.dashboard) {
 }
 
 function stubLogout(response: () => Response) {
-    const fetchMock = vi.fn((_url: string, _init?: RequestInit) => Promise.resolve(response()))
-    vi.stubGlobal("fetch", fetchMock)
+    const fetchMock = vi.fn((_url: RequestInfo | URL, _init?: RequestInit) =>
+        Promise.resolve(response())
+    )
+    vi.stubGlobal("fetch", vi.fn(withPendingCount(fetchMock)))
     return fetchMock
 }
 
@@ -65,8 +71,17 @@ async function openDrawer(user: UserEvent) {
 
 describe("PanelLayout", { timeout: 15000 }, () => {
     beforeAll(async () => {
-        await import("@/pages/UnderConstruction.page")
-        await import("@/pages/Login.page")
+        panel = await loadPanelRoutes([
+            () => import("@/pages/UnderConstruction.page"),
+            () => import("@/pages/Login.page"),
+            () => import("@/pages/NotFound.page")
+        ])
+        PanelLayout = (await import("@/layouts/Panel.layout")).default
+        UnderConstructionPage = (await import("@/pages/UnderConstruction.page")).default
+    })
+
+    beforeEach(() => {
+        vi.stubGlobal("fetch", vi.fn(withPendingCount()))
     })
 
     afterEach(() => {
@@ -256,10 +271,10 @@ describe("PanelLayout", { timeout: 15000 }, () => {
                     )
             )
         )
-        const router = createMemoryRouter(routes, {
+        const router = createMemoryRouter(panel.routes, {
             initialEntries: ["/login?redirect=%2Fusuarios"]
         })
-        renderWithStore(<RouterProvider router={router} />, {
+        panel.renderWithStore(<RouterProvider router={router} />, {
             preloadedState: { account: { current: null, status: "anonymous" } }
         })
 
@@ -333,7 +348,7 @@ describe("PanelLayout", { timeout: 15000 }, () => {
             { initialEntries: [ROUTES.dashboard] }
         )
 
-        renderWithStore(<RouterProvider router={router} />)
+        panel.renderWithStore(<RouterProvider router={router} />)
         await screen.findByText("Em construção.", {}, { timeout: LAZY_TIMEOUT_MS })
 
         expect(screen.getByRole("navigation", { name: "Menu principal" })).toBeInTheDocument()
@@ -347,7 +362,7 @@ describe("PanelLayout", { timeout: 15000 }, () => {
             { initialEntries: ["/"] }
         )
 
-        renderWithStore(<RouterProvider router={router} />, {
+        panel.renderWithStore(<RouterProvider router={router} />, {
             preloadedState: { account: { current: admin, status: "authenticated" } }
         })
 
