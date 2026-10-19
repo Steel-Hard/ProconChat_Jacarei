@@ -29,7 +29,12 @@ import {
     ConversationEventLogger,
     ConversationEventService,
 } from "./conversationEvent.service"
-import type { SessionClosing } from "../types/conversationEvent.types"
+import type {
+    RecordedConversationEvent,
+    ScheduleOfferReason,
+    SessionClosing,
+} from "../types/conversationEvent.types"
+import { offeredReasonOf } from "./scheduleOfferReason"
 import type {
     ConversationFlowResult,
     MotorDecisao,
@@ -252,6 +257,25 @@ export function createSchedulingFlow({
         }
     }
 
+    async function offeredReason(sessionId: string): Promise<ScheduleOfferReason | null> {
+        let recorded: RecordedConversationEvent[]
+        try {
+            recorded = await events.listBySession(sessionId)
+        } catch (err: unknown) {
+            logger.error(
+                "Failed to read schedule offer reason",
+                conversationEventFailureLog(sessionId, { type: "SCHEDULE_OFFERED" }, err),
+            )
+            return null
+        }
+        return offeredReasonOf(recorded)
+    }
+
+    async function reasonFromQuestion(questionId: number): Promise<ScheduleOfferReason> {
+        const perguntaResp = await motor.processarPergunta(questionId)
+        return perguntaResp.requer_presencial ? "REQUIRES_IN_PERSON" : "NOT_RESOLVED"
+    }
+
     async function bookChosenSlot(
         session: ActiveSession,
         phone: string,
@@ -291,10 +315,7 @@ export function createSchedulingFlow({
             }
         }
 
-        const perguntaResp = await motor.processarPergunta(questionId)
-        const reason = perguntaResp.requer_presencial
-            ? "REQUIRES_IN_PERSON"
-            : "NOT_RESOLVED"
+        const reason = (await offeredReason(session.id)) ?? (await reasonFromQuestion(questionId))
 
         try {
             const bookResult = await schedule.bookSlot({
