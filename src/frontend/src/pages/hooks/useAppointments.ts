@@ -10,6 +10,7 @@ import appointmentsApi from "@/store/api/appointments.api"
 import useAppSelector from "@/store/useAppSelector"
 import type AppointmentChip from "@/types/appointments/AppointmentChip.types"
 import type AppointmentChipCounts from "@/types/appointments/AppointmentChipCounts.types"
+import type AppointmentList from "@/types/appointments/AppointmentList.types"
 import type AppointmentListFilters from "@/types/appointments/AppointmentListFilters.types"
 import type AppointmentListItem from "@/types/appointments/AppointmentListItem.types"
 import type AppointmentListOrigin from "@/types/appointments/AppointmentListOrigin.types"
@@ -25,6 +26,11 @@ import formatDayMonth from "@/utils/formatDayMonth"
 import formatTime from "@/utils/formatTime"
 import toAppointmentListParams from "@/utils/toAppointmentListParams"
 import weekdayOf from "@/utils/weekdayOf"
+
+type ShownList = {
+    args: AppointmentListFilters
+    list: AppointmentList
+}
 
 type EmptyView = {
     title: string
@@ -69,6 +75,15 @@ function withoutOrder(filters: AppointmentListFilters): AppointmentListFilters {
     }
 }
 
+function sameResultSet(a: AppointmentListFilters, b: AppointmentListFilters): boolean {
+    return (
+        a.search === b.search &&
+        a.status === b.status &&
+        a.period === b.period &&
+        a.responsible === b.responsible
+    )
+}
+
 function useAppointments() {
     const { t } = useTranslation(["appointments", "common"])
     const { showToast } = useToast()
@@ -105,15 +120,23 @@ function useAppointments() {
     })
     const list = appointmentsApi.useGetAppointmentsQuery(args, { refetchOnMountOrArgChange: true })
     const [updateStatus] = appointmentsApi.useUpdateAppointmentStatusMutation()
-    const data = list.data
+    const current = list.currentData
+    const [shown, setShown] = useState<ShownList | null>(null)
+
+    if (current !== undefined && shown?.list !== current) {
+        setShown({ args, list: current })
+    }
+
+    const keepPrevious = shown !== null && sameResultSet(shown.args, args)
+    const data = current ?? (keepPrevious ? shown.list : undefined)
     const error = list.isError && !list.isFetching
     const loading = !error && data === undefined
 
     useEffect(() => {
-        if (data && data.total > 0 && filters.page > data.totalPages && !list.isFetching) {
-            applyFilters({ ...filters, page: data.totalPages }, true)
+        if (current && current.total > 0 && filters.page > current.totalPages) {
+            applyFilters({ ...filters, page: current.totalPages }, true)
         }
-    }, [data, filters, list.isFetching, applyFilters])
+    }, [current, filters, applyFilters])
 
     const linkState: AppointmentListOrigin = useMemo(
         () => ({ from: { pathname: location.pathname, search: location.search } }),
@@ -166,7 +189,7 @@ function useAppointments() {
     const chips: AppointmentChip[] = STATUS_FILTERS.map((value) => ({
         value,
         label: t(`chips.${value}`),
-        count: data ? data.chipCounts[CHIP_COUNT_KEYS[value]] : 0
+        count: list.data ? list.data.chipCounts[CHIP_COUNT_KEYS[value]] : 0
     }))
 
     const periodOptions = PERIODS.map((value) => ({
@@ -234,7 +257,6 @@ function useAppointments() {
         showToast(t(`common:${appointmentActionErrorKey(result.error)}`))
     }
 
-    const current = list.currentData
     const canOpenSingle = searching && searchState.settled && current?.total === 1
 
     const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {

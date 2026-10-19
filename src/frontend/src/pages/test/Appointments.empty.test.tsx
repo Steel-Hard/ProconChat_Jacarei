@@ -145,4 +145,58 @@ describe("Appointments.page: estados", () => {
         expect(screen.getByText("Maria Aparecida Santos")).toBeInTheDocument()
         expect(screen.queryByText("Carregando...")).not.toBeInTheDocument()
     })
+    it("não mostra o vazio dos filtros enquanto a busca nova não responde", async () => {
+        const searchReply = Promise.withResolvers<Reply>()
+        const page = await renderAppointmentsPage({
+            initialEntry: "/agendamentos?responsible=me",
+            handlers: {
+                "GET /api/v1/appointments": ({ url }) =>
+                    url.searchParams.has("search") ? searchReply.promise : emptyList()
+            }
+        })
+        expect(await screen.findByText(FILTERS_TEXT)).toBeInTheDocument()
+
+        await page.user.type(screen.getByRole("searchbox", { name: "Buscar" }), "Maria")
+
+        await waitFor(() => expect(page.listRequests().at(-1)?.get("search")).toBe("Maria"))
+        expect(screen.queryByText(FILTERS_TEXT)).not.toBeInTheDocument()
+        expect(screen.queryByText("Nenhum agendamento encontrado")).not.toBeInTheDocument()
+        expect(screen.getAllByText("Carregando...").length).toBeGreaterThan(0)
+
+        searchReply.resolve({
+            status: 200,
+            body: { data: buildAppointmentList([buildAppointmentListItem()]) }
+        })
+
+        expect(await screen.findByText("Maria Aparecida Santos")).toBeInTheDocument()
+    })
+
+    it("não diz que o chatbot não criou agendamentos enquanto a lista volta depois do Esc", async () => {
+        const listReply = Promise.withResolvers<Reply>()
+        const page = await renderAppointmentsPage({
+            initialEntry: "/agendamentos?period=all",
+            handlers: {
+                "GET /api/v1/appointments": ({ url }) =>
+                    url.searchParams.has("search") ? emptyList() : listReply.promise
+            }
+        })
+        const box = screen.getByRole("searchbox", { name: "Buscar" })
+        await page.user.type(box, "Zuleica")
+        expect(await screen.findByText(/Nada corresponde a “Zuleica”/)).toBeInTheDocument()
+
+        await page.user.type(box, "{Escape}")
+
+        expect(screen.queryByText(/Nada corresponde/)).not.toBeInTheDocument()
+        expect(
+            screen.queryByText("O chatbot ainda não criou agendamentos.")
+        ).not.toBeInTheDocument()
+        expect(screen.queryByText("Nenhum agendamento encontrado")).not.toBeInTheDocument()
+
+        listReply.resolve({
+            status: 200,
+            body: { data: buildAppointmentList([buildAppointmentListItem()]) }
+        })
+
+        expect(await screen.findByText("Maria Aparecida Santos")).toBeInTheDocument()
+    })
 })
