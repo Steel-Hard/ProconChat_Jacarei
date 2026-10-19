@@ -2,7 +2,7 @@ import { Provider } from "react-redux"
 import { render } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { createBrowserRouter, createMemoryRouter, RouterProvider } from "react-router-dom"
-import { vi } from "vitest"
+import { onTestFinished, vi } from "vitest"
 import buildAppointmentList from "@/testUtils/buildAppointmentList"
 import type PanelAccount from "@/types/account/PanelAccount.types"
 
@@ -44,6 +44,7 @@ async function renderAppointmentsPage({
     vi.stubEnv("VITE_API_URL", "http://api.test")
     vi.resetModules()
     const calls: Call[] = []
+    let waiting = 0
     const replies: Record<string, Handler> = {
         [`GET ${LIST_PATH}`]: () => ({ status: 200, body: { data: buildAppointmentList([]) } }),
         [`GET ${LIST_PATH}/pending-count`]: () => ({ status: 200, body: { data: { count: 0 } } }),
@@ -65,7 +66,13 @@ async function renderAppointmentsPage({
                 })
             }
 
-            return respond(await handler({ url, body }))
+            waiting += 1
+
+            try {
+                return respond(await handler({ url, body }))
+            } finally {
+                waiting -= 1
+            }
         })
     )
     const { default: createStore } = await import("@/store/createStore")
@@ -85,6 +92,22 @@ async function renderAppointmentsPage({
         ? createBrowserRouter(routes)
         : createMemoryRouter(routes, { initialEntries: [initialEntry] })
     const user = userEvent.setup()
+
+    function inFlight(): number {
+        const { queries, mutations } = store.getState().api
+
+        return [...Object.values(queries), ...Object.values(mutations)].filter(
+            (entry) => entry?.status === "pending"
+        ).length
+    }
+
+    onTestFinished(async () => {
+        await vi.waitFor(() => {
+            if (inFlight() > waiting) {
+                throw new Error("ainda há requisições em andamento")
+            }
+        })
+    })
 
     render(
         <Provider store={store}>
