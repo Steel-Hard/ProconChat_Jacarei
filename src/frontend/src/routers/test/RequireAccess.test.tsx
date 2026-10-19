@@ -35,7 +35,8 @@ describe("RequireAccess", () => {
     beforeAll(async () => {
         panel = await loadPanelRoutes([
             () => import("@/pages/NotFound.page"),
-            () => import("@/pages/UnderConstruction.page")
+            () => import("@/pages/UnderConstruction.page"),
+            () => import("@/pages/Appointments.page")
         ])
     })
 
@@ -69,10 +70,11 @@ describe("RequireAccess", () => {
         expect(router.state.location.pathname).toBe("/usuarios")
     })
 
-    it("mostra o Dashboard ao Admin em /", async () => {
-        renderAs("/", [], true)
+    it("leva o Admin de / para /agendamentos", async () => {
+        const { router } = renderAs("/", [], true)
 
-        expect(await screen.findByRole("heading", { name: "Painel" })).toBeInTheDocument()
+        expect(await screen.findByRole("heading", { name: "Agendamentos" })).toBeInTheDocument()
+        expect(router.state.location.pathname).toBe("/agendamentos")
     })
 
     it("mostra a NotFound em / à conta sem nenhuma tela permitida", async () => {

@@ -46,7 +46,6 @@ function renderRoutes(initialEntries: string[], preloadedState?: Partial<RootSta
 }
 
 const underConstructionRoutes: Array<[string, string]> = [
-    [ROUTES.dashboard, "Painel"],
     [ROUTES.reports, "Relatórios"],
     [ROUTES.content, "Conteúdo"],
     [ROUTES.sessions, "Sessões"],
@@ -56,6 +55,7 @@ const underConstructionRoutes: Array<[string, string]> = [
 ]
 
 const protectedRoutes: Array<[string, string]> = [
+    [ROUTES.dashboard, "Painel"],
     ...underConstructionRoutes,
     [ROUTES.appointments, "Agendamentos"],
     ["/agendamentos/1", "Detalhe do agendamento"],
@@ -217,6 +217,6 @@ describe("routes", () => {
 
         await user.click(await screen.findByRole("link", { name: "Vá para a página inicial." }))
 
-        expect(await screen.findByRole("heading", { name: "Painel" })).toBeInTheDocument()
+        expect(await screen.findByRole("heading", { name: "Agendamentos" })).toBeInTheDocument()
     })
 })
