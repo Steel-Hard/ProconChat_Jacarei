@@ -107,6 +107,30 @@ describe("Agendamentos com Postgres (integração)", () => {
         return found
     }
 
+    async function listItemsAcrossPages(
+        query: string,
+        ids: number[],
+    ): Promise<Map<string, { id: string; waiting_record: boolean }>> {
+        const wanted = ids.map(String)
+        const found = new Map<string, { id: string; waiting_record: boolean }>()
+        let page = 1
+        let totalPages = 1
+        do {
+            const res = await request(app)
+                .get(`/api/v1/appointments?${query}&limit=100&page=${page}`)
+                .set("Cookie", adminCookie)
+            expect(res.status).toBe(200)
+            for (const item of res.body.data.items as { id: string; waiting_record: boolean }[]) {
+                if (wanted.includes(item.id)) {
+                    found.set(item.id, item)
+                }
+            }
+            totalPages = res.body.data.totalPages
+            page++
+        } while (page <= totalPages)
+        return found
+    }
+
     it("busca por CPF com hash HMAC encontra agendamento digitado com e sem pontuação", async () => {
         const cpfDigits = "52998224725"
         const cpfHash = createHmac("sha256", process.env.CPF_HASH_SECRET as string)
@@ -757,8 +781,13 @@ describe("Agendamentos com Postgres (integração)", () => {
             idConfirmedFuture,
             idPendingPast,
         ])
+        const items = await listItemsAcrossPages("period=all", [idConfirmedPast, idConfirmedFuture, idPendingPast])
 
         expect(found).toEqual([String(idConfirmedPast)])
+        expect(items.size).toBe(3)
+        expect(items.get(String(idConfirmedPast))?.waiting_record).toBe(true)
+        expect(items.get(String(idConfirmedFuture))?.waiting_record).toBe(false)
+        expect(items.get(String(idPendingPast))?.waiting_record).toBe(false)
     })
 
     it("filtra a lista por responsável: sem responsável e um funcionário pelo id", async () => {
