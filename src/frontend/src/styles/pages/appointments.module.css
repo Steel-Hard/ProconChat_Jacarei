@@ -1,0 +1,122 @@
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.header {
+    min-width: 0;
+}
+
+.title {
+    font: 700 26px var(--font-heading);
+    letter-spacing: -0.01em;
+}
+
+.subtitle {
+    margin-top: 6px;
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.searchArea {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.searchBox {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 6px 6px 16px;
+    border: 1px solid var(--border-accent);
+    border-radius: 12px;
+    background: var(--bg-surface);
+}
+
+.searchLabel {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-primary);
+    white-space: nowrap;
+}
+
+.searchInput {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 4px;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: var(--text-body);
+    font-size: 15px;
+}
+
+.clear {
+    flex-shrink: 0;
+    padding: 7px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-surface);
+    color: var(--text-strong);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.clear:hover {
+    filter: brightness(0.94);
+}
+
+.hint {
+    padding-left: 4px;
+    font-size: 12.5px;
+    color: var(--text-muted);
+}
+
+.filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.card {
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg-surface);
+}
+
+.scroll {
+    overflow-x: auto;
+}
+
+.status {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 40px 20px;
+    font-size: 14px;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.alert {
+    color: var(--error-text);
+}
+
+.retry {
+    padding: 8px 14px;
+    border: 1px solid var(--border-input);
+    border-radius: 8px;
+    background: var(--bg-surface);
+    color: var(--color-primary);
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+}

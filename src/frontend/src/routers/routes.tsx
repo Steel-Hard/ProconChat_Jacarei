@@ -12,6 +12,7 @@ import type UnderConstructionTitle from "@/types/pages/UnderConstructionTitle.ty
 const UnderConstruction = lazy(() => import("@/pages/UnderConstruction.page"))
 const Login = lazy(() => import("@/pages/Login.page"))
 const WhatsApp = lazy(() => import("@/pages/WhatsApp.page"))
+const Appointments = lazy(() => import("@/pages/Appointments.page"))
 
 function previewRoutes(): RouteObject[] {
     if (!import.meta.env.DEV) {
@@ -54,7 +55,7 @@ const routes: RouteObject[] = [
                                 element: <PanelLayout />,
                                 children: [
                                     underConstruction(ROUTES.dashboard, "dashboard"),
-                                    underConstruction(ROUTES.appointments, "appointments"),
+                                    { path: ROUTES.appointments, element: <Appointments /> },
                                     underConstruction(
                                         ROUTES.appointmentDetail,
                                         "appointmentDetail"

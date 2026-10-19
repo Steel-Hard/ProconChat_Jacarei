@@ -46,7 +46,6 @@ function renderRoutes(initialEntries: string[], preloadedState?: Partial<RootSta
 
 const underConstructionRoutes: Array<[string, string]> = [
     [ROUTES.dashboard, "Painel"],
-    [ROUTES.appointments, "Agendamentos"],
     ["/agendamentos/1", "Detalhe do agendamento"],
     [ROUTES.reports, "Relatórios"],
     [ROUTES.content, "Conteúdo"],
@@ -58,6 +57,7 @@ const underConstructionRoutes: Array<[string, string]> = [
 
 const protectedRoutes: Array<[string, string]> = [
     ...underConstructionRoutes,
+    [ROUTES.appointments, "Agendamentos"],
     [ROUTES.whatsapp, "WhatsApp"]
 ]
 
@@ -127,6 +127,20 @@ describe("routes", () => {
                 true
             )
         )
+    })
+
+    it("renderiza a tela de Agendamentos com sessão, pedindo a lista e o contador", async () => {
+        await renderWithApiUrl([ROUTES.appointments], withSession)
+
+        expect(await screen.findByRole("heading", { name: "Agendamentos" })).toBeInTheDocument()
+        expect(screen.queryByText("Em construção.")).not.toBeInTheDocument()
+        expect(screen.getByRole("searchbox", { name: "Buscar" })).toBeInTheDocument()
+        await waitFor(() =>
+            expect(requestedUrls().some((url) => url.includes("/api/v1/appointments?"))).toBe(true)
+        )
+        expect(
+            requestedUrls().some((url) => url.endsWith("/api/v1/appointments/pending-count"))
+        ).toBe(true)
     })
 
     it("mostra a NotFound ao funcionário com todas as permissões em /whatsapp sem chamar a API do WhatsApp", async () => {
