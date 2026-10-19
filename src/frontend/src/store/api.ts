@@ -4,7 +4,7 @@ import baseQueryWithSessionRenewal from "@/store/baseQueryWithSessionRenewal"
 const api = createApi({
     reducerPath: "api",
     baseQuery: baseQueryWithSessionRenewal,
-    tagTypes: [],
+    tagTypes: ["Appointment", "AppointmentList", "AppointmentPendingCount"],
     endpoints: () => ({})
 })
 
