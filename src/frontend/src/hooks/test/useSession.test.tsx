@@ -37,7 +37,14 @@ async function renderSession(preloadedState?: Partial<RootState>) {
     )
     const result = renderHook(() => freshUseSession(), { wrapper })
 
-    return { ...result, store, authHandlers: freshAuthHandlers }
+    const { default: freshAppointmentsApi } = await import("@/store/api/appointments.api")
+
+    return {
+        ...result,
+        store,
+        authHandlers: freshAuthHandlers,
+        appointmentsApi: freshAppointmentsApi
+    }
 }
 
 afterEach(() => {
@@ -136,5 +143,26 @@ describe("useSession", () => {
         expect(fetchMock).not.toHaveBeenCalled()
         unmount()
         expect(handlers.unauthorizedHandler).toBeNull()
+    })
+    it("limpa o cache da API quando a sessão expira", async () => {
+        stubFetch(() => jsonResponse(500))
+        const {
+            store,
+            authHandlers: handlers,
+            appointmentsApi
+        } = await renderSession({
+            account: { current: { ...user, permissions: [] }, status: "authenticated" }
+        })
+        store.dispatch(
+            appointmentsApi.util.upsertQueryEntries([
+                { endpointName: "getPendingAppointmentsCount", arg: undefined, value: 3 }
+            ])
+        )
+        expect(Object.keys(store.getState().api.queries)).toHaveLength(1)
+
+        act(() => handlers.unauthorizedHandler?.())
+
+        expect(store.getState().account.current).toBeNull()
+        expect(Object.keys(store.getState().api.queries)).toHaveLength(0)
     })
 })

@@ -3,6 +3,7 @@ import { screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import ToastProvider from "@/components/ToastProvider"
+import appointmentsApi from "@/store/api/appointments.api"
 import useLogout from "@/hooks/useLogout"
 import renderWithStore from "@/testUtils/renderWithStore"
 import type PanelAccount from "@/types/account/PanelAccount.types"
@@ -102,5 +103,25 @@ describe("useLogout", () => {
 
         expect(await screen.findByText("Tela de login")).toBeInTheDocument()
         await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    })
+    it("limpa o cache da API ao sair, inclusive a última busca", async () => {
+        const user = userEvent.setup()
+        stubFetch(() => new Response(null, { status: 204 }))
+        const { store } = renderLogout()
+        store.dispatch(
+            appointmentsApi.util.upsertQueryEntries([
+                {
+                    endpointName: "getPendingAppointmentsCount",
+                    arg: undefined,
+                    value: 3
+                }
+            ])
+        )
+        expect(Object.keys(store.getState().api.queries)).toHaveLength(1)
+
+        await user.click(screen.getByRole("button", { name: "Sair" }))
+
+        expect(await screen.findByText("Tela de login")).toBeInTheDocument()
+        expect(Object.keys(store.getState().api.queries)).toHaveLength(0)
     })
 })
