@@ -501,5 +501,23 @@ describe("conversationFlow.service", () => {
                 code: "57P01",
             })
         })
+
+        test("rascunho incompleto volta para AWAITING_ATTENDEE sem ler os eventos da conversa", async () => {
+            findOrCreateActive.mockResolvedValueOnce(
+                sessionAt("AWAITING_SLOT", { draft: buildBookingDraft({ cpf_hash: undefined }) }),
+            )
+            getAvailableSlots.mockResolvedValueOnce(mockSlots)
+
+            const result = await processIncomingMessage({
+                phone: "5511999999999",
+                optionId: slotOptionId(mockSlots[0]!),
+            })
+
+            expect(listEvents).not.toHaveBeenCalled()
+            expect(processarPergunta).not.toHaveBeenCalled()
+            expect(bookSlot).not.toHaveBeenCalled()
+            expect(updateNavigationState).toHaveBeenCalledWith("s1", expect.objectContaining({ draft: null }))
+            expect(result.reply.step).toBe("AWAITING_ATTENDEE")
+        })
     })
 })
