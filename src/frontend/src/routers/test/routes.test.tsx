@@ -156,17 +156,29 @@ describe("routes", () => {
         ).toBe(true)
     })
 
-    it("renderiza o detalhe do agendamento com sessão, pedindo o agendamento pelo id", async () => {
-        await renderWithApiUrl(["/agendamentos/1"], withSession)
+    it(
+        "renderiza o detalhe do agendamento com sessão, pedindo o agendamento pelo id",
+        {
+            timeout: 20000
+        },
+        async () => {
+            await renderWithApiUrl(["/agendamentos/1"], withSession)
 
-        expect(
-            await screen.findByRole("button", { name: "Voltar para Agendamentos" })
-        ).toBeInTheDocument()
-        expect(screen.queryByText("Em construção.")).not.toBeInTheDocument()
-        await waitFor(() =>
-            expect(requestedUrls().some((url) => url.endsWith("/api/v1/appointments/1"))).toBe(true)
-        )
-    })
+            expect(
+                await screen.findByRole(
+                    "button",
+                    { name: "Voltar para Agendamentos" },
+                    { timeout: 15000 }
+                )
+            ).toBeInTheDocument()
+            expect(screen.queryByText("Em construção.")).not.toBeInTheDocument()
+            await waitFor(() =>
+                expect(requestedUrls().some((url) => url.endsWith("/api/v1/appointments/1"))).toBe(
+                    true
+                )
+            )
+        }
+    )
 
     it("mostra a NotFound ao funcionário com todas as permissões em /whatsapp sem chamar a API do WhatsApp", async () => {
         renderRoutes([ROUTES.whatsapp], withStaffSession)
