@@ -1,8 +1,10 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
+import type { ComponentType } from "react"
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
-import App from "@/App"
 
 const LOAD_TIMEOUT_MS = 4000
+
+let App: ComponentType
 
 const admin = {
     id: 1,
@@ -14,10 +16,17 @@ const admin = {
 
 function stubMe() {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-        const url = typeof input === "string" ? input : input.toString()
+        const url = input instanceof Request ? input.url : input.toString()
 
         if (url.endsWith("/api/v1/auth/me")) {
             return new Response(JSON.stringify({ data: admin }), { status: 200 })
+        }
+
+        if (url.endsWith("/api/v1/appointments/pending-count")) {
+            return new Response(JSON.stringify({ data: { count: 0 } }), {
+                status: 200,
+                headers: { "Content-Type": "application/json" }
+            })
         }
 
         return new Response(null, { status: 404 })
@@ -28,6 +37,9 @@ function stubMe() {
 
 describe("App", { timeout: 15000 }, () => {
     beforeAll(async () => {
+        vi.stubEnv("VITE_API_URL", "http://api.test")
+        vi.resetModules()
+        App = (await import("@/App")).default
         await import("@/pages/UnderConstruction.page")
         await import("@/pages/NotFound.page")
     })
@@ -40,6 +52,10 @@ describe("App", { timeout: 15000 }, () => {
         window.history.pushState({}, "", "/")
         vi.unstubAllGlobals()
         vi.restoreAllMocks()
+    })
+
+    afterAll(() => {
+        vi.unstubAllEnvs()
     })
 
     it("renderiza o painel na rota raiz com sessão", async () => {

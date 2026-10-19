@@ -3,9 +3,21 @@ import { screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import ToastProvider from "@/components/ToastProvider"
+import appointmentsApi from "@/store/api/appointments.api"
 import useLogout from "@/hooks/useLogout"
 import renderWithStore from "@/testUtils/renderWithStore"
+import buildAppointmentList from "@/testUtils/buildAppointmentList"
+import type AppointmentListFilters from "@/types/appointments/AppointmentListFilters.types"
 import type PanelAccount from "@/types/account/PanelAccount.types"
+
+const FICTITIOUS_CPF = "11122233344"
+const LIST_FILTERS: AppointmentListFilters = {
+    status: "all",
+    period: "upcoming",
+    responsible: "all",
+    page: 1
+}
+const EMPTY_LIST = buildAppointmentList([])
 
 const account: PanelAccount = {
     id: 1,
@@ -102,5 +114,35 @@ describe("useLogout", () => {
 
         expect(await screen.findByText("Tela de login")).toBeInTheDocument()
         await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    })
+    it("limpa o cache da API ao sair, inclusive a última busca", async () => {
+        const user = userEvent.setup()
+        stubFetch(() => new Response(null, { status: 204 }))
+        const { store } = renderLogout()
+        store.dispatch(
+            appointmentsApi.util.upsertQueryEntries([
+                {
+                    endpointName: "getPendingAppointmentsCount",
+                    arg: undefined,
+                    value: 3
+                },
+                {
+                    endpointName: "getAppointments",
+                    arg: { ...LIST_FILTERS, search: FICTITIOUS_CPF },
+                    value: EMPTY_LIST
+                }
+            ])
+        )
+        expect(Object.keys(store.getState().api.queries)).toHaveLength(2)
+        expect(JSON.stringify(store.getState().api)).toContain(FICTITIOUS_CPF)
+
+        await user.click(screen.getByRole("button", { name: "Sair" }))
+
+        expect(await screen.findByText("Tela de login")).toBeInTheDocument()
+        expect(Object.keys(store.getState().api.queries)).toHaveLength(0)
+        expect(
+            Object.keys(store.getState().api.queries).some((key) => key.includes(FICTITIOUS_CPF))
+        ).toBe(false)
+        expect(JSON.stringify(store.getState().api)).not.toContain(FICTITIOUS_CPF)
     })
 })

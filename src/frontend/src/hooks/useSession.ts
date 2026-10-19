@@ -1,6 +1,7 @@
 import { useEffect } from "react"
 import fetchCurrentAccount from "@/services/auth/fetchCurrentAccount"
 import onUnauthorized from "@/services/http/onUnauthorized"
+import api from "@/store/api"
 import accountSlice from "@/store/slices/account.slice"
 import useAppDispatch from "@/store/useAppDispatch"
 import useAppSelector from "@/store/useAppSelector"
@@ -11,7 +12,10 @@ function useSession(): AccountStatus {
     const status = useAppSelector((state) => state.account.status)
 
     useEffect(() => {
-        onUnauthorized(() => dispatch(accountSlice.actions.accountCleared()))
+        onUnauthorized(() => {
+            dispatch(accountSlice.actions.accountCleared())
+            dispatch(api.util.resetApiState())
+        })
 
         return () => {
             onUnauthorized(null)

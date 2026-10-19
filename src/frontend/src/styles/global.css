@@ -103,6 +103,15 @@
     --switch-off: #c9c5d8;
     --chat-bg: #efe7dd;
     --chat-text: #111b21;
+    --seal-neutral-bg: #e6e2f6;
+    --seal-neutral-text: #3a3072;
+    --seal-warning-bg: #fcefd6;
+    --seal-warning-text: #7a4f00;
+    --chip-waiting-bg: #fff8e8;
+    --chip-waiting-text: #7a4f00;
+    --chip-waiting-border: #e9c98a;
+    --chip-waiting-active: #7a4f00;
+    --unassigned-text: #8a5a00;
     --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
     --overlay: rgba(24, 19, 48, 0.45);
     --focus-ring: #b9b0e6;

@@ -2,7 +2,18 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { act, renderHook, waitFor } from "@testing-library/react"
 import type { ReactNode } from "react"
 import { Provider } from "react-redux"
+import buildAppointmentList from "@/testUtils/buildAppointmentList"
+import type AppointmentListFilters from "@/types/appointments/AppointmentListFilters.types"
 import type RootState from "@/types/store/RootState.types"
+
+const FICTITIOUS_CPF = "11122233344"
+const LIST_FILTERS: AppointmentListFilters = {
+    status: "all",
+    period: "upcoming",
+    responsible: "all",
+    page: 1
+}
+const EMPTY_LIST = buildAppointmentList([])
 
 const ME_URL = "http://api.test/api/v1/auth/me"
 const REFRESH_URL = "http://api.test/api/v1/auth/refresh"
@@ -37,7 +48,14 @@ async function renderSession(preloadedState?: Partial<RootState>) {
     )
     const result = renderHook(() => freshUseSession(), { wrapper })
 
-    return { ...result, store, authHandlers: freshAuthHandlers }
+    const { default: freshAppointmentsApi } = await import("@/store/api/appointments.api")
+
+    return {
+        ...result,
+        store,
+        authHandlers: freshAuthHandlers,
+        appointmentsApi: freshAppointmentsApi
+    }
 }
 
 afterEach(() => {
@@ -136,5 +154,36 @@ describe("useSession", () => {
         expect(fetchMock).not.toHaveBeenCalled()
         unmount()
         expect(handlers.unauthorizedHandler).toBeNull()
+    })
+    it("limpa o cache da API quando a sessão expira", async () => {
+        stubFetch(() => jsonResponse(500))
+        const {
+            store,
+            authHandlers: handlers,
+            appointmentsApi
+        } = await renderSession({
+            account: { current: { ...user, permissions: [] }, status: "authenticated" }
+        })
+        store.dispatch(
+            appointmentsApi.util.upsertQueryEntries([
+                { endpointName: "getPendingAppointmentsCount", arg: undefined, value: 3 },
+                {
+                    endpointName: "getAppointments",
+                    arg: { ...LIST_FILTERS, search: FICTITIOUS_CPF },
+                    value: EMPTY_LIST
+                }
+            ])
+        )
+        expect(Object.keys(store.getState().api.queries)).toHaveLength(2)
+        expect(JSON.stringify(store.getState().api)).toContain(FICTITIOUS_CPF)
+
+        act(() => handlers.unauthorizedHandler?.())
+
+        expect(store.getState().account.current).toBeNull()
+        expect(Object.keys(store.getState().api.queries)).toHaveLength(0)
+        expect(
+            Object.keys(store.getState().api.queries).some((key) => key.includes(FICTITIOUS_CPF))
+        ).toBe(false)
+        expect(JSON.stringify(store.getState().api)).not.toContain(FICTITIOUS_CPF)
     })
 })

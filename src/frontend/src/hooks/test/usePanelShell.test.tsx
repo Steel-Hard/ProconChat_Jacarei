@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { describe, expect, it } from "vitest"
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { Provider } from "react-redux"
 import { MemoryRouter } from "react-router-dom"
 import { act, renderHook } from "@testing-library/react"
@@ -7,7 +7,12 @@ import ToastProvider from "@/components/ToastProvider"
 import usePanelShell from "@/hooks/usePanelShell"
 import createStore from "@/store/createStore"
 import mockMatchMedia from "@/testUtils/mockMatchMedia"
+import withPendingCount from "@/testUtils/withPendingCount"
 import type PanelAccount from "@/types/account/PanelAccount.types"
+
+vi.hoisted(() => {
+    vi.stubEnv("VITE_API_URL", "http://api.test")
+})
 
 const account: PanelAccount = {
     id: 1,
@@ -35,6 +40,18 @@ function renderShell(width: number) {
 }
 
 describe("usePanelShell", () => {
+    beforeEach(() => {
+        vi.stubGlobal("fetch", vi.fn(withPendingCount()))
+    })
+
+    afterEach(() => {
+        vi.unstubAllGlobals()
+    })
+
+    afterAll(() => {
+        vi.unstubAllEnvs()
+    })
+
     it("devolve a conta da sessão", () => {
         const { result } = renderShell(1440)
 

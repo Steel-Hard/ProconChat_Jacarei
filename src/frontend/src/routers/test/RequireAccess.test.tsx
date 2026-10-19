@@ -1,13 +1,14 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 import { screen } from "@testing-library/react"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
-import routes from "@/routers/routes"
-import renderWithStore from "@/testUtils/renderWithStore"
+import loadPanelRoutes from "@/testUtils/loadPanelRoutes"
 import type PermissionKey from "@/types/account/PermissionKey.types"
 
+let panel: Awaited<ReturnType<typeof loadPanelRoutes>>
+
 function renderAs(path: string, permissions: PermissionKey[], isAdmin = false) {
-    const router = createMemoryRouter(routes, { initialEntries: [path] })
-    const result = renderWithStore(<RouterProvider router={router} />, {
+    const router = createMemoryRouter(panel.routes, { initialEntries: [path] })
+    const result = panel.renderWithStore(<RouterProvider router={router} />, {
         preloadedState: {
             account: {
                 current: {
@@ -31,6 +32,17 @@ async function expectNotFound() {
 }
 
 describe("RequireAccess", () => {
+    beforeAll(async () => {
+        panel = await loadPanelRoutes([
+            () => import("@/pages/NotFound.page"),
+            () => import("@/pages/UnderConstruction.page")
+        ])
+    })
+
+    afterAll(() => {
+        vi.unstubAllEnvs()
+    })
+
     beforeEach(() => {
         vi.stubGlobal(
             "fetch",

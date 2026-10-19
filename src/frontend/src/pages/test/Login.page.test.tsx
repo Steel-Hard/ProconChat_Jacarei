@@ -1,10 +1,10 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 import { screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import LANGUAGE_STORAGE_KEY from "@/i18n/languageStorageKey"
-import routes from "@/routers/routes"
-import renderWithStore from "@/testUtils/renderWithStore"
+import loadPanelRoutes from "@/testUtils/loadPanelRoutes"
+import withPendingCount from "@/testUtils/withPendingCount"
 import type RootState from "@/types/store/RootState.types"
 
 const admin = {
@@ -19,13 +19,15 @@ const anonymous: Partial<RootState> = { account: { current: null, status: "anony
 
 function stubLogin(response: () => Response | Promise<Response>) {
     const fetchMock = vi.fn(() => Promise.resolve(response()))
-    vi.stubGlobal("fetch", fetchMock)
+    vi.stubGlobal("fetch", vi.fn(withPendingCount(fetchMock)))
     return fetchMock
 }
 
+let panel: Awaited<ReturnType<typeof loadPanelRoutes>>
+
 function renderLogin(entry = "/login", preloadedState: Partial<RootState> = anonymous) {
-    const router = createMemoryRouter(routes, { initialEntries: [entry] })
-    const result = renderWithStore(<RouterProvider router={router} />, { preloadedState })
+    const router = createMemoryRouter(panel.routes, { initialEntries: [entry] })
+    const result = panel.renderWithStore(<RouterProvider router={router} />, { preloadedState })
 
     return { ...result, router }
 }
@@ -37,8 +39,23 @@ async function signIn() {
     await user.click(screen.getByRole("button", { name: "Entrar" }))
 }
 
+beforeAll(async () => {
+    panel = await loadPanelRoutes([
+        () => import("@/pages/Login.page"),
+        () => import("@/pages/UnderConstruction.page")
+    ])
+})
+
+beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn(withPendingCount()))
+})
+
 afterEach(() => {
     vi.unstubAllGlobals()
+})
+
+afterAll(() => {
+    vi.unstubAllEnvs()
 })
 
 describe("LoginPage", () => {

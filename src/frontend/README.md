@@ -38,15 +38,15 @@ O CI (`.github/workflows/ci.yml`) roda `format:check`, `lint`, `build` e `test:r
 - `components/`: componentes compartilhados entre telas (`Nome.tsx`), inclusive o `PanelShell` (o conteúdo do `PanelLayout`) e o `ChangePasswordDialog`.
 - `hooks/`: hooks compartilhados (`useSession`, `useLogout`, `useChangePasswordForm`, `useMediaQuery`, `useIsDocked`, `useCompactTable`, `useShowAccountEmail`, `useNavBadges`, `useToast`).
 - `contexts/`: contextos React (`toastContext`).
-- `navigation/`: itens do menu, regras de acesso e trilha (`navGroups`, `permissionKeys`, `canAccess`, `visibleNavGroups`, `firstAllowedPath`, `activeNavKey`, `breadcrumbFor`).
+- `navigation/`: itens do menu, regras de acesso e trilha (`navGroups`, `permissionKeys`, `canAccess`, `hasPermission`, `visibleNavGroups`, `firstAllowedPath`, `activeNavKey`, `breadcrumbFor`).
 - `status/`: cores e ordem dos status de agendamento e dos desfechos de conversa, e as cores da situação do WhatsApp.
 - `i18n/`: configuração do i18next (um símbolo por arquivo). `locales/pt-BR/<namespace>.json`: os textos.
 - `store/`: Redux Toolkit e RTK Query (`api.ts`, `baseQueryWithSessionRenewal.ts`, `rootReducer.ts`, `createStore.ts`, `store.ts`, `useAppDispatch.ts`, `useAppSelector.ts` e `slices/`).
 - `services/http/`: cliente HTTP, um arquivo por função (`apiUrl`, `get`, `post`, `put`, `patch`, `del`, `request`, `parseResponse`, `HttpError`, `refreshSession`, `onUnauthorized`). `services/auth/`: as chamadas de `/api/v1/auth` (`fetchCurrentAccount`, `signIn`, `signOut`, `changePassword` e `toPanelAccount`). `services/whatsapp/`: teste de conexão e salvar da configuração do WhatsApp (`testWhatsAppConnection`, `saveWhatsAppSettings`), fora do RTK Query porque levam o token e o App Secret digitados.
 - `styles/`: `global.css` (fontes, cores e reset) e CSS Modules em `styles/<components|layouts|pages>/<nome>.module.css`.
 - `types/<dominio>/<Nome>.types.ts`: tipos exportados, um por arquivo.
-- `utils/`: funções puras (`formatDate`, `initialsOf`, `safeRedirectPath`, `loginPathFor`).
-- `testUtils/`: apoio aos testes (`renderWithStore`, `mockMatchMedia`, `setViewportWidth`).
+- `utils/`: funções puras (`formatDate`, `formatTime`, `formatDayMonth`, `weekdayOf`, `initialsOf`, `safeRedirectPath`, `loginPathFor`, e as da lista de agendamentos: `appointmentListDefaults`, `parseAppointmentListParams`, `toAppointmentListParams`, `appointmentStatusFilters`, `appointmentPeriods`, `appointmentResponsibleFilters`, `minAppointmentSearchLength`, `defaultSortMode`, `appointmentActionErrorKey`).
+- `testUtils/`: apoio aos testes (`renderWithStore`, `mockMatchMedia`, `setViewportWidth`, e os da tela de Agendamentos: `renderAppointmentsPage`, `buildAppointmentList`, `buildAppointmentListItem`, `buildAppointmentRowView`, `appointmentTableTexts`).
 
 ## Convenções
 
@@ -65,6 +65,8 @@ Só pt-BR (`SUPPORTED_LANGUAGES = ["pt-BR"]`, fallback `pt-BR`). A estrutura do 
 - Redux Toolkit para estado de cliente compartilhado. A conta logada fica no slice `account` (`store/slices/account.slice.ts`): `state.account.current` (a conta ou `null`) e `state.account.status` (`"unknown"` até o `/me` responder, `"authenticated"` ou `"anonymous"`). `accountLoaded` grava a conta e leva a `authenticated`; `accountCleared` limpa a conta e leva a `anonymous`. Leia com `useAppSelector` e escreva com `useAppDispatch`. A store vive só em memória.
 - RTK Query (`store/api.ts`) para dado do servidor, com endpoints injetados por domínio em `store/api/<dominio>.api.ts`. A `baseQuery` (`store/baseQueryWithSessionRenewal.ts`) usa `VITE_API_URL`, `credentials: "include"` e `Accept-Language`, sem `Authorization`. No 401 ela renova a sessão como o cliente HTTP (mesmo `refreshSession`, mesmo `onUnauthorized`) e repete a query uma vez.
 - Testes de componente que leem a store usam `renderWithStore(ui, { preloadedState })`.
+- A busca da tela de Agendamentos fica no slice `appointmentSearch` (`state.appointmentSearch.term`, ações `searchChanged` e `searchCleared`), nunca na URL nem no `history.state`. O `accountCleared` também apaga o termo.
+- "Sair" e a sessão expirada (`onUnauthorized` registrado pelo `useSession`) despacham `api.util.resetApiState()` junto com `accountCleared`, para o cache do RTK Query (inclusive o argumento da última busca) não sobrar para a próxima conta na mesma aba.
 - Segredos digitados (token de acesso e App Secret do WhatsApp) nunca entram na store: o RTK Query guarda o argumento de cada mutation em `state.api.mutations`. Por isso o teste de conexão e o salvar usam `services/whatsapp/` sobre o cliente HTTP, e o valor digitado fica só no estado React do hook da tela até salvar, descartar ou cancelar.
 
 ## Autenticação no cliente
@@ -87,7 +89,7 @@ Toda rota protegida é renderizada dentro do `PanelLayout`: menu lateral (`Sideb
 
 - Menu por permissão: `navigation/` define os itens, a trilha e quem vê cada item. O Admin vê tudo; WhatsApp é só do Admin; "Gerenciar agendamentos" inclui "Ver agendamentos". Esconder o item não é controle de acesso: a API valida de novo. Os rótulos ficam em `common:navigation`.
 - Conta logada: vem do `/me` ou do login (`accountLoaded`). Com conta `null` o menu fica vazio e o topo não mostra o bloco da conta. "Minha conta" tem "Alterar minha senha" e "Sair" (ver "Autenticação no cliente").
-- Contador do menu: `hooks/useNavBadges.ts` devolve `{ [chave]: { count, label } }`, hoje vazio. A #85 troca a implementação para os agendamentos pendentes. O contador só aparece com `count > 0`.
+- Contador do menu: `hooks/useNavBadges.ts` devolve `{ appointments: { count, label } }` com o número de `GET /api/v1/appointments/pending-count`, só para quem acessa Agendamentos e só com `count > 0`. Com `0`, erro ou conta sem acesso, devolve `{}` e não chama a API. O texto oculto fica em `common:navigation.pendingBadge`.
 - Limites de largura: menu encaixado a partir de 1200 px (`useIsDocked`; abaixo vira gaveta aberta pelo botão "Menu"); `useCompactTable()` é `true` até 1431 px e `false` a partir de 1432 px; o e-mail da conta aparece a partir de 940 px (`useShowAccountEmail`).
 - Componentes em `components/`:
     - `StatusBadge`: selo de status de agendamento (`kind="appointment"`), de desfecho de conversa (`kind="outcome"`) e da situação do WhatsApp (`kind="whatsapp"`: `OPERATING`, `PAUSED`, `INVALID_CREDENTIALS`, `NOT_VERIFIED`, `NOT_CONFIGURED`), com rótulo em `common:status` e cores em `status/`.
@@ -96,9 +98,25 @@ Toda rota protegida é renderizada dentro do `PanelLayout`: menu lateral (`Sideb
     - `ConfirmDialog`: modal de confirmação com conteúdo extra opcional e `tone="danger"`. Com `submitOnEnter`, o conteúdo fica num `<form>`: Enter num campo aciona o confirmar (só se ele estiver habilitado e não ocupado), o confirmar vira `type="submit"` e o foco inicial vai para o primeiro campo. Sem a prop, o foco inicial fica no cancelar.
     - `ToastProvider` + `useToast()`: aviso temporário (2600 ms), um por vez.
     - `UnsavedChangesBar`: "N alterações não salvas", lista de pendentes ao passar o mouse, focar ou tocar, "Descartar" e "Salvar alterações". Com `saveDisabled`, o Salvar fica travado mesmo com alterações; com `saveHint`, o motivo aparece ao lado e vira a descrição acessível do botão.
+    - `Seal`: selo neutro (`tone="neutral"`) ou de alerta (`tone="warning"`), como "Por representante" e "Fora da grade atual".
+    - `Pagination`: contagem, "Página X de Y", "‹ Anterior" e "Próxima ›", desabilitados nas pontas. Sem mais de uma página, só a contagem.
+    - Partes da lista de agendamentos, que recebem os textos já traduzidos por props: `AppointmentStatusChips`, `AppointmentListFilters`, `AppointmentSortSelect`, `AppointmentTable` (com `AppointmentSortHeader`, `AppointmentRow` e `AppointmentCompactRow`), `AppointmentProtocolLink` e `AppointmentClaimButton`.
     - `LastChangeNote`: "Última alteração por [nome] em [data]". Recebe `{ changedBy, changedAt }`, com `changedAt` em ISO 8601 com fuso, e mostra a data em dd/mm/aaaa no fuso de Brasília por `utils/formatDate.ts`. Sem alteração ou com data inválida, não mostra nada. O `formatDate` também aceita data sem hora (`AAAA-MM-DD`, como uma coluna `DATE`) e a formata como está, sem conversão de fuso.
-- Telas liberadas no menu (`navigation/navItemsReady.ts`): só WhatsApp (#54). As outras rotas continuam com "Em construção" até a issue de cada tela.
+- Telas liberadas no menu (`navigation/navItemsReady.ts`): Agendamentos (#85) e WhatsApp (#54). As outras rotas, inclusive o detalhe do agendamento (`/agendamentos/:id`, #86), continuam com "Em construção" até a issue de cada tela.
 - Prévia: com `npm run dev`, a rota `/dev/layout` mostra o layout com uma conta Admin de exemplo e um exemplo de cada componente. Ela só existe em desenvolvimento e não entra no build de produção, nem os textos dela.
+
+## Tela de Agendamentos
+
+Rota `/agendamentos`, para quem tem Ver ou Gerenciar agendamentos (e o Admin). A página `pages/Appointments.page.tsx` só renderiza; a lógica fica em `pages/hooks/useAppointments.ts` e a busca em `pages/hooks/useAppointmentSearch.ts`. Os textos ficam no namespace `appointments`, e os dias da semana em `common:weekdays`.
+
+- Endpoints em `store/api/appointments.api.ts`: `getAppointments` (sempre com `limit=20`, `search` só com 2 ou mais caracteres depois do `trim`, `sortBy`/`sortOrder` só quando a pessoa escolheu uma ordem), `getPendingAppointmentsCount`, `getAppointment` e `updateAppointmentStatus`. Tags de cache em `store/api.ts`: `Appointment`, `AppointmentList` e `AppointmentPendingCount`. A mudança de status grava o detalhe devolvido em `getAppointment(id)` e invalida a lista e o contador, com sucesso ou erro.
+- Status, período, responsável, ordem e página ficam na URL (`utils/parseAppointmentListParams.ts` e `utils/toAppointmentListParams.ts`), sem os valores padrão. Valor inválido cai no padrão e não vai para a API. Mudar filtro, busca ou período volta à página 1 e à ordem padrão. A nota da ordem padrão do rodapé vem de `utils/defaultSortMode.ts`.
+- A busca fica fora da URL (CPF digitado na recepção não pode ir para o histórico do navegador): só no slice `appointmentSearch`, de onde volta quando a pessoa sai do detalhe. A busca dispara depois de uma pausa curta na digitação. Enter abre o único resultado quando a resposta do termo atual já chegou; Esc e "Limpar" apagam a busca.
+- A linha abre o detalhe levando no `state` só a origem (`{ from: { pathname, search } }`). O protocolo é um link, para quem usa o teclado.
+- "Assumir" aparece só na linha de um pendente e só para quem gerencia agendamentos (`navigation/hasPermission.ts`), age na hora e mostra o aviso. O erro vira mensagem por `utils/appointmentActionErrorKey.ts` (`common:appointmentActions`).
+- Até 1431 px a tabela fica compacta e a ordem é escolhida em "Ordenar por".
+- Abrir a lista busca de novo o contador do menu.
+- Fora desta tela por enquanto: o calendário semanal e o filtro por um funcionário específico (#87 e #62).
 
 ## Tela de WhatsApp
 
