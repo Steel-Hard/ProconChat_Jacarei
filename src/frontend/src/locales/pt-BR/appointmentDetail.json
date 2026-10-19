@@ -1,0 +1,204 @@
+{
+    "meta": {
+        "title": "Agendamento {{protocol}} - ProconChat",
+        "fallbackTitle": "Detalhe do agendamento - ProconChat"
+    },
+    "back": "Voltar para Agendamentos",
+    "backIcon": "←",
+    "notFound": "Agendamento não encontrado.",
+    "loadFailed": "Não foi possível carregar o agendamento.",
+    "retry": "Tentar novamente",
+    "dateTime": "{{date}} às {{time}}",
+    "header": {
+        "protocol": "Protocolo {{protocol}}",
+        "subtitle": "{{weekday}}, {{date}} às {{time}} · Criado pelo chatbot em {{created}}",
+        "seals": {
+            "representative": "Comparece por representante",
+            "rescheduled": "Remarcado pelo cidadão",
+            "offGrid": "Fora da grade atual"
+        }
+    },
+    "facts": {
+        "title": "Dados do agendamento",
+        "holder": "Titular",
+        "cpf": "CPF do titular",
+        "datetime": "Data e hora",
+        "datetimeValue": "{{date}} · {{time}}",
+        "status": "Status",
+        "responsible": "Responsável",
+        "unassigned": "Sem responsável",
+        "attendance": "Comparecimento",
+        "holderAttends": "Titular comparece",
+        "representativeAttends": "Comparece por representante",
+        "reason": "Motivo do agendamento",
+        "reasons": {
+            "requiresInPerson": "A pergunta exige atendimento presencial",
+            "notResolved": "O cidadão respondeu que a dúvida não foi resolvida"
+        },
+        "original": "Data original",
+        "origin": "Origem no chatbot",
+        "originValue": "{{category}} → {{question}}",
+        "representativeNotice": "O titular indicou no chatbot que outra pessoa comparecerá em seu nome. Nome e CPF acima são sempre do titular; confira os documentos exigidos para representante."
+    },
+    "documents": {
+        "title": "Documentos solicitados pelo chatbot",
+        "note": "Lista enviada ao cidadão em {{date}}, no momento do agendamento. Alterações posteriores na configuração não mudam esta lista.",
+        "configNotice": "A configuração atual de documentos é diferente desta lista. O cidadão foi orientado a trazer os itens abaixo.",
+        "holderGroup": "Quando o próprio titular comparece",
+        "representativeGroup": "Quando um representante comparece",
+        "questionGroup": "Documentos úteis para esta dúvida",
+        "emptyGroup": "Nenhum documento nesta lista",
+        "emptyQuestion": "Nenhum documento adicional para esta dúvida"
+    },
+    "timeline": {
+        "title": "Linha do tempo da conversa de origem",
+        "note": "O sistema registra apenas os passos percorridos, não o texto digitado pelo cidadão.",
+        "empty": "Os passos desta conversa não estão disponíveis.",
+        "ai": "Gerado com auxílio de IA",
+        "titles": {
+            "started": "Início da conversa",
+            "categoryChosen": "Categoria escolhida",
+            "questionChosen": "Pergunta escolhida",
+            "answerSent": "Resposta entregue",
+            "resolvedAnswered": "A dúvida foi resolvida?",
+            "scheduleOffered": "Agendamento oferecido",
+            "noSlot": "Não havia horário disponível na janela de agendamento",
+            "scheduleDeclined": "O cidadão preferiu não agendar",
+            "attendeeChosen": "Escolheu quem vai comparecer",
+            "phoneNoticeShown": "Informado de que receberá avisos sobre o agendamento neste número (lembrete e cancelamento)",
+            "appointmentCreated": "Agendamento criado",
+            "appointmentConsulted": "Consultou o agendamento",
+            "appointmentRescheduled": "Remarcou o agendamento",
+            "appointmentCanceled": "Cancelou o agendamento",
+            "abandoned": "Conversa abandonada",
+            "unknown": "Passo registrado"
+        },
+        "details": {
+            "started": "Cidadão iniciou o atendimento pelo WhatsApp e recebeu o aviso de que as orientações não têm caráter jurídico vinculante.",
+            "category": "{{title}}",
+            "question": "{{title}}",
+            "answerUsed": "Texto complementar gerado para contextualizar a resposta.",
+            "answerFailed": "Complemento por IA indisponível · enviado apenas o texto oficial.",
+            "resolvedYes": "Resposta do cidadão: Sim",
+            "resolvedNo": "Resposta do cidadão: Não",
+            "offeredInPerson": "Motivo: a pergunta exige atendimento presencial.",
+            "offeredNotResolved": "Motivo: o cidadão respondeu que a dúvida não foi resolvida.",
+            "noSlot": "O cidadão foi informado de que não há horários disponíveis no momento.",
+            "declined": "Conversa encerrada sem agendamento.",
+            "attendeeHolder": "Titular",
+            "attendeeRepresentative": "Representante, em nome do titular",
+            "phoneNotice": "Mensagens de modelo fixo enviadas pelo WhatsApp.",
+            "created": "Protocolo {{protocol}}",
+            "consulted": "Conversa de retorno para um agendamento existente.",
+            "rescheduled": "De {{fromDate}} às {{fromTime}} para {{toDate}} às {{toTime}}",
+            "canceled": "O horário voltou a ficar disponível no chatbot.",
+            "abandoned": "Sem interação por mais de 30 minutos nesta etapa."
+        }
+    },
+    "history": {
+        "title": "Histórico",
+        "events": {
+            "created": {
+                "withActor": "Criado pelo chatbot como Pendente",
+                "withoutActor": "Criado pelo chatbot como Pendente"
+            },
+            "claimed": {
+                "withActor": "Assumido por {{name}} · Confirmado",
+                "withoutActor": "Assumido · Confirmado"
+            },
+            "autoClaimed": {
+                "withActor": "Assumido automaticamente por {{name}} · Confirmado",
+                "withoutActor": "Assumido · Confirmado"
+            },
+            "attended": {
+                "withActor": "Marcado como atendido por {{name}}",
+                "withoutActor": "Marcado como atendido"
+            },
+            "noShow": {
+                "withActor": "Marcado como não compareceu por {{name}}",
+                "withoutActor": "Marcado como não compareceu"
+            },
+            "assigned": {
+                "withActor": "Atribuído por {{name}} · Confirmado",
+                "withoutActor": "Atribuído · Confirmado"
+            },
+            "rescheduled": {
+                "withActor": "Remarcado pelo cidadão no chatbot",
+                "withoutActor": "Remarcado pelo cidadão no chatbot"
+            },
+            "backToPending": {
+                "withActor": "Voltou para Pendente sem responsável",
+                "withoutActor": "Voltou para Pendente sem responsável"
+            },
+            "recordCorrected": {
+                "withActor": "Registro corrigido por {{name}}",
+                "withoutActor": "Registro corrigido"
+            },
+            "canceledByCitizen": {
+                "withActor": "Cancelado pelo cidadão no chatbot",
+                "withoutActor": "Cancelado pelo cidadão no chatbot"
+            },
+            "canceledByStaff": {
+                "withActor": "Cancelado no painel por {{name}}",
+                "withoutActor": "Cancelado no painel"
+            },
+            "citizenNotified": {
+                "withActor": "Cidadão avisado pelo WhatsApp",
+                "withoutActor": "Cidadão avisado pelo WhatsApp"
+            },
+            "citizenNotificationFailed": {
+                "withActor": "Falha ao avisar o cidadão pelo WhatsApp",
+                "withoutActor": "Falha ao avisar o cidadão pelo WhatsApp"
+            },
+            "reminderSent": {
+                "withActor": "Lembrete enviado pelo WhatsApp",
+                "withoutActor": "Lembrete enviado pelo WhatsApp"
+            },
+            "keptOffGrid": {
+                "withActor": "Mantido fora da grade atual após alteração de horários",
+                "withoutActor": "Mantido fora da grade atual após alteração de horários"
+            },
+            "unknown": {
+                "withActor": "Evento registrado",
+                "withoutActor": "Evento registrado"
+            }
+        }
+    },
+    "actions": {
+        "title": "Ações",
+        "buttons": {
+            "claim": "Assumir para mim",
+            "attended": "Marcar como atendido",
+            "noShow": "Marcar como não compareceu"
+        },
+        "waiting": {
+            "attended": "Marcar como atendido: disponível a partir do dia do atendimento.",
+            "noShow": "Marcar como não compareceu: disponível depois do horário do atendimento."
+        },
+        "final": {
+            "attended": "Atendimento concluído.",
+            "noShow": "O cidadão não compareceu ao atendimento.",
+            "canceled": "Agendamento cancelado. O horário foi liberado no chatbot."
+        },
+        "readOnly": "Sua conta pode apenas visualizar agendamentos.",
+        "dateNote": "A data não pode ser alterada pelo painel. Remarcações são feitas pelo cidadão no chatbot.",
+        "confirm": {
+            "claim": {
+                "title": "Assumir este agendamento?",
+                "description": "O agendamento {{protocol}} passa a Confirmado, com você como responsável.",
+                "confirm": "Assumir para mim"
+            },
+            "attended": {
+                "title": "Marcar como atendido?",
+                "description": "O agendamento {{protocol}} passa a Atendido.",
+                "confirm": "Marcar como atendido"
+            },
+            "noShow": {
+                "title": "Marcar como não compareceu?",
+                "description": "O agendamento {{protocol}} passa a Não compareceu.",
+                "confirm": "Marcar como não compareceu"
+            },
+            "alsoClaim": "{{description}} Ele também será assumido por você."
+        }
+    }
+}

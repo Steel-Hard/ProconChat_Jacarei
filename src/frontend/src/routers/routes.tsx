@@ -13,6 +13,7 @@ const UnderConstruction = lazy(() => import("@/pages/UnderConstruction.page"))
 const Login = lazy(() => import("@/pages/Login.page"))
 const WhatsApp = lazy(() => import("@/pages/WhatsApp.page"))
 const Appointments = lazy(() => import("@/pages/Appointments.page"))
+const AppointmentDetail = lazy(() => import("@/pages/AppointmentDetail.page"))
 
 function previewRoutes(): RouteObject[] {
     if (!import.meta.env.DEV) {
@@ -56,10 +57,10 @@ const routes: RouteObject[] = [
                                 children: [
                                     underConstruction(ROUTES.dashboard, "dashboard"),
                                     { path: ROUTES.appointments, element: <Appointments /> },
-                                    underConstruction(
-                                        ROUTES.appointmentDetail,
-                                        "appointmentDetail"
-                                    ),
+                                    {
+                                        path: ROUTES.appointmentDetail,
+                                        element: <AppointmentDetail />
+                                    },
                                     underConstruction(ROUTES.reports, "reports"),
                                     underConstruction(ROUTES.content, "content"),
                                     underConstruction(ROUTES.sessions, "sessions"),

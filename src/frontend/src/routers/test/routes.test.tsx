@@ -47,7 +47,6 @@ function renderRoutes(initialEntries: string[], preloadedState?: Partial<RootSta
 
 const underConstructionRoutes: Array<[string, string]> = [
     [ROUTES.dashboard, "Painel"],
-    ["/agendamentos/1", "Detalhe do agendamento"],
     [ROUTES.reports, "Relatórios"],
     [ROUTES.content, "Conteúdo"],
     [ROUTES.sessions, "Sessões"],
@@ -59,6 +58,7 @@ const underConstructionRoutes: Array<[string, string]> = [
 const protectedRoutes: Array<[string, string]> = [
     ...underConstructionRoutes,
     [ROUTES.appointments, "Agendamentos"],
+    ["/agendamentos/1", "Detalhe do agendamento"],
     [ROUTES.whatsapp, "WhatsApp"]
 ]
 
@@ -102,7 +102,8 @@ describe("routes", () => {
             () => import("@/pages/NotFound.page"),
             () => import("@/pages/UnderConstruction.page"),
             () => import("@/pages/WhatsApp.page"),
-            () => import("@/pages/Appointments.page")
+            () => import("@/pages/Appointments.page"),
+            () => import("@/pages/AppointmentDetail.page")
         ])
     })
 
@@ -154,6 +155,18 @@ describe("routes", () => {
         expect(
             requestedUrls().some((url) => url.endsWith("/api/v1/appointments/pending-count"))
         ).toBe(true)
+    })
+
+    it("renderiza o detalhe do agendamento com sessão, pedindo o agendamento pelo id", async () => {
+        renderRoutes(["/agendamentos/1"], withSession)
+
+        expect(
+            await screen.findByRole("button", { name: "Voltar para Agendamentos" })
+        ).toBeInTheDocument()
+        expect(screen.queryByText("Em construção.")).not.toBeInTheDocument()
+        await waitFor(() =>
+            expect(requestedUrls().some((url) => url.endsWith("/api/v1/appointments/1"))).toBe(true)
+        )
     })
 
     it("mostra a NotFound ao funcionário com todas as permissões em /whatsapp sem chamar a API do WhatsApp", async () => {

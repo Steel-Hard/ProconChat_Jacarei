@@ -101,8 +101,9 @@ Toda rota protegida é renderizada dentro do `PanelLayout`: menu lateral (`Sideb
     - `Seal`: selo neutro (`tone="neutral"`) ou de alerta (`tone="warning"`), como "Por representante" e "Fora da grade atual".
     - `Pagination`: contagem, "Página X de Y", "‹ Anterior" e "Próxima ›", desabilitados nas pontas. Sem mais de uma página, só a contagem.
     - Partes da lista de agendamentos, que recebem os textos já traduzidos por props: `AppointmentStatusChips`, `AppointmentListFilters`, `AppointmentSortSelect`, `AppointmentTable` (com `AppointmentSortHeader`, `AppointmentRow` e `AppointmentCompactRow`), `AppointmentProtocolLink` e `AppointmentClaimButton`.
+    - Seções do detalhe do agendamento, que também recebem os textos prontos por props: `AppointmentDetailHeader`, `AppointmentFacts` (com `AppointmentFact`), `AppointmentDocuments` (com `AppointmentDocumentGroup`), `AppointmentTimeline` (com `AppointmentTimelineStep`), `AppointmentHistory` (com `AppointmentHistoryEntry`) e `AppointmentActions` (com `AppointmentActionItem`).
     - `LastChangeNote`: "Última alteração por [nome] em [data]". Recebe `{ changedBy, changedAt }`, com `changedAt` em ISO 8601 com fuso, e mostra a data em dd/mm/aaaa no fuso de Brasília por `utils/formatDate.ts`. Sem alteração ou com data inválida, não mostra nada. O `formatDate` também aceita data sem hora (`AAAA-MM-DD`, como uma coluna `DATE`) e a formata como está, sem conversão de fuso.
-- Telas liberadas no menu (`navigation/navItemsReady.ts`): Agendamentos (#85) e WhatsApp (#54). As outras rotas, inclusive o detalhe do agendamento (`/agendamentos/:id`, #86), continuam com "Em construção" até a issue de cada tela.
+- Telas liberadas no menu (`navigation/navItemsReady.ts`): Agendamentos (#85) e WhatsApp (#54). O detalhe do agendamento (`/agendamentos/:id`, #86) abre pela lista. As outras rotas continuam com "Em construção" até a issue de cada tela.
 - Prévia: com `npm run dev`, a rota `/dev/layout` mostra o layout com uma conta Admin de exemplo e um exemplo de cada componente. Ela só existe em desenvolvimento e não entra no build de produção, nem os textos dela.
 
 ## Tela de Agendamentos
@@ -117,6 +118,19 @@ Rota `/agendamentos`, para quem tem Ver ou Gerenciar agendamentos (e o Admin). A
 - Até 1431 px a tabela fica compacta e a ordem é escolhida em "Ordenar por".
 - Abrir a lista busca de novo o contador do menu.
 - Fora desta tela por enquanto: o calendário semanal e o filtro por um funcionário específico (#87 e #62).
+
+## Tela de Detalhe do agendamento
+
+Rota `/agendamentos/:id`, para quem tem Ver ou Gerenciar agendamentos (e o Admin). A página `pages/AppointmentDetail.page.tsx` só renderiza; a leitura fica em `pages/hooks/useAppointmentDetail.ts`, a montagem dos textos em `pages/hooks/useAppointmentDetailView.ts` e as ações em `pages/hooks/useAppointmentActions.ts`. Os textos ficam no namespace `appointmentDetail`.
+
+- O `id` precisa ser só de dígitos; senão a tela não chama a API e mostra "Agendamento não encontrado.", igual a um `404` ou `400`. Outro erro mostra "Tentar novamente".
+- "Voltar para Agendamentos" usa a origem do `state` só quando ela é a própria lista (`/agendamentos` + `search`); sem origem válida, vai para `/agendamentos`.
+- A API não manda texto pronto da linha do tempo nem do histórico: `utils/timelineStepLabel.ts` e `utils/appointmentEventLabel.ts` montam a chave de tradução a partir de `type` e `data`, conferindo o tipo de cada campo de `data`. Tipo desconhecido vira "Passo registrado" ou "Evento registrado". "Gerado com auxílio de IA" segue só `generated_by_ai`.
+- As ações ("Assumir para mim", "Marcar como atendido", "Marcar como não compareceu") só aparecem para quem gerencia agendamentos e quando `available_actions.<ação>.allowed` é `true`. Os codes `ATTENDANCE_NOT_YET_AVAILABLE` e `NO_SHOW_NOT_YET_AVAILABLE` viram a mensagem de "disponível a partir de"; a tela não calcula datas.
+- Cada ação pede confirmação. No sucesso, a tela se atualiza com a resposta do `PATCH`, sem novo `GET`. Com `409` ou `500`/falha de rede, a tela espera reler o detalhe e só então mostra o erro na caixa "Ações" (`role="alert"`), que some na próxima ação. `403` e `404` só mostram a mensagem.
+- Quem só vê agendamentos vê tudo, sem botões, com "Sua conta pode apenas visualizar agendamentos." num Pendente ou Confirmado.
+- A partir de 1200 px a tela tem duas colunas; abaixo, as seções empilham.
+- Fora desta tela por enquanto: atribuir, observações internas e corrigir registro (#87), cancelar e "Tentar novamente" do aviso ao cidadão (#67) e o link da sessão de origem (#72).
 
 ## Tela de WhatsApp
 

@@ -1,0 +1,32 @@
+.header {
+    min-width: 0;
+}
+
+.tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.protocol {
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: var(--bg-accent-soft);
+    color: var(--color-primary);
+    font: 600 13px var(--font-mono);
+    white-space: nowrap;
+}
+
+.name {
+    margin-top: 12px;
+    font: 700 26px var(--font-heading);
+    letter-spacing: -0.01em;
+    overflow-wrap: anywhere;
+}
+
+.subtitle {
+    margin-top: 6px;
+    font-size: 14px;
+    color: var(--text-muted);
+}

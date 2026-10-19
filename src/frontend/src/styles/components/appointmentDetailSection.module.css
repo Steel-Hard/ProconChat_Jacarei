@@ -1,0 +1,263 @@
+.section {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: 22px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg-surface);
+}
+
+.side {
+    gap: 10px;
+    padding: 20px;
+}
+
+.title {
+    font: 700 16px var(--font-heading);
+}
+
+.lead {
+    margin: 4px 0 18px;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.muted {
+    font-size: 13.5px;
+    color: var(--text-muted);
+}
+
+.facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 18px 24px;
+    margin-top: 18px;
+}
+
+.wide {
+    grid-column: 1 / -1;
+}
+
+.factLabel {
+    margin-bottom: 4px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.factValue {
+    margin: 0;
+    font-size: 14.5px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.mono {
+    font: 600 14px var(--font-mono);
+}
+
+.emphasis {
+    color: var(--unassigned-text);
+}
+
+.notice {
+    margin-top: 18px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: var(--bg-accent-soft);
+    color: var(--color-primary-dark);
+    font-size: 13.5px;
+    line-height: 1.5;
+}
+
+.warning {
+    margin: -6px 0 18px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    background: var(--warn-bg);
+    color: var(--warn-text);
+    font-size: 12.5px;
+    line-height: 1.5;
+}
+
+.groups {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+}
+
+.groupTitle {
+    margin-bottom: 10px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--color-primary);
+}
+
+.documents {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0;
+    padding-left: 18px;
+    font-size: 13.5px;
+    line-height: 1.45;
+}
+
+.documents li::marker {
+    color: var(--color-primary);
+}
+
+.timeline {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.step {
+    position: relative;
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr);
+    gap: 12px;
+}
+
+.step:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    top: 22px;
+    bottom: 0;
+    left: 9px;
+    width: 2px;
+    background: var(--border);
+}
+
+.dot {
+    justify-self: center;
+    width: 12px;
+    height: 12px;
+    margin-top: 4px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    box-shadow: 0 0 0 4px var(--bg-accent-soft);
+}
+
+.stepBody {
+    padding-bottom: 20px;
+}
+
+.stepHead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.stepTitle {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.stepTime {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.ai {
+    padding: 2px 8px;
+    border: 1px solid var(--border-accent);
+    border-radius: 999px;
+    background: var(--bg-accent-soft);
+    color: var(--color-primary-dark);
+    font-size: 11.5px;
+    font-weight: 600;
+}
+
+.stepDetail {
+    margin-top: 3px;
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--text-strong);
+}
+
+.history {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.entry {
+    display: flex;
+    flex-direction: column;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.failed {
+    padding: 8px 10px;
+    border: 1px solid var(--error-border);
+    border-radius: 8px;
+    background: var(--error-soft-bg);
+}
+
+.failed .entryText {
+    color: var(--error-text);
+    font-weight: 600;
+}
+
+.entryWhen {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.action {
+    padding: 11px;
+    border: 0;
+    border-radius: 8px;
+    background: var(--color-primary);
+    color: var(--bg-surface);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.action:hover {
+    background: var(--color-primary-dark);
+}
+
+.actionWarning {
+    border: 1px solid var(--error-border);
+    background: var(--bg-surface);
+    color: var(--danger);
+}
+
+.actionWarning:hover {
+    background: var(--error-soft-bg);
+}
+
+.box {
+    padding: 9px 11px;
+    border-radius: 8px;
+    background: var(--bg-page);
+    color: var(--text-strong);
+    font-size: 12.5px;
+    line-height: 1.45;
+}
+
+.alert {
+    padding: 9px 11px;
+    border: 1px solid var(--error-border);
+    border-radius: 8px;
+    background: var(--error-bg);
+    color: var(--error-text);
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.dateNote {
+    padding-top: 6px;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--text-muted);
+}
