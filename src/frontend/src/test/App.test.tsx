@@ -1,8 +1,10 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
+import type { ComponentType } from "react"
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
-import App from "@/App"
 
 const LOAD_TIMEOUT_MS = 4000
+
+let App: ComponentType
 
 const admin = {
     id: 1,
@@ -35,6 +37,9 @@ function stubMe() {
 
 describe("App", { timeout: 15000 }, () => {
     beforeAll(async () => {
+        vi.stubEnv("VITE_API_URL", "http://api.test")
+        vi.resetModules()
+        App = (await import("@/App")).default
         await import("@/pages/UnderConstruction.page")
         await import("@/pages/NotFound.page")
     })
@@ -46,8 +51,11 @@ describe("App", { timeout: 15000 }, () => {
     afterEach(() => {
         window.history.pushState({}, "", "/")
         vi.unstubAllGlobals()
-        vi.unstubAllEnvs()
         vi.restoreAllMocks()
+    })
+
+    afterAll(() => {
+        vi.unstubAllEnvs()
     })
 
     it("renderiza o painel na rota raiz com sessão", async () => {
@@ -80,11 +88,8 @@ describe("App", { timeout: 15000 }, () => {
     it("renderiza dentro do Provider da store sem avisos no console", async () => {
         const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
         const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined)
-        vi.stubEnv("VITE_API_URL", "http://api.test")
-        vi.resetModules()
-        const { default: FreshApp } = await import("@/App")
 
-        render(<FreshApp />)
+        render(<App />)
 
         expect(
             await screen.findByRole("heading", { name: "Painel" }, { timeout: LOAD_TIMEOUT_MS })
