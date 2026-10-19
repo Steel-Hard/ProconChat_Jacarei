@@ -1,7 +1,8 @@
-import { beforeEach, describe, expect, test, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
 import DuplicateAppointmentError from "../errors/DuplicateAppointmentError"
 import SlotFullError from "../errors/SlotFullError"
 import type { ActiveSession } from "../repositories/session.repository"
+import type { ConversationEvent, RecordedConversationEvent } from "../types/conversationEvent.types"
 import {
     ERRO_ATTENDEE,
     ERRO_CPF,
@@ -22,6 +23,7 @@ import {
     mockBookResult,
     mockSlots,
     respostaPadrao,
+    respostaPresencial,
     slotOptionId,
 } from "./mock/conversationFlow.fixtures"
 import { createConversationFlowHarness } from "./mock/conversationFlowHarness"
@@ -32,6 +34,7 @@ describe("conversationFlow.service", () => {
         updateNavigationState,
         recordEvent,
         finishEvent,
+        listEvents,
         logger,
         processarPergunta,
         getAvailableSlots,
@@ -390,6 +393,173 @@ describe("conversationFlow.service", () => {
             expect(result.reply.step).toBe("AWAITING_SLOT")
             expect(result.reply.text).toBe(ERRO_FALHA_AGENDAMENTO)
             expect(logger.error).toHaveBeenCalledWith("Failed to book appointment", expect.any(Object))
+        })
+    })
+
+    describe("Motivo do agendamento vindo da oferta registrada", () => {
+        const offeredAt = new Date("2026-10-05T12:00:00.000Z").getTime()
+
+        function recordedEvents(...events: ConversationEvent[]): RecordedConversationEvent[] {
+            return events.map((event, index) => ({ ...event, createdAt: new Date(offeredAt + index * 1000) }))
+        }
+
+        afterEach(() => {
+            processarPergunta.mockReset()
+            listEvents.mockReset()
+        })
+
+        test("usa o motivo do SCHEDULE_OFFERED mesmo se a pergunta deixou de exigir presencial", async () => {
+            findOrCreateActive.mockResolvedValueOnce(sessionAt("AWAITING_SLOT", { draft: buildBookingDraft() }))
+            getAvailableSlots.mockResolvedValueOnce(mockSlots)
+            listEvents.mockResolvedValueOnce(
+                recordedEvents(
+                    { type: "QUESTION_CHOSEN", categoryId: 1, questionId: 10 },
+                    { type: "SCHEDULE_OFFERED", reason: "REQUIRES_IN_PERSON" },
+                ),
+            )
+            processarPergunta.mockResolvedValueOnce(respostaPadrao)
+            bookSlot.mockResolvedValueOnce(mockBookResult)
+
+            const result = await processIncomingMessage({
+                phone: "5511999999999",
+                optionId: slotOptionId(mockSlots[0]!),
+            })
+
+            expect(listEvents).toHaveBeenCalledWith("s1")
+            expect(bookSlot).toHaveBeenCalledWith(expect.objectContaining({ sessionId: "s1", reason: "REQUIRES_IN_PERSON" }))
+            expect(processarPergunta).not.toHaveBeenCalled()
+            expect(result.reply.step).toBe("FINISHED")
+        })
+
+        test("usa NOT_RESOLVED oferecido mesmo se a pergunta passou a exigir presencial", async () => {
+            findOrCreateActive.mockResolvedValueOnce(sessionAt("AWAITING_SLOT", { draft: buildBookingDraft() }))
+            getAvailableSlots.mockResolvedValueOnce(mockSlots)
+            listEvents.mockResolvedValueOnce(
+                recordedEvents(
+                    { type: "QUESTION_CHOSEN", categoryId: 1, questionId: 10 },
+                    { type: "RESOLVED_ANSWERED", resolved: false },
+                    { type: "SCHEDULE_OFFERED", reason: "NOT_RESOLVED" },
+                ),
+            )
+            processarPergunta.mockResolvedValueOnce(respostaPresencial)
+            bookSlot.mockResolvedValueOnce(mockBookResult)
+
+            const result = await processIncomingMessage({
+                phone: "5511999999999",
+                optionId: slotOptionId(mockSlots[0]!),
+            })
+
+            expect(bookSlot).toHaveBeenCalledWith(expect.objectContaining({ sessionId: "s1", reason: "NOT_RESOLVED" }))
+            expect(processarPergunta).not.toHaveBeenCalled()
+            expect(result.reply.step).toBe("FINISHED")
+        })
+
+        test("sem SCHEDULE_OFFERED depois da pergunta, recalcula o motivo pela pergunta", async () => {
+            findOrCreateActive.mockResolvedValueOnce(sessionAt("AWAITING_SLOT", { draft: buildBookingDraft() }))
+            getAvailableSlots.mockResolvedValueOnce(mockSlots)
+            listEvents.mockResolvedValueOnce(
+                recordedEvents(
+                    { type: "QUESTION_CHOSEN", categoryId: 1, questionId: 10 },
+                    { type: "ANSWER_SENT", categoryId: 1, questionId: 10, llm: "NOT_CALLED" },
+                ),
+            )
+            processarPergunta.mockResolvedValueOnce(respostaPresencial)
+            bookSlot.mockResolvedValueOnce(mockBookResult)
+
+            const result = await processIncomingMessage({
+                phone: "5511999999999",
+                optionId: slotOptionId(mockSlots[0]!),
+            })
+
+            expect(processarPergunta).toHaveBeenCalledWith(10)
+            expect(bookSlot).toHaveBeenCalledWith(expect.objectContaining({ sessionId: "s1", reason: "REQUIRES_IN_PERSON" }))
+            expect(logger.error).not.toHaveBeenCalled()
+            expect(result.reply.step).toBe("FINISHED")
+        })
+
+        test("falha na leitura dos eventos recalcula o motivo, conclui a reserva e registra só o código", async () => {
+            findOrCreateActive.mockResolvedValueOnce(
+                sessionAt("AWAITING_SLOT", { id: "123", draft: buildBookingDraft() }),
+            )
+            getAvailableSlots.mockResolvedValueOnce(mockSlots)
+            listEvents.mockRejectedValueOnce(Object.assign(new Error("connection terminated"), { code: "57P01" }))
+            processarPergunta.mockResolvedValueOnce(respostaPadrao)
+            bookSlot.mockResolvedValueOnce(mockBookResult)
+
+            const result = await processIncomingMessage({
+                phone: "5511999999999",
+                optionId: slotOptionId(mockSlots[0]!),
+            })
+
+            expect(processarPergunta).toHaveBeenCalledWith(10)
+            expect(bookSlot).toHaveBeenCalledWith(expect.objectContaining({ sessionId: "123", reason: "NOT_RESOLVED" }))
+            expect(result.reply.step).toBe("FINISHED")
+            expect(logger.error).toHaveBeenCalledTimes(1)
+            expect(logger.error).toHaveBeenCalledWith("Failed to read schedule offer reason", {
+                type: "SCHEDULE_OFFERED",
+                sessionId: "123",
+                code: "57P01",
+            })
+        })
+
+        test.each([
+            { failure: "SlotFullError", error: new SlotFullError(), slotListsOnFirstClick: 2 },
+            { failure: "DuplicateAppointmentError", error: new DuplicateAppointmentError(), slotListsOnFirstClick: 1 },
+        ])(
+            "depois de $failure, o novo clique lê a oferta de novo e reserva com o mesmo motivo",
+            async ({ error, slotListsOnFirstClick }) => {
+                const offer = recordedEvents(
+                    { type: "QUESTION_CHOSEN", categoryId: 1, questionId: 10 },
+                    { type: "SCHEDULE_OFFERED", reason: "REQUIRES_IN_PERSON" },
+                )
+                findOrCreateActive
+                    .mockResolvedValueOnce(sessionAt("AWAITING_SLOT", { draft: buildBookingDraft() }))
+                    .mockResolvedValueOnce(sessionAt("AWAITING_SLOT", { listPage: 1, draft: buildBookingDraft() }))
+                for (let index = 0; index < slotListsOnFirstClick + 1; index++) {
+                    getAvailableSlots.mockResolvedValueOnce(mockSlots)
+                }
+                listEvents.mockResolvedValueOnce(offer).mockResolvedValueOnce(offer)
+                processarPergunta.mockResolvedValue(respostaPadrao)
+                bookSlot.mockRejectedValueOnce(error).mockResolvedValueOnce(mockBookResult)
+
+                const firstClick = await processIncomingMessage({
+                    phone: "5511999999999",
+                    optionId: slotOptionId(mockSlots[0]!),
+                })
+                const secondClick = await processIncomingMessage({
+                    phone: "5511999999999",
+                    optionId: slotOptionId(mockSlots[1]!),
+                })
+
+                expect(firstClick.reply.step).toBe("AWAITING_SLOT")
+                expect(secondClick.reply.step).toBe("FINISHED")
+                expect(listEvents).toHaveBeenCalledTimes(2)
+                expect(listEvents).toHaveBeenNthCalledWith(1, "s1")
+                expect(listEvents).toHaveBeenNthCalledWith(2, "s1")
+                expect(bookSlot).toHaveBeenCalledTimes(2)
+                expect(bookSlot).toHaveBeenNthCalledWith(1, expect.objectContaining({ sessionId: "s1", reason: "REQUIRES_IN_PERSON" }))
+                expect(bookSlot).toHaveBeenNthCalledWith(2, expect.objectContaining({ sessionId: "s1", reason: "REQUIRES_IN_PERSON" }))
+                expect(processarPergunta).not.toHaveBeenCalled()
+                expect(getAvailableSlots).toHaveBeenCalledTimes(slotListsOnFirstClick + 1)
+            },
+        )
+
+        test("rascunho incompleto volta para AWAITING_ATTENDEE sem ler os eventos da conversa", async () => {
+            findOrCreateActive.mockResolvedValueOnce(
+                sessionAt("AWAITING_SLOT", { draft: buildBookingDraft({ cpf_hash: undefined }) }),
+            )
+            getAvailableSlots.mockResolvedValueOnce(mockSlots)
+
+            const result = await processIncomingMessage({
+                phone: "5511999999999",
+                optionId: slotOptionId(mockSlots[0]!),
+            })
+
+            expect(listEvents).not.toHaveBeenCalled()
+            expect(processarPergunta).not.toHaveBeenCalled()
+            expect(bookSlot).not.toHaveBeenCalled()
+            expect(updateNavigationState).toHaveBeenCalledWith("s1", expect.objectContaining({ draft: null }))
+            expect(result.reply.step).toBe("AWAITING_ATTENDEE")
         })
     })
 })

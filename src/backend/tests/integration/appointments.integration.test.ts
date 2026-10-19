@@ -107,6 +107,30 @@ describe("Agendamentos com Postgres (integração)", () => {
         return found
     }
 
+    async function listItemsAcrossPages(
+        query: string,
+        ids: number[],
+    ): Promise<Map<string, { id: string; waiting_record: boolean }>> {
+        const wanted = ids.map(String)
+        const found = new Map<string, { id: string; waiting_record: boolean }>()
+        let page = 1
+        let totalPages = 1
+        do {
+            const res = await request(app)
+                .get(`/api/v1/appointments?${query}&limit=100&page=${page}`)
+                .set("Cookie", adminCookie)
+            expect(res.status).toBe(200)
+            for (const item of res.body.data.items as { id: string; waiting_record: boolean }[]) {
+                if (wanted.includes(item.id)) {
+                    found.set(item.id, item)
+                }
+            }
+            totalPages = res.body.data.totalPages
+            page++
+        } while (page <= totalPages)
+        return found
+    }
+
     it("busca por CPF com hash HMAC encontra agendamento digitado com e sem pontuação", async () => {
         const cpfDigits = "52998224725"
         const cpfHash = createHmac("sha256", process.env.CPF_HASH_SECRET as string)
@@ -657,5 +681,300 @@ describe("Agendamentos com Postgres (integração)", () => {
 
         expect(res.status).toBe(401)
         expect(res.body).toEqual({ error: { code: "UNAUTHORIZED", message: "Authentication required" } })
+    })
+
+    async function createStaffUser(label: string): Promise<number> {
+        const userRes = await getPool().query<{ id: string }>(
+            `INSERT INTO Users (name, email, password_hash, is_admin, active, session_version)
+             VALUES ($1, $2, 'hash', false, true, 0)
+             RETURNING id`,
+            [label, `${label.toLowerCase().replace(/\s+/g, ".")}-${process.pid}-${Date.now()}@teste.local`],
+        )
+        const userId = Number(firstRow(userRes.rows).id)
+        createdUserIds.push(userId)
+        return userId
+    }
+
+    async function storedActionState(apptId: number): Promise<{
+        appointment: { status: string; assigned_user_id: string | null }
+        events: { type: string; actor_user_id: string | null; data: Record<string, unknown> }[]
+    }> {
+        const pool = getPool()
+        const appointmentRes = await pool.query<{ status: string; assigned_user_id: string | null }>(
+            "SELECT status, assigned_user_id::text AS assigned_user_id FROM Appointments WHERE id = $1",
+            [apptId],
+        )
+        const eventsRes = await pool.query<{ type: string; actor_user_id: string | null; data: Record<string, unknown> }>(
+            `SELECT type, actor_user_id::text AS actor_user_id, data
+             FROM AppointmentEvents
+             WHERE appointment_id = $1
+             ORDER BY id ASC`,
+            [apptId],
+        )
+        return { appointment: firstRow(appointmentRes.rows), events: eventsRes.rows }
+    }
+
+    it("busca por nome sem diferenciar maiúsculas nem acentos", async () => {
+        const id = await createAppointment({ name: "Patrícia Busca Acento", cpf: "31231231201" })
+
+        const onlyCaseDiffers = await listOrderAcrossPages(`search=${encodeURIComponent("PATRÍCIA BUSCA ACENTO")}`, [id])
+        const onlyAccentDiffers = await listOrderAcrossPages(`search=${encodeURIComponent("Patricia Busca Acento")}`, [id])
+
+        expect(onlyCaseDiffers).toEqual([String(id)])
+        expect(onlyAccentDiffers).toEqual([String(id)])
+    })
+
+    it("busca por protocolo só pelo início e sem diferenciar maiúsculas", async () => {
+        const unique = (Date.now() % 0xffffff).toString(16).padStart(6, "0")
+        const term = `ab${unique}`
+        const idPrefix = await createAppointment({
+            name: "Cidadão Protocolo Início",
+            cpf: "31231231202",
+            appointmentCode: `${term}-0000-4000-8000-000000000001`,
+        })
+        const idMiddle = await createAppointment({
+            name: "Cidadão Protocolo Meio",
+            cpf: "31231231203",
+            appointmentCode: `cd${unique}-0000-4000-8000-${term}0001`,
+        })
+
+        const found = await listOrderAcrossPages(`search=${term.toUpperCase()}`, [idPrefix, idMiddle])
+
+        expect(found).toEqual([String(idPrefix)])
+    })
+
+    it("filtra a lista pelo status PENDING e pelo CONFIRMED", async () => {
+        const idPending = await createAppointment({ name: "Filtro Status Pendente", status: "PENDING", cpf: "31231231204" })
+        const idConfirmed = await createAppointment({ name: "Filtro Status Confirmado", status: "CONFIRMED", cpf: "31231231205" })
+        const ids = [idPending, idConfirmed]
+
+        const pending = await listOrderAcrossPages("status=PENDING&period=all", ids)
+        const confirmed = await listOrderAcrossPages("status=CONFIRMED&period=all", ids)
+
+        expect(pending).toEqual([String(idPending)])
+        expect(confirmed).toEqual([String(idConfirmed)])
+    })
+
+    it("filtra a lista por Aguardando registro: só confirmados com horário já passado", async () => {
+        const day = 86400000
+        const idConfirmedPast = await createAppointment({
+            name: "Aguardando Confirmado Passado",
+            status: "CONFIRMED",
+            appointmentDatetime: new Date(Date.now() - day),
+            cpf: "31231231206",
+        })
+        const idConfirmedFuture = await createAppointment({
+            name: "Aguardando Confirmado Futuro",
+            status: "CONFIRMED",
+            appointmentDatetime: new Date(Date.now() + day),
+            cpf: "31231231207",
+        })
+        const idPendingPast = await createAppointment({
+            name: "Aguardando Pendente Passado",
+            status: "PENDING",
+            appointmentDatetime: new Date(Date.now() - day),
+            cpf: "31231231208",
+        })
+
+        const found = await listOrderAcrossPages("status=waiting_record&period=all", [
+            idConfirmedPast,
+            idConfirmedFuture,
+            idPendingPast,
+        ])
+        const items = await listItemsAcrossPages("period=all", [idConfirmedPast, idConfirmedFuture, idPendingPast])
+
+        expect(found).toEqual([String(idConfirmedPast)])
+        expect(items.size).toBe(3)
+        expect(items.get(String(idConfirmedPast))?.waiting_record).toBe(true)
+        expect(items.get(String(idConfirmedFuture))?.waiting_record).toBe(false)
+        expect(items.get(String(idPendingPast))?.waiting_record).toBe(false)
+    })
+
+    it("filtra os itens da lista pelo período: próximos por padrão, passados e todos", async () => {
+        const day = 86400000
+        const idPast = await createAppointment({
+            name: "Período Passado",
+            appointmentDatetime: new Date(Date.now() - 3 * day),
+            cpf: "31231231229",
+        })
+        const idFuture = await createAppointment({
+            name: "Período Futuro",
+            appointmentDatetime: new Date(Date.now() + 3 * day),
+            cpf: "31231231230",
+        })
+        const ids = [idPast, idFuture]
+
+        const withoutPeriod = await listOrderAcrossPages("responsible=all", ids)
+        const past = await listOrderAcrossPages("period=past", ids)
+        const all = await listOrderAcrossPages("period=all", ids)
+
+        expect(withoutPeriod).toEqual([String(idFuture)])
+        expect(past).toEqual([String(idPast)])
+        expect(all).toEqual([String(idFuture), String(idPast)])
+    })
+
+    it("filtra a lista por responsável: sem responsável e um funcionário pelo id", async () => {
+        const userA = await createStaffUser("Atendente Filtro A")
+        const userB = await createStaffUser("Atendente Filtro B")
+        const idUnassigned = await createAppointment({ name: "Responsável Nenhum", status: "PENDING", cpf: "31231231209" })
+        const idUserA = await createAppointment({ name: "Responsável A", status: "CONFIRMED", assignedUserId: userA, cpf: "31231231210" })
+        const idUserB = await createAppointment({ name: "Responsável B", status: "CONFIRMED", assignedUserId: userB, cpf: "31231231211" })
+        const ids = [idUnassigned, idUserA, idUserB]
+
+        const unassigned = await listOrderAcrossPages("responsible=unassigned&period=all", ids)
+        const byUserA = await listOrderAcrossPages(`responsible=${userA}&period=all`, ids)
+
+        expect(unassigned).toEqual([String(idUnassigned)])
+        expect(byUserA).toEqual([String(idUserA)])
+    })
+
+    it("ordena por nome no crescente e no decrescente", async () => {
+        const day = 86400000
+        const idB = await createAppointment({ name: "Ordem Nome B", appointmentDatetime: new Date(Date.now() + day), cpf: "31231231212" })
+        const idC = await createAppointment({ name: "Ordem Nome C", appointmentDatetime: new Date(Date.now() + 2 * day), cpf: "31231231213" })
+        const idA = await createAppointment({ name: "Ordem Nome A", appointmentDatetime: new Date(Date.now() + 3 * day), cpf: "31231231214" })
+        const ids = [idB, idC, idA]
+
+        const ascending = await listOrderAcrossPages("period=all&sortBy=name&sortOrder=asc", ids)
+        const descending = await listOrderAcrossPages("period=all&sortBy=name&sortOrder=desc", ids)
+
+        expect(ascending).toEqual([String(idA), String(idB), String(idC)])
+        expect(descending).toEqual([String(idC), String(idB), String(idA)])
+    })
+
+    it.each([
+        { status: "ATTENDED" as const, cpfs: ["31231231215", "31231231216", "31231231217"] },
+        { status: "NO_SHOW" as const, cpfs: ["31231231218", "31231231219", "31231231220"] },
+    ])("com period=all e chip $status ordena do mais recente para o mais antigo", async ({ status, cpfs }) => {
+        const day = 86400000
+        const idMiddle = await createAppointment({
+            name: `Chip ${status} -3d`,
+            status,
+            appointmentDatetime: new Date(Date.now() - 3 * day),
+            cpf: cpfs[0],
+        })
+        const idRecent = await createAppointment({
+            name: `Chip ${status} -1d`,
+            status,
+            appointmentDatetime: new Date(Date.now() - day),
+            cpf: cpfs[1],
+        })
+        const idOld = await createAppointment({
+            name: `Chip ${status} -5d`,
+            status,
+            appointmentDatetime: new Date(Date.now() - 5 * day),
+            cpf: cpfs[2],
+        })
+
+        const order = await listOrderAcrossPages(`status=${status}&period=all`, [idMiddle, idRecent, idOld])
+
+        expect(order).toEqual([String(idRecent), String(idMiddle), String(idOld)])
+    })
+
+    it("marca is_documents_config_different só quando os documentos enviados diferem da configuração atual", async () => {
+        const pool = getPool()
+        const groupRes = await pool.query<{ description: string }>(
+            `SELECT description FROM AttendanceDocuments
+             WHERE attendee_group = 'HOLDER'
+             ORDER BY position ASC, id ASC`,
+        )
+        const questionRes = await pool.query<{ description: string }>(
+            `SELECT description FROM RequiredDocuments
+             WHERE question_id = $1
+             ORDER BY position ASC, id ASC`,
+            [questionId],
+        )
+        const group = groupRes.rows.map((row) => row.description)
+        const question = questionRes.rows.map((row) => row.description)
+        const idSame = await createAppointment({
+            name: "Documentos Iguais",
+            cpf: "31231231221",
+            documentsSent: { group: [...group].reverse(), question: [...question].reverse() },
+        })
+        const idDifferent = await createAppointment({
+            name: "Documentos Diferentes",
+            cpf: "31231231222",
+            documentsSent: { group: [...group, "Documento extra da integração"], question },
+        })
+
+        const sameRes = await request(app).get(`/api/v1/appointments/${idSame}`).set("Cookie", adminCookie)
+        const differentRes = await request(app).get(`/api/v1/appointments/${idDifferent}`).set("Cookie", adminCookie)
+
+        expect(sameRes.body.data.is_documents_config_different).toBe(false)
+        expect(differentRes.body.data.is_documents_config_different).toBe(true)
+    })
+
+    it.each([
+        { action: "attended", terminalEvent: "ATTENDED", cpf: "31231231223" },
+        { action: "no_show", terminalEvent: "NO_SHOW", cpf: "31231231224" },
+    ])("num pendente, $action assume para quem clicou e grava o CLAIMED automático", async ({ action, terminalEvent, cpf }) => {
+        const apptId = await createAppointment({
+            name: "Cidadão Auto Claim",
+            status: "PENDING",
+            appointmentDatetime: new Date(Date.now() - 3600000),
+            cpf,
+        })
+
+        const res = await request(app)
+            .patch(`/api/v1/appointments/${apptId}/status`)
+            .set("Origin", ORIGIN)
+            .set("Cookie", adminCookie)
+            .send({ action })
+
+        expect(res.status).toBe(200)
+        const adminId = String(scope.adminUserId)
+        expect(await storedActionState(apptId)).toEqual({
+            appointment: { status: terminalEvent, assigned_user_id: adminId },
+            events: [
+                { type: "CLAIMED", actor_user_id: adminId, data: { auto_claimed: true } },
+                { type: terminalEvent, actor_user_id: adminId, data: {} },
+            ],
+        })
+    })
+
+    it("o contador de pendentes conta só os PENDING", async () => {
+        const before = await request(app).get("/api/v1/appointments/pending-count").set("Cookie", adminCookie)
+        await createAppointment({ name: "Contador Pendente 1", status: "PENDING", cpf: "31231231225" })
+        await createAppointment({ name: "Contador Pendente 2", status: "PENDING", cpf: "31231231226" })
+        await createAppointment({ name: "Contador Confirmado", status: "CONFIRMED", cpf: "31231231227" })
+
+        const after = await request(app).get("/api/v1/appointments/pending-count").set("Cookie", adminCookie)
+
+        expect(after.status).toBe(200)
+        expect(after.body).toEqual({ data: { count: before.body.data.count + 2 } })
+    })
+
+    it("assumir grava CONFIRMED, o responsável e o CLAIMED com quem clicou", async () => {
+        const apptId = await createAppointment({ name: "Cidadão Assumir", status: "PENDING", cpf: "31231231228" })
+
+        const res = await request(app)
+            .patch(`/api/v1/appointments/${apptId}/status`)
+            .set("Origin", ORIGIN)
+            .set("Cookie", adminCookie)
+            .send({ action: "claim" })
+
+        expect(res.status).toBe(200)
+        const adminId = String(scope.adminUserId)
+        expect(await storedActionState(apptId)).toEqual({
+            appointment: { status: "CONFIRMED", assigned_user_id: adminId },
+            events: [{ type: "CLAIMED", actor_user_id: adminId, data: {} }],
+        })
+    })
+
+    it("retorna 404 NOT_FOUND no detalhe e na ação para id inexistente", async () => {
+        const missingId = "9223372036854775807"
+
+        const detailRes = await request(app).get(`/api/v1/appointments/${missingId}`).set("Cookie", adminCookie)
+        const actionRes = await request(app)
+            .patch(`/api/v1/appointments/${missingId}/status`)
+            .set("Origin", ORIGIN)
+            .set("Cookie", adminCookie)
+            .send({ action: "claim" })
+
+        const notFound = { error: { code: "NOT_FOUND", message: "Agendamento não encontrado" } }
+        expect(detailRes.status).toBe(404)
+        expect(detailRes.body).toEqual(notFound)
+        expect(actionRes.status).toBe(404)
+        expect(actionRes.body).toEqual(notFound)
     })
 })

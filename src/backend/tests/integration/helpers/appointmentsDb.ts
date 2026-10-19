@@ -24,6 +24,7 @@ export interface TestAppointmentOverrides {
     appointmentDatetime?: Date
     assignedUserId?: number | null
     appointmentCode?: string
+    documentsSent?: { group: string[]; question: string[] }
 }
 
 export function firstRow<T>(rows: T[]): T {
@@ -75,6 +76,7 @@ export async function createTestAppointment(
     const status = overrides.status ?? "PENDING"
     const apptDate = overrides.appointmentDatetime ?? new Date(Date.now() + 86400000)
     const assignedUserId = status === "PENDING" ? null : (overrides.assignedUserId ?? scope.adminUserId)
+    const documentsSent = overrides.documentsSent ?? { group: [], question: [] }
 
     const res = await pool.query<{ id: string }>(
         `INSERT INTO Appointments (
@@ -83,7 +85,7 @@ export async function createTestAppointment(
             appointment_code
          ) VALUES (
             $1, $2, 'NOT_RESOLVED', $3, $4, '***.982.247-**',
-            false, '{"group": [], "question": []}'::jsonb, $5, $6, $7,
+            false, $9::jsonb, $5, $6, $7,
             COALESCE($8::uuid, gen_random_uuid())
          ) RETURNING id`,
         [
@@ -95,6 +97,7 @@ export async function createTestAppointment(
             status,
             assignedUserId,
             overrides.appointmentCode ?? null,
+            JSON.stringify(documentsSent),
         ],
     )
 

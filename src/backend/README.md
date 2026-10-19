@@ -24,14 +24,14 @@ Backend do chatbot de orientação ao consumidor via WhatsApp (PROCON Jacareí).
 - Entrada validada na rota com os schemas zod de `schemas/<recurso>.schema.ts` e `validateRequest` (`middleware/validateRequest.middleware.ts`), como `routes/appointment.routes.ts`. O controller lê `req.query`/`req.params`/`req.body` já validados, sem validar de novo.
 - Montagem em `app.ts`, sob o prefixo `/api/v1` (exceto casos como `/health`, que ficam fora do versionamento por serem consumidos por infraestrutura).
 - Teste unitário do controller em `controllers/<recurso>.controller.test.ts`: instancia a classe com dublês, monta `req`/`res`/`next` falsos e chama os métodos direto, sem `supertest` (ex.: `controllers/auth.controller.test.ts`).
-- Teste de montagem em `routes/<recurso>.routes.test.ts` com `supertest` contra o `app` exportado por `app.ts`, principalmente para caminho, middlewares e ordem, CORS, CSRF, cabeçalhos e envelope de erro (ex.: `routes/health.routes.test.ts`). A exceção são os testes de agendamentos (desde a #60): `routes/appointment.routes.test.ts` monta um `express()` próprio com `AppointmentRoutes` (repositório em memória e `createRequireAuth` com dublês) e o `errorHandler`, sem a proteção de origem; `routes/appointment.contract.test.ts` monta o mesmo e acrescenta `createRequireTrustedOrigin`. Temas maiores ficam em arquivos irmãos `routes/<recurso>.<tema>.test.ts` (ex.: `auth.endpoints`, `auth.loginLimiter`, `auth.sessionLifetime`, `auth.frontendOrigin`). O dublê de uma dependência num teste de rota entra por `vi.mock` ou por injeção no constructor, não por `vi.spyOn` na exportação do módulo, porque o controller guarda o service padrão quando é construído.
+- Teste de montagem em `routes/<recurso>.routes.test.ts` com `supertest` contra o `app` exportado por `app.ts`, principalmente para caminho, middlewares e ordem, CORS, CSRF, cabeçalhos e envelope de erro (ex.: `routes/health.routes.test.ts`). A exceção são os testes de agendamentos (desde a #60): `routes/appointment.routes.test.ts` monta um `express()` próprio com `AppointmentRoutes` (o dublê enxuto `AppointmentRepositoryStub` e `createRequireAuth` com dublês) e o `errorHandler`, sem a proteção de origem; `routes/appointment.contract.test.ts` monta o mesmo e acrescenta `createRequireTrustedOrigin`. Temas maiores ficam em arquivos irmãos `routes/<recurso>.<tema>.test.ts` (ex.: `auth.endpoints`, `auth.loginLimiter`, `auth.sessionLifetime`, `auth.frontendOrigin`). O dublê de uma dependência num teste de rota entra por `vi.mock` ou por injeção no constructor, não por `vi.spyOn` na exportação do módulo, porque o controller guarda o service padrão quando é construído.
 
 ## Organização dos testes
 
 - **Unidade** (`npm test`, `vitest.config.mts`): arquivos `*.test.ts` ao lado do código testado. Um assunto grande vira arquivos irmãos `<recurso>.<tema>.test.ts`, como `routes/auth.*.test.ts` e `services/conversationFlow.service.test.ts` (dúvida), `conversationFlow.scheduling.test.ts`, `conversationFlow.fullFlow.test.ts` e `conversationFlow.paused.test.ts`. O contrato da API de agendamentos tem o próprio arquivo, `routes/appointment.contract.test.ts`, que fixa as chaves exatas de cada resposta.
-- **Dublês de repositório** em `repositories/mock/` (`*Mock.repository.ts`), como `InMemorySessionRepository` (`sessionMock.repository.ts`, com a mesma regra de página do repositório real e teste próprio) e `MockAppointmentRepository`.
+- **Dublês de repositório** em `repositories/mock/` (`*Mock.repository.ts`), como `InMemorySessionRepository` (`sessionMock.repository.ts`, com a mesma regra de página do repositório real e teste próprio). Os agendamentos usam o `AppointmentRepositoryStub` (`appointmentStub.repository.ts`, com teste próprio), um dublê enxuto sem semântica de SQL: devolve a lista e os detalhes do cenário sem filtrar, ordenar, contar nem paginar, guarda as chamadas (`findListCalls`, `actionCalls`), recusa as ações pelo `decideTransition` real e aplica o efeito que o próprio teste descreve (`afterAction`). Os dados vêm dos builders de `appointment.builders.ts` (`buildAppointmentDetail`, `buildListItem`, `buildChipCounts`, a linha do tempo da conversa e o relógio fixo `FIXED_NOW`).
 - **Fixtures e harness dos services** em `services/mock/`: `conversationFlow.fixtures.ts` e `schedule.fixtures.ts` (dados e builders, sem `vitest`) e `conversationFlowHarness.ts` (o fluxo da conversa montado com `vi.fn`). Essas pastas entram no `dist`, porque o build só exclui `*.test.ts` e `tests/**`; código de produção nunca importa delas.
-- **Integração** (`npm run test:integration`, `vitest.integration.config.mts`, em série): `tests/integration/*.test.ts` contra Postgres real, com os apoios em `tests/integration/helpers/` (`scheduleDb.ts`, `appointmentsDb.ts` e `phone.ts`). A pasta `tests/` inteira fica fora do build (`exclude` do `tsconfig.json`), então esses apoios, que apagam e recriam dados, não vão para o `dist` nem para a imagem.
+- **Integração** (`npm run test:integration`, `vitest.integration.config.mts`, em série): `tests/integration/*.test.ts` contra Postgres real, com os apoios em `tests/integration/helpers/` (`scheduleDb.ts`, `appointmentsDb.ts` e `phone.ts`). A busca, os filtros, a ordenação, os chips, o contador de pendentes e as transições do repositório de agendamentos são provados aqui, em `appointments.integration.test.ts`, e não na unidade. A pasta `tests/` inteira fica fora do build (`exclude` do `tsconfig.json`), então esses apoios, que apagam e recriam dados, não vão para o `dist` nem para a imagem.
 - **Tipos dos testes:** o build não compila os testes nem `tests/`. `npm run typecheck:test` (`tsconfig.test.json`) checa os tipos de todo `.ts`, inclusive os testes, e roda no CI.
 
 ## Variáveis de ambiente
@@ -68,11 +68,12 @@ npm test        # roda a suíte de testes (Vitest + Supertest)
 npm run typecheck:test  # checa os tipos de todo o código, inclusive dos testes
 ```
 
-Rode `npm run test:integration` num **banco separado**, só com as migrations aplicadas (sem o
-seed), como faz o CI. O teste da configuração do WhatsApp (#83) apaga a linha de `WhatsAppSettings`
-durante a execução e a restaura no fim; se a execução for interrompida, a linha do banco usado pode
-ficar perdida. Os testes de eventos da conversa também esperam um banco sem o conteúdo do seed.
-Por exemplo, com o Postgres do Compose:
+Rode `npm run test:integration` num **banco separado**, com as migrations aplicadas. A integração
+passa com ou sem o seed (o CI roda sem). O banco precisa ser separado porque o teste da configuração
+do WhatsApp (#83) apaga a linha de `WhatsAppSettings` durante a execução e a restaura no fim, e os
+testes da agenda trocam a configuração de horários e a restauram no fim; se a execução for
+interrompida, esses dados do banco usado podem ficar perdidos. Por exemplo, com o Postgres do
+Compose:
 
 ```bash
 docker compose exec postgres psql -U proconchat -d proconchat -c "CREATE DATABASE proconchat_test"
@@ -683,8 +684,12 @@ passam por `services/conversationClosing.service.ts` (`finishOrLog`), e os tipos
 
 O rascunho fica em `Sessions.draft`, com as chaves `by_representative`, `holder_name`, `cpf_hash` e
 `cpf_masked` (`target_appointment_id` é da #59). O `chk_sessions_draft_keys` recusa qualquer outra.
-O motivo do agendamento (`REQUIRES_IN_PERSON` ou `NOT_RESOLVED`) é recalculado na reserva pela
-pergunta da sessão.
+O motivo do agendamento (`REQUIRES_IN_PERSON` ou `NOT_RESOLVED`) é o do último `SCHEDULE_OFFERED`
+da sessão registrado depois da última pergunta escolhida (`QUESTION_CHOSEN`), lido na reserva por
+`services/scheduleOfferReason.ts`. Assim o agendamento guarda o motivo que o bot mostrou na oferta,
+mesmo se a pergunta mudar no painel antes do clique no horário. Só quando esse evento não existe ou a
+leitura dos eventos falha o motivo é recalculado pela pergunta da sessão; na falha de leitura, o log
+traz só `{ type, sessionId, code }`.
 
 **Regra do nome.** O bot aplica `trim()` e `normalize("NFC")`, exige de 2 a 150 caracteres e aceita
 só letras de qualquer alfabeto (inclusive `º` e `ª`, que o Unicode trata como letras), marcas de

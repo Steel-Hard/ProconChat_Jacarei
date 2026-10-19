@@ -21,7 +21,7 @@ export function createConversationFlowHarness() {
 
     const recordEvent = vi.fn()
     const finishEvent = vi.fn()
-    const listEvents = vi.fn()
+    const listEvents = vi.fn<ConversationEventService["listBySession"]>(async () => [])
     const events: ConversationEventService = {
         record: recordEvent,
         finish: finishEvent,

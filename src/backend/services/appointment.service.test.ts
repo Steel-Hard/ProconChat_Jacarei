@@ -1,39 +1,91 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
-import { MockAppointmentRepository } from "../repositories/mock/appointmentMock.repository"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import {
+    buildAppointmentDetail,
+    buildChipCounts,
+    buildListItem,
+    conversationEventsOf,
+    conversationTimelineEvents,
+    FIXED_DATES,
+    FIXED_NOW,
+} from "../repositories/mock/appointment.builders"
+import { AppointmentRepositoryStub } from "../repositories/mock/appointmentStub.repository"
 import { AppointmentService, createAppointmentService } from "./appointment.service"
 import { toLocalDateString } from "../utils/date.utils"
 
+const STATUS_AFTER_ACTION = { claim: "CONFIRMED", attended: "ATTENDED", no_show: "NO_SHOW" } as const
+const EVENT_OF_ACTION = { claim: "CLAIMED", attended: "ATTENDED", no_show: "NO_SHOW" } as const
+const LIST_CHIPS = buildChipCounts({ all: 45, pending: 20, confirmed: 15, attended: 5, no_show: 3, canceled: 2, waiting_record: 1 })
+
+function serviceScenario(): AppointmentRepositoryStub {
+    const carlos = { assigned_user_id: "2", assigned_user_name: "Carlos Atendente" }
+    return new AppointmentRepositoryStub({
+        details: [
+            buildAppointmentDetail(),
+            buildAppointmentDetail({ id: "2", status: "CONFIRMED", appointment_datetime: FIXED_DATES.afterTomorrow, ...carlos }),
+            buildAppointmentDetail({ id: "4", status: "ATTENDED", appointment_datetime: FIXED_DATES.threeDaysAgo, ...carlos }),
+            buildAppointmentDetail({ id: "6", status: "CANCELED", appointment_datetime: FIXED_DATES.inThreeDays }),
+            buildAppointmentDetail({ id: "7", status: "PENDING", appointment_datetime: FIXED_DATES.todayEarly }),
+            buildAppointmentDetail({ id: "8", status: "PENDING", appointment_datetime: FIXED_DATES.todayLate }),
+        ],
+        list: {
+            items: [buildListItem(), buildListItem({ id: "7", appointment_datetime: FIXED_DATES.todayEarly })],
+            total: 45,
+            chipCounts: LIST_CHIPS,
+        },
+        pendingCount: 3,
+        titles: {
+            categories: { 10: "Cobrança" },
+            questions: { 1: "Cobrança indevida de serviço não contratado" },
+        },
+        afterAction: (call, current) => ({
+            ...current,
+            status: STATUS_AFTER_ACTION[call.action],
+            assigned_user_id: current.assigned_user_id ?? String(call.actorUserId),
+            events: [
+                {
+                    id: String(current.events.length + 1),
+                    type: EVENT_OF_ACTION[call.action],
+                    actor_user_id: String(call.actorUserId),
+                    actor_user_name: null,
+                    data: {},
+                    created_at: (call.now ?? FIXED_NOW).toISOString(),
+                },
+                ...current.events,
+            ],
+        }),
+    })
+}
+
 describe("appointment.service", () => {
-    let repository: MockAppointmentRepository
+    let repository: AppointmentRepositoryStub
     let service: AppointmentService
 
     beforeEach(() => {
-        repository = new MockAppointmentRepository(true)
+        vi.useFakeTimers({ toFake: ["Date"] })
+        vi.setSystemTime(FIXED_NOW)
+        repository = serviceScenario()
         service = createAppointmentService({
             repository,
-            conversationEvents: repository.conversationEventService(),
+            conversationEvents: conversationEventsOf(conversationTimelineEvents("101")),
         })
+    })
+
+    afterEach(() => {
+        vi.useRealTimers()
     })
 
     describe("listAppointments & Filtros", () => {
         it("retorna lista paginada com contagens de chips e estrutura esperada", async () => {
-            const response = await service.listAppointments({ page: 1, limit: 20 })
+            const response = await service.listAppointments({})
 
             expect(response.items).toBeInstanceOf(Array)
-            expect(response.total).toBe(9)
+            expect(response.total).toBe(45)
             expect(response.page).toBe(1)
             expect(response.limit).toBe(20)
-            expect(response.totalPages).toBe(1)
+            expect(response.totalPages).toBe(3)
+            expect(repository.findListCalls[0]?.filters).toEqual({ page: 1, limit: 20 })
 
-            expect(response.chipCounts).toMatchObject({
-                all: 9,
-                pending: expect.any(Number),
-                confirmed: expect.any(Number),
-                attended: expect.any(Number),
-                no_show: expect.any(Number),
-                canceled: expect.any(Number),
-                waiting_record: expect.any(Number),
-            })
+            expect(response.chipCounts).toEqual(LIST_CHIPS)
 
             const first = response.items[0]!
             expect(first).toHaveProperty("protocol")
@@ -43,80 +95,12 @@ describe("appointment.service", () => {
             expect(first).not.toHaveProperty("phone")
             expect(first).not.toHaveProperty("phone_encrypted")
         })
-
-        it("busca por nome ignorando maiúsculas e acentos", async () => {
-            const response = await service.listAppointments({ search: "maria" })
-            expect(response.items.some((a) => a.name === "Maria Silva")).toBe(true)
-
-            const responseAccented = await service.listAppointments({ search: "patricia" })
-            expect(responseAccented.items.some((a) => a.name === "Patrícia Souza")).toBe(true)
-        })
-
-        it("busca por protocolo pelo início", async () => {
-            const response = await service.listAppointments({ search: "a1b2c3d4" })
-            expect(response.items).toHaveLength(1)
-            expect(response.items[0]!.name).toBe("Maria Silva")
-        })
-
-        it("busca por CPF de 11 dígitos compara por hash e preserva sigilo", async () => {
-            const response = await service.listAppointments({ search: "11144477735" })
-            expect(response.items).toHaveLength(1)
-            expect(response.items[0]!.name).toBe("Maria Silva")
-            expect(response.items[0]!.cpf_masked).toBe("***.444.777-**")
-        })
-
-        it("busca por CPF formatado limpa a pontuação e encontra o cidadão", async () => {
-            const response = await service.listAppointments({ search: "111.444.777-35" })
-            expect(response.items).toHaveLength(1)
-            expect(response.items[0]!.name).toBe("Maria Silva")
-            expect(response.items[0]!.cpf_masked).toBe("***.444.777-**")
-        })
-
-        it("filtra por status PENDING e CONFIRMED", async () => {
-            const pendingRes = await service.listAppointments({ status: "PENDING" })
-            expect(pendingRes.items.every((a) => a.status === "PENDING")).toBe(true)
-
-            const confirmedRes = await service.listAppointments({ status: "CONFIRMED" })
-            expect(confirmedRes.items.every((a) => a.status === "CONFIRMED")).toBe(true)
-        })
-
-        it("filtra por waiting_record (confirmados com horário já passado)", async () => {
-            const response = await service.listAppointments({ status: "waiting_record" })
-            expect(response.items.every((a) => a.status === "CONFIRMED" && a.waiting_record)).toBe(true)
-        })
-
-        it("filtra por responsável: unassigned e específico", async () => {
-            const unassignedRes = await service.listAppointments({ responsible: "unassigned" })
-            expect(unassignedRes.items.every((a) => a.assigned_user_id === null)).toBe(true)
-
-            const assignedRes = await service.listAppointments({ responsible: "2" })
-            expect(assignedRes.items.every((a) => a.assigned_user_id === "2")).toBe(true)
-        })
-
-        it("ordena por nome crescente e decrescente", async () => {
-            const ascRes = await service.listAppointments({ sortBy: "name", sortOrder: "asc" })
-            const names = ascRes.items.map((a) => a.name)
-            const sortedNames = [...names].sort((a, b) => a.localeCompare(b))
-            expect(names).toEqual(sortedNames)
-
-            const descRes = await service.listAppointments({ sortBy: "name", sortOrder: "desc" })
-            expect(descRes.items[0]!.name).toBe(sortedNames[sortedNames.length - 1])
-        })
-
-        it("com period=all e chip ATTENDED ordena do mais recente para o mais antigo", async () => {
-            const res = await service.listAppointments({ status: "ATTENDED", period: "all" })
-            for (let i = 1; i < res.items.length; i++) {
-                const prev = new Date(res.items[i - 1]!.appointment_datetime).getTime()
-                const curr = new Date(res.items[i]!.appointment_datetime).getTime()
-                expect(prev).toBeGreaterThanOrEqual(curr)
-            }
-        })
     })
 
     describe("getPendingCount", () => {
         it("retorna o número correto de agendamentos pendentes", async () => {
             const result = await service.getPendingCount()
-            expect(result.count).toBe(repository.appointments.filter((a) => a.status === "PENDING").length)
+            expect(result).toEqual({ count: 3 })
         })
     })
 
@@ -161,14 +145,6 @@ describe("appointment.service", () => {
             expect(byType.STARTED?.data).toEqual({})
         })
 
-        it("detecta quando a lista de documentos enviada difere da configuração atual", async () => {
-            const detail = await service.getAppointmentDetail(9)
-            expect(detail.is_documents_config_different).toBe(true)
-
-            const detailNormal = await service.getAppointmentDetail(1)
-            expect(detailNormal.is_documents_config_different).toBe(false)
-        })
-
         it("registra só o código do erro quando a linha do tempo falha", async () => {
             const logger = { error: vi.fn() }
             const failure = Object.assign(new Error("falha com dado sensível 5500000000999"), { code: "ECONNREFUSED" })
@@ -204,6 +180,7 @@ describe("appointment.service", () => {
             const claimedEvent = result.events.find((e) => e.type === "CLAIMED")
             expect(claimedEvent).toBeDefined()
             expect(claimedEvent?.actor_user_id).toBe("42")
+            expect(repository.actionCalls).toEqual([{ action: "claim", id: "1", actorUserId: 42, now: FIXED_NOW }])
         })
 
         it("recusa assumir agendamento que não esteja Pendente", async () => {
@@ -221,16 +198,7 @@ describe("appointment.service", () => {
 
             const attendedEvent = result.events.find((e) => e.type === "ATTENDED")
             expect(attendedEvent).toBeDefined()
-        })
-
-        it("num pendente, assume automaticamente para quem clicou registrando os dois eventos", async () => {
-            const result = await service.markAttended(7, 42)
-            expect(result.assigned_user_id).toBe("42")
-
-            const claimedEvent = result.events.find((e) => e.type === "CLAIMED")
-            const attendedEvent = result.events.find((e) => e.type === "ATTENDED")
-            expect(claimedEvent).toBeDefined()
-            expect(attendedEvent).toBeDefined()
+            expect(repository.actionCalls).toEqual([{ action: "attended", id: "7", actorUserId: 42, now: FIXED_NOW }])
         })
 
         it("recusa marcar como atendido se for para data futura", async () => {
@@ -262,18 +230,7 @@ describe("appointment.service", () => {
 
             const noShowEvent = result.events.find((e) => e.type === "NO_SHOW")
             expect(noShowEvent).toBeDefined()
-        })
-
-        it("num pendente, assume automaticamente para quem clicou", async () => {
-            const todayStr = toLocalDateString()
-            const now = new Date(`${todayStr}T12:00:00-03:00`)
-            const result = await service.markNoShow(7, 42, now)
-            expect(result.assigned_user_id).toBe("42")
-
-            const claimedEvent = result.events.find((e) => e.type === "CLAIMED")
-            const noShowEvent = result.events.find((e) => e.type === "NO_SHOW")
-            expect(claimedEvent).toBeDefined()
-            expect(noShowEvent).toBeDefined()
+            expect(repository.actionCalls).toEqual([{ action: "no_show", id: "7", actorUserId: 42, now }])
         })
 
         it("recusa marcar como não compareceu se o horário ainda não passou", async () => {

@@ -3,9 +3,19 @@ import request from "supertest"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import errorHandler from "../middleware/errorHandler.middleware"
 import { createRequireAuth } from "../middleware/auth.middleware"
-import { MockAppointmentRepository } from "../repositories/mock/appointmentMock.repository"
+import {
+    buildAppointmentDetail,
+    buildChipCounts,
+    buildListItem,
+    conversationEventsOf,
+    conversationTimelineEvents,
+    FIXED_DATES,
+    FIXED_NOW,
+} from "../repositories/mock/appointment.builders"
+import { AppointmentRepositoryStub } from "../repositories/mock/appointmentStub.repository"
 import { MockAuthRepository } from "../repositories/mock/authMock.repository"
 import type { ConversationEventService } from "../services/conversationEvent.service"
+import type { AppointmentDetailRecord } from "../types/appointment.types"
 import { sessionTokens } from "../utils/sessionToken"
 import { AppointmentRoutes } from "./appointment.routes"
 
@@ -43,9 +53,58 @@ function accessCookieFor(userId: number, sessionVersion = 1): string {
     return `proconchat_access=${sessionTokens.signAccessToken({ userId, sessionVersion })}`
 }
 
+const STATUS_AFTER_ACTION = { claim: "CONFIRMED", attended: "ATTENDED", no_show: "NO_SHOW" } as const
+const EVENT_OF_ACTION = { claim: "CLAIMED", attended: "ATTENDED", no_show: "NO_SHOW" } as const
+const LIST_CHIPS = buildChipCounts({ all: 6, pending: 3, confirmed: 2, canceled: 1 })
+
+function routesScenario(overrides: Record<string, Partial<AppointmentDetailRecord>> = {}): AppointmentRepositoryStub {
+    const carlos = { assigned_user_id: "2", assigned_user_name: "Carlos Atendente" }
+    const details = [
+        buildAppointmentDetail(),
+        buildAppointmentDetail({ id: "2", status: "CONFIRMED", appointment_datetime: FIXED_DATES.afterTomorrow, ...carlos }),
+        buildAppointmentDetail({ id: "3", status: "CONFIRMED", appointment_datetime: FIXED_DATES.yesterday, ...carlos }),
+        buildAppointmentDetail({ id: "4", status: "ATTENDED", appointment_datetime: FIXED_DATES.threeDaysAgo, ...carlos }),
+        buildAppointmentDetail({ id: "5", status: "NO_SHOW", appointment_datetime: FIXED_DATES.fourDaysAgo, ...carlos }),
+        buildAppointmentDetail({ id: "6", status: "CANCELED", appointment_datetime: FIXED_DATES.inThreeDays }),
+        buildAppointmentDetail({ id: "7", status: "PENDING", appointment_datetime: FIXED_DATES.todayEarly }),
+        buildAppointmentDetail({ id: "8", status: "PENDING", appointment_datetime: FIXED_DATES.todayLate }),
+    ].map((detail) => ({ ...detail, ...overrides[detail.id] }))
+
+    return new AppointmentRepositoryStub({
+        details,
+        list: {
+            items: [buildListItem(), buildListItem({ id: "7", appointment_datetime: FIXED_DATES.todayEarly })],
+            total: 6,
+            chipCounts: LIST_CHIPS,
+        },
+        pendingCount: 3,
+        titles: {
+            categories: { 10: "Cobrança" },
+            questions: { 1: "Cobrança indevida de serviço não contratado" },
+        },
+        afterAction: (call, current) => ({
+            ...current,
+            status: STATUS_AFTER_ACTION[call.action],
+            assigned_user_id: current.assigned_user_id ?? String(call.actorUserId),
+            events: [
+                {
+                    id: String(current.events.length + 1),
+                    type: EVENT_OF_ACTION[call.action],
+                    actor_user_id: String(call.actorUserId),
+                    actor_user_name: null,
+                    data: {},
+                    created_at: (call.now ?? FIXED_NOW).toISOString(),
+                },
+                ...current.events,
+            ],
+        }),
+    })
+}
+
 describe("appointment.routes (HTTP)", () => {
     let app: express.Express
-    let repository: MockAppointmentRepository
+    let repository: AppointmentRepositoryStub
+    const timelineEvents = conversationEventsOf(conversationTimelineEvents("101"))
     const mockConversationEvents: ConversationEventService = {
         record: vi.fn(),
         finish: vi.fn(),
@@ -65,8 +124,14 @@ describe("appointment.routes (HTTP)", () => {
     }
 
     beforeEach(() => {
-        repository = new MockAppointmentRepository(true)
+        vi.useFakeTimers({ toFake: ["Date"] })
+        vi.setSystemTime(FIXED_NOW)
+        repository = routesScenario()
         app = buildApp(mockConversationEvents)
+    })
+
+    afterEach(() => {
+        vi.useRealTimers()
     })
 
     describe("Autenticação e Permissões", () => {
@@ -140,8 +205,8 @@ describe("appointment.routes (HTTP)", () => {
             expect(res.status).toBe(200)
             expect(res.body.data.items).toBeInstanceOf(Array)
             expect(res.body.data.total).toBe(6)
-            expect(res.body.data.chipCounts).toBeDefined()
-            expect(res.body.data.chipCounts.all).toBe(6)
+            expect(res.body.data.chipCounts).toEqual(LIST_CHIPS)
+            expect(repository.findListCalls[0]?.filters).toMatchObject({ period: "upcoming", page: 1, limit: 20 })
         })
 
         it("retorna todos os agendamentos quando period=all", async () => {
@@ -150,7 +215,7 @@ describe("appointment.routes (HTTP)", () => {
                 .set("Cookie", accessCookieFor(1))
 
             expect(res.status).toBe(200)
-            expect(res.body.data.total).toBe(9)
+            expect(repository.findListCalls[0]?.filters.period).toBe("all")
         })
 
         it("filtra por status PENDING", async () => {
@@ -159,9 +224,7 @@ describe("appointment.routes (HTTP)", () => {
                 .set("Cookie", accessCookieFor(1))
 
             expect(res.status).toBe(200)
-            expect(
-                res.body.data.items.every((a: { status: string }) => a.status === "PENDING"),
-            ).toBe(true)
+            expect(repository.findListCalls[0]?.filters.status).toBe("PENDING")
         })
 
         it("retorna 400 se enviar query param inválido pelo schema Zod", async () => {
@@ -194,7 +257,7 @@ describe("appointment.routes (HTTP)", () => {
 
     describe("GET /api/v1/appointments/:id", () => {
         it("retorna detalhe completo do agendamento", async () => {
-            const res = await request(buildApp(repository.conversationEventService()))
+            const res = await request(buildApp(timelineEvents))
                 .get("/api/v1/appointments/1")
                 .set("Cookie", accessCookieFor(1))
 
@@ -219,18 +282,6 @@ describe("appointment.routes (HTTP)", () => {
             expect(res.body.data.timeline[3].generated_by_ai).toBe(true)
         })
 
-        it("devolve o protocolo em maiúsculas no detalhe e na lista", async () => {
-            const detailRes = await request(app)
-                .get("/api/v1/appointments/1")
-                .set("Cookie", accessCookieFor(1))
-            const listRes = await request(app)
-                .get("/api/v1/appointments?search=a1b2c3d4")
-                .set("Cookie", accessCookieFor(1))
-
-            expect(detailRes.body.data.protocol).toBe("A1B2C3D4")
-            expect(listRes.body.data.items[0].protocol).toBe("A1B2C3D4")
-        })
-
         describe("ações disponíveis", () => {
             afterEach(() => {
                 vi.useRealTimers()
@@ -251,9 +302,8 @@ describe("appointment.routes (HTTP)", () => {
             it("informa as ações disponíveis de um confirmado de hoje antes do horário", async () => {
                 vi.useFakeTimers({ toFake: ["Date"] })
                 vi.setSystemTime(new Date("2026-10-20T10:00:00-03:00"))
-                repository.appointments.find((a) => a.id === 2)!.appointment_datetime = new Date(
-                    "2026-10-20T15:00:00-03:00",
-                )
+                repository = routesScenario({ "2": { appointment_datetime: new Date("2026-10-20T15:00:00-03:00").toISOString() } })
+                app = buildApp(mockConversationEvents)
 
                 const res = await request(app)
                     .get("/api/v1/appointments/2")
@@ -308,7 +358,7 @@ describe("appointment.routes (HTTP)", () => {
 
     describe("Ações de Status (PATCH /status)", () => {
         it("o PATCH devolve o mesmo detalhe que o GET em seguida, com linha do tempo e histórico", async () => {
-            const appWithTimeline = buildApp(repository.conversationEventService())
+            const appWithTimeline = buildApp(timelineEvents)
 
             const patchRes = await request(appWithTimeline)
                 .patch("/api/v1/appointments/1/status")
@@ -353,6 +403,7 @@ describe("appointment.routes (HTTP)", () => {
                 expect(patchRes.body.data.timeline).toHaveLength(2)
                 expect(patchRes.body.data.events[0].type).toBe(terminalEvent)
                 expect(patchRes.body.data).toEqual(getRes.body.data)
+                expect(repository.actionCalls).toEqual([{ action, id: String(id), actorUserId: 10, now: FIXED_NOW }])
             },
         )
 
@@ -367,6 +418,7 @@ describe("appointment.routes (HTTP)", () => {
             expect(res.body.data.assigned_user_id).toBe("10")
             expect(res.body.data.events[0].type).toBe("CLAIMED")
             expect(res.body.data.events[0].actor_user_id).toBe("10")
+            expect(repository.actionCalls).toEqual([{ action: "claim", id: "1", actorUserId: 10, now: FIXED_NOW }])
         })
 
         it("executa ação attended com sucesso para agendamento de hoje", async () => {
@@ -377,6 +429,7 @@ describe("appointment.routes (HTTP)", () => {
 
             expect(res.status).toBe(200)
             expect(res.body.data.status).toBe("ATTENDED")
+            expect(repository.actionCalls).toEqual([{ action: "attended", id: "7", actorUserId: 10, now: FIXED_NOW }])
         })
 
         it("retorna 409 com ATTENDANCE_NOT_YET_AVAILABLE ao tentar marcar attended para agendamento futuro", async () => {
