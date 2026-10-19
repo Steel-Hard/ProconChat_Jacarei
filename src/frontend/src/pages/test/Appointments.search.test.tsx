@@ -72,6 +72,41 @@ describe("Appointments.page: busca", () => {
         expect(page.store.getState().appointmentSearch.term).toBe("Ma")
     })
 
+    it("espera a pausa na digitação e manda só o termo final", async () => {
+        const page = await renderAppointmentsPage({
+            handlers: searchReplies({ Mar: found(MARIA, MARIO) })
+        })
+        await screen.findByText("Maria Aparecida Santos")
+
+        await page.user.type(searchBox(), "Mar")
+
+        await screen.findByText("2 resultados em todos os períodos, status e responsáveis")
+        expect(
+            page
+                .listRequests()
+                .filter((params) => params.has("search"))
+                .map((params) => params.get("search"))
+        ).toEqual(["Mar"])
+    })
+
+    it("durante a busca o rodapé mostra a ordem mista, qualquer que seja o filtro", async () => {
+        const page = await renderAppointmentsPage({
+            initialEntry: "/agendamentos?status=PENDING",
+            handlers: searchReplies({ Ma: found(MARIA, MARIO) })
+        })
+        expect(
+            await screen.findByText("1–2 de 2 agendamentos · Ordem padrão: mais próximo primeiro.")
+        ).toBeInTheDocument()
+
+        await page.user.type(searchBox(), "Ma")
+
+        expect(
+            await screen.findByText(
+                "1–2 de 2 agendamentos · Ordem padrão: próximos primeiro (mais próximo no topo), depois os passados (mais recente primeiro)."
+            )
+        ).toBeInTheDocument()
+    })
+
     it("não manda busca com menos de 2 caracteres e os filtros continuam valendo", async () => {
         const page = await renderAppointmentsPage({ handlers: searchReplies({}) })
         await screen.findByText("Maria Aparecida Santos")
@@ -220,6 +255,23 @@ describe("Appointments.page: busca", () => {
         expect(await screen.findByText(/1 resultado/)).toBeInTheDocument()
         expect(page.router.state.location.search).toBe("?period=past")
         expect(page.listRequests().at(-1)?.get("search")).toBe("Maria")
+    })
+
+    it("não põe o CPF buscado na URL nem no histórico enquanto a busca está ativa", async () => {
+        const page = await renderAppointmentsPage({
+            browser: true,
+            initialEntry: "/agendamentos?status=PENDING",
+            handlers: searchReplies({ [FICTITIOUS_CPF]: found(MARIA) })
+        })
+        await screen.findByText("Maria Aparecida Santos")
+
+        await page.user.type(searchBox(), FICTITIOUS_CPF)
+
+        expect(await screen.findByText(/1 resultado/)).toBeInTheDocument()
+        expect(window.location.pathname).toBe("/agendamentos")
+        expect(window.location.search).toBe("?status=PENDING")
+        expect(window.location.href).not.toContain(FICTITIOUS_CPF)
+        expect(JSON.stringify(window.history.state)).not.toContain(FICTITIOUS_CPF)
     })
 
     it("não deixa o CPF buscado na URL, no histórico nem no armazenamento do navegador", async () => {
