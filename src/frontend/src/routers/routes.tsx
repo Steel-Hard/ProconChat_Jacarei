@@ -1,5 +1,5 @@
 import { lazy } from "react"
-import type { RouteObject } from "react-router-dom"
+import { Navigate, type RouteObject } from "react-router-dom"
 import PanelLayout from "@/layouts/Panel.layout"
 import RootLayout from "@/layouts/Root.layout"
 import ErrorPage from "@/pages/Error.page"
@@ -55,7 +55,10 @@ const routes: RouteObject[] = [
                             {
                                 element: <PanelLayout />,
                                 children: [
-                                    underConstruction(ROUTES.dashboard, "dashboard"),
+                                    {
+                                        path: ROUTES.dashboard,
+                                        element: <Navigate to={ROUTES.appointments} replace />
+                                    },
                                     { path: ROUTES.appointments, element: <Appointments /> },
                                     {
                                         path: ROUTES.appointmentDetail,
