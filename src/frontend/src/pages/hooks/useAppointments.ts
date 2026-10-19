@@ -19,7 +19,7 @@ import type AppointmentResponsibleFilter from "@/types/appointments/AppointmentR
 import type AppointmentRowView from "@/types/appointments/AppointmentRowView.types"
 import type AppointmentSortBy from "@/types/appointments/AppointmentSortBy.types"
 import type AppointmentStatusFilter from "@/types/appointments/AppointmentStatusFilter.types"
-import parseAppointmentListParams from "@/utils/appointmentListParams"
+import parseAppointmentListParams from "@/utils/parseAppointmentListParams"
 import appointmentActionErrorKey from "@/utils/appointmentActionErrorKey"
 import APPOINTMENT_PERIODS from "@/utils/appointmentPeriods"
 import APPOINTMENT_RESPONSIBLE_FILTERS from "@/utils/appointmentResponsibleFilters"

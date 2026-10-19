@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import parseAppointmentListParams from "@/utils/appointmentListParams"
+import parseAppointmentListParams from "@/utils/parseAppointmentListParams"
 import type AppointmentListFilters from "@/types/appointments/AppointmentListFilters.types"
 
 const DEFAULTS: AppointmentListFilters = {
