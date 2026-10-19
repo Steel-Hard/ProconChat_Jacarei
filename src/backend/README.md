@@ -68,11 +68,12 @@ npm test        # roda a suíte de testes (Vitest + Supertest)
 npm run typecheck:test  # checa os tipos de todo o código, inclusive dos testes
 ```
 
-Rode `npm run test:integration` num **banco separado**, só com as migrations aplicadas (sem o
-seed), como faz o CI. O teste da configuração do WhatsApp (#83) apaga a linha de `WhatsAppSettings`
-durante a execução e a restaura no fim; se a execução for interrompida, a linha do banco usado pode
-ficar perdida. Os testes de eventos da conversa também esperam um banco sem o conteúdo do seed.
-Por exemplo, com o Postgres do Compose:
+Rode `npm run test:integration` num **banco separado**, com as migrations aplicadas. A integração
+passa com ou sem o seed (o CI roda sem). O banco precisa ser separado porque o teste da configuração
+do WhatsApp (#83) apaga a linha de `WhatsAppSettings` durante a execução e a restaura no fim, e os
+testes da agenda trocam a configuração de horários e a restauram no fim; se a execução for
+interrompida, esses dados do banco usado podem ficar perdidos. Por exemplo, com o Postgres do
+Compose:
 
 ```bash
 docker compose exec postgres psql -U proconchat -d proconchat -c "CREATE DATABASE proconchat_test"
