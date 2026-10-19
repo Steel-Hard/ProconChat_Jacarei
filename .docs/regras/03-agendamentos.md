@@ -93,3 +93,8 @@ As demais ações ficam no [Detalhe do agendamento](04-detalhe-do-agendamento.md
 
 - [Detalhe do agendamento](04-detalhe-do-agendamento.md): todas as ações sobre um agendamento.
 - [Horários de atendimento](08-horarios-de-atendimento.md): define dias, horários e vagas do calendário.
+
+## Estado da tela
+
+- **Lista:** construída pela #85 (busca, chips, filtros de Período e Responsável, ordenação, paginação e "Assumir"). O filtro por um funcionário específico em "Responsável" espera a lista de funcionários da #62.
+- **Calendário semanal:** ainda não existe; fica com a #87. Até lá, o botão "Lista / Calendário semanal" não aparece.
