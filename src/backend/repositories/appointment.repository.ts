@@ -19,6 +19,7 @@ import {
     getTodayBounds,
     isDatetimePast,
 } from "../utils/date.utils"
+import { isDocumentsConfigDifferent } from "../utils/documents.utils"
 import { AppointmentRepository } from "./appointment.repository.interface"
 
 const CPF_SEARCH_PATTERN = /^[\d.\-\s]+$/
@@ -187,14 +188,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             }
             const groupSent = docsSent.group || []
             const questionSent = docsSent.question || []
-
-            const isGroupDiff =
-                JSON.stringify(groupSent.slice().sort()) !==
-                JSON.stringify(currentDocs.group.slice().sort())
-            const isQuestionDiff =
-                JSON.stringify(questionSent.slice().sort()) !==
-                JSON.stringify(currentDocs.question.slice().sort())
-            const isDifferent = isGroupDiff || isQuestionDiff
+            const isDifferent = isDocumentsConfigDifferent(docsSent, currentDocs)
 
             const eventsResult = await pool.query(
                 `SELECT
