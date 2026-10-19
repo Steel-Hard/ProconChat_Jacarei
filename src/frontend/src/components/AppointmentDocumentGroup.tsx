@@ -16,8 +16,8 @@ function AppointmentDocumentGroup({ group }: AppointmentDocumentGroupProps) {
             </p>
             {group.items.length > 0 ? (
                 <ul className={css.documents} aria-labelledby={titleId}>
-                    {group.items.map((item) => (
-                        <li key={item}>{item}</li>
+                    {group.items.map((item, index) => (
+                        <li key={`${index}-${item}`}>{item}</li>
                     ))}
                 </ul>
             ) : (

@@ -50,6 +50,17 @@ describe("AppointmentDocuments", () => {
         expect(within(second).getByText("Fatura")).toBeInTheDocument()
     })
 
+    it("mostra itens repetidos sem aviso de chave duplicada", () => {
+        const error = vi.spyOn(console, "error").mockImplementation(() => {})
+
+        renderDocuments(null, ["CPF", "CPF"], [])
+
+        const first = screen.getByRole("list", { name: "Quando o próprio titular comparece" })
+        expect(within(first).getAllByRole("listitem")).toHaveLength(2)
+        expect(error).not.toHaveBeenCalled()
+        error.mockRestore()
+    })
+
     it("mostra o texto de vazio em cada grupo sem itens", () => {
         renderDocuments(null, [], [])
 
