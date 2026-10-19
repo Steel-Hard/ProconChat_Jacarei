@@ -136,7 +136,7 @@ npm run test:db
 O teste cria bancos temporários com nome aleatório e os remove ao terminar;
 não limpa o banco informado. Ele cobre estes cenários:
 
-- **Do zero:** `up` aplica as 13 migrations; as tabelas públicas são exatamente
+- **Do zero:** `up` aplica as 15 migrations; as tabelas públicas são exatamente
   as do schema atual (`interactions` não existe); cada enum tem os valores
   esperados (`appointment_status` 5, `session_outcome` 8, `session_step` 12);
   `users.session_version` é `integer not null default 0`; `short_title` é
@@ -151,17 +151,25 @@ não limpa o banco informado. Ele cobre estes cenários:
   são data ISO 8601 com fuso. Os `CHECK` de `Sessions` da `13` aceitam sessão
   encerrada ou abandonada em `FINISHED` com a etapa em `abandoned_at_step` e
   recusam com `23514` sessão `IN_PROGRESS` em `FINISHED`, sessão encerrada ou
-  abandonada fora de `FINISHED` e `abandoned_at_step = 'FINISHED'`. Por fim,
-  a volta à versão 10 (`interactions` de volta, `appointment_status` com 3
-  valores, etapas novas mapeadas) é feita em três passos: o primeiro `down 1`
-  desfaz só a `13` (sobra só `chk_conversation_events_data_object`, um evento
-  com chave livre volta a ser aceito e uma sessão em andamento em `FINISHED`
-  também), o segundo desfaz a `12` (os `CHECK` de tamanho voltam a aceitar
-  espaço nas pontas) e o terceiro desfaz a `11`. A volta à versão 10 perde a
+  abandonada fora de `FINISHED` e `abandoned_at_step = 'FINISHED'`. Em
+  `WhatsAppSettings`, `display_phone_number` aceita até 40 caracteres e
+  `verified_name` até 255 (`22001` acima disso), e
+  `chk_whatsapp_settings_access_token_lifetime` aceita as duas colunas nulas,
+  `TRUE` sem data e `FALSE` com data, e recusa com `23514` `TRUE` com data,
+  `FALSE` sem data e data sem tipo. Por fim, a volta à versão 10
+  (`interactions` de volta, `appointment_status` com 3 valores, etapas novas
+  mapeadas) é feita em cinco passos de `down 1`: o primeiro desfaz a `15`
+  (somem `access_token_permanent`, `access_token_expires_at` e a constraint, e
+  a linha de `WhatsAppSettings` continua), o segundo desfaz a `14` (somem
+  `display_phone_number` e `verified_name`, e a linha continua), o terceiro
+  desfaz a `13` (sobra só `chk_conversation_events_data_object`, um evento com
+  chave livre volta a ser aceito e uma sessão em andamento em `FINISHED`
+  também), o quarto desfaz a `12` (os `CHECK` de tamanho voltam a aceitar
+  espaço nas pontas) e o quinto desfaz a `11`. A volta à versão 10 perde a
   etapa do abandono: a `11` reaplicada copia `current_step = 'FINISHED'` para
   `abandoned_at_step`, e por isso o `up` seguinte falha na guarda de sessões da
   `13` enquanto houver sessão abandonada; depois de apagar a sessão abandonada
-  da versão 10, `up` reaplica, `down 13` deixa só `pgmigrations` e `up` reaplica tudo. Os `CHECK` da `12`
+  da versão 10, `up` reaplica, `down 15` deixa só `pgmigrations` e `up` reaplica tudo. Os `CHECK` da `12`
   recusam título curto com espaço nas pontas ou com 25 caracteres e aceitam 24.
 - **Sobre a versão 10 com o conteúdo do seed:** `up 10`, carga dos dados de
   `db/seeds/data` com as colunas da versão 10, sessões `IN_PROGRESS`,
@@ -190,12 +198,26 @@ não limpa o banco informado. Ele cobre estes cenários:
   `abandoned_at_step = 'FINISHED'`, o `up` falha com a mensagem da guarda, a
   versão continua 12 e nenhum `CHECK` de `Sessions` fica; depois de apagar a
   linha, o `up` funciona.
+- **Migration `14`:** num banco na versão 13 com a linha de `WhatsAppSettings`,
+  o `up` acrescenta `display_phone_number` e `verified_name` nulos sem mudar a
+  linha; `down 2` remove as colunas e mantém a linha, e o `up` seguinte
+  funciona.
+- **Migration `15`:** num banco na versão 14 com a linha de `WhatsAppSettings`,
+  o `up` acrescenta `access_token_permanent` e `access_token_expires_at` nulos
+  sem mudar o resto da linha; `down 1` remove as colunas e a constraint e
+  mantém a linha, e o `up` seguinte volta com as duas colunas nulas.
 - **Seed:** do zero (7 categorias, 47 perguntas, títulos, ordem, `llm_allowed`,
   documentos e configuração inicial iguais aos arquivos de dados, `BlockedDates`
   vazia); idempotência (retrato completo das tabelas semeadas igual depois da
   segunda execução); backfill do `seed_key` num banco com o conteúdo antigo,
   eventos e sessões (ids, eventos e sessões intactos); linhas editadas ou
-  criadas pelo painel preservadas; configuração alterada não sobrescrita.
+  criadas pelo painel preservadas; documentos úteis alterados reescritos só
+  nas perguntas que o painel não editou; configuração alterada não
+  sobrescrita.
+- **Conta Admin:** o seed mantém o Admin que já existe, com outro
+  `ROOT_EMAIL` ou sem `ROOT_*`; sem Admin, falha com `ROOT_*` ausente ou
+  inválido e não grava nada; `admin:reset-password` regrava o hash do Admin,
+  incrementa `session_version` e não imprime credenciais.
 
 Para comparar o rollback com a versão 10 à mão, aplique `up` e `down 1` num
 banco, só `up 10` em outro, e compare os `pg_dump --schema-only` com `diff`.

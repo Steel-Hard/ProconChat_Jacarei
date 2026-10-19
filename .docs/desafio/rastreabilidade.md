@@ -6,7 +6,7 @@ Como cada requisito do [documento do desafio](desafio-6dsm-2026-2.md) é atendid
 - **Desenho:** o que foi decidido e desenhado (registros em [`../decisoes/`](../decisoes/) e protótipo do painel no Claude Design);
 - **Situação:** ✅ atendido ou bem coberto · ⚠️ parcial ou com risco · ❌ não atendido · 🔴 risco alto.
 
-Revisão feita em 27/09/2026, no início da Sprint 2 (15/09 a 19/10/2026). A entrega final (Review Meeting) é em 23/11/2026.
+Revisão feita em 27/09/2026, no início da Sprint 2 (15/09 a 19/10/2026), e coluna **Código** atualizada em 19/10/2026, no fechamento da Sprint 2. A entrega final (Review Meeting) é em 23/11/2026.
 
 ## Requisitos funcionais
 
@@ -14,20 +14,20 @@ Revisão feita em 27/09/2026, no início da Sprint 2 (15/09 a 19/10/2026). A ent
 |---|---|---|---|
 | **RF01** WhatsApp como interface | Cloud API funcionando; Evolution API removida na #82 | Migração para a Cloud API ([003](../decisoes/003-migracao-whatsapp-cloud-api.md)) | ✅ |
 | **RF02** Opções com base na tabela de decisões | 7 categorias e 47 itens do FAQ real | Conteúdo gerenciável, títulos curtos, paginação ([001](../decisoes/001-fluxo-guiado-por-categorias.md)) | ⚠️ Nota 1 |
-| **RF03** Fluxos decisórios sequenciais | Categoria → pergunta | + "resolveu?" → quem comparece → horário ([008](../decisoes/008-fluxo-da-conversa-e-desfechos.md)) | ⚠️ Nota 1 |
-| **RF04** Resposta que resume o caso e indica próximos passos | Resposta com base legal e documentos | + oferta de agendamento | ⚠️ Nota 2 |
-| **RF05** Complemento por LLM | Serviço pronto, sem chamador | Opção por pergunta, rótulo, fallback ([009](../decisoes/009-complemento-por-llm.md)) | ⚠️ Nota 3 |
-| **RF06** Registrar interações e analisar fluxos | Não implementado (#16) | Eventos tipados, desfechos, Sessões, Relatórios ([010](../decisoes/010-registro-de-interacoes-e-relatorios.md)) | ⚠️ Só no desenho |
-| **RF07** Agendamento quando a resposta não resolve | Não implementado | Fluxo completo ([006](../decisoes/006-ciclo-de-vida-do-agendamento.md), [007](../decisoes/007-agenda-configuravel.md), [008](../decisoes/008-fluxo-da-conversa-e-desfechos.md)) | ⚠️ Só no desenho |
-| **RF08** Interface web de gerenciamento dos agendamentos | Não implementado | 10 telas aprovadas no protótipo | ⚠️ Nota 4 |
+| **RF03** Fluxos decisórios sequenciais | Categoria → pergunta → "resolveu?" → quem comparece → nome e CPF → horário (#55, #56) | Retorno de quem já tem agendamento ([008](../decisoes/008-fluxo-da-conversa-e-desfechos.md)) | ⚠️ Nota 1 |
+| **RF04** Resposta que resume o caso e indica próximos passos | Resposta com base legal, documentos e o trecho "O que fazer agora"; oferta de agendamento | — | ✅ Nota 2 |
+| **RF05** Complemento por LLM | Cliente e serviço prontos, sem chamador no fluxo | Opção por pergunta, rótulo, fallback ([009](../decisoes/009-complemento-por-llm.md)) | ⚠️ Nota 3 |
+| **RF06** Registrar interações e analisar fluxos | Eventos tipados e desfechos gravados (#16, #55) | Sessões, Relatórios ([010](../decisoes/010-registro-de-interacoes-e-relatorios.md)) | ⚠️ Falta a análise |
+| **RF07** Agendamento quando a resposta não resolve | Agendamento pelo bot, com horários da agenda e controle de vagas (#56) | Remarcar e cancelar pelo bot, agenda configurável pelo painel ([006](../decisoes/006-ciclo-de-vida-do-agendamento.md), [007](../decisoes/007-agenda-configuravel.md), [008](../decisoes/008-fluxo-da-conversa-e-desfechos.md)) | ⚠️ Parcial |
+| **RF08** Interface web de gerenciamento dos agendamentos | Painel com login, "Minha conta", Agendamentos (lista com busca, filtros e "Assumir", #85), Detalhe do agendamento (assumir, atendido, não compareceu, #86) e WhatsApp (#54), sobre a API de agendamentos (#60) | Demais telas do protótipo (10 aprovadas) | ⚠️ Nota 4 |
 
 **Nota 1: interpretação de "tabela de decisões" e "fluxos decisórios".** O nosso modelo tem dois níveis (categoria → pergunta → resposta), mais os passos de agendamento. É defensável, porque segue o material entregue pelo PROCON, que tem formato de FAQ. Mas um avaliador pode esperar árvores com ramificações ("tem nota fiscal? sim/não"). **Ação:** confirmar com o professor e com o parceiro antes da Sprint 3.
 
-**Nota 2: próximos passos explícitos.** A resposta orienta, mas não tem um bloco rotulado de próximos passos, que é o texto literal do RF04. **Ação:** incluir um trecho "O que fazer agora" na resposta final.
+**Nota 2: próximos passos explícitos.** Resolvida: a resposta final traz o trecho rotulado "O que fazer agora", que é o texto literal do RF04.
 
 **Nota 3: tempo de resposta do LLM.** Em CPU, de 23 a 38 s por resposta. **Ação:** decidir o envio assíncrono proposto em [009](../decisoes/009-complemento-por-llm.md) antes de ligar o LLM ao fluxo.
 
-**Nota 4: stack do front-end não decidido** (React ou server-rendered). **Ação:** decidir antes de criar as tasks do painel.
+**Nota 4: painel em construção.** O stack foi decidido (React 19 + Vite, a partir do `template-react`). Estão prontos o login, "Minha conta", Agendamentos, Detalhe do agendamento e WhatsApp; enquanto não há Dashboard, a tela inicial (`/`) leva a Agendamentos (PR #115). Dashboard, Relatórios, Conteúdo, Sessões, Horários, Documentos e Usuários continuam "Em construção". O cancelamento pela equipe e as observações internas do agendamento ainda não existem na API.
 
 ## Requisitos não funcionais
 
@@ -38,9 +38,9 @@ Revisão feita em 27/09/2026, no início da Sprint 2 (15/09 a 19/10/2026). A ent
 | **RNF03** LGPD | ⚠️ Bem encaminhado ([002](../decisoes/002-lgpd-dados-pessoais.md)) | Aviso de privacidade na saudação do bot; política de retenção (RNF09); procedimento para pedidos do titular |
 | **RNF04** Caráter orientativo | ✅ Implementado (PR #43), texto único em todo o sistema | — |
 | **RNF05** Identificar o que é gerado por IA | ⚠️ Desenhado | Implementar junto com o RF05 |
-| **RNF06** Docker | ✅ | Adicionar o container do front. Evolution e Redis removidos na #82 |
+| **RNF06** Docker | ✅ | — (front no container `frontend`; Evolution e Redis removidos na #82) |
 | **RNF07** Instalação e requisitos de hardware/software | ✅ Para o estado atual | Atualizar após a migração: chave-mestra, `.env` reduzido, front-end. Escrever o **guia de passagem para o PROCON** (conta Meta, número próprio, token permanente, modelos de mensagem, tela de WhatsApp), já que durante as sprints o sistema roda com o número de testes do time ([003](../decisoes/003-migracao-whatsapp-cloud-api.md)) |
-| **RNF08** Práticas modernas (ágil, CI/CD, testes, docs) | ❌ **CI/CD não existe** | Pipeline de CI rodando os testes em cada PR. É o único ❌ que não depende de funcionalidade e deveria entrar na Sprint 2. Teste end-to-end do fluxo mínimo (#18) |
+| **RNF08** Práticas modernas (ágil, CI/CD, testes, docs) | ✅ CI em todo PR e push (`ci.yml`) e deploy contínuo na VM (`deploy.yml`, #51) | Teste end-to-end do fluxo mínimo (#18) |
 
 ## Restrições de projeto
 

@@ -1,6 +1,6 @@
 # ProconChat — Backend
 
-Backend do chatbot de orientação ao consumidor via WhatsApp (PROCON Jacareí). Express + TypeScript, seguindo o padrão Controller → Service → Route.
+Backend do chatbot de orientação ao consumidor via WhatsApp (PROCON Jacareí). Express + TypeScript, em camadas Route → Controller → Service → Repository.
 
 ## Estrutura de pastas
 
@@ -53,6 +53,13 @@ Copie `.env.example` para `.env` e preencha:
 | `WHATSAPP_GRAPH_API_VERSION` | Não (padrão `v26.0`) | Versão da Graph API da Meta no formato `v26.0`, usada no teste de conexão e repassada ao gateway pelo endpoint interno. Fora do formato, o servidor encerra na inicialização. |
 | `ROOT_EMAIL` | Só no `seed`, enquanto não existe a conta Admin | E-mail da conta Admin criada pelo seed. |
 | `ROOT_PASSWORD` | Só no `seed` (enquanto não existe Admin) e no `admin:reset-password` | Senha da conta Admin, de 8 caracteres a 72 bytes em UTF-8. |
+| `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_BUSINESS_ACCOUNT_ID` | Não; só no `seed`, enquanto `WhatsAppSettings` está vazia | IDs da Meta para a configuração inicial do WhatsApp. Preenchidos, só dígitos, até 40; senão o `seed` falha. |
+| `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET` | Não; só no `seed`, enquanto `WhatsAppSettings` está vazia | Segredos iniciais, gravados cifrados com `ENCRYPTION_KEY`. |
+| `WHATSAPP_VERIFY_TOKEN` | Não; só no `seed`, enquanto `WhatsAppSettings` está vazia | Token de verificação do webhook, de 1 a 64 caracteres visíveis sem espaço. Vazio, o `seed` gera um aleatório. |
+| `OLLAMA_URL` | Não (padrão `http://ollama:11434`) | Endereço do Ollama usado por `clients/ollamaLlm.client.ts`. |
+| `LLM_MODEL` | Não (padrão `llama3.2:3b`) | Modelo do Ollama. |
+| `LLM_TIMEOUT_MS` | Não (padrão `20000`) | Tempo limite da chamada ao Ollama, em milissegundos. |
+| `NODE_ENV` | Não | Com `production`, os cookies de sessão saem com `Secure` (seção "Cookies"). A imagem Docker já define `production`. |
 
 ## Como rodar
 
@@ -93,7 +100,7 @@ pode ficar trocada: rode num banco descartável, como acima.
 
 `GET /health` responde `200` com `{ "data": { "status": "ok" } }` e não depende do banco de dados — serve como healthcheck de infraestrutura (Docker, load balancer) e como exemplo do padrão de código para copiar em novos recursos.
 
-`POST /api/v1/whatsapp/sessions` recebe `{ phone, text? }` do Gateway WhatsApp
+`POST /api/v1/whatsapp/sessions` recebe `{ phone, text?, optionId? }` do Gateway WhatsApp (`text` para mensagem digitada, `optionId` para toque numa lista ou botão)
 (`src/gateway/`), autenticado pelo header `X-Internal-Token` (comparado em tempo constante), e cria ou
 reutiliza uma sessão guardando somente o HMAC do telefone (nunca o número em texto puro). Com o
 atendimento automático pausado, responde o texto fixo sem tocar na sessão (seção "Pausa").
@@ -837,9 +844,6 @@ O par desfecho e evento tem que casar, senão lança `InternalServerError` sem c
 | Remarcou / cancelou | #59 | `finishSessionWith(client, ...)` na transação da alteração; se falhar, a alteração volta e o cidadão é avisado | `APPOINTMENT_RESCHEDULED` / `APPOINTMENT_CANCELED` | `MANAGED_APPOINTMENT` |
 | 30 min sem interação | #16 na próxima mensagem do mesmo número; varredura periódica (`services/abandonedSessionsSweep.service.ts`) | — | `ABANDONED` | `ABANDONED` |
 
-Hoje o fluxo da Sprint 1 encerra a resposta com `finish` e `ANSWER_SENT` (`llm: "NOT_CALLED"`):
-`OUT_OF_SCOPE` para pergunta fora do escopo e `RESOLVED` (exceção provisória) para as demais.
-
 ### Encerramento dentro de uma transação
 
 A reserva (#56) e a remarcação ou o cancelamento (#59) gravam o agendamento, o evento e o desfecho
@@ -868,7 +872,7 @@ try {
 | Situação | Comportamento |
 | --- | --- |
 | Falha ao gravar evento comum com `record` (categoria, pergunta, resposta enviada, "resolveu?", oferta, quem comparece etc.), inclusive evento recusado pelo validador | `record` captura o erro, registra no log só o tipo do evento (ou `INVALID`), o id da sessão (ou `INVALID`) e o código do erro, e resolve normalmente. O cidadão recebe a resposta |
-| Encerramento do fluxo atual (`RESOLVED`/`OUT_OF_SCOPE` com `ANSWER_SENT`) | `finish` lança. O fluxo registra no log do mesmo jeito e entrega a resposta; a sessão continua `IN_PROGRESS`, sem evento de fechamento, e será abandonada pelo timeout |
+| Encerramento com `finish`, fora da transação de um agendamento (`OUT_OF_SCOPE` com `ANSWER_SENT`, `RESOLVED` com `RESOLVED_ANSWERED`, `DECLINED`, `NO_SLOT`), por `finishOrLog` (`services/conversationClosing.service.ts`) | `finish` lança. O fluxo registra no log do mesmo jeito e entrega a resposta; a sessão continua `IN_PROGRESS`, sem evento de fechamento, e será abandonada pelo timeout |
 | Criação do agendamento e encerramentos ligados a ele (`PHONE_NOTICE_SHOWN`, `APPOINTMENT_CREATED`/`SCHEDULED`, `APPOINTMENT_RESCHEDULED`/`APPOINTMENT_CANCELED`/`MANAGED_APPOINTMENT`) | `insertConversationEvent(client, ...)` e `finishSessionWith(client, ...)` na mesma transação da reserva ou da alteração. Se a reserva, o evento ou o encerramento falhar, a transação inteira volta e o cidadão recebe uma mensagem clara de que o agendamento **não** foi gravado. A mensagem e o tratamento são do fluxo da #56 (e da #59 no retorno) |
 
 O log nunca leva `data`, texto do cidadão, telefone nem `draft`.

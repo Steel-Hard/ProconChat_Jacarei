@@ -8,6 +8,10 @@ Responder à pergunta **"o que eu preciso fazer hoje?"**. Análises mais longas 
 
 Qualquer conta que tenha **pelo menos uma** das permissões Ver agendamentos, Ver sessões ou Ver relatórios, ou a conta Admin. **Cada bloco aparece conforme a permissão.** Quem não pode ver nenhum bloco entra direto na primeira tela permitida.
 
+## Estado da tela
+
+**Ainda não construída (issue #71).** Até lá, a tela inicial do painel abre direto em [Agendamentos](03-agendamentos.md).
+
 ## Cabeçalho
 
 - Saudação conforme a hora: **"Bom dia"** até 11:59, **"Boa tarde"** de 12:00 a 17:59, **"Boa noite"** a partir de 18:00, seguida do primeiro nome.

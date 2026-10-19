@@ -59,7 +59,7 @@ Colunas: protocolo, titular (com CPF mascarado), categoria e pergunta de origem,
   | Atendidos, Não compareceu, Cancelados (mesmo com período Todos), ou período Anteriores a hoje | Mais recente primeiro (DESC) |
   | Chip de status Todos (ou sem chip) com período Todos, e resultados de busca | Ordem mista: os próximos primeiro (mais próximo no topo), depois os passados (mais recente primeiro) |
 
-- O chip de status tem precedência sobre o período selecionado: com `period=all`, Cancelados, Atendidos e Não compareceu saem do mais recente para o mais antigo; Pendentes, Confirmados e Aguardando registro saem do mais próximo para o mais distante. A ordem mista só é aplicada quando o chip "Todos" estiver ativo ou durante uma busca.
+- O chip de status tem precedência sobre o período selecionado: com o período Todos, Cancelados, Atendidos e Não compareceu saem do mais recente para o mais antigo; Pendentes, Confirmados e Aguardando registro saem do mais próximo para o mais distante. A ordem mista só é aplicada quando o chip "Todos" estiver ativo ou durante uma busca.
 - Empates são desfeitos por data e hora. Na ordenação crescente por responsável, "Sem responsável" vem primeiro.
 - Mudar filtro, busca ou período volta a ordenação ao padrão e a lista à página 1.
 
