@@ -8,6 +8,10 @@ Manter as categorias e perguntas que o cidadão navega no WhatsApp, com as respo
 
 **Gerenciar conteúdo do chatbot.**
 
+## Estado da tela
+
+**Ainda não construída (issue #63).** O conteúdo atual vem da carga inicial do sistema.
+
 ## Como o conteúdo funciona
 
 - O cidadão **escolhe uma categoria** e **depois uma pergunta**, tocando nas opções. É uma lista em dois níveis, **não uma árvore** com ramificações ([decisão 001](../decisoes/001-fluxo-guiado-por-categorias.md)).

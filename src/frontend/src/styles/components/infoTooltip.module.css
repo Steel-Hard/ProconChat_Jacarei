@@ -1,0 +1,43 @@
+.wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 0 2px;
+    border: 0;
+    background: none;
+    color: var(--sidebar-label);
+    cursor: help;
+}
+
+.trigger:hover {
+    color: var(--color-primary);
+}
+
+.bubble {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    z-index: 30;
+    width: max-content;
+    max-width: min(280px, 80vw);
+    padding: 9px 11px;
+    border-radius: 8px;
+    background: var(--sidebar-bg);
+    box-shadow: 0 8px 24px rgba(20, 16, 40, 0.25);
+    color: #ffffff;
+    font: 400 12.5px/1.45 var(--font-body);
+    letter-spacing: 0;
+    text-align: left;
+    text-transform: none;
+    white-space: normal;
+    transform: translateX(-50%);
+    pointer-events: none;
+}

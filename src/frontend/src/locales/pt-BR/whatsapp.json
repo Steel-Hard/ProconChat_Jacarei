@@ -1,0 +1,95 @@
+{
+    "meta": {
+        "title": "WhatsApp - ProconChat"
+    },
+    "heading": "WhatsApp",
+    "subtitle": "Conexão do número institucional com a WhatsApp Cloud API, oficial da Meta. Acesso exclusivo da conta admin.",
+    "loadFailed": "Não foi possível carregar a configuração do WhatsApp agora. Tente de novo.",
+    "pausedBanner": {
+        "text": "As respostas automáticas estão pausadas. O chatbot não está respondendo aos cidadãos.",
+        "resume": "Reativar respostas"
+    },
+    "summary": {
+        "numberLabel": "Número institucional",
+        "numberDetail": "{{name}} · WhatsApp Cloud API",
+        "numberMissing": "Número ainda não verificado. Teste a conexão.",
+        "statusLabel": "Situação",
+        "pauseLabel": "Pausar respostas automáticas",
+        "pauseOff": "Desligado",
+        "pauseOn": "Pausadas",
+        "pausedMessageLabel": "Mensagem fixa enviada ao cidadão enquanto estiver pausado"
+    },
+    "credentials": {
+        "heading": "Credenciais",
+        "fields": {
+            "phoneNumberId": "ID do número de telefone",
+            "businessAccountId": "ID da conta WhatsApp Business",
+            "accessToken": "Token de acesso",
+            "appSecret": "App Secret"
+        },
+        "masked": "••••••••{{last4}}",
+        "maskedWithoutLast4": "••••••••",
+        "replace": "Substituir",
+        "cancelReplace": "Cancelar",
+        "newValuePlaceholder": "Cole o novo valor",
+        "storedNote": "Guardado criptografado. Não é possível visualizar o valor salvo.",
+        "tokenHint": "Use um token permanente de usuário do sistema; o token temporário expira em 24 horas.",
+        "tokenExpiresInfo": "Este token expira em {{date}} às {{time}} (horário de Brasília).",
+        "tokenExpires": "Este token expira em {{date}} às {{time}} (horário de Brasília). Gere um token permanente de usuário do sistema para o chatbot não parar de responder.",
+        "tokenExpired": "Este token expirou em {{date}} às {{time}} (horário de Brasília). Gere um token permanente de usuário do sistema, use \"Substituir\", teste e salve."
+    },
+    "metaSetup": {
+        "heading": "Configure no painel da Meta",
+        "webhookUrl": "URL do webhook",
+        "webhookUrlMissing": "A URL pública do sistema não está configurada no servidor. Peça à equipe técnica para definir PUBLIC_BASE_URL.",
+        "verifyToken": "Token de verificação",
+        "copy": "Copiar",
+        "copied": "Copiado.",
+        "copyFailed": "Não foi possível copiar.",
+        "steps": {
+            "permanentToken": "Use um token permanente de usuário do sistema (Gerenciador de Negócios › Usuários do sistema › Gerar token). O token temporário do painel de desenvolvedor expira em 24 horas e o chatbot para de funcionar.",
+            "openApp": "No painel de desenvolvedores da Meta, abra o app e vá em WhatsApp › Configuração.",
+            "webhook": "Em Webhook, clique em Editar e cole a URL do webhook e o token de verificação acima.",
+            "verify": "Clique em Verificar e salvar e, em Campos do webhook, assine \"messages\".",
+            "ids": "Em WhatsApp › Configuração da API, copie o ID do número e o ID da conta e cole-os nos campos ao lado."
+        }
+    },
+    "test": {
+        "button": "Testar conexão",
+        "testing": "Testando conexão com a Meta…",
+        "successTitle": "Conexão testada com sucesso.",
+        "successDetail": "Número verificado: {{number}} · Nome: {{name}}",
+        "failureTitle": "Falha no teste.",
+        "needTest": "Teste a conexão com as credenciais novas antes de salvar.",
+        "missingField": "Preencha o campo \"{{field}}\" ou cancele a substituição antes de testar.",
+        "invalidId": "Use só números no campo \"{{field}}\" (até 40 dígitos).",
+        "secretWithSpaces": "O campo \"{{field}}\" não pode ter espaços."
+    },
+    "reasons": {
+        "INVALID_TOKEN": "Token inválido ou expirado",
+        "INVALID_APP_SECRET": "App Secret inválido",
+        "PHONE_NUMBER_NOT_FOUND": "ID do número não encontrado ou sem acesso por este token",
+        "BUSINESS_ACCOUNT_NOT_FOUND": "ID da conta WhatsApp Business não encontrado ou sem acesso por este token",
+        "PHONE_NOT_IN_ACCOUNT": "O número não pertence a esta conta WhatsApp Business",
+        "MISSING_PERMISSION": "O token não tem permissão para gerenciar este número",
+        "META_UNAVAILABLE": "Não foi possível falar com a Meta. Tente de novo em instantes",
+        "META_ERROR": "A Meta recusou as credenciais"
+    },
+    "pauseDialog": {
+        "title": "Pausar respostas automáticas?",
+        "description": "O chatbot deixará de responder aos cidadãos até ser reativado.",
+        "previewLabel": "Quem escrever durante a pausa recebe:",
+        "confirm": "Pausar respostas"
+    },
+    "toasts": {
+        "saved": "Credenciais salvas. O chatbot já usa os novos valores.",
+        "paused": "Respostas automáticas pausadas.",
+        "resumed": "Respostas automáticas reativadas."
+    },
+    "errors": {
+        "test": "Não foi possível testar agora. Tente de novo.",
+        "save": "Não foi possível salvar agora. Tente de novo.",
+        "pause": "Não foi possível pausar agora. Tente de novo.",
+        "resume": "Não foi possível reativar agora. Tente de novo."
+    }
+}

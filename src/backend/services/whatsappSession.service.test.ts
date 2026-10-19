@@ -5,8 +5,10 @@ import { createWhatsappSessionService, hashPhone } from "./whatsappSession.servi
 describe("Whatsapp session service", () => {
     const findOrCreateActive = vi.fn()
     const updateNavigationState = vi.fn()
+    const touch = vi.fn()
     const finish = vi.fn()
-    const sessions: SessionRepository = { findOrCreateActive, updateNavigationState, finish }
+    const sweepAbandonedSessions = vi.fn()
+    const sessions: SessionRepository = { findOrCreateActive, updateNavigationState, touch, finish, sweepAbandonedSessions }
     const resolveWhatsappSession = createWhatsappSessionService({ sessions })
 
     beforeEach(() => {

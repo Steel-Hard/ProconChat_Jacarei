@@ -1,0 +1,19 @@
+{
+    "meta": {
+        "title": "{{title}} - ProconChat",
+        "description": "Tela de {{title}} em construção."
+    },
+    "notice": "Em construção.",
+    "titles": {
+        "dashboard": "Painel",
+        "appointments": "Agendamentos",
+        "appointmentDetail": "Detalhe do agendamento",
+        "reports": "Relatórios",
+        "content": "Conteúdo",
+        "sessions": "Sessões",
+        "schedule": "Horários",
+        "documents": "Documentos",
+        "users": "Usuários",
+        "whatsapp": "WhatsApp"
+    }
+}

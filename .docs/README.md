@@ -15,15 +15,16 @@ Chatbot de orientação ao consumidor via WhatsApp, desenvolvido para o PROCON d
 |---|---|---|
 | [`desafio/`](desafio/) | Documento oficial do desafio e rastreabilidade dos requisitos | Atual |
 | [`decisoes/`](decisoes/) | Registros de decisão, um por arquivo | Atual |
-| [`regras/`](regras/) | Regras de cada tela do painel: o que mostra, quem acessa, o que dá para fazer e o que não existe de propósito | Atual |
+| [`regras/`](regras/) | Regras de cada tela do painel: o que mostra, quem acessa, o que dá para fazer e o que não existe de propósito. O índice diz quais telas já foram entregues | Atual |
 | [`prototipo/`](prototipo/) | Protótipo navegável do painel, aprovado no Claude Design (referência visual) | Atual |
 | [`architecture/`](architecture/) | Arquitetura: componentes, módulos do backend, fluxos, infraestrutura e segurança (estado atual e alvo da entrega) | Atual |
+| [`infra/`](infra/) | Ambiente de produção: VM, deploy contínuo, rollback, backup e diagnóstico | Atual |
 | [`database/`](database/) | Modelo de dados (schema atual e planejado), migrations e o FAQ real do PROCON (`Dúvidas Frequentes.odt`) | Atual |
 | [`llm/`](llm/) | Contrato e escolha do modelo do serviço de LLM | Atual |
-| [`whatsapp/`](whatsapp/) | Pesquisa de integração com o WhatsApp (issue #3) | Atual como pesquisa; a decisão final está em [003](decisoes/003-migracao-whatsapp-cloud-api.md) |
-| [`sprints/`](sprints/) | Documentos de fechamento de cada sprint | Atual |
+| [`whatsapp/`](whatsapp/) | Pesquisa de integração com o WhatsApp (issue #3) e [guia do app de teste da Meta](whatsapp/app-de-teste.md) para desenvolvimento | Atual como pesquisa; a decisão final está em [003](decisoes/003-migracao-whatsapp-cloud-api.md) |
+| [`sprints/`](sprints/) | Fechamento da Sprint 1 e acompanhamento da Sprint 2 (retrato de 19/10/2026, último dia da sprint) | Atual |
 | [`historico/`](historico/) | Documentos superados, mantidos só para contexto | Não usar como referência |
-| [`.tasks/`](.tasks/) | Specs e tasks do fluxo de planejamento (`sdd` → `executor` → `reviewer`) | Atual |
+| `.tasks/` | Pasta local, fora do Git, com as specs e tasks do fluxo de planejamento (`sdd` → `executor` → `reviewer`) | Local, não versionada |
 
 ## Regras que valem em todo o sistema
 

@@ -100,3 +100,11 @@ As ações aparecem conforme o status e o momento:
 
 - [Decisão 006](../decisoes/006-ciclo-de-vida-do-agendamento.md) (estados e dados) e [decisão 005](../decisoes/005-mensagens-ao-cidadao.md) (avisos).
 - A linha do tempo usa os mesmos passos da tela de [Sessões](07-sessoes.md).
+
+## Estado da tela
+
+- **Construído pela #86:** cabeçalho com selos, dados do agendamento, documentos enviados pelo chatbot, linha do tempo da conversa de origem, histórico e as ações "Assumir para mim", "Marcar como atendido" e "Marcar como não compareceu", cada uma com confirmação. Antes do horário, "Marcar como não compareceu" também mostra "disponível depois do horário do atendimento". O erro de uma ação aparece na caixa "Ações" até a próxima ação.
+- **Atribuir a outro funcionário, observações internas e corrigir registro:** ficam com a #87.
+- **Cancelar agendamento** (com o modal e a prévia) e o **"Tentar novamente"** da falha ao avisar o cidadão: ficam com a #67. Hoje a falha aparece em destaque, sem o botão.
+- **Código da sessão com link para Sessões:** fica com a #72. A API ainda não devolve o código `S-XXXXXX`, então a tela não mostra a sessão.
+- A linha do tempo vazia e a falha ao lê-la aparecem com o mesmo texto ("Os passos desta conversa não estão disponíveis."), porque a API responde igual nos dois casos.

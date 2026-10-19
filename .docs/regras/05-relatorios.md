@@ -8,6 +8,10 @@ Analisar o uso do chatbot e dos agendamentos: quais assuntos mais aparecem, onde
 
 **Ver relatórios.**
 
+## Estado da tela
+
+**Ainda não construída (issues #68 e #73).**
+
 ## Período
 
 Chips: **Últimos 7 dias**, **Últimos 30 dias**, **Últimos 90 dias**, **Mês atual**, **Mês anterior** e **Personalizado** (data inicial e final, até hoje). O período vale para todas as seções da tela.

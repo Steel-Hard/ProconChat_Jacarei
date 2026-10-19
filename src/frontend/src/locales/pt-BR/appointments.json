@@ -1,0 +1,118 @@
+{
+    "meta": {
+        "title": "Agendamentos - ProconChat"
+    },
+    "heading": "Agendamentos",
+    "subtitle": "Atendimentos presenciais criados pelo chatbot. Remarcações são feitas pelo cidadão no próprio chatbot.",
+    "search": {
+        "label": "Buscar",
+        "placeholder": "Nome do titular, protocolo ou CPF completo",
+        "clear": "Limpar",
+        "hint": "Na recepção: busque pelo nome do titular, pelo protocolo recebido no WhatsApp ou pelo CPF completo (11 dígitos). Enter abre o resultado quando houver só um.",
+        "results_zero": "{{count}} resultados em todos os períodos, status e responsáveis",
+        "results_one": "{{count}} resultado em todos os períodos, status e responsáveis",
+        "results_other": "{{count}} resultados em todos os períodos, status e responsáveis",
+        "enterToOpen": "{{hint}} · Enter para abrir",
+        "cpfPartial": "{{hint}} · Para buscar por CPF, digite os 11 dígitos."
+    },
+    "chips": {
+        "label": "Status",
+        "all": "Todos",
+        "PENDING": "Pendentes",
+        "CONFIRMED": "Confirmados",
+        "ATTENDED": "Atendidos",
+        "NO_SHOW": "Não compareceu",
+        "CANCELED": "Cancelados",
+        "waiting_record": "Aguardando registro"
+    },
+    "filters": {
+        "period": "Período",
+        "responsible": "Responsável",
+        "periods": {
+            "all": "Todos",
+            "today": "Hoje",
+            "this_week": "Esta semana",
+            "upcoming": "Próximos (a partir de hoje)",
+            "past": "Anteriores a hoje"
+        },
+        "responsibles": {
+            "all": "Todos",
+            "unassigned": "Sem responsável",
+            "me": "Atribuídos a mim"
+        }
+    },
+    "table": {
+        "label": "Agendamentos",
+        "columns": {
+            "protocol": "Protocolo",
+            "holder": "Titular",
+            "category": "Categoria / pergunta",
+            "datetime": "Data e hora",
+            "representative": "Representante",
+            "responsible": "Responsável",
+            "status": "Status",
+            "compactDatetime": "Data · responsável",
+            "actions": "Ações"
+        },
+        "arrows": {
+            "asc": "▲",
+            "desc": "▼"
+        }
+    },
+    "row": {
+        "day": "{{weekday}}, {{date}}",
+        "yes": "Sim",
+        "no": "Não",
+        "unassigned": "Sem responsável",
+        "offGrid": "Fora da grade atual",
+        "byRepresentative": "Por representante",
+        "claim": "Assumir",
+        "separator": "·"
+    },
+    "sort": {
+        "label": "Ordenar por",
+        "options": {
+            "default": "Padrão do filtro",
+            "appointment_datetime": {
+                "asc": "Data e hora ▲ (mais próximo)",
+                "desc": "Data e hora ▼ (mais recente)"
+            },
+            "name": {
+                "asc": "Titular ▲ (A–Z)",
+                "desc": "Titular ▼ (Z–A)"
+            },
+            "responsible": {
+                "asc": "Responsável ▲ (sem responsável primeiro)",
+                "desc": "Responsável ▼"
+            },
+            "status": {
+                "asc": "Status ▲",
+                "desc": "Status ▼"
+            }
+        }
+    },
+    "footer": {
+        "pagination": "Paginação",
+        "count_one": "{{from}}–{{to}} de {{count}} agendamento",
+        "count_other": "{{from}}–{{to}} de {{count}} agendamentos",
+        "withNote": "{{summary}} · {{note}}",
+        "sortNote": {
+            "asc": "Ordem padrão: mais próximo primeiro.",
+            "desc": "Ordem padrão: mais recente primeiro.",
+            "mixed": "Ordem padrão: próximos primeiro (mais próximo no topo), depois os passados (mais recente primeiro)."
+        },
+        "page": "Página {{page}} de {{totalPages}}",
+        "previous": "‹ Anterior",
+        "next": "Próxima ›"
+    },
+    "empty": {
+        "notFound": "Nenhum agendamento encontrado",
+        "noPending": "Nenhum agendamento pendente",
+        "search": "Nada corresponde a “{{term}}”. Confira a grafia do nome, o protocolo ou os 11 dígitos do CPF.",
+        "filters": "Nenhum resultado para os filtros de status, período e responsável selecionados.",
+        "none": "O chatbot ainda não criou agendamentos.",
+        "clearFilters": "Limpar filtros"
+    },
+    "loadFailed": "Não foi possível carregar os agendamentos.",
+    "retry": "Tentar novamente"
+}

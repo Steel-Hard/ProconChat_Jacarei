@@ -1,0 +1,108 @@
+name: Deploy
+
+on:
+  push:
+    branches: [develop, main]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Tag já publicada no GHCR para rollback. Vazio gera as imagens do commit escolhido
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    if: (github.event_name == 'push' && github.ref_name == (vars.DEPLOY_BRANCH || 'develop')) || (github.event_name == 'workflow_dispatch' && inputs.image_tag == '')
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  build:
+    needs: ci
+    runs-on: ${{ vars.DEPLOY_RUNNER || 'ubuntu-24.04-arm' }}
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - app: backend
+            build-args: ""
+          - app: gateway
+            build-args: ""
+          - app: frontend
+            build-args: VITE_API_URL=
+    steps:
+      - uses: actions/checkout@v6
+      - id: owner
+        run: echo "name=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v7
+        with:
+          context: src/${{ matrix.app }}
+          target: runtime
+          platforms: ${{ vars.DEPLOY_PLATFORM || 'linux/arm64' }}
+          build-args: ${{ matrix.build-args }}
+          push: true
+          tags: ghcr.io/${{ steps.owner.outputs.name }}/proconchat-${{ matrix.app }}:${{ github.sha }}
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}
+
+  deploy:
+    needs: [ci, build]
+    if: >-
+      always() && (
+        needs.build.result == 'success' ||
+        (github.event_name == 'workflow_dispatch' && inputs.image_tag != '' && needs.ci.result == 'skipped' && needs.build.result == 'skipped')
+      )
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+    env:
+      IMAGE_TAG: ${{ inputs.image_tag || github.sha }}
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Valida a tag
+        run: |
+          if ! [[ "$IMAGE_TAG" =~ ^[A-Za-z0-9._-]+$ ]]; then
+            echo "tag inválida: $IMAGE_TAG" >&2
+            exit 1
+          fi
+      - name: Configura o SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          umask 077
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/deploy_key ~/.ssh/known_hosts
+      - name: Copia os arquivos de produção
+        run: |
+          scp -p -r -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            compose.prod.yaml deploy "$DEPLOY_USER@$DEPLOY_HOST:/opt/proconchat/"
+      - name: Executa o deploy na VM
+        run: |
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            "$DEPLOY_USER@$DEPLOY_HOST" /opt/proconchat/deploy/deploy.sh "$IMAGE_TAG"
+      - name: Remove a chave
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

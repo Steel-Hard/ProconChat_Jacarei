@@ -27,6 +27,20 @@ describe("errorHandler", () => {
         })
     })
 
+    it("responde 400 BAD_REQUEST quando o corpo JSON esta malformado", async () => {
+        const app = express()
+        app.use(express.json())
+        app.post("/json", (_req, res) => {
+            res.status(200).end()
+        })
+        app.use(errorHandler)
+
+        const response = await request(app).post("/json").set("Content-Type", "application/json").send("{quebrado")
+
+        expect(response.status).toBe(400)
+        expect(response.body).toEqual({ error: { code: "BAD_REQUEST", message: "Malformed JSON body" } })
+    })
+
     it("returns 500 with a generic envelope for unknown errors", async () => {
         vi.spyOn(console, "error").mockImplementation(() => undefined)
         const app = buildApp(() => new Error("falha inesperada"))

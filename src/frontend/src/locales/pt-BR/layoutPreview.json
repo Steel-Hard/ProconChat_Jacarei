@@ -1,0 +1,45 @@
+{
+    "meta": {
+        "title": "Prévia do layout - ProconChat"
+    },
+    "heading": "Prévia do layout",
+    "subtitle": "Exemplos dos componentes compartilhados do painel.",
+    "changes": {
+        "duration": "Duração do atendimento",
+        "slots": "Vagas por horário"
+    },
+    "status": {
+        "appointment": "Status de agendamento",
+        "outcome": "Desfecho de conversa"
+    },
+    "actions": {
+        "heading": "Ações",
+        "messages": "Mensagens recebidas",
+        "messagesTooltip": "Quantidade de mensagens recebidas pelo chatbot nas últimas 24 horas.",
+        "openDialog": "Abrir confirmação",
+        "openDangerDialog": "Abrir confirmação de perigo",
+        "showToast": "Mostrar toast",
+        "resetChanges": "Recriar alterações"
+    },
+    "empty": {
+        "region": "Estado vazio",
+        "title": "Nenhum agendamento pendente",
+        "description": "Todos os agendamentos criados pelo chatbot já têm responsável.",
+        "action": "Atualizar lista"
+    },
+    "dialog": {
+        "primaryTitle": "Assumir o agendamento?",
+        "primaryDescription": "Você passa a ser o responsável por este agendamento.",
+        "primaryConfirm": "Assumir",
+        "dangerTitle": "Cancelar o agendamento A3F9C21B?",
+        "dangerDescription": "O horário volta a ficar disponível no chatbot e o cidadão é avisado pelo WhatsApp.",
+        "dangerConfirm": "Cancelar e avisar o cidadão"
+    },
+    "toasts": {
+        "assumed": "Agendamento A3F9C21B assumido por você.",
+        "listUpdated": "Lista atualizada.",
+        "confirmed": "Ação confirmada.",
+        "discarded": "Alterações descartadas.",
+        "saved": "Alterações salvas."
+    }
+}

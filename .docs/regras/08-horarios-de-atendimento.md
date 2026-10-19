@@ -8,6 +8,10 @@ Definir **quando o PROCON atende presencialmente**. É daqui que o chatbot tira 
 
 **Configurar atendimento presencial.**
 
+## Estado da tela
+
+**Ainda não construída (issue #64).** O lembrete é da issue #74, a janela de conflitos ao alterar a agenda é da issue #75 e o bloqueio de parte do dia é da issue #77. Hoje o chatbot usa a configuração inicial do sistema para oferecer horários.
+
 ## Regras gerais da tela
 
 - **Segue o padrão de salvar** ([regras gerais](00-regras-gerais.md#3-salvar-descartar-e-registrar-quem-alterou)): tudo, inclusive adicionar ou remover datas bloqueadas, fica pendente até "Salvar alterações", com "N alterações não salvas" e "Descartar".
@@ -23,7 +27,7 @@ Definir **quando o PROCON atende presencialmente**. É daqui que o chatbot tira 
   - início e fim preenchidos;
   - fim depois do início;
   - sem sobreposição com outra faixa do mesmo dia;
-  - a faixa precisa comportar pelo menos um atendimento: "Esta faixa não comporta nenhum atendimento de 30 minutos".
+  - a faixa precisa comportar pelo menos um atendimento: "Esta faixa não comporta nenhum atendimento de [N] minutos", conforme a duração configurada.
 
 ### Duração e vagas
 

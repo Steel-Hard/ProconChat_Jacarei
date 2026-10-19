@@ -8,6 +8,10 @@ Consultar as conversas do chatbot, uma a uma: que caminho o cidadão percorreu e
 
 **Ver sessões.**
 
+## Estado da tela
+
+**Ainda não construída (issues #72 e #76).** O sistema já registra as sessões, os passos e os desfechos que esta tela vai mostrar.
+
 ## O que é uma sessão
 
 Uma conversa de um cidadão com o chatbot, do início até o desfecho. **Uma sessão sem interação por 30 minutos é encerrada como Abandonada**, e a próxima mensagem abre uma sessão nova ([decisão 008](../decisoes/008-fluxo-da-conversa-e-desfechos.md)).

@@ -1,0 +1,20 @@
+{
+    "meta": {
+        "title": "Entrar - ProconChat"
+    },
+    "brand": "ProconChat Jacareí",
+    "subtitle": "Painel administrativo · PROCON Jacareí-SP",
+    "heading": "Entrar",
+    "email": "E-mail",
+    "emailPlaceholder": "nome@jacarei.sp.gov.br",
+    "password": "Senha",
+    "submit": "Entrar",
+    "submitting": "Entrando...",
+    "support": "Acesso restrito a servidores do PROCON Jacareí. Problemas de acesso devem ser tratados com o administrador do sistema.",
+    "errors": {
+        "empty": "Informe e-mail e senha.",
+        "invalidCredentials": "E-mail ou senha incorretos.",
+        "tooManyAttempts": "Muitas tentativas sem sucesso. Aguarde alguns minutos e tente de novo.",
+        "unavailable": "Não foi possível entrar agora. Verifique a conexão e tente de novo."
+    }
+}

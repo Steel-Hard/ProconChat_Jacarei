@@ -1,0 +1,173 @@
+{
+    "backHome": "Vá para a página inicial.",
+    "loading": "Carregando...",
+    "accountMenu": {
+        "trigger": "Minha conta",
+        "options": "Minha conta",
+        "changePassword": "Alterar minha senha",
+        "logout": "Sair",
+        "logoutFailed": "Não foi possível sair agora. Tente de novo.",
+        "nameWithAdmin": "{{name}} <badge>ADMIN</badge>"
+    },
+    "errors": {
+        "invalidOrigin": "O painel foi aberto por um endereço não autorizado. Acesse pelo endereço oficial do painel."
+    },
+    "changePassword": {
+        "title": "Alterar minha senha",
+        "description": "{{email}} · A nova senha vale a partir do próximo acesso.",
+        "current": "Senha atual",
+        "new": "Nova senha",
+        "newPlaceholder": "Mínimo de 8 caracteres",
+        "confirm": "Confirmar senha",
+        "cancel": "Cancelar",
+        "save": "Salvar senha",
+        "success": "Sua senha foi alterada.",
+        "errors": {
+            "tooShort": "A senha deve ter no mínimo 8 caracteres.",
+            "mismatch": "As senhas não coincidem.",
+            "tooLong": "A senha é longa demais.",
+            "wrongCurrent": "A senha atual está incorreta.",
+            "rejected": "A nova senha não foi aceita. Use de 8 a 72 caracteres.",
+            "unavailable": "Não foi possível alterar a senha agora. Tente de novo."
+        }
+    },
+    "confirmDialog": {
+        "cancel": "Voltar"
+    },
+    "infoTooltip": {
+        "label": "Mais informações"
+    },
+    "lastChangeNote": {
+        "text": "Última alteração por {{name}} em {{date}}"
+    },
+    "navigation": {
+        "groups": {
+            "operation": "Operação",
+            "chatbot": "Chatbot",
+            "settings": "Configurações"
+        },
+        "items": {
+            "dashboard": {
+                "label": "Dashboard",
+                "title": "Dashboard"
+            },
+            "appointments": {
+                "label": "Agendamentos",
+                "title": "Agendamentos"
+            },
+            "reports": {
+                "label": "Relatórios",
+                "title": "Relatórios"
+            },
+            "content": {
+                "label": "Conteúdo",
+                "title": "Conteúdo do chatbot"
+            },
+            "sessions": {
+                "label": "Sessões",
+                "title": "Sessões"
+            },
+            "schedule": {
+                "label": "Horários de atendimento",
+                "title": "Horários de atendimento"
+            },
+            "documents": {
+                "label": "Documentos",
+                "title": "Documentos para atendimento"
+            },
+            "users": {
+                "label": "Usuários",
+                "title": "Usuários"
+            },
+            "whatsapp": {
+                "label": "WhatsApp",
+                "title": "WhatsApp"
+            }
+        },
+        "appointmentDetail": "Detalhe do agendamento",
+        "itemWithBadge": "<label>{{label}}</label> <count>{{count}}</count> <hidden>{{badgeLabel}}</hidden>",
+        "pendingBadge_one": "agendamento pendente",
+        "pendingBadge_other": "agendamentos pendentes"
+    },
+    "sidebar": {
+        "label": "Menu principal",
+        "brand": "ProconChat",
+        "subtitle": "Jacareí · Painel interno",
+        "footer": "Uso exclusivo de servidores do PROCON Jacareí."
+    },
+    "status": {
+        "appointment": {
+            "PENDING": "Pendente",
+            "CONFIRMED": "Confirmado",
+            "ATTENDED": "Atendido",
+            "NO_SHOW": "Não compareceu",
+            "CANCELED": "Cancelado"
+        },
+        "outcome": {
+            "RESOLVED": "Resolvida sem agendamento",
+            "SCHEDULED": "Terminou em agendamento",
+            "OUT_OF_SCOPE": "Fora do escopo do PROCON",
+            "NO_SLOT": "Sem horário disponível na janela",
+            "DECLINED": "Não quis agendar",
+            "MANAGED_APPOINTMENT": "Remarcou ou cancelou agendamento existente",
+            "ABANDONED": "Abandonada",
+            "IN_PROGRESS": "Em andamento"
+        },
+        "whatsapp": {
+            "OPERATING": "Operando",
+            "PAUSED": "Respostas pausadas",
+            "INVALID_CREDENTIALS": "Credenciais inválidas",
+            "NOT_VERIFIED": "Não verificado",
+            "NOT_CONFIGURED": "Não configurado"
+        }
+    },
+    "topbar": {
+        "menu": "Menu",
+        "trail": "Trilha"
+    },
+    "unsavedChangesBar": {
+        "summary_one": "{{count}} alteração não salva",
+        "summary_other": "{{count}} alterações não salvas",
+        "pending": "Pendentes: {{list}}",
+        "discard": "Descartar",
+        "save": "Salvar alterações"
+    },
+    "weekdays": {
+        "short": {
+            "sunday": "Dom",
+            "monday": "Seg",
+            "tuesday": "Ter",
+            "wednesday": "Qua",
+            "thursday": "Qui",
+            "friday": "Sex",
+            "saturday": "Sáb"
+        },
+        "long": {
+            "sunday": "Domingo",
+            "monday": "Segunda-feira",
+            "tuesday": "Terça-feira",
+            "wednesday": "Quarta-feira",
+            "thursday": "Quinta-feira",
+            "friday": "Sexta-feira",
+            "saturday": "Sábado"
+        }
+    },
+    "appointmentActions": {
+        "errors": {
+            "APPOINTMENT_ALREADY_CLAIMED": "Outra pessoa já assumiu este agendamento.",
+            "ALREADY_ATTENDED": "Este agendamento já foi marcado como atendido.",
+            "ALREADY_NO_SHOW": "Este agendamento já foi marcado como não compareceu.",
+            "APPOINTMENT_CANCELED": "Este agendamento foi cancelado.",
+            "ATTENDANCE_NOT_YET_AVAILABLE": "Marcar como atendido só fica disponível a partir do dia do atendimento.",
+            "NO_SHOW_NOT_YET_AVAILABLE": "Marcar como não compareceu só fica disponível depois do horário do atendimento.",
+            "forbidden": "Sua conta não tem permissão para esta ação.",
+            "notFound": "Agendamento não encontrado.",
+            "failed": "Não foi possível concluir a ação. Tente de novo."
+        },
+        "success": {
+            "claim": "Agendamento {{protocol}} assumido por você.",
+            "attended": "{{protocol}} marcado como atendido.",
+            "no_show": "{{protocol}} marcado como não compareceu."
+        }
+    }
+}

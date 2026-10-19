@@ -46,7 +46,7 @@ describe("OllamaLlmClient", () => {
             })
         )
 
-        const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+        const body = JSON.parse(fetchMock.mock.calls[0]?.[1].body)
         expect(body.stream).toBe(false)
         expect(body.prompt).toContain("Dados estruturados:")
         expect(body.prompt).toContain(JSON.stringify(resumo, null, 2))

@@ -51,14 +51,15 @@ Colunas: protocolo, titular (com CPF mascarado), categoria e pergunta de origem,
 **Ordenação:**
 
 - Os títulos **Titular, Data e hora, Responsável e Status** são clicáveis: o primeiro clique ordena de forma crescente, o segundo de forma decrescente, com uma seta (▲/▼). Em telas estreitas, isso vira o seletor "Ordenar por".
-- Sem escolha do usuário, a ordem depende do filtro:
+- Sem escolha do usuário, a ordem padrão segue a precedência do chip de status sobre o período (o chip de status manda; o período "Todos" não o anula):
 
-  | Filtro | Ordem padrão |
+  | Filtro / Chip ativo | Ordem padrão |
   |---|---|
-  | Hoje, Esta semana, Próximos, Pendentes, Confirmados, Aguardando registro | Mais próximo primeiro |
-  | Anteriores a hoje, Atendidos, Não compareceu, Cancelados | Mais recente primeiro |
-  | Todos e resultados de busca | Os próximos primeiro (mais próximo no topo), depois os passados (mais recente primeiro) |
+  | Pendentes, Confirmados, Aguardando registro (mesmo com período Todos), ou períodos Hoje, Esta semana, Próximos (sem chip de status terminal) | Mais próximo primeiro (ASC) |
+  | Atendidos, Não compareceu, Cancelados (mesmo com período Todos), ou período Anteriores a hoje | Mais recente primeiro (DESC) |
+  | Chip de status Todos (ou sem chip) com período Todos, e resultados de busca | Ordem mista: os próximos primeiro (mais próximo no topo), depois os passados (mais recente primeiro) |
 
+- O chip de status tem precedência sobre o período selecionado: com o período Todos, Cancelados, Atendidos e Não compareceu saem do mais recente para o mais antigo; Pendentes, Confirmados e Aguardando registro saem do mais próximo para o mais distante. A ordem mista só é aplicada quando o chip "Todos" estiver ativo ou durante uma busca.
 - Empates são desfeitos por data e hora. Na ordenação crescente por responsável, "Sem responsável" vem primeiro.
 - Mudar filtro, busca ou período volta a ordenação ao padrão e a lista à página 1.
 
@@ -92,3 +93,8 @@ As demais ações ficam no [Detalhe do agendamento](04-detalhe-do-agendamento.md
 
 - [Detalhe do agendamento](04-detalhe-do-agendamento.md): todas as ações sobre um agendamento.
 - [Horários de atendimento](08-horarios-de-atendimento.md): define dias, horários e vagas do calendário.
+
+## Estado da tela
+
+- **Lista:** construída pela #85 (busca, chips, filtros de Período e Responsável, ordenação, paginação e "Assumir"). O filtro por um funcionário específico em "Responsável" espera a lista de funcionários da #62.
+- **Calendário semanal:** ainda não existe; fica com a #87. Até lá, o botão "Lista / Calendário semanal" não aparece.

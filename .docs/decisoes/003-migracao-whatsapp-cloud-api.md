@@ -35,7 +35,7 @@ Além disso, o sistema passou a precisar **enviar mensagens ao cidadão fora da 
 ## Consequências
 
 - **O Gateway precisa de uma camada de provedor.** O webhook da Cloud API é diferente: tem o `GET` de verificação e a assinatura HMAC com o App Secret.
-- **Continuam no `.env`:** conexão com o banco, `PHONE_HASH_SECRET`, token interno Gateway ↔ Backend, **chave-mestra de criptografia** e a URL pública do sistema.
+- **Continuam no `.env`:** conexão com o banco, `PHONE_HASH_SECRET`, token interno Gateway ↔ Backend, **chave-mestra de criptografia** e a URL pública do sistema. Depois desta decisão entraram também `CPF_HASH_SECRET` (#60) e `AUTH_TOKEN_SECRET` (#57).
 - **Custo:** conversas iniciadas pelo cidadão são gratuitas; mensagens de modelo fora da janela de 24h (lembrete, cancelamento) são cobradas pela Meta. Ver [005](005-mensagens-ao-cidadao.md).
 - **Número usado durante o desenvolvimento e na entrega:** um número comprado pelo time só para testes, registrado numa conta Meta do próprio time. O projeto não depende do PROCON para funcionar. Cuidados:
   - o número registrado na Cloud API deixa de funcionar no aplicativo WhatsApp comum;
