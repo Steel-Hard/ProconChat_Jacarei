@@ -35,14 +35,26 @@ function respond({ status, body }: Reply): Response {
     })
 }
 
+async function importPageModules() {
+    vi.stubEnv("VITE_API_URL", "http://api.test")
+    vi.resetModules()
+    const { default: createStore } = await import("@/store/createStore")
+    const { default: ToastProvider } = await import("@/components/ToastProvider")
+    const { default: AppointmentsPage } = await import("@/pages/Appointments.page")
+
+    return { createStore, ToastProvider, AppointmentsPage }
+}
+
+let pageModules: ReturnType<typeof importPageModules> | undefined
+
 async function renderAppointmentsPage({
     account = ADMIN,
     initialEntry = "/agendamentos",
     handlers = {},
     browser = false
 }: Options = {}) {
-    vi.stubEnv("VITE_API_URL", "http://api.test")
-    vi.resetModules()
+    pageModules ??= importPageModules()
+    const { createStore, ToastProvider, AppointmentsPage } = await pageModules
     const calls: Call[] = []
     let waiting = 0
     const replies: Record<string, Handler> = {
@@ -75,9 +87,6 @@ async function renderAppointmentsPage({
             }
         })
     )
-    const { default: createStore } = await import("@/store/createStore")
-    const { default: ToastProvider } = await import("@/components/ToastProvider")
-    const { default: AppointmentsPage } = await import("@/pages/Appointments.page")
     const store = createStore({ account: { current: account, status: "authenticated" } })
     const routes = [
         { path: "/agendamentos", element: <AppointmentsPage /> },
