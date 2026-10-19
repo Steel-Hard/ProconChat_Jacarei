@@ -1,0 +1,83 @@
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.back {
+    align-self: flex-start;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-primary);
+    font-size: 13.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.back:hover {
+    color: var(--color-primary-darker);
+}
+
+.status {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 22px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg-surface);
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.alert {
+    color: var(--error-text);
+    font-weight: 600;
+}
+
+.retry {
+    padding: 8px 14px;
+    border: 1px solid var(--border-input);
+    border-radius: 8px;
+    background: var(--bg-surface);
+    color: var(--text-strong);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.retry:hover {
+    filter: brightness(0.94);
+}
+
+.columns {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.main,
+.side {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 0;
+}
+
+@media (min-width: 1200px) {
+    .columns {
+        flex-direction: row;
+        align-items: flex-start;
+    }
+
+    .main {
+        flex: 3 1 0;
+    }
+
+    .side {
+        flex: 1 1 300px;
+    }
+}

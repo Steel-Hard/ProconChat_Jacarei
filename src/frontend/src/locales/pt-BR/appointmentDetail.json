@@ -1,5 +1,60 @@
 {
+    "meta": {
+        "title": "Agendamento {{protocol}} - ProconChat",
+        "fallbackTitle": "Detalhe do agendamento - ProconChat"
+    },
+    "back": "Voltar para Agendamentos",
+    "backIcon": "←",
+    "notFound": "Agendamento não encontrado.",
+    "loadFailed": "Não foi possível carregar o agendamento.",
+    "retry": "Tentar novamente",
+    "dateTime": "{{date}} às {{time}}",
+    "header": {
+        "protocol": "Protocolo {{protocol}}",
+        "subtitle": "{{weekday}}, {{date}} às {{time}} · Criado pelo chatbot em {{created}}",
+        "seals": {
+            "representative": "Comparece por representante",
+            "rescheduled": "Remarcado pelo cidadão",
+            "offGrid": "Fora da grade atual"
+        }
+    },
+    "facts": {
+        "title": "Dados do agendamento",
+        "holder": "Titular",
+        "cpf": "CPF do titular",
+        "datetime": "Data e hora",
+        "datetimeValue": "{{date}} · {{time}}",
+        "status": "Status",
+        "responsible": "Responsável",
+        "unassigned": "Sem responsável",
+        "attendance": "Comparecimento",
+        "holderAttends": "Titular comparece",
+        "representativeAttends": "Comparece por representante",
+        "reason": "Motivo do agendamento",
+        "reasons": {
+            "requiresInPerson": "A pergunta exige atendimento presencial",
+            "notResolved": "O cidadão respondeu que a dúvida não foi resolvida"
+        },
+        "original": "Data original",
+        "origin": "Origem no chatbot",
+        "originValue": "{{category}} → {{question}}",
+        "representativeNotice": "O titular indicou no chatbot que outra pessoa comparecerá em seu nome. Nome e CPF acima são sempre do titular; confira os documentos exigidos para representante."
+    },
+    "documents": {
+        "title": "Documentos solicitados pelo chatbot",
+        "note": "Lista enviada ao cidadão em {{date}}, no momento do agendamento. Alterações posteriores na configuração não mudam esta lista.",
+        "configNotice": "A configuração atual de documentos é diferente desta lista. O cidadão foi orientado a trazer os itens abaixo.",
+        "holderGroup": "Quando o próprio titular comparece",
+        "representativeGroup": "Quando um representante comparece",
+        "questionGroup": "Documentos úteis para esta dúvida",
+        "emptyGroup": "Nenhum documento nesta lista",
+        "emptyQuestion": "Nenhum documento adicional para esta dúvida"
+    },
     "timeline": {
+        "title": "Linha do tempo da conversa de origem",
+        "note": "O sistema registra apenas os passos percorridos, não o texto digitado pelo cidadão.",
+        "empty": "Os passos desta conversa não estão disponíveis.",
+        "ai": "Gerado com auxílio de IA",
         "titles": {
             "started": "Início da conversa",
             "categoryChosen": "Categoria escolhida",
@@ -41,6 +96,7 @@
         }
     },
     "history": {
+        "title": "Histórico",
         "events": {
             "created": {
                 "withActor": "Criado pelo chatbot como Pendente",
@@ -106,6 +162,43 @@
                 "withActor": "Evento registrado",
                 "withoutActor": "Evento registrado"
             }
+        }
+    },
+    "actions": {
+        "title": "Ações",
+        "buttons": {
+            "claim": "Assumir para mim",
+            "attended": "Marcar como atendido",
+            "noShow": "Marcar como não compareceu"
+        },
+        "waiting": {
+            "attended": "Marcar como atendido: disponível a partir do dia do atendimento.",
+            "noShow": "Marcar como não compareceu: disponível depois do horário do atendimento."
+        },
+        "final": {
+            "attended": "Atendimento concluído.",
+            "noShow": "O cidadão não compareceu ao atendimento.",
+            "canceled": "Agendamento cancelado. O horário foi liberado no chatbot."
+        },
+        "readOnly": "Sua conta pode apenas visualizar agendamentos.",
+        "dateNote": "A data não pode ser alterada pelo painel. Remarcações são feitas pelo cidadão no chatbot.",
+        "confirm": {
+            "claim": {
+                "title": "Assumir este agendamento?",
+                "description": "O agendamento {{protocol}} passa a Confirmado, com você como responsável.",
+                "confirm": "Assumir para mim"
+            },
+            "attended": {
+                "title": "Marcar como atendido?",
+                "description": "O agendamento {{protocol}} passa a Atendido.",
+                "confirm": "Marcar como atendido"
+            },
+            "noShow": {
+                "title": "Marcar como não compareceu?",
+                "description": "O agendamento {{protocol}} passa a Não compareceu.",
+                "confirm": "Marcar como não compareceu"
+            },
+            "alsoClaim": "{{description}} Ele também será assumido por você."
         }
     }
 }
