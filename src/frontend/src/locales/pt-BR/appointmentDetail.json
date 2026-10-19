@@ -1,0 +1,111 @@
+{
+    "timeline": {
+        "titles": {
+            "started": "Início da conversa",
+            "categoryChosen": "Categoria escolhida",
+            "questionChosen": "Pergunta escolhida",
+            "answerSent": "Resposta entregue",
+            "resolvedAnswered": "A dúvida foi resolvida?",
+            "scheduleOffered": "Agendamento oferecido",
+            "noSlot": "Não havia horário disponível na janela de agendamento",
+            "scheduleDeclined": "O cidadão preferiu não agendar",
+            "attendeeChosen": "Escolheu quem vai comparecer",
+            "phoneNoticeShown": "Informado de que receberá avisos sobre o agendamento neste número (lembrete e cancelamento)",
+            "appointmentCreated": "Agendamento criado",
+            "appointmentConsulted": "Consultou o agendamento",
+            "appointmentRescheduled": "Remarcou o agendamento",
+            "appointmentCanceled": "Cancelou o agendamento",
+            "abandoned": "Conversa abandonada",
+            "unknown": "Passo registrado"
+        },
+        "details": {
+            "started": "Cidadão iniciou o atendimento pelo WhatsApp e recebeu o aviso de que as orientações não têm caráter jurídico vinculante.",
+            "category": "{{title}}",
+            "question": "{{title}}",
+            "answerUsed": "Texto complementar gerado para contextualizar a resposta.",
+            "answerFailed": "Complemento por IA indisponível · enviado apenas o texto oficial.",
+            "resolvedYes": "Resposta do cidadão: Sim",
+            "resolvedNo": "Resposta do cidadão: Não",
+            "offeredInPerson": "Motivo: a pergunta exige atendimento presencial.",
+            "offeredNotResolved": "Motivo: o cidadão respondeu que a dúvida não foi resolvida.",
+            "noSlot": "O cidadão foi informado de que não há horários disponíveis no momento.",
+            "declined": "Conversa encerrada sem agendamento.",
+            "attendeeHolder": "Titular",
+            "attendeeRepresentative": "Representante, em nome do titular",
+            "phoneNotice": "Mensagens de modelo fixo enviadas pelo WhatsApp.",
+            "created": "Protocolo {{protocol}}",
+            "consulted": "Conversa de retorno para um agendamento existente.",
+            "rescheduled": "De {{fromDate}} às {{fromTime}} para {{toDate}} às {{toTime}}",
+            "canceled": "O horário voltou a ficar disponível no chatbot.",
+            "abandoned": "Sem interação por mais de 30 minutos nesta etapa."
+        }
+    },
+    "history": {
+        "events": {
+            "created": {
+                "withActor": "Criado pelo chatbot como Pendente",
+                "withoutActor": "Criado pelo chatbot como Pendente"
+            },
+            "claimed": {
+                "withActor": "Assumido por {{name}} · Confirmado",
+                "withoutActor": "Assumido · Confirmado"
+            },
+            "autoClaimed": {
+                "withActor": "Assumido automaticamente por {{name}} · Confirmado",
+                "withoutActor": "Assumido · Confirmado"
+            },
+            "attended": {
+                "withActor": "Marcado como atendido por {{name}}",
+                "withoutActor": "Marcado como atendido"
+            },
+            "noShow": {
+                "withActor": "Marcado como não compareceu por {{name}}",
+                "withoutActor": "Marcado como não compareceu"
+            },
+            "assigned": {
+                "withActor": "Atribuído por {{name}} · Confirmado",
+                "withoutActor": "Atribuído · Confirmado"
+            },
+            "rescheduled": {
+                "withActor": "Remarcado pelo cidadão no chatbot",
+                "withoutActor": "Remarcado pelo cidadão no chatbot"
+            },
+            "backToPending": {
+                "withActor": "Voltou para Pendente sem responsável",
+                "withoutActor": "Voltou para Pendente sem responsável"
+            },
+            "recordCorrected": {
+                "withActor": "Registro corrigido por {{name}}",
+                "withoutActor": "Registro corrigido"
+            },
+            "canceledByCitizen": {
+                "withActor": "Cancelado pelo cidadão no chatbot",
+                "withoutActor": "Cancelado pelo cidadão no chatbot"
+            },
+            "canceledByStaff": {
+                "withActor": "Cancelado no painel por {{name}}",
+                "withoutActor": "Cancelado no painel"
+            },
+            "citizenNotified": {
+                "withActor": "Cidadão avisado pelo WhatsApp",
+                "withoutActor": "Cidadão avisado pelo WhatsApp"
+            },
+            "citizenNotificationFailed": {
+                "withActor": "Falha ao avisar o cidadão pelo WhatsApp",
+                "withoutActor": "Falha ao avisar o cidadão pelo WhatsApp"
+            },
+            "reminderSent": {
+                "withActor": "Lembrete enviado pelo WhatsApp",
+                "withoutActor": "Lembrete enviado pelo WhatsApp"
+            },
+            "keptOffGrid": {
+                "withActor": "Mantido fora da grade atual após alteração de horários",
+                "withoutActor": "Mantido fora da grade atual após alteração de horários"
+            },
+            "unknown": {
+                "withActor": "Evento registrado",
+                "withoutActor": "Evento registrado"
+            }
+        }
+    }
+}
