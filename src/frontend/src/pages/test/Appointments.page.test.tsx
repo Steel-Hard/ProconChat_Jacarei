@@ -364,14 +364,21 @@ describe("Appointments.page: paginação e URL", () => {
         expect(page.lastListRequest()).toBe(DEFAULT_QUERY)
     })
 
-    it("busca o contador de pendentes do menu de novo ao abrir a lista", async () => {
+    it("busca de novo o contador de pendentes e a lista sempre que a lista é aberta", async () => {
         const page = await renderList()
+        const countCalls = () =>
+            page.calls.filter((call) => call.url.pathname === "/api/v1/appointments/pending-count")
+        await screen.findByText("Maria Aparecida Santos")
+        expect(countCalls()).toHaveLength(1)
+        const listBefore = page.listRequests().length
+        await page.user.click(screen.getByText("Maria Aparecida Santos"))
+        await screen.findByRole("heading", { name: "Detalhe do agendamento" })
+
+        await page.router.navigate(-1)
 
         await screen.findByText("Maria Aparecida Santos")
-
-        expect(
-            page.calls.filter((call) => call.url.pathname === "/api/v1/appointments/pending-count")
-        ).toHaveLength(1)
+        await waitFor(() => expect(countCalls()).toHaveLength(2))
+        await waitFor(() => expect(page.listRequests()).toHaveLength(listBefore + 1))
     })
 
     it("abre o detalhe pela linha levando só a origem no state", async () => {

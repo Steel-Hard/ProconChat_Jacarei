@@ -197,7 +197,12 @@ describe("PanelLayout", { timeout: 15000 }, () => {
             await screen.findByRole("heading", { name: "Entrar" }, { timeout: LAZY_TIMEOUT_MS })
         ).toBeInTheDocument()
         expect(store.getState().account.current).toBeNull()
-        expect(fetchMock.mock.calls[0][0]).toMatch(/\/api\/v1\/auth\/logout$/)
+        const requestedUrls = fetchMock.mock.calls.map(([input]) => {
+            const value: unknown = input
+
+            return value instanceof Request ? value.url : String(value)
+        })
+        expect(requestedUrls).toContainEqual(expect.stringMatching(/\/api\/v1\/auth\/logout$/))
         expect(router.state.location.pathname).toBe(ROUTES.login)
         expect(router.state.location.search).toBe("")
         expect(
