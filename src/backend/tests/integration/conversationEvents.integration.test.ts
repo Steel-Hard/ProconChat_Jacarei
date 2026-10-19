@@ -19,7 +19,6 @@ const phones = {
 }
 
 let categoryId = ""
-let categoryOption = ""
 const questionIds: string[] = []
 
 function phoneHash(phone: string): string {
@@ -30,11 +29,11 @@ function phoneHash(phone: string): string {
     return createHmac("sha256", secret).update(phone).digest("hex")
 }
 
-async function send(phone: string, text?: string) {
+async function send(phone: string, text?: string, optionId?: string) {
     const response = await request(app)
         .post("/api/v1/whatsapp/sessions")
         .set("X-Internal-Token", process.env.GATEWAY_INTERNAL_TOKEN as string)
-        .send({ phone, text })
+        .send({ phone, text, optionId })
 
     expect(response.status).toBe(202)
     return response.body.data as { sessionId: string; newSession: boolean; reply: { step: string } }
@@ -73,7 +72,7 @@ async function talkUntilAnswer(
     const first = await send(phone, sentinel)
     await send(phone, sentinel)
     await send(phone, "1 " + sentinel)
-    await send(phone, categoryOption)
+    await send(phone, undefined, `cat_${categoryId}`)
     await send(phone, sentinel)
     await send(phone, "abc")
     const last = await send(phone, questionOption)
@@ -110,10 +109,6 @@ describe("Eventos da conversa com Postgres", () => {
             )
             questionIds.push(inserted.rows[0]?.id as string)
         }
-        const categories = await pool.query<{ id: string }>(
-            "SELECT id FROM Categories WHERE active = true ORDER BY id ASC",
-        )
-        categoryOption = String(categories.rows.findIndex((row) => row.id === categoryId) + 1)
     })
 
     afterAll(async () => {
