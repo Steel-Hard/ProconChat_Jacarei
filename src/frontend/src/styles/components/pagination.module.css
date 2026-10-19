@@ -1,0 +1,42 @@
+.footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 18px;
+    font-size: 12.5px;
+    color: var(--text-muted);
+}
+
+.pages {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.page {
+    white-space: nowrap;
+}
+
+.button {
+    flex-shrink: 0;
+    padding: 6px 11px;
+    border: 1px solid var(--border-input);
+    border-radius: 7px;
+    background: var(--bg-surface);
+    color: var(--text-strong);
+    font-size: 12.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.button:hover:not(:disabled) {
+    filter: brightness(0.94);
+}
+
+.button:disabled {
+    opacity: 0.4;
+    cursor: default;
+}

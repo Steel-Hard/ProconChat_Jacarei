@@ -1,0 +1,25 @@
+.bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.select {
+    padding: 6px 10px;
+    border: 1px solid var(--border-input);
+    border-radius: 8px;
+    background: var(--bg-surface);
+    color: var(--text-body);
+    font-size: 13px;
+}

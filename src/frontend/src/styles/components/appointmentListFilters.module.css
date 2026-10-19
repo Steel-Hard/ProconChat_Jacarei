@@ -1,0 +1,23 @@
+.filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.select {
+    padding: 7px 10px;
+    border: 1px solid var(--border-input);
+    border-radius: 8px;
+    background: var(--bg-surface);
+    color: var(--text-body);
+    font-size: 13px;
+}
