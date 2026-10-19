@@ -1,10 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import routes from "@/routers/routes"
 import ROUTES from "@/routers/paths"
-import renderWithStore from "@/testUtils/renderWithStore"
+import loadPanelRoutes from "@/testUtils/loadPanelRoutes"
 import PERMISSION_KEYS from "@/navigation/permissionKeys"
 import type PanelAccount from "@/types/account/PanelAccount.types"
 import type RootState from "@/types/store/RootState.types"
@@ -37,9 +36,11 @@ const withoutSession: Partial<RootState> = {
     account: { current: null, status: "anonymous" }
 }
 
+let panel: Awaited<ReturnType<typeof loadPanelRoutes>>
+
 function renderRoutes(initialEntries: string[], preloadedState?: Partial<RootState>) {
-    const router = createMemoryRouter(routes, { initialEntries })
-    const result = renderWithStore(<RouterProvider router={router} />, { preloadedState })
+    const router = createMemoryRouter(panel.routes, { initialEntries })
+    const result = panel.renderWithStore(<RouterProvider router={router} />, { preloadedState })
 
     return { ...result, router }
 }
@@ -61,16 +62,6 @@ const protectedRoutes: Array<[string, string]> = [
     [ROUTES.whatsapp, "WhatsApp"]
 ]
 
-async function renderWithApiUrl(initialEntries: string[], preloadedState: Partial<RootState>) {
-    vi.stubEnv("VITE_API_URL", "http://api.test")
-    vi.resetModules()
-    const { default: freshRoutes } = await import("@/routers/routes")
-    const { default: freshRenderWithStore } = await import("@/testUtils/renderWithStore")
-    const router = createMemoryRouter(freshRoutes, { initialEntries })
-
-    return freshRenderWithStore(<RouterProvider router={router} />, { preloadedState })
-}
-
 function requestedUrls(): string[] {
     const fetchMock = vi.mocked(fetch)
 
@@ -79,13 +70,15 @@ function requestedUrls(): string[] {
     )
 }
 
-describe("routes", () => {
-    beforeEach(() => {
-        vi.stubGlobal(
-            "fetch",
-            vi.fn(() => new Promise<Response>(() => {}))
-        )
-    })
+function stubNeverAnsweringFetch() {
+    vi.stubGlobal(
+        "fetch",
+        vi.fn(() => new Promise<Response>(() => {}))
+    )
+}
+
+describe("routes antes de carregar as páginas", () => {
+    beforeEach(stubNeverAnsweringFetch)
 
     afterEach(() => {
         vi.unstubAllGlobals()
@@ -93,14 +86,34 @@ describe("routes", () => {
     })
 
     it("mostra o fallback de carregamento antes da página lazy resolver", async () => {
-        vi.resetModules()
-        const { default: freshRoutes } = await import("@/routers/routes")
-        const { default: freshRenderWithStore } = await import("@/testUtils/renderWithStore")
-        const router = createMemoryRouter(freshRoutes, { initialEntries: [ROUTES.login] })
+        const fresh = await loadPanelRoutes()
+        const router = createMemoryRouter(fresh.routes, { initialEntries: [ROUTES.login] })
 
-        freshRenderWithStore(<RouterProvider router={router} />)
+        fresh.renderWithStore(<RouterProvider router={router} />)
 
         expect(screen.getByText("Carregando...")).toBeInTheDocument()
+    })
+})
+
+describe("routes", () => {
+    beforeAll(async () => {
+        panel = await loadPanelRoutes([
+            () => import("@/pages/Login.page"),
+            () => import("@/pages/NotFound.page"),
+            () => import("@/pages/UnderConstruction.page"),
+            () => import("@/pages/WhatsApp.page"),
+            () => import("@/pages/Appointments.page")
+        ])
+    })
+
+    beforeEach(stubNeverAnsweringFetch)
+
+    afterEach(() => {
+        vi.unstubAllGlobals()
+    })
+
+    afterAll(() => {
+        vi.unstubAllEnvs()
     })
 
     it("renderiza a tela de entrada sem sessão", async () => {
@@ -117,7 +130,7 @@ describe("routes", () => {
     })
 
     it("renderiza a tela de WhatsApp para o Admin, carregando a configuração", async () => {
-        await renderWithApiUrl([ROUTES.whatsapp], withSession)
+        renderRoutes([ROUTES.whatsapp], withSession)
 
         expect(await screen.findByRole("heading", { name: "WhatsApp" })).toBeInTheDocument()
         expect(screen.getByText("Carregando...")).toBeInTheDocument()
@@ -130,7 +143,7 @@ describe("routes", () => {
     })
 
     it("renderiza a tela de Agendamentos com sessão, pedindo a lista e o contador", async () => {
-        await renderWithApiUrl([ROUTES.appointments], withSession)
+        renderRoutes([ROUTES.appointments], withSession)
 
         expect(await screen.findByRole("heading", { name: "Agendamentos" })).toBeInTheDocument()
         expect(screen.queryByText("Em construção.")).not.toBeInTheDocument()
@@ -144,7 +157,7 @@ describe("routes", () => {
     })
 
     it("mostra a NotFound ao funcionário com todas as permissões em /whatsapp sem chamar a API do WhatsApp", async () => {
-        await renderWithApiUrl([ROUTES.whatsapp], withStaffSession)
+        renderRoutes([ROUTES.whatsapp], withStaffSession)
 
         expect(await screen.findByRole("heading", { name: "404 - Not Found" })).toBeInTheDocument()
         expect(screen.queryByRole("heading", { name: "WhatsApp" })).not.toBeInTheDocument()
