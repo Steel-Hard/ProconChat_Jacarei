@@ -1,9 +1,12 @@
+import request from "supertest"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import app from "../../app"
 import getPool from "../../db/connection"
 import SlotFullError from "../../errors/SlotFullError"
 import { scheduleRepository } from "../../repositories/schedule.repository"
 import { sessionRepository } from "../../repositories/session.repository"
 import { createScheduleService } from "../../services/schedule.service"
+import type { ConversationFlowResult } from "../../types/conversationFlow.types"
 import { BookAppointmentResult } from "../../types/schedule.types"
 import { hashPhone as phoneHash } from "./helpers/phone"
 import {
@@ -24,6 +27,7 @@ const phones = {
     c2: "5512999990002",
     c3: "5512999990003",
     rollback: "5512999990004",
+    reasonFlow: "5512999990006",
 }
 
 function makeCpfHash(suffix: string): string {
@@ -48,9 +52,29 @@ const testRanges: ScheduleRangeInput[] = [1, 2, 3, 4, 5].flatMap((weekday) => [
 ])
 
 let testQuestionId: number
+let testCategoryId: number
 let savedScheduleConfig: ScheduleConfigSnapshot | null = null
 const createdAppointmentIds: string[] = []
 const createdSessionIds: string[] = []
+
+async function sendToBot(phone: string, text?: string, optionId?: string): Promise<ConversationFlowResult> {
+    const response = await request(app)
+        .post("/api/v1/whatsapp/sessions")
+        .set("X-Internal-Token", process.env.GATEWAY_INTERNAL_TOKEN as string)
+        .send({ phone, text, optionId })
+
+    expect(response.status).toBe(202)
+    return response.body.data as ConversationFlowResult
+}
+
+function firstSlotOptionId(result: ConversationFlowResult): string {
+    const rows = (result.reply.messages ?? []).flatMap((message) => (message.type === "list" ? message.rows : []))
+    const slot = rows.find((row) => row.id.startsWith("slot_"))
+    if (!slot) {
+        throw new Error("A resposta do bot não trouxe horário para escolher")
+    }
+    return slot.id
+}
 
 async function cleanup(): Promise<void> {
     await cleanupScheduleTestData({
@@ -66,6 +90,7 @@ describe("Schedule integration tests (Postgres)", () => {
         await useScheduleConfig({ settings: testSettings, ranges: testRanges })
         const created = await createTestQuestion()
         testQuestionId = created.questionId
+        testCategoryId = created.categoryId
     })
 
     afterAll(async () => {
@@ -259,5 +284,41 @@ describe("Schedule integration tests (Postgres)", () => {
         expect(distinctDates).toEqual(["2026-10-06", "2026-10-07", "2026-10-08"])
 
         await useScheduleConfig({ settings: testSettings, ranges: testRanges })
+    })
+
+    it("a reserva pelo bot grava o motivo mostrado na oferta mesmo se a pergunta mudar antes do clique", async () => {
+        const pool = getPool()
+        const phone = phones.reasonFlow
+
+        try {
+            const first = await sendToBot(phone, "oi")
+            await sendToBot(phone, undefined, `cat_${testCategoryId}`)
+            const offer = await sendToBot(phone, undefined, `q_${testQuestionId}`)
+            expect(offer.sessionId).toBe(first.sessionId)
+            expect(offer.reply.step).toBe("AWAITING_SCHEDULE_OFFER")
+
+            await pool.query("UPDATE Questions SET requires_in_person = false WHERE id = $1", [testQuestionId])
+
+            await sendToBot(phone, undefined, "schedule_yes")
+            await sendToBot(phone, undefined, "attendee_self")
+            await sendToBot(phone, "Cidadã Fictícia do Motivo")
+            const slots = await sendToBot(phone, "39053344705")
+            expect(slots.reply.step).toBe("AWAITING_SLOT")
+            const booked = await sendToBot(phone, undefined, firstSlotOptionId(slots))
+            expect(booked.reply.step).toBe("FINISHED")
+
+            const appointment = await pool.query<{ reason: string }>(
+                "SELECT reason FROM Appointments WHERE session_id = $1",
+                [first.sessionId],
+            )
+            const offered = await pool.query<{ data: { reason: string } }>(
+                "SELECT data FROM ConversationEvents WHERE session_id = $1 AND type = 'SCHEDULE_OFFERED' ORDER BY created_at, id",
+                [first.sessionId],
+            )
+            expect(appointment.rows).toEqual([{ reason: "REQUIRES_IN_PERSON" }])
+            expect(offered.rows).toEqual([{ data: { reason: "REQUIRES_IN_PERSON" } }])
+        } finally {
+            await pool.query("UPDATE Questions SET requires_in_person = true WHERE id = $1", [testQuestionId])
+        }
     })
 })
