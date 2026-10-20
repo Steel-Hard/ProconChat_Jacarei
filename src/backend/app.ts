@@ -12,6 +12,7 @@ import authRoutes from "./routes/auth.routes"
 import appointmentRoutes from "./routes/appointment.routes"
 import whatsappSettingsRoutes from "./routes/whatsappSettings.routes"
 import whatsappInternalConfigRoutes from "./routes/whatsappInternalConfig.routes"
+import userAccountRoutes from "./routes/userAccount.routes"
 import { createRequireTrustedOrigin } from "./middleware/trustedOrigin.middleware"
 
 dotenv.config({ quiet: true })
@@ -35,6 +36,7 @@ app.use("/api/v1", createRequireTrustedOrigin(frontendOrigin))
 app.use("/api/v1/auth", authRoutes)
 app.use("/api/v1/appointments", appointmentRoutes)
 app.use("/api/v1/whatsapp/settings", whatsappSettingsRoutes)
+app.use("/api/v1/users", userAccountRoutes)
 
 app.use("/", (_req: Request, _res: Response, next: NextFunction) =>
     next(new NotFoundError("Route not found")),
