@@ -104,7 +104,7 @@ O que falta: **a política de retenção/anonimização (RNF09) não foi formali
 | 2 | **Implementar registro de interações** (issue #16) | RF06 | A tabela já existe; falta gravar em cada passo do fluxo, incluindo `answered_via_llm` |
 | 3 | **Plugar o LLM ao fluxo + rótulo RNF05** | RF05, RNF05 | Tarefa única: `gerarExplicacaoLlm` ganha chamador e o rodapé ganha o rótulo. Avaliar antes o desempenho (streaming / `num_predict` / `keep_alive`) por causa de RNF02 |
 | 4 | **Implementar o Scheduler / agendamento presencial** | RF07 | Módulo interno do Backend, acionado quando a resposta não resolve. Inclui coletar CPF e nome pelo WhatsApp e hashear o CPF antes de persistir |
-| 5 | **Interface Web Admin** — Figma (issue #19) e depois implementação | RF08, RF12 | Login único, sem RBAC. CRUDs previstos: `Appointments` (status) e `Users` (contas admin) |
+| 5 | **Interface Web Admin** — Figma (issue #19) e depois implementação | RF08, RF12 (substituído pela [decisão 004](../../decisoes/004-contas-e-permissoes-granulares.md)) | Login único, sem RBAC. CRUDs previstos: `Appointments` (status) e `Users` (contas admin) |
 
 ### 13.2 Prioridade média — qualidade e conformidade
 

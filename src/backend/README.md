@@ -160,7 +160,9 @@ router.get("/", requireAuth, requirePermission("appointments.view"), listAppoint
 - As 8 chaves (`types/auth.types.ts`, `.docs/database/database.md`): `appointments.view`,
   `appointments.manage`, `content.manage`, `schedule.configure`, `documents.configure`,
   `sessions.view`, `reports.view`, `users.manage`.
-- Na Sprint 2 só a conta Admin (`is_admin`) recebe as 8. As permissões das outras contas são da #62.
+- O Admin (`is_admin`) recebe as 8 sem linhas em `UserPermissions`. As outras contas recebem as que
+  estão em `UserPermissions` (#62), na ordem de `PERMISSIONS`. `requireAuth` relê a conta e as
+  permissões a cada requisição: uma permissão removida vale na próxima requisição, sem novo login.
 - Rotas só do Admin (decisão 004, ex.: WhatsApp) usam `requirePermission(ADMIN_ONLY)`, de
   `types/auth.types.ts`. Só `is_admin` passa: um funcionário recebe `403 FORBIDDEN` mesmo com as 8
   chaves. `ADMIN_ONLY` não é uma permissão e não entra em `PERMISSIONS`.
@@ -361,6 +363,135 @@ a última configuração carregada até reiniciar. Depois de trocar a chave e re
 novo o token e o App Secret pela tela de WhatsApp (ou `PUT /api/v1/whatsapp/settings`, enviando os
 dois).
 
+## Contas e permissões (/api/v1/users, #62)
+
+Contas de funcionários com permissões marcadas uma a uma ([decisão 004](../../.docs/decisoes/004-contas-e-permissoes-granulares.md),
+[regras da tela](../../.docs/regras/10-usuarios.md); a tela é a #123). Todas as rotas passam pela
+proteção CSRF (`403 INVALID_ORIGIN` nos métodos que alteram), por `requireAuth` e por
+`requirePermission("users.manage")`, e respondem com `Cache-Control: no-store`. Nenhuma resposta tem
+`password_hash`, `session_version` nem senha. Camadas: `routes/userAccount.routes.ts` (classe
+`UserAccountRoutes`), `controllers/userAccount.controller.ts`, `services/userAccount.service.ts`,
+`repositories/userAccount.repository.ts`; a entrada é validada com os schemas de
+`schemas/userAccount.schema.ts`.
+
+### Rotas
+
+| Rota | Corpo | Sucesso | Erros |
+| --- | --- | --- | --- |
+| `GET /api/v1/users` | — | `200 { data: { items: UserAccount[], lastChange: { name, at } \| null } }` | `401`, `403 FORBIDDEN` |
+| `POST /api/v1/users` | `{ name, email, password }` | `201 { data: UserAccount }`, ativa, sem permissões e nunca Admin (`permissions` e `isAdmin` no corpo são ignorados) | `400 BAD_REQUEST`, `409 EMAIL_ALREADY_IN_USE` |
+| `PATCH /api/v1/users` | o lote (abaixo) | `200 { data: { items, lastChange, redistributed } }`, com a lista inteira já atualizada | `400`, `404 NOT_FOUND`, `403` e `409` com os códigos abaixo |
+| `GET /api/v1/users/:id/future-appointments` | — | `200 { data: [{ id, protocol, name, appointmentDatetime, status }] }`, em ordem crescente de data | `400`, `404 NOT_FOUND` |
+| `POST /api/v1/users/:id/reset-password` | `{ password }` | `200 { data: { reset: true } }` | `400`, `404`, `403 SELF_ACCOUNT_LOCKED`, `ADMIN_ACCOUNT_LOCKED`, `TARGET_HAS_MORE_PERMISSIONS` |
+
+`UserAccount`: `{ id, name, email, isAdmin, active, permissions, lastLoginAt, permissionsUpdatedAt,
+permissionsUpdatedBy: { id, name } | null }`. `permissions` segue a ordem de `PERMISSIONS`, e o Admin
+sai com as 8. A lista traz o Admin primeiro, depois as contas ativas por nome e por fim as inativas
+por nome. `lastChange` é a conta com o `permissions_updated_at` mais recente ("Última alteração por
+[nome] em [data]").
+
+- O e-mail é gravado aparado e em minúsculas, com até 150 caracteres. Duas criações simultâneas com o
+  mesmo e-mail gravam uma só: a violação `23505` de `users_email_key` ou de `uniq_users_email_lower`
+  vira `409 EMAIL_ALREADY_IN_USE`.
+- A senha segue `utils/passwordPolicy.ts` (8 caracteres a 72 bytes) e é gravada com `bcryptjs`
+  custo 12. A mensagem do `400` é a da política.
+- Os agendamentos futuros de uma conta são os `CONFIRMED` dela com horário depois de agora. Um
+  pendente nunca tem responsável, e um confirmado já passado ("Aguardando registro") fica com a conta.
+  A resposta tem o nome do titular e o protocolo, nunca CPF nem telefone.
+
+### Lote (`PATCH /api/v1/users`)
+
+```json
+{
+    "changes": [
+        { "userId": 7, "permissions": ["appointments.view", "appointments.manage"] },
+        { "userId": 9, "active": false, "reassignment": { "mode": "assign", "toUserId": 7 } },
+        { "userId": 12, "permissions": [], "reassignment": { "mode": "pending" } }
+    ]
+}
+```
+
+- `changes` tem de 1 a 100 itens, sem `userId` repetido. Cada item tem `permissions` (o conjunto final
+  da conta, com chaves de `PERMISSIONS` sem repetir), `active`, ou os dois. Um item só com
+  `reassignment` é `400`.
+- **Atomicidade:** o lote inteiro roda numa transação. As contas do lote e os destinos de "atribuir a
+  outro" são travados juntos, numa única consulta `FOR UPDATE` em ordem de id (dois lotes com contas em
+  comum não entram em deadlock), e os agendamentos futuros das contas do lote também são travados. As
+  regras rodam sobre esse estado travado (`services/userAccountRules.ts`, `decideAccountBatch`). Se
+  qualquer conta falhar, nada é gravado: nem as outras contas, nem os agendamentos, nem os eventos.
+- **Ordem e erro determinístico:** os itens são avaliados em ordem crescente de `userId`. Primeiro as
+  checagens de cada item (conta existe → Admin → própria conta → `TARGET_HAS_MORE_PERMISSIONS`, só se
+  muda `active` → `PERMISSION_NOT_HELD`), depois a redistribuição de cada conta
+  (`REASSIGNMENT_REQUIRED` → `INVALID_REASSIGNMENT_TARGET` → `REASSIGNMENT_TARGET_BUSY`). O erro
+  devolvido é o da primeira conta que falhar.
+- **"Gerenciar agendamentos" inclui "Ver agendamentos":** se o conjunto pedido tem
+  `appointments.manage`, o servidor grava também `appointments.view`. As regras contra escalada
+  valem depois disso.
+- Um item que pede o estado atual da conta não grava nada, nem o "alterado por". Quando as
+  permissões ou o `active` mudam, `permissions_updated_by` e `permissions_updated_at` recebem quem
+  salvou e o instante do lote, e as linhas novas de `UserPermissions` recebem `granted_by` e
+  `granted_at`.
+- **`session_version`:** desativar incrementa (as sessões abertas caem, e um token antigo continua
+  recusado depois de reativar). Reativar não incrementa. Redefinir a senha incrementa, mesmo com a
+  conta inativa (a senha nova vale quando ela for reativada).
+
+### Redistribuição dos agendamentos futuros
+
+Quando um item desativa a conta ou tira dela `appointments.manage` e ela tem agendamentos futuros, o
+item precisa de `reassignment`. A lista é recalculada dentro da transação (o corpo não traz ids de
+agendamento), e cada agendamento ganha um evento no histórico com `actor_user_id` de quem salvou e o
+instante do lote:
+
+- `{ "mode": "pending" }`: o agendamento volta a `PENDING` sem responsável, com `BACK_TO_PENDING` e
+  `{ "reason": "USER_DEACTIVATED" | "MANAGE_PERMISSION_REMOVED" }`;
+- `{ "mode": "assign", "toUserId": <id> }`: continua `CONFIRMED` com o novo responsável, com `ASSIGNED`
+  e `{ "assignee_user_id": <id>, "reason": ... }`.
+
+Se o item desativa e tira `appointments.manage` ao mesmo tempo, o motivo é `USER_DEACTIVATED`. Fora
+desses casos, `reassignment` é ignorado. As gravações ficam em `repositories/appointmentReassignment.ts`
+(`assignAppointment` e `returnAppointmentToPending`), que recebem um `PoolClient` já em transação e não
+decidem regra, para a #87 reaproveitar.
+
+O destino de "atribuir a outro" precisa existir, ser outra conta, estar ativo e ser o Admin ou ter
+`appointments.manage`, tudo no **estado final do lote** (`isValidResponsible`): uma conta que ganha
+"Gerenciar agendamentos" no mesmo lote é aceita; uma que é desativada ou perde a permissão no mesmo
+lote, não. Senão, `409 INVALID_REASSIGNMENT_TARGET`.
+
+**Uma pessoa não atende dois agendamentos ao mesmo tempo** (`services/responsibleAvailability.ts`,
+`findResponsibleConflict` e `countFreeStaff`). Dois `CONFIRMED` da mesma conta não podem ter
+intervalos `[início, início + duração)` sobrepostos. A duração é o `ScheduleSettings.slot_minutes`
+vigente, porque o agendamento não guarda a sua; sem configuração, só o mesmo início conflita. Com 30
+minutos, quem tem 13:00 não pode receber 13:00 nem 13:20, mas pode receber 13:30. Cada agendamento
+redistribuído é conferido contra os `CONFIRMED` do destino e contra os que o mesmo lote já levou para
+ele; com sobreposição, `409 REASSIGNMENT_TARGET_BUSY` e nada do lote é gravado. Se a duração mudar
+depois (#64), dois `CONFIRMED` que antes não se sobrepunham podem passar a se sobrepor sem aviso.
+
+### Códigos de erro
+
+Os erros de regra do lote trazem a conta que falhou em `details`, para a tela destacá-la. O
+envelope só tem `details` quando o erro o define; os demais erros continuam
+`{ "error": { "code", "message" } }`.
+
+```json
+{ "error": { "code": "PERMISSION_NOT_HELD", "message": "Você não pode conceder nem remover uma permissão que não tem", "details": { "userId": 7 } } }
+{ "error": { "code": "REASSIGNMENT_TARGET_BUSY", "message": "O destino já tem um agendamento nesse horário", "details": { "userId": 9, "toUserId": 7, "protocol": "AB12CD34", "conflictingProtocol": "EF56GH78" } } }
+```
+
+| Código | Status | Quando |
+| --- | --- | --- |
+| `NOT_FOUND` | 404 | A conta do item não existe (`details.userId`) |
+| `ADMIN_ACCOUNT_LOCKED` | 403 | A conta é o Admin (item do lote ou `reset-password`) |
+| `SELF_ACCOUNT_LOCKED` | 403 | A conta é a de quem pede. Para a própria senha existe `POST /auth/change-password` |
+| `TARGET_HAS_MORE_PERMISSIONS` | 403 | `reset-password`, ou item que muda `active`, numa conta com uma permissão que quem pede não tem |
+| `PERMISSION_NOT_HELD` | 403 | O item concede ou remove uma permissão que quem pede não tem (diferença entre o conjunto atual e o pedido, já com "Ver agendamentos" acrescentado) |
+| `REASSIGNMENT_REQUIRED` | 409 | A conta perde a capacidade de atender, tem agendamentos futuros e o item não traz `reassignment` |
+| `INVALID_REASSIGNMENT_TARGET` | 409 | O destino não existe, é a própria conta, está inativo ou não gerencia agendamentos no estado final do lote |
+| `REASSIGNMENT_TARGET_BUSY` | 409 | O destino já tem um `CONFIRMED` sobreposto (`details.toUserId`, `protocol`, `conflictingProtocol`) |
+| `EMAIL_ALREADY_IN_USE` | 409 | Criação com um e-mail que já existe, mesmo com outras maiúsculas |
+
+O Admin nunca recebe `PERMISSION_NOT_HELD` nem `TARGET_HAS_MORE_PERMISSIONS`. Se quem pede perde
+`users.manage` durante a requisição, vale a permissão lida no `requireAuth` daquela requisição.
+
 ## Agendamentos (/api/v1/appointments)
 
 Rotas de consulta e ações sobre agendamentos presenciais no painel (telas #85 e #86). Todas exigem
@@ -426,7 +557,8 @@ Valor fora da lista devolve `400 BAD_REQUEST` com `Dados inválidos: <campo>: <m
   `waiting_record` (confirmados com horário já passado) respeita só o `responsible`. A busca e o
   `status` não mudam os chips.
 - **"Um funcionário específico".** A rota aceita `responsible=<id>`, mas ainda não existe rota que
-  liste funcionários: depende da #62 (contas e permissões). Até lá, a #85 oferece só Todos, Sem
+  liste os funcionários para esse filtro e para o seletor de "Atribuir": fica com a #87 (a #62 entregou
+  as contas, mas `GET /api/v1/users` exige `users.manage`). Até lá, a #85 oferece só Todos, Sem
   responsável e Atribuídos a mim.
 
 Item da lista (`GET /api/v1/appointments`, resposta real do smoke, dados fictícios):
@@ -670,9 +802,10 @@ Se duas ações chegam juntas (por exemplo, Atendido e Não compareceu), a segun
 status já alterado e recebe o `409` coerente com a ação que ganhou (`ALREADY_ATTENDED` ou
 `ALREADY_NO_SHOW`). Só um evento terminal é gravado.
 
-**Dívida aceita:** os testes usam um único atendente (o Admin), porque uma conta sem `is_admin` ainda
-não tem permissões (`repositories/auth.repository.ts`). Testes com dois atendentes distintos ficam
-para depois da #62.
+**Dívida aceita:** os testes de ações usam um único atendente (o Admin). Desde a #62 uma conta sem
+`is_admin` tem as permissões gravadas em `UserPermissions` (`tests/integration/permissions.integration.test.ts`
+prova assumir com um funcionário que gerencia agendamentos), mas os testes com dois atendentes
+disputando o mesmo agendamento continuam pendentes.
 
 ## Agendamento pelo chat (#56)
 

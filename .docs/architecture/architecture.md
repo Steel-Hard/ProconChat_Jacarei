@@ -53,7 +53,7 @@ O LLM Service só recebe chamadas do Backend e não tem acesso ao banco nem à s
 | **Backend API** | Orquestrador: conversa, Motor de Decisão, agenda, mensagens ao cidadão, registro de eventos, API do painel, autenticação e permissões | `backend` | ✅ parcial (ver módulos) · 🟠 demais módulos |
 | **Frontend (painel)** | Painel da equipe do PROCON (RF08), a partir do `template-react` | `frontend` (nginx) | ✅ estrutura, layout, login, "Minha conta", Agendamentos, Detalhe do agendamento e WhatsApp (#58, #81, #84, #85, #86, #54); `/` redireciona para Agendamentos enquanto não há Dashboard (PR #115) · 🟠 Dashboard, Relatórios, Conteúdo, Sessões, Horários, Documentos e Usuários (hoje "Em construção") |
 | **LLM Service** | Ollama com `llama3.2:3b`; gera só o texto complementar (RF05) | `ollama` + `llm-pull` | ✅ serviço pronto · 🟠 ligado ao fluxo (S3-05) |
-| **PostgreSQL** | Persistência única | `postgres` (+ `migrate`, `seed`) | ✅ schema da Sprint 2 (#52) e migrations até a `15` |
+| **PostgreSQL** | Persistência única | `postgres` (+ `migrate`, `seed`) | ✅ schema da Sprint 2 (#52) e migrations até a `16` (permissões das contas, #62) |
 | **Proxy HTTPS** | Certificado e roteamento para painel, API e webhook; responde 404 nas rotas internas `/api/v1/whatsapp/sessions` e `/api/v1/internal*` | `caddy` | ✅ (`compose.prod.yaml`, `deploy/Caddyfile`) |
 | ~~Evolution API + Redis~~ | Integração não oficial usada na Sprint 1 | `evolution-api`, `redis` | Removidos na #82. Ver [decisão 003](../decisoes/003-migracao-whatsapp-cloud-api.md) |
 
@@ -68,8 +68,8 @@ Não são containers separados: são módulos de código, organizados no padrão
 | **Agenda** | Calcula horários livres a partir da configuração; cria, remarca e cancela agendamentos; controla vagas com concorrência | ✅ horários livres e reserva com trava por horário (#56) · 🟠 remarcar e cancelar (#59) |
 | **Mensagens ao cidadão** | Monta os textos fixos (confirmação, pausa) e os modelos (cancelamento, lembrete); registra falhas de envio | ✅ textos fixos de confirmação e de pausa · 🟠 modelos (S3-06) e falhas de envio (#88) |
 | **Registro de eventos** | Grava cada passo da conversa e o desfecho da sessão | ✅ (#16) |
-| **API do painel** | Agendamentos, conteúdo, configuração, usuários, relatórios, configuração do WhatsApp | ✅ agendamentos: lista, detalhe, assumir, atendido e não compareceu (#60), usados pelas telas de Agendamentos e Detalhe (#85, #86); configuração do WhatsApp (#83) · 🟠 demais |
-| **Autenticação e permissões** | Login, sessão, `requirePermission` com 8 permissões; na Sprint 2 só a conta Admin | ✅ login, sessão, troca de senha e `requirePermission`, só a conta Admin (#57, #84) · 🟠 permissões por conta (#62) |
+| **API do painel** | Agendamentos, conteúdo, configuração, usuários, relatórios, configuração do WhatsApp | ✅ agendamentos: lista, detalhe, assumir, atendido e não compareceu (#60), usados pelas telas de Agendamentos e Detalhe (#85, #86); configuração do WhatsApp (#83); contas e permissões: listar, criar, salvar em lote, redefinir senha e agendamentos futuros de uma conta (#62, tela na #123) · 🟠 demais |
+| **Autenticação e permissões** | Login, sessão, `requirePermission` com 8 permissões marcadas por conta; o Admin tem todas | ✅ login, sessão, troca de senha e `requirePermission` (#57, #84); permissões reais de cada conta, lidas a cada requisição, e regras contra escalada validadas na API (#62) |
 | **LLM** | Cliente do Ollama com fallback; envio do complemento com rótulo | ✅ cliente · 🟠 ligado ao fluxo (S3-05, #66) |
 
 ## Fluxos principais
