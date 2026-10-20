@@ -3,6 +3,8 @@ import request from "supertest"
 import { describe, it, expect, vi, afterEach } from "vitest"
 import errorHandler from "./errorHandler.middleware"
 import BadRequestError from "../errors/BadRequestError"
+import ConflictError from "../errors/ConflictError"
+import ForbiddenError from "../errors/ForbiddenError"
 
 function buildApp(throwError: () => unknown) {
     const app = express()
@@ -24,6 +26,36 @@ describe("errorHandler", () => {
         expect(response.status).toBe(400)
         expect(response.body).toEqual({
             error: { code: "BAD_REQUEST", message: "campo obrigatorio ausente" },
+        })
+    })
+
+    it("nao inclui a chave details quando o erro nao tem details", async () => {
+        const app = buildApp(() => new ForbiddenError("Insufficient permission"))
+
+        const response = await request(app).get("/boom")
+
+        expect(response.status).toBe(403)
+        expect(response.body).toEqual({ error: { code: "FORBIDDEN", message: "Insufficient permission" } })
+        expect(response.body.error).not.toHaveProperty("details")
+    })
+
+    it("inclui o details no envelope quando o erro tem details", async () => {
+        const app = buildApp(() => new ConflictError("destino ocupado", "REASSIGNMENT_TARGET_BUSY", {
+            userId: 9,
+            toUserId: 7,
+            protocol: "AB12CD34",
+            conflictingProtocol: "EF56GH78",
+        }))
+
+        const response = await request(app).get("/boom")
+
+        expect(response.status).toBe(409)
+        expect(response.body).toEqual({
+            error: {
+                code: "REASSIGNMENT_TARGET_BUSY",
+                message: "destino ocupado",
+                details: { userId: 9, toUserId: 7, protocol: "AB12CD34", conflictingProtocol: "EF56GH78" },
+            },
         })
     })
 
