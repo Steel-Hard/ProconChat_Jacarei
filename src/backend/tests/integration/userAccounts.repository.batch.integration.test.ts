@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto"
+import type { Pool, PoolClient } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import getPool from "../../db/connection"
 import { createUserAccountRepository } from "../../repositories/userAccount.repository"
@@ -156,6 +157,48 @@ describe("Lote de contas do repositório com Postgres", () => {
         await expect(attempt).rejects.toMatchObject({ code: "TARGET_HAS_MORE_PERMISSIONS", details: { userId: third.id } })
         expect(await accountRows(ids)).toEqual(accountsBefore)
         expect(await appointmentState(appointment)).toEqual(appointmentBefore)
+        expect(await eventsOf([appointment])).toEqual([])
+    })
+
+    it("desfaz todo o lote quando a gravacao de um evento falha", async () => {
+        const first = await user({})
+        const second = await user({ permissions: MANAGE })
+        const appointment = await confirmed(second)
+        const ids = [first.id, second.id]
+        const accountsBefore = await accountRows(ids)
+        const failingPool = {
+            connect: async (): Promise<PoolClient> => {
+                const client = await getPool().connect()
+                const query = client.query.bind(client) as (text: string, params?: unknown[]) => Promise<unknown>
+                return new Proxy(client, {
+                    get(target, property, receiver) {
+                        if (property === "query") {
+                            return (text: string, params?: unknown[]) =>
+                                text.includes("INSERT INTO AppointmentEvents")
+                                    ? Promise.reject(new Error("falha simulada ao gravar o evento"))
+                                    : query(text, params)
+                        }
+                        return Reflect.get(target, property, receiver)
+                    },
+                })
+            },
+        } as unknown as Pool
+
+        const attempt = createUserAccountRepository(failingPool).applyAccountBatch(
+            {
+                requester,
+                changes: [
+                    { userId: first.id, permissions: ["appointments.view"] },
+                    { userId: second.id, active: false, reassignment: { mode: "pending" } },
+                ],
+                now: NOW,
+            },
+            decideAccountBatch,
+        )
+
+        await expect(attempt).rejects.toThrow("falha simulada ao gravar o evento")
+        expect(await accountRows(ids)).toEqual(accountsBefore)
+        expect(await appointmentState(appointment)).toEqual({ status: "CONFIRMED", assignedUserId: second.id })
         expect(await eventsOf([appointment])).toEqual([])
     })
 
