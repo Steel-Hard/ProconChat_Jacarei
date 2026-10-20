@@ -1,5 +1,5 @@
 import type AppError from "../errors/AppError"
-import type { AppointmentStatus } from "./appointment.types"
+import type { AppointmentReassignmentReason, AppointmentStatus } from "./appointment.types"
 import type { Permission } from "./auth.types"
 
 export interface UserAccountUpdater {
@@ -35,7 +35,7 @@ export interface AccountBatchResult extends UserAccountList {
 
 export type Reassignment = { mode: "pending" } | { mode: "assign"; toUserId: number }
 
-export type ReassignmentReason = "USER_DEACTIVATED" | "MANAGE_PERMISSION_REMOVED"
+export type ReassignmentReason = AppointmentReassignmentReason
 
 export interface AccountChange {
     userId: number
