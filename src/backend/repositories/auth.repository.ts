@@ -1,5 +1,5 @@
 import getPool from "../db/connection"
-import { PERMISSIONS, UserCredentials } from "../types/auth.types"
+import { Permission, PERMISSIONS, UserCredentials } from "../types/auth.types"
 import { AuthRepository } from "./auth.repository.interface"
 
 interface UserRow {
@@ -10,9 +10,18 @@ interface UserRow {
     active: boolean
     is_admin: boolean
     session_version: number
+    permissions: string[]
 }
 
-const USER_COLUMNS = "id, name, email, password_hash, active, is_admin, session_version"
+const USER_COLUMNS = "u.id, u.name, u.email, u.password_hash, u.active, u.is_admin, u.session_version"
+
+function permissionsOf(row: UserRow): Permission[] {
+    if (row.is_admin) {
+        return [...PERMISSIONS]
+    }
+    const granted = new Set(row.permissions)
+    return PERMISSIONS.filter((permission) => granted.has(permission))
+}
 
 function toUserCredentials(row: UserRow): UserCredentials {
     return {
@@ -22,7 +31,7 @@ function toUserCredentials(row: UserRow): UserCredentials {
         passwordHash: row.password_hash,
         active: row.active,
         isAdmin: row.is_admin,
-        permissions: row.is_admin ? [...PERMISSIONS] : [],
+        permissions: permissionsOf(row),
         sessionVersion: row.session_version,
     }
 }
@@ -32,18 +41,28 @@ function withoutCredentials({ passwordHash: _passwordHash, active: _active, ...u
 }
 
 async function findOne(where: string, params: unknown[]): Promise<UserCredentials | null> {
-    const result = await getPool().query<UserRow>(`SELECT ${USER_COLUMNS} FROM Users WHERE ${where} LIMIT 1`, params)
+    const result = await getPool().query<UserRow>(
+        `SELECT ${USER_COLUMNS},
+                COALESCE(
+                    (SELECT array_agg(up.permission_key::text) FROM UserPermissions up WHERE up.user_id = u.id),
+                    '{}'
+                ) AS permissions
+         FROM Users u
+         WHERE ${where}
+         LIMIT 1`,
+        params,
+    )
     const row = result.rows[0]
     return row ? toUserCredentials(row) : null
 }
 
 export const authRepository: AuthRepository = {
-    findByEmail: (email) => findOne("lower(email) = $1", [email]),
+    findByEmail: (email) => findOne("lower(u.email) = $1", [email]),
 
-    findActiveWithPassword: (id) => findOne("id = $1 AND active", [id]),
+    findActiveWithPassword: (id) => findOne("u.id = $1 AND u.active", [id]),
 
     async findActiveById(id) {
-        const user = await findOne("id = $1 AND active", [id])
+        const user = await findOne("u.id = $1 AND u.active", [id])
         return user ? withoutCredentials(user) : null
     },
 
