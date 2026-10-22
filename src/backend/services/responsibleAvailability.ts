@@ -1,5 +1,7 @@
+import type { Permission } from "../types/auth.types"
 import type { BusyAppointment, RuleAccount } from "../types/userAccount.types"
-import { isValidResponsible } from "./userAccountRules"
+
+const MANAGE_APPOINTMENTS: Permission = "appointments.manage"
 
 export type ResponsibleCandidate = RuleAccount
 
@@ -18,6 +20,10 @@ export interface FreeStaffInput {
     appointmentDatetime: Date
     slotMinutes: number | null
     busy: BusyAppointment[]
+}
+
+export function isValidResponsible(account: Pick<RuleAccount, "active" | "isAdmin" | "permissions">): boolean {
+    return account.active && (account.isAdmin || account.permissions.includes(MANAGE_APPOINTMENTS))
 }
 
 function overlaps(a: Date, b: Date, slotMinutes: number | null): boolean {

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest"
+import type { Permission } from "../types/auth.types"
 import type { BusyAppointment } from "../types/userAccount.types"
-import { countFreeStaff, findResponsibleConflict, ResponsibleCandidate } from "./responsibleAvailability"
+import { countFreeStaff, findResponsibleConflict, isValidResponsible, ResponsibleCandidate } from "./responsibleAvailability"
 
+const MANAGE_AND_VIEW: Permission[] = ["appointments.view", "appointments.manage"]
 const AT_13_00 = new Date("2030-03-12T16:00:00.000Z")
 
 function minutesAfter(base: Date, minutes: number): Date {
@@ -19,6 +21,18 @@ function busyAt(appointmentDatetime: Date, overrides: Partial<BusyAppointment> =
 function conflictFor(busy: BusyAppointment[], slotMinutes: number | null, at: Date = AT_13_00, appointmentId = "100") {
     return findResponsibleConflict({ candidate: candidate(), appointmentId, appointmentDatetime: at, slotMinutes, busy })
 }
+
+describe("isValidResponsible", () => {
+    it("aceita conta ativa com appointments.manage ou o Admin ativo", () => {
+        expect(isValidResponsible({ active: true, isAdmin: false, permissions: MANAGE_AND_VIEW })).toBe(true)
+        expect(isValidResponsible({ active: true, isAdmin: true, permissions: [] })).toBe(true)
+    })
+
+    it("recusa conta inativa ou sem appointments.manage", () => {
+        expect(isValidResponsible({ active: false, isAdmin: false, permissions: MANAGE_AND_VIEW })).toBe(false)
+        expect(isValidResponsible({ active: true, isAdmin: false, permissions: ["appointments.view"] })).toBe(false)
+    })
+})
 
 describe("findResponsibleConflict", () => {
     it("devolve null quando o candidato esta livre", () => {

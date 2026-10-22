@@ -16,7 +16,7 @@ import type {
     PlannedReassignment,
     RuleAccount,
 } from "../types/userAccount.types"
-import { findResponsibleConflict } from "./responsibleAvailability"
+import { findResponsibleConflict, isValidResponsible } from "./responsibleAvailability"
 
 const VIEW_APPOINTMENTS: Permission = "appointments.view"
 const MANAGE_APPOINTMENTS: Permission = "appointments.manage"
@@ -39,10 +39,6 @@ export function normalizePermissions(permissions: Permission[]): Permission[] {
         wanted.add(VIEW_APPOINTMENTS)
     }
     return PERMISSIONS.filter((permission) => wanted.has(permission))
-}
-
-export function isValidResponsible(account: Pick<RuleAccount, "active" | "isAdmin" | "permissions">): boolean {
-    return account.active && (account.isAdmin || account.permissions.includes(MANAGE_APPOINTMENTS))
 }
 
 function holds(requester: AccountRequester, permission: Permission): boolean {

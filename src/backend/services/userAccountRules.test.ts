@@ -8,7 +8,7 @@ import type {
     LockedAccount,
     PasswordResetDecision,
 } from "../types/userAccount.types"
-import { decideAccountBatch, decidePasswordReset, isValidResponsible, normalizePermissions } from "./userAccountRules"
+import { decideAccountBatch, decidePasswordReset, normalizePermissions } from "./userAccountRules"
 
 const MANAGE_AND_VIEW: Permission[] = ["appointments.view", "appointments.manage"]
 
@@ -57,18 +57,6 @@ describe("normalizePermissions", () => {
     it("nao acrescenta nada quando nao ha appointments.manage", () => {
         expect(normalizePermissions(["sessions.view", "appointments.view"])).toEqual(["appointments.view", "sessions.view"])
         expect(normalizePermissions([])).toEqual([])
-    })
-})
-
-describe("isValidResponsible", () => {
-    it("aceita conta ativa com appointments.manage ou o Admin ativo", () => {
-        expect(isValidResponsible({ active: true, isAdmin: false, permissions: MANAGE_AND_VIEW })).toBe(true)
-        expect(isValidResponsible({ active: true, isAdmin: true, permissions: [] })).toBe(true)
-    })
-
-    it("recusa conta inativa ou sem appointments.manage", () => {
-        expect(isValidResponsible({ active: false, isAdmin: false, permissions: MANAGE_AND_VIEW })).toBe(false)
-        expect(isValidResponsible({ active: true, isAdmin: false, permissions: ["appointments.view"] })).toBe(false)
     })
 })
 
