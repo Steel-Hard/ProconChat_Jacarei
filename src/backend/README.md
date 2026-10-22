@@ -453,7 +453,8 @@ desses casos, `reassignment` é ignorado. As gravações ficam em `repositories/
 decidem regra, para a #87 reaproveitar.
 
 O destino de "atribuir a outro" precisa existir, ser outra conta, estar ativo e ser o Admin ou ter
-`appointments.manage`, tudo no **estado final do lote** (`isValidResponsible`): uma conta que ganha
+`appointments.manage`, tudo no **estado final do lote** (`isValidResponsible`, em
+`services/responsibleAvailability.ts`): uma conta que ganha
 "Gerenciar agendamentos" no mesmo lote é aceita; uma que é desativada ou perde a permissão no mesmo
 lote, não. Senão, `409 INVALID_REASSIGNMENT_TARGET`.
 
