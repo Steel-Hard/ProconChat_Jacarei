@@ -12,6 +12,7 @@ import {
     AppointmentListItem,
     AppointmentStatus,
     ConversationTimelineStep,
+    StaffMember,
 } from "../types/appointment.types"
 import { cleanCpf, hashCpf } from "../utils/cpf.utils"
 import {
@@ -135,6 +136,20 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
         },
 
         getCurrentDocumentsConfig,
+
+        async findStaff(): Promise<StaffMember[]> {
+            const result = await pool.query<{ id: string; name: string; active: boolean }>(
+                `SELECT u.id, u.name, u.active
+                 FROM Users u
+                 WHERE u.is_admin
+                    OR EXISTS (
+                        SELECT 1 FROM UserPermissions up
+                        WHERE up.user_id = u.id AND up.permission_key = 'appointments.manage'
+                    )
+                 ORDER BY u.name ASC, u.id ASC`,
+            )
+            return result.rows.map((row) => ({ id: String(row.id), name: row.name, active: row.active }))
+        },
 
         async findById(idOrCode: number | string): Promise<AppointmentDetailRecord | null> {
             const idStr = String(idOrCode).trim()

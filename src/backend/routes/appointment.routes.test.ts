@@ -39,6 +39,15 @@ const authUsers = new MockAuthRepository([
         sessionVersion: 1,
     },
     {
+        id: 6,
+        email: "semacesso@exemplo.test",
+        passwordHash: "x",
+        name: "Sem Acesso",
+        isAdmin: false,
+        permissions: [],
+        sessionVersion: 1,
+    },
+    {
         id: 10,
         email: "operator@exemplo.test",
         passwordHash: "x",
@@ -64,6 +73,10 @@ function simpleAction(action: string): keyof typeof STATUS_AFTER_ACTION {
     throw new Error(`Cenário incompleto: ação ${action} sem afterAction`)
 }
 const LIST_CHIPS = buildChipCounts({ all: 6, pending: 3, confirmed: 2, canceled: 1 })
+const STAFF = [
+    { id: "2", name: "Carlos Atendente", active: true },
+    { id: "11", name: "Ivone Antiga", active: false },
+]
 
 function routesScenario(overrides: Record<string, Partial<AppointmentDetailRecord>> = {}): AppointmentRepositoryStub {
     const carlos = { assigned_user_id: "2", assigned_user_name: "Carlos Atendente" }
@@ -86,6 +99,7 @@ function routesScenario(overrides: Record<string, Partial<AppointmentDetailRecor
             chipCounts: LIST_CHIPS,
         },
         pendingCount: 3,
+        staff: STAFF,
         titles: {
             categories: { 10: "Cobrança" },
             questions: { 1: "Cobrança indevida de serviço não contratado" },
@@ -189,6 +203,32 @@ describe("appointment.routes (HTTP)", () => {
 
             expect(patchRes.status).toBe(200)
             expect(patchRes.body.data.status).toBe("CONFIRMED")
+        })
+    })
+
+    describe("GET /api/v1/appointments/staff", () => {
+        it("retorna 401 sem sessão", async () => {
+            const res = await request(app).get("/api/v1/appointments/staff")
+
+            expect(res.status).toBe(401)
+        })
+
+        it("retorna 403 FORBIDDEN para a conta sem appointments.view", async () => {
+            const res = await request(app)
+                .get("/api/v1/appointments/staff")
+                .set("Cookie", accessCookieFor(6))
+
+            expect(res.status).toBe(403)
+            expect(res.body.error.code).toBe("FORBIDDEN")
+        })
+
+        it("devolve a lista de funcionários para quem tem appointments.view, sem cair no validador de id", async () => {
+            const res = await request(app)
+                .get("/api/v1/appointments/staff")
+                .set("Cookie", accessCookieFor(5))
+
+            expect(res.status).toBe(200)
+            expect(res.body).toEqual({ data: STAFF })
         })
     })
 

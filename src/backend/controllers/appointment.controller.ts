@@ -51,6 +51,15 @@ class AppointmentController {
         }
     }
 
+    public async listStaff(_req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const result = await this.service.listStaff()
+            res.status(200).json({ data: result })
+        } catch (error) {
+            next(error)
+        }
+    }
+
     public async getAppointmentDetail(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const { id } = req.params as { id: string }

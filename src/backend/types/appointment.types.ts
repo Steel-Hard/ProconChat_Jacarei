@@ -192,3 +192,9 @@ export interface AppointmentListFilters {
     limit?: number
     currentUserId?: number
 }
+
+export interface StaffMember {
+    id: string
+    name: string
+    active: boolean
+}

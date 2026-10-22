@@ -6,6 +6,7 @@ import type {
     AppointmentDetailRecord,
     AppointmentListFilters,
     AppointmentListItem,
+    StaffMember,
 } from "../../types/appointment.types"
 import type { AppointmentRepository } from "../appointment.repository.interface"
 import { buildChipCounts } from "./appointment.builders"
@@ -37,6 +38,7 @@ export interface AppointmentStubScenario {
     details?: AppointmentDetailRecord[]
     list?: AppointmentStubList
     pendingCount?: number
+    staff?: StaffMember[]
     titles?: AppointmentStubTitles
     afterAction?: AppointmentAfterAction
 }
@@ -47,6 +49,7 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
     private details: AppointmentDetailRecord[]
     private readonly list: AppointmentStubList
     private readonly pendingCount: number
+    private readonly staff: StaffMember[]
     private readonly titles: AppointmentStubTitles
     private readonly afterAction: AppointmentAfterAction | undefined
 
@@ -54,6 +57,7 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
         this.details = (scenario.details ?? []).map((detail) => structuredClone(detail))
         this.list = scenario.list ?? { items: [], total: 0, chipCounts: buildChipCounts() }
         this.pendingCount = scenario.pendingCount ?? 0
+        this.staff = scenario.staff ?? []
         this.titles = scenario.titles ?? { categories: {}, questions: {} }
         this.afterAction = scenario.afterAction
     }
@@ -65,6 +69,10 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
 
     async countPending(): Promise<number> {
         return this.pendingCount
+    }
+
+    async findStaff(): Promise<StaffMember[]> {
+        return structuredClone(this.staff)
     }
 
     async findById(idOrCode: number | string): Promise<AppointmentDetailRecord | null> {

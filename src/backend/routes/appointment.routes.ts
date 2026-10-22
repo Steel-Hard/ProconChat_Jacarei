@@ -40,6 +40,12 @@ export class AppointmentRoutes {
         )
 
         this.router.get(
+            "/staff",
+            requirePermission("appointments.view"),
+            controller.listStaff.bind(controller),
+        )
+
+        this.router.get(
             "/",
             requirePermission("appointments.view"),
             validateRequest({ query: listAppointmentsQuerySchema }),

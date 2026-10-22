@@ -7,6 +7,7 @@ import {
     AppointmentListFilters,
     AppointmentListResponse,
     ConversationTimelineStep,
+    StaffMember,
 } from "../types/appointment.types"
 import { errorCodeOf } from "../utils/conversationEventLog"
 import { ActionAccess, availableActions } from "./appointmentTransitions"
@@ -23,6 +24,8 @@ export interface AppointmentService {
     ): Promise<AppointmentListResponse>
 
     getPendingCount(): Promise<{ count: number }>
+
+    listStaff(): Promise<StaffMember[]>
 
     getAppointmentDetail(
         idOrCode: number | string,
@@ -208,6 +211,10 @@ export function createAppointmentService(deps?: {
         async getPendingCount(): Promise<{ count: number }> {
             const count = await repository.countPending()
             return { count }
+        },
+
+        listStaff(): Promise<StaffMember[]> {
+            return repository.findStaff()
         },
 
         getAppointmentDetail,

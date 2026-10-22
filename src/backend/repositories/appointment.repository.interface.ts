@@ -3,6 +3,7 @@ import {
     AppointmentDetailRecord,
     AppointmentListFilters,
     AppointmentListItem,
+    StaffMember,
 } from "../types/appointment.types"
 
 export interface AppointmentRepository {
@@ -16,6 +17,8 @@ export interface AppointmentRepository {
     }>
 
     countPending(): Promise<number>
+
+    findStaff(): Promise<StaffMember[]>
 
     findById(id: number | string): Promise<AppointmentDetailRecord | null>
 
