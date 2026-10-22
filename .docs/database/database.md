@@ -3,7 +3,7 @@
 > Persistência única em PostgreSQL, compartilhada entre o chatbot e o painel ([`../architecture/architecture.md`](../architecture/architecture.md)).
 >
 > Este documento tem duas partes:
-> 1. **[Schema atual](#parte-1--schema-atual-implementado)**: o que existe depois das migrations `01` a `09`, `010`, `11`, `12`, `13`, `14` e `15` (a `11_sprint2_schema.sql` é o schema da Sprint 2, issue #52; a `12_short_text_checks.sql` ajusta o limite dos títulos curtos, issue #61; a `13_conversation_events_data_checks.sql` limita as chaves e os valores de `ConversationEvents.data` e amarra `current_step = 'FINISHED'` às sessões encerradas, issue #16; a `14_whatsapp_settings_display_number.sql` guarda o número e o nome verificados do WhatsApp, issue #54; a `15_whatsapp_settings_access_token_lifetime.sql` guarda se o token de acesso do WhatsApp expira, issue #54).
+> 1. **[Schema atual](#parte-1--schema-atual-implementado)**: o que existe depois das migrations `01` a `09`, `010`, `11`, `12`, `13`, `14`, `15` e `16` (a `11_sprint2_schema.sql` é o schema da Sprint 2, issue #52; a `12_short_text_checks.sql` ajusta o limite dos títulos curtos, issue #61; a `13_conversation_events_data_checks.sql` limita as chaves e os valores de `ConversationEvents.data` e amarra `current_step = 'FINISHED'` às sessões encerradas, issue #16; a `14_whatsapp_settings_display_number.sql` guarda o número e o nome verificados do WhatsApp, issue #54; a `15_whatsapp_settings_access_token_lifetime.sql` guarda se o token de acesso do WhatsApp expira, issue #54; a `16_user_permissions.sql` cria as permissões granulares das contas e o e-mail único sem diferenciar maiúsculas, issue #62).
 > 2. **[Schema planejado](#parte-2--schema-planejado-sprint-3)**: o que ainda falta criar, com a issue de cada parte.
 >
 > Antes de mexer no banco, leia também o SQL em `src/backend/db/schema/` e as convenções em [`migrations.md`](migrations.md): **toda mudança é uma migration nova**, nunca edição de migration antiga.
@@ -27,6 +27,7 @@
 | `13` | Chaves e valores de `ConversationEvents.data` por tipo (#16): renomeia as chaves antigas `llmStatus` e `byRepresentative` das linhas que já existiam, aborta com mensagem clara se sobrar linha fora do contrato e cria `chk_conversation_events_data_keys` e `chk_conversation_events_data_values`. Em `Sessions`, põe `current_step = 'FINISHED'` nas sessões já encerradas que ainda guardavam outra etapa (a etapa do abandono continua em `abandoned_at_step`), aborta com mensagem clara se sobrar sessão `IN_PROGRESS` em `FINISHED` ou abandonada com `abandoned_at_step = 'FINISHED'` e cria `chk_sessions_step_finished` e `chk_sessions_abandoned_step_not_finished`. O `Down` remove só os quatro `CHECK` e não desfaz a troca de `current_step` |
 | `14` | Número e nome verificados do WhatsApp (#54): adiciona `display_phone_number VARCHAR(40)` e `verified_name VARCHAR(255)`, ambos opcionais, em `WhatsAppSettings`. A linha existente fica com os dois `NULL` até o próximo teste ou salvar bem-sucedido. O `Down` remove as duas colunas |
 | `15` | Tipo do token de acesso do WhatsApp (#54): adiciona `access_token_permanent BOOLEAN` e `access_token_expires_at TIMESTAMPTZ`, ambos opcionais, em `WhatsAppSettings`, com `chk_whatsapp_settings_access_token_lifetime` (as duas nulas, `TRUE` sem data ou `FALSE` com data). A linha existente fica com as duas `NULL` (tipo desconhecido) até o próximo teste dos valores salvos ou salvar bem-sucedido. O `Down` remove a constraint e as duas colunas |
+| `16` | Permissões granulares das contas (#62): cria `Permissions` com as 8 permissões (nome e descrição do protótipo) e `UserPermissions`, adiciona `permissions_updated_by` e `permissions_updated_at` em `Users` com `chk_users_permissions_updated` (as duas preenchidas ou as duas nulas) e cria `uniq_users_email_lower` (e-mail único sem diferenciar maiúsculas). Antes do índice, aborta com mensagem clara se houver e-mails repetidos ignorando maiúsculas. As contas existentes ficam sem permissões. O `Down` remove o índice, a constraint, as duas colunas e as duas tabelas |
 
 ### Diagrama
 
@@ -47,6 +48,8 @@ erDiagram
     Users ||--o{ AppointmentNotes : writes
     Appointments ||--o{ AppointmentEvents : has
     Users |o--o{ AppointmentEvents : "ator"
+    Users ||--o{ UserPermissions : has
+    Permissions ||--o{ UserPermissions : "concedida em"
 ```
 
 Tabelas de configuração, sem relação com as demais além de `updated_by` → `Users`: `ScheduleSettings`, `ScheduleRanges`, `BlockedDates`, `AttendanceDocuments` e `WhatsAppSettings`. `Categories` e `Questions` também têm `updated_by` → `Users`.
@@ -72,15 +75,44 @@ CREATE TABLE Users (
     is_admin BOOLEAN NOT NULL DEFAULT FALSE,
     last_login_at TIMESTAMPTZ,
     session_version INTEGER NOT NULL DEFAULT 0,
-    CONSTRAINT chk_users_session_version CHECK (session_version >= 0)
+    permissions_updated_by BIGINT REFERENCES Users(id),
+    permissions_updated_at TIMESTAMPTZ,
+    CONSTRAINT chk_users_session_version CHECK (session_version >= 0),
+    CONSTRAINT chk_users_permissions_updated CHECK ((permissions_updated_by IS NULL) = (permissions_updated_at IS NULL))
 );
 
 CREATE UNIQUE INDEX uniq_users_single_admin ON Users(is_admin) WHERE is_admin;
+CREATE UNIQUE INDEX uniq_users_email_lower ON Users (lower(email));
 ```
 
 - **Autenticação por JWT em cookies `HttpOnly` (#57), sem tabela de sessões de login.** O cookie de acesso (1 h) e o de refresh (90 dias) carregam o `session_version` da conta no momento em que foram emitidos. A cada requisição, o backend recusa o token se a versão for diferente da atual ou se a conta não estiver ativa (`active`). **Incrementar `session_version` invalida todos os tokens já emitidos daquela conta.**
-- Quando incrementar é regra da aplicação (#57, [`regras/01-login-e-conta.md`](../regras/01-login-e-conta.md)): **"Alterar minha senha" incrementa**, o que derruba as outras sessões da conta, e a sessão atual recebe cookies novos; o script `npm run admin:reset-password` (redefinição da senha do Admin no servidor) também incrementa; **"Sair" não incrementa**, só limpa os cookies do navegador; uma conta desativada não entra pela checagem de `active`; não existe "esqueci minha senha".
-- As permissões granulares ficam para a #62 (Parte 2). Na Sprint 2, o middleware só libera `is_admin`.
+- Quando incrementar é regra da aplicação (#57, [`regras/01-login-e-conta.md`](../regras/01-login-e-conta.md)): **"Alterar minha senha" incrementa**, o que derruba as outras sessões da conta, e a sessão atual recebe cookies novos; o script `npm run admin:reset-password` (redefinição da senha do Admin no servidor) também incrementa; **desativar uma conta e redefinir a senha de outra conta pela tela de Usuários incrementam** (#62), então um token emitido antes continua recusado mesmo depois de a conta ser reativada; reativar não incrementa; **"Sair" não incrementa**, só limpa os cookies do navegador; uma conta desativada não entra pela checagem de `active`; não existe "esqueci minha senha".
+- O e-mail é gravado aparado e em minúsculas, e `uniq_users_email_lower` (#62) impede dois e-mails iguais com outras maiúsculas. O `UNIQUE` original de `email` continua.
+- `permissions_updated_by` e `permissions_updated_at` (#62) guardam o "Permissões alteradas por [nome] em [data]" da tela de Usuários. Mudam quando as permissões **ou** o `active` da conta mudam, e não mudam ao redefinir a senha nem ao criar a conta. O "Última alteração por [nome] em [data]" da tela é a conta com o `permissions_updated_at` mais recente.
+- Permissões em `Permissions` e `UserPermissions` (abaixo). O middleware lê as permissões de cada conta em toda requisição.
+
+### Permissions e UserPermissions — #62, [decisão 004](../decisoes/004-contas-e-permissoes-granulares.md)
+
+```sql
+CREATE TABLE Permissions (
+    key VARCHAR(40) PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT NOT NULL
+);
+
+CREATE TABLE UserPermissions (
+    user_id BIGINT NOT NULL REFERENCES Users(id),
+    permission_key VARCHAR(40) NOT NULL REFERENCES Permissions(key),
+    granted_by BIGINT REFERENCES Users(id),
+    granted_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, permission_key)
+);
+```
+
+- As 8 linhas de `Permissions` são inseridas pela migration `16`, e não pelo seed: o catálogo é fixo e acompanha `PERMISSIONS` no código (`appointments.view`, `appointments.manage`, `content.manage`, `schedule.configure`, `documents.configure`, `sessions.view`, `reports.view`, `users.manage`).
+- O Admin não tem linhas em `UserPermissions`: `is_admin` libera tudo, inclusive o que é só dele (configuração do WhatsApp).
+- "Gerenciar agendamentos" inclui "Ver agendamentos": quando o conjunto pedido tem `appointments.manage`, o servidor grava também `appointments.view`.
+- As regras contra escalada (não alterar a própria conta nem o Admin, só conceder e remover o que se tem, não ativar, desativar nem redefinir a senha de quem tem mais permissões) ficam na aplicação (`services/userAccountRules.ts`) e são validadas na API, com as contas travadas na transação do lote.
 
 ### Categories — [decisões 001](../decisoes/001-fluxo-guiado-por-categorias.md) e [009](../decisoes/009-complemento-por-llm.md)
 
@@ -558,9 +590,9 @@ CREATE INDEX idx_appointment_events_appointment ON AppointmentEvents(appointment
 |---|---|
 | `CREATED` | — |
 | `CLAIMED` | — ("Assumir para mim"). Marcar um pendente como atendido ou não compareceu assume automaticamente: grava `CLAIMED` com `{ "auto_claimed": true }` + `ATTENDED`/`NO_SHOW`, no mesmo instante |
-| `ASSIGNED` | `{ "assignee_user_id": ... }` ("Atribuir a outro funcionário") |
+| `ASSIGNED` | `{ "assignee_user_id": ... }` ("Atribuir a outro funcionário"). Na redistribuição da tela de Usuários (#62) leva também `"reason": "USER_DEACTIVATED" \| "MANAGE_PERMISSION_REMOVED"` |
 | `RESCHEDULED` | `{ "from": ..., "to": ... }` |
-| `BACK_TO_PENDING` | `{ "reason": "RESCHEDULED" \| "USER_DEACTIVATED" \| ... }` |
+| `BACK_TO_PENDING` | `{ "reason": "RESCHEDULED" \| "USER_DEACTIVATED" \| "MANAGE_PERMISSION_REMOVED" \| ... }`. A redistribuição da tela de Usuários (#62) grava `USER_DEACTIVATED` ou `MANAGE_PERMISSION_REMOVED` |
 | `ATTENDED`, `NO_SHOW` | — |
 | `RECORD_CORRECTED` | `{ "previous_status": ..., "previous_assigned_user_id": ... }` |
 | `CANCELED_BY_CITIZEN` | — |
@@ -726,29 +758,7 @@ A proposta de referência que ficava na Parte 2 deste documento foi implementada
 
 ## Parte 2 — Schema planejado (Sprint 3)
 
-O que as decisões ainda exigem e não entrou na migration `11`. Cada parte vira uma migration própria na issue indicada. Nomes e tipos podem ser ajustados na implementação, mas as regras não.
-
-### Permissões granulares — #62, [decisão 004](../decisoes/004-contas-e-permissoes-granulares.md)
-
-```sql
-CREATE TABLE Permissions (
-    key VARCHAR(40) PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    description TEXT NOT NULL
-);
-
-CREATE TABLE UserPermissions (
-    user_id BIGINT NOT NULL REFERENCES Users(id),
-    permission_key VARCHAR(40) NOT NULL REFERENCES Permissions(key),
-    granted_by BIGINT REFERENCES Users(id),
-    granted_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (user_id, permission_key)
-);
-```
-
-- As 8 chaves: `appointments.view`, `appointments.manage`, `content.manage`, `schedule.configure`, `documents.configure`, `sessions.view`, `reports.view`, `users.manage`. Na Sprint 2 elas ficam no código do middleware da #57.
-- O Admin não precisa de linhas em `UserPermissions`: `is_admin` libera tudo.
-- As regras contra escalada (não alterar a própria conta, só conceder o que se tem etc.) ficam na aplicação e são validadas na API.
+O que as decisões ainda exigem e não entrou nas migrations `11` a `16`. Cada parte vira uma migration própria na issue indicada. Nomes e tipos podem ser ajustados na implementação, mas as regras não.
 
 ### Mensagens enviadas e falhas de entrega — #88, [decisão 005](../decisoes/005-mensagens-ao-cidadao.md)
 

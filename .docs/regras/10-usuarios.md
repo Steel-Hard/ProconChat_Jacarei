@@ -10,7 +10,7 @@ Criar as contas da equipe e definir o que cada pessoa pode fazer no painel.
 
 ## Estado da tela
 
-**Ainda não construída (issue #62).** Hoje só existe a conta Admin.
+**Backend pronto (#62), tela pendente (#123).** A API `/api/v1/users` lista e cria contas, salva as mudanças de várias contas de uma vez (permissões e ativar/desativar, com a redistribuição dos agendamentos futuros), redefine a senha e lista os agendamentos futuros de uma conta. As regras desta tela são validadas no servidor, com um código de erro para cada uma (contrato em `src/backend/README.md`, seção "Contas e permissões"). A tela ainda aparece como "Em construção".
 
 ## O que a tela mostra
 

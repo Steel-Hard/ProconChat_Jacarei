@@ -12,16 +12,17 @@ numerados sozinhos ainda precisariam de histórico, transações e locking.
 Referências: [ferramenta](https://github.com/salsita/node-pg-migrate/tree/v8.0.4),
 [CLI](https://salsita.github.io/node-pg-migrate/cli).
 
-Existem 15 migrations em `src/backend/db/migrations`: `01` a `07` criam as
+Existem 16 migrations em `src/backend/db/migrations`: `01` a `07` criam as
 tabelas da Sprint 1, `08`, `09` e `010` ajustam `Sessions`,
 `11_sprint2_schema.sql` é o schema da Sprint 2 (#52),
 `12_short_text_checks.sql` ajusta o limite dos títulos curtos (#61),
 `13_conversation_events_data_checks.sql` limita as chaves e os valores de
 `ConversationEvents.data` e amarra `Sessions.current_step = 'FINISHED'` às
 sessões encerradas (#16), `14_whatsapp_settings_display_number.sql` guarda o
-número e o nome verificados do WhatsApp (#54) e
+número e o nome verificados do WhatsApp (#54),
 `15_whatsapp_settings_access_token_lifetime.sql` guarda se o token de acesso do
-WhatsApp expira (#54). O que cada uma faz está
+WhatsApp expira (#54) e `16_user_permissions.sql` cria as permissões granulares
+das contas e o e-mail único sem diferenciar maiúsculas (#62). O que cada uma faz está
 em [`database.md`](database.md#histórico-das-migrations). Os nomes sem aspas
 são convertidos para minúsculas pelo PostgreSQL (por exemplo,
 `RequiredDocuments` vira `requireddocuments`). Cada migration tem
@@ -30,7 +31,7 @@ são convertidos para minúsculas pelo PostgreSQL (por exemplo,
 **Numeração.** O node-pg-migrate 8 ordena os arquivos pelo **prefixo lido como
 número**, não como texto: `010_alter_sessions.sql` é a versão 10, e um arquivo
 `10_...` empataria com ela. Por isso a migration da Sprint 2 é a `11_`, e a
-**próxima livre é `16_`**. Não renomeie a `010`: ela já está registrada com esse
+**próxima livre é `17_`**. Não renomeie a `010`: ela já está registrada com esse
 nome em `pgmigrations` nos bancos existentes. O executor imprime
 `Can't determine timestamp for 01` (e os demais prefixos), pois seu formato
 padrão é timestamp. Esse aviso não impede a execução.
@@ -81,7 +82,7 @@ npm run db:migrate
 ```
 
 O comando gera um timestamp: antes de aplicar o arquivo, substitua esse prefixo
-pelo próximo número disponível (hoje `16_`), sem repetir números.
+pelo próximo número disponível (hoje `17_`), sem repetir números.
 Preencha os blocos up/down do arquivo gerado. Nunca edite uma migration já
 aplicada em ambiente compartilhado: adicione uma nova versão. `db/schema` tem o
 `CREATE TABLE` consolidado de cada tabela no estado atual, e deve ser atualizado
@@ -136,7 +137,7 @@ npm run test:db
 O teste cria bancos temporários com nome aleatório e os remove ao terminar;
 não limpa o banco informado. Ele cobre estes cenários:
 
-- **Do zero:** `up` aplica as 15 migrations; as tabelas públicas são exatamente
+- **Do zero:** `up` aplica as 16 migrations; as tabelas públicas são exatamente
   as do schema atual (`interactions` não existe); cada enum tem os valores
   esperados (`appointment_status` 5, `session_outcome` 8, `session_step` 12);
   `users.session_version` é `integer not null default 0`; `short_title` é
@@ -156,20 +157,26 @@ não limpa o banco informado. Ele cobre estes cenários:
   `verified_name` até 255 (`22001` acima disso), e
   `chk_whatsapp_settings_access_token_lifetime` aceita as duas colunas nulas,
   `TRUE` sem data e `FALSE` com data, e recusa com `23514` `TRUE` com data,
-  `FALSE` sem data e data sem tipo. Por fim, a volta à versão 10
+  `FALSE` sem data e data sem tipo. A `16` cria exatamente as 8 chaves em
+  `Permissions`, e são recusados com `23505` a mesma permissão repetida em
+  `UserPermissions` e um e-mail igual com outra caixa, com `23503` uma
+  `permission_key` ou um `user_id` inexistentes, e com `23514`
+  `permissions_updated_by` sem `permissions_updated_at` e o contrário. Por fim, a volta à versão 10
   (`interactions` de volta, `appointment_status` com 3 valores, etapas novas
-  mapeadas) é feita em cinco passos de `down 1`: o primeiro desfaz a `15`
+  mapeadas) é feita em seis passos de `down 1`: o primeiro desfaz a `16`
+  (somem `Permissions`, `UserPermissions`, as duas colunas de `Users` e
+  `uniq_users_email_lower`, e as contas continuam), o segundo desfaz a `15`
   (somem `access_token_permanent`, `access_token_expires_at` e a constraint, e
-  a linha de `WhatsAppSettings` continua), o segundo desfaz a `14` (somem
-  `display_phone_number` e `verified_name`, e a linha continua), o terceiro
+  a linha de `WhatsAppSettings` continua), o terceiro desfaz a `14` (somem
+  `display_phone_number` e `verified_name`, e a linha continua), o quarto
   desfaz a `13` (sobra só `chk_conversation_events_data_object`, um evento com
   chave livre volta a ser aceito e uma sessão em andamento em `FINISHED`
-  também), o quarto desfaz a `12` (os `CHECK` de tamanho voltam a aceitar
-  espaço nas pontas) e o quinto desfaz a `11`. A volta à versão 10 perde a
+  também), o quinto desfaz a `12` (os `CHECK` de tamanho voltam a aceitar
+  espaço nas pontas) e o sexto desfaz a `11`. A volta à versão 10 perde a
   etapa do abandono: a `11` reaplicada copia `current_step = 'FINISHED'` para
   `abandoned_at_step`, e por isso o `up` seguinte falha na guarda de sessões da
   `13` enquanto houver sessão abandonada; depois de apagar a sessão abandonada
-  da versão 10, `up` reaplica, `down 15` deixa só `pgmigrations` e `up` reaplica tudo. Os `CHECK` da `12`
+  da versão 10, `up` reaplica, `down 16` deixa só `pgmigrations` e `up` reaplica tudo. Os `CHECK` da `12`
   recusam título curto com espaço nas pontas ou com 25 caracteres e aceitam 24.
 - **Sobre a versão 10 com o conteúdo do seed:** `up 10`, carga dos dados de
   `db/seeds/data` com as colunas da versão 10, sessões `IN_PROGRESS`,
@@ -186,8 +193,8 @@ não limpa o banco informado. Ele cobre estes cenários:
   pontas, gravados na versão 11, ficam aparados depois do `up`.
 - **Chaves antigas na `13`:** eventos gravados na versão 12 com
   `{ "llmStatus": ... }` e `{ "byRepresentative": ... }` passam a
-  `{ "llm": ... }` e `{ "by_representative": ... }` depois do `up`; o `down 1`
-  mantém as chaves novas e o `up` seguinte funciona.
+  `{ "llm": ... }` e `{ "by_representative": ... }` depois do `up`; o `down 4`
+  volta à versão 12 mantendo as chaves novas, e o `up` seguinte funciona.
 - **Guarda da `13`:** num banco na versão 12 com um evento cujo `data` tem
   texto livre, o `up` falha com a mensagem da guarda, a versão continua 12 e
   nenhum `CHECK` novo fica; depois de apagar a linha, o `up` funciona.
@@ -200,12 +207,21 @@ não limpa o banco informado. Ele cobre estes cenários:
   linha, o `up` funciona.
 - **Migration `14`:** num banco na versão 13 com a linha de `WhatsAppSettings`,
   o `up` acrescenta `display_phone_number` e `verified_name` nulos sem mudar a
-  linha; `down 2` remove as colunas e mantém a linha, e o `up` seguinte
-  funciona.
+  linha; `down 3` volta à versão 13, remove as colunas e mantém a linha, e o
+  `up` seguinte funciona.
 - **Migration `15`:** num banco na versão 14 com a linha de `WhatsAppSettings`,
   o `up` acrescenta `access_token_permanent` e `access_token_expires_at` nulos
-  sem mudar o resto da linha; `down 1` remove as colunas e a constraint e
-  mantém a linha, e o `up` seguinte volta com as duas colunas nulas.
+  sem mudar o resto da linha; `down 2` volta à versão 14, remove as colunas e a
+  constraint e mantém a linha, e o `up` seguinte volta com as duas colunas
+  nulas.
+- **Migration `16`:** num banco na versão 15 com o Admin e uma conta inativa
+  com e-mail em maiúsculas, o `up` mantém as contas como estavam, sem
+  permissões e sem "alterado por"; o índice novo recusa o mesmo e-mail com
+  outra caixa; `down 1` remove tabelas, colunas e índice e mantém as contas, e
+  o `up` seguinte volta com as 8 permissões e sem linhas em `UserPermissions`.
+- **Guarda da `16`:** num banco na versão 15 com `Pessoa@Guard.Test` e
+  `pessoa@guard.test`, o `up` falha com a mensagem da guarda, a versão continua
+  15 e nada é criado; depois de apagar uma das contas, o `up` funciona.
 - **Seed:** do zero (7 categorias, 47 perguntas, títulos, ordem, `llm_allowed`,
   documentos e configuração inicial iguais aos arquivos de dados, `BlockedDates`
   vazia); idempotência (retrato completo das tabelas semeadas igual depois da

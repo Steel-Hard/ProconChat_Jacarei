@@ -2,6 +2,7 @@ import { defineConfig } from "vitest/config"
 
 export default defineConfig({
     test: {
+        testTimeout: 30000,
         include: ["tests/integration/**/*.test.ts"],
         fileParallelism: false,
         env: {

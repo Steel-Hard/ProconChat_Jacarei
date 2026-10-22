@@ -42,4 +42,26 @@ describe("AppError subclasses", () => {
         expect(error.statusCode).toBe(409)
         expect(error.code).toBe("CONFLICT")
     })
+
+    it("cria o erro sem details quando ele nao e informado", () => {
+        const error = new ConflictError("conflito", "EMAIL_ALREADY_IN_USE")
+
+        expect(error.details).toBeUndefined()
+    })
+
+    it("guarda o details do ConflictError com o codigo informado", () => {
+        const error = new ConflictError("sem responsavel", "REASSIGNMENT_REQUIRED", { userId: 9 })
+
+        expect(error.statusCode).toBe(409)
+        expect(error.code).toBe("REASSIGNMENT_REQUIRED")
+        expect(error.details).toEqual({ userId: 9 })
+    })
+
+    it("guarda o details do NotFoundError mantendo o codigo NOT_FOUND", () => {
+        const error = new NotFoundError("conta nao encontrada", { userId: 42 })
+
+        expect(error.statusCode).toBe(404)
+        expect(error.code).toBe("NOT_FOUND")
+        expect(error.details).toEqual({ userId: 42 })
+    })
 })

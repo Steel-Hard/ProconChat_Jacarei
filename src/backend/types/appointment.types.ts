@@ -23,6 +23,17 @@ export type AppointmentEventType =
     | "REMINDER_SENT"
     | "KEPT_OFF_GRID"
 
+export type AppointmentReassignmentReason = "USER_DEACTIVATED" | "MANAGE_PERMISSION_REMOVED"
+
+export interface AssignedEventData {
+    assignee_user_id: number
+    reason?: AppointmentReassignmentReason
+}
+
+export interface BackToPendingEventData {
+    reason: AppointmentReassignmentReason
+}
+
 export type AppointmentFilterStatus =
     | "all"
     | "PENDING"
