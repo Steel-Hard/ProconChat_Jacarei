@@ -340,8 +340,15 @@ export function createUserAccountRepository(pool: Pool = getPool()): UserAccount
                     .map((account) => ({ ...account, futureAppointments: future.get(account.id) ?? [] }))
                 const targets = locked.filter((account) => targetIds.includes(account.id))
                 const slotMinutes = await readSlotMinutes(client)
-                const moving = accounts.flatMap((account) => account.futureAppointments)
-                const busy = await readBusy(client, assignTargets(changes), moving, slotMinutes)
+                const assigning = new Set(
+                    changes.filter((change) => change.reassignment?.mode === "assign").map((change) => change.userId),
+                )
+                const moving = accounts
+                    .filter((account) => assigning.has(account.id))
+                    .flatMap((account) => account.futureAppointments)
+                const lockedIds = new Set(locked.map((account) => account.id))
+                const existingTargets = assignTargets(changes).filter((id) => lockedIds.has(id))
+                const busy = await readBusy(client, existingTargets, moving, slotMinutes)
 
                 const decision = decide({ requester, changes, accounts, targets, slotMinutes, busy })
                 if (!decision.allowed) {
