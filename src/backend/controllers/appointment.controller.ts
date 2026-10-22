@@ -3,6 +3,12 @@ import { appointmentService as defaultAppointmentService, AppointmentService } f
 import { ListAppointmentsQuery, UpdateStatusBody } from "../schemas/appointment.schema"
 import { AppointmentListFilters } from "../types/appointment.types"
 import UnauthorizedError from "../errors/UnauthorizedError"
+import { ActionAccess } from "../services/appointmentTransitions"
+import { AuthenticatedUser } from "../types/auth.types"
+
+function accessOf(user: AuthenticatedUser | undefined): ActionAccess {
+    return { canManage: Boolean(user && (user.isAdmin || user.permissions.includes("appointments.manage"))) }
+}
 
 interface AppointmentControllerDependencies {
     service: AppointmentService
@@ -48,7 +54,7 @@ class AppointmentController {
     public async getAppointmentDetail(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const { id } = req.params as { id: string }
-            const result = await this.service.getAppointmentDetail(id)
+            const result = await this.service.getAppointmentDetail(id, accessOf(req.authUser))
             res.status(200).json({ data: result })
         } catch (error) {
             next(error)
@@ -64,14 +70,15 @@ class AppointmentController {
                 throw new UnauthorizedError("Authentication required")
             }
             const actorUserId = req.authUser.id
+            const access = accessOf(req.authUser)
 
             let result
             if (action === "claim") {
-                result = await this.service.claimAppointment(id, actorUserId)
+                result = await this.service.claimAppointment(id, actorUserId, access)
             } else if (action === "attended") {
-                result = await this.service.markAttended(id, actorUserId)
+                result = await this.service.markAttended(id, actorUserId, access)
             } else if (action === "no_show") {
-                result = await this.service.markNoShow(id, actorUserId)
+                result = await this.service.markNoShow(id, actorUserId, access)
             }
 
             res.status(200).json({ data: result })

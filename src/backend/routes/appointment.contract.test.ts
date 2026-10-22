@@ -66,7 +66,7 @@ const DETAIL_KEYS = [
 ]
 const TIMELINE_STEP_KEYS = ["created_at", "data", "generated_by_ai", "id", "type"]
 const EVENT_KEYS = ["actor_user_id", "actor_user_name", "created_at", "data", "id", "type"]
-const ACTION_KEYS = ["attended", "claim", "no_show"]
+const ACTION_KEYS = ["add_note", "assign", "attended", "claim", "correct_record", "no_show"]
 const AVAILABILITY_KEYS = ["allowed", "code"]
 const ERROR_KEYS = ["code", "message"]
 const PATCH_CONFLICT_CODES = [
@@ -76,7 +76,9 @@ const PATCH_CONFLICT_CODES = [
     "APPOINTMENT_CANCELED",
     "ATTENDANCE_NOT_YET_AVAILABLE",
     "NO_SHOW_NOT_YET_AVAILABLE",
+    "RECORD_NOT_CORRECTABLE",
 ]
+const AVAILABILITY_CODES = [...PATCH_CONFLICT_CODES, "PERMISSION_REQUIRED"]
 const FORBIDDEN_FIELDS = ["cpf_hash", "phone_encrypted", "phone_hash"]
 
 const authUsers = new MockAuthRepository([
@@ -245,7 +247,7 @@ describe("contrato da API de agendamentos", () => {
             }
         })
 
-        it("available_actions traz as três ações com allowed e code", async () => {
+        it("available_actions traz as seis ações com allowed e code", async () => {
             const res = await get("/1")
 
             const actions = res.body.data.available_actions
@@ -258,6 +260,18 @@ describe("contrato da API de agendamentos", () => {
                 } else {
                     expect(PATCH_CONFLICT_CODES).toContain(actions[action].code)
                 }
+            }
+        })
+
+        it("para a conta só com appointments.view, available_actions usa só códigos documentados", async () => {
+            const res = await get("/1", 5)
+
+            const actions = res.body.data.available_actions
+            expect(keysOf(actions)).toEqual(ACTION_KEYS)
+            for (const action of ACTION_KEYS) {
+                expect(keysOf(actions[action])).toEqual(AVAILABILITY_KEYS)
+                expect(actions[action].allowed).toBe(false)
+                expect(AVAILABILITY_CODES).toContain(actions[action].code)
             }
         })
     })

@@ -9,7 +9,7 @@ import {
     ConversationTimelineStep,
 } from "../types/appointment.types"
 import { errorCodeOf } from "../utils/conversationEventLog"
-import { availableActions } from "./appointmentTransitions"
+import { ActionAccess, availableActions } from "./appointmentTransitions"
 import {
     conversationEventService as defaultConversationEventService,
     ConversationEventService,
@@ -26,24 +26,28 @@ export interface AppointmentService {
 
     getAppointmentDetail(
         idOrCode: number | string,
+        access: ActionAccess,
         now?: Date,
     ): Promise<AppointmentDetail>
 
     claimAppointment(
         idOrCode: number | string,
         actorUserId: number,
+        access: ActionAccess,
         now?: Date,
     ): Promise<AppointmentDetail>
 
     markAttended(
         idOrCode: number | string,
         actorUserId: number,
+        access: ActionAccess,
         now?: Date,
     ): Promise<AppointmentDetail>
 
     markNoShow(
         idOrCode: number | string,
         actorUserId: number,
+        access: ActionAccess,
         now?: Date,
     ): Promise<AppointmentDetail>
 }
@@ -128,6 +132,7 @@ export function createAppointmentService(deps?: {
 
     async function getAppointmentDetail(
         idOrCode: number | string,
+        access: ActionAccess,
         now: Date = new Date(),
     ): Promise<AppointmentDetail> {
         const appointment = await repository.findById(idOrCode)
@@ -170,6 +175,7 @@ export function createAppointmentService(deps?: {
                     appointmentDatetime: new Date(appointment.appointment_datetime),
                 },
                 now,
+                access,
             ),
         }
     }
@@ -209,28 +215,31 @@ export function createAppointmentService(deps?: {
         async claimAppointment(
             idOrCode: number | string,
             actorUserId: number,
+            access: ActionAccess,
             now: Date = new Date(),
         ): Promise<AppointmentDetail> {
             await repository.claim(String(idOrCode), actorUserId, now)
-            return getAppointmentDetail(idOrCode, now)
+            return getAppointmentDetail(idOrCode, access, now)
         },
 
         async markAttended(
             idOrCode: number | string,
             actorUserId: number,
+            access: ActionAccess,
             now: Date = new Date(),
         ): Promise<AppointmentDetail> {
             await repository.markAttended(String(idOrCode), actorUserId, now)
-            return getAppointmentDetail(idOrCode, now)
+            return getAppointmentDetail(idOrCode, access, now)
         },
 
         async markNoShow(
             idOrCode: number | string,
             actorUserId: number,
+            access: ActionAccess,
             now: Date = new Date(),
         ): Promise<AppointmentDetail> {
             await repository.markNoShow(String(idOrCode), actorUserId, now)
-            return getAppointmentDetail(idOrCode, now)
+            return getAppointmentDetail(idOrCode, access, now)
         },
     }
 }

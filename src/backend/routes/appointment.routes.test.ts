@@ -55,6 +55,14 @@ function accessCookieFor(userId: number, sessionVersion = 1): string {
 
 const STATUS_AFTER_ACTION = { claim: "CONFIRMED", attended: "ATTENDED", no_show: "NO_SHOW" } as const
 const EVENT_OF_ACTION = { claim: "CLAIMED", attended: "ATTENDED", no_show: "NO_SHOW" } as const
+const PERMISSION_REQUIRED = { allowed: false, code: "PERMISSION_REQUIRED" }
+
+function simpleAction(action: string): keyof typeof STATUS_AFTER_ACTION {
+    if (action === "claim" || action === "attended" || action === "no_show") {
+        return action
+    }
+    throw new Error(`Cenário incompleto: ação ${action} sem afterAction`)
+}
 const LIST_CHIPS = buildChipCounts({ all: 6, pending: 3, confirmed: 2, canceled: 1 })
 
 function routesScenario(overrides: Record<string, Partial<AppointmentDetailRecord>> = {}): AppointmentRepositoryStub {
@@ -84,12 +92,12 @@ function routesScenario(overrides: Record<string, Partial<AppointmentDetailRecor
         },
         afterAction: (call, current) => ({
             ...current,
-            status: STATUS_AFTER_ACTION[call.action],
+            status: STATUS_AFTER_ACTION[simpleAction(call.action)],
             assigned_user_id: current.assigned_user_id ?? String(call.actorUserId),
             events: [
                 {
                     id: String(current.events.length + 1),
-                    type: EVENT_OF_ACTION[call.action],
+                    type: EVENT_OF_ACTION[simpleAction(call.action)],
                     actor_user_id: String(call.actorUserId),
                     actor_user_name: null,
                     data: {},
@@ -296,6 +304,9 @@ describe("appointment.routes (HTTP)", () => {
                     claim: { allowed: true, code: null },
                     attended: { allowed: false, code: "ATTENDANCE_NOT_YET_AVAILABLE" },
                     no_show: { allowed: false, code: "NO_SHOW_NOT_YET_AVAILABLE" },
+                    assign: { allowed: true, code: null },
+                    correct_record: { allowed: false, code: "RECORD_NOT_CORRECTABLE" },
+                    add_note: { allowed: true, code: null },
                 })
             })
 
@@ -313,6 +324,9 @@ describe("appointment.routes (HTTP)", () => {
                     claim: { allowed: false, code: "APPOINTMENT_ALREADY_CLAIMED" },
                     attended: { allowed: true, code: null },
                     no_show: { allowed: false, code: "NO_SHOW_NOT_YET_AVAILABLE" },
+                    assign: { allowed: true, code: null },
+                    correct_record: { allowed: false, code: "RECORD_NOT_CORRECTABLE" },
+                    add_note: { allowed: true, code: null },
                 })
             })
 
@@ -325,6 +339,43 @@ describe("appointment.routes (HTTP)", () => {
                     claim: { allowed: false, code: "APPOINTMENT_ALREADY_CLAIMED" },
                     attended: { allowed: true, code: null },
                     no_show: { allowed: true, code: null },
+                    assign: { allowed: true, code: null },
+                    correct_record: { allowed: false, code: "RECORD_NOT_CORRECTABLE" },
+                    add_note: { allowed: true, code: null },
+                })
+            })
+
+            it("a conta só com appointments.view recebe PERMISSION_REQUIRED nas seis ações de gerenciar", async () => {
+                const res = await request(app)
+                    .get("/api/v1/appointments/3")
+                    .set("Cookie", accessCookieFor(5))
+
+                expect(res.status).toBe(200)
+                expect(res.body.data.available_actions).toEqual({
+                    claim: PERMISSION_REQUIRED,
+                    attended: PERMISSION_REQUIRED,
+                    no_show: PERMISSION_REQUIRED,
+                    assign: PERMISSION_REQUIRED,
+                    correct_record: PERMISSION_REQUIRED,
+                    add_note: PERMISSION_REQUIRED,
+                })
+            })
+
+            it.each([
+                { label: "a conta com appointments.manage", userId: 10 },
+                { label: "o Admin", userId: 1 },
+            ])("$label recebe as ações pelas regras de status", async ({ userId }) => {
+                const res = await request(app)
+                    .get("/api/v1/appointments/4")
+                    .set("Cookie", accessCookieFor(userId))
+
+                expect(res.body.data.available_actions).toEqual({
+                    claim: { allowed: false, code: "ALREADY_ATTENDED" },
+                    attended: { allowed: false, code: "ALREADY_ATTENDED" },
+                    no_show: { allowed: false, code: "ALREADY_ATTENDED" },
+                    assign: { allowed: false, code: "ALREADY_ATTENDED" },
+                    correct_record: { allowed: true, code: null },
+                    add_note: { allowed: true, code: null },
                 })
             })
         })

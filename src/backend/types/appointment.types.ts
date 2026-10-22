@@ -58,7 +58,9 @@ export type AppointmentSortBy =
 
 export type AppointmentSortOrder = "asc" | "desc"
 
-export type AppointmentActionType = "claim" | "attended" | "no_show"
+export type AppointmentActionType = "claim" | "attended" | "no_show" | "assign" | "correct_record"
+
+export type AppointmentAvailableActionKey = AppointmentActionType | "add_note"
 
 export interface AppointmentListItem {
     id: string
@@ -120,13 +122,29 @@ export type TransitionErrorCode =
     | "APPOINTMENT_CANCELED"
     | "ATTENDANCE_NOT_YET_AVAILABLE"
     | "NO_SHOW_NOT_YET_AVAILABLE"
+    | "RECORD_NOT_CORRECTABLE"
+    | "ALREADY_ASSIGNED_TO_USER"
+    | "INVALID_ASSIGNEE"
+    | "ASSIGNEE_BUSY"
+    | "PERMISSION_REQUIRED"
 
 export interface AppointmentActionAvailability {
     allowed: boolean
     code: TransitionErrorCode | null
 }
 
-export type AppointmentAvailableActions = Record<AppointmentActionType, AppointmentActionAvailability>
+export type AppointmentAvailableActions = Record<AppointmentAvailableActionKey, AppointmentActionAvailability>
+
+export interface CorrectionHistoryEvent {
+    id: string
+    type: AppointmentEventType
+    data: Record<string, unknown>
+    createdAt: Date
+}
+
+export type CorrectionTarget =
+    | { status: "PENDING"; assignedUserId: null }
+    | { status: "CONFIRMED"; assignedUserId: number }
 
 export interface AppointmentDetail {
     id: string
