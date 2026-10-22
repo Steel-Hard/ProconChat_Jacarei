@@ -208,6 +208,14 @@ describe("decidePasswordReset", () => {
         ])
     })
 
+    it("recusa com 404 e o userId a redefinicao de conta inexistente", () => {
+        expect(errorOf(decidePasswordReset({ requester: userManager, userId: 42, account: null }))).toEqual({
+            status: 404,
+            code: "NOT_FOUND",
+            details: { userId: 42 },
+        })
+    })
+
     it("deixa o Admin redefinir a senha de qualquer funcionario", () => {
         const admin = requester([...PERMISSIONS], { isAdmin: true })
 

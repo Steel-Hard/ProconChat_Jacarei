@@ -382,7 +382,7 @@ proteção CSRF (`403 INVALID_ORIGIN` nos métodos que alteram), por `requireAut
 | `POST /api/v1/users` | `{ name, email, password }` | `201 { data: UserAccount }`, ativa, sem permissões e nunca Admin (`permissions` e `isAdmin` no corpo são ignorados) | `400 BAD_REQUEST`, `409 EMAIL_ALREADY_IN_USE` |
 | `PATCH /api/v1/users` | o lote (abaixo) | `200 { data: { items, lastChange, redistributed } }`, com a lista inteira já atualizada | `400`, `404 NOT_FOUND`, `403` e `409` com os códigos abaixo |
 | `GET /api/v1/users/:id/future-appointments` | — | `200 { data: [{ id, protocol, name, appointmentDatetime, status }] }`, em ordem crescente de data | `400`, `404 NOT_FOUND` |
-| `POST /api/v1/users/:id/reset-password` | `{ password }` | `200 { data: { reset: true } }` | `400`, `404`, `403 SELF_ACCOUNT_LOCKED`, `ADMIN_ACCOUNT_LOCKED`, `TARGET_HAS_MORE_PERMISSIONS` |
+| `POST /api/v1/users/:id/reset-password` | `{ password }` | `200 { data: { reset: true } }` | `400`, `404 NOT_FOUND` com `details.userId`, `403 SELF_ACCOUNT_LOCKED`, `ADMIN_ACCOUNT_LOCKED`, `TARGET_HAS_MORE_PERMISSIONS` |
 
 `UserAccount`: `{ id, name, email, isAdmin, active, permissions, lastLoginAt, permissionsUpdatedAt,
 permissionsUpdatedBy: { id, name } | null }`. `permissions` segue a ordem de `PERMISSIONS`, e o Admin
@@ -480,7 +480,7 @@ envelope só tem `details` quando o erro o define; os demais erros continuam
 
 | Código | Status | Quando |
 | --- | --- | --- |
-| `NOT_FOUND` | 404 | A conta do item não existe (`details.userId`) |
+| `NOT_FOUND` | 404 | A conta do item do lote ou da `reset-password` não existe (`details.userId`) |
 | `ADMIN_ACCOUNT_LOCKED` | 403 | A conta é o Admin (item do lote ou `reset-password`) |
 | `SELF_ACCOUNT_LOCKED` | 403 | A conta é a de quem pede. Para a própria senha existe `POST /auth/change-password` |
 | `TARGET_HAS_MORE_PERMISSIONS` | 403 | `reset-password`, ou item que muda `active`, numa conta com uma permissão que quem pede não tem |

@@ -238,9 +238,9 @@ export function decideAccountBatch(state: AccountBatchState): AccountBatchDecisi
     return { allowed: true, plans }
 }
 
-export function decidePasswordReset({ requester, account }: PasswordResetState): PasswordResetDecision {
+export function decidePasswordReset({ requester, userId, account }: PasswordResetState): PasswordResetDecision {
     if (!account) {
-        return { allowed: false, error: new NotFoundError("Conta não encontrada") }
+        return { allowed: false, error: new NotFoundError("Conta não encontrada", { userId }) }
     }
     const locked = lockedAccountError(account, requester)
     if (locked) {

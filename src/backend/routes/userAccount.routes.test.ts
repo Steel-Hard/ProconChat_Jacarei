@@ -203,6 +203,6 @@ describe("userAccount.routes (HTTP)", () => {
             .send({ password: "nova-senha-segura" })
 
         expect(response.status).toBe(404)
-        expect(response.body).toEqual({ error: { code: "NOT_FOUND", message: "Conta não encontrada" } })
+        expect(response.body).toEqual({ error: { code: "NOT_FOUND", message: "Conta não encontrada", details: { userId: 99 } } })
     })
 })
