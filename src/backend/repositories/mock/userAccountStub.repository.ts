@@ -1,7 +1,7 @@
 import ConflictError from "../../errors/ConflictError"
-import { PERMISSIONS } from "../../types/auth.types"
 import type {
     AccountBatchResult,
+    AccountPlan,
     AccountBatchState,
     BusyAppointment,
     DecideAccountBatch,
@@ -27,12 +27,14 @@ export interface UserAccountStubScenario {
     slotMinutes?: number | null
     lastChange?: UserAccountLastChange | null
     takenEmails?: string[]
+    batchResult?: AccountBatchResult
 }
 
 export class UserAccountRepositoryStub implements UserAccountRepository {
     public readonly createCalls: NewAccount[] = []
     public readonly batchCalls: AccountBatchInput[] = []
     public readonly batchStates: AccountBatchState[] = []
+    public readonly plans: AccountPlan[][] = []
     public readonly resetCalls: PasswordResetInput[] = []
     public readonly resetStates: PasswordResetState[] = []
     public readonly futureCalls: { userId: number; now: Date }[] = []
@@ -40,8 +42,9 @@ export class UserAccountRepositoryStub implements UserAccountRepository {
     private readonly future: Record<number, FutureAppointment[]>
     private readonly busy: BusyAppointment[]
     private readonly slotMinutes: number | null
-    private lastChange: UserAccountLastChange | null
+    private readonly lastChange: UserAccountLastChange | null
     private readonly takenEmails: Set<string>
+    private readonly batchResult: AccountBatchResult | null
 
     constructor(scenario: UserAccountStubScenario = {}) {
         this.accounts = (scenario.accounts ?? []).map((account) => structuredClone(account))
@@ -50,6 +53,7 @@ export class UserAccountRepositoryStub implements UserAccountRepository {
         this.slotMinutes = scenario.slotMinutes ?? null
         this.lastChange = scenario.lastChange ?? null
         this.takenEmails = new Set(scenario.takenEmails ?? [])
+        this.batchResult = scenario.batchResult ?? null
     }
 
     async listAccounts(): Promise<UserAccountList> {
@@ -106,26 +110,8 @@ export class UserAccountRepositoryStub implements UserAccountRepository {
         if (!decision.allowed) {
             throw decision.error
         }
-
-        let redistributed = 0
-        for (const plan of decision.plans) {
-            const account = this.accounts.find((candidate) => candidate.id === plan.userId)
-            if (!account || !plan.recordUpdate) {
-                continue
-            }
-            const kept = account.permissions.filter((permission) => !plan.revoke.includes(permission))
-            account.permissions = PERMISSIONS.filter((permission) => kept.includes(permission) || plan.grant.includes(permission))
-            account.active = plan.active ?? account.active
-            account.permissionsUpdatedAt = input.now.toISOString()
-            const updater = this.accounts.find((candidate) => candidate.id === input.requester.id)
-            account.permissionsUpdatedBy = { id: input.requester.id, name: updater?.name ?? "" }
-            this.lastChange = { name: updater?.name ?? "", at: input.now.toISOString() }
-            if (plan.reassignment) {
-                redistributed += plan.reassignment.appointments.length
-                this.future[plan.userId] = []
-            }
-        }
-        return { ...this.snapshot(), redistributed }
+        this.plans.push(decision.plans)
+        return structuredClone(this.batchResult ?? { ...this.snapshot(), redistributed: 0 })
     }
 
     async resetPassword(input: PasswordResetInput, decide: DecidePasswordReset): Promise<void> {

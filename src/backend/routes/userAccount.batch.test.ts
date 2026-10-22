@@ -8,6 +8,7 @@ import { buildFutureAppointment, buildUserAccount } from "../repositories/mock/u
 import { UserAccountRepositoryStub } from "../repositories/mock/userAccountStub.repository"
 import { createUserAccountService } from "../services/userAccount.service"
 import { PERMISSIONS, Permission } from "../types/auth.types"
+import type { AccountBatchResult } from "../types/userAccount.types"
 import type { PasswordHasher } from "../utils/passwordHasher"
 import { sessionTokens } from "../utils/sessionToken"
 import { UserAccountRoutes } from "./userAccount.routes"
@@ -25,6 +26,15 @@ const authUsers = new MockAuthRepository([
 ])
 
 const hasher: PasswordHasher = { hash: vi.fn(async () => "hash"), compare: vi.fn(async () => false) }
+
+const BATCH_RESULT: AccountBatchResult = {
+    items: [
+        buildUserAccount(7, { name: "Lucas", active: false, permissions: MANAGE }),
+        buildUserAccount(8, { name: "Marta", permissions: MANAGE }),
+    ],
+    lastChange: { name: "Paula", at: NOW.toISOString() },
+    redistributed: 1,
+}
 
 function cookieOf(userId: number): string {
     return `proconchat_access=${sessionTokens.signAccessToken({ userId, sessionVersion: 0 })}`
@@ -56,6 +66,7 @@ describe("PATCH /api/v1/users (lote)", () => {
                 },
             ],
             slotMinutes: 30,
+            batchResult: BATCH_RESULT,
         })
         const service = createUserAccountService({ repository, hasher, now: () => NOW })
         app = express()
@@ -71,7 +82,7 @@ describe("PATCH /api/v1/users (lote)", () => {
         return request(app).patch("/api/v1/users").set("Cookie", cookieOf(userId)).send({ changes })
     }
 
-    it("salva o lote e devolve a lista atualizada com redistributed", async () => {
+    it("devolve o resultado do repositorio e repassa o estado travado e os planos da regra", async () => {
         const response = await patch([
             { userId: 8, permissions: ["appointments.manage"] },
             { userId: 7, active: false, reassignment: { mode: "assign", toUserId: 8 } },
@@ -79,17 +90,39 @@ describe("PATCH /api/v1/users (lote)", () => {
 
         expect(response.status).toBe(200)
         expect(response.headers["cache-control"]).toBe("no-store")
-        expect(response.body.data.redistributed).toBe(1)
-        expect(response.body.data.lastChange).toEqual({ name: "Paula", at: NOW.toISOString() })
-        expect(response.body.data.items.map((item: { id: number; active: boolean; permissions: Permission[] }) => [item.id, item.active, item.permissions])).toEqual([
-            [ADMIN_ID, true, [...PERMISSIONS]],
-            [MANAGER_ID, true, [...MANAGE, "users.manage"]],
-            [USER_MANAGER_ID, true, ["users.manage"]],
-            [7, false, MANAGE],
-            [8, true, MANAGE],
-            [9, true, ["reports.view"]],
+        expect(response.body).toEqual({ data: BATCH_RESULT })
+        expect(repository.batchStates.map((state) => [state.accounts.map((account) => account.id), state.targets])).toEqual([
+            [[7, 8], []],
         ])
-        expect(JSON.stringify(response.body)).not.toMatch(/hash|sessionVersion|password/i)
+        expect(repository.plans).toEqual([
+            [
+                {
+                    userId: 7,
+                    grant: [],
+                    revoke: [],
+                    active: false,
+                    bumpSessionVersion: true,
+                    recordUpdate: true,
+                    reassignment: {
+                        mode: "assign",
+                        reason: "USER_DEACTIVATED",
+                        toUserId: 8,
+                        appointments: [
+                            { appointmentId: "70", protocol: "P0000070", appointmentDatetime: new Date("2031-02-01T16:00:00.000Z") },
+                        ],
+                    },
+                },
+                {
+                    userId: 8,
+                    grant: MANAGE,
+                    revoke: [],
+                    active: null,
+                    bumpSessionVersion: false,
+                    recordUpdate: true,
+                    reassignment: null,
+                },
+            ],
+        ])
     })
 
     it.each([
@@ -182,16 +215,15 @@ describe("PATCH /api/v1/users (lote)", () => {
         expect(repository.batchCalls).toEqual([])
     })
 
-    it("nao grava nada do lote quando uma conta falha", async () => {
-        const before = (await request(app).get("/api/v1/users").set("Cookie", cookieOf(MANAGER_ID))).body
-
+    it("nao entrega plano ao repositorio quando uma conta do lote falha", async () => {
         const response = await patch([
             { userId: 8, permissions: ["appointments.view"] },
             { userId: 9, active: false },
         ])
-        const after = (await request(app).get("/api/v1/users").set("Cookie", cookieOf(MANAGER_ID))).body
 
         expect(response.status).toBe(403)
-        expect(after).toEqual(before)
+        expect(response.body.error).toMatchObject({ code: "TARGET_HAS_MORE_PERMISSIONS", details: { userId: 9 } })
+        expect(repository.batchCalls).toHaveLength(1)
+        expect(repository.plans).toEqual([])
     })
 })

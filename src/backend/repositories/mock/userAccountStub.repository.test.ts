@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 import ForbiddenError from "../../errors/ForbiddenError"
-import type { AccountBatchDecision, UserAccount } from "../../types/userAccount.types"
+import type { AccountBatchDecision, AccountBatchResult, AccountPlan, UserAccount } from "../../types/userAccount.types"
 import { UserAccountRepositoryStub } from "./userAccountStub.repository"
 
 const NOW = new Date("2031-01-10T12:00:00.000Z")
@@ -55,10 +55,9 @@ describe("UserAccountRepositoryStub", () => {
         })
     })
 
-    it("propaga o erro da decisao sem mudar as contas", async () => {
+    it("propaga o erro da decisao sem guardar planos", async () => {
         const stub = new UserAccountRepositoryStub({ accounts: [account(1), account(5)] })
         const error = new ForbiddenError("recusado", "PERMISSION_NOT_HELD", { userId: 5 })
-        const before = await stub.listAccounts()
 
         const attempt = stub.applyAccountBatch(
             { requester: REQUESTER, changes: [{ userId: 5, active: false }], now: NOW },
@@ -66,44 +65,46 @@ describe("UserAccountRepositoryStub", () => {
         )
 
         await expect(attempt).rejects.toBe(error)
-        expect(await stub.listAccounts()).toEqual(before)
+        expect(stub.plans).toEqual([])
     })
 
-    it("aplica o plano recebido e soma os agendamentos redistribuidos", async () => {
-        const stub = new UserAccountRepositoryStub({
-            accounts: [account(1, { name: "Paula" }), account(5, { permissions: ["appointments.view"] })],
-        })
-        const decision: AccountBatchDecision = {
-            allowed: true,
-            plans: [
-                {
-                    userId: 5,
-                    grant: ["sessions.view"],
-                    revoke: ["appointments.view"],
-                    active: false,
-                    bumpSessionVersion: true,
-                    recordUpdate: true,
-                    reassignment: {
-                        mode: "pending",
-                        reason: "USER_DEACTIVATED",
-                        appointments: [{ appointmentId: "50", protocol: "P", appointmentDatetime: NOW }],
-                    },
-                },
-            ],
+    it("guarda os planos aceitos e devolve o resultado fixo do cenario sem aplicar o plano", async () => {
+        const batchResult: AccountBatchResult = {
+            items: [account(5, { active: false })],
+            lastChange: { name: "Paula", at: NOW.toISOString() },
+            redistributed: 1,
         }
+        const stub = new UserAccountRepositoryStub({ accounts: [account(1), account(5)], batchResult })
+        const plans: AccountPlan[] = [
+            {
+                userId: 5,
+                grant: [],
+                revoke: [],
+                active: false,
+                bumpSessionVersion: true,
+                recordUpdate: true,
+                reassignment: null,
+            },
+        ]
 
         const result = await stub.applyAccountBatch(
             { requester: REQUESTER, changes: [{ userId: 5, active: false }], now: NOW },
-            () => decision,
+            () => ({ allowed: true, plans }),
         )
 
-        expect(result.redistributed).toBe(1)
-        expect(result.items[1]).toMatchObject({
-            active: false,
-            permissions: ["sessions.view"],
-            permissionsUpdatedAt: NOW.toISOString(),
-            permissionsUpdatedBy: { id: 1, name: "Paula" },
-        })
-        expect(result.lastChange).toEqual({ name: "Paula", at: NOW.toISOString() })
+        expect(result).toEqual(batchResult)
+        expect(stub.plans).toEqual([plans])
+        expect((await stub.listAccounts()).items[1]).toEqual(account(5))
+    })
+
+    it("devolve a lista do cenario com redistributed zero quando nao ha resultado fixo", async () => {
+        const stub = new UserAccountRepositoryStub({ accounts: [account(1)] })
+
+        const result = await stub.applyAccountBatch(
+            { requester: REQUESTER, changes: [{ userId: 1, active: true }], now: NOW },
+            () => ({ allowed: true, plans: [] }),
+        )
+
+        expect(result).toEqual({ items: [account(1)], lastChange: null, redistributed: 0 })
     })
 })
