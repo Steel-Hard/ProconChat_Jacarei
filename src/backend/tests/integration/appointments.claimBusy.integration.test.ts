@@ -139,14 +139,14 @@ describe("Assumir e auto-claim respeitam o horário da pessoa com Postgres", () 
             expect(await appointmentState(id)).toEqual({ status: "CONFIRMED", assignedUserId: actor.id })
         })
 
-        it("recusa com 403 quem perdeu a permissão antes de a conta ser travada, sem gravar nada", async () => {
+        it("recusa com 409 INVALID_ASSIGNEE quem perdeu a permissão antes de a conta ser travada, sem gravar nada", async () => {
             const actor = await user({ permissions: MANAGE })
             const id = await appointment("PENDING", futureAt(16))
             await getPool().query("UPDATE Users SET active = false WHERE id = $1", [actor.id])
 
             await expect(repository.claim(String(id), actor.id, NOW)).rejects.toMatchObject({
-                statusCode: 403,
-                code: "FORBIDDEN",
+                statusCode: 409,
+                code: "INVALID_ASSIGNEE",
             })
             expect(await appointmentState(id)).toEqual({ status: "PENDING", assignedUserId: null })
             expect(await eventsOf([id])).toEqual([])
@@ -183,14 +183,14 @@ describe("Assumir e auto-claim respeitam o horário da pessoa com Postgres", () 
             expect((await eventsOf([id])).map((event) => event.type)).toEqual(["CLAIMED", status])
         })
 
-        it("recusa com 403 o auto-claim de quem foi desativado, mesmo num pendente que já passou", async () => {
+        it("recusa com 409 INVALID_ASSIGNEE o auto-claim de quem perdeu a permissão, mesmo num pendente que já passou", async () => {
             const actor = await user({ permissions: MANAGE })
             const id = await appointment("PENDING", pastAt(16))
             await getPool().query("DELETE FROM UserPermissions WHERE user_id = $1", [actor.id])
 
             await expect(repository.markNoShow(String(id), actor.id, NOW)).rejects.toMatchObject({
-                statusCode: 403,
-                code: "FORBIDDEN",
+                statusCode: 409,
+                code: "INVALID_ASSIGNEE",
             })
             expect(await appointmentState(id)).toEqual({ status: "PENDING", assignedUserId: null })
         })
@@ -270,7 +270,7 @@ describe("Assumir e auto-claim respeitam o horário da pessoa com Postgres", () 
 
                 expect(results[1]?.status).toBe("fulfilled")
                 if (results[0]?.status === "rejected") {
-                    expect(results[0].reason).toMatchObject({ code: "FORBIDDEN" })
+                    expect(results[0].reason).toMatchObject({ code: "INVALID_ASSIGNEE" })
                 }
                 expect(await appointmentState(id)).toEqual({ status: "PENDING", assignedUserId: null })
             }

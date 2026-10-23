@@ -1,7 +1,6 @@
 import { Pool, PoolClient } from "pg"
 import getPool from "../db/connection"
 import ConflictError from "../errors/ConflictError"
-import ForbiddenError from "../errors/ForbiddenError"
 import NotFoundError from "../errors/NotFoundError"
 import { isValidAppointmentId } from "../schemas/appointment.schema"
 import { decideTransition, restoredStateAfterCorrection } from "../services/appointmentTransitions"
@@ -274,6 +273,10 @@ async function correctionWarning(
     }
 }
 
+function invalidAssigneeError(): ConflictError {
+    return new ConflictError("O funcionário escolhido não pode ser responsável por agendamentos", "INVALID_ASSIGNEE")
+}
+
 function assigneeBusyError(assigneeUserId: number, conflict: { appointmentId: string; protocol: string }): ConflictError {
     return new ConflictError("O funcionário já tem outro agendamento neste horário", "ASSIGNEE_BUSY", {
         assigneeUserId: String(assigneeUserId),
@@ -289,7 +292,7 @@ async function ensureActorCanTake(
     checkSchedule: boolean,
 ): Promise<void> {
     if (!actor || !isValidResponsible(actor)) {
-        throw new ForbiddenError("Insufficient permission")
+        throw invalidAssigneeError()
     }
     if (!checkSchedule) {
         return
@@ -814,10 +817,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                 if (current.assigned_user_id !== null && Number(current.assigned_user_id) === assigneeUserId) {
                     throw new ConflictError("O agendamento já está com este funcionário", "ALREADY_ASSIGNED_TO_USER")
                 }
-                const invalid = new ConflictError(
-                    "O funcionário escolhido não pode ser responsável por agendamentos",
-                    "INVALID_ASSIGNEE",
-                )
+                const invalid = invalidAssigneeError()
                 if (!target) {
                     throw invalid
                 }

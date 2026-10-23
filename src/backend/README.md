@@ -830,7 +830,8 @@ lote de contas). Vale em `assign`, em `claim` e no auto-claim de `attended`/`no_
 auto-claim de um agendamento cuja data e hora já passaram não confere o horário (registra o que já
 aconteceu); `claim` confere sempre. Se a conta de quem clica, já travada, não pode mais ser
 responsável (desativada ou sem a permissão entre a autenticação e a trava), `claim` e o auto-claim
-respondem `403 FORBIDDEN`.
+respondem `409 INVALID_ASSIGNEE`, o mesmo código de "Atribuir" para um destino inválido, sem `details`.
+Isso vale também para o auto-claim de um agendamento já passado.
 
 **Ordem de travas:** sempre a conta (`Users ... FOR UPDATE`) antes do agendamento, como o lote de
 contas da #62, para não haver deadlock e para que duas atribuições simultâneas para a mesma pessoa no
