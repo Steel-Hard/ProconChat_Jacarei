@@ -42,6 +42,13 @@ export interface AppointmentRepository {
         now?: Date,
     ): Promise<CorrectionResult>
 
+    addNote(
+        id: string,
+        authorUserId: number,
+        text: string,
+        now?: Date,
+    ): Promise<void>
+
     markAttended(
         id: string,
         actorUserId: number,

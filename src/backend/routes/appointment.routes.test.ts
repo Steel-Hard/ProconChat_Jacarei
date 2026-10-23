@@ -808,4 +808,84 @@ describe("appointment.routes (HTTP)", () => {
             })
         })
     })
+
+    describe("Observações internas (POST /:id/notes)", () => {
+        function addNote(id: number, body: unknown, userId = 10): request.Test {
+            return request(app)
+                .post(`/api/v1/appointments/${id}/notes`)
+                .set("Cookie", accessCookieFor(userId))
+                .send(body as object)
+        }
+
+        it("grava a observação aparada e devolve 201 com o detalhe que a inclui", async () => {
+            const res = await addNote(6, { text: "  Cidadão ligou para avisar.  " })
+
+            expect(res.status).toBe(201)
+            expect(res.body.data.id).toBe("6")
+            expect(res.body.data.notes).toEqual([
+                {
+                    id: "1",
+                    author_user_id: "10",
+                    author_user_name: null,
+                    text: "Cidadão ligou para avisar.",
+                    created_at: FIXED_NOW.toISOString(),
+                },
+            ])
+            expect(repository.noteCalls).toEqual([
+                { id: "6", authorUserId: 10, text: "Cidadão ligou para avisar.", now: FIXED_NOW },
+            ])
+            expect(repository.actionCalls).toEqual([])
+        })
+
+        it("aceita exatamente 2000 caracteres", async () => {
+            const res = await addNote(1, { text: "a".repeat(2000) })
+
+            expect(res.status).toBe(201)
+        })
+
+        it.each([
+            { label: "vazio", text: "" },
+            { label: "só com espaços", text: "   " },
+            { label: "com 2001 caracteres", text: "a".repeat(2001) },
+        ])("recusa com 400 o texto $label, sem gravar", async ({ text }) => {
+            const res = await addNote(1, { text })
+
+            expect(res.status).toBe(400)
+            expect(res.body.error.code).toBe("BAD_REQUEST")
+            expect(repository.noteCalls).toEqual([])
+        })
+
+        it("devolve 404 para agendamento inexistente", async () => {
+            const res = await addNote(9999, { text: "Observação" })
+
+            expect(res.status).toBe(404)
+        })
+
+        it("a conta só com appointments.view vê as observações, recebe add_note com PERMISSION_REQUIRED e 403 no POST", async () => {
+            const note = {
+                id: "3",
+                author_user_id: "2",
+                author_user_name: "Carlos Atendente",
+                text: "Documento conferido.",
+                created_at: FIXED_NOW.toISOString(),
+            }
+            repository = routesScenario({ "1": { notes: [note] } })
+            app = buildApp(mockConversationEvents)
+
+            const detail = await request(app).get("/api/v1/appointments/1").set("Cookie", accessCookieFor(5))
+            const post = await addNote(1, { text: "Tentativa" }, 5)
+
+            expect(detail.body.data.notes).toEqual([note])
+            expect(detail.body.data.available_actions.add_note).toEqual(PERMISSION_REQUIRED)
+            expect(post.status).toBe(403)
+            expect(post.body.error.code).toBe("FORBIDDEN")
+            expect(repository.noteCalls).toEqual([])
+        })
+
+        it.each(["put", "patch", "delete"] as const)("não existe rota %s para observações", async (method) => {
+            const res = await request(app)[method]("/api/v1/appointments/1/notes/1").set("Cookie", accessCookieFor(1))
+
+            expect(res.status).toBe(404)
+        })
+    })
 })

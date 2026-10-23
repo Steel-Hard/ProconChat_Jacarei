@@ -3,6 +3,7 @@ import { validateSchema } from "../middleware/validateRequest.middleware"
 import {
     appointmentIdParamSchema,
     listAppointmentsQuerySchema,
+    addNoteBodySchema,
     updateStatusBodySchema,
 } from "./appointment.schema"
 
@@ -144,6 +145,24 @@ describe("appointment.schema", () => {
             { label: "com destino fracionário", body: { action: "assign", assigneeUserId: 1.5 } },
         ])("rejeita assign $label", ({ body }) => {
             expect(() => validateSchema(updateStatusBodySchema, body)).toThrow("Dados inválidos")
+        })
+    })
+
+    describe("addNoteBodySchema", () => {
+        it("apara o texto e aceita até 2000 caracteres", () => {
+            expect(validateSchema(addNoteBodySchema, { text: "  Cidadão trouxe o contrato.  " })).toEqual({
+                text: "Cidadão trouxe o contrato.",
+            })
+            expect(validateSchema(addNoteBodySchema, { text: ` ${"a".repeat(2000)} ` })).toEqual({ text: "a".repeat(2000) })
+        })
+
+        it.each([
+            { label: "vazio", body: { text: "" } },
+            { label: "só com espaços", body: { text: "    " } },
+            { label: "com 2001 caracteres", body: { text: "a".repeat(2001) } },
+            { label: "sem texto", body: {} },
+        ])("rejeita texto $label", ({ body }) => {
+            expect(() => validateSchema(addNoteBodySchema, body)).toThrow("Dados inválidos")
         })
     })
 })

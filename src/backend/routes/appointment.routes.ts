@@ -5,6 +5,7 @@ import { appointmentRepository as defaultAppointmentRepository } from "../reposi
 import { AppointmentRepository } from "../repositories/appointment.repository.interface"
 import { validateRequest } from "../middleware/validateRequest.middleware"
 import {
+    addNoteBodySchema,
     appointmentIdParamSchema,
     listAppointmentsQuerySchema,
     updateStatusBodySchema,
@@ -67,6 +68,16 @@ export class AppointmentRoutes {
                 body: updateStatusBodySchema,
             }),
             controller.updateAppointmentStatus.bind(controller),
+        )
+
+        this.router.post(
+            "/:id/notes",
+            requirePermission("appointments.manage"),
+            validateRequest({
+                params: appointmentIdParamSchema,
+                body: addNoteBodySchema,
+            }),
+            controller.addNote.bind(controller),
         )
     }
 

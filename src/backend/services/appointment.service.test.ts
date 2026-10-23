@@ -258,6 +258,15 @@ describe("appointment.service", () => {
         })
     })
 
+    describe("addNote (Observação interna)", () => {
+        it("repassa a observação ao repositório e devolve o detalhe com ela", async () => {
+            const result = await service.addNote(2, 42, "Documento conferido.", MANAGER)
+
+            expect(result.notes.map((note) => note.text)).toEqual(["Documento conferido."])
+            expect(repository.noteCalls).toEqual([{ id: "2", authorUserId: 42, text: "Documento conferido.", now: FIXED_NOW }])
+        })
+    })
+
     describe("markAttended (Marcar como atendido)", () => {
         it("marca como atendido com sucesso quando a data é hoje ou no passado", async () => {
             const result = await service.markAttended(7, 42, MANAGER)

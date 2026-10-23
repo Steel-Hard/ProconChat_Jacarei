@@ -32,6 +32,13 @@ export interface AppointmentActionCall {
     now: Date | undefined
 }
 
+export interface AppointmentNoteCall {
+    id: string
+    authorUserId: number
+    text: string
+    now: Date | undefined
+}
+
 export type AppointmentCorrectionWarning = (call: AppointmentActionCall) => CorrectionWarning | null
 
 export type AppointmentFailAction = (call: AppointmentActionCall) => Error | null
@@ -55,6 +62,7 @@ export interface AppointmentStubScenario {
 export class AppointmentRepositoryStub implements AppointmentRepository {
     public readonly findListCalls: { filters: AppointmentListFilters; now: Date | undefined }[] = []
     public readonly actionCalls: AppointmentActionCall[] = []
+    public readonly noteCalls: AppointmentNoteCall[] = []
     private details: AppointmentDetailRecord[]
     private readonly list: AppointmentStubList
     private readonly pendingCount: number
@@ -117,6 +125,21 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
         const call: AppointmentActionCall = { action: "correct_record", id, actorUserId, now }
         this.applyAction(call)
         return { warning: this.correctionWarning?.(call) ?? null }
+    }
+
+    async addNote(id: string, authorUserId: number, text: string, now?: Date): Promise<void> {
+        this.noteCalls.push({ id, authorUserId, text, now })
+        const current = this.details.find((record) => record.id === id)
+        if (!current) {
+            throw new NotFoundError("Agendamento não encontrado")
+        }
+        current.notes.push({
+            id: String(this.noteCalls.length),
+            author_user_id: String(authorUserId),
+            author_user_name: null,
+            text,
+            created_at: (now ?? new Date()).toISOString(),
+        })
     }
 
     async getCurrentDocumentsConfig(): Promise<{ group: string[]; question: string[] }> {

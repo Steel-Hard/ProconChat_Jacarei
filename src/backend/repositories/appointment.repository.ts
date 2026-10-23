@@ -20,6 +20,7 @@ import {
     AppointmentEventItem,
     AppointmentListFilters,
     AppointmentListItem,
+    AppointmentNote,
     AppointmentStatus,
     ConversationTimelineStep,
     CorrectionHistoryEvent,
@@ -438,6 +439,29 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                 created_at: new Date(e.created_at).toISOString(),
             }))
 
+            const notesResult = await pool.query<{
+                id: string
+                author_user_id: string
+                author_user_name: string | null
+                text: string
+                created_at: Date
+            }>(
+                `SELECT n.id, n.author_user_id, u.name AS author_user_name, n.text, n.created_at
+                 FROM AppointmentNotes n
+                 LEFT JOIN Users u ON u.id = n.author_user_id
+                 WHERE n.appointment_id = $1
+                 ORDER BY n.created_at ASC, n.id ASC`,
+                [row.id],
+            )
+
+            const notes: AppointmentNote[] = notesResult.rows.map((note) => ({
+                id: String(note.id),
+                author_user_id: String(note.author_user_id),
+                author_user_name: note.author_user_name,
+                text: note.text,
+                created_at: new Date(note.created_at).toISOString(),
+            }))
+
             const timeline: ConversationTimelineStep[] = []
 
             return {
@@ -470,6 +494,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                 },
                 is_documents_config_different: isDifferent,
                 events,
+                notes,
                 timeline,
             }
         },
@@ -835,6 +860,17 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                 )
                 return { warning }
             })
+        },
+
+        async addNote(id: string, authorUserId: number, text: string, now: Date = new Date()): Promise<void> {
+            const result = await pool.query(
+                `INSERT INTO AppointmentNotes (appointment_id, author_user_id, text, created_at)
+                 SELECT a.id, $2, $3, $4 FROM Appointments a WHERE a.id = $1`,
+                [id, authorUserId, text, now],
+            )
+            if (result.rowCount === 0) {
+                throw new NotFoundError("Agendamento não encontrado")
+            }
         },
 
         async markAttended(

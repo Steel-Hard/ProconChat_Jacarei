@@ -629,6 +629,7 @@ describe("Agendamentos com Postgres (integração)", () => {
             "id",
             "is_documents_config_different",
             "name",
+            "notes",
             "off_grid",
             "protocol",
             "question_id",

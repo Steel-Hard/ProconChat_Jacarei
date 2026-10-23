@@ -152,9 +152,29 @@ export async function createAppointmentScope(adminUserId: number, label: string)
     return { sessionId, questionId, categoryId, adminUserId, createdAppointmentIds: [] }
 }
 
+export async function deleteAppointmentNotes(appointmentIds: number[]): Promise<void> {
+    if (appointmentIds.length === 0) {
+        return
+    }
+    const client = await getPool().connect()
+    try {
+        await client.query("BEGIN")
+        await client.query("ALTER TABLE AppointmentNotes DISABLE TRIGGER trg_appointment_notes_immutable")
+        await client.query("DELETE FROM AppointmentNotes WHERE appointment_id = ANY($1::bigint[])", [appointmentIds])
+        await client.query("ALTER TABLE AppointmentNotes ENABLE TRIGGER trg_appointment_notes_immutable")
+        await client.query("COMMIT")
+    } catch (error) {
+        await client.query("ROLLBACK")
+        throw error
+    } finally {
+        client.release()
+    }
+}
+
 export async function deleteAppointmentScope(scope: OwnedAppointmentScope): Promise<void> {
     const pool = getPool()
     if (scope.createdAppointmentIds.length > 0) {
+        await deleteAppointmentNotes(scope.createdAppointmentIds)
         await pool.query("DELETE FROM AppointmentEvents WHERE appointment_id = ANY($1::bigint[])", [scope.createdAppointmentIds])
         await pool.query("DELETE FROM Appointments WHERE id = ANY($1::bigint[])", [scope.createdAppointmentIds])
     }

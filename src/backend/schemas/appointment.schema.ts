@@ -87,3 +87,13 @@ export const updateStatusBodySchema = z.discriminatedUnion(
 )
 
 export type UpdateStatusBody = z.infer<typeof updateStatusBodySchema>
+
+export const addNoteBodySchema = z.object({
+    text: z
+        .string({ error: "Texto da observação é obrigatório" })
+        .trim()
+        .min(1, { message: "A observação não pode ficar vazia" })
+        .max(2000, { message: "A observação pode ter no máximo 2000 caracteres" }),
+})
+
+export type AddNoteBody = z.infer<typeof addNoteBodySchema>

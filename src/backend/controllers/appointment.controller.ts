@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express"
 import { appointmentService as defaultAppointmentService, AppointmentService } from "../services/appointment.service"
-import { ListAppointmentsQuery, UpdateStatusBody } from "../schemas/appointment.schema"
+import { AddNoteBody, ListAppointmentsQuery, UpdateStatusBody } from "../schemas/appointment.schema"
 import { AppointmentListFilters } from "../types/appointment.types"
 import UnauthorizedError from "../errors/UnauthorizedError"
 import { ActionAccess } from "../services/appointmentTransitions"
@@ -99,6 +99,20 @@ class AppointmentController {
             }
 
             res.status(200).json({ data: result })
+        } catch (error) {
+            next(error)
+        }
+    }
+
+    public async addNote(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const { id } = req.params as { id: string }
+            const { text } = req.body as AddNoteBody
+            if (!req.authUser) {
+                throw new UnauthorizedError("Authentication required")
+            }
+            const result = await this.service.addNote(id, req.authUser.id, text, accessOf(req.authUser))
+            res.status(201).json({ data: result })
         } catch (error) {
             next(error)
         }

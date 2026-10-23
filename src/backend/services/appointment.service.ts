@@ -61,6 +61,14 @@ export interface AppointmentService {
         now?: Date,
     ): Promise<CorrectedAppointment>
 
+    addNote(
+        idOrCode: number | string,
+        authorUserId: number,
+        text: string,
+        access: ActionAccess,
+        now?: Date,
+    ): Promise<AppointmentDetail>
+
     markAttended(
         idOrCode: number | string,
         actorUserId: number,
@@ -270,6 +278,17 @@ export function createAppointmentService(deps?: {
             const { warning } = await repository.correctRecord(String(idOrCode), actorUserId, now)
             const detail = await getAppointmentDetail(idOrCode, access, now)
             return { detail, warning }
+        },
+
+        async addNote(
+            idOrCode: number | string,
+            authorUserId: number,
+            text: string,
+            access: ActionAccess,
+            now: Date = new Date(),
+        ): Promise<AppointmentDetail> {
+            await repository.addNote(String(idOrCode), authorUserId, text, now)
+            return getAppointmentDetail(idOrCode, access, now)
         },
 
         async markAttended(

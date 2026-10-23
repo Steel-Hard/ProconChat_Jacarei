@@ -107,6 +107,14 @@ export interface AppointmentEventItem {
     created_at: string
 }
 
+export interface AppointmentNote {
+    id: string
+    author_user_id: string
+    author_user_name: string | null
+    text: string
+    created_at: string
+}
+
 export interface ConversationTimelineStep {
     id: string
     type: string
@@ -175,6 +183,7 @@ export interface AppointmentDetail {
     is_documents_config_different: boolean
 
     events: AppointmentEventItem[]
+    notes: AppointmentNote[]
     timeline: ConversationTimelineStep[]
     available_actions: AppointmentAvailableActions
 }
