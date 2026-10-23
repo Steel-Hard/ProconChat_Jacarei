@@ -833,10 +833,18 @@ responsável (desativada ou sem a permissão entre a autenticação e a trava), 
 respondem `409 INVALID_ASSIGNEE`, o mesmo código de "Atribuir" para um destino inválido, sem `details`.
 Isso vale também para o auto-claim de um agendamento já passado.
 
-**Ordem de travas:** sempre a conta (`Users ... FOR UPDATE`) antes do agendamento, como o lote de
-contas da #62, para não haver deadlock e para que duas atribuições simultâneas para a mesma pessoa no
-mesmo horário esperem uma pela outra. `claim`, `attended` e `no_show` travam a conta de quem clicou;
-`assign`, a do destino; `correct_record`, a do responsável atual.
+**Ordem de travas:** sempre as contas antes do agendamento, numa consulta só
+(`SELECT ... FROM Users WHERE id = ANY($1) ORDER BY id FOR UPDATE`, `lockAccounts` em
+`repositories/responsibleQueries.ts`, a mesma do lote de contas da #62), para não haver deadlock e para
+que duas atribuições simultâneas para a mesma pessoa no mesmo horário esperem uma pela outra. Entre as
+contas travadas está sempre a de quem age, porque o evento gravado (`actor_user_id`) e a observação
+(`author_user_id`) têm chave estrangeira para `Users`, e a checagem dessa chave pede `FOR KEY SHARE`
+na conta, que espera o `FOR UPDATE` do lote ou de outra ação. `claim`, `attended` e `no_show` travam
+a conta de quem clicou; `assign`, a de quem clicou e a do destino; `correct_record`, a de quem clicou e
+a do responsável atual; `POST /:id/notes`, a de quem escreve. Os testes de corrida ficam em
+`tests/integration/appointments.lockOrder.integration.test.ts`: uma transação auxiliar segura o
+agendamento, as duas operações entram na fila em ordem conhecida e, sem a trava da conta de quem age,
+o Postgres acusa deadlock em todas as rodadas.
 
 **Corrigir registro (`correct_record`).** Volta ao estado anterior ao `ATTENDED`/`NO_SHOW` mais recente:
 `PENDING` sem responsável quando esse terminal veio junto de um `CLAIMED { auto_claimed: true }` no

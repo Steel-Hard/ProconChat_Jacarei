@@ -749,7 +749,8 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
 
         assign(id: string, assigneeUserId: number, actorUserId: number, now: Date = new Date()): Promise<void> {
             return inTransaction(pool, async (client) => {
-                const target = (await lockAccounts(client, [assigneeUserId]))[0] ?? null
+                const locked = await lockAccounts(client, [actorUserId, assigneeUserId])
+                const target = locked.find((account) => account.id === assigneeUserId) ?? null
                 const current = await lockAndDecide(client, "assign", id, now)
                 if (current.assigned_user_id !== null && Number(current.assigned_user_id) === assigneeUserId) {
                     throw new ConflictError("O agendamento já está com este funcionário", "ALREADY_ASSIGNED_TO_USER")
@@ -790,7 +791,9 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                     [id],
                 )
                 const expectedResponsible = before.rows[0]?.assigned_user_id ?? null
-                const responsible = expectedResponsible === null ? null : (await lockAccounts(client, [Number(expectedResponsible)]))[0] ?? null
+                const responsibleId = expectedResponsible === null ? null : Number(expectedResponsible)
+                const locked = await lockAccounts(client, responsibleId === null ? [actorUserId] : [actorUserId, responsibleId])
+                const responsible = locked.find((account) => account.id === responsibleId) ?? null
                 const current = await lockAndDecide(client, "correct_record", id, now)
                 if (current.assigned_user_id !== expectedResponsible) {
                     throw new ConflictError(
@@ -849,15 +852,18 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             })
         },
 
-        async addNote(id: string, authorUserId: number, text: string, now: Date = new Date()): Promise<void> {
-            const result = await pool.query(
-                `INSERT INTO AppointmentNotes (appointment_id, author_user_id, text, created_at)
-                 SELECT a.id, $2, $3, $4 FROM Appointments a WHERE a.id = $1`,
-                [id, authorUserId, text, now],
-            )
-            if (result.rowCount === 0) {
-                throw new NotFoundError("Agendamento não encontrado")
-            }
+        addNote(id: string, authorUserId: number, text: string, now: Date = new Date()): Promise<void> {
+            return inTransaction(pool, async (client) => {
+                await lockAccounts(client, [authorUserId])
+                const result = await client.query(
+                    `INSERT INTO AppointmentNotes (appointment_id, author_user_id, text, created_at)
+                     SELECT a.id, $2, $3, $4 FROM Appointments a WHERE a.id = $1`,
+                    [id, authorUserId, text, now],
+                )
+                if (result.rowCount === 0) {
+                    throw new NotFoundError("Agendamento não encontrado")
+                }
+            })
         },
 
         async markAttended(
