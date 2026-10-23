@@ -1,12 +1,32 @@
+import BadRequestError from "../errors/BadRequestError"
+import ScheduleNotConfiguredError from "../errors/ScheduleNotConfiguredError"
+import { scheduleRepository } from "../repositories/schedule.repository"
 import { IScheduleRepository } from "../repositories/schedule.repository.interface"
+import { isValidMonthString } from "../schemas/schedule.schema"
 import {
     AvailableSlot,
     BlockedDate,
     BookAppointmentInput,
     BookAppointmentResult,
+    MonthlyPreviewResult,
+    ScheduleConfigInput,
+    ScheduleConfigView,
     ScheduleRange,
+    ScheduleSettings,
 } from "../types/schedule.types"
 import { addDaysToDateString, getLocalParts, parseLocalDate } from "../utils/date.utils"
+import {
+    calculateMonthlyPreview,
+    computeWindowBounds,
+    freeSlotStartsOfDay,
+    fromMinutes,
+    getDowFromDateStr,
+    getMonthDateBounds,
+    normalizeAndValidateScheduleConfig,
+    toMinutes,
+} from "./scheduleRules"
+
+export { fromMinutes, getDowFromDateStr, toMinutes }
 
 const WEEKDAYS_PT = [
     "Domingo",
@@ -18,82 +38,22 @@ const WEEKDAYS_PT = [
     "Sábado",
 ]
 
-export function toMinutes(timeStr: string): number {
-    const [h, m] = timeStr.split(":").map(Number)
-    return (h ?? 0) * 60 + (m ?? 0)
-}
-
-export function fromMinutes(mins: number): string {
-    const h = Math.floor(mins / 60)
-    const m = mins % 60
-    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
-}
-
-export function getDowFromDateStr(dateStr: string): number {
-    const [y, m, d] = dateStr.split("-").map(Number)
-    const dt = new Date(Date.UTC(y!, m! - 1, d!, 12, 0, 0))
-    return dt.getUTCDay()
-}
-
-function freeSlotStartsOfDay(
-    dateStr: string,
-    ranges: ScheduleRange[],
-    blockedDates: BlockedDate[],
-    slotMinutes: number,
-): number[] {
-    const dow = getDowFromDateStr(dateStr)
-    const rangesForDay = ranges
-        .filter((r) => r.weekday === dow)
-        .sort((a, b) => a.slot_index - b.slot_index)
-
-    const fullDayBlocked = blockedDates.some(
-        (b) => b.date === dateStr && (!b.start_time || !b.end_time),
-    )
-
-    if (rangesForDay.length === 0 || fullDayBlocked) {
-        return []
-    }
-
-    const partialBlocks = blockedDates.filter(
-        (b) => b.date === dateStr && b.start_time && b.end_time,
-    )
-
-    const starts: number[] = []
-
-    for (const range of rangesForDay) {
-        const startMin = toMinutes(range.start_time)
-        const endMin = toMinutes(range.end_time)
-
-        for (let t = startMin; t + slotMinutes <= endMin; t += slotMinutes) {
-            const slotStart = t
-            const slotEnd = t + slotMinutes
-            const isBlocked = partialBlocks.some((p) => {
-                const pStart = toMinutes(p.start_time!)
-                const pEnd = toMinutes(p.end_time!)
-                return slotStart < pEnd && slotEnd > pStart
-            })
-
-            if (!isBlocked) {
-                starts.push(t)
-            }
-        }
-    }
-
-    return starts
-}
-
-function isBusinessDay(
-    dateStr: string,
-    ranges: ScheduleRange[],
-    blockedDates: BlockedDate[],
-    slotMinutes: number,
-): boolean {
-    return freeSlotStartsOfDay(dateStr, ranges, blockedDates, slotMinutes).length > 0
+export interface GetMonthlyPreviewParams {
+    month?: string
+    draftConfig?: ScheduleConfigInput
+    now?: Date
 }
 
 export interface IScheduleService {
     getAvailableSlots(now?: Date): Promise<AvailableSlot[]>
     bookSlot(input: BookAppointmentInput): Promise<BookAppointmentResult>
+    getConfig(): Promise<ScheduleConfigView>
+    saveConfig(
+        input: ScheduleConfigInput,
+        actorUserId: number,
+        now?: Date,
+    ): Promise<ScheduleConfigView>
+    getMonthlyPreview(params?: GetMonthlyPreviewParams): Promise<MonthlyPreviewResult>
 }
 
 export function createScheduleService(
@@ -119,33 +79,15 @@ export function createScheduleService(
             maxDateStr,
         )
 
-        let startDateStr = todayStr
-        if (settings.min_notice_days > 0) {
-            let n = 0
-            let d = todayStr
-            let iterations = 0
-            const maxIterations = settings.window_days + 30
-            while (n < settings.min_notice_days && iterations < maxIterations) {
-                iterations++
-                d = addDaysToDateString(d, 1)
-                if (
-                    isBusinessDay(
-                        d,
-                        ranges,
-                        blockedDates,
-                        settings.slot_minutes,
-                    )
-                ) {
-                    n++
-                }
-            }
-            if (n < settings.min_notice_days) {
-                return []
-            }
-            startDateStr = d
+        const { startDateStr, endDateStr, hasValidStart } = computeWindowBounds(
+            todayStr,
+            settings,
+            ranges,
+            blockedDates,
+        )
+        if (!hasValidStart) {
+            return []
         }
-
-        const endDateStr = addDaysToDateString(todayStr, settings.window_days)
 
         interface CandidateSlot {
             datetime: Date
@@ -226,8 +168,102 @@ export function createScheduleService(
         return repository.bookAppointment(input)
     }
 
+    async function getConfig(): Promise<ScheduleConfigView> {
+        const config = await repository.getConfig()
+        if (!config) {
+            throw new ScheduleNotConfiguredError()
+        }
+        return config
+    }
+
+    async function saveConfig(
+        input: ScheduleConfigInput,
+        actorUserId: number,
+        now = new Date(),
+    ): Promise<ScheduleConfigView> {
+        const normalized = normalizeAndValidateScheduleConfig(input)
+        return repository.saveConfig({
+            config: normalized,
+            actorUserId,
+            now,
+        })
+    }
+
+    async function getMonthlyPreview(
+        params: GetMonthlyPreviewParams = {},
+    ): Promise<MonthlyPreviewResult> {
+        const now = params.now ?? new Date()
+        const { dateStr: todayStr } = getLocalParts(now)
+        const targetMonth = params.month ?? todayStr.slice(0, 7)
+
+        if (!isValidMonthString(targetMonth)) {
+            throw new BadRequestError("Mês inválido")
+        }
+
+        const baseConfig = params.draftConfig
+            ? normalizeAndValidateScheduleConfig(params.draftConfig)
+            : await getConfig()
+
+        const settings: Pick<
+            ScheduleSettings,
+            "slot_minutes" | "seats_per_slot" | "window_days" | "min_notice_days"
+        > = {
+            slot_minutes: baseConfig.slotMinutes,
+            seats_per_slot: baseConfig.seatsPerSlot,
+            window_days: baseConfig.windowDays,
+            min_notice_days: baseConfig.minNoticeDays,
+        }
+
+        const ranges: Pick<
+            ScheduleRange,
+            "weekday" | "slot_index" | "start_time" | "end_time"
+        >[] = baseConfig.ranges.map((r) => ({
+            weekday: r.weekday,
+            slot_index: r.slotIndex,
+            start_time: r.startTime,
+            end_time: r.endTime,
+        }))
+
+        const blockedDates: Pick<
+            BlockedDate,
+            "date" | "start_time" | "end_time" | "description"
+        >[] = baseConfig.blockedDates.map((b) => ({
+            date: b.date,
+            start_time: b.startTime,
+            end_time: b.endTime,
+            description: b.description,
+        }))
+
+        const { firstDateStr, lastDateStr } = getMonthDateBounds(targetMonth)
+        const windowEndBound = addDaysToDateString(todayStr, settings.window_days + 15)
+        const minDateStr = firstDateStr < todayStr ? firstDateStr : todayStr
+        const maxDateStr = lastDateStr > windowEndBound ? lastDateStr : windowEndBound
+
+        const fromDatetime = parseLocalDate(minDateStr, "00:00")
+        const toDatetime = parseLocalDate(maxDateStr, "23:59")
+
+        const activeCounts = await repository.countActiveAppointmentsPerSlot(
+            fromDatetime,
+            toDatetime,
+        )
+
+        return calculateMonthlyPreview({
+            month: targetMonth,
+            now,
+            settings,
+            ranges,
+            blockedDates,
+            activeCounts,
+        })
+    }
+
     return {
         getAvailableSlots,
         bookSlot,
+        getConfig,
+        saveConfig,
+        getMonthlyPreview,
     }
 }
+
+export const scheduleService = createScheduleService(scheduleRepository)

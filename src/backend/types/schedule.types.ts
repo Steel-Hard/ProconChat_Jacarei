@@ -6,6 +6,15 @@ export type AppointmentStatus =
     | "NO_SHOW"
     | "CANCELED"
 
+export type SlotMinutes = 20 | 30 | 40 | 60
+export type MinNoticeDays = 0 | 1 | 2 | 3 | 5
+export type ReminderHours = 2 | 6 | 12 | 24 | 48
+
+export interface ScheduleUpdatedBy {
+    id: number
+    name: string
+}
+
 export interface ScheduleSettings {
     id: number
     slot_minutes: number
@@ -17,6 +26,8 @@ export interface ScheduleSettings {
     unit_address_complement: string | null
     reminder_enabled: boolean
     reminder_hours: number
+    updated_by?: ScheduleUpdatedBy | null
+    updated_at?: Date
 }
 
 export interface ScheduleRange {
@@ -70,4 +81,158 @@ export interface BookAppointmentResult {
     documentsSent: DocumentsSent
     reminderEnabled: boolean
     reminderHours: number
+}
+
+export interface ScheduleRangeItem {
+    weekday: number
+    slotIndex: number
+    startTime: string
+    endTime: string
+}
+
+export interface BlockedDateItem {
+    date: string
+    startTime: string | null
+    endTime: string | null
+    description: string
+}
+
+export interface ScheduleConfigView {
+    slotMinutes: SlotMinutes
+    seatsPerSlot: number
+    windowDays: number
+    minNoticeDays: MinNoticeDays
+    waitAlertDays: number
+    unitAddress: string
+    unitAddressComplement: string | null
+    reminderEnabled: boolean
+    reminderHours: ReminderHours
+    ranges: ScheduleRangeItem[]
+    blockedDates: BlockedDateItem[]
+    updatedBy: ScheduleUpdatedBy | null
+    updatedAt: string | null
+}
+
+export interface ScheduleRangeInputItem {
+    weekday: number
+    slotIndex?: number
+    startTime: string
+    endTime: string
+}
+
+export interface BlockedDateInputItem {
+    date: string
+    startTime?: string | null
+    endTime?: string | null
+    description: string
+}
+
+export interface ScheduleConfigInput {
+    slotMinutes: SlotMinutes
+    seatsPerSlot: number
+    windowDays: number
+    minNoticeDays: MinNoticeDays
+    waitAlertDays: number
+    unitAddress: string
+    unitAddressComplement?: string | null
+    reminderEnabled: boolean
+    reminderHours: ReminderHours
+    ranges: ScheduleRangeInputItem[]
+    blockedDates: BlockedDateInputItem[]
+}
+
+export interface NormalizedScheduleConfig {
+    slotMinutes: SlotMinutes
+    seatsPerSlot: number
+    windowDays: number
+    minNoticeDays: MinNoticeDays
+    waitAlertDays: number
+    unitAddress: string
+    unitAddressComplement: string | null
+    reminderEnabled: boolean
+    reminderHours: ReminderHours
+    ranges: ScheduleRangeItem[]
+    blockedDates: BlockedDateItem[]
+}
+
+export interface FutureActiveAppointment {
+    id: string
+    protocol: string
+    name: string
+    cpfMasked: string
+    appointmentDatetime: Date
+    requestDatetime: Date
+    status: "PENDING" | "CONFIRMED"
+}
+
+export type ScheduleConflictCode =
+    | "DATE_BLOCKED"
+    | "PERIOD_BLOCKED"
+    | "DAY_WITHOUT_SERVICE"
+    | "DURATION_CHANGED"
+    | "RANGE_CHANGED"
+    | "SEATS_REDUCED"
+
+export interface ScheduleConflictItem {
+    id: string
+    protocol: string
+    name: string
+    cpfMasked: string
+    appointmentDatetime: string
+    date: string
+    time: string
+    status: "PENDING" | "CONFIRMED"
+    reason: string
+    code: ScheduleConflictCode
+}
+
+export type DayPreviewStatus =
+    | "AVAILABLE"
+    | "FULL"
+    | "BEFORE_MIN_NOTICE"
+    | "BLOCKED"
+    | "NO_SERVICE"
+    | "OUTSIDE_WINDOW"
+    | "PAST"
+    | "CLOSED_TODAY"
+
+export interface DaySlotPreview {
+    time: string
+    capacity: number
+    usedSeats: number
+    freeSeats: number
+    offered: boolean
+    past: boolean
+}
+
+export interface DayPreview {
+    date: string
+    weekday: number
+    status: DayPreviewStatus
+    totalSlots: number
+    capacity: number
+    usedSeats: number
+    freeSeats: number
+    blockDescription: string | null
+    slots: DaySlotPreview[]
+}
+
+export interface WeekdayPreview {
+    weekday: number
+    slots: string[]
+    totalSlots: number
+    totalSeats: number
+}
+
+export interface MonthlyPreviewResult {
+    month: string
+    today: string
+    windowStart: string
+    windowEnd: string
+    totalWindowSlots: number
+    totalWindowSeats: number
+    usedWindowSeats: number
+    freeWindowSeats: number
+    weekdays: WeekdayPreview[]
+    days: DayPreview[]
 }
