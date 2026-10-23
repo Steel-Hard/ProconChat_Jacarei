@@ -114,6 +114,12 @@ describe("appointment.schema", () => {
             })
         })
 
+        it("aceita correct_record sem outros campos", () => {
+            expect(validateSchema(updateStatusBodySchema, { action: "correct_record" })).toEqual({
+                action: "correct_record",
+            })
+        })
+
         it("rejeita ação inválida", () => {
             expect(() =>
                 validateSchema(updateStatusBodySchema, { action: "cancel" }),

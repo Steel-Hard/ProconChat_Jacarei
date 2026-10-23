@@ -18,7 +18,7 @@ import type { ConversationEventService } from "../services/conversationEvent.ser
 import type { AppointmentDetailRecord } from "../types/appointment.types"
 import { sessionTokens } from "../utils/sessionToken"
 import ConflictError from "../errors/ConflictError"
-import type { AppointmentActionCall } from "../repositories/mock/appointmentStub.repository"
+import type { AppointmentActionCall, AppointmentCorrectionWarning } from "../repositories/mock/appointmentStub.repository"
 import { AppointmentRoutes } from "./appointment.routes"
 
 const authUsers = new MockAuthRepository([
@@ -64,12 +64,12 @@ function accessCookieFor(userId: number, sessionVersion = 1): string {
     return `proconchat_access=${sessionTokens.signAccessToken({ userId, sessionVersion })}`
 }
 
-const STATUS_AFTER_ACTION = { claim: "CONFIRMED", attended: "ATTENDED", no_show: "NO_SHOW", assign: "CONFIRMED" } as const
-const EVENT_OF_ACTION = { claim: "CLAIMED", attended: "ATTENDED", no_show: "NO_SHOW", assign: "ASSIGNED" } as const
+const STATUS_AFTER_ACTION = { claim: "CONFIRMED", attended: "ATTENDED", no_show: "NO_SHOW", assign: "CONFIRMED", correct_record: "CONFIRMED" } as const
+const EVENT_OF_ACTION = { claim: "CLAIMED", attended: "ATTENDED", no_show: "NO_SHOW", assign: "ASSIGNED", correct_record: "RECORD_CORRECTED" } as const
 const PERMISSION_REQUIRED = { allowed: false, code: "PERMISSION_REQUIRED" }
 
 function simpleAction(action: string): keyof typeof STATUS_AFTER_ACTION {
-    if (action === "claim" || action === "attended" || action === "no_show" || action === "assign") {
+    if (action === "claim" || action === "attended" || action === "no_show" || action === "assign" || action === "correct_record") {
         return action
     }
     throw new Error(`Cenário incompleto: ação ${action} sem afterAction`)
@@ -90,6 +90,7 @@ function responsibleAfter(call: AppointmentActionCall, current: AppointmentDetai
 function routesScenario(
     overrides: Record<string, Partial<AppointmentDetailRecord>> = {},
     failAction?: (call: AppointmentActionCall) => Error | null,
+    correctionWarning?: AppointmentCorrectionWarning,
 ): AppointmentRepositoryStub {
     const carlos = { assigned_user_id: "2", assigned_user_name: "Carlos Atendente" }
     const details = [
@@ -133,6 +134,7 @@ function routesScenario(
             ],
         }),
         failAction,
+        correctionWarning,
     })
 }
 
@@ -722,6 +724,64 @@ describe("appointment.routes (HTTP)", () => {
 
             expect(res.status).toBe(400)
             expect(res.body.error.code).toBe("BAD_REQUEST")
+            expect(repository.actionCalls).toEqual([])
+        })
+    })
+
+    describe("Corrigir registro (PATCH /status com correct_record)", () => {
+        function correct(id: number, userId = 10): request.Test {
+            return request(app)
+                .patch(`/api/v1/appointments/${id}/status`)
+                .set("Cookie", accessCookieFor(userId))
+                .send({ action: "correct_record" })
+        }
+
+        it("corrige um atendido e devolve só o detalhe, sem a chave warning, quando não há aviso", async () => {
+            const res = await correct(4)
+
+            expect(res.status).toBe(200)
+            expect(Object.keys(res.body)).toEqual(["data"])
+            expect(res.body.data.status).toBe("CONFIRMED")
+            expect(res.body.data.events[0].type).toBe("RECORD_CORRECTED")
+            expect(repository.actionCalls).toEqual([{ action: "correct_record", id: "4", actorUserId: 10, now: FIXED_NOW }])
+        })
+
+        it("devolve o aviso estruturado ao lado do detalhe quando o responsável anterior não pôde ser restaurado", async () => {
+            const warning = {
+                code: "RESPONSIBLE_BUSY" as const,
+                message: "O responsável anterior já tem outro agendamento neste horário. O agendamento voltou para Pendente sem responsável.",
+                details: {
+                    appointmentId: "5",
+                    protocol: "A1B2C3D4",
+                    previousAssignedUserId: "2",
+                    previousAssignedUserName: "Carlos Atendente",
+                    conflictingAppointmentId: "33",
+                    conflictingProtocol: "B71C0D2E",
+                    freeStaffCount: 0,
+                },
+            }
+            repository = routesScenario({}, undefined, () => warning)
+            app = buildApp(mockConversationEvents)
+
+            const res = await correct(5)
+
+            expect(res.status).toBe(200)
+            expect(res.body.warning).toEqual(warning)
+            expect(res.body.data.id).toBe("5")
+        })
+
+        it.each([1, 2, 6])("recusa corrigir o agendamento %i com 409 RECORD_NOT_CORRECTABLE", async (id) => {
+            const res = await correct(id)
+
+            expect(res.status).toBe(409)
+            expect(res.body.error.code).toBe("RECORD_NOT_CORRECTABLE")
+        })
+
+        it("recusa com 403 FORBIDDEN a conta só com appointments.view, sem gravar nada", async () => {
+            const res = await correct(4, 5)
+
+            expect(res.status).toBe(403)
+            expect(res.body.error.code).toBe("FORBIDDEN")
             expect(repository.actionCalls).toEqual([])
         })
     })

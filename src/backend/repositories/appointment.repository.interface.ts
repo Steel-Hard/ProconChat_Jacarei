@@ -3,6 +3,7 @@ import {
     AppointmentDetailRecord,
     AppointmentListFilters,
     AppointmentListItem,
+    CorrectionResult,
     StaffMember,
 } from "../types/appointment.types"
 
@@ -34,6 +35,12 @@ export interface AppointmentRepository {
         actorUserId: number,
         now?: Date,
     ): Promise<void>
+
+    correctRecord(
+        id: string,
+        actorUserId: number,
+        now?: Date,
+    ): Promise<CorrectionResult>
 
     markAttended(
         id: string,

@@ -6,6 +6,8 @@ import type {
     AppointmentDetailRecord,
     AppointmentListFilters,
     AppointmentListItem,
+    CorrectionResult,
+    CorrectionWarning,
     StaffMember,
 } from "../../types/appointment.types"
 import type { AppointmentRepository } from "../appointment.repository.interface"
@@ -30,6 +32,8 @@ export interface AppointmentActionCall {
     now: Date | undefined
 }
 
+export type AppointmentCorrectionWarning = (call: AppointmentActionCall) => CorrectionWarning | null
+
 export type AppointmentFailAction = (call: AppointmentActionCall) => Error | null
 
 export type AppointmentAfterAction = (
@@ -45,6 +49,7 @@ export interface AppointmentStubScenario {
     titles?: AppointmentStubTitles
     afterAction?: AppointmentAfterAction
     failAction?: AppointmentFailAction
+    correctionWarning?: AppointmentCorrectionWarning
 }
 
 export class AppointmentRepositoryStub implements AppointmentRepository {
@@ -57,6 +62,7 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
     private readonly titles: AppointmentStubTitles
     private readonly afterAction: AppointmentAfterAction | undefined
     private readonly failAction: AppointmentFailAction | undefined
+    private readonly correctionWarning: AppointmentCorrectionWarning | undefined
 
     constructor(scenario: AppointmentStubScenario = {}) {
         this.details = (scenario.details ?? []).map((detail) => structuredClone(detail))
@@ -66,6 +72,7 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
         this.titles = scenario.titles ?? { categories: {}, questions: {} }
         this.afterAction = scenario.afterAction
         this.failAction = scenario.failAction
+        this.correctionWarning = scenario.correctionWarning
     }
 
     async findList(filters: AppointmentListFilters, now?: Date): Promise<AppointmentStubList> {
@@ -104,6 +111,12 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
 
     async assign(id: string, assigneeUserId: number, actorUserId: number, now?: Date): Promise<void> {
         this.applyAction({ action: "assign", id, actorUserId, assigneeUserId, now })
+    }
+
+    async correctRecord(id: string, actorUserId: number, now?: Date): Promise<CorrectionResult> {
+        const call: AppointmentActionCall = { action: "correct_record", id, actorUserId, now }
+        this.applyAction(call)
+        return { warning: this.correctionWarning?.(call) ?? null }
     }
 
     async getCurrentDocumentsConfig(): Promise<{ group: string[]; question: string[] }> {

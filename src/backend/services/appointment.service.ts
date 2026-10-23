@@ -7,6 +7,7 @@ import {
     AppointmentListFilters,
     AppointmentListResponse,
     ConversationTimelineStep,
+    CorrectionWarning,
     StaffMember,
 } from "../types/appointment.types"
 import { errorCodeOf } from "../utils/conversationEventLog"
@@ -16,6 +17,11 @@ import {
     ConversationEventService,
 } from "./conversationEvent.service"
 import type { RecordedConversationEvent } from "../types/conversationEvent.types"
+
+export interface CorrectedAppointment {
+    detail: AppointmentDetail
+    warning: CorrectionWarning | null
+}
 
 export interface AppointmentService {
     listAppointments(
@@ -47,6 +53,13 @@ export interface AppointmentService {
         access: ActionAccess,
         now?: Date,
     ): Promise<AppointmentDetail>
+
+    correctRecord(
+        idOrCode: number | string,
+        actorUserId: number,
+        access: ActionAccess,
+        now?: Date,
+    ): Promise<CorrectedAppointment>
 
     markAttended(
         idOrCode: number | string,
@@ -246,6 +259,17 @@ export function createAppointmentService(deps?: {
         ): Promise<AppointmentDetail> {
             await repository.assign(String(idOrCode), assigneeUserId, actorUserId, now)
             return getAppointmentDetail(idOrCode, access, now)
+        },
+
+        async correctRecord(
+            idOrCode: number | string,
+            actorUserId: number,
+            access: ActionAccess,
+            now: Date = new Date(),
+        ): Promise<CorrectedAppointment> {
+            const { warning } = await repository.correctRecord(String(idOrCode), actorUserId, now)
+            const detail = await getAppointmentDetail(idOrCode, access, now)
+            return { detail, warning }
         },
 
         async markAttended(

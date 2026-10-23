@@ -90,6 +90,12 @@ class AppointmentController {
                 result = await this.service.markNoShow(id, actorUserId, access)
             } else if (body.action === "assign") {
                 result = await this.service.assignAppointment(id, body.assigneeUserId, actorUserId, access)
+            } else {
+                const corrected = await this.service.correctRecord(id, actorUserId, access)
+                res.status(200).json(
+                    corrected.warning ? { data: corrected.detail, warning: corrected.warning } : { data: corrected.detail },
+                )
+                return
             }
 
             res.status(200).json({ data: result })

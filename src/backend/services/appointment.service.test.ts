@@ -12,14 +12,14 @@ import { AppointmentRepositoryStub } from "../repositories/mock/appointmentStub.
 import { AppointmentService, createAppointmentService } from "./appointment.service"
 import { toLocalDateString } from "../utils/date.utils"
 
-const STATUS_AFTER_ACTION = { claim: "CONFIRMED", attended: "ATTENDED", no_show: "NO_SHOW", assign: "CONFIRMED" } as const
-const EVENT_OF_ACTION = { claim: "CLAIMED", attended: "ATTENDED", no_show: "NO_SHOW", assign: "ASSIGNED" } as const
+const STATUS_AFTER_ACTION = { claim: "CONFIRMED", attended: "ATTENDED", no_show: "NO_SHOW", assign: "CONFIRMED", correct_record: "CONFIRMED" } as const
+const EVENT_OF_ACTION = { claim: "CLAIMED", attended: "ATTENDED", no_show: "NO_SHOW", assign: "ASSIGNED", correct_record: "RECORD_CORRECTED" } as const
 const MANAGER = { canManage: true }
 const VIEWER = { canManage: false }
 const PERMISSION_REQUIRED = { allowed: false, code: "PERMISSION_REQUIRED" }
 
 function simpleAction(action: string): keyof typeof STATUS_AFTER_ACTION {
-    if (action === "claim" || action === "attended" || action === "no_show" || action === "assign") {
+    if (action === "claim" || action === "attended" || action === "no_show" || action === "assign" || action === "correct_record") {
         return action
     }
     throw new Error(`Cenário incompleto: ação ${action} sem afterAction`)
@@ -244,6 +244,17 @@ describe("appointment.service", () => {
             expect(repository.actionCalls).toEqual([
                 { action: "assign", id: "1", actorUserId: 42, assigneeUserId: 7, now: FIXED_NOW },
             ])
+        })
+    })
+
+    describe("correctRecord (Corrigir registro)", () => {
+        it("devolve o detalhe atualizado e warning nulo quando o repositório não avisa nada", async () => {
+            const result = await service.correctRecord(4, 42, MANAGER)
+
+            expect(result.warning).toBeNull()
+            expect(result.detail.id).toBe("4")
+            expect(result.detail.events[0]?.type).toBe("RECORD_CORRECTED")
+            expect(repository.actionCalls).toEqual([{ action: "correct_record", id: "4", actorUserId: 42, now: FIXED_NOW }])
         })
     })
 

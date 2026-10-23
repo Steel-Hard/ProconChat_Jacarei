@@ -3,8 +3,8 @@ import getPool from "../db/connection"
 import ConflictError from "../errors/ConflictError"
 import NotFoundError from "../errors/NotFoundError"
 import { isValidAppointmentId } from "../schemas/appointment.schema"
-import { decideTransition } from "../services/appointmentTransitions"
-import { findResponsibleConflict } from "../services/responsibleAvailability"
+import { decideTransition, restoredStateAfterCorrection } from "../services/appointmentTransitions"
+import { countFreeStaff, findResponsibleConflict, ResponsibleConflict } from "../services/responsibleAvailability"
 import { Permission, PERMISSIONS } from "../types/auth.types"
 import type { BusyAppointment, RuleAccount } from "../types/userAccount.types"
 import {
@@ -16,6 +16,9 @@ import {
     AppointmentListItem,
     AppointmentStatus,
     ConversationTimelineStep,
+    CorrectionHistoryEvent,
+    CorrectionResult,
+    CorrectionWarning,
     StaffMember,
 } from "../types/appointment.types"
 import { cleanCpf, hashCpf } from "../utils/cpf.utils"
@@ -164,6 +167,90 @@ async function readConfirmedAround(
         assignedUserId: Number(row.assigned_user_id),
         appointmentDatetime: new Date(row.appointment_datetime),
     }))
+}
+
+async function readEligibleStaff(client: PoolClient): Promise<RuleAccount[]> {
+    const result = await client.query<{ id: string; is_admin: boolean; active: boolean; permissions: string[] }>(
+        `SELECT u.id, u.is_admin, u.active,
+                COALESCE((SELECT array_agg(up.permission_key::text) FROM UserPermissions up WHERE up.user_id = u.id), '{}') AS permissions
+         FROM Users u
+         WHERE u.active
+           AND (u.is_admin OR EXISTS (
+               SELECT 1 FROM UserPermissions up WHERE up.user_id = u.id AND up.permission_key = 'appointments.manage'
+           ))`,
+    )
+    return result.rows.map((row) => ({
+        id: Number(row.id),
+        isAdmin: row.is_admin,
+        active: row.active,
+        permissions: PERMISSIONS.filter((permission: Permission) => row.is_admin || row.permissions.includes(permission)),
+    }))
+}
+
+async function readCorrectionHistory(client: PoolClient, id: string): Promise<CorrectionHistoryEvent[]> {
+    const result = await client.query<{ id: string; type: CorrectionHistoryEvent["type"]; data: Record<string, unknown>; created_at: Date }>(
+        "SELECT id, type, data, created_at FROM AppointmentEvents WHERE appointment_id = $1",
+        [id],
+    )
+    return result.rows.map((row) => ({
+        id: String(row.id),
+        type: row.type,
+        data: row.data ?? {},
+        createdAt: new Date(row.created_at),
+    }))
+}
+
+const RESPONSIBLE_BUSY_MESSAGE =
+    "O responsável anterior já tem outro agendamento neste horário. O agendamento voltou para Pendente sem responsável."
+const RESPONSIBLE_UNAVAILABLE_MESSAGE =
+    "O responsável anterior não pode mais ser responsável por agendamentos. O agendamento voltou para Pendente sem responsável."
+
+async function correctionWarning(
+    client: PoolClient,
+    appointmentId: string,
+    responsibleId: number,
+    appointmentDatetime: Date,
+    slotMinutes: number | null,
+    conflict: ResponsibleConflict,
+): Promise<CorrectionWarning> {
+    const info = await client.query<{ protocol: string; name: string }>(
+        `SELECT ${PROTOCOL_SQL} AS protocol, u.name
+         FROM Appointments a, Users u
+         WHERE a.id = $1 AND u.id = $2`,
+        [appointmentId, responsibleId],
+    )
+    const row = info.rows[0]
+    const eligible = await readEligibleStaff(client)
+    const busy = await readConfirmedAround(
+        client,
+        eligible.map((account) => account.id),
+        appointmentDatetime,
+        slotMinutes,
+    )
+    const base = {
+        appointmentId,
+        protocol: row?.protocol ?? "",
+        previousAssignedUserId: String(responsibleId),
+        previousAssignedUserName: row?.name ?? "",
+    }
+    const freeStaffCount = countFreeStaff({ eligible, appointmentDatetime, slotMinutes, busy })
+    if (conflict.reason === "BUSY") {
+        return {
+            code: "RESPONSIBLE_BUSY",
+            message: RESPONSIBLE_BUSY_MESSAGE,
+            details: {
+                ...base,
+                conflictingAppointmentId: conflict.appointmentId,
+                conflictingProtocol: conflict.protocol,
+                freeStaffCount,
+            },
+        }
+    }
+    return {
+        code: "RESPONSIBLE_UNAVAILABLE",
+        message: RESPONSIBLE_UNAVAILABLE_MESSAGE,
+        details: { ...base, freeStaffCount },
+    }
 }
 
 async function inTransaction<T>(pool: Pool, work: (client: PoolClient) => Promise<T>): Promise<T> {
@@ -643,6 +730,72 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                     data: { assignee_user_id: assigneeUserId },
                     now,
                 })
+            })
+        },
+
+        correctRecord(id: string, actorUserId: number, now: Date = new Date()): Promise<CorrectionResult> {
+            return inTransaction(pool, async (client) => {
+                const before = await client.query<{ assigned_user_id: string | null }>(
+                    "SELECT assigned_user_id FROM Appointments WHERE id = $1",
+                    [id],
+                )
+                const expectedResponsible = before.rows[0]?.assigned_user_id ?? null
+                const responsible = expectedResponsible === null ? null : await lockResponsible(client, Number(expectedResponsible))
+                const current = await lockAndDecide(client, "correct_record", id, now)
+                if (current.assigned_user_id !== expectedResponsible) {
+                    throw new ConflictError(
+                        "O agendamento mudou enquanto a correção era feita",
+                        "RECORD_NOT_CORRECTABLE",
+                    )
+                }
+                const appointmentId = String(current.id)
+                const appointmentDatetime = new Date(current.appointment_datetime)
+                const previousResponsible = current.assigned_user_id === null ? null : Number(current.assigned_user_id)
+                let target = restoredStateAfterCorrection(await readCorrectionHistory(client, appointmentId), {
+                    assignedUserId: previousResponsible,
+                })
+                let warning: CorrectionWarning | null = null
+
+                if (target.status === "CONFIRMED" && !isDatetimePast(appointmentDatetime, now)) {
+                    const slotMinutes = await readSlotMinutes(client)
+                    const conflict: ResponsibleConflict | null = responsible
+                        ? findResponsibleConflict({
+                              candidate: responsible,
+                              appointmentId,
+                              appointmentDatetime,
+                              slotMinutes,
+                              busy: await readConfirmedAround(client, [target.assignedUserId], appointmentDatetime, slotMinutes),
+                          })
+                        : { reason: "UNAVAILABLE" }
+                    if (conflict) {
+                        warning = await correctionWarning(
+                            client,
+                            appointmentId,
+                            target.assignedUserId,
+                            appointmentDatetime,
+                            slotMinutes,
+                            conflict,
+                        )
+                        target = { status: "PENDING", assignedUserId: null }
+                    }
+                }
+
+                await client.query("UPDATE Appointments SET status = $2, assigned_user_id = $3 WHERE id = $1", [
+                    appointmentId,
+                    target.status,
+                    target.assignedUserId,
+                ])
+                await client.query(
+                    `INSERT INTO AppointmentEvents (appointment_id, type, actor_user_id, data, created_at)
+                     VALUES ($1, 'RECORD_CORRECTED', $2, $3::jsonb, $4)`,
+                    [
+                        appointmentId,
+                        actorUserId,
+                        JSON.stringify({ previous_status: current.status, previous_assigned_user_id: previousResponsible }),
+                        now,
+                    ],
+                )
+                return { warning }
             })
         },
 

@@ -198,3 +198,23 @@ export interface StaffMember {
     name: string
     active: boolean
 }
+
+export interface CorrectionWarningDetails {
+    appointmentId: string
+    protocol: string
+    previousAssignedUserId: string
+    previousAssignedUserName: string
+    conflictingAppointmentId?: string
+    conflictingProtocol?: string
+    freeStaffCount: number
+}
+
+export interface CorrectionWarning {
+    code: "RESPONSIBLE_BUSY" | "RESPONSIBLE_UNAVAILABLE"
+    message: string
+    details: CorrectionWarningDetails
+}
+
+export interface CorrectionResult {
+    warning: CorrectionWarning | null
+}
