@@ -62,4 +62,14 @@ describe("UserAccountRow", () => {
 
         expect(onSelect).toHaveBeenCalledWith(7)
     })
+
+    it("não mostra a linha de último acesso quando não há texto", () => {
+        render(
+            <UserAccountRow row={rowView({ lastLogin: null })} texts={TEXTS} onSelect={vi.fn()} />
+        )
+
+        expect(screen.getByRole("button", { name: /Bruno Lima/ })).not.toHaveTextContent(
+            "Último acesso"
+        )
+    })
 })

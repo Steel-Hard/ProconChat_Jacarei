@@ -7,8 +7,8 @@ type UserAccountPanelView = {
     isAdmin: boolean
     adminLabel: string
     email: string
-    lastLogin: string
-    permissionsChanged: string
+    lastLogin: string | null
+    permissionsChanged: string | null
     resetPassword: UserAccountAction | null
     toggleActive: UserAccountAction | null
     changeMyPassword: string | null

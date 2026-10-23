@@ -25,7 +25,7 @@ function UserAccountRow({ row, texts, onSelect }: UserAccountRowProps) {
                     {row.isAdmin ? <span className={css.admin}>{texts.admin}</span> : null}
                 </span>
                 <span className={css.summary}>{row.summary}</span>
-                <span className={css.lastLogin}>{row.lastLogin}</span>
+                {row.lastLogin ? <span className={css.lastLogin}>{row.lastLogin}</span> : null}
             </span>
             <span className={css.state}>
                 <span className={row.active ? css.active : css.inactive}>{row.statusLabel}</span>

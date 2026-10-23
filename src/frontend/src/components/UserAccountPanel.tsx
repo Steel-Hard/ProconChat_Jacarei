@@ -41,8 +41,10 @@ function UserAccountPanel({
                             ) : null}
                         </h2>
                         <p className={css.email}>{view.email}</p>
-                        <p className={css.meta}>{view.lastLogin}</p>
-                        <p className={css.meta}>{view.permissionsChanged}</p>
+                        {view.lastLogin ? <p className={css.meta}>{view.lastLogin}</p> : null}
+                        {view.permissionsChanged ? (
+                            <p className={css.meta}>{view.permissionsChanged}</p>
+                        ) : null}
                     </div>
                 </div>
                 {hasActions ? (

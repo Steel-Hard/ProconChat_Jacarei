@@ -167,4 +167,16 @@ describe("UserAccountPanel", () => {
         expect(screen.getByRole("button", { name: "Alterar minha senha" })).toBeEnabled()
         expect(screen.queryByRole("button", { name: "Redefinir senha" })).toBeNull()
     })
+
+    it("não mostra último acesso nem alteração de permissões quando não há texto", () => {
+        render(
+            <UserAccountPanel
+                view={panelView({ lastLogin: null, permissionsChanged: null })}
+                {...handlers()}
+            />
+        )
+
+        expect(screen.queryByText("Nunca acessou")).not.toBeInTheDocument()
+        expect(screen.queryByText(/Permissões alteradas/)).not.toBeInTheDocument()
+    })
 })

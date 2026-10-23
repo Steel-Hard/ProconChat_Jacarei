@@ -4,7 +4,7 @@ type UserAccountRowView = {
     name: string
     isAdmin: boolean
     summary: string
-    lastLogin: string
+    lastLogin: string | null
     active: boolean
     statusLabel: string
     unsaved: boolean

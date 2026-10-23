@@ -50,8 +50,7 @@ const underConstructionRoutes: Array<[string, string]> = [
     [ROUTES.content, "Conteúdo"],
     [ROUTES.sessions, "Sessões"],
     [ROUTES.schedule, "Horários"],
-    [ROUTES.documents, "Documentos"],
-    [ROUTES.users, "Usuários"]
+    [ROUTES.documents, "Documentos"]
 ]
 
 const protectedRoutes: Array<[string, string]> = [
@@ -59,6 +58,7 @@ const protectedRoutes: Array<[string, string]> = [
     ...underConstructionRoutes,
     [ROUTES.appointments, "Agendamentos"],
     ["/agendamentos/1", "Detalhe do agendamento"],
+    [ROUTES.users, "Usuários"],
     [ROUTES.whatsapp, "WhatsApp"]
 ]
 
@@ -103,7 +103,8 @@ describe("routes", () => {
             () => import("@/pages/UnderConstruction.page"),
             () => import("@/pages/WhatsApp.page"),
             () => import("@/pages/Appointments.page"),
-            () => import("@/pages/AppointmentDetail.page")
+            () => import("@/pages/AppointmentDetail.page"),
+            () => import("@/pages/Users.page")
         ])
     })
 
@@ -155,6 +156,29 @@ describe("routes", () => {
         expect(
             requestedUrls().some((url) => url.endsWith("/api/v1/appointments/pending-count"))
         ).toBe(true)
+    })
+
+    it("renderiza a tela de Usuários para o Admin, carregando as contas", async () => {
+        renderRoutes([ROUTES.users], withSession)
+
+        expect(await screen.findByRole("heading", { name: "Usuários" })).toBeInTheDocument()
+        expect(screen.getByText("Carregando...")).toBeInTheDocument()
+        expect(screen.queryByText("Em construção.")).not.toBeInTheDocument()
+        await waitFor(() =>
+            expect(requestedUrls().some((url) => url.endsWith("/api/v1/users"))).toBe(true)
+        )
+    })
+
+    it("renderiza a tela de Usuários para quem gerencia usuários", async () => {
+        renderRoutes([ROUTES.users], {
+            account: {
+                current: { ...staffWithAllPermissions, permissions: ["users.manage"] },
+                status: "authenticated"
+            }
+        })
+
+        expect(await screen.findByRole("heading", { name: "Usuários" })).toBeInTheDocument()
+        expect(screen.queryByText("Em construção.")).not.toBeInTheDocument()
     })
 
     it("renderiza o detalhe do agendamento com sessão, pedindo o agendamento pelo id", async () => {
