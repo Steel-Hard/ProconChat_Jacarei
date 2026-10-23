@@ -10,8 +10,7 @@ import {
     isValidResponsible,
     ResponsibleConflict,
 } from "../services/responsibleAvailability"
-import { Permission, PERMISSIONS } from "../types/auth.types"
-import type { BusyAppointment, RuleAccount } from "../types/userAccount.types"
+import type { RuleAccount } from "../types/userAccount.types"
 import {
     AppointmentActionType,
     AppointmentChipCounts,
@@ -38,10 +37,16 @@ import {
 import { isDocumentsConfigDifferent } from "../utils/documents.utils"
 import { AppointmentRepository } from "./appointment.repository.interface"
 import { assignAppointment } from "./appointmentReassignment"
+import {
+    inTransaction,
+    lockAccounts,
+    orderedPermissions,
+    PROTOCOL_SQL,
+    readConfirmedAround,
+    readSlotMinutes,
+} from "./responsibleQueries"
 
 const CPF_SEARCH_PATTERN = /^[\d.\-\s]+$/
-
-const PROTOCOL_SQL = "UPPER(SUBSTRING(a.appointment_code::text, 1, 8))"
 
 interface LockedAppointment {
     id: string
@@ -136,59 +141,6 @@ async function lockAndDecide(
     return current
 }
 
-async function lockResponsible(client: PoolClient, userId: number): Promise<RuleAccount | null> {
-    const user = await client.query<{ id: string; is_admin: boolean; active: boolean }>(
-        "SELECT id, is_admin, active FROM Users WHERE id = $1 FOR UPDATE",
-        [userId],
-    )
-    const row = user.rows[0]
-    if (!row) {
-        return null
-    }
-    const permissions = await client.query<{ permission_key: string }>(
-        "SELECT permission_key FROM UserPermissions WHERE user_id = $1",
-        [userId],
-    )
-    const granted = new Set(permissions.rows.map((permission) => permission.permission_key))
-    return {
-        id: Number(row.id),
-        isAdmin: row.is_admin,
-        active: row.active,
-        permissions: PERMISSIONS.filter((permission: Permission) => row.is_admin || granted.has(permission)),
-    }
-}
-
-async function readSlotMinutes(client: PoolClient): Promise<number | null> {
-    const result = await client.query<{ slot_minutes: number }>("SELECT slot_minutes FROM ScheduleSettings WHERE id = 1")
-    return result.rows[0]?.slot_minutes ?? null
-}
-
-async function readConfirmedAround(
-    client: PoolClient,
-    userIds: number[],
-    appointmentDatetime: Date,
-    slotMinutes: number | null,
-): Promise<BusyAppointment[]> {
-    if (userIds.length === 0) {
-        return []
-    }
-    const margin = (slotMinutes ?? 0) * 60_000
-    const result = await client.query<{ id: string; protocol: string; assigned_user_id: string; appointment_datetime: Date }>(
-        `SELECT a.id, ${PROTOCOL_SQL} AS protocol, a.assigned_user_id, a.appointment_datetime
-         FROM Appointments a
-         WHERE a.status = 'CONFIRMED'
-           AND a.assigned_user_id = ANY($1::bigint[])
-           AND a.appointment_datetime BETWEEN $2 AND $3`,
-        [userIds, new Date(appointmentDatetime.getTime() - margin), new Date(appointmentDatetime.getTime() + margin)],
-    )
-    return result.rows.map((row) => ({
-        appointmentId: String(row.id),
-        protocol: row.protocol,
-        assignedUserId: Number(row.assigned_user_id),
-        appointmentDatetime: new Date(row.appointment_datetime),
-    }))
-}
-
 async function readEligibleStaff(client: PoolClient): Promise<RuleAccount[]> {
     const result = await client.query<{ id: string; is_admin: boolean; active: boolean; permissions: string[] }>(
         `SELECT u.id, u.is_admin, u.active,
@@ -203,7 +155,7 @@ async function readEligibleStaff(client: PoolClient): Promise<RuleAccount[]> {
         id: Number(row.id),
         isAdmin: row.is_admin,
         active: row.active,
-        permissions: PERMISSIONS.filter((permission: Permission) => row.is_admin || row.permissions.includes(permission)),
+        permissions: orderedPermissions(row.is_admin, row.permissions),
     }))
 }
 
@@ -308,21 +260,6 @@ async function ensureActorCanTake(
     })
     if (conflict?.reason === "BUSY") {
         throw assigneeBusyError(actor.id, conflict)
-    }
-}
-
-async function inTransaction<T>(pool: Pool, work: (client: PoolClient) => Promise<T>): Promise<T> {
-    const client = await pool.connect()
-    try {
-        await client.query("BEGIN")
-        const result = await work(client)
-        await client.query("COMMIT")
-        return result
-    } catch (err) {
-        await client.query("ROLLBACK")
-        throw err
-    } finally {
-        client.release()
     }
 }
 
@@ -784,7 +721,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             try {
                 await client.query("BEGIN")
 
-                const actor = await lockResponsible(client, actorUserId)
+                const actor = (await lockAccounts(client, [actorUserId]))[0] ?? null
                 const current = await lockAndDecide(client, "claim", id, now)
                 await ensureActorCanTake(client, actor, current, true)
 
@@ -812,7 +749,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
 
         assign(id: string, assigneeUserId: number, actorUserId: number, now: Date = new Date()): Promise<void> {
             return inTransaction(pool, async (client) => {
-                const target = await lockResponsible(client, assigneeUserId)
+                const target = (await lockAccounts(client, [assigneeUserId]))[0] ?? null
                 const current = await lockAndDecide(client, "assign", id, now)
                 if (current.assigned_user_id !== null && Number(current.assigned_user_id) === assigneeUserId) {
                     throw new ConflictError("O agendamento já está com este funcionário", "ALREADY_ASSIGNED_TO_USER")
@@ -853,7 +790,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                     [id],
                 )
                 const expectedResponsible = before.rows[0]?.assigned_user_id ?? null
-                const responsible = expectedResponsible === null ? null : await lockResponsible(client, Number(expectedResponsible))
+                const responsible = expectedResponsible === null ? null : (await lockAccounts(client, [Number(expectedResponsible)]))[0] ?? null
                 const current = await lockAndDecide(client, "correct_record", id, now)
                 if (current.assigned_user_id !== expectedResponsible) {
                     throw new ConflictError(
@@ -932,7 +869,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             try {
                 await client.query("BEGIN")
 
-                const actor = await lockResponsible(client, actorUserId)
+                const actor = (await lockAccounts(client, [actorUserId]))[0] ?? null
                 const current = await lockAndDecide(client, "attended", id, now)
 
                 const isAutoClaim = current.status === "PENDING"
@@ -990,7 +927,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             try {
                 await client.query("BEGIN")
 
-                const actor = await lockResponsible(client, actorUserId)
+                const actor = (await lockAccounts(client, [actorUserId]))[0] ?? null
                 const current = await lockAndDecide(client, "no_show", id, now)
 
                 const isAutoClaim = current.status === "PENDING"
