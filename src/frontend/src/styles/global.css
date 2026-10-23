@@ -112,6 +112,10 @@
     --chip-waiting-border: #e9c98a;
     --chip-waiting-active: #7a4f00;
     --unassigned-text: #8a5a00;
+    --account-active-bg: #dff1e6;
+    --account-active-text: #1b6138;
+    --account-inactive-bg: #edecf1;
+    --account-inactive-text: #55516a;
     --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
     --overlay: rgba(24, 19, 48, 0.45);
     --focus-ring: #b9b0e6;
