@@ -254,6 +254,7 @@ export interface CalendarDay {
     date: string
     blocked: {
         fullDay: boolean
+        description: string | null
         periods: CalendarBlockedPeriod[]
     }
     slots: { time: string; freeSeats: number | null }[]

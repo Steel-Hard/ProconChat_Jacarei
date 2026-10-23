@@ -403,7 +403,7 @@ describe("contrato da API de agendamentos", () => {
             expect(res.body.data.days.length).toBeGreaterThan(0)
             for (const day of res.body.data.days) {
                 expect(keysOf(day)).toEqual(CALENDAR_DAY_KEYS)
-                expect(keysOf(day.blocked)).toEqual(["fullDay", "periods"])
+                expect(keysOf(day.blocked)).toEqual(["description", "fullDay", "periods"])
                 for (const slot of day.slots) {
                     expect(keysOf(slot)).toEqual(CALENDAR_SLOT_KEYS)
                 }

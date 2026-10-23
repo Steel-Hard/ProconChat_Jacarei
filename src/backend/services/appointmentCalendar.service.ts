@@ -40,10 +40,12 @@ function buildDay(
         return null
     }
     const blockedOfDay = blockedDates.filter((blocked) => blocked.date === date)
+    const fullDay = blockedOfDay.find((blocked) => !blocked.start_time || !blocked.end_time)
     return {
         date,
         blocked: {
-            fullDay: blockedOfDay.some((blocked) => !blocked.start_time || !blocked.end_time),
+            fullDay: fullDay !== undefined,
+            description: fullDay?.description ?? null,
             periods: blockedOfDay
                 .filter((blocked) => blocked.start_time && blocked.end_time)
                 .map((blocked) => ({

@@ -138,10 +138,19 @@ describe("appointmentCalendar.service", () => {
 
         expect(result.days.find((day) => day.date === "2026-10-22")?.blocked).toEqual({
             fullDay: false,
+            description: null,
             periods: [{ start: "08:00", end: "09:00", description: "Manutenção" }],
         })
-        expect(result.days.find((day) => day.date === "2026-10-23")?.blocked).toEqual({ fullDay: true, periods: [] })
-        expect(result.days.find((day) => day.date === "2026-10-21")?.blocked).toEqual({ fullDay: false, periods: [] })
+        expect(result.days.find((day) => day.date === "2026-10-23")?.blocked).toEqual({
+            fullDay: true,
+            description: "Feriado Municipal",
+            periods: [],
+        })
+        expect(result.days.find((day) => day.date === "2026-10-21")?.blocked).toEqual({
+            fullDay: false,
+            description: null,
+            periods: [],
+        })
         expect(scheduleRepository.getBlockedDates).toHaveBeenCalledWith("2026-10-18", "2026-10-24")
     })
 

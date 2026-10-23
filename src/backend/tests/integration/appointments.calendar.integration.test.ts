@@ -137,9 +137,14 @@ describe("Calendário semanal com Postgres", () => {
         const byDate = new Map(res.body.data.days.map((day: { date: string }) => [day.date, day]))
         expect((byDate.get("2031-10-14") as { blocked: unknown }).blocked).toEqual({
             fullDay: false,
+            description: null,
             periods: [{ start: "08:00", end: "09:00", description: "Reunião interna" }],
         })
-        expect((byDate.get("2031-10-17") as { blocked: unknown }).blocked).toEqual({ fullDay: true, periods: [] })
+        expect((byDate.get("2031-10-17") as { blocked: unknown }).blocked).toEqual({
+            fullDay: true,
+            description: "Feriado municipal",
+            periods: [],
+        })
     })
 
     it("com status Todos traz os agendamentos da semana, inclusive cancelados e fora da grade na hora deles", async () => {

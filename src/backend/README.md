@@ -881,7 +881,7 @@ conferir nada. Duas correções simultâneas: uma grava, a outra recebe `409 REC
         "days": [
             {
                 "date": "2026-10-22",
-                "blocked": { "fullDay": false, "periods": [{ "start": "08:00", "end": "09:00", "description": "Manutenção" }] },
+                "blocked": { "fullDay": false, "description": null, "periods": [{ "start": "08:00", "end": "09:00", "description": "Manutenção" }] },
                 "slots": [{ "time": "08:00", "freeSeats": null }, { "time": "09:00", "freeSeats": 2 }]
             }
         ],
@@ -896,6 +896,9 @@ conferir nada. Duas correções simultâneas: uma grava, a outra recebe `409 REC
   `weekStartDay` para o painel não fixar o dia. Trocar o dia inicial (tela ou banco) é tarefa futura.
 - `days` traz só os dias com grade configurada, na ordem da semana; `slots` são os horários da grade
   do dia (`freeSlotStartsOfDay`, a mesma função do bot). Sem `ScheduleSettings`, `days` vem vazio.
+- `blocked` descreve os bloqueios do dia: `fullDay` e `description` (o texto do bloqueio de dia
+  inteiro, por exemplo "Feriado municipal", ou `null` quando não há) e `periods` com os bloqueios de
+  parte do dia (`start`, `end`, `description`).
 - `freeSeats` vem de `getAvailableSlots` no mesmo instante: o número de vagas quando o bot pode
   oferecer o horário, e `null` quando não pode (passado, antes da antecedência, fora da janela,
   bloqueado ou lotado).
