@@ -1,10 +1,16 @@
 import { Pool, PoolClient } from "pg"
 import getPool from "../db/connection"
 import ConflictError from "../errors/ConflictError"
+import ForbiddenError from "../errors/ForbiddenError"
 import NotFoundError from "../errors/NotFoundError"
 import { isValidAppointmentId } from "../schemas/appointment.schema"
 import { decideTransition, restoredStateAfterCorrection } from "../services/appointmentTransitions"
-import { countFreeStaff, findResponsibleConflict, ResponsibleConflict } from "../services/responsibleAvailability"
+import {
+    countFreeStaff,
+    findResponsibleConflict,
+    isValidResponsible,
+    ResponsibleConflict,
+} from "../services/responsibleAvailability"
 import { Permission, PERMISSIONS } from "../types/auth.types"
 import type { BusyAppointment, RuleAccount } from "../types/userAccount.types"
 import {
@@ -250,6 +256,40 @@ async function correctionWarning(
         code: "RESPONSIBLE_UNAVAILABLE",
         message: RESPONSIBLE_UNAVAILABLE_MESSAGE,
         details: { ...base, freeStaffCount },
+    }
+}
+
+function assigneeBusyError(assigneeUserId: number, conflict: { appointmentId: string; protocol: string }): ConflictError {
+    return new ConflictError("O funcionário já tem outro agendamento neste horário", "ASSIGNEE_BUSY", {
+        assigneeUserId: String(assigneeUserId),
+        conflictingAppointmentId: conflict.appointmentId,
+        conflictingProtocol: conflict.protocol,
+    })
+}
+
+async function ensureActorCanTake(
+    client: PoolClient,
+    actor: RuleAccount | null,
+    appointment: LockedAppointment,
+    checkSchedule: boolean,
+): Promise<void> {
+    if (!actor || !isValidResponsible(actor)) {
+        throw new ForbiddenError("Insufficient permission")
+    }
+    if (!checkSchedule) {
+        return
+    }
+    const appointmentDatetime = new Date(appointment.appointment_datetime)
+    const slotMinutes = await readSlotMinutes(client)
+    const conflict = findResponsibleConflict({
+        candidate: actor,
+        appointmentId: String(appointment.id),
+        appointmentDatetime,
+        slotMinutes,
+        busy: await readConfirmedAround(client, [actor.id], appointmentDatetime, slotMinutes),
+    })
+    if (conflict?.reason === "BUSY") {
+        throw assigneeBusyError(actor.id, conflict)
     }
 }
 
@@ -666,7 +706,9 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             try {
                 await client.query("BEGIN")
 
-                await lockAndDecide(client, "claim", id, now)
+                const actor = await lockResponsible(client, actorUserId)
+                const current = await lockAndDecide(client, "claim", id, now)
+                await ensureActorCanTake(client, actor, current, true)
 
                 await client.query(
                     `UPDATE Appointments
@@ -717,11 +759,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                     throw invalid
                 }
                 if (conflict?.reason === "BUSY") {
-                    throw new ConflictError("O funcionário já tem outro agendamento neste horário", "ASSIGNEE_BUSY", {
-                        assigneeUserId: String(assigneeUserId),
-                        conflictingAppointmentId: conflict.appointmentId,
-                        conflictingProtocol: conflict.protocol,
-                    })
+                    throw assigneeBusyError(assigneeUserId, conflict)
                 }
                 await assignAppointment(client, {
                     appointmentId: String(current.id),
@@ -808,10 +846,18 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             try {
                 await client.query("BEGIN")
 
+                const actor = await lockResponsible(client, actorUserId)
                 const current = await lockAndDecide(client, "attended", id, now)
 
                 const isAutoClaim = current.status === "PENDING"
                 if (isAutoClaim) {
+                    await ensureActorCanTake(
+                        client,
+                        actor,
+                        current,
+                        !isDatetimePast(new Date(current.appointment_datetime), now),
+                    )
+
                     await client.query(
                         `UPDATE Appointments
                          SET status = 'CONFIRMED', assigned_user_id = $1
@@ -858,10 +904,18 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             try {
                 await client.query("BEGIN")
 
+                const actor = await lockResponsible(client, actorUserId)
                 const current = await lockAndDecide(client, "no_show", id, now)
 
                 const isAutoClaim = current.status === "PENDING"
                 if (isAutoClaim) {
+                    await ensureActorCanTake(
+                        client,
+                        actor,
+                        current,
+                        !isDatetimePast(new Date(current.appointment_datetime), now),
+                    )
+
                     await client.query(
                         `UPDATE Appointments
                          SET status = 'CONFIRMED', assigned_user_id = $1

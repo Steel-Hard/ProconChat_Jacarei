@@ -785,4 +785,27 @@ describe("appointment.routes (HTTP)", () => {
             expect(repository.actionCalls).toEqual([])
         })
     })
+
+    describe("Assumir e auto-claim com a regra de horário", () => {
+        it.each([
+            { action: "claim", id: 1 },
+            { action: "attended", id: 7 },
+        ])("o PATCH $action devolve 409 ASSIGNEE_BUSY com os detalhes do conflito", async ({ action, id }) => {
+            const details = { assigneeUserId: "10", conflictingAppointmentId: "33", conflictingProtocol: "B71C0D2E" }
+            repository = routesScenario({}, () =>
+                new ConflictError("O funcionário já tem outro agendamento neste horário", "ASSIGNEE_BUSY", details),
+            )
+            app = buildApp(mockConversationEvents)
+
+            const res = await request(app)
+                .patch(`/api/v1/appointments/${id}/status`)
+                .set("Cookie", accessCookieFor(10))
+                .send({ action })
+
+            expect(res.status).toBe(409)
+            expect(res.body).toEqual({
+                error: { code: "ASSIGNEE_BUSY", message: "O funcionário já tem outro agendamento neste horário", details },
+            })
+        })
+    })
 })
