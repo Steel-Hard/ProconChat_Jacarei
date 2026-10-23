@@ -450,7 +450,7 @@ instante do lote:
 Se o item desativa e tira `appointments.manage` ao mesmo tempo, o motivo é `USER_DEACTIVATED`. Fora
 desses casos, `reassignment` é ignorado. As gravações ficam em `repositories/appointmentReassignment.ts`
 (`assignAppointment` e `returnAppointmentToPending`), que recebem um `PoolClient` já em transação e não
-decidem regra, para a #87 reaproveitar.
+decidem regra. "Atribuir a outro funcionário" (#87) reaproveita `assignAppointment`.
 
 O destino de "atribuir a outro" precisa existir, ser outra conta, estar ativo e ser o Admin ou ter
 `appointments.manage`, tudo no **estado final do lote** (`isValidResponsible`, em
@@ -495,8 +495,9 @@ O Admin nunca recebe `PERMISSION_NOT_HELD` nem `TARGET_HAS_MORE_PERMISSIONS`. Se
 
 ## Agendamentos (/api/v1/appointments)
 
-Rotas de consulta e ações sobre agendamentos presenciais no painel (telas #85 e #86). Todas exigem
-sessão (`requireAuth`) e permissão (`requirePermission`). O `PATCH` também passa pela proteção CSRF
+Rotas de consulta e ações sobre agendamentos presenciais no painel (telas #85, #86 e #126; API das
+ações, observações, lista de funcionários e calendário na #87). Todas exigem
+sessão (`requireAuth`) e permissão (`requirePermission`). O `PATCH` e o `POST` também passam pela proteção CSRF
 (`403 INVALID_ORIGIN` quando a origem não é o `FRONTEND_ORIGIN`). O controller e as rotas seguem o
 padrão em classe (`AppointmentController`, `AppointmentRoutes.getRouter()`), e a entrada é validada
 por `validateRequest` (`middleware/validateRequest.middleware.ts`) com os schemas zod de
@@ -509,9 +510,12 @@ repositório dentro da transação, pelo mock e pelo detalhe.
 | Rota | Permissão | O que faz | Sucesso | Erros |
 | --- | --- | --- | --- | --- |
 | `GET /api/v1/appointments/pending-count` | `appointments.view` | Quantidade de agendamentos `PENDING` (badge do menu). Como `chk_appointments_pending_unassigned` impede pendente com responsável, é o mesmo que "pendentes sem responsável" | `200 { data: { count } }` | `401 UNAUTHORIZED`, `403 FORBIDDEN` |
+| `GET /api/v1/appointments/staff` | `appointments.view` | Funcionários que podem ser responsáveis: o Admin e as contas com `appointments.manage`, ativas e inativas, por nome. Serve ao filtro "Um funcionário específico" (todas) e ao seletor de "Atribuir" (só as ativas, sem o responsável atual) | `200 { data: [{ id, name, active }] }` | `401`, `403 FORBIDDEN` |
+| `GET /api/v1/appointments/calendar` | `appointments.view` | Calendário semanal (seção abaixo). Query: `date` (`AAAA-MM-DD`, padrão hoje em São Paulo), `status` e `responsible` com os mesmos valores da lista | `200 { data: Calendar }` | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN` |
 | `GET /api/v1/appointments` | `appointments.view` | Lista com busca, filtros, ordenação, paginação e contagem dos chips (query abaixo) | `200 { data: { items, total, page, limit, totalPages, chipCounts } }` | `400 BAD_REQUEST`, `401`, `403` |
 | `GET /api/v1/appointments/:id` | `appointments.view` | Detalhe com histórico (`events`), linha do tempo da conversa de origem (`timeline`) e ações disponíveis (`available_actions`) | `200 { data: AppointmentDetail }` | `400 BAD_REQUEST` (id que não é inteiro positivo ou passa do limite do `bigint`), `401`, `403`, `404 NOT_FOUND` |
-| `PATCH /api/v1/appointments/:id/status` | `appointments.manage` | Executa uma ação. Corpo: `{ "action": "claim" \| "attended" \| "no_show" }` | `200 { data: AppointmentDetail }`, o mesmo objeto que um `GET /:id` feito em seguida | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN`, `403 INVALID_ORIGIN`, `404 NOT_FOUND`, `409` (codes na tabela de ações) |
+| `PATCH /api/v1/appointments/:id/status` | `appointments.manage` | Executa uma ação. Corpo: `{ "action": "claim" \| "attended" \| "no_show" \| "correct_record" }` ou `{ "action": "assign", "assigneeUserId": <id> }` (número ou texto numérico) | `200 { data: AppointmentDetail }`, o mesmo objeto que um `GET /:id` feito em seguida. `correct_record` pode trazer também `warning` (abaixo) | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN`, `403 INVALID_ORIGIN`, `404 NOT_FOUND`, `409` (codes na tabela de ações) |
+| `POST /api/v1/appointments/:id/notes` | `appointments.manage` | Grava uma observação interna. Corpo: `{ "text": "..." }`, de 1 a 2000 caracteres depois de aparar. Não há rota de edição nem de exclusão, e o trigger `trg_appointment_notes_immutable` recusa `UPDATE` e `DELETE` | `201 { data: AppointmentDetail }` | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN`, `403 INVALID_ORIGIN`, `404 NOT_FOUND` |
 
 Erros sempre no envelope `{ "error": { "code": "...", "message": "..." } }`. O painel traduz pelo
 `code`; a `message` é só para log e depuração. Exemplos reais:
@@ -520,6 +524,7 @@ Erros sempre no envelope `{ "error": { "code": "...", "message": "..." } }`. O p
 { "error": { "code": "BAD_REQUEST", "message": "Dados inválidos: id: ID do agendamento inválido" } }
 { "error": { "code": "NOT_FOUND", "message": "Agendamento não encontrado" } }
 { "error": { "code": "APPOINTMENT_ALREADY_CLAIMED", "message": "Apenas agendamentos pendentes podem ser assumidos" } }
+{ "error": { "code": "ASSIGNEE_BUSY", "message": "O funcionário já tem outro agendamento neste horário", "details": { "assigneeUserId": "7", "conflictingAppointmentId": "456", "conflictingProtocol": "B71C0D2E" } } }
 ```
 
 ### Query da lista
@@ -557,10 +562,9 @@ Valor fora da lista devolve `400 BAD_REQUEST` com `Dados inválidos: <campo>: <m
 - **Chips (`chipCounts`).** Contam respeitando o `period` e o `responsible` da requisição;
   `waiting_record` (confirmados com horário já passado) respeita só o `responsible`. A busca e o
   `status` não mudam os chips.
-- **"Um funcionário específico".** A rota aceita `responsible=<id>`, mas ainda não existe rota que
-  liste os funcionários para esse filtro e para o seletor de "Atribuir": fica com a #87 (a #62 entregou
-  as contas, mas `GET /api/v1/users` exige `users.manage`). Até lá, a #85 oferece só Todos, Sem
-  responsável e Atribuídos a mim.
+- **"Um funcionário específico".** A rota aceita `responsible=<id>`, e `GET /api/v1/appointments/staff`
+  (#87) lista os funcionários para esse filtro e para o seletor de "Atribuir" com `appointments.view`
+  (`GET /api/v1/users` exige `users.manage`).
 
 Item da lista (`GET /api/v1/appointments`, resposta real do smoke, dados fictícios):
 
@@ -779,9 +783,17 @@ feito em seguida (só `available_actions` é recalculado a cada resposta):
   painel mostra "Gerado com auxílio de IA"). O `id` do passo é a posição na lista. Se a leitura da
   linha do tempo falhar, a resposta continua `200` com `timeline: []`, e o log registra só o id do
   agendamento e o `code` do erro.
-- `available_actions` tem uma entrada por ação, `{ "allowed": boolean, "code": string | null }`. Com
-  `allowed: false`, `code` é o mesmo que o `PATCH` devolveria naquele instante (tabela abaixo). Não há
-  texto em português: o painel traduz o `code`.
+- `notes` são as observações internas (`AppointmentNotes`), em ordem cronológica crescente:
+  `{ id, author_user_id, author_user_name, text, created_at }`. Quem tem `appointments.view` as vê.
+  Gravar uma observação não cria evento no histórico e nada é enviado ao cidadão.
+- `available_actions` tem uma entrada por ação (`claim`, `attended`, `no_show`, `assign`,
+  `correct_record` e `add_note`), `{ "allowed": boolean, "code": string | null }`, calculada **para a
+  conta logada**. Sem `appointments.manage` (e sem ser o Admin), as seis vêm com
+  `{ "allowed": false, "code": "PERMISSION_REQUIRED" }`, e o botão fica desabilitado; a rota da ação
+  responde `403 FORBIDDEN`. Com a permissão, `code` é o mesmo que o `PATCH` devolveria naquele instante
+  (tabela abaixo), e `add_note` é sempre permitido. `PERMISSION_REQUIRED` nunca é erro HTTP. A
+  sobreposição de horário (`ASSIGNEE_BUSY`) não é antecipada: quem decide é a rota. Não há texto em
+  português: o painel traduz o `code`.
 - Nenhuma resposta traz `cpf_hash`, `phone_encrypted` ou `phone_hash`.
 
 ### Ações × status atual
@@ -794,6 +806,8 @@ transação. Todas as recusas são `409`:
 | `claim` | vira `CONFIRMED` com a conta logada como responsável (`CLAIMED`) | `409 APPOINTMENT_ALREADY_CLAIMED` | `409 ALREADY_ATTENDED` | `409 ALREADY_NO_SHOW` | `409 APPOINTMENT_CANCELED` |
 | `attended` | assume automaticamente (`CLAIMED` com `auto_claimed`) e vira `ATTENDED` | vira `ATTENDED` | `409 ALREADY_ATTENDED` | `409 ALREADY_NO_SHOW` | `409 APPOINTMENT_CANCELED` |
 | `no_show` | assume automaticamente e vira `NO_SHOW` | vira `NO_SHOW` | `409 ALREADY_ATTENDED` | `409 ALREADY_NO_SHOW` | `409 APPOINTMENT_CANCELED` |
+| `assign` | vira `CONFIRMED` com o destino (`ASSIGNED { assignee_user_id }`) | troca o responsável (`ASSIGNED`) | `409 ALREADY_ATTENDED` | `409 ALREADY_NO_SHOW` | `409 APPOINTMENT_CANCELED` |
+| `correct_record` | `409 RECORD_NOT_CORRECTABLE` | `409 RECORD_NOT_CORRECTABLE` | volta ao estado anterior (`RECORD_CORRECTED`) | volta ao estado anterior (`RECORD_CORRECTED`) | `409 RECORD_NOT_CORRECTABLE` |
 
 Regra de data, conferida depois do status: `attended` só a partir do dia do atendimento em
 `America/Sao_Paulo` (antes disso, `409 ATTENDANCE_NOT_YET_AVAILABLE`), e `no_show` só depois do
@@ -803,10 +817,91 @@ Se duas ações chegam juntas (por exemplo, Atendido e Não compareceu), a segun
 status já alterado e recebe o `409` coerente com a ação que ganhou (`ALREADY_ATTENDED` ou
 `ALREADY_NO_SHOW`). Só um evento terminal é gravado.
 
-**Dívida aceita:** os testes de ações usam um único atendente (o Admin). Desde a #62 uma conta sem
-`is_admin` tem as permissões gravadas em `UserPermissions` (`tests/integration/permissions.integration.test.ts`
-prova assumir com um funcionário que gerencia agendamentos), mas os testes com dois atendentes
-disputando o mesmo agendamento continuam pendentes.
+**Atribuir (`assign`).** O destino precisa existir, estar ativo e ser o Admin ou ter
+`appointments.manage` (`isValidResponsible`), senão `409 INVALID_ASSIGNEE`. Destino igual ao
+responsável atual: `409 ALREADY_ASSIGNED_TO_USER` (atribuir a si mesmo é permitido). Não há limite de
+horário: um Confirmado já passado também pode ser atribuído.
+
+**Uma pessoa não atende dois agendamentos ao mesmo tempo** (`findResponsibleConflict`, a mesma regra do
+lote de contas). Vale em `assign`, em `claim` e no auto-claim de `attended`/`no_show` sobre um
+`PENDING`: se a pessoa já tem outro `CONFIRMED` com intervalo sobreposto (duração =
+`ScheduleSettings.slot_minutes` vigente), a resposta é `409 ASSIGNEE_BUSY` com
+`details: { assigneeUserId, conflictingAppointmentId, conflictingProtocol }`, e nada é gravado. O
+auto-claim de um agendamento cuja data e hora já passaram não confere o horário (registra o que já
+aconteceu); `claim` confere sempre. Se a conta de quem clica, já travada, não pode mais ser
+responsável (desativada ou sem a permissão entre a autenticação e a trava), `claim` e o auto-claim
+respondem `403 FORBIDDEN`.
+
+**Ordem de travas:** sempre a conta (`Users ... FOR UPDATE`) antes do agendamento, como o lote de
+contas da #62, para não haver deadlock e para que duas atribuições simultâneas para a mesma pessoa no
+mesmo horário esperem uma pela outra. `claim`, `attended` e `no_show` travam a conta de quem clicou;
+`assign`, a do destino; `correct_record`, a do responsável atual.
+
+**Corrigir registro (`correct_record`).** Volta ao estado anterior ao `ATTENDED`/`NO_SHOW` mais recente:
+`PENDING` sem responsável quando esse terminal veio junto de um `CLAIMED { auto_claimed: true }` no
+mesmo instante, senão `CONFIRMED` com o responsável atual. Grava `RECORD_CORRECTED
+{ previous_status, previous_assigned_user_id }` com o estado de antes da correção. Num agendamento
+futuro com alvo `CONFIRMED`, se o responsável não pode mais ser responsável ou tem outro `CONFIRMED`
+sobreposto, o agendamento volta a `PENDING` sem responsável, e a resposta `200` traz, ao lado de
+`data`, um aviso (sem aviso, a chave `warning` não aparece):
+
+```json
+{
+    "data": { "...": "AppointmentDetail" },
+    "warning": {
+        "code": "RESPONSIBLE_BUSY",
+        "message": "O responsável anterior já tem outro agendamento neste horário. O agendamento voltou para Pendente sem responsável.",
+        "details": {
+            "appointmentId": "123",
+            "protocol": "A3F9C21B",
+            "previousAssignedUserId": "7",
+            "previousAssignedUserName": "Ricardo Nogueira",
+            "conflictingAppointmentId": "456",
+            "conflictingProtocol": "B71C0D2E",
+            "freeStaffCount": 2
+        }
+    }
+}
+```
+
+`RESPONSIBLE_UNAVAILABLE` (responsável desativado ou sem a permissão) vem sem `conflictingAppointmentId`
+e `conflictingProtocol`. `freeStaffCount` é o número de contas elegíveis sem `CONFIRMED` sobreposto
+naquele horário (`0`: ninguém livre). Num agendamento já passado, a correção restaura o responsável sem
+conferir nada. Duas correções simultâneas: uma grava, a outra recebe `409 RECORD_NOT_CORRECTABLE`.
+
+### Calendário semanal (`GET /api/v1/appointments/calendar`)
+
+```json
+{
+    "data": {
+        "weekStart": "2026-10-18",
+        "weekEnd": "2026-10-24",
+        "weekStartDay": 0,
+        "days": [
+            {
+                "date": "2026-10-22",
+                "blocked": { "fullDay": false, "periods": [{ "start": "08:00", "end": "09:00", "description": "Manutenção" }] },
+                "slots": [{ "time": "08:00", "freeSeats": null }, { "time": "09:00", "freeSeats": 2 }]
+            }
+        ],
+        "appointments": [
+            { "id": "1", "protocol": "A1B2C3D4", "shortName": "Maria", "date": "2026-10-22", "time": "08:45", "status": "CONFIRMED", "assigned_user_id": "7", "off_grid": true }
+        ]
+    }
+}
+```
+
+- A semana começa em `WEEK_START_DAY` (`utils/week.utils.ts`, hoje `0`, domingo); a resposta traz
+  `weekStartDay` para o painel não fixar o dia. Trocar o dia inicial (tela ou banco) é tarefa futura.
+- `days` traz só os dias com grade configurada, na ordem da semana; `slots` são os horários da grade
+  do dia (`freeSlotStartsOfDay`, a mesma função do bot). Sem `ScheduleSettings`, `days` vem vazio.
+- `freeSeats` vem de `getAvailableSlots` no mesmo instante: o número de vagas quando o bot pode
+  oferecer o horário, e `null` quando não pode (passado, antes da antecedência, fora da janela,
+  bloqueado ou lotado).
+- `appointments` traz os agendamentos da semana que passam nos filtros `status` e `responsible` da lista
+  (com `status=all`, inclusive os cancelados), com data e hora locais. Os fora da grade aparecem na
+  hora deles. `shortName` é o primeiro nome do titular; o calendário não devolve CPF, telefone nem o
+  nome completo.
 
 ## Agendamento pelo chat (#56)
 

@@ -96,5 +96,5 @@ As demais ações ficam no [Detalhe do agendamento](04-detalhe-do-agendamento.md
 
 ## Estado da tela
 
-- **Lista:** construída pela #85 (busca, chips, filtros de Período e Responsável, ordenação, paginação e "Assumir"). O filtro por um funcionário específico em "Responsável" espera a lista de funcionários da #87 (as contas existem desde a #62, mas a rota delas exige "Gerenciar usuários").
-- **Calendário semanal:** ainda não existe; fica com a #87. Até lá, o botão "Lista / Calendário semanal" não aparece.
+- **Lista:** construída pela #85 (busca, chips, filtros de Período e Responsável, ordenação, paginação e "Assumir"). O filtro por um funcionário específico em "Responsável" já tem a lista de funcionários na API (#87, `GET /api/v1/appointments/staff`, com "Ver agendamentos"); a tela fica com a #126.
+- **Calendário semanal:** a API está pronta (#87, `GET /api/v1/appointments/calendar`, semana de domingo a sábado); a tela fica com a #126. Até lá, o botão "Lista / Calendário semanal" não aparece.
