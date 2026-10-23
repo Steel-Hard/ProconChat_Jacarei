@@ -73,7 +73,7 @@ class AppointmentController {
     public async updateAppointmentStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const { id } = req.params as { id: string }
-            const { action } = req.body as UpdateStatusBody
+            const body = req.body as UpdateStatusBody
 
             if (!req.authUser) {
                 throw new UnauthorizedError("Authentication required")
@@ -82,12 +82,14 @@ class AppointmentController {
             const access = accessOf(req.authUser)
 
             let result
-            if (action === "claim") {
+            if (body.action === "claim") {
                 result = await this.service.claimAppointment(id, actorUserId, access)
-            } else if (action === "attended") {
+            } else if (body.action === "attended") {
                 result = await this.service.markAttended(id, actorUserId, access)
-            } else if (action === "no_show") {
+            } else if (body.action === "no_show") {
                 result = await this.service.markNoShow(id, actorUserId, access)
+            } else if (body.action === "assign") {
+                result = await this.service.assignAppointment(id, body.assigneeUserId, actorUserId, access)
             }
 
             res.status(200).json({ data: result })

@@ -12,14 +12,14 @@ import { AppointmentRepositoryStub } from "../repositories/mock/appointmentStub.
 import { AppointmentService, createAppointmentService } from "./appointment.service"
 import { toLocalDateString } from "../utils/date.utils"
 
-const STATUS_AFTER_ACTION = { claim: "CONFIRMED", attended: "ATTENDED", no_show: "NO_SHOW" } as const
-const EVENT_OF_ACTION = { claim: "CLAIMED", attended: "ATTENDED", no_show: "NO_SHOW" } as const
+const STATUS_AFTER_ACTION = { claim: "CONFIRMED", attended: "ATTENDED", no_show: "NO_SHOW", assign: "CONFIRMED" } as const
+const EVENT_OF_ACTION = { claim: "CLAIMED", attended: "ATTENDED", no_show: "NO_SHOW", assign: "ASSIGNED" } as const
 const MANAGER = { canManage: true }
 const VIEWER = { canManage: false }
 const PERMISSION_REQUIRED = { allowed: false, code: "PERMISSION_REQUIRED" }
 
 function simpleAction(action: string): keyof typeof STATUS_AFTER_ACTION {
-    if (action === "claim" || action === "attended" || action === "no_show") {
+    if (action === "claim" || action === "attended" || action === "no_show" || action === "assign") {
         return action
     }
     throw new Error(`Cenário incompleto: ação ${action} sem afterAction`)
@@ -50,7 +50,10 @@ function serviceScenario(): AppointmentRepositoryStub {
         afterAction: (call, current) => ({
             ...current,
             status: STATUS_AFTER_ACTION[simpleAction(call.action)],
-            assigned_user_id: current.assigned_user_id ?? String(call.actorUserId),
+            assigned_user_id:
+                call.assigneeUserId !== undefined
+                    ? String(call.assigneeUserId)
+                    : (current.assigned_user_id ?? String(call.actorUserId)),
             events: [
                 {
                     id: String(current.events.length + 1),
@@ -229,6 +232,18 @@ describe("appointment.service", () => {
             await expect(service.claimAppointment(2, 42, MANAGER)).rejects.toThrow(
                 "Apenas agendamentos pendentes podem ser assumidos",
             )
+        })
+    })
+
+    describe("assignAppointment (Atribuir a outro funcionário)", () => {
+        it("repassa o destino ao repositório e devolve o detalhe atualizado", async () => {
+            const result = await service.assignAppointment(1, 7, 42, MANAGER)
+
+            expect(result.status).toBe("CONFIRMED")
+            expect(result.assigned_user_id).toBe("7")
+            expect(repository.actionCalls).toEqual([
+                { action: "assign", id: "1", actorUserId: 42, assigneeUserId: 7, now: FIXED_NOW },
+            ])
         })
     })
 

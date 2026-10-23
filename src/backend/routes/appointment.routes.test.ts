@@ -17,6 +17,8 @@ import { MockAuthRepository } from "../repositories/mock/authMock.repository"
 import type { ConversationEventService } from "../services/conversationEvent.service"
 import type { AppointmentDetailRecord } from "../types/appointment.types"
 import { sessionTokens } from "../utils/sessionToken"
+import ConflictError from "../errors/ConflictError"
+import type { AppointmentActionCall } from "../repositories/mock/appointmentStub.repository"
 import { AppointmentRoutes } from "./appointment.routes"
 
 const authUsers = new MockAuthRepository([
@@ -62,12 +64,12 @@ function accessCookieFor(userId: number, sessionVersion = 1): string {
     return `proconchat_access=${sessionTokens.signAccessToken({ userId, sessionVersion })}`
 }
 
-const STATUS_AFTER_ACTION = { claim: "CONFIRMED", attended: "ATTENDED", no_show: "NO_SHOW" } as const
-const EVENT_OF_ACTION = { claim: "CLAIMED", attended: "ATTENDED", no_show: "NO_SHOW" } as const
+const STATUS_AFTER_ACTION = { claim: "CONFIRMED", attended: "ATTENDED", no_show: "NO_SHOW", assign: "CONFIRMED" } as const
+const EVENT_OF_ACTION = { claim: "CLAIMED", attended: "ATTENDED", no_show: "NO_SHOW", assign: "ASSIGNED" } as const
 const PERMISSION_REQUIRED = { allowed: false, code: "PERMISSION_REQUIRED" }
 
 function simpleAction(action: string): keyof typeof STATUS_AFTER_ACTION {
-    if (action === "claim" || action === "attended" || action === "no_show") {
+    if (action === "claim" || action === "attended" || action === "no_show" || action === "assign") {
         return action
     }
     throw new Error(`Cenário incompleto: ação ${action} sem afterAction`)
@@ -78,7 +80,17 @@ const STAFF = [
     { id: "11", name: "Ivone Antiga", active: false },
 ]
 
-function routesScenario(overrides: Record<string, Partial<AppointmentDetailRecord>> = {}): AppointmentRepositoryStub {
+function responsibleAfter(call: AppointmentActionCall, current: AppointmentDetailRecord): string {
+    if (call.assigneeUserId !== undefined) {
+        return String(call.assigneeUserId)
+    }
+    return current.assigned_user_id ?? String(call.actorUserId)
+}
+
+function routesScenario(
+    overrides: Record<string, Partial<AppointmentDetailRecord>> = {},
+    failAction?: (call: AppointmentActionCall) => Error | null,
+): AppointmentRepositoryStub {
     const carlos = { assigned_user_id: "2", assigned_user_name: "Carlos Atendente" }
     const details = [
         buildAppointmentDetail(),
@@ -107,19 +119,20 @@ function routesScenario(overrides: Record<string, Partial<AppointmentDetailRecor
         afterAction: (call, current) => ({
             ...current,
             status: STATUS_AFTER_ACTION[simpleAction(call.action)],
-            assigned_user_id: current.assigned_user_id ?? String(call.actorUserId),
+            assigned_user_id: responsibleAfter(call, current),
             events: [
                 {
                     id: String(current.events.length + 1),
                     type: EVENT_OF_ACTION[simpleAction(call.action)],
                     actor_user_id: String(call.actorUserId),
                     actor_user_name: null,
-                    data: {},
+                    data: call.assigneeUserId !== undefined ? { assignee_user_id: call.assigneeUserId } : {},
                     created_at: (call.now ?? FIXED_NOW).toISOString(),
                 },
                 ...current.events,
             ],
         }),
+        failAction,
     })
 }
 
@@ -622,6 +635,94 @@ describe("appointment.routes (HTTP)", () => {
 
             expect(res.status).toBe(409)
             expect(res.body.error.code).toBe("APPOINTMENT_CANCELED")
+        })
+    })
+
+    describe("Atribuir (PATCH /status com assign)", () => {
+        function assign(id: number, assigneeUserId: unknown, userId = 10): request.Test {
+            return request(app)
+                .patch(`/api/v1/appointments/${id}/status`)
+                .set("Cookie", accessCookieFor(userId))
+                .send({ action: "assign", assigneeUserId })
+        }
+
+        it("atribui um pendente a outro funcionário e devolve o detalhe confirmado com o evento ASSIGNED", async () => {
+            const res = await assign(1, 2)
+
+            expect(res.status).toBe(200)
+            expect(res.body.data.status).toBe("CONFIRMED")
+            expect(res.body.data.assigned_user_id).toBe("2")
+            expect(res.body.data.events[0]).toMatchObject({
+                type: "ASSIGNED",
+                actor_user_id: "10",
+                data: { assignee_user_id: 2 },
+            })
+            expect(repository.actionCalls).toEqual([
+                { action: "assign", id: "1", actorUserId: 10, assigneeUserId: 2, now: FIXED_NOW },
+            ])
+        })
+
+        it("atribui um confirmado a outro funcionário aceitando o id em texto", async () => {
+            const res = await assign(2, "10")
+
+            expect(res.status).toBe(200)
+            expect(res.body.data.status).toBe("CONFIRMED")
+            expect(res.body.data.assigned_user_id).toBe("10")
+            expect(repository.actionCalls[0]?.assigneeUserId).toBe(10)
+        })
+
+        it.each([
+            { id: 4, code: "ALREADY_ATTENDED" },
+            { id: 5, code: "ALREADY_NO_SHOW" },
+            { id: 6, code: "APPOINTMENT_CANCELED" },
+        ])("recusa atribuir o agendamento $id com 409 $code", async ({ id, code }) => {
+            const res = await assign(id, 2)
+
+            expect(res.status).toBe(409)
+            expect(res.body.error.code).toBe(code)
+        })
+
+        it("devolve 409 ASSIGNEE_BUSY com os detalhes do agendamento conflitante", async () => {
+            const details = { assigneeUserId: "2", conflictingAppointmentId: "33", conflictingProtocol: "B71C0D2E" }
+            repository = routesScenario({}, (call) =>
+                call.action === "assign"
+                    ? new ConflictError("O funcionário já tem outro agendamento neste horário", "ASSIGNEE_BUSY", details)
+                    : null,
+            )
+            app = buildApp(mockConversationEvents)
+
+            const res = await assign(1, 2)
+
+            expect(res.status).toBe(409)
+            expect(res.body).toEqual({
+                error: {
+                    code: "ASSIGNEE_BUSY",
+                    message: "O funcionário já tem outro agendamento neste horário",
+                    details,
+                },
+            })
+        })
+
+        it("recusa com 403 FORBIDDEN a conta só com appointments.view, sem gravar nada", async () => {
+            const res = await assign(1, 2, 5)
+
+            expect(res.status).toBe(403)
+            expect(res.body.error.code).toBe("FORBIDDEN")
+            expect(repository.actionCalls).toEqual([])
+        })
+
+        it.each([
+            { label: "sem destino", body: { action: "assign" } },
+            { label: "com destino inválido", body: { action: "assign", assigneeUserId: "abc" } },
+        ])("retorna 400 para assign $label", async ({ body }) => {
+            const res = await request(app)
+                .patch("/api/v1/appointments/1/status")
+                .set("Cookie", accessCookieFor(10))
+                .send(body)
+
+            expect(res.status).toBe(400)
+            expect(res.body.error.code).toBe("BAD_REQUEST")
+            expect(repository.actionCalls).toEqual([])
         })
     })
 })

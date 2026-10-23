@@ -26,8 +26,11 @@ export interface AppointmentActionCall {
     action: AppointmentActionType
     id: string
     actorUserId: number
+    assigneeUserId?: number
     now: Date | undefined
 }
+
+export type AppointmentFailAction = (call: AppointmentActionCall) => Error | null
 
 export type AppointmentAfterAction = (
     call: AppointmentActionCall,
@@ -41,6 +44,7 @@ export interface AppointmentStubScenario {
     staff?: StaffMember[]
     titles?: AppointmentStubTitles
     afterAction?: AppointmentAfterAction
+    failAction?: AppointmentFailAction
 }
 
 export class AppointmentRepositoryStub implements AppointmentRepository {
@@ -52,6 +56,7 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
     private readonly staff: StaffMember[]
     private readonly titles: AppointmentStubTitles
     private readonly afterAction: AppointmentAfterAction | undefined
+    private readonly failAction: AppointmentFailAction | undefined
 
     constructor(scenario: AppointmentStubScenario = {}) {
         this.details = (scenario.details ?? []).map((detail) => structuredClone(detail))
@@ -60,6 +65,7 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
         this.staff = scenario.staff ?? []
         this.titles = scenario.titles ?? { categories: {}, questions: {} }
         this.afterAction = scenario.afterAction
+        this.failAction = scenario.failAction
     }
 
     async findList(filters: AppointmentListFilters, now?: Date): Promise<AppointmentStubList> {
@@ -94,6 +100,10 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
 
     async markNoShow(id: string, actorUserId: number, now?: Date): Promise<void> {
         this.applyAction({ action: "no_show", id, actorUserId, now })
+    }
+
+    async assign(id: string, assigneeUserId: number, actorUserId: number, now?: Date): Promise<void> {
+        this.applyAction({ action: "assign", id, actorUserId, assigneeUserId, now })
     }
 
     async getCurrentDocumentsConfig(): Promise<{ group: string[]; question: string[] }> {
@@ -133,6 +143,10 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
         )
         if (!decision.allowed) {
             throw decision.error
+        }
+        const failure = this.failAction?.(call) ?? null
+        if (failure) {
+            throw failure
         }
         if (!this.afterAction) {
             throw new Error(`Cenário incompleto: falta afterAction para a ação ${call.action}`)

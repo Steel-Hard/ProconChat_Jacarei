@@ -119,5 +119,25 @@ describe("appointment.schema", () => {
                 validateSchema(updateStatusBodySchema, { action: "cancel" }),
             ).toThrow("Dados inválidos")
         })
+
+        it("aceita assign com o id do destino em número ou em texto numérico", () => {
+            expect(validateSchema(updateStatusBodySchema, { action: "assign", assigneeUserId: 7 })).toEqual({
+                action: "assign",
+                assigneeUserId: 7,
+            })
+            expect(validateSchema(updateStatusBodySchema, { action: "assign", assigneeUserId: "12" })).toEqual({
+                action: "assign",
+                assigneeUserId: 12,
+            })
+        })
+
+        it.each([
+            { label: "sem o destino", body: { action: "assign" } },
+            { label: "com destino não numérico", body: { action: "assign", assigneeUserId: "abc" } },
+            { label: "com destino zero", body: { action: "assign", assigneeUserId: 0 } },
+            { label: "com destino fracionário", body: { action: "assign", assigneeUserId: 1.5 } },
+        ])("rejeita assign $label", ({ body }) => {
+            expect(() => validateSchema(updateStatusBodySchema, body)).toThrow("Dados inválidos")
+        })
     })
 })

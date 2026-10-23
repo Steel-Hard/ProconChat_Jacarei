@@ -67,10 +67,22 @@ export const appointmentIdParamSchema = z.object({
 
 export type AppointmentIdParam = z.infer<typeof appointmentIdParamSchema>
 
-export const updateStatusBodySchema = z.object({
-    action: z.enum(["claim", "attended", "no_show"], {
-        message: "Ação inválida. Valores aceitos: claim, attended, no_show",
-    }),
-})
+const ACTION_MESSAGE = "Ação inválida. Valores aceitos: claim, attended, no_show, assign"
+
+const userIdSchema = z
+    .union([z.number(), z.string().trim().regex(/^\d+$/)])
+    .transform((value) => Number(value))
+    .pipe(z.number().int().positive().max(Number.MAX_SAFE_INTEGER))
+
+export const updateStatusBodySchema = z.discriminatedUnion(
+    "action",
+    [
+        z.object({ action: z.literal("claim") }),
+        z.object({ action: z.literal("attended") }),
+        z.object({ action: z.literal("no_show") }),
+        z.object({ action: z.literal("assign"), assigneeUserId: userIdSchema }),
+    ],
+    { error: ACTION_MESSAGE },
+)
 
 export type UpdateStatusBody = z.infer<typeof updateStatusBodySchema>

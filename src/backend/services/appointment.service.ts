@@ -40,6 +40,14 @@ export interface AppointmentService {
         now?: Date,
     ): Promise<AppointmentDetail>
 
+    assignAppointment(
+        idOrCode: number | string,
+        assigneeUserId: number,
+        actorUserId: number,
+        access: ActionAccess,
+        now?: Date,
+    ): Promise<AppointmentDetail>
+
     markAttended(
         idOrCode: number | string,
         actorUserId: number,
@@ -226,6 +234,17 @@ export function createAppointmentService(deps?: {
             now: Date = new Date(),
         ): Promise<AppointmentDetail> {
             await repository.claim(String(idOrCode), actorUserId, now)
+            return getAppointmentDetail(idOrCode, access, now)
+        },
+
+        async assignAppointment(
+            idOrCode: number | string,
+            assigneeUserId: number,
+            actorUserId: number,
+            access: ActionAccess,
+            now: Date = new Date(),
+        ): Promise<AppointmentDetail> {
+            await repository.assign(String(idOrCode), assigneeUserId, actorUserId, now)
             return getAppointmentDetail(idOrCode, access, now)
         },
 

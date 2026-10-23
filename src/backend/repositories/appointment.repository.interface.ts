@@ -28,6 +28,13 @@ export interface AppointmentRepository {
         now?: Date,
     ): Promise<void>
 
+    assign(
+        id: string,
+        assigneeUserId: number,
+        actorUserId: number,
+        now?: Date,
+    ): Promise<void>
+
     markAttended(
         id: string,
         actorUserId: number,
