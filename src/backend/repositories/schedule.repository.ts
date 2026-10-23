@@ -1,21 +1,47 @@
 import type { PoolClient } from "pg"
 import getPool from "../db/connection"
 import BookingFailedError from "../errors/BookingFailedError"
+import ConflictError from "../errors/ConflictError"
 import DuplicateAppointmentError from "../errors/DuplicateAppointmentError"
 import ScheduleNotConfiguredError from "../errors/ScheduleNotConfiguredError"
 import SlotFullError from "../errors/SlotFullError"
+import { detectScheduleConflicts, trimTime } from "../services/scheduleRules"
 import {
     BlockedDate,
     BookAppointmentInput,
     BookAppointmentResult,
     DocumentsSent,
+    FutureActiveAppointment,
+    MinNoticeDays,
+    ReminderHours,
+    ScheduleConfigView,
     ScheduleRange,
     ScheduleSettings,
+    SlotMinutes,
 } from "../types/schedule.types"
 import { encrypt } from "../utils/crypto.utils"
 import { insertConversationEvent, Queryable } from "./conversationEvent.repository"
 import { finishSessionWith } from "./session.repository"
-import { IScheduleRepository } from "./schedule.repository.interface"
+import {
+    IScheduleRepository,
+    SaveScheduleConfigRepoParams,
+} from "./schedule.repository.interface"
+
+interface SettingsWithAuthorRow {
+    id: number
+    slot_minutes: number
+    seats_per_slot: number
+    window_days: number
+    min_notice_days: number
+    wait_alert_days: number
+    unit_address: string
+    unit_address_complement: string | null
+    reminder_enabled: boolean
+    reminder_hours: number
+    updated_by: string | number | null
+    updated_by_name: string | null
+    updated_at: Date | null
+}
 
 async function selectSettings(db: Queryable): Promise<ScheduleSettings | null> {
     const result = await db.query<ScheduleSettings>(
@@ -51,7 +77,7 @@ async function getBlockedDates(
         `SELECT id, date::text, start_time::text, end_time::text, description
          FROM BlockedDates
          WHERE date >= $1 AND date <= $2
-         ORDER BY date`,
+         ORDER BY date, start_time NULLS FIRST, id`,
         [fromDate, toDate],
     )
     return result.rows
@@ -83,6 +109,216 @@ async function countActiveAppointmentsPerSlot(
         )
     }
     return map
+}
+
+async function selectConfigView(db: Queryable): Promise<ScheduleConfigView | null> {
+    const settingsResult = await db.query<SettingsWithAuthorRow>(
+        `SELECT s.id,
+                s.slot_minutes,
+                s.seats_per_slot,
+                s.window_days,
+                s.min_notice_days,
+                s.wait_alert_days,
+                s.unit_address,
+                s.unit_address_complement,
+                s.reminder_enabled,
+                s.reminder_hours,
+                s.updated_by,
+                u.name AS updated_by_name,
+                s.updated_at
+         FROM ScheduleSettings s
+         LEFT JOIN Users u ON u.id = s.updated_by
+         WHERE s.id = 1`,
+    )
+    const s = settingsResult.rows[0]
+    if (!s) {
+        return null
+    }
+
+    const rangesResult = await db.query<{
+        weekday: number
+        slot_index: number
+        start_time: string
+        end_time: string
+    }>(
+        `SELECT weekday, slot_index, start_time::text, end_time::text
+         FROM ScheduleRanges
+         ORDER BY weekday ASC, slot_index ASC`,
+    )
+
+    const blocksResult = await db.query<{
+        date: string
+        start_time: string | null
+        end_time: string | null
+        description: string
+    }>(
+        `SELECT date::text, start_time::text, end_time::text, description
+         FROM BlockedDates
+         ORDER BY date ASC, start_time ASC NULLS FIRST, id ASC`,
+    )
+
+    return {
+        slotMinutes: s.slot_minutes as SlotMinutes,
+        seatsPerSlot: s.seats_per_slot,
+        windowDays: s.window_days,
+        minNoticeDays: s.min_notice_days as MinNoticeDays,
+        waitAlertDays: s.wait_alert_days,
+        unitAddress: s.unit_address,
+        unitAddressComplement: s.unit_address_complement,
+        reminderEnabled: s.reminder_enabled,
+        reminderHours: s.reminder_hours as ReminderHours,
+        ranges: rangesResult.rows.map((r) => ({
+            weekday: r.weekday,
+            slotIndex: r.slot_index,
+            startTime: trimTime(r.start_time),
+            endTime: trimTime(r.end_time),
+        })),
+        blockedDates: blocksResult.rows.map((b) => ({
+            date: b.date,
+            startTime: b.start_time ? trimTime(b.start_time) : null,
+            endTime: b.end_time ? trimTime(b.end_time) : null,
+            description: b.description,
+        })),
+        updatedBy:
+            s.updated_by !== null && s.updated_by_name !== null
+                ? { id: Number(s.updated_by), name: s.updated_by_name }
+                : null,
+        updatedAt: s.updated_at ? new Date(s.updated_at).toISOString() : null,
+    }
+}
+
+async function getConfig(): Promise<ScheduleConfigView | null> {
+    return selectConfigView(getPool())
+}
+
+async function loadFutureActiveAppointments(
+    client: PoolClient,
+    now: Date,
+): Promise<FutureActiveAppointment[]> {
+    const result = await client.query<{
+        id: string
+        protocol: string
+        name: string
+        cpf_masked: string
+        appointment_datetime: Date
+        request_datetime: Date
+        status: "PENDING" | "CONFIRMED"
+    }>(
+        `SELECT a.id::text AS id,
+                UPPER(SUBSTRING(a.appointment_code::text, 1, 8)) AS protocol,
+                a.name,
+                a.cpf_masked,
+                a.appointment_datetime,
+                a.request_datetime,
+                a.status
+         FROM Appointments a
+         WHERE a.status IN ('PENDING', 'CONFIRMED')
+           AND a.off_grid = FALSE
+           AND a.appointment_datetime > $1
+         ORDER BY a.appointment_datetime ASC, a.id ASC
+         FOR UPDATE`,
+        [now],
+    )
+
+    return result.rows.map((r) => ({
+        id: r.id,
+        protocol: r.protocol,
+        name: r.name,
+        cpfMasked: r.cpf_masked,
+        appointmentDatetime: new Date(r.appointment_datetime),
+        requestDatetime: new Date(r.request_datetime),
+        status: r.status,
+    }))
+}
+
+async function saveConfig({
+    config,
+    actorUserId,
+    now,
+}: SaveScheduleConfigRepoParams): Promise<ScheduleConfigView> {
+    const pool = getPool()
+    const client = await pool.connect()
+
+    try {
+        await client.query("BEGIN")
+        await client.query("SELECT pg_advisory_xact_lock(hashtext('schedule_config'))")
+        await client.query("SELECT id FROM ScheduleSettings WHERE id = 1 FOR UPDATE")
+
+        const futureAppointments = await loadFutureActiveAppointments(client, now)
+        const conflicts = detectScheduleConflicts(config, futureAppointments)
+        if (conflicts.length > 0) {
+            throw new ConflictError(
+                "Esta alteração afeta agendamentos futuros",
+                "SCHEDULE_CONFLICTS",
+                { conflicts },
+            )
+        }
+
+        await client.query(
+            `INSERT INTO ScheduleSettings (
+                id, slot_minutes, seats_per_slot, window_days, min_notice_days,
+                wait_alert_days, unit_address, unit_address_complement,
+                reminder_enabled, reminder_hours, updated_by, updated_at
+             ) VALUES (
+                1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW()
+             )
+             ON CONFLICT (id) DO UPDATE SET
+                slot_minutes = EXCLUDED.slot_minutes,
+                seats_per_slot = EXCLUDED.seats_per_slot,
+                window_days = EXCLUDED.window_days,
+                min_notice_days = EXCLUDED.min_notice_days,
+                wait_alert_days = EXCLUDED.wait_alert_days,
+                unit_address = EXCLUDED.unit_address,
+                unit_address_complement = EXCLUDED.unit_address_complement,
+                reminder_enabled = EXCLUDED.reminder_enabled,
+                reminder_hours = EXCLUDED.reminder_hours,
+                updated_by = EXCLUDED.updated_by,
+                updated_at = NOW()`,
+            [
+                config.slotMinutes,
+                config.seatsPerSlot,
+                config.windowDays,
+                config.minNoticeDays,
+                config.waitAlertDays,
+                config.unitAddress,
+                config.unitAddressComplement,
+                config.reminderEnabled,
+                config.reminderHours,
+                actorUserId,
+            ],
+        )
+
+        await client.query("DELETE FROM ScheduleRanges")
+        for (const range of config.ranges) {
+            await client.query(
+                `INSERT INTO ScheduleRanges (weekday, slot_index, start_time, end_time)
+                 VALUES ($1, $2, $3, $4)`,
+                [range.weekday, range.slotIndex, range.startTime, range.endTime],
+            )
+        }
+
+        await client.query("DELETE FROM BlockedDates")
+        for (const block of config.blockedDates) {
+            await client.query(
+                `INSERT INTO BlockedDates (date, start_time, end_time, description)
+                 VALUES ($1, $2, $3, $4)`,
+                [block.date, block.startTime, block.endTime, block.description],
+            )
+        }
+
+        const updatedView = await selectConfigView(client)
+        if (!updatedView) {
+            throw new ScheduleNotConfiguredError()
+        }
+
+        await client.query("COMMIT")
+        return updatedView
+    } catch (err) {
+        await client.query("ROLLBACK")
+        throw err
+    } finally {
+        client.release()
+    }
 }
 
 async function lockSlot(client: PoolClient, slotIso: string): Promise<void> {
@@ -270,6 +506,8 @@ export function createScheduleRepository(): IScheduleRepository {
         getBlockedDates,
         countActiveAppointmentsPerSlot,
         bookAppointment,
+        getConfig,
+        saveConfig,
     }
 }
 

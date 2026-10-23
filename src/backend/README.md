@@ -808,6 +808,50 @@ status já alterado e recebe o `409` coerente com a ação que ganhou (`ALREADY_
 prova assumir com um funcionário que gerencia agendamentos), mas os testes com dois atendentes
 disputando o mesmo agendamento continuam pendentes.
 
+## Horários de atendimento (/api/v1/schedule, #64)
+
+Configuração da agenda presencial e prévia mensal de vagas ([decisão 007](../../.docs/decisoes/007-agenda-configuravel.md),
+[regras da tela](../../.docs/regras/08-horarios-de-atendimento.md)). Todas as rotas passam pela
+proteção CSRF (`403 INVALID_ORIGIN` nos métodos que enviam corpo), por `requireAuth` e por
+`requirePermission("schedule.configure")`, e respondem com `Cache-Control: no-store`. Camadas:
+`routes/schedule.routes.ts` (`ScheduleRoutes`), `controllers/schedule.controller.ts`
+(`ScheduleController`), `services/schedule.service.ts` + `services/scheduleRules.ts` e
+`repositories/schedule.repository.ts`; schemas de entrada em `schemas/schedule.schema.ts`.
+
+### Rotas
+
+| Rota | Entrada | Sucesso | Erros |
+| --- | --- | --- | --- |
+| `GET /api/v1/schedule` | — | `200 { data: ScheduleConfigView }` | `401 UNAUTHORIZED`, `403 FORBIDDEN`, `500 SCHEDULE_NOT_CONFIGURED` |
+| `PUT /api/v1/schedule` | `ScheduleConfigInput` | `200 { data: ScheduleConfigView }` | `400 BAD_REQUEST`, `401`, `403`, `409 SCHEDULE_CONFLICTS` com `details.conflicts` |
+| `GET /api/v1/schedule/preview?month=YYYY-MM` | `month` opcional (padrão: mês atual em `America/Sao_Paulo`) | `200 { data: MonthlyPreviewResult }` | `400 BAD_REQUEST`, `401`, `403` |
+| `POST /api/v1/schedule/preview` | `{ month?: "YYYY-MM", config?: ScheduleConfigInput }` | `200 { data: MonthlyPreviewResult }` (calcula sobre o rascunho `config` sem gravar no banco, ou sobre a configuração salva se `config` for omitido) | `400 BAD_REQUEST`, `401`, `403` |
+
+- **Consistência entre bot e prévia:** o cálculo de vagas disponíveis do bot (`getAvailableSlots`) e
+  o cálculo da prévia mensal (`getMonthlyPreview`) compartilham as mesmas funções puras de
+  `services/scheduleRules.ts` (`slotsForWeekday`, `freeSlotStartsOfDay`, `isBusinessDay`,
+  `computeWindowBounds` e `calculateMonthlyPreview`). Qualquer alteração salva em `PUT /api/v1/schedule`
+  entra em vigor imediatamente na oferta de horários do bot.
+- **Validações da configuração (`normalizeAndValidateScheduleConfig`):**
+  - `slotMinutes` em `20, 30, 40, 60`; `seatsPerSlot` de `1` a `20`; `windowDays` de `1` a `180`;
+    `minNoticeDays` em `0, 1, 2, 3, 5` (dias úteis com atendimento); `waitAlertDays` de `1` a `60`;
+    `reminderHours` em `2, 6, 12, 24, 48`; `unitAddress` obrigatório (até 500 caracteres) e
+    `unitAddressComplement` opcional (até 500 caracteres).
+  - Até 3 faixas (`ranges`) por dia da semana (`weekday` `0..6`), com `endTime > startTime`, sem
+    sobreposição no mesmo dia e com duração suficiente para ao menos 1 atendimento de `slotMinutes`.
+    As faixas do mesmo dia são ordenadas por `startTime` e renumeradas em `slotIndex` `1..3`.
+  - Datas bloqueadas (`blockedDates`) do dia inteiro (`startTime` e `endTime` nulos) ou de período
+    parcial (`startTime < endTime`), com descrição obrigatória (até 150 caracteres) e sem
+    sobreposição na mesma data.
+- **Detecção de conflitos ao salvar (versão mínima da #64):** dentro da transação de `saveConfig`, o
+  repositório trava `ScheduleSettings` e todos os agendamentos futuros ativos na grade
+  (`status IN ('PENDING', 'CONFIRMED')`, `off_grid = FALSE`, `appointment_datetime > now`) e executa
+  `detectScheduleConflicts`. Se algum agendamento for afetado (`DATE_BLOCKED`, `PERIOD_BLOCKED`,
+  `DAY_WITHOUT_SERVICE`, `DURATION_CHANGED`, `RANGE_CHANGED` ou `SEATS_REDUCED` para os agendamentos
+  excedentes ordenados por `request_datetime ASC, id ASC`), a transação faz `ROLLBACK` e responde
+  `409 SCHEDULE_CONFLICTS` com `{ details: { conflicts } }`. O fluxo de resolução no mesmo salvamento
+  (cancelar pelo Procon ou manter como `off_grid = TRUE`) pertence à #65.
+
 ## Agendamento pelo chat (#56)
 
 Quando o cidadão aceita a oferta de agendamento (`schedule_yes` em `AWAITING_SCHEDULE_OFFER`), o
