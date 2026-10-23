@@ -44,7 +44,7 @@
 }
 
 .when {
-    color: #4a4660;
+    color: var(--text-secondary);
     white-space: nowrap;
 }
 

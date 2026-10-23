@@ -109,7 +109,7 @@
 .secondary:disabled,
 .neutral:disabled {
     border-color: var(--border);
-    background: #f6f5fa;
+    background: var(--bg-disabled);
     color: var(--text-soft);
     filter: none;
     cursor: not-allowed;

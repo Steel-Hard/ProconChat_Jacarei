@@ -1,5 +1,6 @@
 import { useId, useState } from "react"
 import ConfirmDialog from "@/components/ConfirmDialog"
+import ReassignmentAppointmentItem from "@/components/ReassignmentAppointmentItem"
 import type Reassignment from "@/types/users/Reassignment.types"
 import type ReassignmentAppointmentView from "@/types/users/ReassignmentAppointmentView.types"
 import type ReassignmentDialogTexts from "@/types/users/ReassignmentDialogTexts.types"
@@ -60,11 +61,7 @@ function ReassignmentDialog({
             </span>
             <ul className={css.list} aria-labelledby={listId}>
                 {appointments.map((appointment) => (
-                    <li key={appointment.id} className={css.item}>
-                        <span className={css.protocol}>{appointment.protocol}</span>
-                        <span className={css.holder}>{appointment.name}</span>
-                        <span className={css.when}>{appointment.when}</span>
-                    </li>
+                    <ReassignmentAppointmentItem key={appointment.id} appointment={appointment} />
                 ))}
             </ul>
             <fieldset className={css.options}>
