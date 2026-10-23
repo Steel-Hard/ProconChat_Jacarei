@@ -42,10 +42,10 @@ O CI (`.github/workflows/ci.yml`) roda `format:check`, `lint`, `build` e `test:r
 - `status/`: cores e ordem dos status de agendamento e dos desfechos de conversa, e as cores da situação do WhatsApp.
 - `i18n/`: configuração do i18next (um símbolo por arquivo). `locales/pt-BR/<namespace>.json`: os textos.
 - `store/`: Redux Toolkit e RTK Query (`api.ts`, `baseQueryWithSessionRenewal.ts`, `rootReducer.ts`, `createStore.ts`, `store.ts`, `useAppDispatch.ts`, `useAppSelector.ts` e `slices/`).
-- `services/http/`: cliente HTTP, um arquivo por função (`apiUrl`, `get`, `post`, `put`, `patch`, `del`, `request`, `parseResponse`, `HttpError`, `refreshSession`, `onUnauthorized`). `services/auth/`: as chamadas de `/api/v1/auth` (`fetchCurrentAccount`, `signIn`, `signOut`, `changePassword` e `toPanelAccount`). `services/whatsapp/`: teste de conexão e salvar da configuração do WhatsApp (`testWhatsAppConnection`, `saveWhatsAppSettings`), fora do RTK Query porque levam o token e o App Secret digitados.
+- `services/http/`: cliente HTTP, um arquivo por função (`apiUrl`, `get`, `post`, `put`, `patch`, `del`, `request`, `parseResponse`, `HttpError`, `refreshSession`, `onUnauthorized`). `services/auth/`: as chamadas de `/api/v1/auth` (`fetchCurrentAccount`, `signIn`, `signOut`, `changePassword` e `toPanelAccount`). `services/whatsapp/`: teste de conexão e salvar da configuração do WhatsApp (`testWhatsAppConnection`, `saveWhatsAppSettings`), fora do RTK Query porque levam o token e o App Secret digitados. `services/users/`: criar conta e redefinir a senha de outra conta (`createUserAccount`, `resetUserPassword`), fora do RTK Query pelo mesmo motivo: levam a senha digitada.
 - `styles/`: `global.css` (fontes, cores e reset) e CSS Modules em `styles/<components|layouts|pages>/<nome>.module.css`.
 - `types/<dominio>/<Nome>.types.ts`: tipos exportados, um por arquivo.
-- `utils/`: funções puras (`formatDate`, `formatTime`, `formatDayMonth`, `weekdayOf`, `initialsOf`, `safeRedirectPath`, `loginPathFor`, e as da lista de agendamentos: `appointmentListDefaults`, `parseAppointmentListParams`, `toAppointmentListParams`, `appointmentStatusFilters`, `appointmentPeriods`, `appointmentResponsibleFilters`, `minAppointmentSearchLength`, `defaultSortMode`, `appointmentActionErrorKey`).
+- `utils/`: funções puras (`formatDate`, `formatTime`, `formatDayMonth`, `weekdayOf`, `initialsOf`, `safeRedirectPath`, `loginPathFor`, e as da lista de agendamentos: `appointmentListDefaults`, `parseAppointmentListParams`, `toAppointmentListParams`, `appointmentStatusFilters`, `appointmentPeriods`, `appointmentResponsibleFilters`, `minAppointmentSearchLength`, `defaultSortMode`, `appointmentActionErrorKey`; e as da tela de Usuários: `userApiErrorOf` e `utils/users/`).
 - `testUtils/`: apoio aos testes (`renderWithStore`, `mockMatchMedia`, `setViewportWidth`, e os da tela de Agendamentos: `renderAppointmentsPage`, `buildAppointmentList`, `buildAppointmentListItem`, `buildAppointmentRowView`, `appointmentTableTexts`).
 
 ## Convenções
@@ -67,7 +67,7 @@ Só pt-BR (`SUPPORTED_LANGUAGES = ["pt-BR"]`, fallback `pt-BR`). A estrutura do 
 - Testes de componente que leem a store usam `renderWithStore(ui, { preloadedState })`.
 - A busca da tela de Agendamentos fica no slice `appointmentSearch` (`state.appointmentSearch.term`, ações `searchChanged` e `searchCleared`), nunca na URL nem no `history.state`. O `accountCleared` também apaga o termo.
 - "Sair" e a sessão expirada (`onUnauthorized` registrado pelo `useSession`) despacham `api.util.resetApiState()` junto com `accountCleared`, para o cache do RTK Query (inclusive o argumento da última busca) não sobrar para a próxima conta na mesma aba.
-- Segredos digitados (token de acesso e App Secret do WhatsApp) nunca entram na store: o RTK Query guarda o argumento de cada mutation em `state.api.mutations`. Por isso o teste de conexão e o salvar usam `services/whatsapp/` sobre o cliente HTTP, e o valor digitado fica só no estado React do hook da tela até salvar, descartar ou cancelar.
+- Segredos digitados (token de acesso e App Secret do WhatsApp, senhas da tela de Usuários) nunca entram na store: o RTK Query guarda o argumento de cada mutation em `state.api.mutations`. Por isso o teste de conexão e o salvar usam `services/whatsapp/`, e criar conta e redefinir senha usam `services/users/`, sobre o cliente HTTP. O valor digitado fica só no estado React do hook da tela até salvar, descartar ou cancelar.
 
 ## Autenticação no cliente
 
@@ -103,7 +103,7 @@ Toda rota protegida é renderizada dentro do `PanelLayout`: menu lateral (`Sideb
     - Partes da lista de agendamentos, que recebem os textos já traduzidos por props: `AppointmentStatusChips`, `AppointmentListFilters`, `AppointmentSortSelect`, `AppointmentTable` (com `AppointmentSortHeader`, `AppointmentRow` e `AppointmentCompactRow`), `AppointmentProtocolLink` e `AppointmentClaimButton`.
     - Seções do detalhe do agendamento, que também recebem os textos prontos por props: `AppointmentDetailHeader`, `AppointmentFacts` (com `AppointmentFact`), `AppointmentDocuments` (com `AppointmentDocumentGroup`), `AppointmentTimeline` (com `AppointmentTimelineStep`), `AppointmentHistory` (com `AppointmentHistoryEntry`) e `AppointmentActions` (com `AppointmentActionItem`).
     - `LastChangeNote`: "Última alteração por [nome] em [data]". Recebe `{ changedBy, changedAt }`, com `changedAt` em ISO 8601 com fuso, e mostra a data em dd/mm/aaaa no fuso de Brasília por `utils/formatDate.ts`. Sem alteração ou com data inválida, não mostra nada. O `formatDate` também aceita data sem hora (`AAAA-MM-DD`, como uma coluna `DATE`) e a formata como está, sem conversão de fuso.
-- Telas liberadas no menu (`navigation/navItemsReady.ts`): Agendamentos (#85) e WhatsApp (#54). O detalhe do agendamento (`/agendamentos/:id`, #86) abre pela lista. As outras rotas continuam com "Em construção" até a issue de cada tela.
+- Telas liberadas no menu (`navigation/navItemsReady.ts`): Agendamentos (#85), Usuários (#123) e WhatsApp (#54). O detalhe do agendamento (`/agendamentos/:id`, #86) abre pela lista. As outras rotas continuam com "Em construção" até a issue de cada tela.
 - Prévia: com `npm run dev`, a rota `/dev/layout` mostra o layout com uma conta Admin de exemplo e um exemplo de cada componente. Ela só existe em desenvolvimento e não entra no build de produção, nem os textos dela.
 
 ## Tela de Agendamentos
@@ -131,6 +131,16 @@ Rota `/agendamentos/:id`, para quem tem Ver ou Gerenciar agendamentos (e o Admin
 - Quem só vê agendamentos vê tudo, sem botões, com "Sua conta pode apenas visualizar agendamentos." num Pendente ou Confirmado.
 - A partir de 1200 px a tela tem duas colunas; abaixo, as seções empilham.
 - Fora desta tela por enquanto: atribuir, observações internas e corrigir registro (#87), cancelar e "Tentar novamente" do aviso ao cidadão (#67) e o link da sessão de origem (#72).
+
+## Tela de Usuários
+
+Rota `/usuarios`, para quem tem "Gerenciar usuários" (e o Admin). A página `pages/Users.page.tsx` só renderiza; a lógica fica em `pages/hooks/useUsers.ts`, que junta `useUserDraft.ts` (rascunho, redistribuição e salvar) e `useUserViews.ts` (textos da lista, do painel, da barra e da janela). Os formulários das janelas ficam em `useCreateAccountForm.ts` e `useResetPasswordForm.ts`. Os textos ficam no namespace `users`, e as partes da tela (`components/UserAccount*.tsx`, `UserPermissionItem`, `CreateAccountDialog`, `ResetPasswordDialog` e `ReassignmentDialog`) recebem os textos já traduzidos por props.
+
+- Endpoints em `store/api/users.api.ts`: `getUsers` (tag `UserList`), `saveUserChanges` (`PATCH /api/v1/users`) e `getFutureAppointments`. Salvar grava `items` e `lastChange` da resposta no cache de `getUsers`, sem novo `GET`, e só invalida `AppointmentList`, `AppointmentPendingCount` e `Appointment` quando `redistributed > 0`. Criar conta invalida `UserList` e seleciona a conta nova.
+- As regras ficam em funções puras de `utils/users/`: a cascata "Gerenciar agendamentos inclui Ver agendamentos" (`applyPermissionToggle`), o rascunho por conta (`updateDraftEntry`, `effectiveAccounts`, `pruneReassignments`), os bloqueios contra escalada (`permissionLocks`, `accountLocks`), a lista da barra (`draftChangeList`) e o corpo do lote (`buildAccountBatch`, um item por conta alterada em ordem de `userId`, com `permissions` e `active` só quando mudaram).
+- Desativar uma conta ativa, ou tirar "Gerenciar agendamentos" de uma conta ativa, consulta `GET /api/v1/users/:id/future-appointments` sempre de novo (sem cache). Lista vazia aplica a mudança; senão abre a janela de redistribuição, e a escolha entra no rascunho. A conta que volta a poder atender perde a redistribuição do rascunho.
+- Os erros da API viram mensagem por `utils/userApiErrorOf.ts`, a partir do `code` (nunca do texto do servidor). Um erro com `details.userId` seleciona a conta; `REASSIGNMENT_REQUIRED` reabre a janela de redistribuição; o 401 não mostra mensagem.
+- A partir de 1200 px a lista e o painel ficam lado a lado; abaixo, empilham.
 
 ## Tela de WhatsApp
 

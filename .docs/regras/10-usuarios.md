@@ -10,7 +10,7 @@ Criar as contas da equipe e definir o que cada pessoa pode fazer no painel.
 
 ## Estado da tela
 
-**Backend pronto (#62), tela pendente (#123).** A API `/api/v1/users` lista e cria contas, salva as mudanças de várias contas de uma vez (permissões e ativar/desativar, com a redistribuição dos agendamentos futuros), redefine a senha e lista os agendamentos futuros de uma conta. As regras desta tela são validadas no servidor, com um código de erro para cada uma (contrato em `src/backend/README.md`, seção "Contas e permissões"). A tela ainda aparece como "Em construção".
+**Pronta (#123), sobre a API da #62.** A tela lista e cria contas, marca as permissões uma a uma, desativa e reativa, redefine a senha de outra conta e abre "Alterar minha senha" na própria conta. As mudanças de permissões e de ativo/inativo ficam pendentes até "Salvar alterações" e vão juntas num único envio, com a redistribuição dos agendamentos futuros escolhida na janela. As regras de segurança aparecem na tela (permissões e botões bloqueados com o aviso) e são validadas de novo no servidor, que devolve um código de erro para cada uma; a tela mostra cada código como mensagem em português e seleciona a conta que falhou (contrato em `src/backend/README.md`, seção "Contas e permissões").
 
 ## O que a tela mostra
 
@@ -54,7 +54,7 @@ Estas regras existem para impedir que alguém aumente o próprio acesso. **São 
 
 ## Quando a conta é responsável por agendamentos
 
-Ao **desativar** uma conta, ou ao **tirar dela "Gerenciar agendamentos"**, se ela for responsável por agendamentos Pendentes ou Confirmados **futuros**, abre a janela **"Esta conta é responsável por N agendamentos futuros"** com a lista e duas opções:
+Ao **desativar** uma conta, ou ao **tirar dela "Gerenciar agendamentos"**, se ela for responsável por agendamentos Confirmados **futuros** (um Pendente nunca tem responsável), abre a janela **"Esta conta é responsável por N agendamentos futuros"** com a lista e duas opções:
 
 - **Voltar para Pendente sem responsável**;
 - **Atribuir a outro funcionário**, escolhendo entre as contas ativas com "Gerenciar agendamentos".
