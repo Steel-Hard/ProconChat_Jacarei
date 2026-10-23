@@ -1,0 +1,180 @@
+{
+    "meta": {
+        "title": "Usuários - ProconChat"
+    },
+    "heading": "Usuários",
+    "subtitle": "Cada conta tem suas próprias permissões, marcadas uma a uma.",
+    "actions": {
+        "create": "Criar conta",
+        "resetPassword": "Redefinir senha",
+        "deactivate": "Desativar conta",
+        "reactivate": "Reativar conta",
+        "changeMyPassword": "Alterar minha senha"
+    },
+    "list": {
+        "label": "Contas",
+        "admin": "ADMIN",
+        "allPermissions": "Todas as permissões",
+        "permissionCount": "{{count}} de {{total}} permissões",
+        "summary": "{{email}} · {{permissions}}",
+        "lastLogin": "Último acesso em {{date}} às {{time}}",
+        "neverLoggedIn": "Nunca acessou",
+        "active": "Ativo",
+        "inactive": "Inativo",
+        "unsaved": "Não salvo"
+    },
+    "account": {
+        "permissionsChanged": "Permissões alteradas por {{name}} em {{date}}",
+        "permissionsNeverChanged": "Permissões ainda não alteradas",
+        "permissionsHeading": "Permissões",
+        "includesView": "Inclui Ver agendamentos",
+        "adminNote": "Conta admin: possui todas as permissões e acesso exclusivo à tela de WhatsApp. Não pode ser desativada nem ter permissões removidas.",
+        "adminPasswordNote": "Se a senha da conta Admin for esquecida, a redefinição é feita pela equipe técnica diretamente no servidor.",
+        "selfNote": "Você não pode alterar a própria conta. Peça a outro usuário com a permissão Gerenciar usuários.",
+        "outranksNote": "Esta conta tem permissões que você não possui. Redefinir senha e desativar ficam indisponíveis.",
+        "locks": {
+            "self": "Você não pode alterar a própria conta",
+            "outranks": "Esta conta tem permissões que você não possui",
+            "lacks": "Você não possui esta permissão",
+            "cascade": "Desmarcar remove também Gerenciar agendamentos, que você não possui"
+        }
+    },
+    "permissions": {
+        "appointments": {
+            "view": {
+                "name": "Ver agendamentos",
+                "description": "Consultar a lista, o calendário e o detalhe dos agendamentos."
+            },
+            "manage": {
+                "name": "Gerenciar agendamentos",
+                "description": "Assumir, atribuir, marcar como atendido, cancelar e registrar observações internas."
+            }
+        },
+        "content": {
+            "manage": {
+                "name": "Gerenciar conteúdo do chatbot",
+                "description": "Editar categorias e perguntas e ativar ou desativar itens."
+            }
+        },
+        "schedule": {
+            "configure": {
+                "name": "Configurar atendimento presencial",
+                "description": "Definir grade semanal, duração, vagas, janela de agendamento, datas bloqueadas, dados da unidade e lembrete."
+            }
+        },
+        "documents": {
+            "configure": {
+                "name": "Configurar documentos para atendimento presencial",
+                "description": "Editar as listas de documentos pedidos ao titular e ao representante."
+            }
+        },
+        "sessions": {
+            "view": {
+                "name": "Ver sessões",
+                "description": "Consultar, somente leitura, os passos percorridos nas conversas do chatbot."
+            }
+        },
+        "reports": {
+            "view": {
+                "name": "Ver relatórios",
+                "description": "Acessar indicadores de uso e exportar relatórios em PDF, Excel ou CSV."
+            }
+        },
+        "users": {
+            "manage": {
+                "name": "Gerenciar usuários",
+                "description": "Criar contas, ativar ou desativar e editar permissões."
+            }
+        }
+    },
+    "dialogs": {
+        "create": {
+            "title": "Criar conta",
+            "name": "Nome",
+            "email": "E-mail",
+            "emailPlaceholder": "nome@jacarei.sp.gov.br",
+            "password": "Senha inicial",
+            "passwordPlaceholder": "Mínimo de 8 caracteres",
+            "note": "Informe a senha inicial diretamente ao funcionário. A conta é criada sem permissões.",
+            "confirm": "Criar conta",
+            "cancel": "Cancelar",
+            "errors": {
+                "emailInUse": "Este e-mail já está em uso por outra conta.",
+                "tooShort": "A senha deve ter no mínimo 8 caracteres.",
+                "tooLong": "A senha é longa demais."
+            }
+        },
+        "reset": {
+            "title": "Redefinir senha de {{name}}",
+            "description": "Defina uma nova senha inicial e informe-a pessoalmente ao funcionário. A senha anterior deixa de funcionar imediatamente.",
+            "password": "Nova senha inicial",
+            "passwordPlaceholder": "Mínimo de 8 caracteres",
+            "confirmPassword": "Confirmar senha",
+            "confirm": "Redefinir senha",
+            "cancel": "Cancelar",
+            "errors": {
+                "tooShort": "A senha deve ter no mínimo 8 caracteres.",
+                "tooLong": "A senha é longa demais.",
+                "mismatch": "As senhas não coincidem."
+            }
+        },
+        "reassignment": {
+            "title_one": "Esta conta é responsável por {{count}} agendamento futuro",
+            "title_other": "Esta conta é responsável por {{count}} agendamentos futuros",
+            "deactivate": "{{name}} será desativada.",
+            "manageRemoved": "{{name}} perderá a permissão Gerenciar agendamentos.",
+            "choose_one": "Escolha o que acontece com este agendamento. A mudança só vale ao salvar.",
+            "choose_other": "Escolha o que acontece com estes agendamentos. A mudança só vale ao salvar.",
+            "listLabel": "Agendamentos futuros",
+            "when": "{{date}} às {{time}}",
+            "optionsLabel": "O que acontece com os agendamentos",
+            "pending": "Voltar para Pendente sem responsável",
+            "assign": "Atribuir a outro funcionário",
+            "assignTo": "Funcionário que recebe os agendamentos",
+            "noTargets": "Nenhuma outra conta ativa tem Gerenciar agendamentos.",
+            "historyNote": "A mudança fica registrada no histórico de cada agendamento ao salvar.",
+            "back": "Voltar",
+            "continue": "Continuar"
+        }
+    },
+    "changes": {
+        "grant": "{{name}}: conceder {{permission}}",
+        "revoke": "{{name}}: remover {{permission}}",
+        "deactivate": "{{name}}: desativar conta",
+        "reactivate": "{{name}}: reativar conta",
+        "redistributed": "{{count}} agendamento(s) redistribuído(s)"
+    },
+    "toasts": {
+        "saved": "Alterações de usuários salvas.",
+        "savedWithRedistribution_one": "Alterações de usuários salvas. {{count}} agendamento redistribuído.",
+        "savedWithRedistribution_other": "Alterações de usuários salvas. {{count}} agendamentos redistribuídos.",
+        "created": "Conta criada sem permissões. Marque as permissões abaixo.",
+        "passwordReset": "Senha de {{name}} redefinida. Informe-a pessoalmente."
+    },
+    "errors": {
+        "codes": {
+            "EMAIL_ALREADY_IN_USE": "Este e-mail já está em uso por outra conta.",
+            "SELF_ACCOUNT_LOCKED": "Você não pode alterar a própria conta. Peça a outro usuário com a permissão Gerenciar usuários.",
+            "TARGET_HAS_MORE_PERMISSIONS": "Esta conta tem permissões que você não possui.",
+            "PERMISSION_NOT_HELD": "{{name}}: você não pode conceder nem remover uma permissão que não tem.",
+            "ADMIN_ACCOUNT_LOCKED": "A conta Admin não pode ser alterada pelo painel.",
+            "NOT_FOUND": "A conta não foi encontrada. Recarregue a página.",
+            "REASSIGNMENT_REQUIRED": "{{name}} passou a ter agendamentos futuros. Escolha o que acontece com eles.",
+            "INVALID_REASSIGNMENT_TARGET": "{{name}}: o funcionário escolhido para receber os agendamentos não pode mais atendê-los. Escolha outro.",
+            "REASSIGNMENT_TARGET_BUSY": "O funcionário escolhido já tem um agendamento no horário do protocolo {{protocol}} (conflito com {{conflictingProtocol}}). Escolha outro ou volte para Pendente."
+        },
+        "forbidden": "Você não tem mais permissão para gerenciar usuários.",
+        "badRequest": {
+            "create": "Confira os dados: nome e e-mail válidos, senha de 8 a 72 caracteres.",
+            "reset": "A nova senha não foi aceita. Use de 8 a 72 caracteres.",
+            "save": "As alterações não foram aceitas. Descarte e tente de novo."
+        },
+        "failed": {
+            "save": "Não foi possível salvar as alterações. Tente de novo.",
+            "create": "Não foi possível criar a conta. Tente de novo.",
+            "reset": "Não foi possível redefinir a senha. Tente de novo.",
+            "load": "Não foi possível carregar as contas agora. Tente de novo.",
+            "future": "Não foi possível consultar os agendamentos futuros da conta. Tente de novo."
+        }
+    }
+}
