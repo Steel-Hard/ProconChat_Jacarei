@@ -19,6 +19,7 @@ import type { AppointmentDetailRecord } from "../types/appointment.types"
 import { sessionTokens } from "../utils/sessionToken"
 import ConflictError from "../errors/ConflictError"
 import type { AppointmentActionCall, AppointmentCorrectionWarning } from "../repositories/mock/appointmentStub.repository"
+import type { AppointmentCalendarService } from "../services/appointmentCalendar.service"
 import { AppointmentRoutes } from "./appointment.routes"
 
 const authUsers = new MockAuthRepository([
@@ -148,19 +149,29 @@ describe("appointment.routes (HTTP)", () => {
         listBySession: vi.fn().mockResolvedValue([]),
     }
 
+    const calendarResult = {
+        weekStart: "2026-10-18",
+        weekEnd: "2026-10-24",
+        weekStartDay: 0,
+        days: [],
+        appointments: [],
+    }
+    const calendar: AppointmentCalendarService = { getCalendar: vi.fn().mockResolvedValue(calendarResult) }
+
     function buildApp(conversationEvents: ConversationEventService): express.Express {
         const authMiddleware = createRequireAuth({ users: authUsers, tokens: sessionTokens })
         const built = express()
         built.use(express.json())
         built.use(
             "/api/v1/appointments",
-            new AppointmentRoutes({ repository, conversationEvents, authMiddleware }).getRouter(),
+            new AppointmentRoutes({ repository, conversationEvents, authMiddleware, calendar }).getRouter(),
         )
         built.use(errorHandler)
         return built
     }
 
     beforeEach(() => {
+        vi.mocked(calendar.getCalendar).mockClear()
         vi.useFakeTimers({ toFake: ["Date"] })
         vi.setSystemTime(FIXED_NOW)
         repository = routesScenario()
@@ -886,6 +897,40 @@ describe("appointment.routes (HTTP)", () => {
             const res = await request(app)[method]("/api/v1/appointments/1/notes/1").set("Cookie", accessCookieFor(1))
 
             expect(res.status).toBe(404)
+        })
+    })
+
+    describe("Calendário semanal (GET /calendar)", () => {
+        it("devolve o calendário com os filtros e a conta logada, sem cair no validador de id", async () => {
+            const res = await request(app)
+                .get("/api/v1/appointments/calendar?date=2026-10-21&status=CANCELED&responsible=me")
+                .set("Cookie", accessCookieFor(5))
+
+            expect(res.status).toBe(200)
+            expect(res.body).toEqual({ data: calendarResult })
+            expect(calendar.getCalendar).toHaveBeenCalledWith({
+                date: "2026-10-21",
+                status: "CANCELED",
+                responsible: "me",
+                currentUserId: 5,
+            })
+        })
+
+        it("retorna 400 para data inválida", async () => {
+            const res = await request(app)
+                .get("/api/v1/appointments/calendar?date=2026-02-30")
+                .set("Cookie", accessCookieFor(5))
+
+            expect(res.status).toBe(400)
+            expect(res.body.error.code).toBe("BAD_REQUEST")
+            expect(calendar.getCalendar).not.toHaveBeenCalled()
+        })
+
+        it("retorna 403 FORBIDDEN para a conta sem appointments.view", async () => {
+            const res = await request(app).get("/api/v1/appointments/calendar").set("Cookie", accessCookieFor(6))
+
+            expect(res.status).toBe(403)
+            expect(res.body.error.code).toBe("FORBIDDEN")
         })
     })
 })

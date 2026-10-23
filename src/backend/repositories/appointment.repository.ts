@@ -22,11 +22,13 @@ import {
     AppointmentListItem,
     AppointmentNote,
     AppointmentStatus,
+    CalendarFilters,
     ConversationTimelineStep,
     CorrectionHistoryEvent,
     CorrectionResult,
     CorrectionWarning,
     StaffMember,
+    WeekAppointmentRecord,
 } from "../types/appointment.types"
 import { cleanCpf, hashCpf } from "../utils/cpf.utils"
 import {
@@ -73,6 +75,18 @@ function periodCondition(
     }
     params.push(todayBounds.start)
     return `a.appointment_datetime < $${params.length}`
+}
+
+function statusCondition(status: AppointmentListFilters["status"], now: Date, params: unknown[]): string | null {
+    if (!status || status === "all") {
+        return null
+    }
+    if (status === "waiting_record") {
+        params.push(now)
+        return `a.status = 'CONFIRMED' AND a.appointment_datetime < $${params.length}`
+    }
+    params.push(status)
+    return `a.status = $${params.length}`
 }
 
 function responsibleCondition(filters: AppointmentListFilters, params: unknown[]): string | null {
@@ -347,6 +361,49 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
 
         getCurrentDocumentsConfig,
 
+        async findWeek(
+            from: Date,
+            to: Date,
+            filters: CalendarFilters,
+            now: Date = new Date(),
+        ): Promise<WeekAppointmentRecord[]> {
+            const params: unknown[] = [from, to]
+            const conditions = ["a.appointment_datetime >= $1", "a.appointment_datetime < $2"]
+            const status = statusCondition(filters.status, now, params)
+            if (status) {
+                conditions.push(status)
+            }
+            const responsible = responsibleCondition(filters, params)
+            if (responsible) {
+                conditions.push(responsible)
+            }
+            const result = await pool.query<{
+                id: string
+                protocol: string
+                short_name: string
+                appointment_datetime: Date
+                status: AppointmentStatus
+                assigned_user_id: string | null
+                off_grid: boolean
+            }>(
+                `SELECT a.id, ${PROTOCOL_SQL} AS protocol, split_part(btrim(a.name), ' ', 1) AS short_name,
+                        a.appointment_datetime, a.status, a.assigned_user_id, a.off_grid
+                 FROM Appointments a
+                 WHERE ${conditions.join(" AND ")}
+                 ORDER BY a.appointment_datetime ASC, a.id ASC`,
+                params,
+            )
+            return result.rows.map((row) => ({
+                id: String(row.id),
+                protocol: row.protocol,
+                shortName: row.short_name,
+                appointmentDatetime: new Date(row.appointment_datetime),
+                status: row.status,
+                assigned_user_id: row.assigned_user_id === null ? null : String(row.assigned_user_id),
+                off_grid: row.off_grid,
+            }))
+        },
+
         async findStaff(): Promise<StaffMember[]> {
             const result = await pool.query<{ id: string; name: string; active: boolean }>(
                 `SELECT u.id, u.name, u.active
@@ -570,16 +627,9 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                     paramIndex += 2
                 }
             } else {
-                if (filters.status && filters.status !== "all") {
-                    if (filters.status === "waiting_record") {
-                        conditions.push(
-                            `a.status = 'CONFIRMED' AND a.appointment_datetime < $${paramIndex++}`,
-                        )
-                        params.push(now)
-                    } else {
-                        conditions.push(`a.status = $${paramIndex++}`)
-                        params.push(filters.status)
-                    }
+                const status = statusCondition(filters.status, now, params)
+                if (status) {
+                    conditions.push(status)
                 }
 
                 const period = periodCondition(filters.period, now, params)

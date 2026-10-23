@@ -7,8 +7,10 @@ import type {
     AppointmentListFilters,
     AppointmentListItem,
     CorrectionResult,
+    CalendarFilters,
     CorrectionWarning,
     StaffMember,
+    WeekAppointmentRecord,
 } from "../../types/appointment.types"
 import type { AppointmentRepository } from "../appointment.repository.interface"
 import { buildChipCounts } from "./appointment.builders"
@@ -53,6 +55,7 @@ export interface AppointmentStubScenario {
     list?: AppointmentStubList
     pendingCount?: number
     staff?: StaffMember[]
+    week?: WeekAppointmentRecord[]
     titles?: AppointmentStubTitles
     afterAction?: AppointmentAfterAction
     failAction?: AppointmentFailAction
@@ -63,10 +66,12 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
     public readonly findListCalls: { filters: AppointmentListFilters; now: Date | undefined }[] = []
     public readonly actionCalls: AppointmentActionCall[] = []
     public readonly noteCalls: AppointmentNoteCall[] = []
+    public readonly findWeekCalls: { from: Date; to: Date; filters: CalendarFilters; now: Date | undefined }[] = []
     private details: AppointmentDetailRecord[]
     private readonly list: AppointmentStubList
     private readonly pendingCount: number
     private readonly staff: StaffMember[]
+    private readonly week: WeekAppointmentRecord[]
     private readonly titles: AppointmentStubTitles
     private readonly afterAction: AppointmentAfterAction | undefined
     private readonly failAction: AppointmentFailAction | undefined
@@ -77,6 +82,7 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
         this.list = scenario.list ?? { items: [], total: 0, chipCounts: buildChipCounts() }
         this.pendingCount = scenario.pendingCount ?? 0
         this.staff = scenario.staff ?? []
+        this.week = scenario.week ?? []
         this.titles = scenario.titles ?? { categories: {}, questions: {} }
         this.afterAction = scenario.afterAction
         this.failAction = scenario.failAction
@@ -90,6 +96,11 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
 
     async countPending(): Promise<number> {
         return this.pendingCount
+    }
+
+    async findWeek(from: Date, to: Date, filters: CalendarFilters, now?: Date): Promise<WeekAppointmentRecord[]> {
+        this.findWeekCalls.push({ from, to, filters: structuredClone(filters), now })
+        return structuredClone(this.week)
     }
 
     async findStaff(): Promise<StaffMember[]> {

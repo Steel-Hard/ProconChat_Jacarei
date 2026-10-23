@@ -97,3 +97,20 @@ export const addNoteBodySchema = z.object({
 })
 
 export type AddNoteBody = z.infer<typeof addNoteBodySchema>
+
+function isCalendarDate(value: string): boolean {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        return false
+    }
+    const [y, m, d] = value.split("-").map(Number)
+    const date = new Date(Date.UTC(y!, m! - 1, d!))
+    return date.toISOString().slice(0, 10) === value
+}
+
+export const calendarQuerySchema = z.object({
+    date: z.string().trim().refine(isCalendarDate, { message: "Data inválida. Use AAAA-MM-DD" }).optional(),
+    status: listAppointmentsQuerySchema.shape.status,
+    responsible: listAppointmentsQuerySchema.shape.responsible,
+})
+
+export type CalendarQuery = z.infer<typeof calendarQuerySchema>

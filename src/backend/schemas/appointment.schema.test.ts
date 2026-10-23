@@ -4,6 +4,7 @@ import {
     appointmentIdParamSchema,
     listAppointmentsQuerySchema,
     addNoteBodySchema,
+    calendarQuerySchema,
     updateStatusBodySchema,
 } from "./appointment.schema"
 
@@ -163,6 +164,28 @@ describe("appointment.schema", () => {
             { label: "sem texto", body: {} },
         ])("rejeita texto $label", ({ body }) => {
             expect(() => validateSchema(addNoteBodySchema, body)).toThrow("Dados inválidos")
+        })
+    })
+
+    describe("calendarQuerySchema", () => {
+        it("aceita data válida e aplica os padrões de status e responsável", () => {
+            expect(validateSchema(calendarQuerySchema, { date: "2026-10-21" })).toEqual({
+                date: "2026-10-21",
+                status: "all",
+                responsible: "all",
+            })
+            expect(validateSchema(calendarQuerySchema, {})).toEqual({ status: "all", responsible: "all" })
+        })
+
+        it("aceita os mesmos filtros de status e responsável da lista", () => {
+            expect(validateSchema(calendarQuerySchema, { status: "CANCELED", responsible: "12" })).toEqual({
+                status: "CANCELED",
+                responsible: "12",
+            })
+        })
+
+        it.each(["2026-02-30", "21/10/2026", "2026-13-01", "amanha"])("rejeita a data %s", (date) => {
+            expect(() => validateSchema(calendarQuerySchema, { date })).toThrow("Dados inválidos")
         })
     })
 })

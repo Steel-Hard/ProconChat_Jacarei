@@ -227,3 +227,53 @@ export interface CorrectionWarning {
 export interface CorrectionResult {
     warning: CorrectionWarning | null
 }
+
+export interface WeekAppointmentRecord {
+    id: string
+    protocol: string
+    shortName: string
+    appointmentDatetime: Date
+    status: AppointmentStatus
+    assigned_user_id: string | null
+    off_grid: boolean
+}
+
+export interface CalendarFilters {
+    status?: AppointmentFilterStatus
+    responsible?: string
+    currentUserId?: number
+}
+
+export interface CalendarBlockedPeriod {
+    start: string
+    end: string
+    description: string
+}
+
+export interface CalendarDay {
+    date: string
+    blocked: {
+        fullDay: boolean
+        periods: CalendarBlockedPeriod[]
+    }
+    slots: { time: string; freeSeats: number | null }[]
+}
+
+export interface CalendarAppointment {
+    id: string
+    protocol: string
+    shortName: string
+    date: string
+    time: string
+    status: AppointmentStatus
+    assigned_user_id: string | null
+    off_grid: boolean
+}
+
+export interface AppointmentCalendar {
+    weekStart: string
+    weekEnd: string
+    weekStartDay: number
+    days: CalendarDay[]
+    appointments: CalendarAppointment[]
+}

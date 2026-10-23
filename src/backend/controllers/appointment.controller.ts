@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express"
 import { appointmentService as defaultAppointmentService, AppointmentService } from "../services/appointment.service"
-import { AddNoteBody, ListAppointmentsQuery, UpdateStatusBody } from "../schemas/appointment.schema"
+import { AddNoteBody, CalendarQuery, ListAppointmentsQuery, UpdateStatusBody } from "../schemas/appointment.schema"
+import { AppointmentCalendarService } from "../services/appointmentCalendar.service"
 import { AppointmentListFilters } from "../types/appointment.types"
 import UnauthorizedError from "../errors/UnauthorizedError"
 import { ActionAccess } from "../services/appointmentTransitions"
@@ -12,13 +13,16 @@ function accessOf(user: AuthenticatedUser | undefined): ActionAccess {
 
 interface AppointmentControllerDependencies {
     service: AppointmentService
+    calendar?: AppointmentCalendarService
 }
 
 class AppointmentController {
     private service: AppointmentService
+    private calendar: AppointmentCalendarService | undefined
 
-    constructor({ service }: AppointmentControllerDependencies = { service: defaultAppointmentService }) {
+    constructor({ service, calendar }: AppointmentControllerDependencies = { service: defaultAppointmentService }) {
         this.service = service
+        this.calendar = calendar
     }
 
     public async listAppointments(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -113,6 +117,24 @@ class AppointmentController {
             }
             const result = await this.service.addNote(id, req.authUser.id, text, accessOf(req.authUser))
             res.status(201).json({ data: result })
+        } catch (error) {
+            next(error)
+        }
+    }
+
+    public async getCalendar(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            if (!this.calendar) {
+                throw new Error("Calendário não configurado")
+            }
+            const query = req.query as unknown as CalendarQuery
+            const result = await this.calendar.getCalendar({
+                date: query.date,
+                status: query.status,
+                responsible: query.responsible,
+                currentUserId: req.authUser?.id,
+            })
+            res.status(200).json({ data: result })
         } catch (error) {
             next(error)
         }
