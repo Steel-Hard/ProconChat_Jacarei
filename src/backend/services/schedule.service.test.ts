@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { IScheduleRepository } from "../repositories/schedule.repository.interface"
-import { createScheduleService, IScheduleService } from "./schedule.service"
+import { createScheduleService, freeSlotStartsOfDay, IScheduleService } from "./schedule.service"
 import {
     buildScheduleSettings,
     fullDayBlock,
@@ -155,5 +155,15 @@ describe("ScheduleService", () => {
         const slots = await service.getAvailableSlots(now)
 
         expect(slots).toEqual([])
+    })
+
+    describe("freeSlotStartsOfDay", () => {
+        it("gera os inícios da grade do dia em minutos e tira os horários com bloqueio", () => {
+            expect(freeSlotStartsOfDay("2026-10-21", defaultRanges, [], 30)).toEqual([480, 510, 540, 570])
+            expect(
+                freeSlotStartsOfDay("2026-10-21", defaultRanges, [partialBlock("2026-10-21", "08:00:00", "09:00:00")], 30),
+            ).toEqual([540, 570])
+            expect(freeSlotStartsOfDay("2026-10-24", defaultRanges, [], 30)).toEqual([])
+        })
     })
 })

@@ -20,8 +20,8 @@ A referência visual é o protótipo navegável aprovado no Claude Design, copia
 | [00-regras-gerais.md](00-regras-gerais.md) | Regras que valem para o painel inteiro: permissões, salvar/descartar, dados pessoais, mensagens ao cidadão | — |
 | [01-login-e-conta.md](01-login-e-conta.md) | Login, "Minha conta" e menu | Entregue (#84) |
 | [02-dashboard.md](02-dashboard.md) | Dashboard | Pendente (#71) |
-| [03-agendamentos.md](03-agendamentos.md) | Agendamentos: lista, calendário e busca | Entregue (#85). Calendário semanal: #87 |
-| [04-detalhe-do-agendamento.md](04-detalhe-do-agendamento.md) | Detalhe do agendamento | Entregue (#86). Atribuir, observações internas e corrigir registro: #87. Cancelar com aviso ao cidadão: #67 |
+| [03-agendamentos.md](03-agendamentos.md) | Agendamentos: lista, calendário e busca | Entregue (#85). Calendário semanal: API na #87, tela na #126 |
+| [04-detalhe-do-agendamento.md](04-detalhe-do-agendamento.md) | Detalhe do agendamento | Entregue (#86). Atribuir, observações internas e corrigir registro: API na #87, tela na #126. Cancelar com aviso ao cidadão: #67 |
 | [05-relatorios.md](05-relatorios.md) | Relatórios | Pendente (#68, #73) |
 | [06-conteudo.md](06-conteudo.md) | Conteúdo do chatbot | Pendente (#63) |
 | [07-sessoes.md](07-sessoes.md) | Sessões | Pendente (#72, #76) |

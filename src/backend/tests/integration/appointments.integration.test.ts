@@ -398,6 +398,7 @@ describe("Agendamentos com Postgres (integração)", () => {
             name: "Cidadão Claim Concorrente",
             status: "PENDING",
             cpf: "66699933344",
+            appointmentDatetime: new Date("2032-01-05T16:00:00.000Z"),
         })
 
         const pool = getPool()
@@ -444,7 +445,11 @@ describe("Agendamentos com Postgres (integração)", () => {
         const pool = getPool()
         await insertConversationEvent(pool, String(sessionId), { type: "STARTED" })
         await insertConversationEvent(pool, String(sessionId), { type: "CATEGORY_CHOSEN", categoryId })
-        const apptId = await createAppointment({ name: "Cidadão Linha do Tempo", cpf: "77711144455" })
+        const apptId = await createAppointment({
+            name: "Cidadão Linha do Tempo",
+            cpf: "77711144455",
+            appointmentDatetime: new Date("2032-01-06T16:00:00.000Z"),
+        })
 
         const res = await request(app)
             .patch(`/api/v1/appointments/${apptId}/status`)
@@ -629,6 +634,7 @@ describe("Agendamentos com Postgres (integração)", () => {
             "id",
             "is_documents_config_different",
             "name",
+            "notes",
             "off_grid",
             "protocol",
             "question_id",
@@ -945,7 +951,12 @@ describe("Agendamentos com Postgres (integração)", () => {
     })
 
     it("assumir grava CONFIRMED, o responsável e o CLAIMED com quem clicou", async () => {
-        const apptId = await createAppointment({ name: "Cidadão Assumir", status: "PENDING", cpf: "31231231228" })
+        const apptId = await createAppointment({
+            name: "Cidadão Assumir",
+            status: "PENDING",
+            cpf: "31231231228",
+            appointmentDatetime: new Date("2032-01-07T16:00:00.000Z"),
+        })
 
         const res = await request(app)
             .patch(`/api/v1/appointments/${apptId}/status`)

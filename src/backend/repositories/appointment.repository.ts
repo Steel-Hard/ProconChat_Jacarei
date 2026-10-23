@@ -1,8 +1,16 @@
 import { Pool, PoolClient } from "pg"
 import getPool from "../db/connection"
+import ConflictError from "../errors/ConflictError"
 import NotFoundError from "../errors/NotFoundError"
 import { isValidAppointmentId } from "../schemas/appointment.schema"
-import { decideTransition } from "../services/appointmentTransitions"
+import { decideTransition, restoredStateAfterCorrection } from "../services/appointmentTransitions"
+import {
+    countFreeStaff,
+    findResponsibleConflict,
+    isValidResponsible,
+    ResponsibleConflict,
+} from "../services/responsibleAvailability"
+import type { RuleAccount } from "../types/userAccount.types"
 import {
     AppointmentActionType,
     AppointmentChipCounts,
@@ -10,8 +18,15 @@ import {
     AppointmentEventItem,
     AppointmentListFilters,
     AppointmentListItem,
+    AppointmentNote,
     AppointmentStatus,
+    CalendarFilters,
     ConversationTimelineStep,
+    CorrectionHistoryEvent,
+    CorrectionResult,
+    CorrectionWarning,
+    StaffMember,
+    WeekAppointmentRecord,
 } from "../types/appointment.types"
 import { cleanCpf, hashCpf } from "../utils/cpf.utils"
 import {
@@ -21,8 +36,24 @@ import {
 } from "../utils/date.utils"
 import { isDocumentsConfigDifferent } from "../utils/documents.utils"
 import { AppointmentRepository } from "./appointment.repository.interface"
+import { assignAppointment } from "./appointmentReassignment"
+import {
+    inTransaction,
+    lockAccounts,
+    orderedPermissions,
+    PROTOCOL_SQL,
+    readConfirmedAround,
+    readSlotMinutes,
+} from "./responsibleQueries"
 
 const CPF_SEARCH_PATTERN = /^[\d.\-\s]+$/
+
+interface LockedAppointment {
+    id: string
+    status: AppointmentStatus
+    assigned_user_id: string | null
+    appointment_datetime: Date
+}
 
 function periodCondition(
     period: AppointmentListFilters["period"],
@@ -48,6 +79,18 @@ function periodCondition(
     }
     params.push(todayBounds.start)
     return `a.appointment_datetime < $${params.length}`
+}
+
+function statusCondition(status: AppointmentListFilters["status"], now: Date, params: unknown[]): string | null {
+    if (!status || status === "all") {
+        return null
+    }
+    if (status === "waiting_record") {
+        params.push(now)
+        return `a.status = 'CONFIRMED' AND a.appointment_datetime < $${params.length}`
+    }
+    params.push(status)
+    return `a.status = $${params.length}`
 }
 
 function responsibleCondition(filters: AppointmentListFilters, params: unknown[]): string | null {
@@ -77,8 +120,8 @@ async function lockAndDecide(
     action: AppointmentActionType,
     id: string,
     now: Date,
-): Promise<{ status: AppointmentStatus }> {
-    const check = await client.query<{ status: AppointmentStatus; appointment_datetime: Date }>(
+): Promise<LockedAppointment> {
+    const check = await client.query<LockedAppointment>(
         "SELECT id, status, assigned_user_id, appointment_datetime FROM Appointments WHERE id = $1 FOR UPDATE",
         [id],
     )
@@ -96,6 +139,128 @@ async function lockAndDecide(
         throw decision.error
     }
     return current
+}
+
+async function readEligibleStaff(client: PoolClient): Promise<RuleAccount[]> {
+    const result = await client.query<{ id: string; is_admin: boolean; active: boolean; permissions: string[] }>(
+        `SELECT u.id, u.is_admin, u.active,
+                COALESCE((SELECT array_agg(up.permission_key::text) FROM UserPermissions up WHERE up.user_id = u.id), '{}') AS permissions
+         FROM Users u
+         WHERE u.active
+           AND (u.is_admin OR EXISTS (
+               SELECT 1 FROM UserPermissions up WHERE up.user_id = u.id AND up.permission_key = 'appointments.manage'
+           ))`,
+    )
+    return result.rows.map((row) => ({
+        id: Number(row.id),
+        isAdmin: row.is_admin,
+        active: row.active,
+        permissions: orderedPermissions(row.is_admin, row.permissions),
+    }))
+}
+
+async function readCorrectionHistory(client: PoolClient, id: string): Promise<CorrectionHistoryEvent[]> {
+    const result = await client.query<{ id: string; type: CorrectionHistoryEvent["type"]; data: Record<string, unknown>; created_at: Date }>(
+        "SELECT id, type, data, created_at FROM AppointmentEvents WHERE appointment_id = $1",
+        [id],
+    )
+    return result.rows.map((row) => ({
+        id: String(row.id),
+        type: row.type,
+        data: row.data ?? {},
+        createdAt: new Date(row.created_at),
+    }))
+}
+
+const RESPONSIBLE_BUSY_MESSAGE =
+    "O responsável anterior já tem outro agendamento neste horário. O agendamento voltou para Pendente sem responsável."
+const RESPONSIBLE_UNAVAILABLE_MESSAGE =
+    "O responsável anterior não pode mais ser responsável por agendamentos. O agendamento voltou para Pendente sem responsável."
+
+async function correctionWarning(
+    client: PoolClient,
+    appointmentId: string,
+    responsibleId: number,
+    appointmentDatetime: Date,
+    slotMinutes: number | null,
+    conflict: ResponsibleConflict,
+): Promise<CorrectionWarning> {
+    const info = await client.query<{ protocol: string; name: string }>(
+        `SELECT ${PROTOCOL_SQL} AS protocol, u.name
+         FROM Appointments a, Users u
+         WHERE a.id = $1 AND u.id = $2`,
+        [appointmentId, responsibleId],
+    )
+    const row = info.rows[0]
+    const eligible = await readEligibleStaff(client)
+    const busy = await readConfirmedAround(
+        client,
+        eligible.map((account) => account.id),
+        appointmentDatetime,
+        slotMinutes,
+    )
+    const base = {
+        appointmentId,
+        protocol: row?.protocol ?? "",
+        previousAssignedUserId: String(responsibleId),
+        previousAssignedUserName: row?.name ?? "",
+    }
+    const freeStaffCount = countFreeStaff({ eligible, appointmentDatetime, slotMinutes, busy })
+    if (conflict.reason === "BUSY") {
+        return {
+            code: "RESPONSIBLE_BUSY",
+            message: RESPONSIBLE_BUSY_MESSAGE,
+            details: {
+                ...base,
+                conflictingAppointmentId: conflict.appointmentId,
+                conflictingProtocol: conflict.protocol,
+                freeStaffCount,
+            },
+        }
+    }
+    return {
+        code: "RESPONSIBLE_UNAVAILABLE",
+        message: RESPONSIBLE_UNAVAILABLE_MESSAGE,
+        details: { ...base, freeStaffCount },
+    }
+}
+
+function invalidAssigneeError(): ConflictError {
+    return new ConflictError("O funcionário escolhido não pode ser responsável por agendamentos", "INVALID_ASSIGNEE")
+}
+
+function assigneeBusyError(assigneeUserId: number, conflict: { appointmentId: string; protocol: string }): ConflictError {
+    return new ConflictError("O funcionário já tem outro agendamento neste horário", "ASSIGNEE_BUSY", {
+        assigneeUserId: String(assigneeUserId),
+        conflictingAppointmentId: conflict.appointmentId,
+        conflictingProtocol: conflict.protocol,
+    })
+}
+
+async function ensureActorCanTake(
+    client: PoolClient,
+    actor: RuleAccount | null,
+    appointment: LockedAppointment,
+    checkSchedule: boolean,
+): Promise<void> {
+    if (!actor || !isValidResponsible(actor)) {
+        throw invalidAssigneeError()
+    }
+    if (!checkSchedule) {
+        return
+    }
+    const appointmentDatetime = new Date(appointment.appointment_datetime)
+    const slotMinutes = await readSlotMinutes(client)
+    const conflict = findResponsibleConflict({
+        candidate: actor,
+        appointmentId: String(appointment.id),
+        appointmentDatetime,
+        slotMinutes,
+        busy: await readConfirmedAround(client, [actor.id], appointmentDatetime, slotMinutes),
+    })
+    if (conflict?.reason === "BUSY") {
+        throw assigneeBusyError(actor.id, conflict)
+    }
 }
 
 export function createAppointmentRepository(pool: Pool = getPool()): AppointmentRepository {
@@ -135,6 +300,63 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
         },
 
         getCurrentDocumentsConfig,
+
+        async findWeek(
+            from: Date,
+            to: Date,
+            filters: CalendarFilters,
+            now: Date = new Date(),
+        ): Promise<WeekAppointmentRecord[]> {
+            const params: unknown[] = [from, to]
+            const conditions = ["a.appointment_datetime >= $1", "a.appointment_datetime < $2"]
+            const status = statusCondition(filters.status, now, params)
+            if (status) {
+                conditions.push(status)
+            }
+            const responsible = responsibleCondition(filters, params)
+            if (responsible) {
+                conditions.push(responsible)
+            }
+            const result = await pool.query<{
+                id: string
+                protocol: string
+                short_name: string
+                appointment_datetime: Date
+                status: AppointmentStatus
+                assigned_user_id: string | null
+                off_grid: boolean
+            }>(
+                `SELECT a.id, ${PROTOCOL_SQL} AS protocol, split_part(btrim(a.name), ' ', 1) AS short_name,
+                        a.appointment_datetime, a.status, a.assigned_user_id, a.off_grid
+                 FROM Appointments a
+                 WHERE ${conditions.join(" AND ")}
+                 ORDER BY a.appointment_datetime ASC, a.id ASC`,
+                params,
+            )
+            return result.rows.map((row) => ({
+                id: String(row.id),
+                protocol: row.protocol,
+                shortName: row.short_name,
+                appointmentDatetime: new Date(row.appointment_datetime),
+                status: row.status,
+                assigned_user_id: row.assigned_user_id === null ? null : String(row.assigned_user_id),
+                off_grid: row.off_grid,
+            }))
+        },
+
+        async findStaff(): Promise<StaffMember[]> {
+            const result = await pool.query<{ id: string; name: string; active: boolean }>(
+                `SELECT u.id, u.name, u.active
+                 FROM Users u
+                 WHERE u.is_admin
+                    OR EXISTS (
+                        SELECT 1 FROM UserPermissions up
+                        WHERE up.user_id = u.id AND up.permission_key = 'appointments.manage'
+                    )
+                 ORDER BY u.name ASC, u.id ASC`,
+            )
+            return result.rows.map((row) => ({ id: String(row.id), name: row.name, active: row.active }))
+        },
 
         async findById(idOrCode: number | string): Promise<AppointmentDetailRecord | null> {
             const idStr = String(idOrCode).trim()
@@ -214,6 +436,29 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                 created_at: new Date(e.created_at).toISOString(),
             }))
 
+            const notesResult = await pool.query<{
+                id: string
+                author_user_id: string
+                author_user_name: string | null
+                text: string
+                created_at: Date
+            }>(
+                `SELECT n.id, n.author_user_id, u.name AS author_user_name, n.text, n.created_at
+                 FROM AppointmentNotes n
+                 LEFT JOIN Users u ON u.id = n.author_user_id
+                 WHERE n.appointment_id = $1
+                 ORDER BY n.created_at ASC, n.id ASC`,
+                [row.id],
+            )
+
+            const notes: AppointmentNote[] = notesResult.rows.map((note) => ({
+                id: String(note.id),
+                author_user_id: String(note.author_user_id),
+                author_user_name: note.author_user_name,
+                text: note.text,
+                created_at: new Date(note.created_at).toISOString(),
+            }))
+
             const timeline: ConversationTimelineStep[] = []
 
             return {
@@ -246,6 +491,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                 },
                 is_documents_config_different: isDifferent,
                 events,
+                notes,
                 timeline,
             }
         },
@@ -321,16 +567,9 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                     paramIndex += 2
                 }
             } else {
-                if (filters.status && filters.status !== "all") {
-                    if (filters.status === "waiting_record") {
-                        conditions.push(
-                            `a.status = 'CONFIRMED' AND a.appointment_datetime < $${paramIndex++}`,
-                        )
-                        params.push(now)
-                    } else {
-                        conditions.push(`a.status = $${paramIndex++}`)
-                        params.push(filters.status)
-                    }
+                const status = statusCondition(filters.status, now, params)
+                if (status) {
+                    conditions.push(status)
                 }
 
                 const period = periodCondition(filters.period, now, params)
@@ -482,7 +721,9 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             try {
                 await client.query("BEGIN")
 
-                await lockAndDecide(client, "claim", id, now)
+                const actor = (await lockAccounts(client, [actorUserId]))[0] ?? null
+                const current = await lockAndDecide(client, "claim", id, now)
+                await ensureActorCanTake(client, actor, current, true)
 
                 await client.query(
                     `UPDATE Appointments
@@ -506,6 +747,125 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             }
         },
 
+        assign(id: string, assigneeUserId: number, actorUserId: number, now: Date = new Date()): Promise<void> {
+            return inTransaction(pool, async (client) => {
+                const locked = await lockAccounts(client, [actorUserId, assigneeUserId])
+                const target = locked.find((account) => account.id === assigneeUserId) ?? null
+                const current = await lockAndDecide(client, "assign", id, now)
+                if (current.assigned_user_id !== null && Number(current.assigned_user_id) === assigneeUserId) {
+                    throw new ConflictError("O agendamento já está com este funcionário", "ALREADY_ASSIGNED_TO_USER")
+                }
+                const invalid = invalidAssigneeError()
+                if (!target) {
+                    throw invalid
+                }
+                const appointmentDatetime = new Date(current.appointment_datetime)
+                const slotMinutes = await readSlotMinutes(client)
+                const conflict = findResponsibleConflict({
+                    candidate: target,
+                    appointmentId: String(current.id),
+                    appointmentDatetime,
+                    slotMinutes,
+                    busy: await readConfirmedAround(client, [assigneeUserId], appointmentDatetime, slotMinutes),
+                })
+                if (conflict?.reason === "UNAVAILABLE") {
+                    throw invalid
+                }
+                if (conflict?.reason === "BUSY") {
+                    throw assigneeBusyError(assigneeUserId, conflict)
+                }
+                await assignAppointment(client, {
+                    appointmentId: String(current.id),
+                    assigneeUserId,
+                    actorUserId,
+                    data: { assignee_user_id: assigneeUserId },
+                    now,
+                })
+            })
+        },
+
+        correctRecord(id: string, actorUserId: number, now: Date = new Date()): Promise<CorrectionResult> {
+            return inTransaction(pool, async (client) => {
+                const before = await client.query<{ assigned_user_id: string | null }>(
+                    "SELECT assigned_user_id FROM Appointments WHERE id = $1",
+                    [id],
+                )
+                const expectedResponsible = before.rows[0]?.assigned_user_id ?? null
+                const responsibleId = expectedResponsible === null ? null : Number(expectedResponsible)
+                const locked = await lockAccounts(client, responsibleId === null ? [actorUserId] : [actorUserId, responsibleId])
+                const responsible = locked.find((account) => account.id === responsibleId) ?? null
+                const current = await lockAndDecide(client, "correct_record", id, now)
+                if (current.assigned_user_id !== expectedResponsible) {
+                    throw new ConflictError(
+                        "O agendamento mudou enquanto a correção era feita",
+                        "RECORD_NOT_CORRECTABLE",
+                    )
+                }
+                const appointmentId = String(current.id)
+                const appointmentDatetime = new Date(current.appointment_datetime)
+                const previousResponsible = current.assigned_user_id === null ? null : Number(current.assigned_user_id)
+                let target = restoredStateAfterCorrection(await readCorrectionHistory(client, appointmentId), {
+                    assignedUserId: previousResponsible,
+                })
+                let warning: CorrectionWarning | null = null
+
+                if (target.status === "CONFIRMED" && !isDatetimePast(appointmentDatetime, now)) {
+                    const slotMinutes = await readSlotMinutes(client)
+                    const conflict: ResponsibleConflict | null = responsible
+                        ? findResponsibleConflict({
+                              candidate: responsible,
+                              appointmentId,
+                              appointmentDatetime,
+                              slotMinutes,
+                              busy: await readConfirmedAround(client, [target.assignedUserId], appointmentDatetime, slotMinutes),
+                          })
+                        : { reason: "UNAVAILABLE" }
+                    if (conflict) {
+                        warning = await correctionWarning(
+                            client,
+                            appointmentId,
+                            target.assignedUserId,
+                            appointmentDatetime,
+                            slotMinutes,
+                            conflict,
+                        )
+                        target = { status: "PENDING", assignedUserId: null }
+                    }
+                }
+
+                await client.query("UPDATE Appointments SET status = $2, assigned_user_id = $3 WHERE id = $1", [
+                    appointmentId,
+                    target.status,
+                    target.assignedUserId,
+                ])
+                await client.query(
+                    `INSERT INTO AppointmentEvents (appointment_id, type, actor_user_id, data, created_at)
+                     VALUES ($1, 'RECORD_CORRECTED', $2, $3::jsonb, $4)`,
+                    [
+                        appointmentId,
+                        actorUserId,
+                        JSON.stringify({ previous_status: current.status, previous_assigned_user_id: previousResponsible }),
+                        now,
+                    ],
+                )
+                return { warning }
+            })
+        },
+
+        addNote(id: string, authorUserId: number, text: string, now: Date = new Date()): Promise<void> {
+            return inTransaction(pool, async (client) => {
+                await lockAccounts(client, [authorUserId])
+                const result = await client.query(
+                    `INSERT INTO AppointmentNotes (appointment_id, author_user_id, text, created_at)
+                     SELECT a.id, $2, $3, $4 FROM Appointments a WHERE a.id = $1`,
+                    [id, authorUserId, text, now],
+                )
+                if (result.rowCount === 0) {
+                    throw new NotFoundError("Agendamento não encontrado")
+                }
+            })
+        },
+
         async markAttended(
             id: string,
             actorUserId: number,
@@ -515,10 +875,18 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             try {
                 await client.query("BEGIN")
 
+                const actor = (await lockAccounts(client, [actorUserId]))[0] ?? null
                 const current = await lockAndDecide(client, "attended", id, now)
 
                 const isAutoClaim = current.status === "PENDING"
                 if (isAutoClaim) {
+                    await ensureActorCanTake(
+                        client,
+                        actor,
+                        current,
+                        !isDatetimePast(new Date(current.appointment_datetime), now),
+                    )
+
                     await client.query(
                         `UPDATE Appointments
                          SET status = 'CONFIRMED', assigned_user_id = $1
@@ -565,10 +933,18 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             try {
                 await client.query("BEGIN")
 
+                const actor = (await lockAccounts(client, [actorUserId]))[0] ?? null
                 const current = await lockAndDecide(client, "no_show", id, now)
 
                 const isAutoClaim = current.status === "PENDING"
                 if (isAutoClaim) {
+                    await ensureActorCanTake(
+                        client,
+                        actor,
+                        current,
+                        !isDatetimePast(new Date(current.appointment_datetime), now),
+                    )
+
                     await client.query(
                         `UPDATE Appointments
                          SET status = 'CONFIRMED', assigned_user_id = $1

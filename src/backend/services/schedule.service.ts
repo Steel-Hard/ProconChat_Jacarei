@@ -35,7 +35,7 @@ export function getDowFromDateStr(dateStr: string): number {
     return dt.getUTCDay()
 }
 
-function freeSlotStartsOfDay(
+export function freeSlotStartsOfDay(
     dateStr: string,
     ranges: ScheduleRange[],
     blockedDates: BlockedDate[],

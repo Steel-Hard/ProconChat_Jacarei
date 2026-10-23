@@ -14,6 +14,11 @@ import {
     FIXED_NOW,
 } from "../repositories/mock/appointment.builders"
 import { AppointmentRepositoryStub } from "../repositories/mock/appointmentStub.repository"
+import ConflictError from "../errors/ConflictError"
+import { createAppointmentCalendarService } from "../services/appointmentCalendar.service"
+import { buildScheduleSettings, weekdayRanges } from "../services/mock/schedule.fixtures"
+import type { CorrectionWarning } from "../types/appointment.types"
+import { parseLocalDate } from "../utils/date.utils"
 import { MockAuthRepository } from "../repositories/mock/authMock.repository"
 import { sessionTokens } from "../utils/sessionToken"
 import { AppointmentRoutes } from "./appointment.routes"
@@ -53,6 +58,7 @@ const DETAIL_KEYS = [
     "id",
     "is_documents_config_different",
     "name",
+    "notes",
     "off_grid",
     "protocol",
     "question_id",
@@ -66,7 +72,7 @@ const DETAIL_KEYS = [
 ]
 const TIMELINE_STEP_KEYS = ["created_at", "data", "generated_by_ai", "id", "type"]
 const EVENT_KEYS = ["actor_user_id", "actor_user_name", "created_at", "data", "id", "type"]
-const ACTION_KEYS = ["attended", "claim", "no_show"]
+const ACTION_KEYS = ["add_note", "assign", "attended", "claim", "correct_record", "no_show"]
 const AVAILABILITY_KEYS = ["allowed", "code"]
 const ERROR_KEYS = ["code", "message"]
 const PATCH_CONFLICT_CODES = [
@@ -76,8 +82,39 @@ const PATCH_CONFLICT_CODES = [
     "APPOINTMENT_CANCELED",
     "ATTENDANCE_NOT_YET_AVAILABLE",
     "NO_SHOW_NOT_YET_AVAILABLE",
+    "RECORD_NOT_CORRECTABLE",
+    "ALREADY_ASSIGNED_TO_USER",
+    "INVALID_ASSIGNEE",
+    "ASSIGNEE_BUSY",
 ]
+const AVAILABILITY_CODES = [...PATCH_CONFLICT_CODES, "PERMISSION_REQUIRED"]
 const FORBIDDEN_FIELDS = ["cpf_hash", "phone_encrypted", "phone_hash"]
+const NOTE_KEYS = ["author_user_id", "author_user_name", "created_at", "id", "text"]
+const STAFF_KEYS = ["active", "id", "name"]
+const CALENDAR_KEYS = ["appointments", "days", "weekEnd", "weekStart", "weekStartDay"]
+const CALENDAR_DAY_KEYS = ["blocked", "date", "slots"]
+const CALENDAR_SLOT_KEYS = ["freeSeats", "time"]
+const CALENDAR_ITEM_KEYS = ["assigned_user_id", "date", "id", "off_grid", "protocol", "shortName", "status", "time"]
+const WARNING_KEYS = ["code", "details", "message"]
+const BUSY_DETAIL_KEYS = ["assigneeUserId", "conflictingAppointmentId", "conflictingProtocol"]
+const WARNING_BASE_KEYS = ["appointmentId", "freeStaffCount", "previousAssignedUserId", "previousAssignedUserName", "protocol"]
+const BUSY_DETAILS = { assigneeUserId: "2", conflictingAppointmentId: "33", conflictingProtocol: "B71C0D2E" }
+const UNAVAILABLE_WARNING: CorrectionWarning = {
+    code: "RESPONSIBLE_UNAVAILABLE",
+    message: "O responsável anterior não pode mais ser responsável por agendamentos. O agendamento voltou para Pendente sem responsável.",
+    details: {
+        appointmentId: "4",
+        protocol: "A1B2C3D4",
+        previousAssignedUserId: "2",
+        previousAssignedUserName: "Carlos Atendente",
+        freeStaffCount: 1,
+    },
+}
+const BUSY_WARNING: CorrectionWarning = {
+    code: "RESPONSIBLE_BUSY",
+    message: "O responsável anterior já tem outro agendamento neste horário. O agendamento voltou para Pendente sem responsável.",
+    details: { ...UNAVAILABLE_WARNING.details, conflictingAppointmentId: "33", conflictingProtocol: "B71C0D2E", freeStaffCount: 0 },
+}
 
 const authUsers = new MockAuthRepository([
     {
@@ -118,13 +155,45 @@ function expectErrorEnvelope(body: unknown, code: string): void {
 
 function contractScenario(): AppointmentRepositoryStub {
     const carlos = { assigned_user_id: "2", assigned_user_name: "Carlos Atendente" }
+    const note = {
+        id: "1",
+        author_user_id: "2",
+        author_user_name: "Carlos Atendente",
+        text: "Documento conferido.",
+        created_at: FIXED_NOW.toISOString(),
+    }
     return new AppointmentRepositoryStub({
+        staff: [{ id: "2", name: "Carlos Atendente", active: true }],
+        week: [
+            {
+                id: "1",
+                protocol: "A1B2C3D4",
+                shortName: "Maria",
+                appointmentDatetime: parseLocalDate("2026-10-21", "08:30"),
+                status: "PENDING",
+                assigned_user_id: null,
+                off_grid: false,
+            },
+        ],
+        failAction: (call) => {
+            if (call.action === "assign" && call.assigneeUserId === 99) {
+                return new ConflictError("O funcionário já tem outro agendamento neste horário", "ASSIGNEE_BUSY", BUSY_DETAILS)
+            }
+            return null
+        },
+        correctionWarning: (call) => {
+            if (call.id === "4") {
+                return UNAVAILABLE_WARNING
+            }
+            return call.id === "5" ? BUSY_WARNING : null
+        },
         details: [
-            buildAppointmentDetail(),
+            buildAppointmentDetail({ notes: [note] }),
             buildAppointmentDetail({ id: "2", status: "CONFIRMED", appointment_datetime: FIXED_DATES.afterTomorrow, ...carlos }),
             buildAppointmentDetail({ id: "4", status: "ATTENDED", appointment_datetime: FIXED_DATES.threeDaysAgo, ...carlos }),
             buildAppointmentDetail({ id: "5", status: "NO_SHOW", appointment_datetime: FIXED_DATES.fourDaysAgo, ...carlos }),
             buildAppointmentDetail({ id: "6", status: "CANCELED", appointment_datetime: FIXED_DATES.inThreeDays }),
+            buildAppointmentDetail({ id: "7", status: "ATTENDED", appointment_datetime: FIXED_DATES.yesterday, ...carlos }),
         ],
         list: {
             items: [buildListItem(), buildListItem({ id: "2", status: "CONFIRMED", ...carlos })],
@@ -138,7 +207,7 @@ function contractScenario(): AppointmentRepositoryStub {
         },
         afterAction: (call, current) => ({
             ...current,
-            status: "CONFIRMED",
+            status: call.action === "correct_record" ? "PENDING" : "CONFIRMED",
             assigned_user_id: String(call.actorUserId),
             assigned_user_name: "Admin",
             events: [
@@ -173,6 +242,15 @@ describe("contrato da API de agendamentos", () => {
                 repository,
                 conversationEvents: conversationEventsOf(conversationTimelineEvents("101")),
                 authMiddleware: createRequireAuth({ users: authUsers, tokens: sessionTokens }),
+                calendar: createAppointmentCalendarService({
+                    schedule: { getAvailableSlots: async () => [] },
+                    scheduleRepository: {
+                        getSettings: async () => buildScheduleSettings(),
+                        getRanges: async () => weekdayRanges("08:00:00", "10:00:00"),
+                        getBlockedDates: async () => [],
+                    },
+                    appointments: repository,
+                }),
             }).getRouter(),
         )
         app.use(errorHandler)
@@ -186,12 +264,20 @@ describe("contrato da API de agendamentos", () => {
         return request(app).get(`/api/v1/appointments${path}`).set("Cookie", cookieFor(userId))
     }
 
-    function patch(id: number, action: string, userId = 1): request.Test {
+    function patch(id: number, action: string, userId = 1, extra: Record<string, unknown> = {}): request.Test {
         return request(app)
             .patch(`/api/v1/appointments/${id}/status`)
             .set("Origin", ORIGIN)
             .set("Cookie", cookieFor(userId))
-            .send({ action })
+            .send({ action, ...extra })
+    }
+
+    function expectBusyEnvelope(body: unknown): void {
+        expect(keysOf(body as object)).toEqual(["error"])
+        const error = (body as { error: { code: string; details: object } }).error
+        expect(keysOf(error)).toEqual(["code", "details", "message"])
+        expect(error.code).toBe("ASSIGNEE_BUSY")
+        expect(keysOf(error.details)).toEqual(BUSY_DETAIL_KEYS)
     }
 
     describe("lista", () => {
@@ -245,7 +331,7 @@ describe("contrato da API de agendamentos", () => {
             }
         })
 
-        it("available_actions traz as três ações com allowed e code", async () => {
+        it("available_actions traz as seis ações com allowed e code", async () => {
             const res = await get("/1")
 
             const actions = res.body.data.available_actions
@@ -258,6 +344,73 @@ describe("contrato da API de agendamentos", () => {
                 } else {
                     expect(PATCH_CONFLICT_CODES).toContain(actions[action].code)
                 }
+            }
+        })
+
+        it("para a conta só com appointments.view, available_actions usa só códigos documentados", async () => {
+            const res = await get("/1", 5)
+
+            const actions = res.body.data.available_actions
+            expect(keysOf(actions)).toEqual(ACTION_KEYS)
+            for (const action of ACTION_KEYS) {
+                expect(keysOf(actions[action])).toEqual(AVAILABILITY_KEYS)
+                expect(actions[action].allowed).toBe(false)
+                expect(AVAILABILITY_CODES).toContain(actions[action].code)
+            }
+        })
+    })
+
+    describe("observações", () => {
+        it("cada observação do detalhe tem exatamente as chaves documentadas", async () => {
+            const res = await get("/1")
+
+            expect(res.body.data.notes.length).toBeGreaterThan(0)
+            for (const note of res.body.data.notes) {
+                expect(keysOf(note)).toEqual(NOTE_KEYS)
+            }
+        })
+
+        it("o POST de observação devolve 201 com o detalhe completo", async () => {
+            const res = await request(app)
+                .post("/api/v1/appointments/1/notes")
+                .set("Origin", ORIGIN)
+                .set("Cookie", cookieFor(1))
+                .send({ text: "Nova observação" })
+
+            expect(res.status).toBe(201)
+            expect(keysOf(res.body)).toEqual(["data"])
+            expect(keysOf(res.body.data)).toEqual(DETAIL_KEYS)
+        })
+    })
+
+    describe("funcionários e calendário", () => {
+        it("a lista de funcionários só tem id, name e active", async () => {
+            const res = await get("/staff", 5)
+
+            expect(res.status).toBe(200)
+            expect(keysOf(res.body)).toEqual(["data"])
+            for (const member of res.body.data) {
+                expect(keysOf(member)).toEqual(STAFF_KEYS)
+            }
+        })
+
+        it("o calendário tem exatamente as chaves documentadas, com weekStartDay", async () => {
+            const res = await get("/calendar?date=2026-10-21", 5)
+
+            expect(res.status).toBe(200)
+            expect(keysOf(res.body.data)).toEqual(CALENDAR_KEYS)
+            expect(res.body.data.weekStartDay).toBe(0)
+            expect(res.body.data.days.length).toBeGreaterThan(0)
+            for (const day of res.body.data.days) {
+                expect(keysOf(day)).toEqual(CALENDAR_DAY_KEYS)
+                expect(keysOf(day.blocked)).toEqual(["description", "fullDay", "periods"])
+                for (const slot of day.slots) {
+                    expect(keysOf(slot)).toEqual(CALENDAR_SLOT_KEYS)
+                }
+            }
+            expect(res.body.data.appointments.length).toBeGreaterThan(0)
+            for (const item of res.body.data.appointments) {
+                expect(keysOf(item)).toEqual(CALENDAR_ITEM_KEYS)
             }
         })
     })
@@ -296,6 +449,53 @@ describe("contrato da API de agendamentos", () => {
                 expectErrorEnvelope(res.body, code)
                 expect(PATCH_CONFLICT_CODES).toContain(res.body.error.code)
             }
+        })
+    })
+
+    describe("atribuir, corrigir e regra de horário", () => {
+        it("o PATCH assign devolve o mesmo envelope de detalhe", async () => {
+            const res = await patch(1, "assign", 1, { assigneeUserId: 2 })
+
+            expect(res.status).toBe(200)
+            expect(keysOf(res.body)).toEqual(["data"])
+            expect(keysOf(res.body.data)).toEqual(DETAIL_KEYS)
+        })
+
+        it("o 409 ASSIGNEE_BUSY traz details com o protocolo conflitante", async () => {
+            const res = await patch(1, "assign", 1, { assigneeUserId: 99 })
+
+            expect(res.status).toBe(409)
+            expectBusyEnvelope(res.body)
+            expect(PATCH_CONFLICT_CODES).toContain(res.body.error.code)
+        })
+
+        it("a correção sem aviso responde só com data, sem a chave warning", async () => {
+            const res = await patch(7, "correct_record")
+
+            expect(res.status).toBe(200)
+            expect(keysOf(res.body)).toEqual(["data"])
+            expect(keysOf(res.body.data)).toEqual(DETAIL_KEYS)
+        })
+
+        it("a correção com RESPONSIBLE_UNAVAILABLE traz warning sem os campos do conflito", async () => {
+            const res = await patch(4, "correct_record")
+
+            expect(res.status).toBe(200)
+            expect(keysOf(res.body)).toEqual(["data", "warning"])
+            expect(keysOf(res.body.data)).toEqual(DETAIL_KEYS)
+            expect(keysOf(res.body.warning)).toEqual(WARNING_KEYS)
+            expect(res.body.warning.code).toBe("RESPONSIBLE_UNAVAILABLE")
+            expect(keysOf(res.body.warning.details)).toEqual(WARNING_BASE_KEYS)
+        })
+
+        it("a correção com RESPONSIBLE_BUSY traz warning com os campos do conflito", async () => {
+            const res = await patch(5, "correct_record")
+
+            expect(keysOf(res.body)).toEqual(["data", "warning"])
+            expect(res.body.warning.code).toBe("RESPONSIBLE_BUSY")
+            expect(keysOf(res.body.warning.details)).toEqual(
+                [...WARNING_BASE_KEYS, "conflictingAppointmentId", "conflictingProtocol"].sort(),
+            )
         })
     })
 

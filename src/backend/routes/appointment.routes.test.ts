@@ -17,6 +17,9 @@ import { MockAuthRepository } from "../repositories/mock/authMock.repository"
 import type { ConversationEventService } from "../services/conversationEvent.service"
 import type { AppointmentDetailRecord } from "../types/appointment.types"
 import { sessionTokens } from "../utils/sessionToken"
+import ConflictError from "../errors/ConflictError"
+import type { AppointmentActionCall, AppointmentCorrectionWarning } from "../repositories/mock/appointmentStub.repository"
+import type { AppointmentCalendarService } from "../services/appointmentCalendar.service"
 import { AppointmentRoutes } from "./appointment.routes"
 
 const authUsers = new MockAuthRepository([
@@ -39,6 +42,15 @@ const authUsers = new MockAuthRepository([
         sessionVersion: 1,
     },
     {
+        id: 6,
+        email: "semacesso@exemplo.test",
+        passwordHash: "x",
+        name: "Sem Acesso",
+        isAdmin: false,
+        permissions: [],
+        sessionVersion: 1,
+    },
+    {
         id: 10,
         email: "operator@exemplo.test",
         passwordHash: "x",
@@ -53,11 +65,34 @@ function accessCookieFor(userId: number, sessionVersion = 1): string {
     return `proconchat_access=${sessionTokens.signAccessToken({ userId, sessionVersion })}`
 }
 
-const STATUS_AFTER_ACTION = { claim: "CONFIRMED", attended: "ATTENDED", no_show: "NO_SHOW" } as const
-const EVENT_OF_ACTION = { claim: "CLAIMED", attended: "ATTENDED", no_show: "NO_SHOW" } as const
-const LIST_CHIPS = buildChipCounts({ all: 6, pending: 3, confirmed: 2, canceled: 1 })
+const STATUS_AFTER_ACTION = { claim: "CONFIRMED", attended: "ATTENDED", no_show: "NO_SHOW", assign: "CONFIRMED", correct_record: "CONFIRMED" } as const
+const EVENT_OF_ACTION = { claim: "CLAIMED", attended: "ATTENDED", no_show: "NO_SHOW", assign: "ASSIGNED", correct_record: "RECORD_CORRECTED" } as const
+const PERMISSION_REQUIRED = { allowed: false, code: "PERMISSION_REQUIRED" }
 
-function routesScenario(overrides: Record<string, Partial<AppointmentDetailRecord>> = {}): AppointmentRepositoryStub {
+function simpleAction(action: string): keyof typeof STATUS_AFTER_ACTION {
+    if (action === "claim" || action === "attended" || action === "no_show" || action === "assign" || action === "correct_record") {
+        return action
+    }
+    throw new Error(`Cenário incompleto: ação ${action} sem afterAction`)
+}
+const LIST_CHIPS = buildChipCounts({ all: 6, pending: 3, confirmed: 2, canceled: 1 })
+const STAFF = [
+    { id: "2", name: "Carlos Atendente", active: true },
+    { id: "11", name: "Ivone Antiga", active: false },
+]
+
+function responsibleAfter(call: AppointmentActionCall, current: AppointmentDetailRecord): string {
+    if (call.assigneeUserId !== undefined) {
+        return String(call.assigneeUserId)
+    }
+    return current.assigned_user_id ?? String(call.actorUserId)
+}
+
+function routesScenario(
+    overrides: Record<string, Partial<AppointmentDetailRecord>> = {},
+    failAction?: (call: AppointmentActionCall) => Error | null,
+    correctionWarning?: AppointmentCorrectionWarning,
+): AppointmentRepositoryStub {
     const carlos = { assigned_user_id: "2", assigned_user_name: "Carlos Atendente" }
     const details = [
         buildAppointmentDetail(),
@@ -78,26 +113,29 @@ function routesScenario(overrides: Record<string, Partial<AppointmentDetailRecor
             chipCounts: LIST_CHIPS,
         },
         pendingCount: 3,
+        staff: STAFF,
         titles: {
             categories: { 10: "Cobrança" },
             questions: { 1: "Cobrança indevida de serviço não contratado" },
         },
         afterAction: (call, current) => ({
             ...current,
-            status: STATUS_AFTER_ACTION[call.action],
-            assigned_user_id: current.assigned_user_id ?? String(call.actorUserId),
+            status: STATUS_AFTER_ACTION[simpleAction(call.action)],
+            assigned_user_id: responsibleAfter(call, current),
             events: [
                 {
                     id: String(current.events.length + 1),
-                    type: EVENT_OF_ACTION[call.action],
+                    type: EVENT_OF_ACTION[simpleAction(call.action)],
                     actor_user_id: String(call.actorUserId),
                     actor_user_name: null,
-                    data: {},
+                    data: call.assigneeUserId !== undefined ? { assignee_user_id: call.assigneeUserId } : {},
                     created_at: (call.now ?? FIXED_NOW).toISOString(),
                 },
                 ...current.events,
             ],
         }),
+        failAction,
+        correctionWarning,
     })
 }
 
@@ -111,19 +149,29 @@ describe("appointment.routes (HTTP)", () => {
         listBySession: vi.fn().mockResolvedValue([]),
     }
 
+    const calendarResult = {
+        weekStart: "2026-10-18",
+        weekEnd: "2026-10-24",
+        weekStartDay: 0,
+        days: [],
+        appointments: [],
+    }
+    const calendar: AppointmentCalendarService = { getCalendar: vi.fn().mockResolvedValue(calendarResult) }
+
     function buildApp(conversationEvents: ConversationEventService): express.Express {
         const authMiddleware = createRequireAuth({ users: authUsers, tokens: sessionTokens })
         const built = express()
         built.use(express.json())
         built.use(
             "/api/v1/appointments",
-            new AppointmentRoutes({ repository, conversationEvents, authMiddleware }).getRouter(),
+            new AppointmentRoutes({ repository, conversationEvents, authMiddleware, calendar }).getRouter(),
         )
         built.use(errorHandler)
         return built
     }
 
     beforeEach(() => {
+        vi.mocked(calendar.getCalendar).mockClear()
         vi.useFakeTimers({ toFake: ["Date"] })
         vi.setSystemTime(FIXED_NOW)
         repository = routesScenario()
@@ -181,6 +229,32 @@ describe("appointment.routes (HTTP)", () => {
 
             expect(patchRes.status).toBe(200)
             expect(patchRes.body.data.status).toBe("CONFIRMED")
+        })
+    })
+
+    describe("GET /api/v1/appointments/staff", () => {
+        it("retorna 401 sem sessão", async () => {
+            const res = await request(app).get("/api/v1/appointments/staff")
+
+            expect(res.status).toBe(401)
+        })
+
+        it("retorna 403 FORBIDDEN para a conta sem appointments.view", async () => {
+            const res = await request(app)
+                .get("/api/v1/appointments/staff")
+                .set("Cookie", accessCookieFor(6))
+
+            expect(res.status).toBe(403)
+            expect(res.body.error.code).toBe("FORBIDDEN")
+        })
+
+        it("devolve a lista de funcionários para quem tem appointments.view, sem cair no validador de id", async () => {
+            const res = await request(app)
+                .get("/api/v1/appointments/staff")
+                .set("Cookie", accessCookieFor(5))
+
+            expect(res.status).toBe(200)
+            expect(res.body).toEqual({ data: STAFF })
         })
     })
 
@@ -296,6 +370,9 @@ describe("appointment.routes (HTTP)", () => {
                     claim: { allowed: true, code: null },
                     attended: { allowed: false, code: "ATTENDANCE_NOT_YET_AVAILABLE" },
                     no_show: { allowed: false, code: "NO_SHOW_NOT_YET_AVAILABLE" },
+                    assign: { allowed: true, code: null },
+                    correct_record: { allowed: false, code: "RECORD_NOT_CORRECTABLE" },
+                    add_note: { allowed: true, code: null },
                 })
             })
 
@@ -313,6 +390,9 @@ describe("appointment.routes (HTTP)", () => {
                     claim: { allowed: false, code: "APPOINTMENT_ALREADY_CLAIMED" },
                     attended: { allowed: true, code: null },
                     no_show: { allowed: false, code: "NO_SHOW_NOT_YET_AVAILABLE" },
+                    assign: { allowed: true, code: null },
+                    correct_record: { allowed: false, code: "RECORD_NOT_CORRECTABLE" },
+                    add_note: { allowed: true, code: null },
                 })
             })
 
@@ -325,6 +405,43 @@ describe("appointment.routes (HTTP)", () => {
                     claim: { allowed: false, code: "APPOINTMENT_ALREADY_CLAIMED" },
                     attended: { allowed: true, code: null },
                     no_show: { allowed: true, code: null },
+                    assign: { allowed: true, code: null },
+                    correct_record: { allowed: false, code: "RECORD_NOT_CORRECTABLE" },
+                    add_note: { allowed: true, code: null },
+                })
+            })
+
+            it("a conta só com appointments.view recebe PERMISSION_REQUIRED nas seis ações de gerenciar", async () => {
+                const res = await request(app)
+                    .get("/api/v1/appointments/3")
+                    .set("Cookie", accessCookieFor(5))
+
+                expect(res.status).toBe(200)
+                expect(res.body.data.available_actions).toEqual({
+                    claim: PERMISSION_REQUIRED,
+                    attended: PERMISSION_REQUIRED,
+                    no_show: PERMISSION_REQUIRED,
+                    assign: PERMISSION_REQUIRED,
+                    correct_record: PERMISSION_REQUIRED,
+                    add_note: PERMISSION_REQUIRED,
+                })
+            })
+
+            it.each([
+                { label: "a conta com appointments.manage", userId: 10 },
+                { label: "o Admin", userId: 1 },
+            ])("$label recebe as ações pelas regras de status", async ({ userId }) => {
+                const res = await request(app)
+                    .get("/api/v1/appointments/4")
+                    .set("Cookie", accessCookieFor(userId))
+
+                expect(res.body.data.available_actions).toEqual({
+                    claim: { allowed: false, code: "ALREADY_ATTENDED" },
+                    attended: { allowed: false, code: "ALREADY_ATTENDED" },
+                    no_show: { allowed: false, code: "ALREADY_ATTENDED" },
+                    assign: { allowed: false, code: "ALREADY_ATTENDED" },
+                    correct_record: { allowed: true, code: null },
+                    add_note: { allowed: true, code: null },
                 })
             })
         })
@@ -531,6 +648,289 @@ describe("appointment.routes (HTTP)", () => {
 
             expect(res.status).toBe(409)
             expect(res.body.error.code).toBe("APPOINTMENT_CANCELED")
+        })
+    })
+
+    describe("Atribuir (PATCH /status com assign)", () => {
+        function assign(id: number, assigneeUserId: unknown, userId = 10): request.Test {
+            return request(app)
+                .patch(`/api/v1/appointments/${id}/status`)
+                .set("Cookie", accessCookieFor(userId))
+                .send({ action: "assign", assigneeUserId })
+        }
+
+        it("atribui um pendente a outro funcionário e devolve o detalhe confirmado com o evento ASSIGNED", async () => {
+            const res = await assign(1, 2)
+
+            expect(res.status).toBe(200)
+            expect(res.body.data.status).toBe("CONFIRMED")
+            expect(res.body.data.assigned_user_id).toBe("2")
+            expect(res.body.data.events[0]).toMatchObject({
+                type: "ASSIGNED",
+                actor_user_id: "10",
+                data: { assignee_user_id: 2 },
+            })
+            expect(repository.actionCalls).toEqual([
+                { action: "assign", id: "1", actorUserId: 10, assigneeUserId: 2, now: FIXED_NOW },
+            ])
+        })
+
+        it("atribui um confirmado a outro funcionário aceitando o id em texto", async () => {
+            const res = await assign(2, "10")
+
+            expect(res.status).toBe(200)
+            expect(res.body.data.status).toBe("CONFIRMED")
+            expect(res.body.data.assigned_user_id).toBe("10")
+            expect(repository.actionCalls[0]?.assigneeUserId).toBe(10)
+        })
+
+        it.each([
+            { id: 4, code: "ALREADY_ATTENDED" },
+            { id: 5, code: "ALREADY_NO_SHOW" },
+            { id: 6, code: "APPOINTMENT_CANCELED" },
+        ])("recusa atribuir o agendamento $id com 409 $code", async ({ id, code }) => {
+            const res = await assign(id, 2)
+
+            expect(res.status).toBe(409)
+            expect(res.body.error.code).toBe(code)
+        })
+
+        it("devolve 409 ASSIGNEE_BUSY com os detalhes do agendamento conflitante", async () => {
+            const details = { assigneeUserId: "2", conflictingAppointmentId: "33", conflictingProtocol: "B71C0D2E" }
+            repository = routesScenario({}, (call) =>
+                call.action === "assign"
+                    ? new ConflictError("O funcionário já tem outro agendamento neste horário", "ASSIGNEE_BUSY", details)
+                    : null,
+            )
+            app = buildApp(mockConversationEvents)
+
+            const res = await assign(1, 2)
+
+            expect(res.status).toBe(409)
+            expect(res.body).toEqual({
+                error: {
+                    code: "ASSIGNEE_BUSY",
+                    message: "O funcionário já tem outro agendamento neste horário",
+                    details,
+                },
+            })
+        })
+
+        it("recusa com 403 FORBIDDEN a conta só com appointments.view, sem gravar nada", async () => {
+            const res = await assign(1, 2, 5)
+
+            expect(res.status).toBe(403)
+            expect(res.body.error.code).toBe("FORBIDDEN")
+            expect(repository.actionCalls).toEqual([])
+        })
+
+        it.each([
+            { label: "sem destino", body: { action: "assign" } },
+            { label: "com destino inválido", body: { action: "assign", assigneeUserId: "abc" } },
+        ])("retorna 400 para assign $label", async ({ body }) => {
+            const res = await request(app)
+                .patch("/api/v1/appointments/1/status")
+                .set("Cookie", accessCookieFor(10))
+                .send(body)
+
+            expect(res.status).toBe(400)
+            expect(res.body.error.code).toBe("BAD_REQUEST")
+            expect(repository.actionCalls).toEqual([])
+        })
+    })
+
+    describe("Corrigir registro (PATCH /status com correct_record)", () => {
+        function correct(id: number, userId = 10): request.Test {
+            return request(app)
+                .patch(`/api/v1/appointments/${id}/status`)
+                .set("Cookie", accessCookieFor(userId))
+                .send({ action: "correct_record" })
+        }
+
+        it("corrige um atendido e devolve só o detalhe, sem a chave warning, quando não há aviso", async () => {
+            const res = await correct(4)
+
+            expect(res.status).toBe(200)
+            expect(Object.keys(res.body)).toEqual(["data"])
+            expect(res.body.data.status).toBe("CONFIRMED")
+            expect(res.body.data.events[0].type).toBe("RECORD_CORRECTED")
+            expect(repository.actionCalls).toEqual([{ action: "correct_record", id: "4", actorUserId: 10, now: FIXED_NOW }])
+        })
+
+        it("devolve o aviso estruturado ao lado do detalhe quando o responsável anterior não pôde ser restaurado", async () => {
+            const warning = {
+                code: "RESPONSIBLE_BUSY" as const,
+                message: "O responsável anterior já tem outro agendamento neste horário. O agendamento voltou para Pendente sem responsável.",
+                details: {
+                    appointmentId: "5",
+                    protocol: "A1B2C3D4",
+                    previousAssignedUserId: "2",
+                    previousAssignedUserName: "Carlos Atendente",
+                    conflictingAppointmentId: "33",
+                    conflictingProtocol: "B71C0D2E",
+                    freeStaffCount: 0,
+                },
+            }
+            repository = routesScenario({}, undefined, () => warning)
+            app = buildApp(mockConversationEvents)
+
+            const res = await correct(5)
+
+            expect(res.status).toBe(200)
+            expect(res.body.warning).toEqual(warning)
+            expect(res.body.data.id).toBe("5")
+        })
+
+        it.each([1, 2, 6])("recusa corrigir o agendamento %i com 409 RECORD_NOT_CORRECTABLE", async (id) => {
+            const res = await correct(id)
+
+            expect(res.status).toBe(409)
+            expect(res.body.error.code).toBe("RECORD_NOT_CORRECTABLE")
+        })
+
+        it("recusa com 403 FORBIDDEN a conta só com appointments.view, sem gravar nada", async () => {
+            const res = await correct(4, 5)
+
+            expect(res.status).toBe(403)
+            expect(res.body.error.code).toBe("FORBIDDEN")
+            expect(repository.actionCalls).toEqual([])
+        })
+    })
+
+    describe("Assumir e auto-claim com a regra de horário", () => {
+        it.each([
+            { action: "claim", id: 1 },
+            { action: "attended", id: 7 },
+        ])("o PATCH $action devolve 409 ASSIGNEE_BUSY com os detalhes do conflito", async ({ action, id }) => {
+            const details = { assigneeUserId: "10", conflictingAppointmentId: "33", conflictingProtocol: "B71C0D2E" }
+            repository = routesScenario({}, () =>
+                new ConflictError("O funcionário já tem outro agendamento neste horário", "ASSIGNEE_BUSY", details),
+            )
+            app = buildApp(mockConversationEvents)
+
+            const res = await request(app)
+                .patch(`/api/v1/appointments/${id}/status`)
+                .set("Cookie", accessCookieFor(10))
+                .send({ action })
+
+            expect(res.status).toBe(409)
+            expect(res.body).toEqual({
+                error: { code: "ASSIGNEE_BUSY", message: "O funcionário já tem outro agendamento neste horário", details },
+            })
+        })
+    })
+
+    describe("Observações internas (POST /:id/notes)", () => {
+        function addNote(id: number, body: unknown, userId = 10): request.Test {
+            return request(app)
+                .post(`/api/v1/appointments/${id}/notes`)
+                .set("Cookie", accessCookieFor(userId))
+                .send(body as object)
+        }
+
+        it("grava a observação aparada e devolve 201 com o detalhe que a inclui", async () => {
+            const res = await addNote(6, { text: "  Cidadão ligou para avisar.  " })
+
+            expect(res.status).toBe(201)
+            expect(res.body.data.id).toBe("6")
+            expect(res.body.data.notes).toEqual([
+                {
+                    id: "1",
+                    author_user_id: "10",
+                    author_user_name: null,
+                    text: "Cidadão ligou para avisar.",
+                    created_at: FIXED_NOW.toISOString(),
+                },
+            ])
+            expect(repository.noteCalls).toEqual([
+                { id: "6", authorUserId: 10, text: "Cidadão ligou para avisar.", now: FIXED_NOW },
+            ])
+            expect(repository.actionCalls).toEqual([])
+        })
+
+        it("aceita exatamente 2000 caracteres", async () => {
+            const res = await addNote(1, { text: "a".repeat(2000) })
+
+            expect(res.status).toBe(201)
+        })
+
+        it.each([
+            { label: "vazio", text: "" },
+            { label: "só com espaços", text: "   " },
+            { label: "com 2001 caracteres", text: "a".repeat(2001) },
+        ])("recusa com 400 o texto $label, sem gravar", async ({ text }) => {
+            const res = await addNote(1, { text })
+
+            expect(res.status).toBe(400)
+            expect(res.body.error.code).toBe("BAD_REQUEST")
+            expect(repository.noteCalls).toEqual([])
+        })
+
+        it("devolve 404 para agendamento inexistente", async () => {
+            const res = await addNote(9999, { text: "Observação" })
+
+            expect(res.status).toBe(404)
+        })
+
+        it("a conta só com appointments.view vê as observações, recebe add_note com PERMISSION_REQUIRED e 403 no POST", async () => {
+            const note = {
+                id: "3",
+                author_user_id: "2",
+                author_user_name: "Carlos Atendente",
+                text: "Documento conferido.",
+                created_at: FIXED_NOW.toISOString(),
+            }
+            repository = routesScenario({ "1": { notes: [note] } })
+            app = buildApp(mockConversationEvents)
+
+            const detail = await request(app).get("/api/v1/appointments/1").set("Cookie", accessCookieFor(5))
+            const post = await addNote(1, { text: "Tentativa" }, 5)
+
+            expect(detail.body.data.notes).toEqual([note])
+            expect(detail.body.data.available_actions.add_note).toEqual(PERMISSION_REQUIRED)
+            expect(post.status).toBe(403)
+            expect(post.body.error.code).toBe("FORBIDDEN")
+            expect(repository.noteCalls).toEqual([])
+        })
+
+        it.each(["put", "patch", "delete"] as const)("não existe rota %s para observações", async (method) => {
+            const res = await request(app)[method]("/api/v1/appointments/1/notes/1").set("Cookie", accessCookieFor(1))
+
+            expect(res.status).toBe(404)
+        })
+    })
+
+    describe("Calendário semanal (GET /calendar)", () => {
+        it("devolve o calendário com os filtros e a conta logada, sem cair no validador de id", async () => {
+            const res = await request(app)
+                .get("/api/v1/appointments/calendar?date=2026-10-21&status=CANCELED&responsible=me")
+                .set("Cookie", accessCookieFor(5))
+
+            expect(res.status).toBe(200)
+            expect(res.body).toEqual({ data: calendarResult })
+            expect(calendar.getCalendar).toHaveBeenCalledWith({
+                date: "2026-10-21",
+                status: "CANCELED",
+                responsible: "me",
+                currentUserId: 5,
+            })
+        })
+
+        it("retorna 400 para data inválida", async () => {
+            const res = await request(app)
+                .get("/api/v1/appointments/calendar?date=2026-02-30")
+                .set("Cookie", accessCookieFor(5))
+
+            expect(res.status).toBe(400)
+            expect(res.body.error.code).toBe("BAD_REQUEST")
+            expect(calendar.getCalendar).not.toHaveBeenCalled()
+        })
+
+        it("retorna 403 FORBIDDEN para a conta sem appointments.view", async () => {
+            const res = await request(app).get("/api/v1/appointments/calendar").set("Cookie", accessCookieFor(6))
+
+            expect(res.status).toBe(403)
+            expect(res.body.error.code).toBe("FORBIDDEN")
         })
     })
 })

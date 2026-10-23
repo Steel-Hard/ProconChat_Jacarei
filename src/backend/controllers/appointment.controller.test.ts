@@ -30,6 +30,9 @@ describe("appointment.controller", () => {
         sessionVersion: 0,
     }
 
+    const calendarResult = { weekStart: "2026-10-18", weekEnd: "2026-10-24", weekStartDay: 0, days: [], appointments: [] }
+    const calendar = { getCalendar: vi.fn().mockResolvedValue(calendarResult) }
+
     const mockConversationEvents = {
         record: vi.fn(),
         finish: vi.fn(),
@@ -50,7 +53,7 @@ describe("appointment.controller", () => {
             }),
         })
         service = createAppointmentService({ repository, conversationEvents: mockConversationEvents })
-        controller = new AppointmentController({ service })
+        controller = new AppointmentController({ service, calendar })
     })
 
     afterEach(() => {
@@ -148,5 +151,25 @@ describe("appointment.controller", () => {
         await controller.getAppointmentDetail(req, res, next)
 
         expect(next).toHaveBeenCalledWith(expect.any(Error))
+    })
+
+    it("getCalendar repassa a query e a conta logada e devolve 200 com o calendário", async () => {
+        const req = {
+            query: { date: "2026-10-21", status: "all", responsible: "me" },
+            authUser: mockStaffUser,
+        } as unknown as Request
+        const res = mockResponse()
+        const next = vi.fn()
+
+        await controller.getCalendar(req, res, next)
+
+        expect(calendar.getCalendar).toHaveBeenCalledWith({
+            date: "2026-10-21",
+            status: "all",
+            responsible: "me",
+            currentUserId: 10,
+        })
+        expect(res.status).toHaveBeenCalledWith(200)
+        expect(res.json).toHaveBeenCalledWith({ data: calendarResult })
     })
 })

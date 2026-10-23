@@ -5,17 +5,23 @@ import { appointmentRepository as defaultAppointmentRepository } from "../reposi
 import { AppointmentRepository } from "../repositories/appointment.repository.interface"
 import { validateRequest } from "../middleware/validateRequest.middleware"
 import {
+    addNoteBodySchema,
     appointmentIdParamSchema,
+    calendarQuerySchema,
     listAppointmentsQuerySchema,
     updateStatusBodySchema,
 } from "../schemas/appointment.schema"
 import { createAppointmentService } from "../services/appointment.service"
+import { AppointmentCalendarService, createAppointmentCalendarService } from "../services/appointmentCalendar.service"
+import { createScheduleService } from "../services/schedule.service"
+import { scheduleRepository } from "../repositories/schedule.repository"
 import { conversationEventService as defaultConversationEventService, ConversationEventService } from "../services/conversationEvent.service"
 
 interface AppointmentRoutesDependencies {
     repository?: AppointmentRepository
     conversationEvents?: ConversationEventService
     authMiddleware?: RequestHandler
+    calendar?: AppointmentCalendarService
 }
 
 export class AppointmentRoutes {
@@ -26,9 +32,14 @@ export class AppointmentRoutes {
         repository = defaultAppointmentRepository,
         conversationEvents = defaultConversationEventService,
         authMiddleware = requireAuth,
+        calendar = createAppointmentCalendarService({
+            schedule: createScheduleService(scheduleRepository),
+            scheduleRepository,
+            appointments: repository,
+        }),
     }: AppointmentRoutesDependencies = {}) {
         const service = createAppointmentService({ repository, conversationEvents })
-        this.appointmentController = new AppointmentController({ service })
+        this.appointmentController = new AppointmentController({ service, calendar })
         const controller = this.appointmentController
 
         this.router.use(authMiddleware)
@@ -37,6 +48,19 @@ export class AppointmentRoutes {
             "/pending-count",
             requirePermission("appointments.view"),
             controller.getPendingCount.bind(controller),
+        )
+
+        this.router.get(
+            "/staff",
+            requirePermission("appointments.view"),
+            controller.listStaff.bind(controller),
+        )
+
+        this.router.get(
+            "/calendar",
+            requirePermission("appointments.view"),
+            validateRequest({ query: calendarQuerySchema }),
+            controller.getCalendar.bind(controller),
         )
 
         this.router.get(
@@ -61,6 +85,16 @@ export class AppointmentRoutes {
                 body: updateStatusBodySchema,
             }),
             controller.updateAppointmentStatus.bind(controller),
+        )
+
+        this.router.post(
+            "/:id/notes",
+            requirePermission("appointments.manage"),
+            validateRequest({
+                params: appointmentIdParamSchema,
+                body: addNoteBodySchema,
+            }),
+            controller.addNote.bind(controller),
         )
     }
 
