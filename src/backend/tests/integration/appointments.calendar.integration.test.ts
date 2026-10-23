@@ -4,6 +4,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import app from "../../app"
 import getPool from "../../db/connection"
 import { scheduleRepository } from "../../repositories/schedule.repository"
+import { createAppointmentRepository } from "../../repositories/appointment.repository"
+import { createAppointmentCalendarService } from "../../services/appointmentCalendar.service"
 import { createScheduleService } from "../../services/schedule.service"
 import type { AppointmentStatus } from "../../types/appointment.types"
 import type { Permission } from "../../types/auth.types"
@@ -195,18 +197,23 @@ describe("Calendário semanal com Postgres", () => {
         expect(text).not.toContain("phone")
     })
 
-    it("freeSeats é igual às vagas que o bot oferece na semana que vem", async () => {
-        const nextWeek = addDaysToDateString(toLocalDateString(new Date()), 7)
+    it("freeSeats é igual às vagas que o bot oferece na semana que vem, no mesmo instante", async () => {
+        const now = new Date()
+        const nextWeek = addDaysToDateString(toLocalDateString(now), 7)
+        const schedule = createScheduleService(scheduleRepository)
+        const service = createAppointmentCalendarService({
+            schedule,
+            scheduleRepository,
+            appointments: createAppointmentRepository(),
+            clock: () => now,
+        })
         const offered = new Map(
-            (await createScheduleService(scheduleRepository).getAvailableSlots(new Date())).map((slot) => [
-                `${slot.dateStr} ${slot.timeStr}`,
-                slot.remainingSeats,
-            ]),
+            (await schedule.getAvailableSlots(now)).map((slot) => [`${slot.dateStr} ${slot.timeStr}`, slot.remainingSeats]),
         )
 
-        const res = await calendar(`date=${nextWeek}`)
+        const result = await service.getCalendar({ date: nextWeek })
 
-        const cells = res.body.data.days.flatMap((day: { date: string; slots: { time: string; freeSeats: number | null }[] }) =>
+        const cells = result.days.flatMap((day) =>
             day.slots.map((slot) => ({ key: `${day.date} ${slot.time}`, freeSeats: slot.freeSeats })),
         )
         expect(cells.length).toBeGreaterThan(0)
