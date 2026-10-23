@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express"
-import { appointmentService as defaultAppointmentService, AppointmentService } from "../services/appointment.service"
+import { AppointmentService } from "../services/appointment.service"
 import { AddNoteBody, CalendarQuery, ListAppointmentsQuery, UpdateStatusBody } from "../schemas/appointment.schema"
 import { AppointmentCalendarService } from "../services/appointmentCalendar.service"
 import { AppointmentListFilters } from "../types/appointment.types"
@@ -13,14 +13,14 @@ function accessOf(user: AuthenticatedUser | undefined): ActionAccess {
 
 interface AppointmentControllerDependencies {
     service: AppointmentService
-    calendar?: AppointmentCalendarService
+    calendar: AppointmentCalendarService
 }
 
 class AppointmentController {
     private service: AppointmentService
-    private calendar: AppointmentCalendarService | undefined
+    private calendar: AppointmentCalendarService
 
-    constructor({ service, calendar }: AppointmentControllerDependencies = { service: defaultAppointmentService }) {
+    constructor({ service, calendar }: AppointmentControllerDependencies) {
         this.service = service
         this.calendar = calendar
     }
@@ -124,9 +124,6 @@ class AppointmentController {
 
     public async getCalendar(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            if (!this.calendar) {
-                throw new Error("Calendário não configurado")
-            }
             const query = req.query as unknown as CalendarQuery
             const result = await this.calendar.getCalendar({
                 date: query.date,
