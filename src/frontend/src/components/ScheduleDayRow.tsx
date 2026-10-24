@@ -26,6 +26,7 @@ function ScheduleDayRow({
     const lockId = useId()
     const messagesId = useId()
     const name = t(`weekdays.${WEEKDAY_KEYS[day.weekday]}`)
+    const locked = day.lockedReason !== null
     const describedBy = [day.lockedReason ? lockId : null, day.messages.length ? messagesId : null]
         .filter(Boolean)
         .join(" ")
@@ -37,9 +38,13 @@ function ScheduleDayRow({
                     type="checkbox"
                     className={css.checkbox}
                     checked={day.enabled}
-                    disabled={day.lockedReason !== null}
+                    aria-disabled={locked || undefined}
                     aria-describedby={describedBy || undefined}
-                    onChange={() => onToggle(day.weekday)}
+                    onChange={() => {
+                        if (!locked) {
+                            onToggle(day.weekday)
+                        }
+                    }}
                 />
                 {name}
             </label>

@@ -48,13 +48,16 @@ describe("SchedulePage: dias com agendamento", () => {
         await renderBooked()
         await screen.findByRole("button", { name: "04/11: 6 vagas livres · 2 agendamentos" })
 
-        expect(screen.getByRole("checkbox", { name: "Quarta-feira" })).toBeDisabled()
+        expect(screen.getByRole("checkbox", { name: "Quarta-feira" })).toHaveAttribute(
+            "aria-disabled",
+            "true"
+        )
         expect(screen.getByRole("checkbox", { name: "Quarta-feira" })).toHaveAccessibleDescription(
             "Há agendamentos em 04/11. Para desligar este dia, peça a quem gerencia os agendamentos para cancelar ou remarcar antes."
         )
         within(wednesdayRow())
             .getAllByRole("button", { name: /^Remover faixa indisponível/ })
-            .forEach((button) => expect(button).toBeDisabled())
+            .forEach((button) => expect(button).toHaveAttribute("aria-disabled", "true"))
     })
 
     it("recusa bloquear a data com agendamento", async () => {
@@ -79,10 +82,12 @@ describe("SchedulePage: dias com agendamento", () => {
 
         await screen.findByRole("checkbox", { name: "Quarta-feira" })
 
-        expect(screen.getByRole("checkbox", { name: "Quarta-feira" })).toBeEnabled()
+        expect(screen.getByRole("checkbox", { name: "Quarta-feira" })).not.toHaveAttribute(
+            "aria-disabled"
+        )
         within(wednesdayRow())
             .getAllByRole("button", { name: "Remover faixa" })
-            .forEach((button) => expect(button).toBeEnabled())
+            .forEach((button) => expect(button).not.toHaveAttribute("aria-disabled"))
     })
 
     it("avisa quando não consegue verificar os dias com agendamento", async () => {

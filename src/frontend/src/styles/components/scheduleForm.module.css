@@ -89,7 +89,7 @@
     accent-color: var(--color-primary);
 }
 
-.checkbox:disabled {
+.checkbox[aria-disabled="true"] {
     cursor: not-allowed;
 }
 
@@ -155,7 +155,7 @@
     cursor: pointer;
 }
 
-.removeRange:disabled {
+.removeRange[aria-disabled="true"] {
     opacity: 0.4;
     cursor: not-allowed;
 }

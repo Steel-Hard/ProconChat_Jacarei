@@ -120,10 +120,38 @@ describe("ScheduleWeekGrid", () => {
 
         const checkbox = screen.getByRole("checkbox", { name: "Segunda-feira" })
         await user.click(checkbox)
+        await user.keyboard(" ")
 
-        expect(checkbox).toBeDisabled()
+        expect(checkbox).toHaveAttribute("aria-disabled", "true")
+        expect(checkbox).toBeChecked()
         expect(checkbox).toHaveAccessibleDescription(reason)
         expect(onToggleDay).not.toHaveBeenCalled()
+    })
+
+    it("deixa o checkbox travado receber foco pelo teclado com o motivo", async () => {
+        const reason = "Há agendamentos em 04/11."
+        const { user } = renderGrid([day({ lockedReason: reason })])
+
+        await user.tab()
+
+        expect(screen.getByRole("checkbox", { name: "Segunda-feira" })).toHaveFocus()
+    })
+
+    it("deixa o × travado receber foco e não remove a faixa", async () => {
+        const { onRemoveRange, user } = renderGrid([
+            day({
+                ranges: [{ startTime: "08:30", endTime: "11:30", error: null, removeLocked: true }]
+            })
+        ])
+        const remove = screen.getByRole("button", { name: /^Remover faixa indisponível/ })
+
+        remove.focus()
+        await user.keyboard("{Enter}")
+        await user.click(remove)
+
+        expect(remove).toHaveFocus()
+        expect(remove).toHaveAttribute("aria-disabled", "true")
+        expect(onRemoveRange).not.toHaveBeenCalled()
     })
 
     it("trava o × da faixa com agendamento com o motivo no nome acessível", () => {
@@ -140,17 +168,23 @@ describe("ScheduleWeekGrid", () => {
             screen.getByRole("button", {
                 name: /^Remover faixa indisponível: há agendamento nesta faixa/
             })
-        ).toBeDisabled()
-        expect(screen.getByRole("button", { name: "Remover faixa" })).toBeEnabled()
+        ).toHaveAttribute("aria-disabled", "true")
+        expect(screen.getByRole("button", { name: "Remover faixa" })).not.toHaveAttribute(
+            "aria-disabled"
+        )
     })
 
     it("deixa tudo livre sem agendamento", () => {
         renderGrid([day()])
 
         expect(screen.getByRole("checkbox", { name: "Segunda-feira" })).toBeEnabled()
-        screen
-            .getAllByRole("button", { name: "Remover faixa" })
-            .forEach((button) => expect(button).toBeEnabled())
+        expect(screen.getByRole("checkbox", { name: "Segunda-feira" })).not.toHaveAttribute(
+            "aria-disabled"
+        )
+        screen.getAllByRole("button", { name: "Remover faixa" }).forEach((button) => {
+            expect(button).toBeEnabled()
+            expect(button).not.toHaveAttribute("aria-disabled")
+        })
     })
 
     it("mostra na linha do dia os conflitos da prévia", () => {
