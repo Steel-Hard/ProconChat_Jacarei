@@ -99,9 +99,18 @@ describe("useSchedule: prévia", () => {
         await act(async () => {
             await vi.advanceTimersByTimeAsync(1)
         })
-        await vi.waitFor(() => expect(callsTo("POST", "/api/v1/schedule/preview")).toHaveLength(1))
+        for (
+            let tick = 0;
+            tick < 50 && callsTo("POST", "/api/v1/schedule/preview").length === 0;
+            tick += 1
+        ) {
+            await act(async () => {
+                await Promise.resolve()
+            })
+        }
 
         expect(at399).toBe(0)
+        expect(callsTo("POST", "/api/v1/schedule/preview")).toHaveLength(1)
     })
 
     it("junta duas edições seguidas em um só POST", async () => {
