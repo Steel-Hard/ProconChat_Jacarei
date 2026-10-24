@@ -26,7 +26,7 @@ Criar as contas da equipe e definir o que cada pessoa pode fazer no painel.
 ### Criar conta
 
 - Campos: **nome**, **e-mail** (validado, e **não pode repetir** um e-mail já cadastrado) e **senha inicial** (mínimo de 8 caracteres).
-- **A conta é criada sem nenhuma permissão.**
+- **A conta é criada sem nenhuma permissão.** Até receber a permissão de uma tela pronta, quem entra com ela vê o aviso de conta sem tela disponível ([Login e conta](01-login-e-conta.md#menu-lateral)).
 - A senha inicial deve ser **informada pessoalmente** ao funcionário, porque o sistema não envia e-mails.
 
 ### Permissões
