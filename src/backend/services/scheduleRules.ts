@@ -1,5 +1,4 @@
-import BadRequestError from "../errors/BadRequestError"
-import { isValidCalendarDate } from "../schemas/schedule.schema"
+import { scheduleConfigBodySchema } from "../schemas/schedule.schema"
 import type {
     BlockedDate,
     BlockedDateItem,
@@ -18,11 +17,7 @@ import type {
     WeekdayPreview,
 } from "../types/schedule.types"
 import { addDaysToDateString, getLocalParts, parseLocalDate } from "../utils/date.utils"
-
-const VALID_SLOT_MINUTES = new Set([20, 30, 40, 60])
-const VALID_MIN_NOTICE_DAYS = new Set([0, 1, 2, 3, 5])
-const VALID_REMINDER_HOURS = new Set([2, 6, 12, 24, 48])
-const TIME_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/
+import { validateSchema } from "../utils/validateSchema"
 
 export function toMinutes(timeStr: string): number {
     const [h, m] = timeStr.split(":").map(Number)
@@ -157,165 +152,44 @@ export function computeWindowBounds(
 export function normalizeAndValidateScheduleConfig(
     input: ScheduleConfigInput,
 ): NormalizedScheduleConfig {
-    if (!VALID_SLOT_MINUTES.has(input.slotMinutes)) {
-        throw new BadRequestError("Duração deve ser 20, 30, 40 ou 60 minutos")
-    }
-    if (!Number.isInteger(input.seatsPerSlot) || input.seatsPerSlot < 1 || input.seatsPerSlot > 20) {
-        throw new BadRequestError("Vagas por horário devem estar entre 1 e 20")
-    }
-    if (!Number.isInteger(input.windowDays) || input.windowDays < 1 || input.windowDays > 180) {
-        throw new BadRequestError("Janela de agendamento deve estar entre 1 e 180 dias")
-    }
-    if (!VALID_MIN_NOTICE_DAYS.has(input.minNoticeDays)) {
-        throw new BadRequestError("Antecedência mínima deve ser 0, 1, 2, 3 ou 5 dias úteis")
-    }
-    if (!Number.isInteger(input.waitAlertDays) || input.waitAlertDays < 1 || input.waitAlertDays > 60) {
-        throw new BadRequestError("Alerta de espera deve estar entre 1 e 60 dias")
-    }
-
-    const unitAddress = input.unitAddress.trim()
-    if (unitAddress.length === 0 || unitAddress.length > 500) {
-        throw new BadRequestError("Endereço da unidade obrigatório")
-    }
-
-    const rawComplement = input.unitAddressComplement?.trim() ?? ""
-    if (rawComplement.length > 500) {
-        throw new BadRequestError("Complemento deve ter no máximo 500 caracteres")
-    }
-    const unitAddressComplement = rawComplement.length > 0 ? rawComplement : null
-
-    if (typeof input.reminderEnabled !== "boolean") {
-        throw new BadRequestError("Configuração de lembrete inválida")
-    }
-    if (!VALID_REMINDER_HOURS.has(input.reminderHours)) {
-        throw new BadRequestError("Horas do lembrete devem ser 2, 6, 12, 24 ou 48")
-    }
-
-    const byWeekday = new Map<number, ScheduleRangeItem[]>()
-    for (const rawRange of input.ranges) {
-        if (!Number.isInteger(rawRange.weekday) || rawRange.weekday < 0 || rawRange.weekday > 6) {
-            throw new BadRequestError("Dia da semana inválido")
-        }
-        const startTime = trimTime(rawRange.startTime)
-        const endTime = trimTime(rawRange.endTime)
-        if (!TIME_REGEX.test(startTime) || !TIME_REGEX.test(endTime)) {
-            throw new BadRequestError("Horário deve estar no formato HH:MM")
-        }
-        const startMin = toMinutes(startTime)
-        const endMin = toMinutes(endTime)
-        if (endMin <= startMin) {
-            throw new BadRequestError("O fim deve ser depois do início")
-        }
-        if (endMin - startMin < input.slotMinutes) {
-            throw new BadRequestError(
-                `Esta faixa não comporta nenhum atendimento de ${input.slotMinutes} minutos`,
-            )
-        }
-        const list = byWeekday.get(rawRange.weekday) ?? []
-        if (list.length >= 3) {
-            throw new BadRequestError("Cada dia da semana pode ter no máximo 3 faixas de horário")
-        }
-        list.push({
-            weekday: rawRange.weekday,
-            slotIndex: rawRange.slotIndex ?? list.length + 1,
-            startTime,
-            endTime,
-        })
-        byWeekday.set(rawRange.weekday, list)
-    }
+    const parsed = validateSchema(scheduleConfigBodySchema, input)
 
     const normalizedRanges: ScheduleRangeItem[] = []
     for (let dow = 0; dow <= 6; dow++) {
-        const list = byWeekday.get(dow) ?? []
-        for (let i = 0; i < list.length; i++) {
-            for (let j = i + 1; j < list.length; j++) {
-                const a = list[i]!
-                const b = list[j]!
-                if (
-                    Math.max(toMinutes(a.startTime), toMinutes(b.startTime)) <
-                    Math.min(toMinutes(a.endTime), toMinutes(b.endTime))
-                ) {
-                    throw new BadRequestError("Esta faixa se sobrepõe a outra faixa do mesmo dia")
-                }
-            }
-        }
-        const sorted = [...list].sort(
-            (a, b) => toMinutes(a.startTime) - toMinutes(b.startTime),
-        )
-        sorted.forEach((item, index) => {
-            normalizedRanges.push({
-                weekday: item.weekday,
-                slotIndex: index + 1,
-                startTime: item.startTime,
-                endTime: item.endTime,
+        parsed.ranges
+            .filter((range) => range.weekday === dow)
+            .sort((a, b) => toMinutes(a.startTime) - toMinutes(b.startTime))
+            .forEach((range, index) => {
+                normalizedRanges.push({
+                    weekday: range.weekday,
+                    slotIndex: index + 1,
+                    startTime: range.startTime,
+                    endTime: range.endTime,
+                })
             })
-        })
     }
 
-    const normalizedBlocks: BlockedDateItem[] = []
-    for (const rawBlock of input.blockedDates) {
-        const date = rawBlock.date.trim()
-        if (!isValidCalendarDate(date)) {
-            throw new BadRequestError("Data bloqueada inválida")
-        }
-        const description = rawBlock.description.trim()
-        if (description.length === 0 || description.length > 150) {
-            throw new BadRequestError("Descrição do bloqueio obrigatória (até 150 caracteres)")
-        }
-        const hasStart = rawBlock.startTime !== undefined && rawBlock.startTime !== null
-        const hasEnd = rawBlock.endTime !== undefined && rawBlock.endTime !== null
-        if (hasStart !== hasEnd) {
-            throw new BadRequestError("Bloqueio parcial exige horário inicial e final")
-        }
-        let startTime: string | null = null
-        let endTime: string | null = null
-        if (hasStart && hasEnd) {
-            startTime = trimTime(rawBlock.startTime!)
-            endTime = trimTime(rawBlock.endTime!)
-            if (!TIME_REGEX.test(startTime) || !TIME_REGEX.test(endTime)) {
-                throw new BadRequestError("Horário do bloqueio inválido")
-            }
-            if (toMinutes(endTime) <= toMinutes(startTime)) {
-                throw new BadRequestError("O fim do bloqueio deve ser depois do início")
-            }
-        }
-        normalizedBlocks.push({ date, startTime, endTime, description })
-    }
-
-    const blocksByDate = new Map<string, BlockedDateItem[]>()
-    for (const block of normalizedBlocks) {
-        const existing = blocksByDate.get(block.date) ?? []
-        for (const other of existing) {
-            const blockFull = !block.startTime || !block.endTime
-            const otherFull = !other.startTime || !other.endTime
-            if (blockFull || otherFull) {
-                throw new BadRequestError("Esta data já tem um bloqueio")
-            }
-            if (
-                Math.max(toMinutes(block.startTime!), toMinutes(other.startTime!)) <
-                Math.min(toMinutes(block.endTime!), toMinutes(other.endTime!))
-            ) {
-                throw new BadRequestError("Período bloqueado sobreposto na mesma data")
-            }
-        }
-        existing.push(block)
-        blocksByDate.set(block.date, existing)
-    }
-
-    normalizedBlocks.sort((a, b) =>
-        `${a.date} ${a.startTime ?? ""}`.localeCompare(`${b.date} ${b.startTime ?? ""}`),
-    )
+    const normalizedBlocks: BlockedDateItem[] = parsed.blockedDates
+        .map((block) => ({
+            date: block.date,
+            startTime: block.startTime ?? null,
+            endTime: block.endTime ?? null,
+            description: block.description,
+        }))
+        .sort((a, b) =>
+            `${a.date} ${a.startTime ?? ""}`.localeCompare(`${b.date} ${b.startTime ?? ""}`),
+        )
 
     return {
-        slotMinutes: input.slotMinutes,
-        seatsPerSlot: input.seatsPerSlot,
-        windowDays: input.windowDays,
-        minNoticeDays: input.minNoticeDays,
-        waitAlertDays: input.waitAlertDays,
-        unitAddress,
-        unitAddressComplement,
-        reminderEnabled: input.reminderEnabled,
-        reminderHours: input.reminderHours,
+        slotMinutes: parsed.slotMinutes,
+        seatsPerSlot: parsed.seatsPerSlot,
+        windowDays: parsed.windowDays,
+        minNoticeDays: parsed.minNoticeDays,
+        waitAlertDays: parsed.waitAlertDays,
+        unitAddress: parsed.unitAddress,
+        unitAddressComplement: parsed.unitAddressComplement ?? null,
+        reminderEnabled: parsed.reminderEnabled,
+        reminderHours: parsed.reminderHours,
         ranges: normalizedRanges,
         blockedDates: normalizedBlocks,
     }
