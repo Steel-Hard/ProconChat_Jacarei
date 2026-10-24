@@ -27,7 +27,7 @@ A referência visual é o protótipo navegável aprovado no Claude Design, copia
 | [07-sessoes.md](07-sessoes.md) | Sessões | Pendente (#72, #76) |
 | [08-horarios-de-atendimento.md](08-horarios-de-atendimento.md) | Horários de atendimento | Pendente (#64, #74, #75, #77) |
 | [09-documentos.md](09-documentos.md) | Documentos para atendimento presencial | Pendente (#65) |
-| [10-usuarios.md](10-usuarios.md) | Usuários | Backend pronto (#62), tela pendente (#123) |
+| [10-usuarios.md](10-usuarios.md) | Usuários | Entregue (#62, #123) |
 | [11-whatsapp.md](11-whatsapp.md) | WhatsApp | Entregue em parte (#54). Estado do número e histórico de alterações: #88. Modelos de mensagem: #67 |
 
 Enquanto uma tela está pendente, o item dela não aparece no menu e o endereço da tela mostra "Em construção.". A tela inicial abre na primeira tela pronta que a conta pode acessar, e quem não tem nenhuma tela pronta vê o aviso de conta sem tela disponível ([Login e conta](01-login-e-conta.md#menu-lateral)). Cada arquivo de tela pendente descreve como a tela **vai** funcionar.

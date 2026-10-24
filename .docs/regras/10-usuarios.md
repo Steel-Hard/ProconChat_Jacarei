@@ -34,6 +34,7 @@ Criar as contas da equipe e definir o que cada pessoa pode fazer no painel.
 - Marcar e desmarcar permissões, uma a uma.
 - **"Gerenciar agendamentos" inclui "Ver agendamentos":** marcar a primeira marca a segunda, e desmarcar a segunda desmarca a primeira.
 - **Segue o padrão de salvar** ([regras gerais](00-regras-gerais.md#3-salvar-descartar-e-registrar-quem-alterou)).
+- Enquanto as alterações estão sendo salvas, ou enquanto a tela consulta os agendamentos futuros de uma conta, as permissões e o botão Desativar/Reativar ficam bloqueados.
 
 ### Redefinir senha
 
@@ -60,6 +61,8 @@ Ao **desativar** uma conta, ou ao **tirar dela "Gerenciar agendamentos"**, se el
 - **Atribuir a outro funcionário**, escolhendo entre as contas ativas com "Gerenciar agendamentos".
 
 A mudança só vale ao salvar, e fica registrada no histórico de cada agendamento.
+
+Na lista de alterações pendentes, a redistribuição aparece na linha da própria conta, por exemplo "Bruno Lima: desativar conta (2 agendamento(s) redistribuído(s))", e não conta como uma alteração à parte.
 
 ## O que não existe de propósito
 
