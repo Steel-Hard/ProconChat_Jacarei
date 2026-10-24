@@ -100,6 +100,14 @@ describe("corrida entre salvar a grade e agendar pelo bot (Postgres)", () => {
         return result.rowCount ?? 0
     }
 
+    async function conversationEventTypes(sessionId: string): Promise<string[]> {
+        const result = await getPool().query<{ type: string }>(
+            "SELECT type FROM ConversationEvents WHERE session_id = $1 ORDER BY id",
+            [sessionId],
+        )
+        return result.rows.map((row) => row.type)
+    }
+
     async function sessionStatus(sessionId: string): Promise<string | undefined> {
         const result = await getPool().query<{ status: string }>("SELECT status FROM Sessions WHERE id = $1", [
             sessionId,
@@ -171,6 +179,9 @@ describe("corrida entre salvar a grade e agendar pelo bot (Postgres)", () => {
         expect(result.error).toBeInstanceOf(SlotFullError)
         expect(await appointmentsOfSession(input.sessionId)).toBe(0)
         expect(await sessionStatus(input.sessionId)).toBe("IN_PROGRESS")
+        const eventTypes = await conversationEventTypes(input.sessionId)
+        expect(eventTypes).not.toContain("PHONE_NOTICE_SHOWN")
+        expect(eventTypes).not.toContain("APPOINTMENT_CREATED")
     })
 
     it("espera o salvamento terminar e grava normalmente quando o horário continua na grade", async () => {
@@ -198,6 +209,10 @@ describe("corrida entre salvar a grade e agendar pelo bot (Postgres)", () => {
         expect(result.error).toBeUndefined()
         expect(result.value?.appointmentDatetime.toISOString()).toBe(input.appointmentDatetime.toISOString())
         expect(await appointmentsOfSession(input.sessionId)).toBe(1)
+        const eventTypes = await conversationEventTypes(input.sessionId)
+        expect(eventTypes).toContain("PHONE_NOTICE_SHOWN")
+        expect(eventTypes).toContain("APPOINTMENT_CREATED")
+        expect(await sessionStatus(input.sessionId)).toBe("FINISHED")
     })
 
     it("recusa com SlotFullError o horário que não está na grade atual, sem gravar nada", async () => {
@@ -207,6 +222,9 @@ describe("corrida entre salvar a grade e agendar pelo bot (Postgres)", () => {
 
         expect(await appointmentsOfSession(input.sessionId)).toBe(0)
         expect(await sessionStatus(input.sessionId)).toBe("IN_PROGRESS")
+        const eventTypes = await conversationEventTypes(input.sessionId)
+        expect(eventTypes).not.toContain("PHONE_NOTICE_SHOWN")
+        expect(eventTypes).not.toContain("APPOINTMENT_CREATED")
     })
 
     it("não espera outra transação que segura só a trava compartilhada da agenda", async () => {
