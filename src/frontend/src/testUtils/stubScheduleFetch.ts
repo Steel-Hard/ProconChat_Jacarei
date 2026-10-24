@@ -34,7 +34,10 @@ function stubScheduleFetch(): () => void {
                 return jsonReply({ days: [] })
             }
 
-            return new Response(null, { status: 204 })
+            return new Response(JSON.stringify({ error: { code: "NOT_FOUND", message: "x" } }), {
+                status: 404,
+                headers: { "Content-Type": "application/json" }
+            })
         })
     )
 

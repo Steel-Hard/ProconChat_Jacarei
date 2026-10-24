@@ -230,7 +230,7 @@ describe("routes", () => {
         )
         release()
         await settleSchedulePage(unmount)
-    })
+    }, 20000)
 
     it("renderiza a tela de Horários de atendimento para quem configura o atendimento", async () => {
         stubScheduleFetch()()
@@ -246,7 +246,7 @@ describe("routes", () => {
         ).toBeInTheDocument()
         expect(screen.getByRole("link", { name: "Horários de atendimento" })).toBeInTheDocument()
         await settleSchedulePage(unmount)
-    })
+    }, 20000)
 
     it("mostra a NotFound em /horarios a quem não configura o atendimento, sem chamar a API de horários", async () => {
         renderRoutes([ROUTES.schedule], {

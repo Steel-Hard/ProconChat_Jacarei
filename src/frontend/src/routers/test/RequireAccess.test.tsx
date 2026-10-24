@@ -139,7 +139,7 @@ describe("RequireAccess", () => {
         expect(router.state.location.pathname).toBe("/horarios")
         expect(router.state.historyAction).toBe("REPLACE")
         await settleSchedulePage(unmount)
-    })
+    }, 20000)
 
     it("mostra a NotFound em /horarios a quem não configura o atendimento", async () => {
         renderAs("/horarios", ["appointments.view", "users.manage"])

@@ -78,7 +78,9 @@ describe("SchedulePage", () => {
             target: { value: "12:00" }
         })
         fireEvent.change(screen.getByLabelText("Data"), { target: { value: "2026-11-20" } })
-        await user.type(screen.getByLabelText("Descrição"), "Consciência Negra")
+        fireEvent.change(screen.getByLabelText("Descrição"), {
+            target: { value: "Consciência Negra" }
+        })
         await user.click(screen.getByRole("button", { name: "Adicionar" }))
         expect(screen.getByRole("button", { name: "2 alterações não salvas" })).toBeInTheDocument()
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
