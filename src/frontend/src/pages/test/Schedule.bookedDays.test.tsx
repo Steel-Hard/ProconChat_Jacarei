@@ -50,7 +50,7 @@ describe("SchedulePage: dias com agendamento", () => {
 
         expect(screen.getByRole("checkbox", { name: "Quarta-feira" })).toBeDisabled()
         expect(screen.getByRole("checkbox", { name: "Quarta-feira" })).toHaveAccessibleDescription(
-            "Há agendamentos em 04/11. Para desligar este dia, cancele ou remarque esses agendamentos antes, na tela de Agendamentos."
+            "Há agendamentos em 04/11. Para desligar este dia, peça a quem gerencia os agendamentos para cancelar ou remarcar antes."
         )
         within(wednesdayRow())
             .getAllByRole("button", { name: /^Remover faixa indisponível/ })
@@ -68,7 +68,7 @@ describe("SchedulePage: dias com agendamento", () => {
         await user.click(screen.getByRole("button", { name: "Adicionar" }))
 
         expect(screen.getByRole("alert")).toHaveTextContent(
-            "Esta data tem 2 agendamentos. Para bloqueá-la, cancele ou remarque esses agendamentos antes, na tela de Agendamentos."
+            "Esta data tem 2 agendamentos. Para bloqueá-la, peça a quem gerencia os agendamentos para cancelar ou remarcar antes."
         )
         expect(screen.queryByText("Ponto facultativo", { selector: "div" })).not.toBeInTheDocument()
         expect(screen.queryByRole("button", { name: /não salvas?$/ })).not.toBeInTheDocument()

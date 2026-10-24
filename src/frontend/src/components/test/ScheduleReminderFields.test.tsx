@@ -52,9 +52,7 @@ describe("ScheduleReminderFields", () => {
     it("esconde as horas e a prévia com o lembrete desligado e mantém o aviso de custo", () => {
         renderReminder({ enabled: false })
 
-        expect(
-            screen.queryByLabelText("Enviar lembrete ao cidadão", { selector: "select" })
-        ).not.toBeInTheDocument()
+        expect(screen.queryByLabelText("Antecedência do lembrete")).not.toBeInTheDocument()
         expect(screen.queryByText("Prévia da mensagem")).not.toBeInTheDocument()
         expect(screen.getByText("Desativado")).toBeInTheDocument()
         expect(screen.getByText(COST)).toBeInTheDocument()
@@ -65,7 +63,7 @@ describe("ScheduleReminderFields", () => {
 
         await user.click(screen.getByRole("checkbox", { name: "Enviar lembrete ao cidadão" }))
         await user.selectOptions(
-            screen.getByRole("combobox", { name: "Enviar lembrete ao cidadão" }),
+            screen.getByRole("combobox", { name: "Antecedência do lembrete" }),
             "48"
         )
 

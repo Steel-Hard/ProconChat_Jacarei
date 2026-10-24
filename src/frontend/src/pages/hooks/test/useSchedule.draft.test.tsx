@@ -203,7 +203,7 @@ describe("useSchedule: dias com agendamento", () => {
         const wednesday = result.current.days.find((day) => day.weekday === 3)
         expect(wednesday?.enabled).toBe(true)
         expect(wednesday?.lockedReason).toBe(
-            "Há agendamentos em 04/11 e 11/11. Para desligar este dia, cancele ou remarque esses agendamentos antes, na tela de Agendamentos."
+            "Há agendamentos em 04/11 e 11/11. Para desligar este dia, peça a quem gerencia os agendamentos para cancelar ou remarcar antes."
         )
         expect(result.current.changes).toEqual([])
     })
@@ -219,7 +219,7 @@ describe("useSchedule: dias com agendamento", () => {
         await waitFor(() => expect(result.current.bookedDays).toHaveLength(4))
 
         expect(result.current.days.find((day) => day.weekday === 3)?.lockedReason).toBe(
-            "Há agendamentos em 04/11, 11/11 e 18/11 e em outras datas. Para desligar este dia, cancele ou remarque esses agendamentos antes, na tela de Agendamentos."
+            "Há agendamentos em 04/11, 11/11 e 18/11 e em outras datas. Para desligar este dia, peça a quem gerencia os agendamentos para cancelar ou remarcar antes."
         )
     })
 
@@ -247,7 +247,7 @@ describe("useSchedule: dias com agendamento", () => {
         act(() => result.current.actions.addBlock())
 
         expect(result.current.newBlockError).toBe(
-            "Esta data tem 2 agendamentos. Para bloqueá-la, cancele ou remarque esses agendamentos antes, na tela de Agendamentos."
+            "Esta data tem 2 agendamentos. Para bloqueá-la, peça a quem gerencia os agendamentos para cancelar ou remarcar antes."
         )
         expect(result.current.blocks).toHaveLength(1)
     })

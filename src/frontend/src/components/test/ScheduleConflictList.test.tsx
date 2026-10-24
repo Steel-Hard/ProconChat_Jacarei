@@ -63,7 +63,7 @@ describe("ScheduleConflictList", () => {
         expect(screen.queryByRole("button")).not.toBeInTheDocument()
         expect(
             screen.getByText(
-                "Para fazer esta alteração, cancele ou remarque esses agendamentos na tela de Agendamentos antes de salvar."
+                "Para fazer esta alteração, peça a quem gerencia os agendamentos para cancelar ou remarcar esses agendamentos antes de salvar."
             )
         ).toBeInTheDocument()
     })

@@ -123,6 +123,9 @@ describe("ScheduleUnitFields", () => {
         expect(handlers.onChangeComplement).toHaveBeenCalledWith("Sala 2A")
         expect(screen.queryByRole("link")).not.toBeInTheDocument()
         expect(
+            screen.getByText("Usados nas mensagens do chatbot, como a confirmação do agendamento.")
+        ).toBeInTheDocument()
+        expect(
             screen.getByText(
                 "Se você mudar horários ou endereço, revise as perguntas do Conteúdo que citam essas informações."
             )

@@ -86,7 +86,7 @@
     "conflicts": {
         "title_one": "Esta alteração afeta {{count}} agendamento",
         "title_other": "Esta alteração afeta {{count}} agendamentos",
-        "hint": "Para fazer esta alteração, cancele ou remarque esses agendamentos na tela de Agendamentos antes de salvar.",
+        "hint": "Para fazer esta alteração, peça a quem gerencia os agendamentos para cancelar ou remarcar esses agendamentos antes de salvar.",
         "when": "{{weekday}}, {{date}} às {{time}}",
         "protocol": "Protocolo {{protocol}}"
     },
@@ -117,9 +117,9 @@
         "separator": "–",
         "removeSymbol": "×",
         "remove": "Remover faixa",
-        "removeLocked": "Remover faixa indisponível: há agendamento nesta faixa. Cancele ou remarque o agendamento antes, na tela de Agendamentos.",
-        "dayLocked": "Há agendamentos em {{dates}}. Para desligar este dia, cancele ou remarque esses agendamentos antes, na tela de Agendamentos.",
-        "dayLockedMore": "Há agendamentos em {{dates}} e em outras datas. Para desligar este dia, cancele ou remarque esses agendamentos antes, na tela de Agendamentos."
+        "removeLocked": "Remover faixa indisponível: há agendamento nesta faixa. Para removê-la, peça a quem gerencia os agendamentos para cancelar ou remarcar antes.",
+        "dayLocked": "Há agendamentos em {{dates}}. Para desligar este dia, peça a quem gerencia os agendamentos para cancelar ou remarcar antes.",
+        "dayLockedMore": "Há agendamentos em {{dates}} e em outras datas. Para desligar este dia, peça a quem gerencia os agendamentos para cancelar ou remarcar antes."
     },
     "durationSeats": {
         "duration": "Duração de cada atendimento",
@@ -147,7 +147,7 @@
     },
     "unit": {
         "title": "Dados da unidade",
-        "description": "Usados nas mensagens do chatbot, como o lembrete do atendimento.",
+        "description": "Usados nas mensagens do chatbot, como a confirmação do agendamento.",
         "address": "Endereço da unidade",
         "addressPlaceholder": "Rua, número – bairro, cidade",
         "complement": "Complemento ou referência (opcional)",
@@ -159,7 +159,7 @@
         "toggle": "Enviar lembrete ao cidadão",
         "on": "Ativado",
         "off": "Desativado",
-        "hoursBefore": "Enviar lembrete ao cidadão",
+        "hoursBefore": "Antecedência do lembrete",
         "hoursSuffix": "horas antes do atendimento",
         "previewTitle": "Prévia da mensagem",
         "fixed": "Modelo fixo",
@@ -171,7 +171,7 @@
     },
     "blocked": {
         "title": "Datas bloqueadas",
-        "description": "Feriados, pontos facultativos ou períodos sem atendimento. O chatbot não oferece horários nesses dias ou períodos.",
+        "description": "Feriados e pontos facultativos. O chatbot não oferece horários nos dias bloqueados.",
         "empty": "Nenhuma data bloqueada.",
         "fullDay": "Dia inteiro",
         "period": "{{start}}–{{end}}",
@@ -185,8 +185,8 @@
         "problems": {
             "dateRequired": "Informe a data.",
             "dateAlreadyBlocked": "Esta data já tem um bloqueio",
-            "dateHasAppointments_one": "Esta data tem {{count}} agendamento. Para bloqueá-la, cancele ou remarque o agendamento antes, na tela de Agendamentos.",
-            "dateHasAppointments_other": "Esta data tem {{count}} agendamentos. Para bloqueá-la, cancele ou remarque esses agendamentos antes, na tela de Agendamentos.",
+            "dateHasAppointments_one": "Esta data tem {{count}} agendamento. Para bloqueá-la, peça a quem gerencia os agendamentos para cancelar ou remarcar antes.",
+            "dateHasAppointments_other": "Esta data tem {{count}} agendamentos. Para bloqueá-la, peça a quem gerencia os agendamentos para cancelar ou remarcar antes.",
             "descriptionRequired": "Descrição do bloqueio obrigatória",
             "descriptionTooLong": "Descrição deve ter no máximo 150 caracteres"
         }

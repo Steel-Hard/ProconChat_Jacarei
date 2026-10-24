@@ -65,6 +65,11 @@ describe("ScheduleBlockedDates", () => {
         renderBlocks({ blocks: [] })
 
         expect(screen.getByText("Nenhuma data bloqueada.")).toBeInTheDocument()
+        expect(
+            screen.getByText(
+                "Feriados e pontos facultativos. O chatbot não oferece horários nos dias bloqueados."
+            )
+        ).toBeInTheDocument()
     })
 
     it("preenche o formulário de dia inteiro e adiciona", async () => {
@@ -83,7 +88,7 @@ describe("ScheduleBlockedDates", () => {
         renderBlocks({
             newDate: "2026-11-04",
             newError:
-                "Esta data tem 2 agendamentos. Para bloqueá-la, cancele ou remarque esses agendamentos antes, na tela de Agendamentos."
+                "Esta data tem 2 agendamentos. Para bloqueá-la, peça a quem gerencia os agendamentos para cancelar ou remarcar antes."
         })
 
         expect(screen.getByRole("alert")).toHaveTextContent("Esta data tem 2 agendamentos.")
