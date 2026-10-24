@@ -190,5 +190,28 @@
             "descriptionRequired": "Descrição do bloqueio obrigatória",
             "descriptionTooLong": "Descrição deve ter no máximo 150 caracteres"
         }
+    },
+    "subtitle": "Define os horários livres que o chatbot oferece ao cidadão para o atendimento presencial.",
+    "loadFailed": "Não foi possível carregar os horários de atendimento. Atualize a página para tentar de novo.",
+    "bookedDaysFailed": "Não foi possível verificar os dias que já têm agendamento. A prévia e o salvamento continuam apontando os agendamentos afetados.",
+    "changes": {
+        "weeklyGrid": "grade semanal",
+        "slotMinutes": "duração",
+        "seatsPerSlot": "vagas",
+        "windowDays": "janela",
+        "minNoticeDays": "antecedência",
+        "waitAlertDays": "alerta de espera",
+        "blockedDates": "datas bloqueadas",
+        "unitAddress": "endereço",
+        "unitAddressComplement": "complemento",
+        "reminderEnabled": "lembrete",
+        "reminderHours": "horas do lembrete"
+    },
+    "save": {
+        "toast": "Horários salvos. O chatbot passa a oferecer a nova grade.",
+        "failed": "Não foi possível salvar os horários. Confira os dados e tente de novo.",
+        "hintErrors_one": "{{count}} campo com erro. Corrija para salvar.",
+        "hintErrors_other": "{{count}} campos com erro. Corrija para salvar.",
+        "hintConflicts": "A alteração afeta agendamentos. Veja a lista abaixo."
     }
 }
