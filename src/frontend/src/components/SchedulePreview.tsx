@@ -24,14 +24,13 @@ type SchedulePreviewProps = {
     onSelectDay: (date: string) => void
 }
 
-const LEGEND = ["available", "full", "beforeMinNotice", "blocked", "closed"] as const
-const LEGEND_CLASS = {
-    available: css.legendAvailable,
-    full: css.legendFull,
-    beforeMinNotice: css.legendBeforeMinNotice,
-    blocked: css.legendBlocked,
-    closed: css.legendClosed
-}
+const LEGEND = [
+    ["available", "AVAILABLE"],
+    ["full", "FULL"],
+    ["beforeMinNotice", "BEFORE_MIN_NOTICE"],
+    ["blocked", "BLOCKED"],
+    ["closed", "NO_SERVICE"]
+] as const
 
 function SchedulePreview({
     preview,
@@ -126,11 +125,11 @@ function SchedulePreview({
                         ))}
                     </div>
                     <ul className={css.legend}>
-                        {LEGEND.map((key) => (
+                        {LEGEND.map(([key, status]) => (
                             <SchedulePreviewLegendItem
                                 key={key}
                                 label={t(`preview.legend.${key}`)}
-                                swatchClass={LEGEND_CLASS[key]}
+                                status={status}
                             />
                         ))}
                     </ul>

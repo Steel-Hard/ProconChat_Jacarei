@@ -130,7 +130,7 @@
 }
 
 .rangeInvalid {
-    border-color: #d9776b;
+    border-color: var(--error-border);
     background: var(--error-soft-bg);
 }
 
@@ -258,7 +258,7 @@
 }
 
 .inputInvalid {
-    border-color: #d9776b;
+    border-color: var(--error-border);
 }
 
 .reminderHeader {

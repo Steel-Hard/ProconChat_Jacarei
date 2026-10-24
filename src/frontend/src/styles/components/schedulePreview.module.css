@@ -163,31 +163,6 @@
     border-radius: 3px;
 }
 
-.legendAvailable {
-    background: #eeebfa;
-    border-color: var(--border-accent);
-}
-
-.legendFull {
-    background: #fcefd6;
-    border-color: var(--warn-border);
-}
-
-.legendBeforeMinNotice {
-    background: repeating-linear-gradient(135deg, #f1eff6 0 3px, #e4e1ee 3px 6px);
-    border-color: var(--border);
-}
-
-.legendBlocked {
-    background: #fae3e0;
-    border-color: var(--error-border);
-}
-
-.legendClosed {
-    background: #f7f6fa;
-    border-color: #eceaf2;
-}
-
 .detail {
     display: flex;
     flex-direction: column;
@@ -226,22 +201,8 @@
     flex-direction: column;
     gap: 1px;
     padding: 6px 8px;
-    border: 1px solid var(--border-accent);
+    border: 1px solid;
     border-radius: 7px;
-    background: #eeebfa;
-    color: var(--color-primary-darker);
-}
-
-.slotFull {
-    border-color: var(--warn-border);
-    background: #fcefd6;
-    color: var(--warn-text);
-}
-
-.slotOff {
-    border-color: #eceaf2;
-    background: #f7f6fa;
-    color: var(--text-soft);
 }
 
 .slotTime {

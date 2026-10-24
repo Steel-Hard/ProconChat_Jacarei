@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next"
+import SCHEDULE_PREVIEW_STATUS from "@/status/schedulePreviewStatusStyles"
 import type DaySlotPreview from "@/types/schedule/DaySlotPreview.types"
 import css from "@/styles/components/schedulePreview.module.css"
 
@@ -17,10 +18,15 @@ function SchedulePreviewSlot({ slot }: SchedulePreviewSlotProps) {
         : slot.offered
           ? seats
           : t("preview.detail.slotNotOfferedWith", { seats })
-    const tone = slot.past || !slot.offered ? css.slotOff : slot.freeSeats > 0 ? "" : css.slotFull
+    const status =
+        slot.past || !slot.offered ? "NO_SERVICE" : slot.freeSeats > 0 ? "AVAILABLE" : "FULL"
+    const style = SCHEDULE_PREVIEW_STATUS[status]
 
     return (
-        <li className={`${css.slot} ${tone}`.trim()}>
+        <li
+            className={css.slot}
+            style={{ background: style.bg, color: style.fg, borderColor: style.border }}
+        >
             <span className={css.slotTime}>{slot.time}</span>
             <span className={css.slotSeats}>{text}</span>
         </li>

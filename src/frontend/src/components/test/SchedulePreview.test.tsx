@@ -185,6 +185,22 @@ describe("SchedulePreview", () => {
         expect(within(weekdays).getAllByText("Sem atendimento")).toHaveLength(2)
     })
 
+    it.each([
+        ["Lotado", "04/11: Lotado"],
+        ["Bloqueado (✕)", "02/11: Bloqueado: Finados"],
+        ["Com vagas (número = vagas livres)", "03/11: 7 vagas livres"]
+    ])("pinta a legenda %s com a mesma cor da célula", (legend, cellName) => {
+        renderPreview()
+
+        const swatch = screen
+            .getByText(legend, { selector: "li" })
+            .querySelector("i") as HTMLElement
+        const cell = screen.getByRole("button", { name: cellName })
+
+        expect(swatch.style.background).toBe(cell.style.background)
+        expect(swatch.style.borderColor).toBe(cell.style.borderColor)
+    })
+
     it("mostra o aviso de prévia desatualizada e mantém o calendário", () => {
         renderPreview({ stale: true })
 
