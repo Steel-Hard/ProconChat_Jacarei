@@ -27,6 +27,7 @@ import {
 import { encrypt } from "../utils/crypto.utils"
 import { getLocalParts } from "../utils/date.utils"
 import { insertConversationEvent, Queryable } from "./conversationEvent.repository"
+import { lockAccounts } from "./responsibleQueries"
 import { finishSessionWith } from "./session.repository"
 import {
     IScheduleRepository,
@@ -234,12 +235,17 @@ async function loadFutureActiveAppointments(
          FROM Appointments a
          WHERE a.status IN ('PENDING', 'CONFIRMED')
            AND a.appointment_datetime > $1
-         ORDER BY a.appointment_datetime ASC, a.id ASC
+         ORDER BY a.id
          FOR UPDATE`,
         [now],
     )
 
-    return result.rows.map((r) => ({
+    const sorted = [...result.rows].sort(
+        (a, b) =>
+            new Date(a.appointment_datetime).getTime() - new Date(b.appointment_datetime).getTime() ||
+            Number(a.id) - Number(b.id),
+    )
+    return sorted.map((r) => ({
         id: r.id,
         protocol: r.protocol,
         name: r.name,
@@ -263,6 +269,7 @@ async function saveConfig({
     try {
         await client.query("BEGIN")
         await client.query("SELECT pg_advisory_xact_lock(hashtext('schedule_config'))")
+        await lockAccounts(client, [actorUserId])
         const current = await client.query<{ slot_minutes: number }>(
             "SELECT slot_minutes FROM ScheduleSettings WHERE id = 1 FOR UPDATE",
         )

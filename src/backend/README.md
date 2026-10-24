@@ -846,7 +846,13 @@ a conta de quem clicou; `assign`, a de quem clicou e a do destino; `correct_reco
 a do responsável atual; `POST /:id/notes`, a de quem escreve. Os testes de corrida ficam em
 `tests/integration/appointments.lockOrder.integration.test.ts`: uma transação auxiliar segura o
 agendamento, as duas operações entram na fila em ordem conhecida e, sem a trava da conta de quem age,
-o Postgres acusa deadlock em todas as rodadas.
+o Postgres acusa deadlock em todas as rodadas. O salvamento de `PUT /api/v1/schedule` segue a mesma
+regra: depois da trava consultiva exclusiva `schedule_config`, `saveConfig` trava a conta de quem salva
+(`lockAccounts`, porque `ScheduleSettings.updated_by` tem chave estrangeira para `Users`) antes de
+travar os agendamentos futuros. Sem isso, salvar a grade enquanto outra pessoa atribui um agendamento
+futuro a quem salva fechava um ciclo (o salvamento com o agendamento esperando a conta, a atribuição
+com a conta esperando o agendamento). A prova fica em
+`tests/integration/scheduleConfig.lockOrder.integration.test.ts`.
 
 **Corrigir registro (`correct_record`).** Volta ao estado anterior ao `ATTENDED`/`NO_SHOW` mais recente:
 `PENDING` sem responsável quando esse terminal veio junto de um `CLAIMED { auto_claimed: true }` no
@@ -976,9 +982,11 @@ proteção CSRF (`403 INVALID_ORIGIN` nos métodos que enviam corpo), por `requi
   ```
 
 - **Detecção de conflitos ao salvar:** dentro da transação de `saveConfig`, o repositório pega a trava
-  exclusiva `pg_advisory_xact_lock(hashtext('schedule_config'))`, trava `ScheduleSettings` (lendo a
-  duração atual `slot_minutes`) e todos os agendamentos futuros ativos
-  (`status IN ('PENDING', 'CONFIRMED')`, `appointment_datetime > now`, inclusive os `off_grid`) e executa
+  exclusiva `pg_advisory_xact_lock(hashtext('schedule_config'))`, trava a conta de quem salva
+  (`lockAccounts`, a mesma ordem "contas antes do agendamento" da #62 e da #87), trava `ScheduleSettings`
+  (lendo a duração atual `slot_minutes`) e todos os agendamentos futuros ativos
+  (`status IN ('PENDING', 'CONFIRMED')`, `appointment_datetime > now`, inclusive os `off_grid`, travados
+  em `ORDER BY id`, como `lockFutureAppointments` da #62, e depois ordenados por data e `id`) e executa
   `detectScheduleConflicts(config, agendamentos, duraçãoAtual)`. Os agendamentos `off_grid` nunca entram
   na lista: servem só de parceiros na comparação do `RESPONSIBLE_OVERLAP`. Se algum agendamento for
   afetado, a transação faz `ROLLBACK` e responde `409 SCHEDULE_CONFLICTS` com `{ details: { conflicts } }`.
