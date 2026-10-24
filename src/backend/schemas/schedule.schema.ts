@@ -115,7 +115,7 @@ export const scheduleConfigBodySchema: z.ZodType<ScheduleConfigInput> = z
             .string()
             .trim()
             .min(1, { message: "Endereço da unidade obrigatório" })
-            .max(500, { message: "Endereço da unidade obrigatório" }),
+            .max(500, { message: "Endereço deve ter no máximo 500 caracteres" }),
         unitAddressComplement: z
             .string()
             .trim()

@@ -187,12 +187,26 @@ describe("corrida entre salvar a grade e agendar pelo bot (Postgres)", () => {
     })
 
     it.each([
-        { label: "de dia inteiro", phone: phones.fullDayBlocked, cpfSuffix: "305", startTime: null, endTime: null },
-        { label: "de período", phone: phones.periodBlocked, cpfSuffix: "306", startTime: "08:30", endTime: "10:00" },
+        {
+            label: "de dia inteiro",
+            phone: phones.fullDayBlocked,
+            cpfSuffix: "305",
+            time: "10:30",
+            startTime: null,
+            endTime: null,
+        },
+        {
+            label: "de período",
+            phone: phones.periodBlocked,
+            cpfSuffix: "306",
+            time: "11:00",
+            startTime: "10:45",
+            endTime: "11:15",
+        },
     ])(
         "espera o salvamento terminar e recusa o horário que o salvamento bloqueou $label, sem gravar nada",
-        async ({ phone, cpfSuffix, startTime, endTime }) => {
-            const input = await bookingInput(phone, cpfSuffix, "09:00")
+        async ({ phone, cpfSuffix, time, startTime, endTime }) => {
+            const input = await bookingInput(phone, cpfSuffix, time)
             let outcome: Promise<{ value?: BookAppointmentResult; error?: unknown }> | null = null
 
             await withManualTransaction(

@@ -158,7 +158,7 @@ describe("scheduleRules", () => {
 
         it("rejeita endereço da unidade acima de 500 caracteres com a mensagem em português", () => {
             expect(() => normalizeAndValidateScheduleConfig(baseInput({ unitAddress: "a".repeat(501) }))).toThrow(
-                "unitAddress: Endereço da unidade obrigatório",
+                "unitAddress: Endereço deve ter no máximo 500 caracteres",
             )
         })
 
