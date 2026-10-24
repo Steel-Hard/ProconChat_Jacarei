@@ -1,0 +1,11 @@
+.list {
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg-surface);
+    list-style: none;
+}
+
+.item:last-child > button {
+    border-bottom: 0;
+}

@@ -78,7 +78,7 @@ describe("useLogin", () => {
         })
     })
 
-    it("leva ao Dashboard a conta que só vê sessões", async () => {
+    it("leva à tela inicial a conta que só vê sessões", async () => {
         stubFetch(() => jsonResponse(200, { data: { user: userWith(["sessions.view"]) } }))
         const { result, store } = renderLogin()
 
@@ -88,13 +88,13 @@ describe("useLogin", () => {
         expect(result.current.login.destination).toBe("/")
     })
 
-    it("leva ao Conteúdo a conta que só gerencia conteúdo", async () => {
+    it("leva à tela inicial a conta que só gerencia conteúdo", async () => {
         stubFetch(() => jsonResponse(200, { data: { user: userWith(["content.manage"]) } }))
         const { result } = renderLogin()
 
         await fillAndSubmit(result)
 
-        expect(result.current.login.destination).toBe("/conteudo")
+        expect(result.current.login.destination).toBe("/")
     })
 
     it("mostra credenciais incorretas no 401, mantém o e-mail e o redirect e limpa a senha", async () => {

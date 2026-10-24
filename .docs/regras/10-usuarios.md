@@ -10,30 +10,32 @@ Criar as contas da equipe e definir o que cada pessoa pode fazer no painel.
 
 ## Estado da tela
 
-**Backend pronto (#62), tela pendente (#123).** A API `/api/v1/users` lista e cria contas, salva as mudanças de várias contas de uma vez (permissões e ativar/desativar, com a redistribuição dos agendamentos futuros), redefine a senha e lista os agendamentos futuros de uma conta. As regras desta tela são validadas no servidor, com um código de erro para cada uma (contrato em `src/backend/README.md`, seção "Contas e permissões"). A tela ainda aparece como "Em construção".
+**Pronta (#123), sobre a API da #62.** A tela lista e cria contas, marca as permissões uma a uma, desativa e reativa, redefine a senha de outra conta e abre "Alterar minha senha" na própria conta. As mudanças de permissões e de ativo/inativo ficam pendentes até "Salvar alterações" e vão juntas num único envio, com a redistribuição dos agendamentos futuros escolhida na janela. As regras de segurança aparecem na tela (permissões e botões bloqueados com o aviso) e são validadas de novo no servidor, que devolve um código de erro para cada uma; a tela mostra cada código como mensagem em português e seleciona a conta que falhou (contrato em `src/backend/README.md`, seção "Contas e permissões").
 
 ## O que a tela mostra
 
-**Lista de contas:** iniciais, nome (com o selo **ADMIN** na conta Admin), e-mail, quantas permissões tem ("Todas as permissões" ou "N de 8 permissões"), **último acesso** (ou "Nunca acessou") e o estado (Ativo/Inativo). Contas com alterações ainda não salvas mostram "Não salvo".
+**Lista de contas:** iniciais, nome (com o selo **ADMIN** na conta Admin), e-mail, quantas permissões tem ("Todas as permissões" ou "N de M permissões", em que M e N contam só as permissões de telas prontas), **último acesso** (ou "Nunca acessou") e o estado (Ativo/Inativo). Contas com alterações ainda não salvas mostram "Não salvo".
 
 **Painel da conta selecionada:**
 - nome, e-mail, último acesso e **"Permissões alteradas por [nome] em [data]"**;
 - os botões **Redefinir senha** e **Desativar/Reativar conta**, ou **Alterar minha senha** quando for a própria conta;
-- a lista das 8 permissões, com a descrição de cada uma ([regras gerais](00-regras-gerais.md#2-contas-e-permissões)).
+- as permissões de telas prontas, com a descrição de cada uma ([regras gerais](00-regras-gerais.md#2-contas-e-permissões)).
 
 ## O que dá para fazer
 
 ### Criar conta
 
 - Campos: **nome**, **e-mail** (validado, e **não pode repetir** um e-mail já cadastrado) e **senha inicial** (mínimo de 8 caracteres).
-- **A conta é criada sem nenhuma permissão.**
+- **A conta é criada sem nenhuma permissão.** Até receber a permissão de uma tela pronta, quem entra com ela vê o aviso de conta sem tela disponível ([Login e conta](01-login-e-conta.md#menu-lateral)).
 - A senha inicial deve ser **informada pessoalmente** ao funcionário, porque o sistema não envia e-mails.
 
 ### Permissões
 
 - Marcar e desmarcar permissões, uma a uma.
+- **Só aparecem as permissões de telas prontas.** Enquanto a tela de uma permissão não está pronta (o item dela não aparece no [menu lateral](01-login-e-conta.md#menu-lateral)), a permissão não aparece no painel e não pode ser concedida. Ela aparece quando a tela ficar pronta. Uma permissão que a conta já tenha e cuja tela não esteja pronta continua salva na conta.
 - **"Gerenciar agendamentos" inclui "Ver agendamentos":** marcar a primeira marca a segunda, e desmarcar a segunda desmarca a primeira.
 - **Segue o padrão de salvar** ([regras gerais](00-regras-gerais.md#3-salvar-descartar-e-registrar-quem-alterou)).
+- Enquanto as alterações estão sendo salvas, ou enquanto a tela consulta os agendamentos futuros de uma conta, as permissões e o botão Desativar/Reativar ficam bloqueados.
 
 ### Redefinir senha
 
@@ -54,12 +56,14 @@ Estas regras existem para impedir que alguém aumente o próprio acesso. **São 
 
 ## Quando a conta é responsável por agendamentos
 
-Ao **desativar** uma conta, ou ao **tirar dela "Gerenciar agendamentos"**, se ela for responsável por agendamentos Pendentes ou Confirmados **futuros**, abre a janela **"Esta conta é responsável por N agendamentos futuros"** com a lista e duas opções:
+Ao **desativar** uma conta, ou ao **tirar dela "Gerenciar agendamentos"**, se ela for responsável por agendamentos Confirmados **futuros** (um Pendente nunca tem responsável), abre a janela **"Esta conta é responsável por N agendamentos futuros"** com a lista e duas opções:
 
 - **Voltar para Pendente sem responsável**;
 - **Atribuir a outro funcionário**, escolhendo entre as contas ativas com "Gerenciar agendamentos".
 
 A mudança só vale ao salvar, e fica registrada no histórico de cada agendamento.
+
+Na lista de alterações pendentes, a redistribuição aparece na linha da própria conta, por exemplo "Bruno Lima: desativar conta (2 agendamento(s) redistribuído(s))", e não conta como uma alteração à parte.
 
 ## O que não existe de propósito
 

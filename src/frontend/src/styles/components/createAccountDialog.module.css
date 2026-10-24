@@ -1,0 +1,58 @@
+.fields {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-strong);
+}
+
+.input {
+    padding: 10px 12px;
+    border: 1px solid var(--border-input);
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--text-body);
+}
+
+.input:focus {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 0;
+}
+
+.invalid {
+    border-color: var(--danger);
+}
+
+.fieldError {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--danger);
+}
+
+.note {
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--text-muted);
+}
+
+.error {
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: var(--error-bg);
+    color: var(--error-text);
+    font-size: 13px;
+}
+
+.group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}

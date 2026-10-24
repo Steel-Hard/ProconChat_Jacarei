@@ -8,15 +8,35 @@ function account(permissions: PermissionKey[], isAdmin = false): PanelAccount {
 }
 
 describe("firstAllowedPath", () => {
-    it("devolve a primeira tela permitida quando a conta não vê o Dashboard", () => {
-        expect(firstAllowedPath(account(["content.manage"]))).toBe("/conteudo")
+    it("devolve null quando a conta só tem telas não prontas", () => {
+        expect(firstAllowedPath(account(["content.manage"]))).toBeNull()
     })
 
-    it("devolve o Dashboard quando a conta pode vê-lo", () => {
-        expect(firstAllowedPath(account(["reports.view"]))).toBe("/")
+    it("devolve null para quem só vê relatórios enquanto o Dashboard não está pronto", () => {
+        expect(firstAllowedPath(account(["reports.view"]))).toBeNull()
     })
 
     it("devolve null quando a conta não tem nenhuma permissão", () => {
         expect(firstAllowedPath(account([]))).toBeNull()
+    })
+
+    it("devolve null para quem só vê sessões", () => {
+        expect(firstAllowedPath(account(["sessions.view"]))).toBeNull()
+    })
+
+    it("devolve Usuários para quem vê relatórios e gerencia usuários", () => {
+        expect(firstAllowedPath(account(["reports.view", "users.manage"]))).toBe("/usuarios")
+    })
+
+    it("devolve Usuários para quem gerencia conteúdo e usuários", () => {
+        expect(firstAllowedPath(account(["content.manage", "users.manage"]))).toBe("/usuarios")
+    })
+
+    it("devolve Agendamentos para o Admin sem permissões marcadas", () => {
+        expect(firstAllowedPath(account([], true))).toBe("/agendamentos")
+    })
+
+    it("devolve Agendamentos para quem vê agendamentos", () => {
+        expect(firstAllowedPath(account(["appointments.view"]))).toBe("/agendamentos")
     })
 })

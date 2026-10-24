@@ -1,5 +1,5 @@
 import { lazy } from "react"
-import { Navigate, type RouteObject } from "react-router-dom"
+import type { RouteObject } from "react-router-dom"
 import PanelLayout from "@/layouts/Panel.layout"
 import RootLayout from "@/layouts/Root.layout"
 import ErrorPage from "@/pages/Error.page"
@@ -14,6 +14,7 @@ const Login = lazy(() => import("@/pages/Login.page"))
 const WhatsApp = lazy(() => import("@/pages/WhatsApp.page"))
 const Appointments = lazy(() => import("@/pages/Appointments.page"))
 const AppointmentDetail = lazy(() => import("@/pages/AppointmentDetail.page"))
+const Users = lazy(() => import("@/pages/Users.page"))
 
 function previewRoutes(): RouteObject[] {
     if (!import.meta.env.DEV) {
@@ -55,10 +56,7 @@ const routes: RouteObject[] = [
                             {
                                 element: <PanelLayout />,
                                 children: [
-                                    {
-                                        path: ROUTES.dashboard,
-                                        element: <Navigate to={ROUTES.appointments} replace />
-                                    },
+                                    underConstruction(ROUTES.dashboard, "dashboard"),
                                     { path: ROUTES.appointments, element: <Appointments /> },
                                     {
                                         path: ROUTES.appointmentDetail,
@@ -69,7 +67,7 @@ const routes: RouteObject[] = [
                                     underConstruction(ROUTES.sessions, "sessions"),
                                     underConstruction(ROUTES.schedule, "schedule"),
                                     underConstruction(ROUTES.documents, "documents"),
-                                    underConstruction(ROUTES.users, "users"),
+                                    { path: ROUTES.users, element: <Users /> },
                                     { path: ROUTES.whatsapp, element: <WhatsApp /> }
                                 ]
                             },

@@ -263,7 +263,7 @@ describe("PanelLayout", { timeout: 15000 }, () => {
                                     name: "Bruno Lima",
                                     email: "bruno@exemplo.gov.br",
                                     isAdmin: false,
-                                    permissions: ["sessions.view"]
+                                    permissions: ["appointments.view"]
                                 }
                             }
                         }),
