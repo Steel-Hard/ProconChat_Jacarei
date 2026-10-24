@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 import type BlockedDateProblem from "@/types/schedule/BlockedDateProblem.types"
 import type BookedDay from "@/types/schedule/BookedDay.types"
 import type MinNoticeDays from "@/types/schedule/MinNoticeDays.types"
@@ -27,6 +27,7 @@ const EMPTY_BLOCK = { date: "", description: "" }
 function useScheduleDraft(view: ScheduleConfigView | undefined, bookedDays: BookedDay[]) {
     const [draft, setDraft] = useState<ScheduleDraft | null>(null)
     const [revision, setRevision] = useState(0)
+    const revisionRef = useRef(0)
     const [newBlock, setNewBlock] = useState(EMPTY_BLOCK)
     const [newBlockProblem, setNewBlockProblem] = useState<BlockedDateProblem | null>(null)
 
@@ -42,7 +43,12 @@ function useScheduleDraft(view: ScheduleConfigView | undefined, bookedDays: Book
         }
 
         setDraft(change(current))
-        setRevision((value) => value + 1)
+        bumpRevision()
+    }
+
+    function bumpRevision() {
+        revisionRef.current += 1
+        setRevision(revisionRef.current)
     }
 
     function updateDay(weekday: number, change: (day: ScheduleDayDraft) => ScheduleDayDraft) {
@@ -144,11 +150,13 @@ function useScheduleDraft(view: ScheduleConfigView | undefined, bookedDays: Book
         setDraft(null)
         setNewBlock(EMPTY_BLOCK)
         setNewBlockProblem(null)
-        setRevision((value) => value + 1)
+        bumpRevision()
     }
 
-    function reset() {
-        setDraft(null)
+    function resetIfUnchangedSince(sentRevision: number) {
+        if (revisionRef.current === sentRevision) {
+            setDraft(null)
+        }
     }
 
     return {
@@ -178,7 +186,7 @@ function useScheduleDraft(view: ScheduleConfigView | undefined, bookedDays: Book
         addBlock,
         removeBlock,
         discard,
-        reset
+        resetIfUnchangedSince
     }
 }
 

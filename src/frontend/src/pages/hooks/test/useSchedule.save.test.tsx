@@ -152,6 +152,27 @@ describe("useSchedule: salvar", () => {
         expect(result.current.conflictRows).toBeNull()
     })
 
+    it("mantém a edição feita enquanto o PUT estava em andamento", async () => {
+        let release: (reply: Reply) => void = noRelease
+        const { result } = await ready(
+            () =>
+                new Promise<Reply>((resolve) => {
+                    release = resolve
+                })
+        )
+        act(() => result.current.actions.setText("seatsPerSlot", "3"))
+        act(() => result.current.save())
+        await waitFor(() => expect(result.current.saving).toBe(true))
+
+        act(() => result.current.actions.setText("windowDays", "45"))
+        await act(async () => release({ status: 200, body: { data: SAVED } }))
+        await waitFor(() => expect(result.current.saving).toBe(false))
+
+        expect(result.current.draft?.windowDays).toBe("45")
+        expect(result.current.draft?.seatsPerSlot).toBe("3")
+        await waitFor(() => expect(result.current.changes).toEqual(["janela"]))
+    })
+
     it("não mostra o 409 que chega depois de o rascunho mudar", async () => {
         let release: (reply: Reply) => void = noRelease
         const { result } = await ready(

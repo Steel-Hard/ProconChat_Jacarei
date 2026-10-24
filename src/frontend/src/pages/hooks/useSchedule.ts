@@ -186,11 +186,13 @@ function useSchedule() {
             return
         }
 
+        const sentRevision = draft.revision
+
         void saver.save({
             built: draft.built,
-            revision: draft.revision,
+            revision: sentRevision,
             onSaved: () => {
-                draft.reset()
+                draft.resetIfUnchangedSince(sentRevision)
                 showToast(t("save.toast"))
             },
             onConflicts: booked.refetch
