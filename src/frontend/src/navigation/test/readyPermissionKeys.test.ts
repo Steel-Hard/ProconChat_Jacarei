@@ -69,4 +69,16 @@ describe("readyPermissionKeys", () => {
 
         expect(keys).toEqual([])
     })
+
+    it("com as telas prontas de produção inclui Configurar atendimento presencial", async () => {
+        vi.resetModules()
+        const { default: readyPermissionKeys } = await import("@/navigation/readyPermissionKeys")
+
+        expect(readyPermissionKeys()).toEqual([
+            "appointments.view",
+            "appointments.manage",
+            "schedule.configure",
+            "users.manage"
+        ])
+    })
 })

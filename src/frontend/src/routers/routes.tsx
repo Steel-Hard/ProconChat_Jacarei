@@ -15,6 +15,7 @@ const WhatsApp = lazy(() => import("@/pages/WhatsApp.page"))
 const Appointments = lazy(() => import("@/pages/Appointments.page"))
 const AppointmentDetail = lazy(() => import("@/pages/AppointmentDetail.page"))
 const Users = lazy(() => import("@/pages/Users.page"))
+const Schedule = lazy(() => import("@/pages/Schedule.page"))
 
 function previewRoutes(): RouteObject[] {
     if (!import.meta.env.DEV) {
@@ -65,7 +66,7 @@ const routes: RouteObject[] = [
                                     underConstruction(ROUTES.reports, "reports"),
                                     underConstruction(ROUTES.content, "content"),
                                     underConstruction(ROUTES.sessions, "sessions"),
-                                    underConstruction(ROUTES.schedule, "schedule"),
+                                    { path: ROUTES.schedule, element: <Schedule /> },
                                     underConstruction(ROUTES.documents, "documents"),
                                     { path: ROUTES.users, element: <Users /> },
                                     { path: ROUTES.whatsapp, element: <WhatsApp /> }

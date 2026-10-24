@@ -54,7 +54,8 @@ describe("RequireAccess", () => {
         panel = await loadPanelRoutes([
             () => import("@/pages/NotFound.page"),
             () => import("@/pages/UnderConstruction.page"),
-            () => import("@/pages/Appointments.page")
+            () => import("@/pages/Appointments.page"),
+            () => import("@/pages/Schedule.page")
         ])
     })
 
@@ -124,6 +125,22 @@ describe("RequireAccess", () => {
 
         expect(await screen.findByRole("heading", { name: "Usuários" })).toBeInTheDocument()
         expect(router.state.location.pathname).toBe("/usuarios")
+    })
+
+    it("leva quem só configura o atendimento de / para /horarios", async () => {
+        const { router } = renderAs("/", ["schedule.configure"])
+
+        expect(
+            await screen.findByRole("heading", { name: "Horários de atendimento", level: 1 })
+        ).toBeInTheDocument()
+        expect(router.state.location.pathname).toBe("/horarios")
+        expect(router.state.historyAction).toBe("REPLACE")
+    })
+
+    it("mostra a NotFound em /horarios a quem não configura o atendimento", async () => {
+        renderAs("/horarios", ["appointments.view", "users.manage"])
+
+        await expectNotFound()
     })
 
     it("leva quem vê agendamentos de / para /agendamentos", async () => {

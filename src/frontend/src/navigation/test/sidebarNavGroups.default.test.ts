@@ -22,20 +22,21 @@ const staffWithAllPermissions: PanelAccount = {
 }
 
 describe("sidebarNavGroups com as flags de produção", () => {
-    it("Agendamentos, Usuários e WhatsApp estão liberados", () => {
+    it("Agendamentos, Horários de atendimento, Usuários e WhatsApp estão liberados", () => {
         expect(
             Object.entries(NAV_ITEMS_READY)
                 .filter(([, ready]) => ready)
                 .map(([key]) => key)
-        ).toEqual(["appointments", "users", "whatsapp"])
+        ).toEqual(["appointments", "schedule", "users", "whatsapp"])
     })
 
-    it("o Admin vê Agendamentos em Operação e Usuários e WhatsApp em Configurações", () => {
+    it("o Admin vê Agendamentos em Operação e Horários, Usuários e WhatsApp em Configurações", () => {
         expect(sidebarNavGroups(admin)).toEqual([
             { key: "operation", items: [{ key: "appointments", path: ROUTES.appointments }] },
             {
                 key: "settings",
                 items: [
+                    { key: "schedule", path: ROUTES.schedule },
                     { key: "users", path: ROUTES.users },
                     { key: "whatsapp", path: ROUTES.whatsapp }
                 ]
@@ -43,21 +44,40 @@ describe("sidebarNavGroups com as flags de produção", () => {
         ])
     })
 
-    it("um funcionário com todas as permissões vê Agendamentos em Operação e Usuários em Configurações", () => {
+    it("um funcionário com todas as permissões vê Agendamentos em Operação e Horários e Usuários em Configurações", () => {
         expect(sidebarNavGroups(staffWithAllPermissions)).toEqual([
             { key: "operation", items: [{ key: "appointments", path: ROUTES.appointments }] },
-            { key: "settings", items: [{ key: "users", path: ROUTES.users }] }
+            {
+                key: "settings",
+                items: [
+                    { key: "schedule", path: ROUTES.schedule },
+                    { key: "users", path: ROUTES.users }
+                ]
+            }
         ])
     })
 
-    it("um funcionário sem Gerenciar usuários não vê o grupo Configurações", () => {
+    it("um funcionário sem Gerenciar usuários nem Configurar atendimento não vê o grupo Configurações", () => {
         const staffWithoutUsers: PanelAccount = {
             ...staffWithAllPermissions,
-            permissions: PERMISSION_KEYS.filter((key) => key !== "users.manage")
+            permissions: PERMISSION_KEYS.filter(
+                (key) => key !== "users.manage" && key !== "schedule.configure"
+            )
         }
 
         expect(sidebarNavGroups(staffWithoutUsers)).toEqual([
             { key: "operation", items: [{ key: "appointments", path: ROUTES.appointments }] }
+        ])
+    })
+
+    it("um funcionário só com Configurar atendimento presencial vê só Horários de atendimento", () => {
+        const scheduleOnly: PanelAccount = {
+            ...staffWithAllPermissions,
+            permissions: ["schedule.configure"]
+        }
+
+        expect(sidebarNavGroups(scheduleOnly)).toEqual([
+            { key: "settings", items: [{ key: "schedule", path: ROUTES.schedule }] }
         ])
     })
 })

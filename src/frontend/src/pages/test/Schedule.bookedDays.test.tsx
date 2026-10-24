@@ -1,0 +1,85 @@
+import { fireEvent, screen, within } from "@testing-library/react"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import buildBookedDays from "@/testUtils/buildBookedDays"
+import buildMonthlyPreview from "@/testUtils/buildMonthlyPreview"
+import renderSchedulePage from "@/testUtils/renderSchedulePage"
+
+vi.setConfig({ testTimeout: 20000 })
+
+afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
+})
+
+function wednesdayRow(): HTMLElement {
+    return screen.getByRole("checkbox", { name: "Quarta-feira" }).closest("li") as HTMLElement
+}
+
+describe("SchedulePage: dias com agendamento", () => {
+    it("marca o dia na prévia e trava o bloqueio, o dia da semana e a faixa", async () => {
+        const { user } = await renderSchedulePage({
+            bookedDays: buildBookedDays(),
+            handlers: {
+                "GET /api/v1/schedule/preview": () => ({
+                    status: 200,
+                    body: {
+                        data: buildMonthlyPreview("2026-11", [
+                            { date: "2026-11-04", status: "AVAILABLE", freeSeats: 6, capacity: 8 }
+                        ])
+                    }
+                })
+            }
+        })
+
+        const cell = await screen.findByRole("button", {
+            name: "04/11: 6 vagas livres · 2 agendamentos"
+        })
+        await user.click(cell)
+        expect(screen.getByText("09:00 · 1 agendamento")).toBeInTheDocument()
+        expect(screen.getByRole("checkbox", { name: "Quarta-feira" })).toBeDisabled()
+        expect(screen.getByRole("checkbox", { name: "Quarta-feira" })).toHaveAccessibleDescription(
+            "Há agendamentos em 04/11. Para desligar este dia, cancele ou remarque esses agendamentos antes, na tela de Agendamentos."
+        )
+        within(wednesdayRow())
+            .getAllByRole("button", { name: /^Remover faixa indisponível/ })
+            .forEach((button) => expect(button).toBeDisabled())
+
+        fireEvent.change(screen.getByLabelText("Data"), { target: { value: "2026-11-04" } })
+        await user.type(screen.getByLabelText("Descrição"), "Ponto facultativo")
+        await user.click(screen.getByRole("button", { name: "Adicionar" }))
+
+        expect(screen.getByRole("alert")).toHaveTextContent(
+            "Esta data tem 2 agendamentos. Para bloqueá-la, cancele ou remarque esses agendamentos antes, na tela de Agendamentos."
+        )
+        expect(screen.queryByText("Ponto facultativo", { selector: "div" })).not.toBeInTheDocument()
+        expect(screen.queryByRole("button", { name: /não salvas?$/ })).not.toBeInTheDocument()
+    })
+
+    it("não trava nada sem agendamento", async () => {
+        await renderSchedulePage()
+
+        await screen.findByRole("checkbox", { name: "Quarta-feira" })
+
+        expect(screen.getByRole("checkbox", { name: "Quarta-feira" })).toBeEnabled()
+        within(wednesdayRow())
+            .getAllByRole("button", { name: "Remover faixa" })
+            .forEach((button) => expect(button).toBeEnabled())
+    })
+
+    it("avisa quando não consegue verificar os dias com agendamento", async () => {
+        await renderSchedulePage({
+            handlers: {
+                "GET /api/v1/schedule/booked-days": () => ({
+                    status: 500,
+                    body: { error: { code: "INTERNAL_ERROR", message: "x" } }
+                })
+            }
+        })
+
+        expect(
+            await screen.findByText(
+                "Não foi possível verificar os dias que já têm agendamento. A prévia e o salvamento continuam apontando os agendamentos afetados."
+            )
+        ).toBeInTheDocument()
+    })
+})
