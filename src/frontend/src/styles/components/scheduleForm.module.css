@@ -1,0 +1,411 @@
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 22px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg-surface);
+}
+
+.twoColumns {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 18px;
+}
+
+.threeColumns {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.sectionTitle {
+    font: 700 16px var(--font-heading);
+}
+
+.sectionDescription {
+    margin-top: 4px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-muted);
+}
+
+.notice {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px 12px;
+    padding: 9px 12px;
+    border-radius: 9px;
+    background: var(--bg-accent-soft);
+    color: var(--color-primary-dark);
+    font-size: 12.5px;
+    line-height: 1.45;
+}
+
+.noticeText {
+    flex: 1 1 240px;
+    min-width: 0;
+}
+
+.noticeLink {
+    flex-shrink: 0;
+    color: var(--text-link);
+    font-weight: 600;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.days {
+    display: flex;
+    flex-direction: column;
+    list-style: none;
+}
+
+.dayRow {
+    display: grid;
+    grid-template-columns: 140px minmax(0, 1fr);
+    align-items: center;
+    gap: 14px;
+    padding: 12px 0;
+    border-top: 1px solid var(--divider);
+}
+
+.dayLabel {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.checkbox {
+    width: 17px;
+    height: 17px;
+    margin: 0;
+    accent-color: var(--color-primary);
+}
+
+.checkbox:disabled {
+    cursor: not-allowed;
+}
+
+.dayBody {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.ranges {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.noService {
+    font-size: 13px;
+    color: var(--text-soft);
+}
+
+.rangeField {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    max-width: 100%;
+}
+
+.range {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-subtle);
+}
+
+.rangeInvalid {
+    border-color: #d9776b;
+    background: var(--error-soft-bg);
+}
+
+.timeInput {
+    width: 92px;
+    border: 0;
+    background: transparent;
+    font-size: 13px;
+}
+
+.separator {
+    color: var(--text-soft);
+}
+
+.removeRange {
+    flex-shrink: 0;
+    padding: 0 4px;
+    border: 0;
+    background: none;
+    color: var(--text-soft);
+    font-size: 15px;
+    cursor: pointer;
+}
+
+.removeRange:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.rangeError {
+    max-width: 280px;
+    color: var(--danger);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.addRange {
+    flex-shrink: 0;
+    padding: 6px 10px;
+    border: 1px dashed var(--border-accent);
+    border-radius: 8px;
+    background: var(--bg-surface);
+    color: var(--color-primary);
+    font-size: 12.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.lock {
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--warn-text);
+}
+
+.errors {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    color: var(--danger);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.35;
+    list-style: none;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-strong);
+}
+
+.inline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.inlineLabel {
+    font-size: 14px;
+}
+
+.suffix {
+    font-size: 14px;
+}
+
+.help {
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--text-muted);
+}
+
+.numberInput {
+    width: 90px;
+    padding: 9px 10px;
+    border: 1px solid var(--border-input);
+    border-radius: 8px;
+    background: var(--bg-surface);
+    font-size: 14px;
+}
+
+.textInput {
+    padding: 9px 10px;
+    border: 1px solid var(--border-input);
+    border-radius: 8px;
+    background: var(--bg-surface);
+    font-size: 14px;
+}
+
+.select {
+    padding: 9px 10px;
+    border: 1px solid var(--border-input);
+    border-radius: 8px;
+    background: var(--bg-surface);
+    font-size: 14px;
+}
+
+.inputInvalid {
+    border-color: #d9776b;
+}
+
+.reminderHeader {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.reminderText {
+    flex: 1 1 260px;
+    min-width: 0;
+}
+
+.toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.reminderPreview {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.reminderPreviewHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.fixed {
+    font: 700 10.5px var(--font-body);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.message {
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-page);
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--text-body);
+}
+
+.blocks {
+    display: flex;
+    flex-direction: column;
+    list-style: none;
+}
+
+.blockRow {
+    display: grid;
+    grid-template-columns: 110px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 0;
+    border-top: 1px solid var(--divider);
+}
+
+.blockDate {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.blockWeekday {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.blockBody {
+    min-width: 0;
+}
+
+.blockDescription {
+    font-size: 13.5px;
+}
+
+.blockPeriod {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.blockPartial {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--warn-text);
+}
+
+.secondaryButton {
+    flex-shrink: 0;
+    padding: 5px 10px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--bg-surface);
+    color: var(--text-strong);
+    font-size: 12.5px;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.empty {
+    padding: 12px 0;
+    font-size: 13.5px;
+    color: var(--text-muted);
+}
+
+.newBlock {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid var(--divider);
+}
+
+.newBlockTitle {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-strong);
+}
+
+.newBlockFields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    align-items: end;
+    gap: 8px;
+}
+
+.addBlock {
+    padding: 9px 14px;
+    border: 1px solid var(--border-accent);
+    border-radius: 8px;
+    background: var(--bg-surface);
+    color: var(--color-primary);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+}

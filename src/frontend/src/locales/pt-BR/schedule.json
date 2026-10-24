@@ -89,5 +89,106 @@
         "hint": "Para fazer esta alteração, cancele ou remarque esses agendamentos na tela de Agendamentos antes de salvar.",
         "when": "{{weekday}}, {{date}} às {{time}}",
         "protocol": "Protocolo {{protocol}}"
+    },
+    "contentNotice": {
+        "text": "Se você mudar horários ou endereço, revise as perguntas do Conteúdo que citam essas informações.",
+        "link": "Revisar Conteúdo →"
+    },
+    "conflictMessage": "Afeta o agendamento {{protocol}} ({{date}} às {{time}}): {{reason}}",
+    "problems": {
+        "rangeMissing": "Informe o início e o fim da faixa.",
+        "rangeEndBeforeStart": "O fim deve ser depois do início",
+        "rangeOverlap": "Esta faixa se sobrepõe a outra faixa do mesmo dia",
+        "rangeTooShort": "Esta faixa não comporta nenhum atendimento de {{minutes}} minutos",
+        "seatsOutOfRange": "Vagas por horário devem estar entre 1 e 20",
+        "windowOutOfRange": "Janela de agendamento deve estar entre 1 e 180 dias",
+        "waitAlertOutOfRange": "Alerta de espera deve estar entre 1 e 60 dias",
+        "addressRequired": "Endereço da unidade obrigatório",
+        "addressTooLong": "Endereço deve ter no máximo 500 caracteres",
+        "complementTooLong": "Complemento deve ter no máximo 500 caracteres"
+    },
+    "grid": {
+        "title": "Grade semanal",
+        "noService": "Sem atendimento",
+        "addRange": "+ Faixa",
+        "addRangeLabel": "Adicionar faixa em {{day}}",
+        "start": "Início da faixa {{position}} de {{day}}",
+        "end": "Fim da faixa {{position}} de {{day}}",
+        "separator": "–",
+        "removeSymbol": "×",
+        "remove": "Remover faixa",
+        "removeLocked": "Remover faixa indisponível: há agendamento nesta faixa. Cancele ou remarque o agendamento antes, na tela de Agendamentos.",
+        "dayLocked": "Há agendamentos em {{dates}}. Para desligar este dia, cancele ou remarque esses agendamentos antes, na tela de Agendamentos.",
+        "dayLockedMore": "Há agendamentos em {{dates}} e em outras datas. Para desligar este dia, cancele ou remarque esses agendamentos antes, na tela de Agendamentos."
+    },
+    "durationSeats": {
+        "duration": "Duração de cada atendimento",
+        "minutes": "{{count}} minutos",
+        "seats": "Vagas simultâneas por horário"
+    },
+    "window": {
+        "title": "Janela de agendamento",
+        "description": "O chatbot só oferece horários livres dentro desta janela. Se não houver nenhum horário livre nela, o chatbot informa ao cidadão que não há horários disponíveis no momento.",
+        "windowDays": "Oferecer horários até",
+        "windowSuffix": "dias à frente",
+        "windowHelp": "Horários além deste prazo não são oferecidos.",
+        "minNotice": "Antecedência mínima",
+        "minNoticeOptions": {
+            "0": "Sem antecedência (mesmo dia)",
+            "1": "1 dia útil",
+            "2": "2 dias úteis",
+            "3": "3 dias úteis",
+            "5": "5 dias úteis"
+        },
+        "minNoticeHelp": "O chatbot não oferece horários antes disso. Contam apenas dias com atendimento.",
+        "waitAlert": "Alertar quando a espera passar de",
+        "waitAlertSuffix": "dias",
+        "waitAlertHelp": "O Dashboard avisa quando o próximo horário livre estiver além deste prazo."
+    },
+    "unit": {
+        "title": "Dados da unidade",
+        "description": "Usados nas mensagens do chatbot, como o lembrete do atendimento.",
+        "address": "Endereço da unidade",
+        "addressPlaceholder": "Rua, número – bairro, cidade",
+        "complement": "Complemento ou referência (opcional)",
+        "complementPlaceholder": "Ex.: 2º andar, sala 5"
+    },
+    "reminder": {
+        "title": "Lembrete ao cidadão",
+        "description": "Enviado pelo chatbot no WhatsApp para os agendamentos Pendentes e Confirmados.",
+        "toggle": "Enviar lembrete ao cidadão",
+        "on": "Ativado",
+        "off": "Desativado",
+        "hoursBefore": "Enviar lembrete ao cidadão",
+        "hoursSuffix": "horas antes do atendimento",
+        "previewTitle": "Prévia da mensagem",
+        "fixed": "Modelo fixo",
+        "message": "Olá, [primeiro nome]. Lembrete do seu atendimento no PROCON Jacareí: [dia da semana], [dd/mm], às [hh:mm] (protocolo [protocolo]). Endereço: {{address}}. Traga: [documentos]. Se não puder comparecer, remarque ou cancele respondendo a esta mensagem.",
+        "addressWithComplement": "{{address}} ({{complement}})",
+        "addressMissing": "[endereço não informado em Dados da unidade]",
+        "note": "Os documentos do lembrete são os que foram enviados ao cidadão na confirmação de cada agendamento (a lista guardada no agendamento), não a configuração atual de Documentos.",
+        "cost": "Cada lembrete é uma mensagem de modelo e tem custo por mensagem cobrado pela Meta."
+    },
+    "blocked": {
+        "title": "Datas bloqueadas",
+        "description": "Feriados, pontos facultativos ou períodos sem atendimento. O chatbot não oferece horários nesses dias ou períodos.",
+        "empty": "Nenhuma data bloqueada.",
+        "fullDay": "Dia inteiro",
+        "period": "{{start}}–{{end}}",
+        "remove": "Remover",
+        "removeLabel": "Remover o bloqueio de {{date}}",
+        "newTitle": "Bloquear um dia inteiro",
+        "newDate": "Data",
+        "newDescription": "Descrição",
+        "newDescriptionPlaceholder": "Descrição (ex.: Aniversário de Jacareí)",
+        "add": "Adicionar",
+        "problems": {
+            "dateRequired": "Informe a data.",
+            "dateAlreadyBlocked": "Esta data já tem um bloqueio",
+            "dateHasAppointments_one": "Esta data tem {{count}} agendamento. Para bloqueá-la, cancele ou remarque o agendamento antes, na tela de Agendamentos.",
+            "dateHasAppointments_other": "Esta data tem {{count}} agendamentos. Para bloqueá-la, cancele ou remarque esses agendamentos antes, na tela de Agendamentos.",
+            "descriptionRequired": "Descrição do bloqueio obrigatória",
+            "descriptionTooLong": "Descrição deve ter no máximo 150 caracteres"
+        }
     }
 }
