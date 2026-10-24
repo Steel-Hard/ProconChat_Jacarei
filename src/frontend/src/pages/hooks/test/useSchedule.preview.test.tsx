@@ -85,6 +85,25 @@ describe("useSchedule: prévia", () => {
         expect((put.body as { seatsPerSlot: number }).seatsPerSlot).toBe(3)
     })
 
+    it("não manda o rascunho aos 399 ms e manda aos 400 ms com o relógio parado", async () => {
+        vi.useRealTimers()
+        const { result, callsTo } = await renderScheduleHook()
+        await waitFor(() => expect(result.current.preview.preview).not.toBeNull())
+        vi.useFakeTimers()
+
+        act(() => result.current.actions.setText("seatsPerSlot", "3"))
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(399)
+        })
+        const at399 = callsTo("POST", "/api/v1/schedule/preview").length
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(1)
+        })
+        await vi.waitFor(() => expect(callsTo("POST", "/api/v1/schedule/preview")).toHaveLength(1))
+
+        expect(at399).toBe(0)
+    })
+
     it("junta duas edições seguidas em um só POST", async () => {
         const { result, callsTo } = await ready()
 
