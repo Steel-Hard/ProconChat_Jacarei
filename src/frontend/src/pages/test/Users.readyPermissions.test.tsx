@@ -86,6 +86,12 @@ describe("UsersPage com só algumas telas prontas", () => {
         expect(rowOf("Carla Dias")).toHaveTextContent("2 de 3 permissões")
     })
 
+    it("não conta na lista a permissão de tela não pronta que a conta já tem", async () => {
+        await renderToday()
+
+        expect(rowOf("Diego Rocha")).toHaveTextContent("0 de 3 permissões")
+    })
+
     it("envia o conjunto completo da conta, com as permissões de telas não prontas", async () => {
         const { user, callsTo } = await renderToday()
         await user.click(rowOf("Diego Rocha"))
