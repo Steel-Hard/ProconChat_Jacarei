@@ -1,4 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import BadRequestError from "../errors/BadRequestError"
+import ConflictError from "../errors/ConflictError"
+import ScheduleNotConfiguredError from "../errors/ScheduleNotConfiguredError"
+import {
+    buildDefaultScheduleConfigView,
+    createScheduleStubRepository,
+} from "../repositories/mock/scheduleStub.repository"
 import { IScheduleRepository } from "../repositories/schedule.repository.interface"
 import { createScheduleService, freeSlotStartsOfDay, IScheduleService } from "./schedule.service"
 import {
@@ -23,6 +30,8 @@ describe("ScheduleService", () => {
             getBlockedDates: vi.fn().mockResolvedValue([]),
             countActiveAppointmentsPerSlot: vi.fn().mockResolvedValue(new Map()),
             bookAppointment: vi.fn(),
+            getConfig: vi.fn().mockResolvedValue(buildDefaultScheduleConfigView()),
+            saveConfig: vi.fn().mockResolvedValue(buildDefaultScheduleConfigView()),
         }
         service = createScheduleService(repoMock)
     })
@@ -132,6 +141,14 @@ describe("ScheduleService", () => {
         expect(slots).toEqual([])
     })
 
+    it("devolve lista vazia quando a grade não tem nenhuma faixa", async () => {
+        vi.mocked(repoMock.getRanges).mockResolvedValueOnce([])
+
+        const slots = await service.getAvailableSlots(new Date("2026-10-05T09:00:00-03:00"))
+
+        expect(slots).toEqual([])
+    })
+
     it("deve respeitar estritamente o limite da janela de agendamento (window_days)", async () => {
         vi.mocked(repoMock.getSettings).mockResolvedValueOnce(
             buildScheduleSettings({ window_days: 2, min_notice_days: 1 }),
@@ -155,6 +172,149 @@ describe("ScheduleService", () => {
         const slots = await service.getAvailableSlots(now)
 
         expect(slots).toEqual([])
+    })
+
+    describe("getConfig, saveConfig e getMonthlyPreview", () => {
+        it("lança ScheduleNotConfiguredError quando não há configuração salva", async () => {
+            vi.mocked(repoMock.getConfig).mockResolvedValueOnce(null)
+            await expect(service.getConfig()).rejects.toBeInstanceOf(
+                ScheduleNotConfiguredError,
+            )
+        })
+
+        it("mantém 100% de consistência entre getAvailableSlots (bot) e getMonthlyPreview (painel)", async () => {
+            const stubRepo = createScheduleStubRepository({
+                config: buildDefaultScheduleConfigView({
+                    slotMinutes: 30,
+                    seatsPerSlot: 2,
+                    windowDays: 10,
+                    minNoticeDays: 1,
+                    ranges: [1, 2, 3, 4, 5].map((weekday) => ({
+                        weekday,
+                        slotIndex: 1,
+                        startTime: "08:00",
+                        endTime: "10:00",
+                    })),
+                    blockedDates: [
+                        {
+                            date: "2026-10-07",
+                            startTime: null,
+                            endTime: null,
+                            description: "Feriado",
+                        },
+                        {
+                            date: "2026-10-08",
+                            startTime: "08:30",
+                            endTime: "09:30",
+                            description: "Reunião",
+                        },
+                    ],
+                }),
+                appointments: [
+                    {
+                        id: "1",
+                        protocol: "AAAA1111",
+                        name: "João Silva",
+                        cpfMasked: "***.111.222-**",
+                        appointmentDatetime: new Date("2026-10-06T08:00:00-03:00"),
+                        requestDatetime: new Date("2026-10-01T10:00:00-03:00"),
+                        status: "PENDING",
+                    },
+                    {
+                        id: "2",
+                        protocol: "BBBB2222",
+                        name: "Maria Souza",
+                        cpfMasked: "***.333.444-**",
+                        appointmentDatetime: new Date("2026-10-06T08:00:00-03:00"),
+                        requestDatetime: new Date("2026-10-01T11:00:00-03:00"),
+                        status: "CONFIRMED",
+                    },
+                    {
+                        id: "3",
+                        protocol: "CCCC3333",
+                        name: "Carlos Lima",
+                        cpfMasked: "***.555.666-**",
+                        appointmentDatetime: new Date("2026-10-06T08:30:00-03:00"),
+                        requestDatetime: new Date("2026-10-01T12:00:00-03:00"),
+                        status: "PENDING",
+                    },
+                ],
+            })
+
+            const realService = createScheduleService(stubRepo)
+            const now = new Date("2026-10-05T09:00:00-03:00")
+
+            const botSlots = await realService.getAvailableSlots(now)
+            const preview = await realService.getMonthlyPreview({
+                month: "2026-10",
+                now,
+            })
+
+            const totalSeatsOfferedByBot = botSlots.reduce(
+                (acc, s) => acc + s.remainingSeats,
+                0,
+            )
+            expect(preview.freeWindowSeats).toBe(totalSeatsOfferedByBot)
+
+            const previewOfferedSlots = preview.days.flatMap((d) =>
+                d.slots
+                    .filter((s) => s.offered && s.freeSeats > 0)
+                    .map((s) => ({
+                        dateStr: d.date,
+                        timeStr: s.time,
+                        remainingSeats: s.freeSeats,
+                    })),
+            )
+            expect(previewOfferedSlots).toEqual(
+                botSlots.map((s) => ({
+                    dateStr: s.dateStr,
+                    timeStr: s.timeStr,
+                    remainingSeats: s.remainingSeats,
+                })),
+            )
+        })
+
+        it("recusa salvar configuração que gera conflito com agendamentos futuros", async () => {
+            const stubRepo = createScheduleStubRepository({
+                appointments: [
+                    {
+                        id: "10",
+                        protocol: "A1B2C3D4",
+                        name: "Maria Oliveira",
+                        cpfMasked: "***.456.789-**",
+                        appointmentDatetime: new Date("2026-10-06T08:00:00-03:00"),
+                        requestDatetime: new Date("2026-10-01T10:00:00-03:00"),
+                        status: "CONFIRMED",
+                    },
+                ],
+            })
+            const realService = createScheduleService(stubRepo)
+            const current = await realService.getConfig()
+
+            await expect(
+                realService.saveConfig(
+                    {
+                        ...current,
+                        blockedDates: [
+                            {
+                                date: "2026-10-06",
+                                startTime: null,
+                                endTime: null,
+                                description: "Ponto facultativo",
+                            },
+                        ],
+                    },
+                    2,
+                    new Date("2026-10-05T09:00:00-03:00"),
+                ),
+            ).rejects.toBeInstanceOf(ConflictError)
+        })
+
+        it("rejeita mês inválido em getMonthlyPreview", async () => {
+            await expect(
+                service.getMonthlyPreview({ month: "2026-13" }),
+            ).rejects.toBeInstanceOf(BadRequestError)
+        })
     })
 
     describe("freeSlotStartsOfDay", () => {

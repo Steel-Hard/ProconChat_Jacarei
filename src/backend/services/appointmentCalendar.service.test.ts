@@ -51,6 +51,8 @@ describe("appointmentCalendar.service", () => {
                 .fn()
                 .mockResolvedValue(new Map([[parseLocalDate("2026-10-21", "08:00").toISOString(), 2]])),
             bookAppointment: vi.fn(),
+            getConfig: vi.fn(),
+            saveConfig: vi.fn(),
         }
         appointments = { findWeek: vi.fn().mockResolvedValue([]) }
     })

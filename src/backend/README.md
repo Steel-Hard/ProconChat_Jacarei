@@ -846,7 +846,13 @@ a conta de quem clicou; `assign`, a de quem clicou e a do destino; `correct_reco
 a do responsável atual; `POST /:id/notes`, a de quem escreve. Os testes de corrida ficam em
 `tests/integration/appointments.lockOrder.integration.test.ts`: uma transação auxiliar segura o
 agendamento, as duas operações entram na fila em ordem conhecida e, sem a trava da conta de quem age,
-o Postgres acusa deadlock em todas as rodadas.
+o Postgres acusa deadlock em todas as rodadas. O salvamento de `PUT /api/v1/schedule` segue a mesma
+regra: depois da trava consultiva exclusiva `schedule_config`, `saveConfig` trava a conta de quem salva
+(`lockAccounts`, porque `ScheduleSettings.updated_by` tem chave estrangeira para `Users`) antes de
+travar os agendamentos futuros. Sem isso, salvar a grade enquanto outra pessoa atribui um agendamento
+futuro a quem salva fechava um ciclo (o salvamento com o agendamento esperando a conta, a atribuição
+com a conta esperando o agendamento). A prova fica em
+`tests/integration/scheduleConfig.lockOrder.integration.test.ts`.
 
 **Corrigir registro (`correct_record`).** Volta ao estado anterior ao `ATTENDED`/`NO_SHOW` mais recente:
 `PENDING` sem responsável quando esse terminal veio junto de um `CLAIMED { auto_claimed: true }` no
@@ -917,6 +923,107 @@ conferir nada. Duas correções simultâneas: uma grava, a outra recebe `409 REC
   hora deles. `shortName` é o primeiro nome do titular; o calendário não devolve CPF, telefone nem o
   nome completo.
 
+## Horários de atendimento (/api/v1/schedule, #64)
+
+Configuração da agenda presencial e prévia mensal de vagas ([decisão 007](../../.docs/decisoes/007-agenda-configuravel.md),
+[regras da tela](../../.docs/regras/08-horarios-de-atendimento.md)). Todas as rotas passam pela
+proteção CSRF (`403 INVALID_ORIGIN` nos métodos que enviam corpo), por `requireAuth` e por
+`requirePermission("schedule.configure")`, e respondem com `Cache-Control: no-store`. Camadas:
+`routes/schedule.routes.ts` (`ScheduleRoutes`), `controllers/schedule.controller.ts`
+(`ScheduleController`), `services/schedule.service.ts` + `services/scheduleRules.ts` e
+`repositories/schedule.repository.ts`; schemas de entrada em `schemas/schedule.schema.ts`.
+
+### Rotas
+
+| Rota | Entrada | Sucesso | Erros |
+| --- | --- | --- | --- |
+| `GET /api/v1/schedule` | — | `200 { data: ScheduleConfigView }` | `401 UNAUTHORIZED`, `403 FORBIDDEN`, `500 SCHEDULE_NOT_CONFIGURED` |
+| `PUT /api/v1/schedule` | `ScheduleConfigInput` | `200 { data: ScheduleConfigView }` | `400 BAD_REQUEST`, `401`, `403`, `409 SCHEDULE_CONFLICTS` com `details.conflicts` |
+| `GET /api/v1/schedule/preview?month=YYYY-MM` | `month` opcional (padrão: mês atual em `America/Sao_Paulo`) | `200 { data: MonthlyPreviewResult }` | `400 BAD_REQUEST`, `401`, `403` |
+| `POST /api/v1/schedule/preview` | `{ month?: "YYYY-MM", config?: ScheduleConfigInput }` | `200 { data: MonthlyPreviewResult }` (calcula sobre o rascunho `config` sem gravar no banco, ou sobre a configuração salva se `config` for omitido) | `400 BAD_REQUEST`, `401`, `403` |
+
+- **Consistência entre bot e prévia:** o cálculo de vagas disponíveis do bot (`getAvailableSlots`) e
+  o cálculo da prévia mensal (`getMonthlyPreview`) compartilham as mesmas funções puras de
+  `services/scheduleRules.ts` (`slotsForWeekday`, `freeSlotStartsOfDay`, `isBusinessDay`,
+  `computeWindowBounds` e `calculateMonthlyPreview`). Qualquer alteração salva em `PUT /api/v1/schedule`
+  entra em vigor imediatamente na oferta de horários do bot.
+- **Validações da configuração:** o schema `scheduleConfigBodySchema` (`schemas/schedule.schema.ts`) é
+  a única fonte das regras. `normalizeAndValidateScheduleConfig` (`services/scheduleRules.ts`) valida
+  com esse schema por `validateSchema` (`utils/validateSchema.ts`) e depois só normaliza: ordena as
+  faixas, renumera `slotIndex`, troca complemento vazio por `null` e ordena os bloqueios. Regras:
+  - `slotMinutes` em `20, 30, 40, 60`; `seatsPerSlot` de `1` a `20`; `windowDays` de `1` a `180`;
+    `minNoticeDays` em `0, 1, 2, 3, 5` (dias úteis com atendimento); `waitAlertDays` de `1` a `60`;
+    `reminderHours` em `2, 6, 12, 24, 48`; `unitAddress` obrigatório (até 500 caracteres) e
+    `unitAddressComplement` opcional (até 500 caracteres).
+  - Até 3 faixas (`ranges`) por dia da semana (`weekday` `0..6`), com `endTime > startTime`, sem
+    sobreposição no mesmo dia, sem `slotIndex` repetido no mesmo dia e com duração suficiente para ao
+    menos 1 atendimento de `slotMinutes`. As faixas do mesmo dia são ordenadas por `startTime` e
+    renumeradas em `slotIndex` `1..3`.
+  - Datas bloqueadas (`blockedDates`) do dia inteiro (`startTime` e `endTime` nulos) ou de período
+    parcial (`startTime < endTime`), com descrição obrigatória (até 150 caracteres) e sem
+    sobreposição na mesma data.
+- **Erros de validação por campo:** nas rotas de `/api/v1/schedule` (e só nelas, por
+  `validateRequest(schemas, { withIssues: true })`), o `400 BAD_REQUEST` traz também
+  `error.details.issues`, um item por problema na ordem do zod, com `path` em texto com ponto. O
+  `code` e a `message` são os mesmos das outras rotas, que continuam sem `details`. No
+  `POST /api/v1/schedule/preview` o rascunho vai dentro de `config`, então o `path` vem com o prefixo
+  `config.` (por exemplo, `config.ranges.2.endTime`); no `PUT /api/v1/schedule` o corpo é a própria
+  configuração e o `path` vem sem prefixo:
+
+  ```json
+  {
+      "error": {
+          "code": "BAD_REQUEST",
+          "message": "Dados inválidos: ranges.2.endTime: Esta faixa não comporta nenhum atendimento de 30 minutos",
+          "details": {
+              "issues": [
+                  { "path": "ranges.2.endTime", "message": "Esta faixa não comporta nenhum atendimento de 30 minutos" }
+              ]
+          }
+      }
+  }
+  ```
+
+- **Detecção de conflitos ao salvar:** dentro da transação de `saveConfig`, o repositório pega a trava
+  exclusiva `pg_advisory_xact_lock(hashtext('schedule_config'))`, trava a conta de quem salva
+  (`lockAccounts`, a mesma ordem "contas antes do agendamento" da #62 e da #87), trava `ScheduleSettings`
+  (lendo a duração atual `slot_minutes`) e todos os agendamentos futuros ativos
+  (`status IN ('PENDING', 'CONFIRMED')`, `appointment_datetime > now`, inclusive os `off_grid`, travados
+  em `ORDER BY id`, como `lockFutureAppointments` da #62, e depois ordenados por data e `id`) e executa
+  `detectScheduleConflicts(config, agendamentos, duraçãoAtual)`. Os agendamentos `off_grid` nunca entram
+  na lista: servem só de parceiros na comparação do `RESPONSIBLE_OVERLAP`. Se algum agendamento for
+  afetado, a transação faz `ROLLBACK` e responde `409 SCHEDULE_CONFLICTS` com `{ details: { conflicts } }`.
+  Códigos:
+  - `DATE_BLOCKED`, `PERIOD_BLOCKED`, `DAY_WITHOUT_SERVICE`, `DURATION_CHANGED` e `RANGE_CHANGED`;
+  - `SEATS_REDUCED` para os agendamentos excedentes, ordenados por `request_datetime ASC, id ASC`
+    (perde a vaga quem pediu por último);
+  - `RESPONSIBLE_OVERLAP`: dois agendamentos `CONFIRMED` do mesmo responsável (`assigned_user_id`) que
+    não se sobrepunham com a duração atual passam a se sobrepor com a nova (mesma regra de
+    `services/responsibleAvailability.ts`). Só acontece quando a duração aumenta. Entra o agendamento
+    que não é `off_grid`, uma vez só, apontando o parceiro de horário mais cedo (empate pelo `id`
+    menor) em `conflictingAppointmentId` e `conflictingProtocol`. Se um dos dois já está na lista por
+    outro código, nada é acrescentado. O item não traz `cpf_hash` nem o id do responsável.
+
+  ```json
+  {
+      "id": "41",
+      "protocol": "A1B2C3D4",
+      "name": "Maria Souza",
+      "cpfMasked": "***.982.247-**",
+      "appointmentDatetime": "2026-11-04T12:00:00.000Z",
+      "date": "2026-11-04",
+      "time": "09:00",
+      "status": "CONFIRMED",
+      "reason": "Responsável com outro agendamento sobreposto com atendimentos de 60 minutos (protocolo E5F6A7B8)",
+      "code": "RESPONSIBLE_OVERLAP",
+      "conflictingAppointmentId": "42",
+      "conflictingProtocol": "E5F6A7B8"
+  }
+  ```
+
+  O fluxo de resolução no mesmo salvamento (cancelar pelo Procon ou manter como `off_grid = TRUE`)
+  pertence à #65.
+
 ## Agendamento pelo chat (#56)
 
 Quando o cidadão aceita a oferta de agendamento (`schedule_yes` em `AWAITING_SCHEDULE_OFFER`), o
@@ -957,13 +1064,17 @@ só o espaço comum.
 | CPF inválido | `ERRO_CPF` | `AWAITING_HOLDER_CPF` |
 | Nenhum horário livre (ao listar ou depois de um horário lotado) | `MENSAGEM_SEM_HORARIOS`; encerra com `NO_SLOT` | `FINISHED` |
 | Texto ou opção que não é da lista | `ERRO_SLOTS` com a página atual | `AWAITING_SLOT` |
-| Horário lotado (`SlotFullError`) ou `slot_` que não está mais na lista | `ERRO_SLOT_OCUPADO` com a lista atualizada, voltando à página 1 | `AWAITING_SLOT` |
+| Horário lotado (`SlotFullError`, que vale também para o horário que saiu da grade ou foi bloqueado por um salvamento de `PUT /api/v1/schedule` durante a reserva) ou `slot_` que não está mais na lista | `ERRO_SLOT_OCUPADO` com a lista atualizada, voltando à página 1 | `AWAITING_SLOT` |
 | Já existe agendamento ativo do mesmo CPF no mesmo horário (`DuplicateAppointmentError`) | `ERRO_DUPLICATE_APPOINTMENT` com a página atual | `AWAITING_SLOT` |
 | Rascunho incompleto ou pergunta inválida | `MENSAGEM_RASCUNHO_INCOMPLETO`; o rascunho é limpo | `AWAITING_ATTENDEE` |
 | Qualquer outra falha da reserva (inclusive `ScheduleNotConfiguredError` e `BookingFailedError`) | `ERRO_FALHA_AGENDAMENTO` ("O agendamento não foi gravado"); o log leva só o tipo do evento, o id da sessão e o código do erro | `AWAITING_SLOT` |
 
 A reserva (`bookAppointment` em `repositories/schedule.repository.ts`) roda numa transação, nesta
-ordem: trava do horário (`pg_advisory_xact_lock`), leitura da configuração, recontagem das vagas,
+ordem: trava compartilhada da agenda (`pg_advisory_xact_lock_shared(hashtext('schedule_config'))`, que
+só espera um salvamento de `PUT /api/v1/schedule` em andamento; reservas não esperam umas pelas
+outras), trava do horário (`pg_advisory_xact_lock`), leitura da configuração, conferência de que o
+horário ainda existe na grade atual (faixas, bloqueios e duração lidos na mesma transação, por
+`freeSlotStartsOfDay`; se não existe, `SlotFullError`, e o bot oferece a lista atualizada), recontagem das vagas,
 checagem de duplicidade por CPF e horário, documentos, `INSERT` do agendamento (telefone cifrado com
 `ENCRYPTION_KEY`), evento `CREATED` em `AppointmentEvents`, `PHONE_NOTICE_SHOWN` por
 `insertConversationEvent(client, ...)` e encerramento por `finishSessionWith(client, ...)` com
