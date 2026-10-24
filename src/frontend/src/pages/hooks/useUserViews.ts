@@ -173,7 +173,7 @@ function useUserViews({ actor, saved, effective, draft, selected, reassignment }
         revoke: (name, permission) => t("changes.revoke", { name, permission }),
         deactivate: (name) => t("changes.deactivate", { name }),
         reactivate: (name) => t("changes.reactivate", { name }),
-        redistributed: (count) => t("changes.redistributed", { count })
+        redistributed: (change, count) => t("changes.redistributed", { change, count })
     })
 
     return {

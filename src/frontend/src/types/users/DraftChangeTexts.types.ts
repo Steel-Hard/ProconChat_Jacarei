@@ -6,7 +6,7 @@ type DraftChangeTexts = {
     revoke: (name: string, permission: string) => string
     deactivate: (name: string) => string
     reactivate: (name: string) => string
-    redistributed: (count: number) => string
+    redistributed: (change: string, count: number) => string
 }
 
 export default DraftChangeTexts

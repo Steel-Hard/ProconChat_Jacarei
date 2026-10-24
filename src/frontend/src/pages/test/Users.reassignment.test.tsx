@@ -131,8 +131,9 @@ describe("UsersPage redistribuição dos agendamentos futuros", () => {
         expect(brunoRow()).toHaveTextContent("Inativo")
         expect(brunoRow()).toHaveTextContent("Não salvo")
         expect(screen.getByRole("button", { name: "Reativar conta" })).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "1 alteração não salva" })).toBeInTheDocument()
         expect(await pendingList(user)).toBe(
-            "Pendentes: Bruno Lima: desativar conta; 2 agendamento(s) redistribuído(s)"
+            "Pendentes: Bruno Lima: desativar conta (2 agendamento(s) redistribuído(s))"
         )
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
         await vi.waitFor(() => expect(callsTo("PATCH", "/api/v1/users")).toHaveLength(1))
@@ -200,7 +201,7 @@ describe("UsersPage redistribuição dos agendamentos futuros", () => {
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
         expect(callsTo("GET", "/api/v1/users/7/future-appointments")).toHaveLength(1)
         expect(await pendingList(user)).toBe(
-            "Pendentes: Bruno Lima: desativar conta; Bruno Lima: remover Gerenciar agendamentos; 2 agendamento(s) redistribuído(s)"
+            "Pendentes: Bruno Lima: desativar conta; Bruno Lima: remover Gerenciar agendamentos (2 agendamento(s) redistribuído(s))"
         )
     })
 

@@ -142,7 +142,7 @@
         "revoke": "{{name}}: remover {{permission}}",
         "deactivate": "{{name}}: desativar conta",
         "reactivate": "{{name}}: reativar conta",
-        "redistributed": "{{count}} agendamento(s) redistribuído(s)"
+        "redistributed": "{{change}} ({{count}} agendamento(s) redistribuído(s))"
     },
     "toasts": {
         "saved": "Alterações de usuários salvas.",

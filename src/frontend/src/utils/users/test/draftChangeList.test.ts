@@ -9,7 +9,7 @@ const texts: DraftChangeTexts = {
     revoke: (name, permission) => `${name}: remover ${permission}`,
     deactivate: (name) => `${name}: desativar conta`,
     reactivate: (name) => `${name}: reativar conta`,
-    redistributed: (count) => `${count} agendamento(s) redistribuído(s)`
+    redistributed: (change, count) => `${change} (${count} agendamento(s) redistribuído(s))`
 }
 
 describe("draftChangeList", () => {
@@ -34,7 +34,7 @@ describe("draftChangeList", () => {
         ])
     })
 
-    it("acrescenta o total de agendamentos redistribuídos", () => {
+    it("junta os agendamentos redistribuídos à linha da desativação de cada conta", () => {
         const bruno = buildUserAccount({ id: 7, name: "Bruno" })
         const carla = buildUserAccount({ id: 3, name: "Carla" })
 
@@ -54,9 +54,34 @@ describe("draftChangeList", () => {
         )
 
         expect(result).toEqual([
+            "Bruno: desativar conta (2 agendamento(s) redistribuído(s))",
+            "Carla: desativar conta (1 agendamento(s) redistribuído(s))"
+        ])
+    })
+
+    it("junta os agendamentos redistribuídos à linha que tira Gerenciar agendamentos", () => {
+        const bruno = buildUserAccount({
+            id: 7,
+            name: "Bruno",
+            permissions: ["appointments.view", "appointments.manage"]
+        })
+
+        const result = draftChangeList(
+            [bruno],
+            {
+                7: {
+                    active: false,
+                    permissions: ["appointments.view", "content.manage"],
+                    reassignment: { mode: "pending", count: 2, reason: "manageRemoved" }
+                }
+            },
+            texts
+        )
+
+        expect(result).toEqual([
             "Bruno: desativar conta",
-            "Carla: desativar conta",
-            "3 agendamento(s) redistribuído(s)"
+            "Bruno: remover <appointments.manage> (2 agendamento(s) redistribuído(s))",
+            "Bruno: conceder <content.manage>"
         ])
     })
 

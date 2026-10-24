@@ -4,21 +4,28 @@ import type UserAccount from "@/types/users/UserAccount.types"
 import type UserDraft from "@/types/users/UserDraft.types"
 import type UserDraftEntry from "@/types/users/UserDraftEntry.types"
 
-function accountChanges(
+type ChangeLine = { key: string; text: string }
+
+const MANAGE = "appointments.manage"
+
+function accountLines(
     account: UserAccount,
     entry: UserDraftEntry,
     texts: DraftChangeTexts
-): string[] {
-    const items: string[] = []
+): ChangeLine[] {
+    const lines: ChangeLine[] = []
 
     if (entry.active !== undefined && entry.active !== account.active) {
-        items.push(entry.active ? texts.reactivate(account.name) : texts.deactivate(account.name))
+        lines.push({
+            key: "active",
+            text: entry.active ? texts.reactivate(account.name) : texts.deactivate(account.name)
+        })
     }
 
     const next = entry.permissions
 
     if (next === undefined) {
-        return items
+        return lines
     }
 
     for (const key of PERMISSION_KEYS) {
@@ -27,13 +34,39 @@ function accountChanges(
 
         if (had !== has) {
             const permission = texts.permissionName(key)
-            items.push(
-                has ? texts.grant(account.name, permission) : texts.revoke(account.name, permission)
-            )
+            lines.push({
+                key,
+                text: has
+                    ? texts.grant(account.name, permission)
+                    : texts.revoke(account.name, permission)
+            })
         }
     }
 
-    return items
+    return lines
+}
+
+function accountChanges(
+    account: UserAccount,
+    entry: UserDraftEntry,
+    texts: DraftChangeTexts
+): string[] {
+    const lines = accountLines(account, entry, texts)
+    const reassignment = entry.reassignment
+
+    if (reassignment === undefined || reassignment.count === 0) {
+        return lines.map((line) => line.text)
+    }
+
+    const anchor = reassignment.reason === "deactivate" ? "active" : MANAGE
+    const index = Math.max(
+        lines.findIndex((line) => line.key === anchor),
+        0
+    )
+
+    return lines.map((line, position) =>
+        position === index ? texts.redistributed(line.text, reassignment.count) : line.text
+    )
 }
 
 function draftChangeList(
@@ -41,17 +74,11 @@ function draftChangeList(
     draft: UserDraft,
     texts: DraftChangeTexts
 ): string[] {
-    const items = accounts.flatMap((account) => {
+    return accounts.flatMap((account) => {
         const entry = draft[account.id]
 
         return entry === undefined ? [] : accountChanges(account, entry, texts)
     })
-    const redistributed = Object.values(draft).reduce(
-        (total, entry) => total + (entry.reassignment?.count ?? 0),
-        0
-    )
-
-    return redistributed > 0 ? [...items, texts.redistributed(redistributed)] : items
 }
 
 export default draftChangeList
