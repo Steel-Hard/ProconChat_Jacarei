@@ -2,8 +2,10 @@ import { Provider } from "react-redux"
 import { render } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { onTestFinished, vi } from "vitest"
+import NAV_ITEMS_ALL_READY from "@/testUtils/navItemsAllReady"
 import type PanelAccount from "@/types/account/PanelAccount.types"
 import type UserAccountList from "@/types/users/UserAccountList.types"
+import type NavKey from "@/types/navigation/NavKey.types"
 
 type Reply = { status: number; body?: unknown }
 type Handler = (request: { url: URL; body: unknown }) => Reply | Promise<Reply>
@@ -13,6 +15,7 @@ type Options = {
     account?: PanelAccount
     list?: UserAccountList
     handlers?: Record<string, Handler>
+    ready?: Record<NavKey, boolean>
 }
 
 const ADMIN: PanelAccount = {
@@ -50,8 +53,9 @@ async function readCall(input: RequestInfo | URL, init?: RequestInit): Promise<C
     }
 }
 
-async function importPageModules() {
+async function importPageModules(ready: Record<NavKey, boolean>) {
     vi.stubEnv("VITE_API_URL", "http://api.test")
+    vi.doMock("@/navigation/navItemsReady", () => ({ default: ready }))
     vi.resetModules()
     const { default: createStore } = await import("@/store/createStore")
     const { default: ToastProvider } = await import("@/components/ToastProvider")
@@ -60,11 +64,29 @@ async function importPageModules() {
     return { createStore, ToastProvider, UsersPage }
 }
 
-let pageModules: ReturnType<typeof importPageModules> | undefined
+const pageModules = new Map<string, ReturnType<typeof importPageModules>>()
 
-async function renderUsersPage({ account = ADMIN, list, handlers = {} }: Options = {}) {
-    pageModules ??= importPageModules()
-    const { createStore, ToastProvider, UsersPage } = await pageModules
+function pageModulesFor(ready: Record<NavKey, boolean>): ReturnType<typeof importPageModules> {
+    const key = JSON.stringify(ready)
+    const cached = pageModules.get(key)
+
+    if (cached) {
+        return cached
+    }
+
+    const loading = importPageModules(ready)
+    pageModules.set(key, loading)
+
+    return loading
+}
+
+async function renderUsersPage({
+    account = ADMIN,
+    list,
+    handlers = {},
+    ready = NAV_ITEMS_ALL_READY
+}: Options = {}) {
+    const { createStore, ToastProvider, UsersPage } = await pageModulesFor(ready)
     const calls: Call[] = []
     let waiting = 0
     const replies: Record<string, Handler> = {
