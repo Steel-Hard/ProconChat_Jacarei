@@ -32,6 +32,7 @@ describe("ScheduleService", () => {
             bookAppointment: vi.fn(),
             getConfig: vi.fn().mockResolvedValue(buildDefaultScheduleConfigView()),
             saveConfig: vi.fn().mockResolvedValue(buildDefaultScheduleConfigView()),
+            listFutureActiveAppointments: vi.fn().mockResolvedValue([]),
         }
         service = createScheduleService(repoMock)
     })

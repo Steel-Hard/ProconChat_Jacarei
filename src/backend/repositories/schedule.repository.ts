@@ -208,11 +208,12 @@ async function getConfig(): Promise<ScheduleConfigView | null> {
     return selectConfigView(getPool())
 }
 
-async function loadFutureActiveAppointments(
-    client: PoolClient,
+async function selectFutureActiveAppointments(
+    db: Queryable,
     now: Date,
+    lockRows: boolean,
 ): Promise<FutureActiveAppointment[]> {
-    const result = await client.query<{
+    const result = await db.query<{
         id: string
         protocol: string
         name: string
@@ -235,8 +236,7 @@ async function loadFutureActiveAppointments(
          FROM Appointments a
          WHERE a.status IN ('PENDING', 'CONFIRMED')
            AND a.appointment_datetime > $1
-         ORDER BY a.id
-         FOR UPDATE`,
+         ORDER BY a.id${lockRows ? " FOR UPDATE" : ""}`,
         [now],
     )
 
@@ -256,6 +256,17 @@ async function loadFutureActiveAppointments(
         assignedUserId: r.assigned_user_id === null ? null : Number(r.assigned_user_id),
         offGrid: r.off_grid,
     }))
+}
+
+async function loadFutureActiveAppointments(
+    client: PoolClient,
+    now: Date,
+): Promise<FutureActiveAppointment[]> {
+    return selectFutureActiveAppointments(client, now, true)
+}
+
+async function listFutureActiveAppointments(now: Date): Promise<FutureActiveAppointment[]> {
+    return selectFutureActiveAppointments(getPool(), now, false)
 }
 
 async function saveConfig({
@@ -559,6 +570,7 @@ export function createScheduleRepository(): IScheduleRepository {
         bookAppointment,
         getConfig,
         saveConfig,
+        listFutureActiveAppointments,
     }
 }
 

@@ -53,6 +53,7 @@ describe("appointmentCalendar.service", () => {
             bookAppointment: vi.fn(),
             getConfig: vi.fn(),
             saveConfig: vi.fn(),
+            listFutureActiveAppointments: vi.fn(),
         }
         appointments = { findWeek: vi.fn().mockResolvedValue([]) }
     })
