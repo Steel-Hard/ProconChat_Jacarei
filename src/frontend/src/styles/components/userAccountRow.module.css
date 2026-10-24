@@ -95,7 +95,7 @@
 
 .active {
     background: var(--account-active-bg);
-    color: var(--account-active-text);
+    color: var(--success-text);
 }
 
 .inactive {
