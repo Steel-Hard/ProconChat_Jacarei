@@ -83,4 +83,41 @@ describe("UsersPage consulta dos agendamentos futuros em andamento", () => {
         expect(await screen.findByRole("button", { name: "Reativar conta" })).toBeInTheDocument()
         expect(screen.getByRole("button", { name: "2 alterações não salvas" })).toBeInTheDocument()
     })
+
+    it("não descarta enquanto a consulta dos agendamentos futuros não responde", async () => {
+        const pending = Promise.withResolvers<Reply>()
+        const { user } = await renderUsersPage({
+            list: USERS_FIXTURE,
+            handlers: { [FUTURE_PATH]: () => pending.promise }
+        })
+        await user.click(await screen.findByRole("button", { name: /Carla Dias/ }))
+        await user.click(screen.getByRole("checkbox", { name: /^Ver relatórios/ }))
+        await user.click(screen.getByRole("button", { name: /Bruno Lima/ }))
+        await user.click(screen.getByRole("button", { name: "Desativar conta" }))
+
+        await user.click(screen.getByRole("button", { name: "Descartar" }))
+
+        expect(screen.getByRole("button", { name: "Descartar" })).toBeDisabled()
+        pending.resolve({ status: 200, body: { data: [] } })
+        expect(await screen.findByRole("button", { name: "Reativar conta" })).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "2 alterações não salvas" })).toBeInTheDocument()
+    })
+
+    it("deixa Salvar desabilitado enquanto a consulta dos agendamentos futuros não responde", async () => {
+        const pending = Promise.withResolvers<Reply>()
+        const { user } = await renderUsersPage({
+            list: USERS_FIXTURE,
+            handlers: { [FUTURE_PATH]: () => pending.promise }
+        })
+        await user.click(await screen.findByRole("button", { name: /Carla Dias/ }))
+        await user.click(screen.getByRole("checkbox", { name: /^Ver relatórios/ }))
+        await user.click(screen.getByRole("button", { name: /Bruno Lima/ }))
+
+        await user.click(screen.getByRole("button", { name: "Desativar conta" }))
+
+        expect(screen.getByRole("button", { name: "Salvar alterações" })).toBeDisabled()
+        pending.resolve({ status: 200, body: { data: [] } })
+        expect(await screen.findByRole("button", { name: "Reativar conta" })).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "Salvar alterações" })).toBeEnabled()
+    })
 })

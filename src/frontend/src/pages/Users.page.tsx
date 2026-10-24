@@ -28,7 +28,7 @@ function UsersPage() {
                         <div className={css.headerActions}>
                             <UnsavedChangesBar
                                 changes={page.changes}
-                                saving={page.saving}
+                                saving={page.locked}
                                 onDiscard={page.discard}
                                 onSave={() => void page.save()}
                             />
