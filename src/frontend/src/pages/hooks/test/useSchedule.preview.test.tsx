@@ -240,6 +240,40 @@ describe("useSchedule: prévia", () => {
         never.release({ status: 200, body: { data: buildMonthlyPreview() } })
     })
 
+    it("não usa os conflitos da prévia de um rascunho anterior enquanto a nova não volta", async () => {
+        const pending = deferred()
+        let calls = 0
+        const { result } = await ready({
+            handlers: {
+                "POST /api/v1/schedule/preview": () => {
+                    calls += 1
+
+                    return calls === 1
+                        ? {
+                              status: 200,
+                              body: {
+                                  data: buildMonthlyPreview("2026-11", [], {
+                                      conflicts: [CONFLICT]
+                                  })
+                              }
+                          }
+                        : pending.promise
+                }
+            }
+        })
+
+        act(() => result.current.actions.setText("seatsPerSlot", "1"))
+        await settle()
+        await waitFor(() => expect(result.current.conflictRows).toEqual([CONFLICT]))
+        act(() => result.current.actions.setText("seatsPerSlot", "3"))
+        await settle()
+        await waitFor(() => expect(calls).toBe(2))
+
+        expect(result.current.conflictRows).toBeNull()
+        expect(result.current.saveDisabled).toBe(false)
+        pending.release({ status: 200, body: { data: buildMonthlyPreview() } })
+    })
+
     it("mostra a falha da prévia sem afetar o formulário", async () => {
         const { result } = await ready({
             handlers: {
