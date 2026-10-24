@@ -49,7 +49,7 @@ function SchedulePreviewDay({ day, booked, selected, onSelect }: SchedulePreview
             <span className={css.cellNumber}>{Number(day.date.slice(8, 10))}</span>
             {booked ? (
                 <span className={css.cellBooked} aria-hidden="true">
-                    {t("preview.booked", { count: booked.total })}
+                    {t("preview.bookedShort", { count: booked.total })}
                 </span>
             ) : null}
             <span className={css.cellMark} aria-hidden="true">

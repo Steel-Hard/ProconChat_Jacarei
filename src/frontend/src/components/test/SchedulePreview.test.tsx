@@ -97,10 +97,10 @@ describe("SchedulePreview", () => {
 
         expect(
             screen.getByRole("button", { name: "02/11: Bloqueado: Finados · 3 agendamentos" })
-        ).toHaveTextContent("3 agendamentos")
+        ).toHaveTextContent("3 agend.")
         expect(
             screen.getByRole("button", { name: "07/11: Sem atendimento · 1 agendamento" })
-        ).toHaveTextContent("1 agendamento")
+        ).toHaveTextContent("1 agend.")
     })
 
     it("lista no detalhe os horários com agendamento do dia escolhido", () => {

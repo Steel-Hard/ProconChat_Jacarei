@@ -81,7 +81,8 @@
             "bookedTime_other": "{{time}} · {{count}} agendamentos",
             "slotNotOfferedWith": "{{seats}} · não oferecido"
         },
-        "cellLabelBooked": "{{date}}: {{status}} · {{booked}}"
+        "cellLabelBooked": "{{date}}: {{status}} · {{booked}}",
+        "bookedShort": "{{count}} agend."
     },
     "conflicts": {
         "title_one": "Esta alteração afeta {{count}} agendamento",

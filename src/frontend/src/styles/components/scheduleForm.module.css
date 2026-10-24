@@ -409,3 +409,23 @@
     white-space: nowrap;
     cursor: pointer;
 }
+
+@media (max-width: 560px) {
+    .section {
+        padding: 16px;
+    }
+
+    .dayRow {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 8px;
+    }
+
+    .blockRow {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .blockRow > :nth-child(2) {
+        grid-column: 1 / -1;
+        grid-row: 2;
+    }
+}

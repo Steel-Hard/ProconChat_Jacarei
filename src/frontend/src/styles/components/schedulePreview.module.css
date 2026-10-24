@@ -121,14 +121,12 @@
 .cellBooked {
     max-width: 100%;
     padding: 0 4px;
-    border-radius: 999px;
+    border-radius: 6px;
     background: var(--color-primary);
     color: var(--bg-surface);
     font-size: 9.5px;
     font-weight: 700;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    line-height: 1.2;
 }
 
 .cellMark {
@@ -267,4 +265,21 @@
 
 .weekdayTimes {
     color: var(--text-muted);
+}
+
+@media (max-width: 560px) {
+    .preview {
+        padding: 16px;
+    }
+
+    .cell {
+        aspect-ratio: auto;
+        min-height: 52px;
+        padding: 3px;
+    }
+
+    .cellBooked {
+        padding: 0 2px;
+        font-size: 8px;
+    }
 }
