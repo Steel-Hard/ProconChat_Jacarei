@@ -63,7 +63,11 @@ function UserAccountPanel({
                             </button>
                         ) : null}
                         {view.changeMyPassword ? (
-                            <button type="button" className={css.link} onClick={onChangeMyPassword}>
+                            <button
+                                type="button"
+                                className={css.secondary}
+                                onClick={onChangeMyPassword}
+                            >
                                 {view.changeMyPassword}
                             </button>
                         ) : null}

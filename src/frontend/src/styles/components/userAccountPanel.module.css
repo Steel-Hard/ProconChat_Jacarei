@@ -115,24 +115,6 @@
     cursor: not-allowed;
 }
 
-.link {
-    flex-shrink: 0;
-    padding: 7px 4px;
-    border: 0;
-    background: none;
-    color: var(--color-primary);
-    font-size: 13px;
-    font-weight: 600;
-    text-decoration: underline;
-    text-underline-offset: 3px;
-    white-space: nowrap;
-    cursor: pointer;
-}
-
-.link:hover {
-    color: var(--color-primary-dark);
-}
-
 .lockWarning {
     flex-basis: 100%;
     font-size: 12px;
