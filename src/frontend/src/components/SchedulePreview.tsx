@@ -1,0 +1,163 @@
+import { useId } from "react"
+import { useTranslation } from "react-i18next"
+import SchedulePreviewDay from "@/components/SchedulePreviewDay"
+import SchedulePreviewDetail from "@/components/SchedulePreviewDetail"
+import SchedulePreviewLegendItem from "@/components/SchedulePreviewLegendItem"
+import SchedulePreviewWeekday from "@/components/SchedulePreviewWeekday"
+import type BookedDay from "@/types/schedule/BookedDay.types"
+import type MonthlyPreview from "@/types/schedule/MonthlyPreview.types"
+import dayMonthOf from "@/utils/schedule/dayMonthOf"
+import monthTitle from "@/utils/schedule/monthTitle"
+import shiftMonth from "@/utils/schedule/shiftMonth"
+import WEEKDAY_KEYS from "@/utils/schedule/weekdayKeys"
+import WEEKDAY_ORDER from "@/utils/schedule/weekdayOrder"
+import css from "@/styles/components/schedulePreview.module.css"
+
+type SchedulePreviewProps = {
+    preview: MonthlyPreview | null
+    bookedDays: BookedDay[]
+    selectedDate: string | null
+    loading: boolean
+    failed: boolean
+    stale: boolean
+    onChangeMonth: (month: string) => void
+    onSelectDay: (date: string) => void
+}
+
+const LEGEND = ["available", "full", "beforeMinNotice", "blocked", "closed"] as const
+const LEGEND_CLASS = {
+    available: css.legendAvailable,
+    full: css.legendFull,
+    beforeMinNotice: css.legendBeforeMinNotice,
+    blocked: css.legendBlocked,
+    closed: css.legendClosed
+}
+
+function SchedulePreview({
+    preview,
+    bookedDays,
+    selectedDate,
+    loading,
+    failed,
+    stale,
+    onChangeMonth,
+    onSelectDay
+}: SchedulePreviewProps) {
+    const { t } = useTranslation("schedule")
+    const titleId = useId()
+    const bookedByDate = new Map(bookedDays.map((day) => [day.date, day]))
+    const days = preview?.days ?? []
+    const selected =
+        days.find((day) => day.date === selectedDate) ??
+        days.find((day) => day.status === "AVAILABLE") ??
+        days[0]
+    const leading = days.length > 0 ? days[0].weekday : 0
+
+    return (
+        <section className={css.preview} aria-labelledby={titleId}>
+            <div className={css.header}>
+                <h2 id={titleId} className={css.title}>
+                    {t("preview.title")}
+                </h2>
+                {preview ? (
+                    <span className={css.total}>
+                        {t("preview.windowTotal", {
+                            free: preview.freeWindowSeats,
+                            total: preview.totalWindowSeats
+                        })}
+                    </span>
+                ) : null}
+            </div>
+            {preview ? (
+                <p className={css.subtitle}>
+                    {t("preview.subtitle", {
+                        start: dayMonthOf(preview.windowStart),
+                        end: dayMonthOf(preview.windowEnd)
+                    })}
+                </p>
+            ) : null}
+            {stale ? <p className={css.notice}>{t("preview.stale")}</p> : null}
+            {failed ? (
+                <p role="alert" className={css.alert}>
+                    {t("preview.failed")}
+                </p>
+            ) : null}
+            {loading && !preview ? <p className={css.note}>{t("preview.loading")}</p> : null}
+            {preview ? (
+                <>
+                    <div className={css.monthNav}>
+                        <button
+                            type="button"
+                            className={css.navButton}
+                            aria-label={t("preview.previousMonth")}
+                            title={t("preview.previousMonth")}
+                            onClick={() => onChangeMonth(shiftMonth(preview.month, -1))}
+                        >
+                            {t("preview.previousSymbol")}
+                        </button>
+                        <span className={css.month}>{monthTitle(preview.month)}</span>
+                        <button
+                            type="button"
+                            className={css.navButton}
+                            aria-label={t("preview.nextMonth")}
+                            title={t("preview.nextMonth")}
+                            onClick={() => onChangeMonth(shiftMonth(preview.month, 1))}
+                        >
+                            {t("preview.nextSymbol")}
+                        </button>
+                    </div>
+                    <div className={css.grid}>
+                        {WEEKDAY_KEYS.map((key) => (
+                            <span key={key} className={css.weekdayHead}>
+                                {t(`preview.weekdayShort.${key}`)}
+                            </span>
+                        ))}
+                        {Array.from({ length: leading }, (_, index) => (
+                            <span key={`blank-${index}`} aria-hidden="true" />
+                        ))}
+                        {days.map((day) => (
+                            <SchedulePreviewDay
+                                key={day.date}
+                                day={day}
+                                booked={bookedByDate.get(day.date)}
+                                selected={day.date === selected?.date}
+                                onSelect={onSelectDay}
+                            />
+                        ))}
+                    </div>
+                    <ul className={css.legend}>
+                        {LEGEND.map((key) => (
+                            <SchedulePreviewLegendItem
+                                key={key}
+                                label={t(`preview.legend.${key}`)}
+                                swatchClass={LEGEND_CLASS[key]}
+                            />
+                        ))}
+                    </ul>
+                    {selected ? (
+                        <SchedulePreviewDetail
+                            day={selected}
+                            booked={bookedByDate.get(selected.date)}
+                        />
+                    ) : null}
+                    <div className={css.weekdays}>
+                        <h3 className={css.weekdaysTitle}>{t("preview.weekdaySummary.title")}</h3>
+                        <ul className={css.weekdayList}>
+                            {WEEKDAY_ORDER.map((weekday) => (
+                                <SchedulePreviewWeekday
+                                    key={weekday}
+                                    weekday={weekday}
+                                    summary={preview.weekdays.find(
+                                        (item) => item.weekday === weekday
+                                    )}
+                                />
+                            ))}
+                        </ul>
+                    </div>
+                </>
+            ) : null}
+        </section>
+    )
+}
+
+export default SchedulePreview

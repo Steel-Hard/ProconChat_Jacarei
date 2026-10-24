@@ -2,5 +2,85 @@
     "meta": {
         "title": "Horários de atendimento - ProconChat"
     },
-    "heading": "Horários de atendimento"
+    "heading": "Horários de atendimento",
+    "weekdays": {
+        "sunday": "Domingo",
+        "monday": "Segunda-feira",
+        "tuesday": "Terça-feira",
+        "wednesday": "Quarta-feira",
+        "thursday": "Quinta-feira",
+        "friday": "Sexta-feira",
+        "saturday": "Sábado"
+    },
+    "preview": {
+        "title": "Prévia da grade",
+        "windowTotal": "{{free}} de {{total}} vagas livres na janela",
+        "subtitle": "Como o chatbot oferece horários, de {{start}} a {{end}} (janela, antecedência e bloqueios). Clique em um dia para ver os horários.",
+        "previousMonth": "Mês anterior",
+        "nextMonth": "Próximo mês",
+        "previousSymbol": "‹",
+        "nextSymbol": "›",
+        "loading": "Carregando a prévia...",
+        "failed": "Não foi possível carregar a prévia. As outras seções continuam funcionando.",
+        "stale": "Corrija os campos com erro para atualizar a prévia.",
+        "weekdayShort": {
+            "sunday": "Dom",
+            "monday": "Seg",
+            "tuesday": "Ter",
+            "wednesday": "Qua",
+            "thursday": "Qui",
+            "friday": "Sex",
+            "saturday": "Sáb"
+        },
+        "full": "Lotado",
+        "blockedSymbol": "✕",
+        "booked_one": "{{count}} agendamento",
+        "booked_other": "{{count}} agendamentos",
+        "cellLabel": "{{date}}: {{status}}",
+        "cellStatus": {
+            "AVAILABLE_one": "{{count}} vaga livre",
+            "AVAILABLE_other": "{{count}} vagas livres",
+            "FULL": "Lotado",
+            "BEFORE_MIN_NOTICE": "Antes da antecedência mínima",
+            "BLOCKED": "Bloqueado: {{description}}",
+            "NO_SERVICE": "Sem atendimento",
+            "OUTSIDE_WINDOW": "Fora da janela de agendamento",
+            "PAST": "Dia passado",
+            "CLOSED_TODAY": "Sem horários restantes hoje"
+        },
+        "legend": {
+            "available": "Com vagas (número = vagas livres)",
+            "full": "Lotado",
+            "beforeMinNotice": "Antes da antecedência",
+            "blocked": "Bloqueado (✕)",
+            "closed": "Sem atendimento ou fora da janela"
+        },
+        "weekdaySummary": {
+            "title": "Horários por dia da semana",
+            "closed": "Sem atendimento",
+            "totals": "{{slots}} horários · {{seats}} vagas · {{times}}"
+        },
+        "detail": {
+            "title": "{{weekday}}, {{date}}",
+            "status": {
+                "AVAILABLE": "Oferecido pelo chatbot",
+                "FULL": "Lotado",
+                "BEFORE_MIN_NOTICE": "Antes da antecedência mínima · não oferecido",
+                "BLOCKED": "Bloqueado · {{description}}",
+                "NO_SERVICE": "Sem atendimento neste dia",
+                "OUTSIDE_WINDOW": "Fora da janela de agendamento · não oferecido",
+                "PAST": "Dia passado",
+                "CLOSED_TODAY": "Sem horários restantes hoje"
+            },
+            "slotFree": "{{free}} de {{capacity}} livres",
+            "slotFull": "Lotado",
+            "slotPast": "Já passou",
+            "noSlots": "Nenhum horário configurado para este dia.",
+            "bookedTitle": "Agendamentos neste dia",
+            "bookedTime_one": "{{time}} · {{count}} agendamento",
+            "bookedTime_other": "{{time}} · {{count}} agendamentos",
+            "slotNotOfferedWith": "{{seats}} · não oferecido"
+        },
+        "cellLabelBooked": "{{date}}: {{status}} · {{booked}}"
+    }
 }
