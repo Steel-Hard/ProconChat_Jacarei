@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next"
-import PERMISSION_KEYS from "@/navigation/permissionKeys"
+import readyPermissionKeys from "@/navigation/readyPermissionKeys"
 import type PanelAccount from "@/types/account/PanelAccount.types"
 import type PermissionLock from "@/types/users/PermissionLock.types"
 import type ReassignmentRequest from "@/types/users/ReassignmentRequest.types"
@@ -54,11 +54,12 @@ function useUserViews({ actor, saved, effective, draft, selected, reassignment }
     }
 
     function rowOf(account: UserAccount): UserAccountRowView {
+        const ready = readyPermissionKeys()
         const permissions = account.isAdmin
             ? t("list.allPermissions")
             : t("list.permissionCount", {
-                  count: account.permissions.length,
-                  total: PERMISSION_KEYS.length
+                  count: account.permissions.filter((key) => ready.includes(key)).length,
+                  total: ready.length
               })
 
         return {
@@ -84,15 +85,19 @@ function useUserViews({ actor, saved, effective, draft, selected, reassignment }
     }
 
     function permissionItems(account: UserAccount): UserPermissionItemView[] {
-        return permissionLocks(actor, account).map((lock) => ({
-            key: lock.key,
-            name: t(`permissions.${lock.key}.name`),
-            description: t(`permissions.${lock.key}.description`),
-            includes: lock.key === "appointments.manage" ? t("account.includesView") : null,
-            checked: lock.checked,
-            disabled: lock.disabled,
-            warning: warningOf(lock)
-        }))
+        const ready = readyPermissionKeys()
+
+        return permissionLocks(actor, account)
+            .filter((lock) => ready.includes(lock.key))
+            .map((lock) => ({
+                key: lock.key,
+                name: t(`permissions.${lock.key}.name`),
+                description: t(`permissions.${lock.key}.description`),
+                includes: lock.key === "appointments.manage" ? t("account.includesView") : null,
+                checked: lock.checked,
+                disabled: lock.disabled,
+                warning: warningOf(lock)
+            }))
     }
 
     function panelOf(account: UserAccount): UserAccountPanelView {
