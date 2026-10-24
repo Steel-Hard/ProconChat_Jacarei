@@ -26,7 +26,7 @@ import {
     toMinutes,
 } from "./scheduleRules"
 
-export { fromMinutes, getDowFromDateStr, toMinutes }
+export { freeSlotStartsOfDay, fromMinutes, getDowFromDateStr, toMinutes }
 
 const WEEKDAYS_PT = [
     "Domingo",

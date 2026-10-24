@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
-import type { AppointmentActionType, AppointmentStatus } from "../types/appointment.types"
-import { decideTransition } from "./appointmentTransitions"
+import type { AppointmentActionType, AppointmentStatus, CorrectionHistoryEvent } from "../types/appointment.types"
+import { availableActions, decideTransition, restoredStateAfterCorrection } from "./appointmentTransitions"
 
 const past = new Date("2026-10-19T09:00:00-03:00")
 const future = new Date("2026-10-25T09:00:00-03:00")
@@ -90,7 +90,65 @@ const statusCases: StatusCase[] = [
         code: "APPOINTMENT_CANCELED",
         message: "Não é possível registrar como não compareceu para um agendamento cancelado",
     },
+    { action: "assign", status: "PENDING", allowed: true },
+    { action: "assign", status: "CONFIRMED", allowed: true },
+    {
+        action: "assign",
+        status: "ATTENDED",
+        allowed: false,
+        code: "ALREADY_ATTENDED",
+        message: "Agendamento já foi atendido",
+    },
+    {
+        action: "assign",
+        status: "NO_SHOW",
+        allowed: false,
+        code: "ALREADY_NO_SHOW",
+        message: "Agendamento já registrado como não compareceu",
+    },
+    {
+        action: "assign",
+        status: "CANCELED",
+        allowed: false,
+        code: "APPOINTMENT_CANCELED",
+        message: "Não é possível atribuir um agendamento cancelado",
+    },
+    { action: "correct_record", status: "ATTENDED", allowed: true },
+    { action: "correct_record", status: "NO_SHOW", allowed: true },
+    {
+        action: "correct_record",
+        status: "PENDING",
+        allowed: false,
+        code: "RECORD_NOT_CORRECTABLE",
+        message: "Só é possível corrigir um agendamento atendido ou não compareceu",
+    },
+    {
+        action: "correct_record",
+        status: "CONFIRMED",
+        allowed: false,
+        code: "RECORD_NOT_CORRECTABLE",
+        message: "Só é possível corrigir um agendamento atendido ou não compareceu",
+    },
+    {
+        action: "correct_record",
+        status: "CANCELED",
+        allowed: false,
+        code: "RECORD_NOT_CORRECTABLE",
+        message: "Só é possível corrigir um agendamento atendido ou não compareceu",
+    },
 ]
+
+const ALL_STATUSES: AppointmentStatus[] = ["PENDING", "CONFIRMED", "ATTENDED", "NO_SHOW", "CANCELED"]
+const PERMISSION_REQUIRED = { allowed: false, code: "PERMISSION_REQUIRED" }
+
+function historyEvent(
+    id: string,
+    type: CorrectionHistoryEvent["type"],
+    createdAt: string,
+    data: Record<string, unknown> = {},
+): CorrectionHistoryEvent {
+    return { id, type, data, createdAt: new Date(createdAt) }
+}
 
 describe("appointmentTransitions", () => {
     describe("decideTransition por status", () => {
@@ -184,6 +242,155 @@ describe("appointmentTransitions", () => {
             )
 
             expect(decision).toEqual({ allowed: true })
+        })
+    })
+
+    describe("availableActions por permissão", () => {
+        it.each(ALL_STATUSES)(
+            "sem appointments.manage, todas as ações de gerenciar saem com PERMISSION_REQUIRED no status %s",
+            (status) => {
+                const actions = availableActions({ status, appointmentDatetime: past }, now, { canManage: false })
+
+                expect(actions).toEqual({
+                    claim: PERMISSION_REQUIRED,
+                    attended: PERMISSION_REQUIRED,
+                    no_show: PERMISSION_REQUIRED,
+                    assign: PERMISSION_REQUIRED,
+                    correct_record: PERMISSION_REQUIRED,
+                    add_note: PERMISSION_REQUIRED,
+                })
+            },
+        )
+
+        it("com appointments.manage, um pendente passado segue só as regras de status", () => {
+            const actions = availableActions({ status: "PENDING", appointmentDatetime: past }, now, { canManage: true })
+
+            expect(actions).toEqual({
+                claim: { allowed: true, code: null },
+                attended: { allowed: true, code: null },
+                no_show: { allowed: true, code: null },
+                assign: { allowed: true, code: null },
+                correct_record: { allowed: false, code: "RECORD_NOT_CORRECTABLE" },
+                add_note: { allowed: true, code: null },
+            })
+        })
+
+        it("com appointments.manage, um atendido só permite corrigir o registro e escrever observação", () => {
+            const actions = availableActions({ status: "ATTENDED", appointmentDatetime: past }, now, { canManage: true })
+
+            expect(actions).toEqual({
+                claim: { allowed: false, code: "ALREADY_ATTENDED" },
+                attended: { allowed: false, code: "ALREADY_ATTENDED" },
+                no_show: { allowed: false, code: "ALREADY_ATTENDED" },
+                assign: { allowed: false, code: "ALREADY_ATTENDED" },
+                correct_record: { allowed: true, code: null },
+                add_note: { allowed: true, code: null },
+            })
+        })
+
+        it("com appointments.manage, um cancelado só permite escrever observação", () => {
+            const actions = availableActions({ status: "CANCELED", appointmentDatetime: future }, now, { canManage: true })
+
+            expect(actions).toEqual({
+                claim: { allowed: false, code: "APPOINTMENT_CANCELED" },
+                attended: { allowed: false, code: "APPOINTMENT_CANCELED" },
+                no_show: { allowed: false, code: "APPOINTMENT_CANCELED" },
+                assign: { allowed: false, code: "APPOINTMENT_CANCELED" },
+                correct_record: { allowed: false, code: "RECORD_NOT_CORRECTABLE" },
+                add_note: { allowed: true, code: null },
+            })
+        })
+
+        it("com appointments.manage, um confirmado futuro permite atribuir e não permite corrigir", () => {
+            const actions = availableActions({ status: "CONFIRMED", appointmentDatetime: future }, now, { canManage: true })
+
+            expect(actions.assign).toEqual({ allowed: true, code: null })
+            expect(actions.correct_record).toEqual({ allowed: false, code: "RECORD_NOT_CORRECTABLE" })
+            expect(actions.claim).toEqual({ allowed: false, code: "APPOINTMENT_ALREADY_CLAIMED" })
+        })
+    })
+
+    describe("restoredStateAfterCorrection", () => {
+        it("volta a pendente sem responsável quando o terminal veio junto de um auto-claim no mesmo instante", () => {
+            const events = [
+                historyEvent("1", "CREATED", "2026-10-19T10:00:00.000Z"),
+                historyEvent("2", "CLAIMED", "2026-10-20T15:00:00.000Z", { auto_claimed: true }),
+                historyEvent("3", "ATTENDED", "2026-10-20T15:00:00.000Z"),
+            ]
+
+            expect(restoredStateAfterCorrection(events, { assignedUserId: 7 })).toEqual({
+                status: "PENDING",
+                assignedUserId: null,
+            })
+        })
+
+        it("volta a confirmado com o responsável atual quando já estava confirmado antes do registro", () => {
+            const events = [
+                historyEvent("1", "CREATED", "2026-10-19T10:00:00.000Z"),
+                historyEvent("2", "CLAIMED", "2026-10-19T11:00:00.000Z"),
+                historyEvent("3", "NO_SHOW", "2026-10-20T15:00:00.000Z"),
+            ]
+
+            expect(restoredStateAfterCorrection(events, { assignedUserId: 7 })).toEqual({
+                status: "CONFIRMED",
+                assignedUserId: 7,
+            })
+        })
+
+        it("não volta a pendente quando o auto-claim antigo foi seguido de correção e de nova marcação sem auto-claim", () => {
+            const events = [
+                historyEvent("1", "CREATED", "2026-10-19T10:00:00.000Z"),
+                historyEvent("2", "CLAIMED", "2026-10-20T15:00:00.000Z", { auto_claimed: true }),
+                historyEvent("3", "ATTENDED", "2026-10-20T15:00:00.000Z"),
+                historyEvent("4", "RECORD_CORRECTED", "2026-10-20T16:00:00.000Z"),
+                historyEvent("5", "ASSIGNED", "2026-10-20T16:30:00.000Z", { assignee_user_id: 7 }),
+                historyEvent("6", "NO_SHOW", "2026-10-20T17:00:00.000Z"),
+            ]
+
+            expect(restoredStateAfterCorrection(events, { assignedUserId: 7 })).toEqual({
+                status: "CONFIRMED",
+                assignedUserId: 7,
+            })
+        })
+
+        it("usa o terminal mais recente quando uma correção anterior voltou a pendente e houve novo auto-claim", () => {
+            const events = [
+                historyEvent("1", "CLAIMED", "2026-10-20T10:00:00.000Z"),
+                historyEvent("2", "ATTENDED", "2026-10-20T11:00:00.000Z"),
+                historyEvent("3", "RECORD_CORRECTED", "2026-10-20T12:00:00.000Z"),
+                historyEvent("4", "CLAIMED", "2026-10-20T13:00:00.000Z", { auto_claimed: true }),
+                historyEvent("5", "NO_SHOW", "2026-10-20T13:00:00.000Z"),
+            ]
+
+            expect(restoredStateAfterCorrection(events, { assignedUserId: 9 })).toEqual({
+                status: "PENDING",
+                assignedUserId: null,
+            })
+        })
+
+        it("reconhece o par do mesmo instante mesmo com os eventos fora da ordem de inserção", () => {
+            const events = [
+                historyEvent("9", "ATTENDED", "2026-10-20T15:00:00.000Z"),
+                historyEvent("1", "CREATED", "2026-10-19T10:00:00.000Z"),
+                historyEvent("10", "CLAIMED", "2026-10-20T15:00:00.000Z", { auto_claimed: true }),
+            ]
+
+            expect(restoredStateAfterCorrection(events, { assignedUserId: 7 })).toEqual({
+                status: "PENDING",
+                assignedUserId: null,
+            })
+        })
+
+        it("não trata como auto-claim um CLAIMED do mesmo instante sem auto_claimed", () => {
+            const events = [
+                historyEvent("1", "CLAIMED", "2026-10-20T15:00:00.000Z"),
+                historyEvent("2", "ATTENDED", "2026-10-20T15:00:00.000Z"),
+            ]
+
+            expect(restoredStateAfterCorrection(events, { assignedUserId: 7 })).toEqual({
+                status: "CONFIRMED",
+                assignedUserId: 7,
+            })
         })
     })
 })

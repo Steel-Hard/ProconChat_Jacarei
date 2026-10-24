@@ -590,11 +590,11 @@ CREATE INDEX idx_appointment_events_appointment ON AppointmentEvents(appointment
 |---|---|
 | `CREATED` | — |
 | `CLAIMED` | — ("Assumir para mim"). Marcar um pendente como atendido ou não compareceu assume automaticamente: grava `CLAIMED` com `{ "auto_claimed": true }` + `ATTENDED`/`NO_SHOW`, no mesmo instante |
-| `ASSIGNED` | `{ "assignee_user_id": ... }` ("Atribuir a outro funcionário"). Na redistribuição da tela de Usuários (#62) leva também `"reason": "USER_DEACTIVATED" \| "MANAGE_PERMISSION_REMOVED"` |
+| `ASSIGNED` | `{ "assignee_user_id": ... }` ("Atribuir a outro funcionário", #87, sem `reason`). Na redistribuição da tela de Usuários (#62) leva também `"reason": "USER_DEACTIVATED" \| "MANAGE_PERMISSION_REMOVED"` |
 | `RESCHEDULED` | `{ "from": ..., "to": ... }` |
 | `BACK_TO_PENDING` | `{ "reason": "RESCHEDULED" \| "USER_DEACTIVATED" \| "MANAGE_PERMISSION_REMOVED" \| ... }`. A redistribuição da tela de Usuários (#62) grava `USER_DEACTIVATED` ou `MANAGE_PERMISSION_REMOVED` |
 | `ATTENDED`, `NO_SHOW` | — |
-| `RECORD_CORRECTED` | `{ "previous_status": ..., "previous_assigned_user_id": ... }` |
+| `RECORD_CORRECTED` | `{ "previous_status": ..., "previous_assigned_user_id": ... }` ("Corrigir registro", #87): o status (`ATTENDED` ou `NO_SHOW`) e o responsável de **antes** da correção. O agendamento volta a `PENDING` sem responsável quando o registro corrigido veio de um auto-claim, ou quando, num agendamento futuro, o responsável não pode mais atender ou já tem outro confirmado no horário; senão, volta a `CONFIRMED` com o mesmo responsável |
 | `CANCELED_BY_CITIZEN` | — |
 | `CANCELED_BY_STAFF` | `{ "reason": "UNIT_CLOSED" \| "CITIZEN_REQUEST" \| "DUPLICATE" \| "OTHER" }` |
 | `CITIZEN_NOTIFIED`, `CITIZEN_NOTIFICATION_FAILED` | `{ "kind": "CONFIRMATION" \| "CANCELLATION" \| "REMINDER" }` |

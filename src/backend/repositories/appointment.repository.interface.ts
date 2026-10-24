@@ -3,6 +3,10 @@ import {
     AppointmentDetailRecord,
     AppointmentListFilters,
     AppointmentListItem,
+    CalendarFilters,
+    CorrectionResult,
+    StaffMember,
+    WeekAppointmentRecord,
 } from "../types/appointment.types"
 
 export interface AppointmentRepository {
@@ -17,11 +21,35 @@ export interface AppointmentRepository {
 
     countPending(): Promise<number>
 
+    findWeek(from: Date, to: Date, filters: CalendarFilters, now?: Date): Promise<WeekAppointmentRecord[]>
+
+    findStaff(): Promise<StaffMember[]>
+
     findById(id: number | string): Promise<AppointmentDetailRecord | null>
 
     claim(
         id: string,
         actorUserId: number,
+        now?: Date,
+    ): Promise<void>
+
+    assign(
+        id: string,
+        assigneeUserId: number,
+        actorUserId: number,
+        now?: Date,
+    ): Promise<void>
+
+    correctRecord(
+        id: string,
+        actorUserId: number,
+        now?: Date,
+    ): Promise<CorrectionResult>
+
+    addNote(
+        id: string,
+        authorUserId: number,
+        text: string,
         now?: Date,
     ): Promise<void>
 

@@ -25,6 +25,7 @@ Arquivos no repositório:
 | `deploy/.env.prod.example` | Modelo do `.env` da VM, com valores de exemplo |
 | `deploy/deploy.sh` | Deploy de uma tag na VM |
 | `deploy/backup.sh` | Dump diário do Postgres com retenção |
+| `deploy/reset-admin-password.sh` | Redefine a senha da conta Admin no servidor, pedindo a senha sem mostrar na tela |
 | `.github/workflows/deploy.yml` | CI, build no GHCR e deploy por SSH |
 
 Na VM, tudo fica em `/opt/proconchat`, com a mesma estrutura do repositório:
@@ -416,13 +417,22 @@ A #57 tornou obrigatórias `AUTH_TOKEN_SECRET`, `ROOT_EMAIL` e `ROOT_PASSWORD`. 
 Não existe "esqueci minha senha" no painel (decisão 004, item 8). Para redefinir a senha da conta Admin, como `deploy` na VM:
 
 ```bash
-cd /opt/proconchat
-nano .env
-export IMAGE_TAG="$(tail -n 1 releases.log | cut -d' ' -f2)"
-docker compose -f compose.prod.yaml run --rm seed node dist/db/scripts/resetAdminPassword.js
+/opt/proconchat/deploy/reset-admin-password.sh
 ```
 
-No `nano`, troque `ROOT_PASSWORD` pela senha nova (8 caracteres a 72 bytes). O script grava o hash novo na conta Admin, incrementa `session_version`, o que derruba todas as sessões abertas dela, e registra `Senha do Admin redefinida`. A senha não aparece na linha de comando nem no histórico do shell. Se não existir conta Admin, ele sai com código 1 e pede para rodar o `seed`. O e-mail do Admin não muda: `ROOT_EMAIL` só vale na criação da conta.
+O script pede a senha nova duas vezes, sem mostrá-la na tela, e confere se as duas são iguais e se têm de 8 caracteres a 72 bytes antes de chamar o Docker. Ele descobre sozinho a tag em uso pelo `releases.log` e roda o `resetAdminPassword.js` no container do `seed`, passando a senha por variável de ambiente: ela não aparece na linha de comando, no histórico do shell nem no `.env`. Precisa de um terminal interativo.
+
+O script do backend grava o hash novo na conta Admin, incrementa `session_version`, o que derruba todas as sessões abertas dela, e registra `Senha do Admin redefinida`. Se não existir conta Admin, ele sai com código 1 e pede para rodar o `seed`. O e-mail do Admin não muda: `ROOT_EMAIL` só vale na criação da conta. Em qualquer falha o script sai com código diferente de zero e uma mensagem; a senha só muda quando aparece "Senha do Admin redefinida".
+
+Sem o script, o mesmo resultado sai com `ROOT_PASSWORD` definida só para o comando, sem editar o `.env`:
+
+```bash
+cd /opt/proconchat
+export IMAGE_TAG="$(tail -n 1 releases.log | cut -d' ' -f2)"
+read -r -s -p "Senha nova: " ROOT_PASSWORD; export ROOT_PASSWORD
+docker compose -f compose.prod.yaml run --rm seed node dist/db/scripts/resetAdminPassword.js
+unset ROOT_PASSWORD
+```
 
 ## Deploy manual e rollback
 

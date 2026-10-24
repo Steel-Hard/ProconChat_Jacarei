@@ -1,7 +1,6 @@
 import { DatabaseError, Pool, PoolClient } from "pg"
 import getPool from "../db/connection"
 import ConflictError from "../errors/ConflictError"
-import { Permission, PERMISSIONS } from "../types/auth.types"
 import type {
     AccountBatchResult,
     AccountChange,
@@ -10,12 +9,19 @@ import type {
     FutureAppointment,
     LockedAccount,
     ReassignableAppointment,
-    RuleAccount,
     UserAccount,
     UserAccountList,
 } from "../types/userAccount.types"
 import type { AppointmentStatus } from "../types/appointment.types"
 import { assignAppointment, returnAppointmentToPending } from "./appointmentReassignment"
+import {
+    inTransaction,
+    lockAccounts,
+    orderedPermissions,
+    PROTOCOL_SQL,
+    readConfirmedBetween,
+    readSlotMinutes,
+} from "./responsibleQueries"
 import { UserAccountRepository } from "./userAccount.repository.interface"
 
 type Queryable = Pool | PoolClient
@@ -33,12 +39,6 @@ interface AccountRow {
     permissions: string[]
 }
 
-interface LockedUserRow {
-    id: string
-    is_admin: boolean
-    active: boolean
-}
-
 interface AppointmentRow {
     id: string
     protocol: string
@@ -47,8 +47,6 @@ interface AppointmentRow {
 }
 
 const EMAIL_UNIQUE_CONSTRAINTS = new Set(["users_email_key", "uniq_users_email_lower"])
-
-const PROTOCOL_SQL = "UPPER(SUBSTRING(a.appointment_code::text, 1, 8))"
 
 const ACCOUNT_SELECT = `
     SELECT u.id, u.name, u.email, u.is_admin, u.active, u.last_login_at,
@@ -59,14 +57,6 @@ const ACCOUNT_SELECT = `
            ) AS permissions
     FROM Users u
     LEFT JOIN Users ub ON ub.id = u.permissions_updated_by`
-
-function orderedPermissions(isAdmin: boolean, keys: string[]): Permission[] {
-    if (isAdmin) {
-        return [...PERMISSIONS]
-    }
-    const granted = new Set(keys)
-    return PERMISSIONS.filter((permission) => granted.has(permission))
-}
 
 function toUserAccount(row: AccountRow): UserAccount {
     return {
@@ -111,31 +101,6 @@ function isEmailConflict(error: unknown): boolean {
     )
 }
 
-async function lockAccounts(client: PoolClient, ids: number[]): Promise<RuleAccount[]> {
-    if (ids.length === 0) {
-        return []
-    }
-    const users = await client.query<LockedUserRow>(
-        "SELECT id, is_admin, active FROM Users WHERE id = ANY($1::bigint[]) ORDER BY id FOR UPDATE",
-        [ids],
-    )
-    const permissions = await client.query<{ user_id: string; permission_key: string }>(
-        "SELECT user_id, permission_key FROM UserPermissions WHERE user_id = ANY($1::bigint[])",
-        [ids],
-    )
-    return users.rows.map((row) => {
-        const keys = permissions.rows
-            .filter((permission) => permission.user_id === row.id)
-            .map((permission) => permission.permission_key)
-        return {
-            id: Number(row.id),
-            isAdmin: row.is_admin,
-            active: row.active,
-            permissions: orderedPermissions(row.is_admin, keys),
-        }
-    })
-}
-
 async function lockFutureAppointments(
     client: PoolClient,
     userIds: number[],
@@ -164,11 +129,6 @@ async function lockFutureAppointments(
     return byUser
 }
 
-async function readSlotMinutes(client: PoolClient): Promise<number | null> {
-    const result = await client.query<{ slot_minutes: number }>("SELECT slot_minutes FROM ScheduleSettings WHERE id = 1")
-    return result.rows[0]?.slot_minutes ?? null
-}
-
 async function readBusy(
     client: PoolClient,
     targetIds: number[],
@@ -180,22 +140,12 @@ async function readBusy(
     }
     const margin = (slotMinutes ?? 0) * 60_000
     const times = moving.map((appointment) => appointment.appointmentDatetime.getTime())
-    const from = new Date(Math.min(...times) - margin)
-    const to = new Date(Math.max(...times) + margin)
-    const result = await client.query<AppointmentRow>(
-        `SELECT a.id, ${PROTOCOL_SQL} AS protocol, a.assigned_user_id, a.appointment_datetime
-         FROM Appointments a
-         WHERE a.status = 'CONFIRMED'
-           AND a.assigned_user_id = ANY($1::bigint[])
-           AND a.appointment_datetime BETWEEN $2 AND $3`,
-        [targetIds, from, to],
+    return readConfirmedBetween(
+        client,
+        targetIds,
+        new Date(Math.min(...times) - margin),
+        new Date(Math.max(...times) + margin),
     )
-    return result.rows.map((row) => ({
-        appointmentId: row.id,
-        protocol: row.protocol,
-        assignedUserId: Number(row.assigned_user_id),
-        appointmentDatetime: new Date(row.appointment_datetime),
-    }))
 }
 
 function assignTargets(changes: AccountChange[]): number[] {
@@ -257,21 +207,6 @@ async function writePlan(client: PoolClient, plan: AccountPlan, actorUserId: num
         }
     }
     return reassignment.appointments.length
-}
-
-async function inTransaction<T>(pool: Pool, work: (client: PoolClient) => Promise<T>): Promise<T> {
-    const client = await pool.connect()
-    try {
-        await client.query("BEGIN")
-        const result = await work(client)
-        await client.query("COMMIT")
-        return result
-    } catch (error) {
-        await client.query("ROLLBACK")
-        throw error
-    } finally {
-        client.release()
-    }
 }
 
 export function createUserAccountRepository(pool: Pool = getPool()): UserAccountRepository {

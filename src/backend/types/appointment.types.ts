@@ -58,7 +58,9 @@ export type AppointmentSortBy =
 
 export type AppointmentSortOrder = "asc" | "desc"
 
-export type AppointmentActionType = "claim" | "attended" | "no_show"
+export type AppointmentActionType = "claim" | "attended" | "no_show" | "assign" | "correct_record"
+
+export type AppointmentAvailableActionKey = AppointmentActionType | "add_note"
 
 export interface AppointmentListItem {
     id: string
@@ -105,6 +107,14 @@ export interface AppointmentEventItem {
     created_at: string
 }
 
+export interface AppointmentNote {
+    id: string
+    author_user_id: string
+    author_user_name: string | null
+    text: string
+    created_at: string
+}
+
 export interface ConversationTimelineStep {
     id: string
     type: string
@@ -120,13 +130,29 @@ export type TransitionErrorCode =
     | "APPOINTMENT_CANCELED"
     | "ATTENDANCE_NOT_YET_AVAILABLE"
     | "NO_SHOW_NOT_YET_AVAILABLE"
+    | "RECORD_NOT_CORRECTABLE"
+    | "ALREADY_ASSIGNED_TO_USER"
+    | "INVALID_ASSIGNEE"
+    | "ASSIGNEE_BUSY"
+    | "PERMISSION_REQUIRED"
 
 export interface AppointmentActionAvailability {
     allowed: boolean
     code: TransitionErrorCode | null
 }
 
-export type AppointmentAvailableActions = Record<AppointmentActionType, AppointmentActionAvailability>
+export type AppointmentAvailableActions = Record<AppointmentAvailableActionKey, AppointmentActionAvailability>
+
+export interface CorrectionHistoryEvent {
+    id: string
+    type: AppointmentEventType
+    data: Record<string, unknown>
+    createdAt: Date
+}
+
+export type CorrectionTarget =
+    | { status: "PENDING"; assignedUserId: null }
+    | { status: "CONFIRMED"; assignedUserId: number }
 
 export interface AppointmentDetail {
     id: string
@@ -157,6 +183,7 @@ export interface AppointmentDetail {
     is_documents_config_different: boolean
 
     events: AppointmentEventItem[]
+    notes: AppointmentNote[]
     timeline: ConversationTimelineStep[]
     available_actions: AppointmentAvailableActions
 }
@@ -173,4 +200,81 @@ export interface AppointmentListFilters {
     page?: number
     limit?: number
     currentUserId?: number
+}
+
+export interface StaffMember {
+    id: string
+    name: string
+    active: boolean
+}
+
+export interface CorrectionWarningDetails {
+    appointmentId: string
+    protocol: string
+    previousAssignedUserId: string
+    previousAssignedUserName: string
+    conflictingAppointmentId?: string
+    conflictingProtocol?: string
+    freeStaffCount: number
+}
+
+export interface CorrectionWarning {
+    code: "RESPONSIBLE_BUSY" | "RESPONSIBLE_UNAVAILABLE"
+    message: string
+    details: CorrectionWarningDetails
+}
+
+export interface CorrectionResult {
+    warning: CorrectionWarning | null
+}
+
+export interface WeekAppointmentRecord {
+    id: string
+    protocol: string
+    shortName: string
+    appointmentDatetime: Date
+    status: AppointmentStatus
+    assigned_user_id: string | null
+    off_grid: boolean
+}
+
+export interface CalendarFilters {
+    status?: AppointmentFilterStatus
+    responsible?: string
+    currentUserId?: number
+}
+
+export interface CalendarBlockedPeriod {
+    start: string
+    end: string
+    description: string
+}
+
+export interface CalendarDay {
+    date: string
+    blocked: {
+        fullDay: boolean
+        description: string | null
+        periods: CalendarBlockedPeriod[]
+    }
+    slots: { time: string; freeSeats: number | null }[]
+}
+
+export interface CalendarAppointment {
+    id: string
+    protocol: string
+    shortName: string
+    date: string
+    time: string
+    status: AppointmentStatus
+    assigned_user_id: string | null
+    off_grid: boolean
+}
+
+export interface AppointmentCalendar {
+    weekStart: string
+    weekEnd: string
+    weekStartDay: number
+    days: CalendarDay[]
+    appointments: CalendarAppointment[]
 }

@@ -22,23 +22,41 @@ const staffWithAllPermissions: PanelAccount = {
 }
 
 describe("sidebarNavGroups com as flags de produção", () => {
-    it("Agendamentos e WhatsApp estão liberados", () => {
+    it("Agendamentos, Usuários e WhatsApp estão liberados", () => {
         expect(
             Object.entries(NAV_ITEMS_READY)
                 .filter(([, ready]) => ready)
                 .map(([key]) => key)
-        ).toEqual(["appointments", "whatsapp"])
+        ).toEqual(["appointments", "users", "whatsapp"])
     })
 
-    it("o Admin vê Agendamentos em Operação e WhatsApp em Configurações", () => {
+    it("o Admin vê Agendamentos em Operação e Usuários e WhatsApp em Configurações", () => {
         expect(sidebarNavGroups(admin)).toEqual([
             { key: "operation", items: [{ key: "appointments", path: ROUTES.appointments }] },
-            { key: "settings", items: [{ key: "whatsapp", path: ROUTES.whatsapp }] }
+            {
+                key: "settings",
+                items: [
+                    { key: "users", path: ROUTES.users },
+                    { key: "whatsapp", path: ROUTES.whatsapp }
+                ]
+            }
         ])
     })
 
-    it("um funcionário com todas as permissões vê só Agendamentos em Operação", () => {
+    it("um funcionário com todas as permissões vê Agendamentos em Operação e Usuários em Configurações", () => {
         expect(sidebarNavGroups(staffWithAllPermissions)).toEqual([
+            { key: "operation", items: [{ key: "appointments", path: ROUTES.appointments }] },
+            { key: "settings", items: [{ key: "users", path: ROUTES.users }] }
+        ])
+    })
+
+    it("um funcionário sem Gerenciar usuários não vê o grupo Configurações", () => {
+        const staffWithoutUsers: PanelAccount = {
+            ...staffWithAllPermissions,
+            permissions: PERMISSION_KEYS.filter((key) => key !== "users.manage")
+        }
+
+        expect(sidebarNavGroups(staffWithoutUsers)).toEqual([
             { key: "operation", items: [{ key: "appointments", path: ROUTES.appointments }] }
         ])
     })

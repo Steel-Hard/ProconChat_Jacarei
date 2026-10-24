@@ -1,0 +1,9 @@
+{
+    "meta": {
+        "title": "Sem acesso ao painel - ProconChat",
+        "description": "Esta conta ainda não tem acesso a nenhuma tela do painel."
+    },
+    "heading": "Sua conta ainda não tem acesso a nenhuma tela",
+    "message": "Peça a um administrador do sistema que libere as telas de que você precisa. Depois, entre de novo.",
+    "backToLogin": "Voltar para o login"
+}

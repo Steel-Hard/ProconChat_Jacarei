@@ -12,8 +12,18 @@ import { AppointmentRepositoryStub } from "../repositories/mock/appointmentStub.
 import { AppointmentService, createAppointmentService } from "./appointment.service"
 import { toLocalDateString } from "../utils/date.utils"
 
-const STATUS_AFTER_ACTION = { claim: "CONFIRMED", attended: "ATTENDED", no_show: "NO_SHOW" } as const
-const EVENT_OF_ACTION = { claim: "CLAIMED", attended: "ATTENDED", no_show: "NO_SHOW" } as const
+const STATUS_AFTER_ACTION = { claim: "CONFIRMED", attended: "ATTENDED", no_show: "NO_SHOW", assign: "CONFIRMED", correct_record: "CONFIRMED" } as const
+const EVENT_OF_ACTION = { claim: "CLAIMED", attended: "ATTENDED", no_show: "NO_SHOW", assign: "ASSIGNED", correct_record: "RECORD_CORRECTED" } as const
+const MANAGER = { canManage: true }
+const VIEWER = { canManage: false }
+const PERMISSION_REQUIRED = { allowed: false, code: "PERMISSION_REQUIRED" }
+
+function simpleAction(action: string): keyof typeof STATUS_AFTER_ACTION {
+    if (action === "claim" || action === "attended" || action === "no_show" || action === "assign" || action === "correct_record") {
+        return action
+    }
+    throw new Error(`Cenário incompleto: ação ${action} sem afterAction`)
+}
 const LIST_CHIPS = buildChipCounts({ all: 45, pending: 20, confirmed: 15, attended: 5, no_show: 3, canceled: 2, waiting_record: 1 })
 
 function serviceScenario(): AppointmentRepositoryStub {
@@ -39,12 +49,15 @@ function serviceScenario(): AppointmentRepositoryStub {
         },
         afterAction: (call, current) => ({
             ...current,
-            status: STATUS_AFTER_ACTION[call.action],
-            assigned_user_id: current.assigned_user_id ?? String(call.actorUserId),
+            status: STATUS_AFTER_ACTION[simpleAction(call.action)],
+            assigned_user_id:
+                call.assigneeUserId !== undefined
+                    ? String(call.assigneeUserId)
+                    : (current.assigned_user_id ?? String(call.actorUserId)),
             events: [
                 {
                     id: String(current.events.length + 1),
-                    type: EVENT_OF_ACTION[call.action],
+                    type: EVENT_OF_ACTION[simpleAction(call.action)],
                     actor_user_id: String(call.actorUserId),
                     actor_user_name: null,
                     data: {},
@@ -106,7 +119,7 @@ describe("appointment.service", () => {
 
     describe("getAppointmentDetail", () => {
         it("retorna detalhes completos com eventos e timeline da sessão com títulos resolvidos", async () => {
-            const detail = await service.getAppointmentDetail(1)
+            const detail = await service.getAppointmentDetail(1, MANAGER)
             expect(detail.id).toBe("1")
             expect(detail.protocol).toBe("A1B2C3D4")
             expect(detail.name).toBe("Maria Silva")
@@ -124,7 +137,7 @@ describe("appointment.service", () => {
         })
 
         it("a linha do tempo não traz texto pronto e traz os títulos resolvidos", async () => {
-            const detail = await service.getAppointmentDetail(1)
+            const detail = await service.getAppointmentDetail(1, MANAGER)
 
             for (const step of detail.timeline) {
                 expect(Object.keys(step).sort()).toEqual(["created_at", "data", "generated_by_ai", "id", "type"])
@@ -158,7 +171,7 @@ describe("appointment.service", () => {
                 logger,
             })
 
-            const detail = await failingService.getAppointmentDetail(1)
+            const detail = await failingService.getAppointmentDetail(1, MANAGER)
 
             expect(detail.timeline).toEqual([])
             expect(logger.error).toHaveBeenCalledTimes(1)
@@ -166,14 +179,46 @@ describe("appointment.service", () => {
             expect(JSON.stringify(logger.error.mock.calls)).not.toContain("5500000000999")
         })
 
+        it("sem appointments.manage, todas as ações de gerenciar vêm com PERMISSION_REQUIRED", async () => {
+            const detail = await service.getAppointmentDetail(1, VIEWER)
+
+            expect(detail.available_actions).toEqual({
+                claim: PERMISSION_REQUIRED,
+                attended: PERMISSION_REQUIRED,
+                no_show: PERMISSION_REQUIRED,
+                assign: PERMISSION_REQUIRED,
+                correct_record: PERMISSION_REQUIRED,
+                add_note: PERMISSION_REQUIRED,
+            })
+        })
+
+        it("com appointments.manage, as ações seguem as regras de status", async () => {
+            const detail = await service.getAppointmentDetail(1, MANAGER)
+
+            expect(detail.available_actions).toEqual({
+                claim: { allowed: true, code: null },
+                attended: { allowed: false, code: "ATTENDANCE_NOT_YET_AVAILABLE" },
+                no_show: { allowed: false, code: "NO_SHOW_NOT_YET_AVAILABLE" },
+                assign: { allowed: true, code: null },
+                correct_record: { allowed: false, code: "RECORD_NOT_CORRECTABLE" },
+                add_note: { allowed: true, code: null },
+            })
+        })
+
+        it("a resposta de uma ação usa a permissão recebida para montar as ações disponíveis", async () => {
+            const detail = await service.claimAppointment(1, 42, VIEWER)
+
+            expect(detail.available_actions.assign).toEqual(PERMISSION_REQUIRED)
+        })
+
         it("lança NotFoundError para agendamento inexistente", async () => {
-            await expect(service.getAppointmentDetail(9999)).rejects.toThrow("Agendamento não encontrado")
+            await expect(service.getAppointmentDetail(9999, MANAGER)).rejects.toThrow("Agendamento não encontrado")
         })
     })
 
     describe("claimAppointment (Assumir para mim)", () => {
         it("assume agendamento Pendente passando para Confirmado com o id do usuário", async () => {
-            const result = await service.claimAppointment(1, 42)
+            const result = await service.claimAppointment(1, 42, MANAGER)
             expect(result.status).toBe("CONFIRMED")
             expect(result.assigned_user_id).toBe("42")
 
@@ -184,15 +229,47 @@ describe("appointment.service", () => {
         })
 
         it("recusa assumir agendamento que não esteja Pendente", async () => {
-            await expect(service.claimAppointment(2, 42)).rejects.toThrow(
+            await expect(service.claimAppointment(2, 42, MANAGER)).rejects.toThrow(
                 "Apenas agendamentos pendentes podem ser assumidos",
             )
         })
     })
 
+    describe("assignAppointment (Atribuir a outro funcionário)", () => {
+        it("repassa o destino ao repositório e devolve o detalhe atualizado", async () => {
+            const result = await service.assignAppointment(1, 7, 42, MANAGER)
+
+            expect(result.status).toBe("CONFIRMED")
+            expect(result.assigned_user_id).toBe("7")
+            expect(repository.actionCalls).toEqual([
+                { action: "assign", id: "1", actorUserId: 42, assigneeUserId: 7, now: FIXED_NOW },
+            ])
+        })
+    })
+
+    describe("correctRecord (Corrigir registro)", () => {
+        it("devolve o detalhe atualizado e warning nulo quando o repositório não avisa nada", async () => {
+            const result = await service.correctRecord(4, 42, MANAGER)
+
+            expect(result.warning).toBeNull()
+            expect(result.detail.id).toBe("4")
+            expect(result.detail.events[0]?.type).toBe("RECORD_CORRECTED")
+            expect(repository.actionCalls).toEqual([{ action: "correct_record", id: "4", actorUserId: 42, now: FIXED_NOW }])
+        })
+    })
+
+    describe("addNote (Observação interna)", () => {
+        it("repassa a observação ao repositório e devolve o detalhe com ela", async () => {
+            const result = await service.addNote(2, 42, "Documento conferido.", MANAGER)
+
+            expect(result.notes.map((note) => note.text)).toEqual(["Documento conferido."])
+            expect(repository.noteCalls).toEqual([{ id: "2", authorUserId: 42, text: "Documento conferido.", now: FIXED_NOW }])
+        })
+    })
+
     describe("markAttended (Marcar como atendido)", () => {
         it("marca como atendido com sucesso quando a data é hoje ou no passado", async () => {
-            const result = await service.markAttended(7, 42)
+            const result = await service.markAttended(7, 42, MANAGER)
             expect(result.status).toBe("ATTENDED")
             expect(result.assigned_user_id).toBe("42")
 
@@ -202,20 +279,20 @@ describe("appointment.service", () => {
         })
 
         it("recusa marcar como atendido se for para data futura", async () => {
-            await expect(service.markAttended(1, 42)).rejects.toThrow(
+            await expect(service.markAttended(1, 42, MANAGER)).rejects.toThrow(
                 "Disponível a partir do dia do atendimento",
             )
-            await expect(service.markAttended(1, 42)).rejects.toMatchObject({
+            await expect(service.markAttended(1, 42, MANAGER)).rejects.toMatchObject({
                 statusCode: 409,
                 code: "ATTENDANCE_NOT_YET_AVAILABLE",
             })
         })
 
         it("recusa se agendamento já foi atendido, cancelado ou não compareceu", async () => {
-            await expect(service.markAttended(4, 42)).rejects.toThrow(
+            await expect(service.markAttended(4, 42, MANAGER)).rejects.toThrow(
                 "Agendamento já foi marcado como atendido",
             )
-            await expect(service.markAttended(6, 42)).rejects.toThrow(
+            await expect(service.markAttended(6, 42, MANAGER)).rejects.toThrow(
                 "Não é possível registrar atendimento para um agendamento cancelado",
             )
         })
@@ -225,7 +302,7 @@ describe("appointment.service", () => {
         it("marca como não compareceu com sucesso quando o horário já passou", async () => {
             const todayStr = toLocalDateString()
             const now = new Date(`${todayStr}T12:00:00-03:00`)
-            const result = await service.markNoShow(7, 42, now)
+            const result = await service.markNoShow(7, 42, MANAGER, now)
             expect(result.status).toBe("NO_SHOW")
 
             const noShowEvent = result.events.find((e) => e.type === "NO_SHOW")
@@ -236,10 +313,10 @@ describe("appointment.service", () => {
         it("recusa marcar como não compareceu se o horário ainda não passou", async () => {
             const todayStr = toLocalDateString()
             const now = new Date(`${todayStr}T10:00:00-03:00`)
-            await expect(service.markNoShow(8, 42, now)).rejects.toThrow(
+            await expect(service.markNoShow(8, 42, MANAGER, now)).rejects.toThrow(
                 "Disponível apenas após o horário do agendamento",
             )
-            await expect(service.markNoShow(8, 42, now)).rejects.toMatchObject({
+            await expect(service.markNoShow(8, 42, MANAGER, now)).rejects.toMatchObject({
                 statusCode: 409,
                 code: "NO_SHOW_NOT_YET_AVAILABLE",
             })
