@@ -15,27 +15,39 @@ function wednesdayRow(): HTMLElement {
     return screen.getByRole("checkbox", { name: "Quarta-feira" }).closest("li") as HTMLElement
 }
 
+function renderBooked() {
+    return renderSchedulePage({
+        bookedDays: buildBookedDays(),
+        handlers: {
+            "GET /api/v1/schedule/preview": () => ({
+                status: 200,
+                body: {
+                    data: buildMonthlyPreview("2026-11", [
+                        { date: "2026-11-04", status: "AVAILABLE", freeSeats: 6, capacity: 8 }
+                    ])
+                }
+            })
+        }
+    })
+}
+
 describe("SchedulePage: dias com agendamento", () => {
-    it("marca o dia na prévia e trava o bloqueio, o dia da semana e a faixa", async () => {
-        const { user } = await renderSchedulePage({
-            bookedDays: buildBookedDays(),
-            handlers: {
-                "GET /api/v1/schedule/preview": () => ({
-                    status: 200,
-                    body: {
-                        data: buildMonthlyPreview("2026-11", [
-                            { date: "2026-11-04", status: "AVAILABLE", freeSeats: 6, capacity: 8 }
-                        ])
-                    }
-                })
-            }
-        })
+    it("marca o dia com agendamento na prévia e lista os horários no detalhe", async () => {
+        const { user } = await renderBooked()
 
         const cell = await screen.findByRole("button", {
             name: "04/11: 6 vagas livres · 2 agendamentos"
         })
         await user.click(cell)
+
         expect(screen.getByText("09:00 · 1 agendamento")).toBeInTheDocument()
+        expect(screen.getByText("14:00 · 1 agendamento")).toBeInTheDocument()
+    })
+
+    it("trava o dia da semana e as faixas com agendamento", async () => {
+        await renderBooked()
+        await screen.findByRole("button", { name: "04/11: 6 vagas livres · 2 agendamentos" })
+
         expect(screen.getByRole("checkbox", { name: "Quarta-feira" })).toBeDisabled()
         expect(screen.getByRole("checkbox", { name: "Quarta-feira" })).toHaveAccessibleDescription(
             "Há agendamentos em 04/11. Para desligar este dia, cancele ou remarque esses agendamentos antes, na tela de Agendamentos."
@@ -43,9 +55,16 @@ describe("SchedulePage: dias com agendamento", () => {
         within(wednesdayRow())
             .getAllByRole("button", { name: /^Remover faixa indisponível/ })
             .forEach((button) => expect(button).toBeDisabled())
+    })
+
+    it("recusa bloquear a data com agendamento", async () => {
+        const { user } = await renderBooked()
+        await screen.findByRole("button", { name: "04/11: 6 vagas livres · 2 agendamentos" })
 
         fireEvent.change(screen.getByLabelText("Data"), { target: { value: "2026-11-04" } })
-        await user.type(screen.getByLabelText("Descrição"), "Ponto facultativo")
+        fireEvent.change(screen.getByLabelText("Descrição"), {
+            target: { value: "Ponto facultativo" }
+        })
         await user.click(screen.getByRole("button", { name: "Adicionar" }))
 
         expect(screen.getByRole("alert")).toHaveTextContent(
