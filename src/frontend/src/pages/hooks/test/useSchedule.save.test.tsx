@@ -137,6 +137,32 @@ describe("useSchedule: salvar", () => {
         expect(result.current.saveDisabled).toBe(false)
     })
 
+    it("marca no formulário os campos ligados aos conflitos do 409", async () => {
+        const { result } = await ready(() =>
+            failure(409, "SCHEDULE_CONFLICTS", {
+                conflicts: [
+                    {
+                        ...CONFLICT,
+                        code: "RANGE_CHANGED",
+                        reason: "Faixa de horário removida ou alterada"
+                    },
+                    { ...CONFLICT, protocol: "SEAT0001", code: "SEATS_REDUCED", reason: "Vagas" }
+                ]
+            })
+        )
+        act(() => result.current.actions.setText("seatsPerSlot", "1"))
+
+        act(() => result.current.save())
+        await waitFor(() => expect(result.current.conflictRows).toHaveLength(2))
+
+        expect(result.current.days.find((day) => day.weekday === 3)?.messages).toEqual([
+            "Afeta o agendamento A1B2C3D4 (04/11 às 09:00): Faixa de horário removida ou alterada"
+        ])
+        expect(result.current.seatsMessages).toEqual([
+            "Afeta o agendamento SEAT0001 (04/11 às 09:00): Vagas"
+        ])
+    })
+
     it("traz nome e CPF mascarado nos afetados do 409 e some ao descartar", async () => {
         const { result } = await ready(() =>
             failure(409, "SCHEDULE_CONFLICTS", { conflicts: [CONFLICT] })

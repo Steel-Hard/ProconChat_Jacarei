@@ -59,7 +59,7 @@ function useSchedule() {
     const saver = useScheduleSave(draft.revision)
     const outcome = saver.outcome?.error ?? null
     const saveConflicts = outcome?.kind === "conflicts" ? outcome.conflicts : null
-    const targets = conflictTargets(preview.draftConflicts)
+    const targets = conflictTargets(saveConflicts ?? preview.draftConflicts)
 
     const rangeIssues: Record<string, string> = {}
     const blockIssues: Record<number, string[]> = {}
