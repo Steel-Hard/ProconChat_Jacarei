@@ -81,6 +81,7 @@ Ao salvar, o sistema verifica se algum agendamento **Pendente ou Confirmado futu
 | O horário deixou de existir por mudança de duração | "Horário deixou de existir com atendimentos de N minutos" |
 | A faixa foi removida ou alterada | "Faixa de horário removida ou alterada" |
 | As vagas foram reduzidas abaixo do que já está ocupado | Os **agendados por último** num horário lotado são os afetados |
+| A duração aumentou e dois agendamentos **Confirmados** do mesmo responsável passaram a se sobrepor | "Responsável com outro agendamento sobreposto com atendimentos de N minutos (protocolo XXXXXXXX)" |
 
 Se houver afetados, abre a janela **"Esta alteração afeta N agendamentos"** com a lista e três opções:
 

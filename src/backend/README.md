@@ -941,25 +941,77 @@ proteção CSRF (`403 INVALID_ORIGIN` nos métodos que enviam corpo), por `requi
   `services/scheduleRules.ts` (`slotsForWeekday`, `freeSlotStartsOfDay`, `isBusinessDay`,
   `computeWindowBounds` e `calculateMonthlyPreview`). Qualquer alteração salva em `PUT /api/v1/schedule`
   entra em vigor imediatamente na oferta de horários do bot.
-- **Validações da configuração (`normalizeAndValidateScheduleConfig`):**
+- **Validações da configuração:** o schema `scheduleConfigBodySchema` (`schemas/schedule.schema.ts`) é
+  a única fonte das regras. `normalizeAndValidateScheduleConfig` (`services/scheduleRules.ts`) valida
+  com esse schema por `validateSchema` (`utils/validateSchema.ts`) e depois só normaliza: ordena as
+  faixas, renumera `slotIndex`, troca complemento vazio por `null` e ordena os bloqueios. Regras:
   - `slotMinutes` em `20, 30, 40, 60`; `seatsPerSlot` de `1` a `20`; `windowDays` de `1` a `180`;
     `minNoticeDays` em `0, 1, 2, 3, 5` (dias úteis com atendimento); `waitAlertDays` de `1` a `60`;
     `reminderHours` em `2, 6, 12, 24, 48`; `unitAddress` obrigatório (até 500 caracteres) e
     `unitAddressComplement` opcional (até 500 caracteres).
   - Até 3 faixas (`ranges`) por dia da semana (`weekday` `0..6`), com `endTime > startTime`, sem
-    sobreposição no mesmo dia e com duração suficiente para ao menos 1 atendimento de `slotMinutes`.
-    As faixas do mesmo dia são ordenadas por `startTime` e renumeradas em `slotIndex` `1..3`.
+    sobreposição no mesmo dia, sem `slotIndex` repetido no mesmo dia e com duração suficiente para ao
+    menos 1 atendimento de `slotMinutes`. As faixas do mesmo dia são ordenadas por `startTime` e
+    renumeradas em `slotIndex` `1..3`.
   - Datas bloqueadas (`blockedDates`) do dia inteiro (`startTime` e `endTime` nulos) ou de período
     parcial (`startTime < endTime`), com descrição obrigatória (até 150 caracteres) e sem
     sobreposição na mesma data.
-- **Detecção de conflitos ao salvar (versão mínima da #64):** dentro da transação de `saveConfig`, o
-  repositório trava `ScheduleSettings` e todos os agendamentos futuros ativos na grade
-  (`status IN ('PENDING', 'CONFIRMED')`, `off_grid = FALSE`, `appointment_datetime > now`) e executa
-  `detectScheduleConflicts`. Se algum agendamento for afetado (`DATE_BLOCKED`, `PERIOD_BLOCKED`,
-  `DAY_WITHOUT_SERVICE`, `DURATION_CHANGED`, `RANGE_CHANGED` ou `SEATS_REDUCED` para os agendamentos
-  excedentes ordenados por `request_datetime ASC, id ASC`), a transação faz `ROLLBACK` e responde
-  `409 SCHEDULE_CONFLICTS` com `{ details: { conflicts } }`. O fluxo de resolução no mesmo salvamento
-  (cancelar pelo Procon ou manter como `off_grid = TRUE`) pertence à #65.
+- **Erros de validação por campo:** nas rotas de `/api/v1/schedule` (e só nelas, por
+  `validateRequest(schemas, { withIssues: true })`), o `400 BAD_REQUEST` traz também
+  `error.details.issues`, um item por problema na ordem do zod, com `path` em texto com ponto. O
+  `code` e a `message` são os mesmos das outras rotas, que continuam sem `details`:
+
+  ```json
+  {
+      "error": {
+          "code": "BAD_REQUEST",
+          "message": "Dados inválidos: ranges.2.endTime: Esta faixa não comporta nenhum atendimento de 30 minutos",
+          "details": {
+              "issues": [
+                  { "path": "ranges.2.endTime", "message": "Esta faixa não comporta nenhum atendimento de 30 minutos" }
+              ]
+          }
+      }
+  }
+  ```
+
+- **Detecção de conflitos ao salvar:** dentro da transação de `saveConfig`, o repositório pega a trava
+  exclusiva `pg_advisory_xact_lock(hashtext('schedule_config'))`, trava `ScheduleSettings` (lendo a
+  duração atual `slot_minutes`) e todos os agendamentos futuros ativos
+  (`status IN ('PENDING', 'CONFIRMED')`, `appointment_datetime > now`, inclusive os `off_grid`) e executa
+  `detectScheduleConflicts(config, agendamentos, duraçãoAtual)`. Os agendamentos `off_grid` nunca entram
+  na lista: servem só de parceiros na comparação do `RESPONSIBLE_OVERLAP`. Se algum agendamento for
+  afetado, a transação faz `ROLLBACK` e responde `409 SCHEDULE_CONFLICTS` com `{ details: { conflicts } }`.
+  Códigos:
+  - `DATE_BLOCKED`, `PERIOD_BLOCKED`, `DAY_WITHOUT_SERVICE`, `DURATION_CHANGED` e `RANGE_CHANGED`;
+  - `SEATS_REDUCED` para os agendamentos excedentes, ordenados por `request_datetime ASC, id ASC`
+    (perde a vaga quem pediu por último);
+  - `RESPONSIBLE_OVERLAP`: dois agendamentos `CONFIRMED` do mesmo responsável (`assigned_user_id`) que
+    não se sobrepunham com a duração atual passam a se sobrepor com a nova (mesma regra de
+    `services/responsibleAvailability.ts`). Só acontece quando a duração aumenta. Entra o agendamento
+    que não é `off_grid`, uma vez só, apontando o parceiro de horário mais cedo (empate pelo `id`
+    menor) em `conflictingAppointmentId` e `conflictingProtocol`. Se um dos dois já está na lista por
+    outro código, nada é acrescentado. O item não traz `cpf_hash` nem o id do responsável.
+
+  ```json
+  {
+      "id": "41",
+      "protocol": "A1B2C3D4",
+      "name": "Maria Souza",
+      "cpfMasked": "***.982.247-**",
+      "appointmentDatetime": "2026-11-04T12:00:00.000Z",
+      "date": "2026-11-04",
+      "time": "09:00",
+      "status": "CONFIRMED",
+      "reason": "Responsável com outro agendamento sobreposto com atendimentos de 60 minutos (protocolo E5F6A7B8)",
+      "code": "RESPONSIBLE_OVERLAP",
+      "conflictingAppointmentId": "42",
+      "conflictingProtocol": "E5F6A7B8"
+  }
+  ```
+
+  O fluxo de resolução no mesmo salvamento (cancelar pelo Procon ou manter como `off_grid = TRUE`)
+  pertence à #65.
 
 ## Agendamento pelo chat (#56)
 
@@ -1007,7 +1059,11 @@ só o espaço comum.
 | Qualquer outra falha da reserva (inclusive `ScheduleNotConfiguredError` e `BookingFailedError`) | `ERRO_FALHA_AGENDAMENTO` ("O agendamento não foi gravado"); o log leva só o tipo do evento, o id da sessão e o código do erro | `AWAITING_SLOT` |
 
 A reserva (`bookAppointment` em `repositories/schedule.repository.ts`) roda numa transação, nesta
-ordem: trava do horário (`pg_advisory_xact_lock`), leitura da configuração, recontagem das vagas,
+ordem: trava compartilhada da agenda (`pg_advisory_xact_lock_shared(hashtext('schedule_config'))`, que
+só espera um salvamento de `PUT /api/v1/schedule` em andamento; reservas não esperam umas pelas
+outras), trava do horário (`pg_advisory_xact_lock`), leitura da configuração, conferência de que o
+horário ainda existe na grade atual (faixas, bloqueios e duração lidos na mesma transação, por
+`freeSlotStartsOfDay`; se não existe, `SlotFullError`, e o bot oferece a lista atualizada), recontagem das vagas,
 checagem de duplicidade por CPF e horário, documentos, `INSERT` do agendamento (telefone cifrado com
 `ENCRYPTION_KEY`), evento `CREATED` em `AppointmentEvents`, `PHONE_NOTICE_SHOWN` por
 `insertConversationEvent(client, ...)` e encerramento por `finishSessionWith(client, ...)` com
