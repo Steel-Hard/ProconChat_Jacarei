@@ -67,6 +67,7 @@ describe("schedule.routes (HTTP)", () => {
         ["put", "/api/v1/schedule"],
         ["get", "/api/v1/schedule/preview"],
         ["post", "/api/v1/schedule/preview"],
+        ["get", "/api/v1/schedule/booked-days"],
     ] as const
 
     it.each(routes)("responde 401 em %s %s sem autenticação", async (method, path) => {
@@ -323,6 +324,136 @@ describe("schedule.routes (HTTP)", () => {
             slots: ["08:00", "09:00", "10:00", "11:00"],
             totalSlots: 4,
             totalSeats: 4,
+        })
+    })
+
+    describe("GET /api/v1/schedule/booked-days", () => {
+        const bookedAppointments = [
+            {
+                id: "51",
+                protocol: "DIAS0001",
+                name: "Ana Beatriz",
+                cpfMasked: "***.123.456-**",
+                appointmentDatetime: new Date("2027-11-03T09:00:00-03:00"),
+                requestDatetime: new Date("2026-10-01T10:00:00-03:00"),
+                status: "CONFIRMED" as const,
+                assignedUserId: 2,
+            },
+            {
+                id: "52",
+                protocol: "DIAS0002",
+                name: "Bruno Dias",
+                cpfMasked: "***.654.321-**",
+                appointmentDatetime: new Date("2027-11-03T09:00:00-03:00"),
+                requestDatetime: new Date("2026-10-01T11:00:00-03:00"),
+                status: "PENDING" as const,
+            },
+            {
+                id: "53",
+                protocol: "DIAS0003",
+                name: "Carla Reis",
+                cpfMasked: "***.111.222-**",
+                appointmentDatetime: new Date("2027-11-04T10:30:00-03:00"),
+                requestDatetime: new Date("2026-10-01T12:00:00-03:00"),
+                status: "PENDING" as const,
+                offGrid: true,
+            },
+        ]
+
+        it.each([
+            ["quem tem schedule.configure", CONFIGURER_ID],
+            ["o Admin", ADMIN_ID],
+        ])("responde 200 para %s com os dias, sem dados pessoais e com Cache-Control no-store", async (_label, userId) => {
+            repository.setAppointments(bookedAppointments)
+
+            const response = await request(app)
+                .get("/api/v1/schedule/booked-days")
+                .set("Cookie", cookieOf(userId))
+
+            expect(response.status).toBe(200)
+            expect(response.headers["cache-control"]).toBe("no-store")
+            expect(response.body).toEqual({
+                data: {
+                    days: [
+                        {
+                            date: "2027-11-03",
+                            weekday: 3,
+                            total: 2,
+                            times: [{ time: "09:00", count: 2 }],
+                        },
+                    ],
+                },
+            })
+        })
+
+        it("responde 200 com a lista vazia quando não há agendamento futuro", async () => {
+            const response = await request(app)
+                .get("/api/v1/schedule/booked-days")
+                .set("Cookie", cookieOf(CONFIGURER_ID))
+
+            expect(response.status).toBe(200)
+            expect(response.body).toEqual({ data: { days: [] } })
+        })
+    })
+
+    describe("conflitos na prévia", () => {
+        beforeEach(() => {
+            repository.setAppointments([
+                {
+                    id: "61",
+                    protocol: "PREV0001",
+                    name: "Ana Beatriz",
+                    cpfMasked: "***.123.456-**",
+                    appointmentDatetime: new Date("2027-11-03T14:00:00-03:00"),
+                    requestDatetime: new Date("2026-10-01T10:00:00-03:00"),
+                    status: "CONFIRMED",
+                    assignedUserId: 2,
+                },
+            ])
+        })
+
+        it("traz conflitos vazios em GET /api/v1/schedule/preview quando a grade salva comporta os agendamentos", async () => {
+            const response = await request(app)
+                .get("/api/v1/schedule/preview?month=2027-11")
+                .set("Cookie", cookieOf(CONFIGURER_ID))
+
+            expect(response.status).toBe(200)
+            expect(response.body.data.conflicts).toEqual([])
+        })
+
+        it("traz em POST /api/v1/schedule/preview o agendamento que o rascunho afeta, sem nome, CPF nem ids", async () => {
+            const base = buildDefaultScheduleConfigView()
+            const response = await request(app)
+                .post("/api/v1/schedule/preview")
+                .set("Cookie", cookieOf(CONFIGURER_ID))
+                .send({
+                    month: "2027-11",
+                    config: {
+                        slotMinutes: base.slotMinutes,
+                        seatsPerSlot: base.seatsPerSlot,
+                        windowDays: base.windowDays,
+                        minNoticeDays: base.minNoticeDays,
+                        waitAlertDays: base.waitAlertDays,
+                        unitAddress: base.unitAddress,
+                        unitAddressComplement: base.unitAddressComplement,
+                        reminderEnabled: base.reminderEnabled,
+                        reminderHours: base.reminderHours,
+                        ranges: [1, 2, 3, 4, 5].map((weekday) => ({ weekday, startTime: "08:00", endTime: "12:00" })),
+                        blockedDates: [],
+                    },
+                })
+
+            expect(response.status).toBe(200)
+            expect(response.body.data.conflicts).toEqual([
+                {
+                    protocol: "PREV0001",
+                    date: "2027-11-03",
+                    time: "14:00",
+                    status: "CONFIRMED",
+                    code: "RANGE_CHANGED",
+                    reason: "Faixa de horário removida ou alterada",
+                },
+            ])
         })
     })
 })

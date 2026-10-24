@@ -57,6 +57,8 @@ export class ScheduleRoutes {
             validateRequest({ body: previewScheduleBodySchema }, { withIssues: true }),
             controller.postPreview.bind(controller),
         )
+
+        this.router.get("/booked-days", controller.getBookedDays.bind(controller))
     }
 
     public getRouter(): Router {
