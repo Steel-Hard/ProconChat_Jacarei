@@ -77,6 +77,18 @@ describe("scheduleSaveErrorOf", () => {
         ["500", failure(500, { code: "INTERNAL_ERROR", message: "x" })],
         ["corpo sem error", { status: 502, data: "Bad Gateway" }],
         ["409 sem lista", failure(409, { code: "SCHEDULE_CONFLICTS", message: "x" })],
+        [
+            "409 com lista vazia",
+            failure(409, { code: "SCHEDULE_CONFLICTS", message: "x", details: { conflicts: [] } })
+        ],
+        [
+            "409 só com itens fora do contrato",
+            failure(409, {
+                code: "SCHEDULE_CONFLICTS",
+                message: "x",
+                details: { conflicts: [{ protocol: "SEMDATA1" }] }
+            })
+        ],
         ["400 sem issues", failure(400, { code: "BAD_REQUEST", message: "x" })],
         ["403 sem origem", failure(403, { code: "FORBIDDEN", message: "x" })],
         ["erro de rede", { status: "FETCH_ERROR", error: "TypeError" }],

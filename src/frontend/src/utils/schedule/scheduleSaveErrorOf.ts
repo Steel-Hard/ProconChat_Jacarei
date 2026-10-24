@@ -85,7 +85,7 @@ function scheduleSaveErrorOf(error: unknown): ScheduleSaveError | null {
     if (error.status === 409 && body.code === "SCHEDULE_CONFLICTS") {
         const conflicts = listOf(details.conflicts, conflictOf)
 
-        if (conflicts !== null) {
+        if (conflicts !== null && conflicts.length > 0) {
             return { kind: "conflicts", conflicts }
         }
     }
