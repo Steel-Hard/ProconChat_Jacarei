@@ -209,8 +209,9 @@ router.get("/", requireAuth, requirePermission("appointments.view"), listAppoint
 
   A primeira linha é para o ambiente local com `DB_URL`; a segunda, para o Compose. O script grava o
   novo hash, incrementa `session_version` e registra `Senha do Admin redefinida`, sem e-mail nem
-  senha. Sem conta Admin, sai com código 1 e pede para rodar o seed. Em produção, veja
-  `.docs/infra/deploy.md`.
+  senha. Sem conta Admin, sai com código 1 e pede para rodar o seed. Em produção, use
+  `deploy/reset-admin-password.sh`, que pede a senha sem mostrá-la e roda este script no
+  container (veja `.docs/infra/deploy.md`).
 
 ## Configuração do WhatsApp (#83)
 
