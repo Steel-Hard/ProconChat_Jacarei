@@ -965,7 +965,10 @@ proteção CSRF (`403 INVALID_ORIGIN` nos métodos que enviam corpo), por `requi
 - **Erros de validação por campo:** nas rotas de `/api/v1/schedule` (e só nelas, por
   `validateRequest(schemas, { withIssues: true })`), o `400 BAD_REQUEST` traz também
   `error.details.issues`, um item por problema na ordem do zod, com `path` em texto com ponto. O
-  `code` e a `message` são os mesmos das outras rotas, que continuam sem `details`:
+  `code` e a `message` são os mesmos das outras rotas, que continuam sem `details`. No
+  `POST /api/v1/schedule/preview` o rascunho vai dentro de `config`, então o `path` vem com o prefixo
+  `config.` (por exemplo, `config.ranges.2.endTime`); no `PUT /api/v1/schedule` o corpo é a própria
+  configuração e o `path` vem sem prefixo:
 
   ```json
   {
@@ -1061,7 +1064,7 @@ só o espaço comum.
 | CPF inválido | `ERRO_CPF` | `AWAITING_HOLDER_CPF` |
 | Nenhum horário livre (ao listar ou depois de um horário lotado) | `MENSAGEM_SEM_HORARIOS`; encerra com `NO_SLOT` | `FINISHED` |
 | Texto ou opção que não é da lista | `ERRO_SLOTS` com a página atual | `AWAITING_SLOT` |
-| Horário lotado (`SlotFullError`) ou `slot_` que não está mais na lista | `ERRO_SLOT_OCUPADO` com a lista atualizada, voltando à página 1 | `AWAITING_SLOT` |
+| Horário lotado (`SlotFullError`, que vale também para o horário que saiu da grade ou foi bloqueado por um salvamento de `PUT /api/v1/schedule` durante a reserva) ou `slot_` que não está mais na lista | `ERRO_SLOT_OCUPADO` com a lista atualizada, voltando à página 1 | `AWAITING_SLOT` |
 | Já existe agendamento ativo do mesmo CPF no mesmo horário (`DuplicateAppointmentError`) | `ERRO_DUPLICATE_APPOINTMENT` com a página atual | `AWAITING_SLOT` |
 | Rascunho incompleto ou pergunta inválida | `MENSAGEM_RASCUNHO_INCOMPLETO`; o rascunho é limpo | `AWAITING_ATTENDEE` |
 | Qualquer outra falha da reserva (inclusive `ScheduleNotConfiguredError` e `BookingFailedError`) | `ERRO_FALHA_AGENDAMENTO` ("O agendamento não foi gravado"); o log leva só o tipo do evento, o id da sessão e o código do erro | `AWAITING_SLOT` |
