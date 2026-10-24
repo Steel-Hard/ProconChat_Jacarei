@@ -42,19 +42,19 @@ export class ScheduleRoutes {
 
         this.router.put(
             "/",
-            validateRequest({ body: scheduleConfigBodySchema }),
+            validateRequest({ body: scheduleConfigBodySchema }, { withIssues: true }),
             controller.saveConfig.bind(controller),
         )
 
         this.router.get(
             "/preview",
-            validateRequest({ query: previewScheduleQuerySchema }),
+            validateRequest({ query: previewScheduleQuerySchema }, { withIssues: true }),
             controller.getPreview.bind(controller),
         )
 
         this.router.post(
             "/preview",
-            validateRequest({ body: previewScheduleBodySchema }),
+            validateRequest({ body: previewScheduleBodySchema }, { withIssues: true }),
             controller.postPreview.bind(controller),
         )
     }

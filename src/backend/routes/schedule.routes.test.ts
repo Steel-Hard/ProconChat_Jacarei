@@ -238,6 +238,38 @@ describe("schedule.routes (HTTP)", () => {
         expect(overlapping.body.error.message).toContain("sobrepõe")
     })
 
+    it("responde 400 com o caminho e a mensagem da faixa inválida em error.details.issues", async () => {
+        const base = buildDefaultScheduleConfigView()
+
+        const response = await request(app)
+            .put("/api/v1/schedule")
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+            .send({
+                ...base,
+                ranges: [
+                    { weekday: 1, startTime: "08:00", endTime: "12:00" },
+                    { weekday: 2, startTime: "08:00", endTime: "12:00" },
+                    { weekday: 3, startTime: "08:00", endTime: "08:20" },
+                ],
+            })
+
+        expect(response.status).toBe(400)
+        expect(response.body).toEqual({
+            error: {
+                code: "BAD_REQUEST",
+                message: "Dados inválidos: ranges.2.endTime: Esta faixa não comporta nenhum atendimento de 30 minutos",
+                details: {
+                    issues: [
+                        {
+                            path: "ranges.2.endTime",
+                            message: "Esta faixa não comporta nenhum atendimento de 30 minutos",
+                        },
+                    ],
+                },
+            },
+        })
+    })
+
     it("retorna prévia mensal em GET /api/v1/schedule/preview e POST /api/v1/schedule/preview (rascunho)", async () => {
         const getRes = await request(app)
             .get("/api/v1/schedule/preview?month=2026-10")
