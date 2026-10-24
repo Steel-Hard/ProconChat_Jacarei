@@ -6,6 +6,7 @@ import ROUTES from "@/routers/paths"
 import loadPanelRoutes from "@/testUtils/loadPanelRoutes"
 import PERMISSION_KEYS from "@/navigation/permissionKeys"
 import type PanelAccount from "@/types/account/PanelAccount.types"
+import type PermissionKey from "@/types/account/PermissionKey.types"
 import type RootState from "@/types/store/RootState.types"
 
 const admin: PanelAccount = {
@@ -68,6 +69,37 @@ function requestedUrls(): string[] {
     return fetchMock.mock.calls.map(([input]) =>
         input instanceof Request ? input.url : String(input)
     )
+}
+
+const NO_ACCESS_HEADING = "Sua conta ainda não tem acesso a nenhuma tela"
+
+function staffWith(permissions: PermissionKey[]): PanelAccount {
+    return { ...staffWithAllPermissions, permissions }
+}
+
+function stubFetchByUrl(respond: (url: string) => Response) {
+    vi.stubGlobal(
+        "fetch",
+        vi.fn((input: RequestInfo | URL) =>
+            Promise.resolve(respond(input instanceof Request ? input.url : String(input)))
+        )
+    )
+}
+
+function stubLoginAs(permissions: PermissionKey[]) {
+    stubFetchByUrl((url) =>
+        url.endsWith("/api/v1/auth/login")
+            ? new Response(JSON.stringify({ data: { user: staffWith(permissions) } }), {
+                  status: 200
+              })
+            : new Response(null, { status: 204 })
+    )
+}
+
+async function submitLogin(user: ReturnType<typeof userEvent.setup>) {
+    await user.type(await screen.findByRole("textbox", { name: "E-mail" }), "bruno@exemplo.gov.br")
+    await user.type(screen.getByLabelText("Senha"), "senha-segura")
+    await user.click(screen.getByRole("button", { name: "Entrar" }))
 }
 
 function stubNeverAnsweringFetch() {
@@ -242,5 +274,80 @@ describe("routes", () => {
         await user.click(await screen.findByRole("link", { name: "Vá para a página inicial." }))
 
         expect(await screen.findByRole("heading", { name: "Agendamentos" })).toBeInTheDocument()
+    })
+
+    it("volta do aviso para a tela de entrada sem redirect quando o logout dá certo", async () => {
+        const user = userEvent.setup()
+        stubFetchByUrl(() => new Response(null, { status: 204 }))
+        const { router, store } = renderRoutes([ROUTES.dashboard], {
+            account: { current: staffWith([]), status: "authenticated" }
+        })
+
+        await user.click(await screen.findByRole("button", { name: "Voltar para o login" }))
+
+        expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument()
+        expect(requestedUrls().some((url) => url.endsWith("/api/v1/auth/logout"))).toBe(true)
+        expect(store.getState().account).toEqual({ current: null, status: "anonymous" })
+        expect(router.state.location.pathname).toBe(ROUTES.login)
+        expect(router.state.location.search).toBe("")
+        expect(router.state.historyAction).toBe("REPLACE")
+        expect(screen.queryByRole("heading", { name: NO_ACCESS_HEADING })).not.toBeInTheDocument()
+    })
+
+    it("mantém o aviso e mostra o toast quando o logout falha", async () => {
+        const user = userEvent.setup()
+        stubFetchByUrl(
+            () =>
+                new Response(JSON.stringify({ error: { code: "INTERNAL_ERROR", message: "x" } }), {
+                    status: 500
+                })
+        )
+        const { router, store } = renderRoutes([ROUTES.dashboard], {
+            account: { current: staffWith([]), status: "authenticated" }
+        })
+
+        await user.click(await screen.findByRole("button", { name: "Voltar para o login" }))
+
+        expect(
+            await screen.findByText("Não foi possível sair agora. Tente de novo.")
+        ).toBeInTheDocument()
+        expect(screen.getByRole("heading", { name: NO_ACCESS_HEADING })).toBeInTheDocument()
+        expect(store.getState().account.status).toBe("authenticated")
+        expect(router.state.location.pathname).toBe(ROUTES.dashboard)
+    })
+
+    it("mostra o aviso quando a conta sem permissões entra com o redirect para Usuários", async () => {
+        const user = userEvent.setup()
+        stubLoginAs([])
+        const { router } = renderRoutes(["/login?redirect=%2Fusuarios"], withoutSession)
+
+        await submitLogin(user)
+
+        expect(await screen.findByRole("heading", { name: NO_ACCESS_HEADING })).toBeInTheDocument()
+        expect(router.state.location.pathname).toBe(ROUTES.users)
+        expect(screen.queryByRole("heading", { name: "404 - Not Found" })).not.toBeInTheDocument()
+    })
+
+    it("mostra o aviso quando a conta que só vê sessões entra sem redirect", async () => {
+        const user = userEvent.setup()
+        stubLoginAs(["sessions.view"])
+        renderRoutes([ROUTES.login], withoutSession)
+
+        await submitLogin(user)
+
+        expect(await screen.findByRole("heading", { name: NO_ACCESS_HEADING })).toBeInTheDocument()
+        expect(screen.queryByRole("heading", { name: "404 - Not Found" })).not.toBeInTheDocument()
+    })
+
+    it("abre Usuários quando a conta que vê relatórios e gerencia usuários entra sem redirect", async () => {
+        const user = userEvent.setup()
+        stubLoginAs(["reports.view", "users.manage"])
+        const { router } = renderRoutes([ROUTES.login], withoutSession)
+
+        await submitLogin(user)
+
+        expect(await screen.findByRole("heading", { name: "Usuários" })).toBeInTheDocument()
+        expect(router.state.location.pathname).toBe(ROUTES.users)
+        expect(screen.queryByRole("heading", { name: "404 - Not Found" })).not.toBeInTheDocument()
     })
 })
