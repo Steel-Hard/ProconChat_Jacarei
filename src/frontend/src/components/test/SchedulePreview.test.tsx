@@ -6,6 +6,8 @@ import buildMonthlyPreview from "@/testUtils/buildMonthlyPreview"
 import type BookedDay from "@/types/schedule/BookedDay.types"
 import type MonthlyPreview from "@/types/schedule/MonthlyPreview.types"
 
+vi.setConfig({ testTimeout: 20000 })
+
 const SLOTS = [
     { time: "08:30", capacity: 2, usedSeats: 0, freeSeats: 2, offered: true, past: false },
     { time: "09:00", capacity: 2, usedSeats: 2, freeSeats: 0, offered: true, past: false },

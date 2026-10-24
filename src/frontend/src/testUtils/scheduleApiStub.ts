@@ -19,24 +19,24 @@ function respond({ status, body }: Reply): Response {
     })
 }
 
-async function readCall(input: RequestInfo | URL, init?: RequestInit): Promise<ScheduleCall> {
+function startCall(input: RequestInfo | URL, init?: RequestInit): ScheduleCall {
+    if (input instanceof Request) {
+        return { method: input.method, url: new URL(input.url), body: undefined }
+    }
+
+    return { method: init?.method ?? "GET", url: new URL(String(input)), body: undefined }
+}
+
+async function bodyOf(input: RequestInfo | URL, init?: RequestInit): Promise<unknown> {
     if (input instanceof Request) {
         const text = await input.clone().text()
 
-        return {
-            method: input.method,
-            url: new URL(input.url),
-            body: text === "" ? undefined : JSON.parse(text)
-        }
+        return text === "" ? undefined : JSON.parse(text)
     }
 
     const raw = init?.body
 
-    return {
-        method: init?.method ?? "GET",
-        url: new URL(String(input)),
-        body: typeof raw === "string" ? JSON.parse(raw) : undefined
-    }
+    return typeof raw === "string" ? JSON.parse(raw) : undefined
 }
 
 function scheduleApiStub({ handlers = {}, bookedDays = [] }: StubOptions = {}) {
@@ -63,8 +63,9 @@ function scheduleApiStub({ handlers = {}, bookedDays = [] }: StubOptions = {}) {
     vi.stubGlobal(
         "fetch",
         vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-            const call = await readCall(input, init)
+            const call = startCall(input, init)
             calls.push(call)
+            call.body = await bodyOf(input, init)
             const handler = replies[`${call.method} ${call.url.pathname}`]
 
             if (!handler) {

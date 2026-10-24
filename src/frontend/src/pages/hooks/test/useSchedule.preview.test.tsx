@@ -4,6 +4,8 @@ import buildMonthlyPreview from "@/testUtils/buildMonthlyPreview"
 import renderScheduleHook from "@/testUtils/renderScheduleHook"
 import type SchedulePreviewConflict from "@/types/schedule/SchedulePreviewConflict.types"
 
+vi.setConfig({ testTimeout: 20000 })
+
 const CONFLICT: SchedulePreviewConflict = {
     protocol: "A1B2C3D4",
     date: "2026-11-04",

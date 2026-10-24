@@ -120,9 +120,7 @@ describe("SchedulePage", () => {
 
         expect(screen.getByLabelText("Duração de cada atendimento")).toHaveValue("30")
         expect(screen.queryByRole("button", { name: "Descartar" })).not.toBeInTheDocument()
-        expect(calls.filter((call) => call.method !== "GET").length).toBe(
-            calls.slice(0, before).filter((call) => call.method !== "GET").length
-        )
+        expect(calls.slice(before).filter((call) => call.method !== "GET")).toEqual([])
     })
 
     it("mostra o erro na faixa e não deixa salvar", async () => {

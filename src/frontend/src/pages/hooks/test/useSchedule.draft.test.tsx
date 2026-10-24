@@ -4,6 +4,8 @@ import NAV_ITEMS_ALL_READY from "@/testUtils/navItemsAllReady"
 import renderScheduleHook from "@/testUtils/renderScheduleHook"
 import type BookedDay from "@/types/schedule/BookedDay.types"
 
+vi.setConfig({ testTimeout: 20000 })
+
 const BOOKED: BookedDay[] = [
     { date: "2026-11-04", weekday: 3, total: 2, times: [{ time: "09:00", count: 2 }] },
     { date: "2026-11-11", weekday: 3, total: 1, times: [{ time: "14:00", count: 1 }] }

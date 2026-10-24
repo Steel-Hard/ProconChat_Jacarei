@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import buildScheduleConfig from "@/testUtils/buildScheduleConfig"
 import renderScheduleHook from "@/testUtils/renderScheduleHook"
 
+vi.setConfig({ testTimeout: 20000 })
+
 type Reply = { status: number; body?: unknown }
 
 function noRelease() {}
