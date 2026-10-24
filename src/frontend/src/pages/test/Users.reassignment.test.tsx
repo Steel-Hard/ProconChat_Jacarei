@@ -242,5 +242,7 @@ describe("UsersPage redistribuição dos agendamentos futuros", () => {
         expect(brunoRow()).toHaveTextContent("Ativo")
         expect(brunoRow()).not.toHaveTextContent("Não salvo")
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+        expect(screen.getByRole("checkbox", { name: /^Ver relatórios/ })).toBeEnabled()
+        expect(screen.getByRole("button", { name: "Desativar conta" })).toBeEnabled()
     })
 })

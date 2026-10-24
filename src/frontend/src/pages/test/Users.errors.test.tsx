@@ -55,6 +55,7 @@ describe("UsersPage erros da API", () => {
         expect(screen.getByRole("button", { name: /Bruno Lima/ })).toHaveTextContent("Não salvo")
         expect(screen.getByRole("button", { name: "2 alterações não salvas" })).toBeInTheDocument()
         expect(screen.queryByText(SERVER_MESSAGE)).not.toBeInTheDocument()
+        expect(screen.getByRole("checkbox", { name: /^Ver relatórios/ })).toBeEnabled()
     })
 
     it("cita o protocolo e o protocolo em conflito no REASSIGNMENT_TARGET_BUSY", async () => {
