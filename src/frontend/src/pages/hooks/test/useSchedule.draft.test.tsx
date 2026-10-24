@@ -134,6 +134,16 @@ describe("useSchedule: rascunho", () => {
         expect(result.current.saveHint).toBe("2 campos com erro. Corrija para salvar.")
     })
 
+    it("diz que as vagas precisam ser um número inteiro quando o valor é decimal", async () => {
+        const { result } = await ready()
+
+        act(() => result.current.actions.setText("seatsPerSlot", "2.5"))
+
+        expect(result.current.seatsMessages).toEqual([
+            "Vagas por horário devem ser um número inteiro"
+        ])
+    })
+
     it("adiciona o bloqueio de dia inteiro com a descrição sem espaços e limpa o formulário", async () => {
         const { result } = await ready()
 

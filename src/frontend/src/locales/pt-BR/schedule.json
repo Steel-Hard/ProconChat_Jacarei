@@ -101,8 +101,11 @@
         "rangeOverlap": "Esta faixa se sobrepõe a outra faixa do mesmo dia",
         "rangeTooShort": "Esta faixa não comporta nenhum atendimento de {{minutes}} minutos",
         "seatsOutOfRange": "Vagas por horário devem estar entre 1 e 20",
+        "seatsNotInteger": "Vagas por horário devem ser um número inteiro",
         "windowOutOfRange": "Janela de agendamento deve estar entre 1 e 180 dias",
+        "windowNotInteger": "Janela de agendamento deve ser um número inteiro de dias",
         "waitAlertOutOfRange": "Alerta de espera deve estar entre 1 e 60 dias",
+        "waitAlertNotInteger": "Alerta de espera deve ser um número inteiro de dias",
         "addressRequired": "Endereço da unidade obrigatório",
         "addressTooLong": "Endereço deve ter no máximo 500 caracteres",
         "complementTooLong": "Complemento deve ter no máximo 500 caracteres"

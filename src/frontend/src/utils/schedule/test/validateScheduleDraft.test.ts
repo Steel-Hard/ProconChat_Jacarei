@@ -69,7 +69,10 @@ describe("validateScheduleDraft", () => {
     it.each([
         ["seatsPerSlot", "0", "seatsOutOfRange"],
         ["seatsPerSlot", "21", "seatsOutOfRange"],
-        ["seatsPerSlot", "2.5", "seatsOutOfRange"],
+        ["seatsPerSlot", "2.5", "seatsNotInteger"],
+        ["seatsPerSlot", "2,5", "seatsNotInteger"],
+        ["windowDays", "2.5", "windowNotInteger"],
+        ["waitAlertDays", "3.5", "waitAlertNotInteger"],
         ["seatsPerSlot", " 3", "seatsOutOfRange"],
         ["windowDays", "", "windowOutOfRange"],
         ["windowDays", "181", "windowOutOfRange"],

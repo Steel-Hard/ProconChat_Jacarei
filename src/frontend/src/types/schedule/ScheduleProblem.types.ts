@@ -4,6 +4,9 @@ type ScheduleProblem =
     | { code: "rangeOverlap" }
     | { code: "rangeTooShort"; minutes: number }
     | { code: "seatsOutOfRange" }
+    | { code: "seatsNotInteger" }
+    | { code: "windowNotInteger" }
+    | { code: "waitAlertNotInteger" }
     | { code: "windowOutOfRange" }
     | { code: "waitAlertOutOfRange" }
     | { code: "addressRequired" }

@@ -6,6 +6,7 @@ import minutesOf from "@/utils/schedule/minutesOf"
 import rangeKey from "@/utils/schedule/rangeKey"
 
 const DIGITS = /^\d+$/
+const DECIMAL = /^\d*[.,]\d+$/
 const MAX_ADDRESS_LENGTH = 500
 
 type Range = ScheduleDayDraft["ranges"][number]
@@ -60,8 +61,13 @@ function integerProblem(
     value: string,
     min: number,
     max: number,
-    problem: ScheduleProblem
+    problem: ScheduleProblem,
+    notInteger: ScheduleProblem
 ): ScheduleProblem | null {
+    if (DECIMAL.test(value)) {
+        return notInteger
+    }
+
     if (!DIGITS.test(value)) {
         return problem
     }
@@ -91,12 +97,29 @@ function validateScheduleDraft(draft: ScheduleDraft): ScheduleDraftErrors {
     const address = draft.unitAddress.trim()
     const candidates: ScheduleDraftErrors["fields"] = {
         seatsPerSlot:
-            integerProblem(draft.seatsPerSlot, 1, 20, { code: "seatsOutOfRange" }) ?? undefined,
+            integerProblem(
+                draft.seatsPerSlot,
+                1,
+                20,
+                { code: "seatsOutOfRange" },
+                { code: "seatsNotInteger" }
+            ) ?? undefined,
         windowDays:
-            integerProblem(draft.windowDays, 1, 180, { code: "windowOutOfRange" }) ?? undefined,
+            integerProblem(
+                draft.windowDays,
+                1,
+                180,
+                { code: "windowOutOfRange" },
+                { code: "windowNotInteger" }
+            ) ?? undefined,
         waitAlertDays:
-            integerProblem(draft.waitAlertDays, 1, 60, { code: "waitAlertOutOfRange" }) ??
-            undefined,
+            integerProblem(
+                draft.waitAlertDays,
+                1,
+                60,
+                { code: "waitAlertOutOfRange" },
+                { code: "waitAlertNotInteger" }
+            ) ?? undefined,
         unitAddress:
             address === ""
                 ? { code: "addressRequired" }
