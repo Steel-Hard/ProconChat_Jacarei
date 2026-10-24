@@ -66,6 +66,7 @@ function UsersPage() {
                                 onToggleActive={page.toggleActive}
                                 onChangeMyPassword={page.openOwnPassword}
                                 onTogglePermission={page.togglePermission}
+                                locked={page.locked}
                             />
                         ) : null}
                     </div>

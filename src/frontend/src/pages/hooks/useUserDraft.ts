@@ -194,6 +194,7 @@ function useUserDraft({ saved, onSelect }: Options) {
         effective,
         reassignment,
         saving,
+        locked: saving,
         actionError: message,
         togglePermission,
         toggleActive,

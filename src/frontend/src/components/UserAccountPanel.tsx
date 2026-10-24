@@ -10,6 +10,7 @@ type UserAccountPanelProps = {
     onToggleActive: () => void
     onChangeMyPassword: () => void
     onTogglePermission: (key: PermissionKey) => void
+    locked?: boolean
 }
 
 function UserAccountPanel({
@@ -17,7 +18,8 @@ function UserAccountPanel({
     onResetPassword,
     onToggleActive,
     onChangeMyPassword,
-    onTogglePermission
+    onTogglePermission,
+    locked = false
 }: UserAccountPanelProps) {
     const nameId = useId()
     const warningId = useId()
@@ -69,7 +71,7 @@ function UserAccountPanel({
                             <button
                                 type="button"
                                 className={css.neutral}
-                                disabled={view.toggleActive.disabled}
+                                disabled={view.toggleActive.disabled || locked}
                                 aria-describedby={describedBy(view.toggleActive.disabled)}
                                 onClick={onToggleActive}
                             >
@@ -96,7 +98,11 @@ function UserAccountPanel({
             <div>
                 <h3 className={css.heading}>{view.permissionsHeading}</h3>
                 {view.permissions.map((item) => (
-                    <UserPermissionItem key={item.key} item={item} onToggle={onTogglePermission} />
+                    <UserPermissionItem
+                        key={item.key}
+                        item={locked ? { ...item, disabled: true } : item}
+                        onToggle={onTogglePermission}
+                    />
                 ))}
             </div>
         </section>

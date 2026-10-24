@@ -83,6 +83,7 @@ function useUsers() {
         panel: views.panel,
         changes: views.changes,
         saving: draft.saving,
+        locked: draft.locked,
         actionError: draft.actionError,
         reassignment: views.reassignment,
         actorEmail: actor.email,
