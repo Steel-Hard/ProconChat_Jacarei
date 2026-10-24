@@ -8,16 +8,22 @@ import {
     BlockedDate,
     BookAppointmentInput,
     BookAppointmentResult,
+    BookedDay,
+    BookedDaysResult,
     MonthlyPreviewResult,
+    NormalizedScheduleConfig,
     ScheduleConfigInput,
     ScheduleConfigView,
+    ScheduleConflictItem,
     ScheduleRange,
     ScheduleSettings,
+    SchedulePreviewConflict,
 } from "../types/schedule.types"
 import { addDaysToDateString, getLocalParts, parseLocalDate } from "../utils/date.utils"
 import {
     calculateMonthlyPreview,
     computeWindowBounds,
+    detectScheduleConflicts,
     freeSlotStartsOfDay,
     fromMinutes,
     getDowFromDateStr,
@@ -54,6 +60,18 @@ export interface IScheduleService {
         now?: Date,
     ): Promise<ScheduleConfigView>
     getMonthlyPreview(params?: GetMonthlyPreviewParams): Promise<MonthlyPreviewResult>
+    getBookedDays(now?: Date): Promise<BookedDaysResult>
+}
+
+function previewConflictOf(item: ScheduleConflictItem): SchedulePreviewConflict {
+    return {
+        protocol: item.protocol,
+        date: item.date,
+        time: item.time,
+        status: item.status,
+        code: item.code,
+        reason: item.reason,
+    }
 }
 
 export function createScheduleService(
@@ -200,9 +218,15 @@ export function createScheduleService(
             throw new BadRequestError("Mês inválido")
         }
 
-        const baseConfig = params.draftConfig
-            ? normalizeAndValidateScheduleConfig(params.draftConfig)
-            : await getConfig()
+        let baseConfig: NormalizedScheduleConfig
+        let savedConfig: ScheduleConfigView | null
+        if (params.draftConfig) {
+            baseConfig = normalizeAndValidateScheduleConfig(params.draftConfig)
+            savedConfig = await repository.getConfig()
+        } else {
+            savedConfig = await getConfig()
+            baseConfig = savedConfig
+        }
 
         const settings: Pick<
             ScheduleSettings,
@@ -247,7 +271,7 @@ export function createScheduleService(
             toDatetime,
         )
 
-        return calculateMonthlyPreview({
+        const preview = calculateMonthlyPreview({
             month: targetMonth,
             now,
             settings,
@@ -255,6 +279,43 @@ export function createScheduleService(
             blockedDates,
             activeCounts,
         })
+
+        const futureAppointments = await repository.listFutureActiveAppointments(now)
+        const conflicts = detectScheduleConflicts(
+            baseConfig,
+            futureAppointments,
+            savedConfig?.slotMinutes ?? null,
+        ).map(previewConflictOf)
+
+        return { ...preview, conflicts }
+    }
+
+    async function getBookedDays(now = new Date()): Promise<BookedDaysResult> {
+        const appointments = await repository.listFutureActiveAppointments(now)
+        const byDate = new Map<string, Map<string, number>>()
+
+        for (const appointment of appointments.filter((a) => !a.offGrid)) {
+            const { dateStr, timeStr } = getLocalParts(appointment.appointmentDatetime)
+            const times = byDate.get(dateStr) ?? new Map<string, number>()
+            times.set(timeStr, (times.get(timeStr) ?? 0) + 1)
+            byDate.set(dateStr, times)
+        }
+
+        const days: BookedDay[] = [...byDate.entries()]
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([date, times]) => {
+                const sortedTimes = [...times.entries()]
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .map(([time, count]) => ({ time, count }))
+                return {
+                    date,
+                    weekday: getDowFromDateStr(date),
+                    total: sortedTimes.reduce((sum, item) => sum + item.count, 0),
+                    times: sortedTimes,
+                }
+            })
+
+        return { days }
     }
 
     return {
@@ -263,6 +324,7 @@ export function createScheduleService(
         getConfig,
         saveConfig,
         getMonthlyPreview,
+        getBookedDays,
     }
 }
 

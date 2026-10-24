@@ -7,7 +7,7 @@ import type {
     DayPreviewStatus,
     DaySlotPreview,
     FutureActiveAppointment,
-    MonthlyPreviewResult,
+    MonthlyGridPreview,
     NormalizedScheduleConfig,
     ScheduleConfigInput,
     ScheduleConflictCode,
@@ -411,7 +411,7 @@ export function calculateMonthlyPreview({
     ranges,
     blockedDates,
     activeCounts,
-}: CalculateMonthlyPreviewInput): MonthlyPreviewResult {
+}: CalculateMonthlyPreviewInput): MonthlyGridPreview {
     const { dateStr: todayStr, timeStr: nowTimeStr } = getLocalParts(now)
     const nowMinutes = toMinutes(nowTimeStr)
 
