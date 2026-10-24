@@ -82,5 +82,12 @@
             "slotNotOfferedWith": "{{seats}} · não oferecido"
         },
         "cellLabelBooked": "{{date}}: {{status}} · {{booked}}"
+    },
+    "conflicts": {
+        "title_one": "Esta alteração afeta {{count}} agendamento",
+        "title_other": "Esta alteração afeta {{count}} agendamentos",
+        "hint": "Para fazer esta alteração, cancele ou remarque esses agendamentos na tela de Agendamentos antes de salvar.",
+        "when": "{{weekday}}, {{date}} às {{time}}",
+        "protocol": "Protocolo {{protocol}}"
     }
 }
