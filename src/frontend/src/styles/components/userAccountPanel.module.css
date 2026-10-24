@@ -116,7 +116,7 @@
 }
 
 .lockWarning {
-    flex-basis: 100%;
+    margin-top: -8px;
     font-size: 12px;
     color: var(--warn-text);
 }

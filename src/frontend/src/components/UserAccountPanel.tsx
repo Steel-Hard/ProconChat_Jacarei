@@ -82,14 +82,14 @@ function UserAccountPanel({
                                 {view.toggleActive.label}
                             </button>
                         ) : null}
-                        {view.lockWarning ? (
-                            <p id={warningId} className={css.lockWarning}>
-                                {view.lockWarning}
-                            </p>
-                        ) : null}
                     </div>
                 ) : null}
             </div>
+            {view.lockWarning ? (
+                <p id={warningId} className={css.lockWarning}>
+                    {view.lockWarning}
+                </p>
+            ) : null}
             {view.adminNotes.length > 0 ? (
                 <div className={css.note}>
                     {view.adminNotes.map((note) => (
