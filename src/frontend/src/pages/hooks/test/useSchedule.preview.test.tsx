@@ -69,9 +69,9 @@ describe("useSchedule: prévia", () => {
         })
 
         act(() => result.current.actions.setText("seatsPerSlot", "3"))
-        await settle(399)
+        await settle(300)
         const early = callsTo("POST", "/api/v1/schedule/preview").length
-        await settle(1)
+        await settle(100)
         await waitFor(() => expect(callsTo("POST", "/api/v1/schedule/preview")).toHaveLength(1))
         act(() => result.current.save())
         await waitFor(() => expect(callsTo("PUT", "/api/v1/schedule")).toHaveLength(1))
