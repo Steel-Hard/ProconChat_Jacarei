@@ -10,7 +10,7 @@ Definir **quando o PROCON atende presencialmente**. É daqui que o chatbot tira 
 
 ## Estado da tela
 
-**Pronta (backend na issue #64, tela na issue #125).** O chatbot oferece os horários da configuração salva aqui. Ainda faltam: o envio do lembrete (issue #74; a tela só configura liga/desliga e horas), a janela de manter ou cancelar os agendamentos afetados (issue #75) e a criação de bloqueio de parte do dia (issue #77; a tela cria só bloqueio de dia inteiro, mas mostra e deixa remover os bloqueios parciais que já existirem).
+**Pronta (backend na issue #64, tela na issue #125).** O chatbot oferece os horários da configuração salva aqui. Ainda faltam: o envio do lembrete (issue #74; até lá a tela esconde a seção "Lembrete ao cidadão", e o salvamento mantém o liga/desliga e as horas como estão gravados), a janela de manter ou cancelar os agendamentos afetados (issue #75) e a criação de bloqueio de parte do dia (issue #77; a tela cria só bloqueio de dia inteiro, mas mostra e deixa remover os bloqueios parciais que já existirem).
 
 ## Regras gerais da tela
 
@@ -50,6 +50,8 @@ Definir **quando o PROCON atende presencialmente**. É daqui que o chatbot tira 
 - Usados nas mensagens ao cidadão: confirmação do agendamento e lembrete.
 
 ### Lembrete ao cidadão
+
+**Escondida até a issue #74.** Como nada envia o lembrete ainda, a tela não mostra esta seção. Salvar a tela mantém o liga/desliga e as horas exatamente como estão gravados. Quando o envio existir, a seção volta como descrita abaixo.
 
 - **Ligado/desligado** e **quantas horas antes** do atendimento: 2, 6, 12, 24 ou 48.
 - Enviado para agendamentos **Pendentes e Confirmados**.

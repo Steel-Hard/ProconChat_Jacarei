@@ -141,6 +141,7 @@ Rota `/horarios`, para quem tem Configurar atendimento presencial (e o Admin). A
 - Datas puras (`AAAA-MM-DD`) nunca passam por `new Date` local: o dia da semana sai de `utils/schedule/weekdayOfDate.ts` (`Date.UTC`) ou do `weekday` da prévia, e `dd/mm` de `utils/schedule/dayMonthOf.ts`.
 - A prévia vem sempre do servidor (o mesmo cálculo do chatbot). Sem alteração, `GET`; com alteração e sem erro local, `POST` 400 ms depois da última edição, mostrando só a resposta do rascunho atual (`currentData`). Com erro local, a última prévia fica com o aviso.
 - Dias com agendamento: o dia da semana com agendamento não pode ser desligado, a faixa que cobre um horário com agendamento não pode ser removida e a data com agendamento não pode ser bloqueada. As outras mudanças que afetariam alguém aparecem pelos `conflicts` da prévia, no campo e na lista, e travam o salvar; o `409 SCHEDULE_CONFLICTS` continua como garantia e também mostra a lista, com nome e CPF mascarado.
+- A seção "Lembrete ao cidadão" (`components/ScheduleReminderFields.tsx`) fica fora da página até o envio do lembrete existir (#74): o componente, os textos e as ações do hook continuam no código, e `reminderEnabled`/`reminderHours` vão no `PUT` como vieram do `GET`. Para voltar, basta renderizar o componente em `pages/Schedule.page.tsx`.
 - Fora desta tela por enquanto: manter ou cancelar os afetados (#75), bloqueio de parte do dia (#77) e o envio do lembrete (#74).
 
 ## Tela de Usuários
