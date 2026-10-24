@@ -21,6 +21,8 @@ const phones = {
     kept: "5512999991002",
     outside: "5512999991003",
     shared: "5512999991004",
+    fullDayBlocked: "5512999991005",
+    periodBlocked: "5512999991006",
 }
 
 function nextTuesday(): string {
@@ -183,6 +185,39 @@ describe("corrida entre salvar a grade e agendar pelo bot (Postgres)", () => {
         expect(eventTypes).not.toContain("PHONE_NOTICE_SHOWN")
         expect(eventTypes).not.toContain("APPOINTMENT_CREATED")
     })
+
+    it.each([
+        { label: "de dia inteiro", phone: phones.fullDayBlocked, cpfSuffix: "305", startTime: null, endTime: null },
+        { label: "de período", phone: phones.periodBlocked, cpfSuffix: "306", startTime: "08:30", endTime: "10:00" },
+    ])(
+        "espera o salvamento terminar e recusa o horário que o salvamento bloqueou $label, sem gravar nada",
+        async ({ phone, cpfSuffix, startTime, endTime }) => {
+            const input = await bookingInput(phone, cpfSuffix, "09:00")
+            let outcome: Promise<{ value?: BookAppointmentResult; error?: unknown }> | null = null
+
+            await withManualTransaction(
+                "SELECT pg_advisory_xact_lock(hashtext('schedule_config'))",
+                async (client) => {
+                    await client.query(
+                        "INSERT INTO BlockedDates (date, start_time, end_time, description) VALUES ($1, $2, $3, 'Bloqueio da corrida')",
+                        [tuesday, startTime, endTime],
+                    )
+                },
+                async () => {
+                    outcome = settle(scheduleRepository.bookAppointment(input))
+                    await waitForAdvisoryWaiter()
+                },
+            )
+            const result = await outcome!
+
+            expect(result.error).toBeInstanceOf(SlotFullError)
+            expect(await appointmentsOfSession(input.sessionId)).toBe(0)
+            expect(await sessionStatus(input.sessionId)).toBe("IN_PROGRESS")
+            const eventTypes = await conversationEventTypes(input.sessionId)
+            expect(eventTypes).not.toContain("PHONE_NOTICE_SHOWN")
+            expect(eventTypes).not.toContain("APPOINTMENT_CREATED")
+        },
+    )
 
     it("espera o salvamento terminar e grava normalmente quando o horário continua na grade", async () => {
         const input = await bookingInput(phones.kept, "302", "09:00")
