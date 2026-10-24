@@ -159,6 +159,19 @@ describe("schedule.routes (HTTP)", () => {
         })
     })
 
+    it("aceita PUT /api/v1/schedule sem nenhuma faixa quando não há agendamentos futuros", async () => {
+        const base = buildDefaultScheduleConfigView()
+        const { updatedBy: _updatedBy, updatedAt: _updatedAt, ...body } = base
+
+        const response = await request(app)
+            .put("/api/v1/schedule")
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+            .send({ ...body, ranges: [] })
+
+        expect(response.status).toBe(200)
+        expect(response.body.data.ranges).toEqual([])
+    })
+
     it("responde 409 SCHEDULE_CONFLICTS em PUT /api/v1/schedule quando há agendamento futuro afetado", async () => {
         repository.setAppointments([
             {

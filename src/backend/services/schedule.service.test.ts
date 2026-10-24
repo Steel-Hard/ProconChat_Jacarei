@@ -141,6 +141,14 @@ describe("ScheduleService", () => {
         expect(slots).toEqual([])
     })
 
+    it("devolve lista vazia quando a grade não tem nenhuma faixa", async () => {
+        vi.mocked(repoMock.getRanges).mockResolvedValueOnce([])
+
+        const slots = await service.getAvailableSlots(new Date("2026-10-05T09:00:00-03:00"))
+
+        expect(slots).toEqual([])
+    })
+
     it("deve respeitar estritamente o limite da janela de agendamento (window_days)", async () => {
         vi.mocked(repoMock.getSettings).mockResolvedValueOnce(
             buildScheduleSettings({ window_days: 2, min_notice_days: 1 }),

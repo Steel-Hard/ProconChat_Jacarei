@@ -133,4 +133,18 @@ describe("detectScheduleConflicts", () => {
 
         expect(conflicts.map((c) => [c.id, c.code])).toEqual([["11", "SEATS_REDUCED"]])
     })
+
+    it("aponta DAY_WITHOUT_SERVICE para cada agendamento futuro quando a nova grade não tem faixas", () => {
+        const config = normalizeAndValidateScheduleConfig(baseInput({ ranges: [] }))
+
+        const conflicts = detectScheduleConflicts(config, [
+            makeAppt("1", "2026-10-06T08:00:00-03:00"),
+            makeAppt("2", "2026-10-07T13:00:00-03:00"),
+        ])
+
+        expect(conflicts.map((c) => [c.id, c.code, c.reason])).toEqual([
+            ["1", "DAY_WITHOUT_SERVICE", "Dia sem atendimento na nova grade"],
+            ["2", "DAY_WITHOUT_SERVICE", "Dia sem atendimento na nova grade"],
+        ])
+    })
 })
