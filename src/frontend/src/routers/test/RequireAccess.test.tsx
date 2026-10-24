@@ -126,6 +126,14 @@ describe("RequireAccess", () => {
         expect(router.state.location.pathname).toBe("/usuarios")
     })
 
+    it("leva quem vê agendamentos de / para /agendamentos", async () => {
+        const { router } = renderAs("/", ["appointments.view", "users.manage"])
+
+        expect(await screen.findByRole("heading", { name: "Agendamentos" })).toBeInTheDocument()
+        expect(router.state.location.pathname).toBe("/agendamentos")
+        expect(router.state.historyAction).toBe("REPLACE")
+    })
+
     it("leva o Admin de / para /agendamentos", async () => {
         const { router } = renderAs("/", [], true)
 
