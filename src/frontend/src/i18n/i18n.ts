@@ -27,6 +27,7 @@ void i18n.init({
         "appointmentDetail",
         "error",
         "login",
+        "noAccess",
         "notFound",
         "underConstruction",
         "users",

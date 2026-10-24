@@ -1,0 +1,48 @@
+.main {
+    display: grid;
+    place-items: center;
+    padding: 40px;
+    background: var(--bg-page);
+}
+
+.card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    width: 100%;
+    max-width: 400px;
+    padding: 28px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg-surface);
+}
+
+.heading {
+    font-family: var(--font-heading);
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.message {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text-muted);
+    text-wrap: pretty;
+}
+
+.action {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--text-link);
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+}
+
+.action:hover {
+    color: var(--color-primary-dark);
+}
