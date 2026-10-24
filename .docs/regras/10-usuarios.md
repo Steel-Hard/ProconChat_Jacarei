@@ -14,12 +14,12 @@ Criar as contas da equipe e definir o que cada pessoa pode fazer no painel.
 
 ## O que a tela mostra
 
-**Lista de contas:** iniciais, nome (com o selo **ADMIN** na conta Admin), e-mail, quantas permissões tem ("Todas as permissões" ou "N de 8 permissões"), **último acesso** (ou "Nunca acessou") e o estado (Ativo/Inativo). Contas com alterações ainda não salvas mostram "Não salvo".
+**Lista de contas:** iniciais, nome (com o selo **ADMIN** na conta Admin), e-mail, quantas permissões tem ("Todas as permissões" ou "N de M permissões", em que M e N contam só as permissões de telas prontas), **último acesso** (ou "Nunca acessou") e o estado (Ativo/Inativo). Contas com alterações ainda não salvas mostram "Não salvo".
 
 **Painel da conta selecionada:**
 - nome, e-mail, último acesso e **"Permissões alteradas por [nome] em [data]"**;
 - os botões **Redefinir senha** e **Desativar/Reativar conta**, ou **Alterar minha senha** quando for a própria conta;
-- a lista das 8 permissões, com a descrição de cada uma ([regras gerais](00-regras-gerais.md#2-contas-e-permissões)).
+- as permissões de telas prontas, com a descrição de cada uma ([regras gerais](00-regras-gerais.md#2-contas-e-permissões)).
 
 ## O que dá para fazer
 
@@ -32,6 +32,7 @@ Criar as contas da equipe e definir o que cada pessoa pode fazer no painel.
 ### Permissões
 
 - Marcar e desmarcar permissões, uma a uma.
+- **Só aparecem as permissões de telas prontas.** Enquanto a tela de uma permissão não está pronta (o item dela não aparece no [menu lateral](01-login-e-conta.md#menu-lateral)), a permissão não aparece no painel e não pode ser concedida. Ela aparece quando a tela ficar pronta. Uma permissão que a conta já tenha e cuja tela não esteja pronta continua salva na conta.
 - **"Gerenciar agendamentos" inclui "Ver agendamentos":** marcar a primeira marca a segunda, e desmarcar a segunda desmarca a primeira.
 - **Segue o padrão de salvar** ([regras gerais](00-regras-gerais.md#3-salvar-descartar-e-registrar-quem-alterou)).
 - Enquanto as alterações estão sendo salvas, ou enquanto a tela consulta os agendamentos futuros de uma conta, as permissões e o botão Desativar/Reativar ficam bloqueados.
