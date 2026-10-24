@@ -33,6 +33,7 @@ function useUserDraft({ saved, onSelect }: Options) {
     const [reassignment, setReassignment] = useState<ReassignmentRequest | null>(null)
     const [actionError, setActionError] = useState<UserApiError | null>(null)
     const [saving, setSaving] = useState(false)
+    const [checking, setChecking] = useState(false)
     const saveInFlight = useRef(false)
     const checkInFlight = useRef(false)
     const revision = useRef(0)
@@ -64,6 +65,7 @@ function useUserDraft({ saved, onSelect }: Options) {
         }
 
         checkInFlight.current = true
+        setChecking(true)
 
         try {
             const appointments = await dispatch(
@@ -84,6 +86,7 @@ function useUserDraft({ saved, onSelect }: Options) {
             setActionError(userApiErrorOf(caught, "future"))
         } finally {
             checkInFlight.current = false
+            setChecking(false)
         }
     }
 
@@ -160,7 +163,7 @@ function useUserDraft({ saved, onSelect }: Options) {
     async function save() {
         const batch = buildAccountBatch(saved, draft)
 
-        if (batch.changes.length === 0 || saveInFlight.current) {
+        if (batch.changes.length === 0 || saveInFlight.current || checkInFlight.current) {
             return
         }
 
@@ -194,7 +197,7 @@ function useUserDraft({ saved, onSelect }: Options) {
         effective,
         reassignment,
         saving,
-        locked: saving,
+        locked: saving || checking,
         actionError: message,
         togglePermission,
         toggleActive,
