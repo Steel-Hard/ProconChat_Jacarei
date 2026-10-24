@@ -163,6 +163,8 @@ export interface FutureActiveAppointment {
     appointmentDatetime: Date
     requestDatetime: Date
     status: "PENDING" | "CONFIRMED"
+    assignedUserId: number | null
+    offGrid: boolean
 }
 
 export type ScheduleConflictCode =
@@ -172,6 +174,7 @@ export type ScheduleConflictCode =
     | "DURATION_CHANGED"
     | "RANGE_CHANGED"
     | "SEATS_REDUCED"
+    | "RESPONSIBLE_OVERLAP"
 
 export interface ScheduleConflictItem {
     id: string
@@ -184,6 +187,8 @@ export interface ScheduleConflictItem {
     status: "PENDING" | "CONFIRMED"
     reason: string
     code: ScheduleConflictCode
+    conflictingAppointmentId?: string
+    conflictingProtocol?: string
 }
 
 export type DayPreviewStatus =

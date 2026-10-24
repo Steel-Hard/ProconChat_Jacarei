@@ -16,6 +16,8 @@ function makeAppt(
         appointmentDatetime: new Date(isoLocal),
         requestDatetime: new Date(2026, 9, 1, 10, requestOrder, 0),
         status: "CONFIRMED",
+        assignedUserId: 7,
+        offGrid: false,
     }
 }
 
@@ -48,7 +50,8 @@ function scenarioConfig(): NormalizedScheduleConfig {
 }
 
 function codesAndReasons(appointments: FutureActiveAppointment[]) {
-    return detectScheduleConflicts(scenarioConfig(), appointments).map((c) => ({
+    const config = scenarioConfig()
+    return detectScheduleConflicts(config, appointments, config.slotMinutes).map((c) => ({
         id: c.id,
         code: c.code,
         reason: c.reason,
@@ -137,14 +140,159 @@ describe("detectScheduleConflicts", () => {
     it("aponta DAY_WITHOUT_SERVICE para cada agendamento futuro quando a nova grade não tem faixas", () => {
         const config = normalizeAndValidateScheduleConfig(baseInput({ ranges: [] }))
 
-        const conflicts = detectScheduleConflicts(config, [
-            makeAppt("1", "2026-10-06T08:00:00-03:00"),
-            makeAppt("2", "2026-10-07T13:00:00-03:00"),
-        ])
+        const conflicts = detectScheduleConflicts(
+            config,
+            [makeAppt("1", "2026-10-06T08:00:00-03:00"), makeAppt("2", "2026-10-07T13:00:00-03:00")],
+            config.slotMinutes,
+        )
 
         expect(conflicts.map((c) => [c.id, c.code, c.reason])).toEqual([
             ["1", "DAY_WITHOUT_SERVICE", "Dia sem atendimento na nova grade"],
             ["2", "DAY_WITHOUT_SERVICE", "Dia sem atendimento na nova grade"],
         ])
+    })
+
+    describe("RESPONSIBLE_OVERLAP", () => {
+        function wednesdayConfig(slotMinutes: 20 | 30 | 60): NormalizedScheduleConfig {
+            return normalizeAndValidateScheduleConfig(
+                baseInput({
+                    slotMinutes,
+                    seatsPerSlot: 2,
+                    ranges: [{ weekday: 3, startTime: "08:00", endTime: "12:00" }],
+                    blockedDates: [],
+                }),
+            )
+        }
+
+        function onWednesday(
+            id: string,
+            time: string,
+            overrides: Partial<FutureActiveAppointment> = {},
+        ): FutureActiveAppointment {
+            return { ...makeAppt(id, `2026-10-07T${time}:00-03:00`), ...overrides }
+        }
+
+        function detect(
+            appointments: FutureActiveAppointment[],
+            currentSlotMinutes: number | null,
+            newSlotMinutes: 20 | 30 | 60,
+        ) {
+            return detectScheduleConflicts(wednesdayConfig(newSlotMinutes), appointments, currentSlotMinutes)
+        }
+
+        it("aponta o agendamento da grade quando o parceiro do mesmo responsável fora da grade passa a se sobrepor", () => {
+            const conflicts = detect(
+                [onWednesday("1", "09:00"), onWednesday("2", "09:30", { offGrid: true })],
+                30,
+                60,
+            )
+
+            expect(conflicts).toEqual([
+                expect.objectContaining({
+                    id: "1",
+                    code: "RESPONSIBLE_OVERLAP",
+                    reason: "Responsável com outro agendamento sobreposto com atendimentos de 60 minutos (protocolo PROT0002)",
+                    conflictingAppointmentId: "2",
+                    conflictingProtocol: "PROT0002",
+                }),
+            ])
+        })
+
+        it("nunca aponta o agendamento fora da grade, mesmo quando ele foi o agendado por último", () => {
+            const conflicts = detect(
+                [
+                    onWednesday("5", "09:00", { requestDatetime: new Date(2026, 9, 1, 8, 0, 0) }),
+                    onWednesday("9", "09:30", { offGrid: true, requestDatetime: new Date(2026, 9, 2, 8, 0, 0) }),
+                ],
+                30,
+                60,
+            )
+
+            expect(conflicts.map((c) => [c.id, c.code])).toEqual([["5", "RESPONSIBLE_OVERLAP"]])
+        })
+
+        it("aponta o agendamento uma única vez com o parceiro de horário mais cedo quando há dois parceiros", () => {
+            const conflicts = detect(
+                [
+                    onWednesday("1", "10:30", { offGrid: true }),
+                    onWednesday("3", "10:00"),
+                    onWednesday("2", "09:30", { offGrid: true }),
+                ],
+                30,
+                60,
+            )
+
+            expect(conflicts).toEqual([
+                expect.objectContaining({
+                    id: "3",
+                    code: "RESPONSIBLE_OVERLAP",
+                    conflictingAppointmentId: "2",
+                    conflictingProtocol: "PROT0002",
+                }),
+            ])
+        })
+
+        it("não acrescenta item quando o outro agendamento do par já está na lista por outro motivo", () => {
+            const conflicts = detect([onWednesday("1", "09:00"), onWednesday("2", "09:30")], 30, 60)
+
+            expect(conflicts.map((c) => [c.id, c.code])).toEqual([["2", "DURATION_CHANGED"]])
+        })
+
+        it("não aponta quando os responsáveis são diferentes", () => {
+            const conflicts = detect(
+                [onWednesday("1", "09:00"), onWednesday("2", "09:30", { offGrid: true, assignedUserId: 8 })],
+                30,
+                60,
+            )
+
+            expect(conflicts).toEqual([])
+        })
+
+        it("não aponta quando um dos dois está pendente", () => {
+            const conflicts = detect(
+                [onWednesday("1", "09:00", { status: "PENDING" }), onWednesday("2", "09:30", { offGrid: true })],
+                30,
+                60,
+            )
+
+            expect(conflicts).toEqual([])
+        })
+
+        it("não aponta quando a duração não aumenta, mesmo com o par já sobreposto", () => {
+            const pair = [onWednesday("1", "09:00"), onWednesday("2", "09:15", { offGrid: true })]
+
+            expect(detect(pair, 30, 30)).toEqual([])
+            expect(detect(pair, 30, 20)).toEqual([])
+        })
+
+        it("não expõe o hash do CPF nem o responsável no item serializado", () => {
+            const conflicts = detect(
+                [onWednesday("1", "09:00"), onWednesday("2", "09:30", { offGrid: true })],
+                30,
+                60,
+            )
+
+            const serialized = JSON.parse(JSON.stringify(conflicts[0])) as Record<string, unknown>
+            expect(serialized.code).toBe("RESPONSIBLE_OVERLAP")
+            for (const key of ["cpfHash", "cpf_hash", "assignedUserId", "assigned_user_id"]) {
+                expect(serialized).not.toHaveProperty(key)
+            }
+        })
+
+        it("deixa os agendamentos fora da grade de fora dos outros seis tipos de conflito", () => {
+            const offGrid = { offGrid: true }
+
+            const conflicts = codesAndReasons([
+                { ...makeAppt("1", "2026-10-06T08:00:00-03:00"), ...offGrid },
+                { ...makeAppt("2", "2026-10-08T10:00:00-03:00"), ...offGrid },
+                { ...makeAppt("3", "2026-10-09T08:00:00-03:00"), ...offGrid },
+                { ...makeAppt("4", "2026-10-07T09:30:00-03:00"), ...offGrid },
+                { ...makeAppt("5", "2026-10-07T08:00:00-03:00"), ...offGrid },
+                { ...makeAppt("6", "2026-10-08T08:00:00-03:00", 10), ...offGrid },
+                { ...makeAppt("7", "2026-10-08T08:00:00-03:00", 20), ...offGrid },
+            ])
+
+            expect(conflicts).toEqual([])
+        })
     })
 })

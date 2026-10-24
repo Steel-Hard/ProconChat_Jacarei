@@ -26,7 +26,7 @@ export function isValidResponsible(account: Pick<RuleAccount, "active" | "isAdmi
     return account.active && (account.isAdmin || account.permissions.includes(MANAGE_APPOINTMENTS))
 }
 
-function overlaps(a: Date, b: Date, slotMinutes: number | null): boolean {
+export function overlaps(a: Date, b: Date, slotMinutes: number | null): boolean {
     if (slotMinutes === null) {
         return a.getTime() === b.getTime()
     }

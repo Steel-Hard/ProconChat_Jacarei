@@ -1,4 +1,5 @@
 import { scheduleConfigBodySchema } from "../schemas/schedule.schema"
+import { overlaps } from "./responsibleAvailability"
 import type {
     BlockedDate,
     BlockedDateItem,
@@ -195,9 +196,90 @@ export function normalizeAndValidateScheduleConfig(
     }
 }
 
+function byRequestOrder(a: FutureActiveAppointment, b: FutureActiveAppointment): number {
+    return (
+        a.requestDatetime.getTime() - b.requestDatetime.getTime() ||
+        Number(a.id) - Number(b.id)
+    )
+}
+
+function byAppointmentOrder(a: FutureActiveAppointment, b: FutureActiveAppointment): number {
+    return (
+        a.appointmentDatetime.getTime() - b.appointmentDatetime.getTime() ||
+        Number(a.id) - Number(b.id)
+    )
+}
+
+function conflictItemOf(
+    appt: FutureActiveAppointment,
+    code: ScheduleConflictCode,
+    reason: string,
+): ScheduleConflictItem {
+    const { dateStr, timeStr } = getLocalParts(appt.appointmentDatetime)
+    return {
+        id: appt.id,
+        protocol: appt.protocol,
+        name: appt.name,
+        cpfMasked: appt.cpfMasked,
+        appointmentDatetime: appt.appointmentDatetime.toISOString(),
+        date: dateStr,
+        time: timeStr,
+        status: appt.status,
+        reason,
+        code,
+    }
+}
+
+function detectResponsibleOverlaps(
+    futureAppointments: FutureActiveAppointment[],
+    listedIds: Set<string>,
+    currentSlotMinutes: number | null,
+    newSlotMinutes: number,
+): ScheduleConflictItem[] {
+    const confirmed = futureAppointments.filter(
+        (a) => a.status === "CONFIRMED" && a.assignedUserId !== null,
+    )
+    const candidates = confirmed
+        .filter((a) => !a.offGrid)
+        .sort((a, b) => byRequestOrder(b, a))
+    const items: ScheduleConflictItem[] = []
+
+    for (const appt of candidates) {
+        if (listedIds.has(appt.id)) {
+            continue
+        }
+        const partner = confirmed
+            .filter(
+                (other) =>
+                    other.id !== appt.id &&
+                    other.assignedUserId === appt.assignedUserId &&
+                    !listedIds.has(other.id) &&
+                    !overlaps(appt.appointmentDatetime, other.appointmentDatetime, currentSlotMinutes) &&
+                    overlaps(appt.appointmentDatetime, other.appointmentDatetime, newSlotMinutes),
+            )
+            .sort(byAppointmentOrder)[0]
+        if (!partner) {
+            continue
+        }
+        listedIds.add(appt.id)
+        items.push({
+            ...conflictItemOf(
+                appt,
+                "RESPONSIBLE_OVERLAP",
+                `Responsável com outro agendamento sobreposto com atendimentos de ${newSlotMinutes} minutos (protocolo ${partner.protocol})`,
+            ),
+            conflictingAppointmentId: partner.id,
+            conflictingProtocol: partner.protocol,
+        })
+    }
+
+    return items
+}
+
 export function detectScheduleConflicts(
     config: NormalizedScheduleConfig,
     futureAppointments: FutureActiveAppointment[],
+    currentSlotMinutes: number | null,
 ): ScheduleConflictItem[] {
     const conflicts: ScheduleConflictItem[] = []
     const bySlot = new Map<string, { appt: FutureActiveAppointment; date: string; time: string }[]>()
@@ -210,7 +292,7 @@ export function detectScheduleConflicts(
         end_time: r.endTime,
     }))
 
-    for (const appt of futureAppointments) {
+    for (const appt of futureAppointments.filter((a) => !a.offGrid)) {
         const { dateStr, timeStr } = getLocalParts(appt.appointmentDatetime)
         const apptMin = toMinutes(timeStr)
         const dow = getDowFromDateStr(dateStr)
@@ -256,18 +338,7 @@ export function detectScheduleConflicts(
         }
 
         if (code && reason) {
-            conflicts.push({
-                id: appt.id,
-                protocol: appt.protocol,
-                name: appt.name,
-                cpfMasked: appt.cpfMasked,
-                appointmentDatetime: appt.appointmentDatetime.toISOString(),
-                date: dateStr,
-                time: timeStr,
-                status: appt.status,
-                reason,
-                code,
-            })
+            conflicts.push(conflictItemOf(appt, code, reason))
         } else {
             const slotKey = `${dateStr} ${timeStr}`
             const list = bySlot.get(slotKey) ?? []
@@ -278,11 +349,7 @@ export function detectScheduleConflicts(
 
     for (const list of bySlot.values()) {
         if (list.length > config.seatsPerSlot) {
-            const ordered = [...list].sort(
-                (a, b) =>
-                    a.appt.requestDatetime.getTime() - b.appt.requestDatetime.getTime() ||
-                    Number(a.appt.id) - Number(b.appt.id),
-            )
+            const ordered = [...list].sort((a, b) => byRequestOrder(a.appt, b.appt))
             const affected = ordered.slice(config.seatsPerSlot)
             for (const { appt, date, time } of affected) {
                 conflicts.push({
@@ -300,6 +367,15 @@ export function detectScheduleConflicts(
             }
         }
     }
+
+    conflicts.push(
+        ...detectResponsibleOverlaps(
+            futureAppointments,
+            new Set(conflicts.map((c) => c.id)),
+            currentSlotMinutes,
+            config.slotMinutes,
+        ),
+    )
 
     return conflicts.sort(
         (a, b) =>

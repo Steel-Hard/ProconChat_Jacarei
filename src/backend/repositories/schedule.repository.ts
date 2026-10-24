@@ -203,6 +203,8 @@ async function loadFutureActiveAppointments(
         appointment_datetime: Date
         request_datetime: Date
         status: "PENDING" | "CONFIRMED"
+        assigned_user_id: string | null
+        off_grid: boolean
     }>(
         `SELECT a.id::text AS id,
                 UPPER(SUBSTRING(a.appointment_code::text, 1, 8)) AS protocol,
@@ -210,10 +212,11 @@ async function loadFutureActiveAppointments(
                 a.cpf_masked,
                 a.appointment_datetime,
                 a.request_datetime,
-                a.status
+                a.status,
+                a.assigned_user_id::text AS assigned_user_id,
+                a.off_grid
          FROM Appointments a
          WHERE a.status IN ('PENDING', 'CONFIRMED')
-           AND a.off_grid = FALSE
            AND a.appointment_datetime > $1
          ORDER BY a.appointment_datetime ASC, a.id ASC
          FOR UPDATE`,
@@ -228,6 +231,8 @@ async function loadFutureActiveAppointments(
         appointmentDatetime: new Date(r.appointment_datetime),
         requestDatetime: new Date(r.request_datetime),
         status: r.status,
+        assignedUserId: r.assigned_user_id === null ? null : Number(r.assigned_user_id),
+        offGrid: r.off_grid,
     }))
 }
 
@@ -242,10 +247,13 @@ async function saveConfig({
     try {
         await client.query("BEGIN")
         await client.query("SELECT pg_advisory_xact_lock(hashtext('schedule_config'))")
-        await client.query("SELECT id FROM ScheduleSettings WHERE id = 1 FOR UPDATE")
+        const current = await client.query<{ slot_minutes: number }>(
+            "SELECT slot_minutes FROM ScheduleSettings WHERE id = 1 FOR UPDATE",
+        )
+        const currentSlotMinutes = current.rows[0]?.slot_minutes ?? null
 
         const futureAppointments = await loadFutureActiveAppointments(client, now)
-        const conflicts = detectScheduleConflicts(config, futureAppointments)
+        const conflicts = detectScheduleConflicts(config, futureAppointments, currentSlotMinutes)
         if (conflicts.length > 0) {
             throw new ConflictError(
                 "Esta alteração afeta agendamentos futuros",

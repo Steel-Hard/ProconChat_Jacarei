@@ -15,7 +15,9 @@ import {
     SaveScheduleConfigRepoParams,
 } from "../schedule.repository.interface"
 
-export interface StoredStubAppointment extends FutureActiveAppointment {
+export interface StoredStubAppointment
+    extends Omit<FutureActiveAppointment, "assignedUserId" | "offGrid"> {
+    assignedUserId?: number | null
     offGrid?: boolean
 }
 
@@ -173,10 +175,18 @@ export function createScheduleStubRepository(
         actorUserId,
         now,
     }: SaveScheduleConfigRepoParams): Promise<ScheduleConfigView> {
-        const futureNonOffGrid = appointments.filter(
-            (a) => !a.offGrid && a.appointmentDatetime > now,
+        const future: FutureActiveAppointment[] = appointments
+            .filter((a) => a.appointmentDatetime > now)
+            .map((a) => ({
+                ...a,
+                assignedUserId: a.assignedUserId ?? null,
+                offGrid: a.offGrid ?? false,
+            }))
+        const conflicts = detectScheduleConflicts(
+            config,
+            future,
+            currentConfig?.slotMinutes ?? null,
         )
-        const conflicts = detectScheduleConflicts(config, futureNonOffGrid)
         if (conflicts.length > 0) {
             throw new ConflictError(
                 "Esta alteração afeta agendamentos futuros",
