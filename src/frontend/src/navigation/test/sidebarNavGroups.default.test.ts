@@ -49,4 +49,15 @@ describe("sidebarNavGroups com as flags de produção", () => {
             { key: "settings", items: [{ key: "users", path: ROUTES.users }] }
         ])
     })
+
+    it("um funcionário sem Gerenciar usuários não vê o grupo Configurações", () => {
+        const staffWithoutUsers: PanelAccount = {
+            ...staffWithAllPermissions,
+            permissions: PERMISSION_KEYS.filter((key) => key !== "users.manage")
+        }
+
+        expect(sidebarNavGroups(staffWithoutUsers)).toEqual([
+            { key: "operation", items: [{ key: "appointments", path: ROUTES.appointments }] }
+        ])
+    })
 })
