@@ -52,13 +52,17 @@ const reminderHoursSchema = z.union(
     { message: "Horas do lembrete devem ser 2, 6, 12, 24 ou 48" },
 ) as z.ZodType<ReminderHours>
 
+function integerBetween(min: number, max: number, message: string) {
+    return z.number({ message }).int({ message }).min(min, { message }).max(max, { message })
+}
+
 const timeStringSchema = z
     .string()
     .trim()
     .regex(TIME_REGEX, { message: "Horário deve estar no formato HH:MM" })
 
 export const scheduleRangeItemSchema: z.ZodType<ScheduleRangeInputItem> = z.object({
-    weekday: z.number().int().min(0).max(6),
+    weekday: integerBetween(0, 6, "Dia da semana inválido"),
     slotIndex: z.number().int().min(1).max(3).optional(),
     startTime: timeStringSchema,
     endTime: timeStringSchema,
@@ -103,23 +107,23 @@ export const blockedDateItemSchema: z.ZodType<BlockedDateInputItem> = z
 export const scheduleConfigBodySchema: z.ZodType<ScheduleConfigInput> = z
     .object({
         slotMinutes: slotMinutesSchema,
-        seatsPerSlot: z.number().int().min(1).max(20),
-        windowDays: z.number().int().min(1).max(180),
+        seatsPerSlot: integerBetween(1, 20, "Vagas por horário devem estar entre 1 e 20"),
+        windowDays: integerBetween(1, 180, "Janela de agendamento deve estar entre 1 e 180 dias"),
         minNoticeDays: minNoticeDaysSchema,
-        waitAlertDays: z.number().int().min(1).max(60),
+        waitAlertDays: integerBetween(1, 60, "Alerta de espera deve estar entre 1 e 60 dias"),
         unitAddress: z
             .string()
             .trim()
             .min(1, { message: "Endereço da unidade obrigatório" })
-            .max(500),
+            .max(500, { message: "Endereço da unidade obrigatório" }),
         unitAddressComplement: z
             .string()
             .trim()
-            .max(500)
+            .max(500, { message: "Complemento deve ter no máximo 500 caracteres" })
             .transform((val: string) => (val === "" ? null : val))
             .nullable()
             .optional(),
-        reminderEnabled: z.boolean(),
+        reminderEnabled: z.boolean({ message: "Configuração de lembrete inválida" }),
         reminderHours: reminderHoursSchema,
         ranges: z.array(scheduleRangeItemSchema).max(21),
         blockedDates: z.array(blockedDateItemSchema).max(366).default([]),

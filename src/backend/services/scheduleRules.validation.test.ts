@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import BadRequestError from "../errors/BadRequestError"
+import type { ScheduleConfigInput } from "../types/schedule.types"
 import { buildScheduleConfigInput as baseInput } from "./mock/scheduleConfig.builders"
 import { normalizeAndValidateScheduleConfig } from "./scheduleRules"
 
@@ -122,6 +123,57 @@ describe("scheduleRules", () => {
                     }),
                 ),
             ).toThrow("Índice de faixa repetido no mesmo dia")
+        })
+
+        it.each([
+            { field: "seatsPerSlot", value: 0 },
+            { field: "seatsPerSlot", value: 21 },
+            { field: "seatsPerSlot", value: 1.5 },
+            { field: "seatsPerSlot", value: "2" },
+        ])("rejeita vagas por horário $value com a mensagem em português", ({ field, value }) => {
+            expect(() =>
+                normalizeAndValidateScheduleConfig(baseInput({ [field]: value } as Partial<ScheduleConfigInput>)),
+            ).toThrow("seatsPerSlot: Vagas por horário devem estar entre 1 e 20")
+        })
+
+        it.each([0, 181, 2.5])("rejeita janela de agendamento de %s dias com a mensagem em português", (windowDays) => {
+            expect(() => normalizeAndValidateScheduleConfig(baseInput({ windowDays }))).toThrow(
+                "windowDays: Janela de agendamento deve estar entre 1 e 180 dias",
+            )
+        })
+
+        it.each([0, 61, 3.5])("rejeita alerta de espera de %s dias com a mensagem em português", (waitAlertDays) => {
+            expect(() => normalizeAndValidateScheduleConfig(baseInput({ waitAlertDays }))).toThrow(
+                "waitAlertDays: Alerta de espera deve estar entre 1 e 60 dias",
+            )
+        })
+
+        it.each([-1, 7, 1.5])("rejeita dia da semana %s com a mensagem em português", (weekday) => {
+            expect(() =>
+                normalizeAndValidateScheduleConfig(
+                    baseInput({ ranges: [{ weekday, startTime: "08:00", endTime: "12:00" }] }),
+                ),
+            ).toThrow("ranges.0.weekday: Dia da semana inválido")
+        })
+
+        it("rejeita endereço da unidade acima de 500 caracteres com a mensagem em português", () => {
+            expect(() => normalizeAndValidateScheduleConfig(baseInput({ unitAddress: "a".repeat(501) }))).toThrow(
+                "unitAddress: Endereço da unidade obrigatório",
+            )
+        })
+
+        it("rejeita complemento acima de 500 caracteres com a mensagem em português", () => {
+            expect(() =>
+                normalizeAndValidateScheduleConfig(baseInput({ unitAddressComplement: "a".repeat(501) })),
+            ).toThrow("unitAddressComplement: Complemento deve ter no máximo 500 caracteres")
+        })
+
+        it("rejeita lembrete que não é verdadeiro ou falso com a mensagem em português", () => {
+            expect(() =>
+                normalizeAndValidateScheduleConfig(
+                    baseInput({ reminderEnabled: "sim" } as unknown as Partial<ScheduleConfigInput>),
+                ),
+            ).toThrow("reminderEnabled: Configuração de lembrete inválida")
         })
 
         it("troca complemento vazio por null e ordena os bloqueios por data e horário inicial", () => {
