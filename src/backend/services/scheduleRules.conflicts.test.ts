@@ -232,6 +232,27 @@ describe("detectScheduleConflicts", () => {
             ])
         })
 
+        it("desempata pelo id menor quando dois parceiros fora da grade estão no mesmo horário", () => {
+            const conflicts = detect(
+                [
+                    onWednesday("10", "09:30", { offGrid: true }),
+                    onWednesday("3", "09:00"),
+                    onWednesday("9", "09:30", { offGrid: true }),
+                ],
+                30,
+                60,
+            )
+
+            expect(conflicts).toEqual([
+                expect.objectContaining({
+                    id: "3",
+                    code: "RESPONSIBLE_OVERLAP",
+                    conflictingAppointmentId: "9",
+                    conflictingProtocol: "PROT0009",
+                }),
+            ])
+        })
+
         it("não acrescenta item quando o outro agendamento do par já está na lista por outro motivo", () => {
             const conflicts = detect([onWednesday("1", "09:00"), onWednesday("2", "09:30")], 30, 60)
 
