@@ -29,6 +29,7 @@ void i18n.init({
         "login",
         "noAccess",
         "notFound",
+        "schedule",
         "underConstruction",
         "users",
         "whatsapp"
