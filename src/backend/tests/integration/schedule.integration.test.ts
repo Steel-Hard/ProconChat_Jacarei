@@ -8,6 +8,7 @@ import { sessionRepository } from "../../repositories/session.repository"
 import { createScheduleService } from "../../services/schedule.service"
 import type { ConversationFlowResult } from "../../types/conversationFlow.types"
 import { BookAppointmentResult } from "../../types/schedule.types"
+import { parseLocalDate } from "../../utils/date.utils"
 import { hashPhone as phoneHash } from "./helpers/phone"
 import {
     cleanupScheduleTestData,
@@ -111,7 +112,7 @@ describe("Schedule integration tests (Postgres)", () => {
         const s = await sessionRepository.findOrCreateActive(phoneHash(phones.c1))
         createdSessionIds.push(s.id)
 
-        const testSlot = new Date("2026-11-10T10:00:00.000Z")
+        const testSlot = parseLocalDate("2026-11-10", "09:00")
 
         const result = await scheduleRepository.bookAppointment({
             sessionId: s.id,
@@ -158,7 +159,7 @@ describe("Schedule integration tests (Postgres)", () => {
         const s3 = await sessionRepository.findOrCreateActive(phoneHash(phones.c3))
         createdSessionIds.push(s1.id, s2.id, s3.id)
 
-        const slotTime = new Date("2026-11-10T11:00:00.000Z")
+        const slotTime = parseLocalDate("2026-11-10", "08:00")
 
         const results = await Promise.allSettled([
             scheduleRepository.bookAppointment({
@@ -225,7 +226,7 @@ describe("Schedule integration tests (Postgres)", () => {
         const finishedSessionId = sessRes.rows[0]!.id
         createdSessionIds.push(finishedSessionId)
 
-        const slotTime = new Date("2026-11-10T14:00:00.000Z")
+        const slotTime = parseLocalDate("2026-11-10", "11:00")
         const testCpfHash = makeCpfHash("999")
         const appointmentsBefore = await countRows("Appointments")
         const appointmentEventsBefore = await countRows("AppointmentEvents")

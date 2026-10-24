@@ -5,7 +5,12 @@ import ConflictError from "../errors/ConflictError"
 import DuplicateAppointmentError from "../errors/DuplicateAppointmentError"
 import ScheduleNotConfiguredError from "../errors/ScheduleNotConfiguredError"
 import SlotFullError from "../errors/SlotFullError"
-import { detectScheduleConflicts, trimTime } from "../services/scheduleRules"
+import {
+    detectScheduleConflicts,
+    freeSlotStartsOfDay,
+    toMinutes,
+    trimTime,
+} from "../services/scheduleRules"
 import {
     BlockedDate,
     BookAppointmentInput,
@@ -20,6 +25,7 @@ import {
     SlotMinutes,
 } from "../types/schedule.types"
 import { encrypt } from "../utils/crypto.utils"
+import { getLocalParts } from "../utils/date.utils"
 import { insertConversationEvent, Queryable } from "./conversationEvent.repository"
 import { finishSessionWith } from "./session.repository"
 import {
@@ -58,12 +64,30 @@ async function getSettings(): Promise<ScheduleSettings | null> {
     return selectSettings(getPool())
 }
 
-async function getRanges(): Promise<ScheduleRange[]> {
-    const pool = getPool()
-    const result = await pool.query<ScheduleRange>(
+async function selectRanges(db: Queryable): Promise<ScheduleRange[]> {
+    const result = await db.query<ScheduleRange>(
         `SELECT id, weekday, slot_index, start_time::text, end_time::text
          FROM ScheduleRanges
          ORDER BY weekday, slot_index`,
+    )
+    return result.rows
+}
+
+async function getRanges(): Promise<ScheduleRange[]> {
+    return selectRanges(getPool())
+}
+
+async function selectBlockedDates(
+    db: Queryable,
+    fromDate: string,
+    toDate: string,
+): Promise<BlockedDate[]> {
+    const result = await db.query<BlockedDate>(
+        `SELECT id, date::text, start_time::text, end_time::text, description
+         FROM BlockedDates
+         WHERE date >= $1 AND date <= $2
+         ORDER BY date, start_time NULLS FIRST, id`,
+        [fromDate, toDate],
     )
     return result.rows
 }
@@ -72,15 +96,7 @@ async function getBlockedDates(
     fromDate: string,
     toDate: string,
 ): Promise<BlockedDate[]> {
-    const pool = getPool()
-    const result = await pool.query<BlockedDate>(
-        `SELECT id, date::text, start_time::text, end_time::text, description
-         FROM BlockedDates
-         WHERE date >= $1 AND date <= $2
-         ORDER BY date, start_time NULLS FIRST, id`,
-        [fromDate, toDate],
-    )
-    return result.rows
+    return selectBlockedDates(getPool(), fromDate, toDate)
 }
 
 async function countActiveAppointmentsPerSlot(
@@ -329,6 +345,21 @@ async function saveConfig({
     }
 }
 
+async function lockScheduleConfigShared(client: PoolClient): Promise<void> {
+    await client.query("SELECT pg_advisory_xact_lock_shared(hashtext('schedule_config'))")
+}
+
+async function isSlotInCurrentGrid(
+    client: PoolClient,
+    appointmentDatetime: Date,
+    slotMinutes: number,
+): Promise<boolean> {
+    const { dateStr, timeStr } = getLocalParts(appointmentDatetime)
+    const ranges = await selectRanges(client)
+    const blockedDates = await selectBlockedDates(client, dateStr, dateStr)
+    return freeSlotStartsOfDay(dateStr, ranges, blockedDates, slotMinutes).includes(toMinutes(timeStr))
+}
+
 async function lockSlot(client: PoolClient, slotIso: string): Promise<void> {
     await client.query(
         "SELECT pg_advisory_xact_lock(hashtext('slot:' || $1::text))",
@@ -450,11 +481,16 @@ async function bookAppointment(
     try {
         await client.query("BEGIN")
 
+        await lockScheduleConfigShared(client)
         await lockSlot(client, input.appointmentDatetime.toISOString())
 
         const settings = await selectSettings(client)
         if (!settings) {
             throw new ScheduleNotConfiguredError()
+        }
+
+        if (!(await isSlotInCurrentGrid(client, input.appointmentDatetime, settings.slot_minutes))) {
+            throw new SlotFullError()
         }
 
         const currentActiveCount = await countActiveInSlot(client, input.appointmentDatetime)
