@@ -4,6 +4,8 @@ import { screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import ROUTES from "@/routers/paths"
 import loadPanelRoutes from "@/testUtils/loadPanelRoutes"
+import settleSchedulePage from "@/testUtils/settleSchedulePage"
+import stubScheduleFetch from "@/testUtils/stubScheduleFetch"
 import PERMISSION_KEYS from "@/navigation/permissionKeys"
 import type PanelAccount from "@/types/account/PanelAccount.types"
 import type PermissionKey from "@/types/account/PermissionKey.types"
@@ -215,7 +217,8 @@ describe("routes", () => {
     })
 
     it("renderiza a tela de Horários de atendimento para o Admin, carregando a configuração", async () => {
-        renderRoutes([ROUTES.schedule], withSession)
+        const release = stubScheduleFetch()
+        const { unmount } = renderRoutes([ROUTES.schedule], withSession)
 
         expect(
             await screen.findByRole("heading", { name: "Horários de atendimento", level: 1 })
@@ -225,10 +228,13 @@ describe("routes", () => {
         await waitFor(() =>
             expect(requestedUrls().some((url) => url.endsWith("/api/v1/schedule"))).toBe(true)
         )
+        release()
+        await settleSchedulePage(unmount)
     })
 
     it("renderiza a tela de Horários de atendimento para quem configura o atendimento", async () => {
-        renderRoutes([ROUTES.schedule], {
+        stubScheduleFetch()()
+        const { unmount } = renderRoutes([ROUTES.schedule], {
             account: {
                 current: { ...staffWithAllPermissions, permissions: ["schedule.configure"] },
                 status: "authenticated"
@@ -239,6 +245,7 @@ describe("routes", () => {
             await screen.findByRole("heading", { name: "Horários de atendimento", level: 1 })
         ).toBeInTheDocument()
         expect(screen.getByRole("link", { name: "Horários de atendimento" })).toBeInTheDocument()
+        await settleSchedulePage(unmount)
     })
 
     it("mostra a NotFound em /horarios a quem não configura o atendimento, sem chamar a API de horários", async () => {

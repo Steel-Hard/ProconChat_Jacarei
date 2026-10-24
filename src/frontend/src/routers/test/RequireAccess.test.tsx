@@ -3,6 +3,8 @@ import { screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import loadPanelRoutes from "@/testUtils/loadPanelRoutes"
+import settleSchedulePage from "@/testUtils/settleSchedulePage"
+import stubScheduleFetch from "@/testUtils/stubScheduleFetch"
 import type PermissionKey from "@/types/account/PermissionKey.types"
 
 let panel: Awaited<ReturnType<typeof loadPanelRoutes>>
@@ -128,13 +130,15 @@ describe("RequireAccess", () => {
     })
 
     it("leva quem só configura o atendimento de / para /horarios", async () => {
-        const { router } = renderAs("/", ["schedule.configure"])
+        stubScheduleFetch()()
+        const { router, unmount } = renderAs("/", ["schedule.configure"])
 
         expect(
             await screen.findByRole("heading", { name: "Horários de atendimento", level: 1 })
         ).toBeInTheDocument()
         expect(router.state.location.pathname).toBe("/horarios")
         expect(router.state.historyAction).toBe("REPLACE")
+        await settleSchedulePage(unmount)
     })
 
     it("mostra a NotFound em /horarios a quem não configura o atendimento", async () => {
