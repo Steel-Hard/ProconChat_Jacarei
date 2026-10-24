@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from "@testing-library/react"
+import { fireEvent, screen, waitFor, within } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import buildScheduleConfig from "@/testUtils/buildScheduleConfig"
 import NAV_ITEMS_ALL_READY from "@/testUtils/navItemsAllReady"
@@ -44,7 +44,6 @@ describe("SchedulePage", () => {
         ;[
             "Janela de agendamento",
             "Dados da unidade",
-            "Lembrete ao cidadão",
             "Datas bloqueadas",
             "Prévia da grade"
         ].forEach((name) => expect(screen.getByRole("heading", { name })).toBeInTheDocument())
@@ -112,9 +111,9 @@ describe("SchedulePage", () => {
         const { user, calls } = await loaded()
 
         await user.selectOptions(screen.getByLabelText("Duração de cada atendimento"), "60")
-        await user.click(screen.getByRole("checkbox", { name: "Enviar lembrete ao cidadão" }))
+        await user.type(screen.getByLabelText("Complemento ou referência (opcional)"), "A")
         await user.hover(screen.getByRole("button", { name: "2 alterações não salvas" }))
-        expect(screen.getByRole("tooltip")).toHaveTextContent("Pendentes: duração; lembrete")
+        expect(screen.getByRole("tooltip")).toHaveTextContent("Pendentes: duração; complemento")
         const before = calls.length
         await user.click(screen.getByRole("button", { name: "Descartar" }))
 
@@ -184,23 +183,56 @@ describe("SchedulePage", () => {
         ).toHaveLength(2)
     })
 
-    it("esconde a prévia do lembrete quando ele é desligado", async () => {
-        const { user } = await loaded()
+    it("não mostra a seção do lembrete até o envio existir", async () => {
+        await loaded()
 
-        await user.click(screen.getByRole("checkbox", { name: "Enviar lembrete ao cidadão" }))
-
+        expect(
+            screen.queryByRole("heading", { name: "Lembrete ao cidadão" })
+        ).not.toBeInTheDocument()
+        expect(
+            screen.queryByRole("checkbox", { name: "Enviar lembrete ao cidadão" })
+        ).not.toBeInTheDocument()
         expect(screen.queryByText("Prévia da mensagem")).not.toBeInTheDocument()
         expect(
-            screen.getByText(
+            screen.queryByText(
                 "Cada lembrete é uma mensagem de modelo e tem custo por mensagem cobrado pela Meta."
             )
-        ).toBeInTheDocument()
+        ).not.toBeInTheDocument()
     })
+
+    it.each([
+        [true, 48],
+        [false, 2]
+    ] as const)(
+        "preserva no PUT o lembrete ligado=%s com %i horas como veio do GET, sem contar alteração",
+        async (reminderEnabled, reminderHours) => {
+            const config = buildScheduleConfig({ reminderEnabled, reminderHours })
+            const { user, callsTo } = await loaded({
+                handlers: {
+                    "GET /api/v1/schedule": () => ({ status: 200, body: { data: config } }),
+                    "PUT /api/v1/schedule": () => ({ status: 200, body: { data: config } })
+                }
+            })
+
+            await user.clear(screen.getByLabelText("Vagas simultâneas por horário"))
+            await user.type(screen.getByLabelText("Vagas simultâneas por horário"), "3")
+            await user.hover(screen.getByRole("button", { name: "1 alteração não salva" }))
+            expect(screen.getByRole("tooltip")).toHaveTextContent("Pendentes: vagas")
+            await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
+
+            await waitFor(() => expect(callsTo("PUT", "/api/v1/schedule")).toHaveLength(1))
+            expect(callsTo("PUT", "/api/v1/schedule")[0].body).toMatchObject({
+                seatsPerSlot: 3,
+                reminderEnabled,
+                reminderHours
+            })
+        }
+    )
 
     it("não grava nada da tela no navegador", async () => {
         const { user } = await loaded()
 
-        await user.click(screen.getByRole("checkbox", { name: "Enviar lembrete ao cidadão" }))
+        await user.selectOptions(screen.getByLabelText("Duração de cada atendimento"), "60")
 
         expect(localStorage.length).toBe(0)
         expect(sessionStorage.length).toBe(0)
