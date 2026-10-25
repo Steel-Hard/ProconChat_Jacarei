@@ -82,7 +82,8 @@
             "slotNotOfferedWith": "{{seats}} · não oferecido"
         },
         "cellLabelBooked": "{{date}}: {{status}} · {{booked}}",
-        "bookedShort": "{{count}} agend."
+        "bookedShort": "{{count}} agend.",
+        "updating": "Atualizando a prévia..."
     },
     "conflicts": {
         "title_one": "Esta alteração afeta {{count}} agendamento",

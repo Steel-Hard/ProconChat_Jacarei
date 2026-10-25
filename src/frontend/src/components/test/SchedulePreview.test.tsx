@@ -41,23 +41,25 @@ const BOOKED: BookedDay[] = [
 type Props = Partial<Parameters<typeof SchedulePreview>[0]>
 
 function renderPreview(props: Props = {}) {
-    const onChangeMonth = vi.fn()
+    const onShiftMonth = vi.fn()
     const onSelectDay = vi.fn()
     render(
         <SchedulePreview
             preview={PREVIEW}
+            month={null}
+            updating={false}
             bookedDays={[]}
             selectedDate={null}
             loading={false}
             failed={false}
             stale={false}
-            onChangeMonth={onChangeMonth}
+            onShiftMonth={onShiftMonth}
             onSelectDay={onSelectDay}
             {...props}
         />
     )
 
-    return { onChangeMonth, onSelectDay, user: userEvent.setup() }
+    return { onShiftMonth, onSelectDay, user: userEvent.setup() }
 }
 
 function grid() {
@@ -153,25 +155,40 @@ describe("SchedulePreview", () => {
     })
 
     it.each([
-        ["Mês anterior", "2026-10"],
-        ["Próximo mês", "2026-12"]
-    ])("pede o mês certo ao clicar em %s", async (name, month) => {
-        const { onChangeMonth, user } = renderPreview()
+        ["Mês anterior", -1],
+        ["Próximo mês", 1]
+    ])("pede um mês a mais ou a menos ao clicar em %s", async (name, delta) => {
+        const { onShiftMonth, user } = renderPreview()
 
         await user.click(screen.getByRole("button", { name }))
+        await user.click(screen.getByRole("button", { name }))
 
-        expect(onChangeMonth).toHaveBeenCalledWith(month)
+        expect(onShiftMonth.mock.calls).toEqual([[delta], [delta]])
     })
 
-    it("vira o ano na navegação", async () => {
-        const { onChangeMonth, user } = renderPreview({
-            preview: buildMonthlyPreview("2026-12")
-        })
+    it("mostra no título o mês pedido, mesmo antes de a prévia dele chegar", () => {
+        renderPreview({ preview: buildMonthlyPreview("2026-12"), month: "2027-01", updating: true })
 
-        await user.click(screen.getByRole("button", { name: "Próximo mês" }))
+        expect(screen.getByText("Janeiro de 2027")).toBeInTheDocument()
+        expect(screen.queryByText("Dezembro de 2026")).not.toBeInTheDocument()
+    })
 
-        expect(onChangeMonth).toHaveBeenCalledWith("2027-01")
-        expect(screen.getByText("Dezembro de 2026")).toBeInTheDocument()
+    it("mostra que está atualizando e marca a prévia exibida como ocupada", () => {
+        renderPreview({ updating: true })
+
+        expect(screen.getByRole("status")).toHaveTextContent("Atualizando a prévia...")
+        expect(
+            screen.getByRole("heading", { name: "Prévia da grade" }).closest("section")
+        ).toHaveAttribute("aria-busy", "true")
+    })
+
+    it("não mostra o aviso de atualização com a prévia em dia", () => {
+        renderPreview()
+
+        expect(screen.queryByRole("status")).not.toBeInTheDocument()
+        expect(
+            screen.getByRole("heading", { name: "Prévia da grade" }).closest("section")
+        ).not.toHaveAttribute("aria-busy")
     })
 
     it("mostra o total de vagas na janela e os horários por dia da semana", () => {

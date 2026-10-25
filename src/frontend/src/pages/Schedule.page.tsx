@@ -111,12 +111,14 @@ function SchedulePage() {
                         </div>
                         <SchedulePreview
                             preview={preview.preview}
+                            month={preview.month}
+                            updating={preview.updating}
                             bookedDays={page.bookedDays}
                             selectedDate={preview.selectedDate}
                             loading={preview.loading}
                             failed={preview.failed}
                             stale={preview.stale}
-                            onChangeMonth={preview.changeMonth}
+                            onShiftMonth={preview.shiftMonth}
                             onSelectDay={preview.selectDay}
                         />
                     </div>

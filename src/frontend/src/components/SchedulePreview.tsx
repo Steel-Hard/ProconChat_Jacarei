@@ -8,19 +8,20 @@ import type BookedDay from "@/types/schedule/BookedDay.types"
 import type MonthlyPreview from "@/types/schedule/MonthlyPreview.types"
 import dayMonthOf from "@/utils/schedule/dayMonthOf"
 import monthTitle from "@/utils/schedule/monthTitle"
-import shiftMonth from "@/utils/schedule/shiftMonth"
 import WEEKDAY_KEYS from "@/utils/schedule/weekdayKeys"
 import WEEKDAY_ORDER from "@/utils/schedule/weekdayOrder"
 import css from "@/styles/components/schedulePreview.module.css"
 
 type SchedulePreviewProps = {
     preview: MonthlyPreview | null
+    month: string | null
+    updating: boolean
     bookedDays: BookedDay[]
     selectedDate: string | null
     loading: boolean
     failed: boolean
     stale: boolean
-    onChangeMonth: (month: string) => void
+    onShiftMonth: (delta: number) => void
     onSelectDay: (date: string) => void
 }
 
@@ -34,12 +35,14 @@ const LEGEND = [
 
 function SchedulePreview({
     preview,
+    month,
+    updating,
     bookedDays,
     selectedDate,
     loading,
     failed,
     stale,
-    onChangeMonth,
+    onShiftMonth,
     onSelectDay
 }: SchedulePreviewProps) {
     const { t } = useTranslation("schedule")
@@ -53,7 +56,11 @@ function SchedulePreview({
     const leading = days.length > 0 ? days[0].weekday : 0
 
     return (
-        <section className={css.preview} aria-labelledby={titleId}>
+        <section
+            className={css.preview}
+            aria-labelledby={titleId}
+            aria-busy={updating || undefined}
+        >
             <div className={css.header}>
                 <h2 id={titleId} className={css.title}>
                     {t("preview.title")}
@@ -82,6 +89,7 @@ function SchedulePreview({
                 </p>
             ) : null}
             {loading && !preview ? <p className={css.note}>{t("preview.loading")}</p> : null}
+            {updating ? <output className={css.updating}>{t("preview.updating")}</output> : null}
             {preview ? (
                 <>
                     <div className={css.monthNav}>
@@ -90,22 +98,22 @@ function SchedulePreview({
                             className={css.navButton}
                             aria-label={t("preview.previousMonth")}
                             title={t("preview.previousMonth")}
-                            onClick={() => onChangeMonth(shiftMonth(preview.month, -1))}
+                            onClick={() => onShiftMonth(-1)}
                         >
                             {t("preview.previousSymbol")}
                         </button>
-                        <span className={css.month}>{monthTitle(preview.month)}</span>
+                        <span className={css.month}>{monthTitle(month ?? preview.month)}</span>
                         <button
                             type="button"
                             className={css.navButton}
                             aria-label={t("preview.nextMonth")}
                             title={t("preview.nextMonth")}
-                            onClick={() => onChangeMonth(shiftMonth(preview.month, 1))}
+                            onClick={() => onShiftMonth(1)}
                         >
                             {t("preview.nextSymbol")}
                         </button>
                     </div>
-                    <div className={css.grid}>
+                    <div className={updating ? `${css.grid} ${css.gridUpdating}` : css.grid}>
                         {WEEKDAY_KEYS.map((key) => (
                             <span key={key} className={css.weekdayHead}>
                                 {t(`preview.weekdayShort.${key}`)}

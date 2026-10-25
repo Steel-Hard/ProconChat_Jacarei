@@ -4,6 +4,7 @@ import scheduleApi from "@/store/api/schedule.api"
 import type MonthlyPreview from "@/types/schedule/MonthlyPreview.types"
 import type ScheduleConfigInput from "@/types/schedule/ScheduleConfigInput.types"
 import type SchedulePreviewConflict from "@/types/schedule/SchedulePreviewConflict.types"
+import shiftMonth from "@/utils/schedule/shiftMonth"
 
 type PreviewDraft = {
     hasChanges: boolean
@@ -49,16 +50,32 @@ function useSchedulePreview({ hasChanges, hasErrors, input, signature }: Preview
         setLastValid(current)
     }
 
+    const shown = current ?? lastValid
+    const failed = active && activeQuery.isError
+    const stale = hasChanges && hasErrors
+
+    function shiftShownMonth(delta: number) {
+        const base = shown?.month
+
+        setMonth((requested) => {
+            const from = requested ?? base
+
+            return from === undefined ? requested : shiftMonth(from, delta)
+        })
+    }
+
     return {
-        preview: current ?? lastValid,
+        preview: shown,
+        month: month ?? shown?.month ?? null,
         loading: active && activeQuery.isFetching,
-        failed: active && activeQuery.isError,
-        stale: hasChanges && hasErrors,
+        updating: shown !== null && current === undefined && !failed && !stale,
+        failed,
+        stale,
         draftConflicts:
             draftReady && draftQuery.currentData ? draftQuery.currentData.conflicts : NO_CONFLICTS,
         selectedDate,
         selectDay: setSelectedDate,
-        changeMonth: setMonth
+        shiftMonth: shiftShownMonth
     }
 }
 

@@ -52,7 +52,7 @@ describe("useSchedule: prévia", () => {
     it("pede a prévia salva sem mês e depois o mês escolhido", async () => {
         const { result, callsTo } = await ready()
 
-        act(() => result.current.preview.changeMonth("2026-12"))
+        act(() => result.current.preview.shiftMonth(1))
         await waitFor(() => expect(result.current.preview.preview?.month).toBe("2026-12"))
 
         const urls = callsTo("GET", "/api/v1/schedule/preview").map((call) => call.url.search)
