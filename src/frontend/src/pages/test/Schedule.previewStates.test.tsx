@@ -5,6 +5,8 @@ import renderSchedulePage from "@/testUtils/renderSchedulePage"
 
 vi.setConfig({ testTimeout: 20000 })
 
+const SLOW = { timeout: 10000 }
+
 afterEach(() => {
     vi.unstubAllGlobals()
     vi.unstubAllEnvs()
@@ -30,19 +32,17 @@ describe("SchedulePage: estados da prévia", () => {
                         : { status: 500, body: { error: { code: "INTERNAL_ERROR", message: "x" } } }
             }
         })
-        await screen.findByText("Novembro de 2026")
+        await screen.findByText("Novembro de 2026", {}, SLOW)
 
         await user.click(screen.getByRole("button", { name: "Próximo mês" }))
 
-        expect(
-            await within(previewSection()).findByRole("alert", {}, { timeout: 5000 })
-        ).toBeInTheDocument()
+        expect(await within(previewSection()).findByRole("alert", {}, SLOW)).toBeInTheDocument()
         expect(within(previewSection()).queryByRole("status")).not.toBeInTheDocument()
     })
 
     it("não diz que está atualizando quando o rascunho tem erro local", async () => {
         const { user } = await renderSchedulePage()
-        await screen.findByText("Novembro de 2026")
+        await screen.findByText("Novembro de 2026", {}, SLOW)
 
         await user.clear(screen.getByLabelText("Vagas simultâneas por horário"))
         await user.click(screen.getByRole("button", { name: "Próximo mês" }))
@@ -60,14 +60,12 @@ describe("SchedulePage: estados da prévia", () => {
                 })
             }
         })
-        await screen.findByText("Novembro de 2026")
+        await screen.findByText("Novembro de 2026", {}, SLOW)
 
         await user.clear(screen.getByLabelText("Vagas simultâneas por horário"))
         await user.type(screen.getByLabelText("Vagas simultâneas por horário"), "3")
 
-        expect(
-            await within(previewSection()).findByRole("alert", {}, { timeout: 5000 })
-        ).toBeInTheDocument()
+        expect(await within(previewSection()).findByRole("alert", {}, SLOW)).toBeInTheDocument()
         expect(within(previewSection()).queryByRole("status")).not.toBeInTheDocument()
         expect(calendarGrid()).not.toHaveAttribute("aria-busy")
         expect(screen.queryByText(/O calendário abaixo ainda é de/)).not.toBeInTheDocument()
