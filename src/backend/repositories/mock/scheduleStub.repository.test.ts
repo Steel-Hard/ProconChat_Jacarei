@@ -105,4 +105,38 @@ describe("scheduleStub.repository", () => {
             }),
         ).rejects.toBeInstanceOf(ConflictError)
     })
+
+    it("devolve os agendamentos configurados sem filtrar e guarda o instante recebido", async () => {
+        const repo = createScheduleStubRepository({
+            appointments: [
+                {
+                    id: "7",
+                    protocol: "PASSADO1",
+                    name: "Agendamento Passado",
+                    cpfMasked: "***.333.333-**",
+                    appointmentDatetime: new Date("2026-10-01T08:00:00-03:00"),
+                    requestDatetime: new Date("2026-09-20T10:00:00-03:00"),
+                    status: "PENDING",
+                },
+            ],
+        })
+        const now = new Date("2026-10-05T09:00:00-03:00")
+
+        const listed = await repo.listFutureActiveAppointments(now)
+
+        expect(listed).toEqual([
+            {
+                id: "7",
+                protocol: "PASSADO1",
+                name: "Agendamento Passado",
+                cpfMasked: "***.333.333-**",
+                appointmentDatetime: new Date("2026-10-01T08:00:00-03:00"),
+                requestDatetime: new Date("2026-09-20T10:00:00-03:00"),
+                status: "PENDING",
+                assignedUserId: null,
+                offGrid: false,
+            },
+        ])
+        expect(repo.listFutureCalls).toEqual([now])
+    })
 })

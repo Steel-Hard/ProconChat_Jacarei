@@ -52,8 +52,12 @@ const reminderHoursSchema = z.union(
     { message: "Horas do lembrete devem ser 2, 6, 12, 24 ou 48" },
 ) as z.ZodType<ReminderHours>
 
-function integerBetween(min: number, max: number, message: string) {
-    return z.number({ message }).int({ message }).min(min, { message }).max(max, { message })
+function integerBetween(min: number, max: number, message: string, integerMessage = message) {
+    return z
+        .number({ message })
+        .int({ message: integerMessage })
+        .min(min, { message })
+        .max(max, { message })
 }
 
 const timeStringSchema = z
@@ -107,10 +111,25 @@ export const blockedDateItemSchema: z.ZodType<BlockedDateInputItem> = z
 export const scheduleConfigBodySchema: z.ZodType<ScheduleConfigInput> = z
     .object({
         slotMinutes: slotMinutesSchema,
-        seatsPerSlot: integerBetween(1, 20, "Vagas por horário devem estar entre 1 e 20"),
-        windowDays: integerBetween(1, 180, "Janela de agendamento deve estar entre 1 e 180 dias"),
+        seatsPerSlot: integerBetween(
+            1,
+            20,
+            "Vagas por horário devem estar entre 1 e 20",
+            "Vagas por horário devem ser um número inteiro",
+        ),
+        windowDays: integerBetween(
+            1,
+            180,
+            "Janela de agendamento deve estar entre 1 e 180 dias",
+            "Janela de agendamento deve ser um número inteiro de dias",
+        ),
         minNoticeDays: minNoticeDaysSchema,
-        waitAlertDays: integerBetween(1, 60, "Alerta de espera deve estar entre 1 e 60 dias"),
+        waitAlertDays: integerBetween(
+            1,
+            60,
+            "Alerta de espera deve estar entre 1 e 60 dias",
+            "Alerta de espera deve ser um número inteiro de dias",
+        ),
         unitAddress: z
             .string()
             .trim()

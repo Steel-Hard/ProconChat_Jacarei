@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { MonthlyPreviewResult } from "../types/schedule.types"
+import { MonthlyGridPreview } from "../types/schedule.types"
 import { calculateMonthlyPreview, CalculateMonthlyPreviewInput } from "./scheduleRules"
 
 const NOW = new Date("2026-10-05T09:00:00-03:00")
@@ -13,7 +13,7 @@ function weekdayRange(startTime: string, endTime: string) {
     }))
 }
 
-function preview(overrides: Partial<CalculateMonthlyPreviewInput> = {}): MonthlyPreviewResult {
+function preview(overrides: Partial<CalculateMonthlyPreviewInput> = {}): MonthlyGridPreview {
     return calculateMonthlyPreview({
         month: "2026-10",
         now: NOW,
@@ -39,7 +39,7 @@ function preview(overrides: Partial<CalculateMonthlyPreviewInput> = {}): Monthly
     })
 }
 
-function statusOf(result: MonthlyPreviewResult, date: string) {
+function statusOf(result: MonthlyGridPreview, date: string) {
     return result.days.find((d) => d.date === date)?.status
 }
 

@@ -128,7 +128,6 @@ describe("scheduleRules", () => {
         it.each([
             { field: "seatsPerSlot", value: 0 },
             { field: "seatsPerSlot", value: 21 },
-            { field: "seatsPerSlot", value: 1.5 },
             { field: "seatsPerSlot", value: "2" },
         ])("rejeita vagas por horário $value com a mensagem em português", ({ field, value }) => {
             expect(() =>
@@ -136,16 +135,34 @@ describe("scheduleRules", () => {
             ).toThrow("seatsPerSlot: Vagas por horário devem estar entre 1 e 20")
         })
 
-        it.each([0, 181, 2.5])("rejeita janela de agendamento de %s dias com a mensagem em português", (windowDays) => {
+        it.each([0, 181])("rejeita janela de agendamento de %s dias com a mensagem em português", (windowDays) => {
             expect(() => normalizeAndValidateScheduleConfig(baseInput({ windowDays }))).toThrow(
                 "windowDays: Janela de agendamento deve estar entre 1 e 180 dias",
             )
         })
 
-        it.each([0, 61, 3.5])("rejeita alerta de espera de %s dias com a mensagem em português", (waitAlertDays) => {
+        it.each([0, 61])("rejeita alerta de espera de %s dias com a mensagem em português", (waitAlertDays) => {
             expect(() => normalizeAndValidateScheduleConfig(baseInput({ waitAlertDays }))).toThrow(
                 "waitAlertDays: Alerta de espera deve estar entre 1 e 60 dias",
             )
+        })
+
+        it.each([
+            { field: "seatsPerSlot", value: 1.5, message: "seatsPerSlot: Vagas por horário devem ser um número inteiro" },
+            {
+                field: "windowDays",
+                value: 2.5,
+                message: "windowDays: Janela de agendamento deve ser um número inteiro de dias",
+            },
+            {
+                field: "waitAlertDays",
+                value: 3.5,
+                message: "waitAlertDays: Alerta de espera deve ser um número inteiro de dias",
+            },
+        ])("rejeita $field com valor decimal $value dizendo que precisa ser inteiro", ({ field, value, message }) => {
+            expect(() =>
+                normalizeAndValidateScheduleConfig(baseInput({ [field]: value } as Partial<ScheduleConfigInput>)),
+            ).toThrow(message)
         })
 
         it.each([-1, 7, 1.5])("rejeita dia da semana %s com a mensagem em português", (weekday) => {

@@ -56,6 +56,7 @@ export function createScheduleStubRepository(
 ): IScheduleRepository & {
     setConfig(config: ScheduleConfigView | null): void
     setAppointments(appointments: StoredStubAppointment[]): void
+    listFutureCalls: Date[]
 } {
     let currentConfig: ScheduleConfigView | null =
         options.config === undefined
@@ -158,6 +159,17 @@ export function createScheduleStubRepository(
         }
     }
 
+    const listFutureCalls: Date[] = []
+
+    async function listFutureActiveAppointments(now: Date): Promise<FutureActiveAppointment[]> {
+        listFutureCalls.push(now)
+        return appointments.map((a) => ({
+            ...a,
+            assignedUserId: a.assignedUserId ?? null,
+            offGrid: a.offGrid ?? false,
+        }))
+    }
+
     async function getConfig(): Promise<ScheduleConfigView | null> {
         if (!currentConfig) {
             return null
@@ -223,6 +235,8 @@ export function createScheduleStubRepository(
         bookAppointment,
         getConfig,
         saveConfig,
+        listFutureActiveAppointments,
+        listFutureCalls,
         setConfig(config: ScheduleConfigView | null) {
             currentConfig = config
         },

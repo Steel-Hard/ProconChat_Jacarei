@@ -99,4 +99,31 @@ describe("schedule.controller", () => {
             }),
         )
     })
+
+    it("getBookedDays retorna 200 com os dias com agendamento em { data }", async () => {
+        const req = { authUser: mockUser } as unknown as Request
+        const res = mockResponse()
+        const next = vi.fn()
+
+        await controller.getBookedDays(req, res, next)
+
+        expect(res.status).toHaveBeenCalledWith(200)
+        expect(res.json).toHaveBeenCalledWith({ data: { days: [] } })
+        expect(next).not.toHaveBeenCalled()
+    })
+
+    it("getBookedDays repassa o erro do service para next", async () => {
+        const failure = new Error("falha ao ler")
+        const failing = new ScheduleController({
+            service: { ...service, getBookedDays: vi.fn().mockRejectedValue(failure) },
+        })
+        const req = { authUser: mockUser } as unknown as Request
+        const res = mockResponse()
+        const next = vi.fn()
+
+        await failing.getBookedDays(req, res, next)
+
+        expect(next).toHaveBeenCalledWith(failure)
+        expect(res.status).not.toHaveBeenCalled()
+    })
 })

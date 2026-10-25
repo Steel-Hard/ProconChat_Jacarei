@@ -229,7 +229,7 @@ export interface WeekdayPreview {
     totalSeats: number
 }
 
-export interface MonthlyPreviewResult {
+export interface MonthlyGridPreview {
     month: string
     today: string
     windowStart: string
@@ -240,4 +240,33 @@ export interface MonthlyPreviewResult {
     freeWindowSeats: number
     weekdays: WeekdayPreview[]
     days: DayPreview[]
+}
+
+export interface MonthlyPreviewResult extends MonthlyGridPreview {
+    conflicts: SchedulePreviewConflict[]
+}
+
+export interface SchedulePreviewConflict {
+    protocol: string
+    date: string
+    time: string
+    status: "PENDING" | "CONFIRMED"
+    code: ScheduleConflictCode
+    reason: string
+}
+
+export interface BookedTime {
+    time: string
+    count: number
+}
+
+export interface BookedDay {
+    date: string
+    weekday: number
+    total: number
+    times: BookedTime[]
+}
+
+export interface BookedDaysResult {
+    days: BookedDay[]
 }

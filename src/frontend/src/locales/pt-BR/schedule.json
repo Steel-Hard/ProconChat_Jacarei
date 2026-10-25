@@ -1,0 +1,224 @@
+{
+    "meta": {
+        "title": "Horários de atendimento - ProconChat"
+    },
+    "heading": "Horários de atendimento",
+    "weekdays": {
+        "sunday": "Domingo",
+        "monday": "Segunda-feira",
+        "tuesday": "Terça-feira",
+        "wednesday": "Quarta-feira",
+        "thursday": "Quinta-feira",
+        "friday": "Sexta-feira",
+        "saturday": "Sábado"
+    },
+    "preview": {
+        "title": "Prévia da grade",
+        "windowTotal": "{{free}} de {{total}} vagas livres na janela",
+        "subtitle": "Como o chatbot oferece horários, de {{start}} a {{end}} (janela, antecedência e bloqueios). Clique em um dia para ver os horários.",
+        "previousMonth": "Mês anterior",
+        "nextMonth": "Próximo mês",
+        "previousSymbol": "‹",
+        "nextSymbol": "›",
+        "loading": "Carregando a prévia...",
+        "failed": "Não foi possível carregar a prévia. As outras seções continuam funcionando.",
+        "stale": "Corrija os campos com erro para atualizar a prévia.",
+        "weekdayShort": {
+            "sunday": "Dom",
+            "monday": "Seg",
+            "tuesday": "Ter",
+            "wednesday": "Qua",
+            "thursday": "Qui",
+            "friday": "Sex",
+            "saturday": "Sáb"
+        },
+        "full": "Lotado",
+        "blockedSymbol": "✕",
+        "booked_one": "{{count}} agendamento",
+        "booked_other": "{{count}} agendamentos",
+        "cellLabel": "{{date}}: {{status}}",
+        "cellStatus": {
+            "AVAILABLE_one": "{{count}} vaga livre",
+            "AVAILABLE_other": "{{count}} vagas livres",
+            "FULL": "Lotado",
+            "BEFORE_MIN_NOTICE": "Antes da antecedência mínima",
+            "BLOCKED": "Bloqueado: {{description}}",
+            "NO_SERVICE": "Sem atendimento",
+            "OUTSIDE_WINDOW": "Fora da janela de agendamento",
+            "PAST": "Dia passado",
+            "CLOSED_TODAY": "Sem horários restantes hoje"
+        },
+        "legend": {
+            "available": "Com vagas (número = vagas livres)",
+            "full": "Lotado",
+            "beforeMinNotice": "Antes da antecedência",
+            "blocked": "Bloqueado (✕)",
+            "closed": "Sem atendimento ou fora da janela"
+        },
+        "weekdaySummary": {
+            "title": "Horários por dia da semana",
+            "closed": "Sem atendimento",
+            "totals": "{{slots}} horários · {{seats}} vagas · {{times}}"
+        },
+        "detail": {
+            "title": "{{weekday}}, {{date}}",
+            "status": {
+                "AVAILABLE": "Oferecido pelo chatbot",
+                "FULL": "Lotado",
+                "BEFORE_MIN_NOTICE": "Antes da antecedência mínima · não oferecido",
+                "BLOCKED": "Bloqueado · {{description}}",
+                "NO_SERVICE": "Sem atendimento neste dia",
+                "OUTSIDE_WINDOW": "Fora da janela de agendamento · não oferecido",
+                "PAST": "Dia passado",
+                "CLOSED_TODAY": "Sem horários restantes hoje"
+            },
+            "slotFree_one": "{{count}} de {{capacity}} livre",
+            "slotFree_other": "{{count}} de {{capacity}} livres",
+            "slotFull": "Lotado",
+            "slotPast": "Já passou",
+            "noSlots": "Nenhum horário configurado para este dia.",
+            "bookedTitle": "Agendamentos neste dia",
+            "bookedTime_one": "{{time}} · {{count}} agendamento",
+            "bookedTime_other": "{{time}} · {{count}} agendamentos",
+            "slotNotOfferedWith": "{{seats}} · não oferecido"
+        },
+        "cellLabelBooked": "{{date}}: {{status}} · {{booked}}",
+        "bookedShort": "{{count}} agend.",
+        "updating": "Atualizando a prévia..."
+    },
+    "conflicts": {
+        "title_one": "Esta alteração afeta {{count}} agendamento",
+        "title_other": "Esta alteração afeta {{count}} agendamentos",
+        "hint": "Para fazer esta alteração, peça a quem gerencia os agendamentos para cancelar ou remarcar esses agendamentos antes de salvar.",
+        "when": "{{weekday}}, {{date}} às {{time}}",
+        "protocol": "Protocolo {{protocol}}"
+    },
+    "contentNotice": {
+        "text": "Se você mudar horários ou endereço, revise as perguntas do Conteúdo que citam essas informações.",
+        "link": "Revisar Conteúdo →"
+    },
+    "conflictMessage": "Afeta o agendamento {{protocol}} ({{date}} às {{time}}): {{reason}}",
+    "problems": {
+        "rangeMissing": "Informe o início e o fim da faixa.",
+        "rangeEndBeforeStart": "O fim deve ser depois do início",
+        "rangeOverlap": "Esta faixa se sobrepõe a outra faixa do mesmo dia",
+        "rangeTooShort": "Esta faixa não comporta nenhum atendimento de {{minutes}} minutos",
+        "seatsOutOfRange": "Vagas por horário devem estar entre 1 e 20",
+        "seatsNotInteger": "Vagas por horário devem ser um número inteiro",
+        "windowOutOfRange": "Janela de agendamento deve estar entre 1 e 180 dias",
+        "windowNotInteger": "Janela de agendamento deve ser um número inteiro de dias",
+        "waitAlertOutOfRange": "Alerta de espera deve estar entre 1 e 60 dias",
+        "waitAlertNotInteger": "Alerta de espera deve ser um número inteiro de dias",
+        "addressRequired": "Endereço da unidade obrigatório",
+        "addressTooLong": "Endereço deve ter no máximo 500 caracteres",
+        "complementTooLong": "Complemento deve ter no máximo 500 caracteres"
+    },
+    "grid": {
+        "title": "Grade semanal",
+        "noService": "Sem atendimento",
+        "addRange": "+ Faixa",
+        "addRangeLabel": "Adicionar faixa em {{day}}",
+        "start": "Início da faixa {{position}} de {{day}}",
+        "end": "Fim da faixa {{position}} de {{day}}",
+        "separator": "–",
+        "removeSymbol": "×",
+        "remove": "Remover faixa {{start}} às {{end}} de {{day}}",
+        "removeLocked": "{{target}} indisponível: há agendamento nesta faixa. Para removê-la, peça a quem gerencia os agendamentos para cancelar ou remarcar antes.",
+        "dayLocked": "Há agendamentos em {{dates}}. Para desligar este dia, peça a quem gerencia os agendamentos para cancelar ou remarcar antes.",
+        "dayLockedMore": "Há agendamentos em {{dates}} e em outras datas. Para desligar este dia, peça a quem gerencia os agendamentos para cancelar ou remarcar antes.",
+        "removeAt": "Remover faixa {{position}} de {{day}}"
+    },
+    "durationSeats": {
+        "duration": "Duração de cada atendimento",
+        "minutes": "{{count}} minutos",
+        "seats": "Vagas simultâneas por horário"
+    },
+    "window": {
+        "title": "Janela de agendamento",
+        "description": "O chatbot só oferece horários livres dentro desta janela. Se não houver nenhum horário livre nela, o chatbot informa ao cidadão que não há horários disponíveis no momento.",
+        "windowDays": "Oferecer horários até",
+        "windowSuffix": "dias à frente",
+        "windowHelp": "Horários além deste prazo não são oferecidos.",
+        "minNotice": "Antecedência mínima",
+        "minNoticeOptions": {
+            "0": "Sem antecedência (mesmo dia)",
+            "1": "1 dia útil",
+            "2": "2 dias úteis",
+            "3": "3 dias úteis",
+            "5": "5 dias úteis"
+        },
+        "minNoticeHelp": "O chatbot não oferece horários antes disso. Contam apenas dias com atendimento.",
+        "waitAlert": "Alertar quando a espera passar de",
+        "waitAlertSuffix": "dias",
+        "waitAlertHelp": "O Dashboard avisa quando o próximo horário livre estiver além deste prazo."
+    },
+    "unit": {
+        "title": "Dados da unidade",
+        "description": "Usados nas mensagens do chatbot, como a confirmação do agendamento.",
+        "address": "Endereço da unidade",
+        "addressPlaceholder": "Rua, número – bairro, cidade",
+        "complement": "Complemento ou referência (opcional)",
+        "complementPlaceholder": "Ex.: 2º andar, sala 5"
+    },
+    "reminder": {
+        "title": "Lembrete ao cidadão",
+        "description": "Enviado pelo chatbot no WhatsApp para os agendamentos Pendentes e Confirmados.",
+        "toggle": "Enviar lembrete ao cidadão",
+        "on": "Ativado",
+        "off": "Desativado",
+        "hoursBefore": "Antecedência do lembrete",
+        "hoursSuffix": "horas antes do atendimento",
+        "previewTitle": "Prévia da mensagem",
+        "fixed": "Modelo fixo",
+        "message": "Olá, [primeiro nome]. Lembrete do seu atendimento no PROCON Jacareí: [dia da semana], [dd/mm], às [hh:mm] (protocolo [protocolo]). Endereço: {{address}}. Traga: [documentos]. Se não puder comparecer, remarque ou cancele respondendo a esta mensagem.",
+        "addressWithComplement": "{{address}} ({{complement}})",
+        "addressMissing": "[endereço não informado em Dados da unidade]",
+        "note": "Os documentos do lembrete são os que foram enviados ao cidadão na confirmação de cada agendamento (a lista guardada no agendamento), não a configuração atual de Documentos.",
+        "cost": "Cada lembrete é uma mensagem de modelo e tem custo por mensagem cobrado pela Meta."
+    },
+    "blocked": {
+        "title": "Datas bloqueadas",
+        "description": "Feriados e pontos facultativos. O chatbot não oferece horários nos dias bloqueados.",
+        "empty": "Nenhuma data bloqueada.",
+        "fullDay": "Dia inteiro",
+        "period": "{{start}}–{{end}}",
+        "remove": "Remover",
+        "removeLabel": "Remover o bloqueio de {{date}}",
+        "newTitle": "Bloquear um dia inteiro",
+        "newDate": "Data",
+        "newDescription": "Descrição",
+        "newDescriptionPlaceholder": "Descrição (ex.: Aniversário de Jacareí)",
+        "add": "Adicionar",
+        "problems": {
+            "dateRequired": "Informe a data.",
+            "dateAlreadyBlocked": "Esta data já tem um bloqueio",
+            "dateHasAppointments_one": "Esta data tem {{count}} agendamento. Para bloqueá-la, peça a quem gerencia os agendamentos para cancelar ou remarcar antes.",
+            "dateHasAppointments_other": "Esta data tem {{count}} agendamentos. Para bloqueá-la, peça a quem gerencia os agendamentos para cancelar ou remarcar antes.",
+            "descriptionRequired": "Descrição do bloqueio obrigatória",
+            "descriptionTooLong": "Descrição deve ter no máximo 150 caracteres"
+        }
+    },
+    "subtitle": "Define os horários livres que o chatbot oferece ao cidadão para o atendimento presencial.",
+    "loadFailed": "Não foi possível carregar os horários de atendimento. Atualize a página para tentar de novo.",
+    "bookedDaysFailed": "Não foi possível verificar os dias que já têm agendamento. A prévia e o salvamento continuam apontando os agendamentos afetados.",
+    "changes": {
+        "weeklyGrid": "grade semanal",
+        "slotMinutes": "duração",
+        "seatsPerSlot": "vagas",
+        "windowDays": "janela",
+        "minNoticeDays": "antecedência",
+        "waitAlertDays": "alerta de espera",
+        "blockedDates": "datas bloqueadas",
+        "unitAddress": "endereço",
+        "unitAddressComplement": "complemento",
+        "reminderEnabled": "lembrete",
+        "reminderHours": "horas do lembrete"
+    },
+    "save": {
+        "toast": "Horários salvos. O chatbot passa a oferecer a nova grade.",
+        "failed": "Não foi possível salvar os horários. Confira os dados e tente de novo.",
+        "hintErrors_one": "{{count}} campo com erro. Corrija para salvar.",
+        "hintErrors_other": "{{count}} campos com erro. Corrija para salvar.",
+        "hintConflicts": "A alteração afeta agendamentos. Veja a lista abaixo."
+    }
+}

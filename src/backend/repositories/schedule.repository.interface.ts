@@ -2,6 +2,7 @@ import {
     BlockedDate,
     BookAppointmentInput,
     BookAppointmentResult,
+    FutureActiveAppointment,
     NormalizedScheduleConfig,
     ScheduleConfigView,
     ScheduleRange,
@@ -25,4 +26,5 @@ export interface IScheduleRepository {
     bookAppointment(input: BookAppointmentInput): Promise<BookAppointmentResult>
     getConfig(): Promise<ScheduleConfigView | null>
     saveConfig(params: SaveScheduleConfigRepoParams): Promise<ScheduleConfigView>
+    listFutureActiveAppointments(now: Date): Promise<FutureActiveAppointment[]>
 }

@@ -1,5 +1,5 @@
 import { buildDefaultScheduleConfigView } from "../../repositories/mock/scheduleStub.repository"
-import { ScheduleConfigInput } from "../../types/schedule.types"
+import { FutureActiveAppointment, ScheduleConfigInput } from "../../types/schedule.types"
 
 export function buildScheduleConfigInput(overrides: Partial<ScheduleConfigInput> = {}): ScheduleConfigInput {
     const def = buildDefaultScheduleConfigView()
@@ -15,6 +15,24 @@ export function buildScheduleConfigInput(overrides: Partial<ScheduleConfigInput>
         reminderHours: def.reminderHours,
         ranges: def.ranges,
         blockedDates: def.blockedDates,
+        ...overrides,
+    }
+}
+
+let futureAppointmentSeq = 0
+
+export function buildFutureAppointment(overrides: Partial<FutureActiveAppointment> = {}): FutureActiveAppointment {
+    futureAppointmentSeq += 1
+    return {
+        id: String(futureAppointmentSeq),
+        protocol: `PROT${String(futureAppointmentSeq).padStart(4, "0")}`,
+        name: "Cidadão Teste",
+        cpfMasked: "***.123.456-**",
+        appointmentDatetime: new Date("2026-10-06T09:00:00-03:00"),
+        requestDatetime: new Date("2026-10-01T10:00:00-03:00"),
+        status: "PENDING",
+        assignedUserId: null,
+        offGrid: false,
         ...overrides,
     }
 }

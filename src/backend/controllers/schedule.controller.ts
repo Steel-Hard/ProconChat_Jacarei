@@ -62,6 +62,15 @@ class ScheduleController {
         }
     }
 
+    public async getBookedDays(_req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const bookedDays = await this.service.getBookedDays()
+            res.status(200).json({ data: bookedDays })
+        } catch (error) {
+            next(error)
+        }
+    }
+
     private userId(req: Request): number {
         if (!req.authUser) {
             throw new UnauthorizedError("Authentication required")

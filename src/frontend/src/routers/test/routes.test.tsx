@@ -4,6 +4,8 @@ import { screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import ROUTES from "@/routers/paths"
 import loadPanelRoutes from "@/testUtils/loadPanelRoutes"
+import settleSchedulePage from "@/testUtils/settleSchedulePage"
+import stubScheduleFetch from "@/testUtils/stubScheduleFetch"
 import PERMISSION_KEYS from "@/navigation/permissionKeys"
 import type PanelAccount from "@/types/account/PanelAccount.types"
 import type PermissionKey from "@/types/account/PermissionKey.types"
@@ -50,7 +52,6 @@ const underConstructionRoutes: Array<[string, string]> = [
     [ROUTES.reports, "Relatórios"],
     [ROUTES.content, "Conteúdo"],
     [ROUTES.sessions, "Sessões"],
-    [ROUTES.schedule, "Horários"],
     [ROUTES.documents, "Documentos"]
 ]
 
@@ -59,6 +60,7 @@ const protectedRoutes: Array<[string, string]> = [
     ...underConstructionRoutes,
     [ROUTES.appointments, "Agendamentos"],
     ["/agendamentos/1", "Detalhe do agendamento"],
+    [ROUTES.schedule, "Horários de atendimento"],
     [ROUTES.users, "Usuários"],
     [ROUTES.whatsapp, "WhatsApp"]
 ]
@@ -136,7 +138,8 @@ describe("routes", () => {
             () => import("@/pages/WhatsApp.page"),
             () => import("@/pages/Appointments.page"),
             () => import("@/pages/AppointmentDetail.page"),
-            () => import("@/pages/Users.page")
+            () => import("@/pages/Users.page"),
+            () => import("@/pages/Schedule.page")
         ])
     })
 
@@ -211,6 +214,50 @@ describe("routes", () => {
 
         expect(await screen.findByRole("heading", { name: "Usuários" })).toBeInTheDocument()
         expect(screen.queryByText("Em construção.")).not.toBeInTheDocument()
+    })
+
+    it("renderiza a tela de Horários de atendimento para o Admin, carregando a configuração", async () => {
+        const release = stubScheduleFetch()
+        const { unmount } = renderRoutes([ROUTES.schedule], withSession)
+
+        expect(
+            await screen.findByRole("heading", { name: "Horários de atendimento", level: 1 })
+        ).toBeInTheDocument()
+        expect(screen.getByText("Carregando...")).toBeInTheDocument()
+        expect(screen.queryByText("Em construção.")).not.toBeInTheDocument()
+        await waitFor(() =>
+            expect(requestedUrls().some((url) => url.endsWith("/api/v1/schedule"))).toBe(true)
+        )
+        release()
+        await settleSchedulePage(unmount)
+    }, 20000)
+
+    it("renderiza a tela de Horários de atendimento para quem configura o atendimento", async () => {
+        stubScheduleFetch()()
+        const { unmount } = renderRoutes([ROUTES.schedule], {
+            account: {
+                current: { ...staffWithAllPermissions, permissions: ["schedule.configure"] },
+                status: "authenticated"
+            }
+        })
+
+        expect(
+            await screen.findByRole("heading", { name: "Horários de atendimento", level: 1 })
+        ).toBeInTheDocument()
+        expect(screen.getByRole("link", { name: "Horários de atendimento" })).toBeInTheDocument()
+        await settleSchedulePage(unmount)
+    }, 20000)
+
+    it("mostra a NotFound em /horarios a quem não configura o atendimento, sem chamar a API de horários", async () => {
+        renderRoutes([ROUTES.schedule], {
+            account: {
+                current: { ...staffWithAllPermissions, permissions: ["users.manage"] },
+                status: "authenticated"
+            }
+        })
+
+        expect(await screen.findByRole("heading", { name: "404 - Not Found" })).toBeInTheDocument()
+        expect(requestedUrls().some((url) => url.includes("/api/v1/schedule"))).toBe(false)
     })
 
     it("renderiza o detalhe do agendamento com sessão, pedindo o agendamento pelo id", async () => {

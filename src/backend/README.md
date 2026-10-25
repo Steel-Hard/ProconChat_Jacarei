@@ -941,6 +941,7 @@ proteção CSRF (`403 INVALID_ORIGIN` nos métodos que enviam corpo), por `requi
 | `PUT /api/v1/schedule` | `ScheduleConfigInput` | `200 { data: ScheduleConfigView }` | `400 BAD_REQUEST`, `401`, `403`, `409 SCHEDULE_CONFLICTS` com `details.conflicts` |
 | `GET /api/v1/schedule/preview?month=YYYY-MM` | `month` opcional (padrão: mês atual em `America/Sao_Paulo`) | `200 { data: MonthlyPreviewResult }` | `400 BAD_REQUEST`, `401`, `403` |
 | `POST /api/v1/schedule/preview` | `{ month?: "YYYY-MM", config?: ScheduleConfigInput }` | `200 { data: MonthlyPreviewResult }` (calcula sobre o rascunho `config` sem gravar no banco, ou sobre a configuração salva se `config` for omitido) | `400 BAD_REQUEST`, `401`, `403` |
+| `GET /api/v1/schedule/booked-days` | — | `200 { data: { days: BookedDay[] } }` | `401`, `403` |
 
 - **Consistência entre bot e prévia:** o cálculo de vagas disponíveis do bot (`getAvailableSlots`) e
   o cálculo da prévia mensal (`getMonthlyPreview`) compartilham as mesmas funções puras de
@@ -1022,7 +1023,55 @@ proteção CSRF (`403 INVALID_ORIGIN` nos métodos que enviam corpo), por `requi
   ```
 
   O fluxo de resolução no mesmo salvamento (cancelar pelo Procon ou manter como `off_grid = TRUE`)
-  pertence à #65.
+  pertence à #75.
+
+- **Conflitos na prévia (#125):** `MonthlyPreviewResult` traz também `conflicts`, no `GET` e no
+  `POST /api/v1/schedule/preview`. O service lê os agendamentos futuros ativos **sem trava**
+  (`listFutureActiveAppointments(now)` no repositório, o mesmo `SELECT` do `saveConfig` sem
+  `FOR UPDATE`) e a duração salva, e chama `detectScheduleConflicts(configuraçãoDaPrévia, agendamentos,
+  duraçãoSalva)`, a mesma função do `PUT`. No `GET` a configuração da prévia é a salva (normalmente sem
+  conflitos); no `POST`, o rascunho. Os conflitos não dependem do `month`: cobrem todos os agendamentos
+  futuros. Cada item é recortado para protocolo, data, hora, status, código e motivo, sem nome, CPF,
+  telefone, id do agendamento ou do responsável. A ordem é a do `409`. A leitura sem trava é só aviso:
+  a garantia continua no `409` do `PUT`.
+
+  ```json
+  {
+      "protocol": "A1B2C3D4",
+      "date": "2026-11-04",
+      "time": "09:00",
+      "status": "CONFIRMED",
+      "code": "RANGE_CHANGED",
+      "reason": "Faixa de horário removida ou alterada"
+  }
+  ```
+
+- **Dias com agendamento (#125):** `GET /api/v1/schedule/booked-days` não recebe parâmetro e devolve os
+  dias e horários com agendamento futuro, para a tela travar antes de salvar o que afetaria alguém.
+  Conta como agendamento futuro o que tem `status IN ('PENDING', 'CONFIRMED')`,
+  `appointment_datetime > agora` e `off_grid = FALSE` (os fora da grade nunca são apontados como
+  afetados). `date` (`AAAA-MM-DD`) e `time` (`HH:MM`) são de `America/Sao_Paulo`, e `weekday` vai de
+  `0` (domingo) a `6`. `days` vem em ordem de data, `times` em ordem de hora e `total` é a soma dos
+  `count` do dia; sem agendamento futuro, `days: []`. A resposta não traz id, protocolo, nome, CPF,
+  telefone nem responsável.
+
+  ```json
+  {
+      "data": {
+          "days": [
+              {
+                  "date": "2026-11-04",
+                  "weekday": 3,
+                  "total": 2,
+                  "times": [
+                      { "time": "09:00", "count": 1 },
+                      { "time": "10:30", "count": 1 }
+                  ]
+              }
+          ]
+      }
+  }
+  ```
 
 ## Agendamento pelo chat (#56)
 

@@ -10,7 +10,7 @@ Definir **quando o PROCON atende presencialmente**. É daqui que o chatbot tira 
 
 ## Estado da tela
 
-**Ainda não construída (issue #64).** O lembrete é da issue #74, a janela de conflitos ao alterar a agenda é da issue #75 e o bloqueio de parte do dia é da issue #77. Hoje o chatbot usa a configuração inicial do sistema para oferecer horários.
+**Pronta (backend na issue #64, tela na issue #125).** O chatbot oferece os horários da configuração salva aqui. Ainda faltam: o envio do lembrete (issue #74; até lá a tela esconde a seção "Lembrete ao cidadão", e o salvamento mantém o liga/desliga e as horas como estão gravados), a janela de manter ou cancelar os agendamentos afetados (issue #75) e a criação de bloqueio de parte do dia (issue #77; a tela cria só bloqueio de dia inteiro, mas mostra e deixa remover os bloqueios parciais que já existirem).
 
 ## Regras gerais da tela
 
@@ -51,6 +51,8 @@ Definir **quando o PROCON atende presencialmente**. É daqui que o chatbot tira 
 
 ### Lembrete ao cidadão
 
+**Escondida até a issue #74.** Como nada envia o lembrete ainda, a tela não mostra esta seção. Salvar a tela mantém o liga/desliga e as horas exatamente como estão gravados. Quando o envio existir, a seção volta como descrita abaixo.
+
 - **Ligado/desligado** e **quantas horas antes** do atendimento: 2, 6, 12, 24 ou 48.
 - Enviado para agendamentos **Pendentes e Confirmados**.
 - **Prévia do modelo fixo:**
@@ -83,7 +85,14 @@ Ao salvar, o sistema verifica se algum agendamento **Pendente ou Confirmado futu
 | As vagas foram reduzidas abaixo do que já está ocupado | Os **agendados por último** num horário lotado são os afetados |
 | A duração aumentou e dois agendamentos **Confirmados** do mesmo responsável passaram a se sobrepor | "Responsável com outro agendamento sobreposto com atendimentos de N minutos (protocolo XXXXXXXX)" |
 
-Se houver afetados, abre a janela **"Esta alteração afeta N agendamentos"** com a lista e três opções:
+**Comportamento atual, até a issue #75:** a tela não deixa salvar uma mudança que afete agendamentos. O funcionário cancela ou remarca o agendamento na tela de Agendamentos antes. Para isso:
+
+- Os dias com agendamento futuro aparecem marcados na prévia, com os horários e a quantidade no detalhe do dia.
+- O formulário recusa bloquear o dia inteiro de uma data com agendamento, desligar o dia da semana que tem agendamento (o checkbox fica desabilitado, com as próximas datas) e remover a faixa que cobre um horário com agendamento.
+- As outras mudanças (alterar o início ou o fim de uma faixa, a duração, as vagas ou remover um bloqueio) são simuladas pela prévia antes de salvar: os afetados aparecem no campo ligado à mudança e na lista "Esta alteração afeta N agendamentos" (protocolo, dia, hora, status e motivo), e "Salvar alterações" fica desabilitado.
+- Se ainda assim o servidor recusar ao salvar (por exemplo, um agendamento feito pelo chatbot entre a prévia e o salvar), a mesma lista aparece, agora com nome e CPF mascarado, e o salvar fica desabilitado até a próxima edição.
+
+**Quando a issue #75 for feita:** se houver afetados, abre a janela **"Esta alteração afeta N agendamentos"** com a lista e três opções:
 
 - **Manter os agendamentos:** continuam válidos e ganham o selo "Fora da grade atual" (não são apontados de novo em mudanças futuras). Nenhum aviso é enviado.
 - **Cancelar e avisar os cidadãos:** cancela todos com o motivo "Unidade fechada nesta data" (bloqueios) ou "Outro motivo" (demais casos), envia o aviso pelo WhatsApp e registra no histórico de cada um.
