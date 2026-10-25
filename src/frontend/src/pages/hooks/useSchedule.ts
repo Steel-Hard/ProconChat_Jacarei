@@ -21,6 +21,7 @@ import bookedDatesOfWeekday from "@/utils/schedule/bookedDatesOfWeekday"
 import conflictTargets from "@/utils/schedule/conflictTargets"
 import dayMonthOf from "@/utils/schedule/dayMonthOf"
 import fieldOfIssuePath from "@/utils/schedule/fieldOfIssuePath"
+import formatDate from "@/utils/formatDate"
 import rangeHasBooking from "@/utils/schedule/rangeHasBooking"
 import rangeKey from "@/utils/schedule/rangeKey"
 
@@ -100,7 +101,7 @@ function useSchedule() {
     function conflictText(conflict: SchedulePreviewConflict): string {
         return t("conflictMessage", {
             protocol: conflict.protocol,
-            date: dayMonthOf(conflict.date),
+            date: formatDate(conflict.date) ?? conflict.date,
             time: conflict.time,
             reason: conflict.reason
         })

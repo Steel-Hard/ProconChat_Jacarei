@@ -6,7 +6,7 @@ import SchedulePreviewLegendItem from "@/components/SchedulePreviewLegendItem"
 import SchedulePreviewWeekday from "@/components/SchedulePreviewWeekday"
 import type BookedDay from "@/types/schedule/BookedDay.types"
 import type MonthlyPreview from "@/types/schedule/MonthlyPreview.types"
-import dayMonthOf from "@/utils/schedule/dayMonthOf"
+import formatDate from "@/utils/formatDate"
 import monthTitle from "@/utils/schedule/monthTitle"
 import WEEKDAY_KEYS from "@/utils/schedule/weekdayKeys"
 import WEEKDAY_ORDER from "@/utils/schedule/weekdayOrder"
@@ -77,8 +77,8 @@ function SchedulePreview({
             {preview ? (
                 <p className={css.subtitle}>
                     {t("preview.subtitle", {
-                        start: dayMonthOf(preview.windowStart),
-                        end: dayMonthOf(preview.windowEnd)
+                        start: formatDate(preview.windowStart) ?? preview.windowStart,
+                        end: formatDate(preview.windowEnd) ?? preview.windowEnd
                     })}
                 </p>
             ) : null}

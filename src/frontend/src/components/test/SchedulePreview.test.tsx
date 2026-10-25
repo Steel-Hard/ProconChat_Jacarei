@@ -109,7 +109,9 @@ describe("SchedulePreview", () => {
     it("lista no detalhe os horários com agendamento do dia escolhido", () => {
         renderPreview({ bookedDays: BOOKED, selectedDate: "2026-11-02" })
 
-        expect(screen.getByRole("heading", { name: "Segunda-feira, 02/11" })).toBeInTheDocument()
+        expect(
+            screen.getByRole("heading", { name: "Segunda-feira, 02/11/2026" })
+        ).toBeInTheDocument()
         expect(screen.getByText("Bloqueado · Finados")).toBeInTheDocument()
         expect(screen.getByText("09:00 · 2 agendamentos")).toBeInTheDocument()
         expect(screen.getByText("10:30 · 1 agendamento")).toBeInTheDocument()
@@ -126,7 +128,7 @@ describe("SchedulePreview", () => {
     it("mostra no detalhe os horários do dia com as vagas livres e os não oferecidos", () => {
         renderPreview({ selectedDate: "2026-11-03" })
 
-        expect(screen.getByRole("heading", { name: "Terça-feira, 03/11" })).toBeInTheDocument()
+        expect(screen.getByRole("heading", { name: "Terça-feira, 03/11/2026" })).toBeInTheDocument()
         expect(screen.getByText("Oferecido pelo chatbot")).toBeInTheDocument()
         expect(screen.getByText("2 de 2 livres")).toBeInTheDocument()
         expect(
@@ -139,7 +141,7 @@ describe("SchedulePreview", () => {
     it("escolhe o primeiro dia com vagas quando nenhum dia foi escolhido", () => {
         renderPreview()
 
-        expect(screen.getByRole("heading", { name: "Terça-feira, 03/11" })).toBeInTheDocument()
+        expect(screen.getByRole("heading", { name: "Terça-feira, 03/11/2026" })).toBeInTheDocument()
         expect(screen.getByRole("button", { name: "03/11: 7 vagas livres" })).toHaveAttribute(
             "aria-pressed",
             "true"
@@ -197,7 +199,7 @@ describe("SchedulePreview", () => {
         renderPreview()
 
         expect(screen.getByText("236 de 240 vagas livres na janela")).toBeInTheDocument()
-        expect(screen.getByText(/de 27\/10 a 23\/11/)).toBeInTheDocument()
+        expect(screen.getByText(/de 27\/10\/2026 a 23\/11\/2026/)).toBeInTheDocument()
         const weekdays = screen.getByRole("heading", { name: "Horários por dia da semana" })
             .parentElement as HTMLElement
         expect(within(weekdays).getAllByText("2 horários · 4 vagas · 08:30, 09:00")).toHaveLength(5)
@@ -218,6 +220,17 @@ describe("SchedulePreview", () => {
 
         expect(swatch.style.background).toBe(cell.style.background)
         expect(swatch.style.borderColor).toBe(cell.style.borderColor)
+    })
+
+    it("mostra o período da janela com o ano quando ele cruza a virada do ano", () => {
+        renderPreview({
+            preview: buildMonthlyPreview("2026-11", [], {
+                windowStart: "2026-10-26",
+                windowEnd: "2027-04-22"
+            })
+        })
+
+        expect(screen.getByText(/de 26\/10\/2026 a 22\/04\/2027/)).toBeInTheDocument()
     })
 
     it("mostra o aviso de prévia desatualizada e mantém o calendário", () => {

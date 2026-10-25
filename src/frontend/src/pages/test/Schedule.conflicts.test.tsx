@@ -78,7 +78,7 @@ describe("SchedulePage: agendamentos afetados", () => {
             within(
                 screen.getByRole("checkbox", { name: "Quarta-feira" }).closest("li") as HTMLElement
             ).getByText(
-                "Afeta o agendamento A1B2C3D4 (04/11 às 14:00): Faixa de horário removida ou alterada"
+                "Afeta o agendamento A1B2C3D4 (04/11/2026 às 14:00): Faixa de horário removida ou alterada"
             )
         ).toBeInTheDocument()
 

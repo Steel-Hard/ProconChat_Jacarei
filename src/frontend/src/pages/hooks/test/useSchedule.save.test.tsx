@@ -156,10 +156,10 @@ describe("useSchedule: salvar", () => {
         await waitFor(() => expect(result.current.conflictRows).toHaveLength(2))
 
         expect(result.current.days.find((day) => day.weekday === 3)?.messages).toEqual([
-            "Afeta o agendamento A1B2C3D4 (04/11 às 09:00): Faixa de horário removida ou alterada"
+            "Afeta o agendamento A1B2C3D4 (04/11/2026 às 09:00): Faixa de horário removida ou alterada"
         ])
         expect(result.current.seatsMessages).toEqual([
-            "Afeta o agendamento SEAT0001 (04/11 às 09:00): Vagas"
+            "Afeta o agendamento SEAT0001 (04/11/2026 às 09:00): Vagas"
         ])
     })
 

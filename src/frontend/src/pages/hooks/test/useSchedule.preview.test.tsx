@@ -242,16 +242,16 @@ describe("useSchedule: prévia", () => {
         await waitFor(() => expect(result.current.conflictRows).toHaveLength(4))
 
         expect(result.current.days.find((day) => day.weekday === 3)?.messages).toEqual([
-            "Afeta o agendamento A1B2C3D4 (04/11 às 14:00): Faixa de horário removida ou alterada"
+            "Afeta o agendamento A1B2C3D4 (04/11/2026 às 14:00): Faixa de horário removida ou alterada"
         ])
         expect(result.current.seatsMessages).toEqual([
-            "Afeta o agendamento SEAT0001 (04/11 às 14:00): Vagas"
+            "Afeta o agendamento SEAT0001 (04/11/2026 às 14:00): Vagas"
         ])
         expect(result.current.durationMessages).toEqual([
-            "Afeta o agendamento DURA0001 (04/11 às 14:00): Duração"
+            "Afeta o agendamento DURA0001 (04/11/2026 às 14:00): Duração"
         ])
         expect(result.current.blocks[0].messages).toEqual([
-            "Afeta o agendamento BLOQ0001 (02/11 às 14:00): Bloqueio"
+            "Afeta o agendamento BLOQ0001 (02/11/2026 às 14:00): Bloqueio"
         ])
     })
 

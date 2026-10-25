@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next"
 import SchedulePreviewSlot from "@/components/SchedulePreviewSlot"
 import type BookedDay from "@/types/schedule/BookedDay.types"
 import type DayPreview from "@/types/schedule/DayPreview.types"
-import dayMonthOf from "@/utils/schedule/dayMonthOf"
+import formatDate from "@/utils/formatDate"
 import WEEKDAY_KEYS from "@/utils/schedule/weekdayKeys"
 import css from "@/styles/components/schedulePreview.module.css"
 
@@ -20,7 +20,7 @@ function SchedulePreviewDetail({ day, booked }: SchedulePreviewDetailProps) {
                 <h3 className={css.detailTitle}>
                     {t("preview.detail.title", {
                         weekday: t(`weekdays.${WEEKDAY_KEYS[day.weekday]}`),
-                        date: dayMonthOf(day.date)
+                        date: formatDate(day.date) ?? day.date
                     })}
                 </h3>
                 <span className={css.detailStatus}>
