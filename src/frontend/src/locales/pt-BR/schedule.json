@@ -84,7 +84,8 @@
         },
         "cellLabelBooked": "{{date}}: {{status}} · {{booked}}",
         "bookedShort": "{{count}} agend.",
-        "updating": "Atualizando a prévia..."
+        "updating": "Atualizando a prévia...",
+        "otherMonth": "O calendário abaixo ainda é de {{month}}."
     },
     "conflicts": {
         "title_one": "Esta alteração afeta {{count}} agendamento",
