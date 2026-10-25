@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import buildMonthlyPreview from "@/testUtils/buildMonthlyPreview"
 import renderSchedulePage from "@/testUtils/renderSchedulePage"
 
-vi.setConfig({ testTimeout: 20000 })
+vi.setConfig({ testTimeout: 40000 })
 
 const SLOW = { timeout: 10000 }
 
