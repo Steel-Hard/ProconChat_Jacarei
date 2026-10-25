@@ -120,8 +120,12 @@ function useSchedule() {
             return null
         }
 
+        const shown = dates.slice(0, MAX_LOCK_DATES)
+        const crossesYear = new Set(shown.map((day) => day.date.slice(0, 4))).size > 1
         const list = dateList.format(
-            dates.slice(0, MAX_LOCK_DATES).map((day) => dayMonthOf(day.date))
+            shown.map((day) =>
+                crossesYear ? (formatDate(day.date) ?? day.date) : dayMonthOf(day.date)
+            )
         )
 
         return dates.length > MAX_LOCK_DATES

@@ -233,6 +233,21 @@ describe("useSchedule: dias com agendamento", () => {
         )
     })
 
+    it("mostra o ano nas datas da trava quando elas cruzam a virada do ano", async () => {
+        const crossing = ["2026-12-30", "2027-01-06"].map((date) => ({
+            date,
+            weekday: 3,
+            total: 1,
+            times: [{ time: "09:00", count: 1 }]
+        }))
+        const { result } = await ready({ bookedDays: crossing })
+        await waitFor(() => expect(result.current.bookedDays).toHaveLength(2))
+
+        expect(result.current.days.find((day) => day.weekday === 3)?.lockedReason).toBe(
+            "Há agendamentos em 30/12/2026 e 06/01/2027. Para desligar este dia, peça a quem gerencia os agendamentos para cancelar ou remarcar antes."
+        )
+    })
+
     it("recusa remover a faixa que cobre um agendamento e deixa a outra livre", async () => {
         const { result } = await ready({ bookedDays: BOOKED })
         await waitFor(() => expect(result.current.bookedDays).toHaveLength(2))
