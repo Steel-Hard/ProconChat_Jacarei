@@ -88,8 +88,10 @@ describe("validateScheduleDraft", () => {
     it.each([
         ["seatsPerSlot", "20"],
         ["windowDays", "180"],
-        ["waitAlertDays", "1"]
-    ] as const)("aceita %s no limite %s", (field, value) => {
+        ["waitAlertDays", "1"],
+        ["seatsPerSlot", "2.0"],
+        ["windowDays", "30,0"]
+    ] as const)("aceita %s no limite ou com valor inteiro %s", (field, value) => {
         expect(validateScheduleDraft(draftWith({ [field]: value })).count).toBe(0)
     })
 

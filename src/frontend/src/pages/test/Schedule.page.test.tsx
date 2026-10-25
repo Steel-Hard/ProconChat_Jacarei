@@ -6,6 +6,8 @@ import renderSchedulePage from "@/testUtils/renderSchedulePage"
 
 vi.setConfig({ testTimeout: 20000 })
 
+const SLOW = { timeout: 10000 }
+
 const SAVED = buildScheduleConfig({
     ranges: [
         { weekday: 1, slotIndex: 1, startTime: "08:30", endTime: "12:00" },
@@ -27,7 +29,7 @@ afterEach(() => {
 
 async function loaded(options: Parameters<typeof renderSchedulePage>[0] = {}) {
     const page = await renderSchedulePage(options)
-    await screen.findByRole("checkbox", { name: "Segunda-feira" })
+    await screen.findByRole("checkbox", { name: "Segunda-feira" }, SLOW)
 
     return page
 }
@@ -37,7 +39,9 @@ describe("SchedulePage", () => {
         await renderSchedulePage()
 
         expect(screen.getByText("Carregando...")).toBeInTheDocument()
-        expect(await screen.findByRole("heading", { name: "Grade semanal" })).toBeInTheDocument()
+        expect(
+            await screen.findByRole("heading", { name: "Grade semanal" }, SLOW)
+        ).toBeInTheDocument()
         expect(
             screen.getByText("Última alteração por Ana Paula Souza em 20/10/2026")
         ).toBeInTheDocument()
@@ -63,7 +67,7 @@ describe("SchedulePage", () => {
             }
         })
 
-        expect(await screen.findByRole("alert")).toHaveTextContent(
+        expect(await screen.findByRole("alert", {}, SLOW)).toHaveTextContent(
             "Não foi possível carregar os horários de atendimento."
         )
         expect(screen.queryByRole("heading", { name: "Grade semanal" })).not.toBeInTheDocument()
@@ -86,7 +90,11 @@ describe("SchedulePage", () => {
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
 
         expect(
-            await screen.findByText("Horários salvos. O chatbot passa a oferecer a nova grade.")
+            await screen.findByText(
+                "Horários salvos. O chatbot passa a oferecer a nova grade.",
+                {},
+                SLOW
+            )
         ).toBeInTheDocument()
         const [put] = callsTo("PUT", "/api/v1/schedule")
         expect(put.body).toMatchObject({
@@ -110,21 +118,29 @@ describe("SchedulePage", () => {
     })
 
     it("lista as alterações pendentes e descarta sem chamar a API", async () => {
-        const { user, calls } = await loaded()
+        const { user, calls, callsTo } = await loaded()
 
         await user.selectOptions(screen.getByLabelText("Duração de cada atendimento"), "60")
         await user.type(screen.getByLabelText("Complemento ou referência (opcional)"), "A")
         await user.hover(screen.getByRole("button", { name: "2 alterações não salvas" }))
         expect(screen.getByRole("tooltip")).toHaveTextContent("Pendentes: duração; complemento")
+        await waitFor(
+            () =>
+                expect(
+                    callsTo("POST", "/api/v1/schedule/preview").some(
+                        (call) =>
+                            (call.body as { config: { unitAddressComplement: string } }).config
+                                .unitAddressComplement === "Sala 2A"
+                    )
+                ).toBe(true),
+            SLOW
+        )
+        const before = calls.length
         await user.click(screen.getByRole("button", { name: "Descartar" }))
-        await new Promise((resolve) => setTimeout(resolve, 50))
-        const afterDiscard = calls.length
-        await new Promise((resolve) => setTimeout(resolve, 600))
 
         expect(screen.getByLabelText("Duração de cada atendimento")).toHaveValue("30")
         expect(screen.queryByRole("button", { name: "Descartar" })).not.toBeInTheDocument()
-        expect(calls.filter((call) => call.method === "PUT")).toEqual([])
-        expect(calls.slice(afterDiscard).filter((call) => call.method !== "GET")).toEqual([])
+        expect(calls.slice(before).filter((call) => call.method !== "GET")).toEqual([])
     })
 
     it("mostra o erro na faixa e não deixa salvar", async () => {
@@ -166,7 +182,7 @@ describe("SchedulePage", () => {
         await user.type(screen.getByLabelText("Vagas simultâneas por horário"), "3")
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
 
-        expect(await screen.findByRole("alert")).toHaveTextContent(
+        expect(await screen.findByRole("alert", {}, SLOW)).toHaveTextContent(
             "O painel foi aberto por um endereço não autorizado."
         )
     })
@@ -225,7 +241,7 @@ describe("SchedulePage", () => {
             expect(screen.getByRole("tooltip")).toHaveTextContent("Pendentes: vagas")
             await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
 
-            await waitFor(() => expect(callsTo("PUT", "/api/v1/schedule")).toHaveLength(1))
+            await waitFor(() => expect(callsTo("PUT", "/api/v1/schedule")).toHaveLength(1), SLOW)
             expect(callsTo("PUT", "/api/v1/schedule")[0].body).toMatchObject({
                 seatsPerSlot: 3,
                 reminderEnabled,

@@ -3,10 +3,9 @@ import type ScheduleDraft from "@/types/schedule/ScheduleDraft.types"
 import type ScheduleDraftErrors from "@/types/schedule/ScheduleDraftErrors.types"
 import type ScheduleProblem from "@/types/schedule/ScheduleProblem.types"
 import minutesOf from "@/utils/schedule/minutesOf"
+import numberOfText from "@/utils/schedule/numberOfText"
 import rangeKey from "@/utils/schedule/rangeKey"
 
-const DIGITS = /^\d+$/
-const DECIMAL = /^\d*[.,]\d+$/
 const MAX_ADDRESS_LENGTH = 500
 
 type Range = ScheduleDayDraft["ranges"][number]
@@ -64,15 +63,15 @@ function integerProblem(
     problem: ScheduleProblem,
     notInteger: ScheduleProblem
 ): ScheduleProblem | null {
-    if (DECIMAL.test(value)) {
-        return notInteger
-    }
+    const number = numberOfText(value)
 
-    if (!DIGITS.test(value)) {
+    if (number === null) {
         return problem
     }
 
-    const number = Number(value)
+    if (!Number.isInteger(number)) {
+        return notInteger
+    }
 
     return number < min || number > max ? problem : null
 }

@@ -177,23 +177,41 @@ describe("SchedulePreview", () => {
         expect(screen.queryByText("Dezembro de 2026")).not.toBeInTheDocument()
     })
 
-    it("mostra que está atualizando e marca a prévia exibida como ocupada", () => {
+    it("mostra que está atualizando e marca só a grade exibida como ocupada", () => {
         renderPreview({ updating: true })
 
-        expect(screen.getByRole("status")).toHaveTextContent("Atualizando a prévia...")
+        const status = screen.getByRole("status")
+        expect(status).toHaveTextContent("Atualizando a prévia...")
+        expect(grid()).toHaveAttribute("aria-busy", "true")
+        expect(grid()).not.toContainElement(status)
         expect(
             screen.getByRole("heading", { name: "Prévia da grade" }).closest("section")
-        ).toHaveAttribute("aria-busy", "true")
+        ).not.toHaveAttribute("aria-busy")
     })
 
     it("não mostra o aviso de atualização com a prévia em dia", () => {
         renderPreview()
 
         expect(screen.queryByRole("status")).not.toBeInTheDocument()
-        expect(
-            screen.getByRole("heading", { name: "Prévia da grade" }).closest("section")
-        ).not.toHaveAttribute("aria-busy")
+        expect(grid()).not.toHaveAttribute("aria-busy")
+        expect(screen.queryByText(/O calendário abaixo ainda é de/)).not.toBeInTheDocument()
     })
+
+    it.each([
+        ["com erro local", { stale: true }],
+        ["com a prévia em falha", { failed: true }]
+    ])(
+        "%s, avisa que o calendário ainda é do mês anterior quando outro mês foi pedido",
+        (_label, props) => {
+            renderPreview({ month: "2026-12", ...props })
+
+            expect(screen.getByText("Dezembro de 2026")).toBeInTheDocument()
+            expect(
+                screen.getByText("O calendário abaixo ainda é de Novembro de 2026.")
+            ).toBeInTheDocument()
+            expect(grid()).toHaveAttribute("aria-busy", "true")
+        }
+    )
 
     it("mostra o total de vagas na janela e os horários por dia da semana", () => {
         renderPreview()

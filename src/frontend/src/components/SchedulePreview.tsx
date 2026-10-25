@@ -54,13 +54,11 @@ function SchedulePreview({
         days.find((day) => day.status === "AVAILABLE") ??
         days[0]
     const leading = days.length > 0 ? days[0].weekday : 0
+    const otherMonth = preview !== null && month !== null && month !== preview.month
+    const dimmed = updating || otherMonth
 
     return (
-        <section
-            className={css.preview}
-            aria-labelledby={titleId}
-            aria-busy={updating || undefined}
-        >
+        <section className={css.preview} aria-labelledby={titleId}>
             <div className={css.header}>
                 <h2 id={titleId} className={css.title}>
                     {t("preview.title")}
@@ -90,6 +88,11 @@ function SchedulePreview({
             ) : null}
             {loading && !preview ? <p className={css.note}>{t("preview.loading")}</p> : null}
             {updating ? <output className={css.updating}>{t("preview.updating")}</output> : null}
+            {otherMonth && preview ? (
+                <p className={css.notice}>
+                    {t("preview.otherMonth", { month: monthTitle(preview.month) })}
+                </p>
+            ) : null}
             {preview ? (
                 <>
                     <div className={css.monthNav}>
@@ -113,7 +116,10 @@ function SchedulePreview({
                             {t("preview.nextSymbol")}
                         </button>
                     </div>
-                    <div className={updating ? `${css.grid} ${css.gridUpdating}` : css.grid}>
+                    <div
+                        className={dimmed ? `${css.grid} ${css.gridUpdating}` : css.grid}
+                        aria-busy={dimmed || undefined}
+                    >
                         {WEEKDAY_KEYS.map((key) => (
                             <span key={key} className={css.weekdayHead}>
                                 {t(`preview.weekdayShort.${key}`)}

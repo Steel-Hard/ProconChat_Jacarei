@@ -1,5 +1,6 @@
 import type ScheduleDraft from "@/types/schedule/ScheduleDraft.types"
 import type ScheduleInputWithOrigins from "@/types/schedule/ScheduleInputWithOrigins.types"
+import numberOfText from "@/utils/schedule/numberOfText"
 
 function toScheduleInput(draft: ScheduleDraft): ScheduleInputWithOrigins {
     const rangeOrigins: ScheduleInputWithOrigins["rangeOrigins"] = []
@@ -29,10 +30,10 @@ function toScheduleInput(draft: ScheduleDraft): ScheduleInputWithOrigins {
     return {
         input: {
             slotMinutes: draft.slotMinutes,
-            seatsPerSlot: Number(draft.seatsPerSlot),
-            windowDays: Number(draft.windowDays),
+            seatsPerSlot: numberOfText(draft.seatsPerSlot) ?? Number.NaN,
+            windowDays: numberOfText(draft.windowDays) ?? Number.NaN,
             minNoticeDays: draft.minNoticeDays,
-            waitAlertDays: Number(draft.waitAlertDays),
+            waitAlertDays: numberOfText(draft.waitAlertDays) ?? Number.NaN,
             unitAddress: draft.unitAddress.trim(),
             unitAddressComplement: complement === "" ? null : complement,
             reminderEnabled: draft.reminderEnabled,
