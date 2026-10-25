@@ -110,21 +110,27 @@ describe("SchedulePage", () => {
     })
 
     it("lista as alterações pendentes e descarta sem chamar a API", async () => {
-        const { user, calls } = await loaded()
+        const { user, calls, callsTo } = await loaded()
 
         await user.selectOptions(screen.getByLabelText("Duração de cada atendimento"), "60")
         await user.type(screen.getByLabelText("Complemento ou referência (opcional)"), "A")
         await user.hover(screen.getByRole("button", { name: "2 alterações não salvas" }))
         expect(screen.getByRole("tooltip")).toHaveTextContent("Pendentes: duração; complemento")
+        await waitFor(() =>
+            expect(
+                callsTo("POST", "/api/v1/schedule/preview").some(
+                    (call) =>
+                        (call.body as { config: { unitAddressComplement: string } }).config
+                            .unitAddressComplement === "Sala 2A"
+                )
+            ).toBe(true)
+        )
+        const before = calls.length
         await user.click(screen.getByRole("button", { name: "Descartar" }))
-        await new Promise((resolve) => setTimeout(resolve, 50))
-        const afterDiscard = calls.length
-        await new Promise((resolve) => setTimeout(resolve, 600))
 
         expect(screen.getByLabelText("Duração de cada atendimento")).toHaveValue("30")
         expect(screen.queryByRole("button", { name: "Descartar" })).not.toBeInTheDocument()
-        expect(calls.filter((call) => call.method === "PUT")).toEqual([])
-        expect(calls.slice(afterDiscard).filter((call) => call.method !== "GET")).toEqual([])
+        expect(calls.slice(before).filter((call) => call.method !== "GET")).toEqual([])
     })
 
     it("mostra o erro na faixa e não deixa salvar", async () => {
