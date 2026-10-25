@@ -88,4 +88,20 @@ describe("toScheduleInput", () => {
         expect(input.seatsPerSlot).toBe(3)
         expect(input.windowDays).toBe(45)
     })
+
+    it("envia como inteiro a espera escrita com vírgula e casa decimal zerada", () => {
+        const draft = { ...toScheduleDraft(buildScheduleConfig()), waitAlertDays: "7,0" }
+
+        const { input } = toScheduleInput(draft)
+
+        expect(input.waitAlertDays).toBe(7)
+    })
+
+    it("envia como inteiro as vagas escritas com vírgula e casa decimal zerada", () => {
+        const draft = { ...toScheduleDraft(buildScheduleConfig()), seatsPerSlot: "3,0" }
+
+        const { input } = toScheduleInput(draft)
+
+        expect(input.seatsPerSlot).toBe(3)
+    })
 })
