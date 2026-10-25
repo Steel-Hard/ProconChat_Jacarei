@@ -116,12 +116,15 @@ describe("SchedulePage", () => {
         await user.type(screen.getByLabelText("Complemento ou referência (opcional)"), "A")
         await user.hover(screen.getByRole("button", { name: "2 alterações não salvas" }))
         expect(screen.getByRole("tooltip")).toHaveTextContent("Pendentes: duração; complemento")
-        const before = calls.length
         await user.click(screen.getByRole("button", { name: "Descartar" }))
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        const afterDiscard = calls.length
+        await new Promise((resolve) => setTimeout(resolve, 600))
 
         expect(screen.getByLabelText("Duração de cada atendimento")).toHaveValue("30")
         expect(screen.queryByRole("button", { name: "Descartar" })).not.toBeInTheDocument()
-        expect(calls.slice(before).filter((call) => call.method !== "GET")).toEqual([])
+        expect(calls.filter((call) => call.method === "PUT")).toEqual([])
+        expect(calls.slice(afterDiscard).filter((call) => call.method !== "GET")).toEqual([])
     })
 
     it("mostra o erro na faixa e não deixa salvar", async () => {
