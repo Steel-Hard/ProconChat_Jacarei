@@ -56,7 +56,7 @@ describe("SchedulePage: dias com agendamento", () => {
             "Há agendamentos em 04/11. Para desligar este dia, peça a quem gerencia os agendamentos para cancelar ou remarcar antes."
         )
         within(wednesdayRow())
-            .getAllByRole("button", { name: /^Remover faixa indisponível/ })
+            .getAllByRole("button", { name: /^Remover faixa .* de Quarta-feira indisponível/ })
             .forEach((button) => expect(button).toHaveAttribute("aria-disabled", "true"))
     })
 
@@ -86,7 +86,7 @@ describe("SchedulePage: dias com agendamento", () => {
             "aria-disabled"
         )
         within(wednesdayRow())
-            .getAllByRole("button", { name: "Remover faixa" })
+            .getAllByRole("button", { name: /^Remover faixa .* de Quarta-feira$/ })
             .forEach((button) => expect(button).not.toHaveAttribute("aria-disabled"))
     })
 

@@ -16,6 +16,11 @@ function ScheduleRangeField({ range, day, position, onChange, onRemove }: Schedu
     const { t } = useTranslation("schedule")
     const errorId = useId()
     const invalid = range.error !== null
+    const target =
+        range.startTime && range.endTime
+            ? t("grid.remove", { start: range.startTime, end: range.endTime, day })
+            : t("grid.removeAt", { position, day })
+    const removeLabel = range.removeLocked ? t("grid.removeLocked", { target }) : target
 
     return (
         <div className={css.rangeField}>
@@ -43,8 +48,8 @@ function ScheduleRangeField({ range, day, position, onChange, onRemove }: Schedu
                     type="button"
                     className={css.removeRange}
                     aria-disabled={range.removeLocked || undefined}
-                    aria-label={range.removeLocked ? t("grid.removeLocked") : t("grid.remove")}
-                    title={range.removeLocked ? t("grid.removeLocked") : t("grid.remove")}
+                    aria-label={removeLabel}
+                    title={removeLabel}
                     onClick={() => {
                         if (!range.removeLocked) {
                             onRemove()

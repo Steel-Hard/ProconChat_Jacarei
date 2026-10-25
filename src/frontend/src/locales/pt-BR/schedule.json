@@ -121,10 +121,11 @@
         "end": "Fim da faixa {{position}} de {{day}}",
         "separator": "–",
         "removeSymbol": "×",
-        "remove": "Remover faixa",
-        "removeLocked": "Remover faixa indisponível: há agendamento nesta faixa. Para removê-la, peça a quem gerencia os agendamentos para cancelar ou remarcar antes.",
+        "remove": "Remover faixa {{start}} às {{end}} de {{day}}",
+        "removeLocked": "{{target}} indisponível: há agendamento nesta faixa. Para removê-la, peça a quem gerencia os agendamentos para cancelar ou remarcar antes.",
         "dayLocked": "Há agendamentos em {{dates}}. Para desligar este dia, peça a quem gerencia os agendamentos para cancelar ou remarcar antes.",
-        "dayLockedMore": "Há agendamentos em {{dates}} e em outras datas. Para desligar este dia, peça a quem gerencia os agendamentos para cancelar ou remarcar antes."
+        "dayLockedMore": "Há agendamentos em {{dates}} e em outras datas. Para desligar este dia, peça a quem gerencia os agendamentos para cancelar ou remarcar antes.",
+        "removeAt": "Remover faixa {{position}} de {{day}}"
     },
     "durationSeats": {
         "duration": "Duração de cada atendimento",

@@ -77,7 +77,7 @@ describe("ScheduleWeekGrid", () => {
         const { onRemoveRange, onAddRange, user } = renderGrid([day()])
 
         await user.click(
-            within(row("Segunda-feira")).getAllByRole("button", { name: "Remover faixa" })[1]
+            screen.getByRole("button", { name: "Remover faixa 13:30 às 16:30 de Segunda-feira" })
         )
         await user.click(screen.getByRole("button", { name: "Adicionar faixa em Segunda-feira" }))
 
@@ -86,6 +86,28 @@ describe("ScheduleWeekGrid", () => {
         expect(
             screen.getByRole("button", { name: "Adicionar faixa em Segunda-feira" })
         ).toHaveTextContent("+ Faixa")
+    })
+
+    it("nomeia o × pelo dia e pelo horário da faixa, ou pela posição quando falta horário", () => {
+        renderGrid([
+            day({
+                ranges: [
+                    { startTime: "08:30", endTime: "11:30", error: null, removeLocked: false },
+                    { startTime: "", endTime: "16:30", error: null, removeLocked: false }
+                ]
+            }),
+            day({ weekday: 4 })
+        ])
+
+        expect(
+            screen.getByRole("button", { name: "Remover faixa 08:30 às 11:30 de Segunda-feira" })
+        ).toBeInTheDocument()
+        expect(
+            screen.getByRole("button", { name: "Remover faixa 2 de Segunda-feira" })
+        ).toBeInTheDocument()
+        expect(
+            screen.getByRole("button", { name: "Remover faixa 13:30 às 16:30 de Quinta-feira" })
+        ).toBeInTheDocument()
     })
 
     it("esconde + Faixa quando o dia não pode ganhar outra", () => {
@@ -143,7 +165,9 @@ describe("ScheduleWeekGrid", () => {
                 ranges: [{ startTime: "08:30", endTime: "11:30", error: null, removeLocked: true }]
             })
         ])
-        const remove = screen.getByRole("button", { name: /^Remover faixa indisponível/ })
+        const remove = screen.getByRole("button", {
+            name: /^Remover faixa 08:30 às 11:30 de Segunda-feira indisponível/
+        })
 
         remove.focus()
         await user.keyboard("{Enter}")
@@ -166,12 +190,12 @@ describe("ScheduleWeekGrid", () => {
 
         expect(
             screen.getByRole("button", {
-                name: /^Remover faixa indisponível: há agendamento nesta faixa/
+                name: /^Remover faixa 08:30 às 11:30 de Segunda-feira indisponível: há agendamento nesta faixa/
             })
         ).toHaveAttribute("aria-disabled", "true")
-        expect(screen.getByRole("button", { name: "Remover faixa" })).not.toHaveAttribute(
-            "aria-disabled"
-        )
+        expect(
+            screen.getByRole("button", { name: "Remover faixa 13:30 às 16:30 de Segunda-feira" })
+        ).not.toHaveAttribute("aria-disabled")
     })
 
     it("deixa tudo livre sem agendamento", () => {
@@ -181,7 +205,7 @@ describe("ScheduleWeekGrid", () => {
         expect(screen.getByRole("checkbox", { name: "Segunda-feira" })).not.toHaveAttribute(
             "aria-disabled"
         )
-        screen.getAllByRole("button", { name: "Remover faixa" }).forEach((button) => {
+        screen.getAllByRole("button", { name: /^Remover faixa / }).forEach((button) => {
             expect(button).toBeEnabled()
             expect(button).not.toHaveAttribute("aria-disabled")
         })
