@@ -11,7 +11,8 @@ vi.setConfig({ testTimeout: 20000 })
 const SLOTS = [
     { time: "08:30", capacity: 2, usedSeats: 0, freeSeats: 2, offered: true, past: false },
     { time: "09:00", capacity: 2, usedSeats: 2, freeSeats: 0, offered: true, past: false },
-    { time: "09:30", capacity: 2, usedSeats: 0, freeSeats: 2, offered: false, past: false }
+    { time: "09:30", capacity: 2, usedSeats: 0, freeSeats: 2, offered: false, past: false },
+    { time: "10:00", capacity: 2, usedSeats: 1, freeSeats: 1, offered: true, past: false }
 ]
 
 const PREVIEW = buildMonthlyPreview("2026-11", [
@@ -132,6 +133,7 @@ describe("SchedulePreview", () => {
             screen.getByText("Lotado", { selector: "span:not([aria-hidden])" })
         ).toBeInTheDocument()
         expect(screen.getByText("2 de 2 livres · não oferecido")).toBeInTheDocument()
+        expect(screen.getByText("1 de 2 livre")).toBeInTheDocument()
     })
 
     it("escolhe o primeiro dia com vagas quando nenhum dia foi escolhido", () => {

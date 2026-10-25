@@ -72,7 +72,8 @@
                 "PAST": "Dia passado",
                 "CLOSED_TODAY": "Sem horários restantes hoje"
             },
-            "slotFree": "{{free}} de {{capacity}} livres",
+            "slotFree_one": "{{count}} de {{capacity}} livre",
+            "slotFree_other": "{{count}} de {{capacity}} livres",
             "slotFull": "Lotado",
             "slotPast": "Já passou",
             "noSlots": "Nenhum horário configurado para este dia.",

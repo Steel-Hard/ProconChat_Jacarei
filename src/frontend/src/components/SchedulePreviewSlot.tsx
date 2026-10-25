@@ -11,7 +11,7 @@ function SchedulePreviewSlot({ slot }: SchedulePreviewSlotProps) {
     const { t } = useTranslation("schedule")
     const seats =
         slot.freeSeats > 0
-            ? t("preview.detail.slotFree", { free: slot.freeSeats, capacity: slot.capacity })
+            ? t("preview.detail.slotFree", { count: slot.freeSeats, capacity: slot.capacity })
             : t("preview.detail.slotFull")
     const text = slot.past
         ? t("preview.detail.slotPast")
