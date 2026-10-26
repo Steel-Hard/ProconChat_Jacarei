@@ -10,7 +10,7 @@ Analisar o uso do chatbot e dos agendamentos: quais assuntos mais aparecem, onde
 
 ## Estado da tela
 
-**Ainda não construída (issues #68 e #73).**
+**API de Relatórios mínimos pronta (`GET /api/v1/reports`, issue #68). Tela no painel (#128) e itens bônus (#73) em construção.**
 
 ## Período
 
