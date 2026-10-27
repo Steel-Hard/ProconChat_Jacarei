@@ -80,12 +80,16 @@ describe("ContentService", () => {
         expect(reordered.map((c) => c.id)).toEqual([c2.id, c1.id])
     })
 
-    it("manages questions, computes answerLengthWarning, searches across categories, and generates WhatsApp preview", async () => {
+    it("manages questions, rejects moving question to another category, computes answerLengthWarning, searches across categories, and generates WhatsApp preview", async () => {
         const repository = new ContentStubRepository()
         const service = new ContentService({ repository })
 
         const cat = await service.createCategory(
             { title: "Compras e Garantias", shortTitle: "Compras e garantia", description: null },
+            1,
+        )
+        const cat2 = await service.createCategory(
+            { title: "Serviços Financeiros", shortTitle: "Bancos e cartões", description: null },
             1,
         )
 
@@ -129,6 +133,26 @@ describe("ContentService", () => {
 
         expect(q1.answerLengthWarning).toBe(true)
         expect(q1.whatsappPage).toBe(1)
+
+        await expect(
+            service.updateQuestion(
+                q1.id,
+                {
+                    categoryId: cat2.id,
+                    shortTitle: q1.shortTitle,
+                    shortDescription: q1.shortDescription,
+                    question: q1.question,
+                    answer: q1.answer,
+                    legalBasis: q1.legalBasis,
+                    requiredDocuments: q1.requiredDocuments,
+                    requiresInPerson: false,
+                    inPersonNote: null,
+                    outOfScope: false,
+                    llmAllowed: true,
+                },
+                1,
+            ),
+        ).rejects.toThrow(/Não é permitido mover uma pergunta para outra categoria/)
 
         const categoriesAfterQuestion = await service.listCategories()
         expect(categoriesAfterQuestion[0]?.hiddenInChatbot).toBe(false)

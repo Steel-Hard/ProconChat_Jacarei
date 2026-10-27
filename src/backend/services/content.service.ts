@@ -195,12 +195,13 @@ export class ContentService implements IContentService {
             throw new NotFoundError("Pergunta não encontrada")
         }
 
-        const targetCategoryId = input.categoryId ?? existing.categoryId
-        const category = await this.repository.findCategoryById(targetCategoryId)
-        if (!category) {
-            throw new NotFoundError("Categoria não encontrada")
+        if (input.categoryId !== undefined && input.categoryId !== existing.categoryId) {
+            throw new BadRequestError(
+                "Não é permitido mover uma pergunta para outra categoria; desative-a e crie uma nova na outra categoria",
+            )
         }
 
+        const targetCategoryId = existing.categoryId
         const writeInput: QuestionWriteInput = {
             categoryId: targetCategoryId,
             shortTitle: input.shortTitle,
