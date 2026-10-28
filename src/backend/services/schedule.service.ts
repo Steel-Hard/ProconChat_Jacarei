@@ -2,7 +2,7 @@ import BadRequestError from "../errors/BadRequestError"
 import ScheduleNotConfiguredError from "../errors/ScheduleNotConfiguredError"
 import { scheduleRepository } from "../repositories/schedule.repository"
 import { IScheduleRepository } from "../repositories/schedule.repository.interface"
-import { isValidMonthString } from "../schemas/schedule.schema"
+import { isValidCalendarDate, isValidMonthString } from "../schemas/schedule.schema"
 import {
     AvailableSlot,
     BlockedDate,
@@ -18,6 +18,7 @@ import {
     ScheduleRange,
     ScheduleSettings,
     SchedulePreviewConflict,
+    ScheduleVersion,
 } from "../types/schedule.types"
 import { addDaysToDateString, getLocalParts, parseLocalDate } from "../utils/date.utils"
 import {
@@ -47,6 +48,7 @@ const WEEKDAYS_PT = [
 export interface GetMonthlyPreviewParams {
     month?: string
     draftConfig?: ScheduleConfigInput
+    draftEffectiveFrom?: string
     now?: Date
 }
 
@@ -54,11 +56,20 @@ export interface IScheduleService {
     getAvailableSlots(now?: Date): Promise<AvailableSlot[]>
     bookSlot(input: BookAppointmentInput): Promise<BookAppointmentResult>
     getConfig(): Promise<ScheduleConfigView>
+    getConfigForDate(date: string): Promise<ScheduleConfigView>
+    listScheduledConfigs(fromDate?: string, now?: Date): Promise<ScheduleVersion[]>
     saveConfig(
         input: ScheduleConfigInput,
         actorUserId: number,
         now?: Date,
     ): Promise<ScheduleConfigView>
+    saveScheduledConfig(
+        input: ScheduleConfigInput,
+        effectiveFrom: string,
+        actorUserId: number,
+        now?: Date,
+    ): Promise<ScheduleConfigView>
+    deleteScheduledConfig(effectiveFrom: string, now?: Date): Promise<void>
     getMonthlyPreview(params?: GetMonthlyPreviewParams): Promise<MonthlyPreviewResult>
     getBookedDays(now?: Date): Promise<BookedDaysResult>
 }
@@ -74,50 +85,103 @@ function previewConflictOf(item: ScheduleConflictItem): SchedulePreviewConflict 
     }
 }
 
+function effectiveVersionOf(versions: ScheduleVersion[], date: string): ScheduleVersion | null {
+    let effective: ScheduleVersion | null = null
+    for (const version of versions) {
+        if (version.effectiveFrom === null || version.effectiveFrom <= date) {
+            effective = version
+        }
+    }
+    return effective
+}
+
+function scheduleSettingsOf(config: ScheduleConfigView): ScheduleSettings {
+    return {
+        id: 1,
+        slot_minutes: config.slotMinutes,
+        seats_per_slot: config.seatsPerSlot,
+        window_days: config.windowDays,
+        min_notice_days: config.minNoticeDays,
+        wait_alert_days: config.waitAlertDays,
+        unit_address: config.unitAddress,
+        unit_address_complement: config.unitAddressComplement,
+        reminder_enabled: config.reminderEnabled,
+        reminder_hours: config.reminderHours,
+    }
+}
+
+function scheduleRangesOf(config: ScheduleConfigView): ScheduleRange[] {
+    return config.ranges.map((range, index) => ({
+        id: index + 1,
+        weekday: range.weekday,
+        slot_index: range.slotIndex,
+        start_time: range.startTime,
+        end_time: range.endTime,
+    }))
+}
+
+function scheduleBlockedDatesOf(config: ScheduleConfigView): BlockedDate[] {
+    return config.blockedDates.map((block, index) => ({
+        id: index + 1,
+        date: block.date,
+        start_time: block.startTime,
+        end_time: block.endTime,
+        description: block.description,
+    }))
+}
+
 export function createScheduleService(
     repository: IScheduleRepository,
 ): IScheduleService {
     async function getAvailableSlots(now = new Date()): Promise<AvailableSlot[]> {
-        const settings = await repository.getSettings()
-        if (!settings) {
-            return []
-        }
-
         const { dateStr: todayStr, timeStr: nowTimeStr } = getLocalParts(now)
+        const versions = await repository.getScheduleVersions(
+            todayStr,
+            addDaysToDateString(todayStr, 195),
+        )
+        if (versions.length === 0) {
+            return []
+        }
+
         const nowMinutes = toMinutes(nowTimeStr)
-
-        const ranges = await repository.getRanges()
-        if (ranges.length === 0) {
-            return []
-        }
-
-        const maxDateStr = addDaysToDateString(todayStr, settings.window_days + 15)
-        const blockedDates = await repository.getBlockedDates(
-            todayStr,
-            maxDateStr,
-        )
-
-        const { startDateStr, endDateStr, hasValidStart } = computeWindowBounds(
-            todayStr,
-            settings,
-            ranges,
-            blockedDates,
-        )
-        if (!hasValidStart) {
-            return []
-        }
+        const maxWindowDays = Math.max(...versions.map((version) => version.config.windowDays))
+        const maxDateStr = addDaysToDateString(todayStr, maxWindowDays)
 
         interface CandidateSlot {
             datetime: Date
             dateStr: string
             timeStr: string
             formatted: string
+            seatsPerSlot: number
         }
 
         const candidateSlots: CandidateSlot[] = []
-        let curr = startDateStr
+        let curr = todayStr
 
-        while (curr <= endDateStr) {
+        while (curr <= maxDateStr) {
+            const version = effectiveVersionOf(versions, curr)
+            if (!version) {
+                curr = addDaysToDateString(curr, 1)
+                continue
+            }
+            const config = version.config
+            const settings = scheduleSettingsOf(config)
+            const ranges = scheduleRangesOf(config)
+            const blockedDates = scheduleBlockedDatesOf(config)
+            const { startDateStr, endDateStr, hasValidStart } = computeWindowBounds(
+                todayStr,
+                settings,
+                ranges,
+                blockedDates,
+            )
+            const effectiveStart = version.effectiveFrom && version.effectiveFrom > startDateStr
+                ? version.effectiveFrom
+                : startDateStr
+            if (!hasValidStart || curr < effectiveStart || curr > endDateStr) {
+                curr = addDaysToDateString(curr, 1)
+                continue
+            }
+
             const dow = getDowFromDateStr(curr)
             const freeStarts = freeSlotStartsOfDay(
                 curr,
@@ -142,6 +206,7 @@ export function createScheduleService(
                     dateStr: curr,
                     timeStr: slotTimeStr,
                     formatted,
+                    seatsPerSlot: settings.seats_per_slot,
                 })
             }
 
@@ -164,7 +229,7 @@ export function createScheduleService(
 
         for (const slot of candidateSlots) {
             const active = activeCounts.get(slot.datetime.toISOString()) ?? 0
-            const remainingSeats = settings.seats_per_slot - active
+            const remainingSeats = slot.seatsPerSlot - active
 
             if (remainingSeats > 0) {
                 availableSlots.push({
@@ -194,6 +259,25 @@ export function createScheduleService(
         return config
     }
 
+    async function getConfigForDate(date: string): Promise<ScheduleConfigView> {
+        if (!isValidCalendarDate(date)) {
+            throw new BadRequestError("Data inválida")
+        }
+        const version = await repository.getConfigForDate(date)
+        if (!version) {
+            throw new ScheduleNotConfiguredError()
+        }
+        return version.config
+    }
+
+    async function listScheduledConfigs(fromDate?: string, now = new Date()): Promise<ScheduleVersion[]> {
+        const startDate = fromDate ?? getLocalParts(now).dateStr
+        if (!isValidCalendarDate(startDate)) {
+            throw new BadRequestError("Data inválida")
+        }
+        return repository.listScheduledConfigs(startDate)
+    }
+
     async function saveConfig(
         input: ScheduleConfigInput,
         actorUserId: number,
@@ -207,6 +291,34 @@ export function createScheduleService(
         })
     }
 
+    async function saveScheduledConfig(
+        input: ScheduleConfigInput,
+        effectiveFrom: string,
+        actorUserId: number,
+        now = new Date(),
+    ): Promise<ScheduleConfigView> {
+        if (!isValidCalendarDate(effectiveFrom)) {
+            throw new BadRequestError("Data de início inválida")
+        }
+        if (effectiveFrom <= getLocalParts(now).dateStr) {
+            throw new BadRequestError("A data de início da mudança deve ser futura")
+        }
+        const normalized = normalizeAndValidateScheduleConfig(input)
+        return repository.saveScheduledConfig({
+            config: normalized,
+            effectiveFrom,
+            actorUserId,
+            now,
+        })
+    }
+
+    async function deleteScheduledConfig(effectiveFrom: string, now = new Date()): Promise<void> {
+        if (!isValidCalendarDate(effectiveFrom)) {
+            throw new BadRequestError("Data de início inválida")
+        }
+        return repository.deleteScheduledConfig(effectiveFrom, now)
+    }
+
     async function getMonthlyPreview(
         params: GetMonthlyPreviewParams = {},
     ): Promise<MonthlyPreviewResult> {
@@ -218,50 +330,44 @@ export function createScheduleService(
             throw new BadRequestError("Mês inválido")
         }
 
-        let baseConfig: NormalizedScheduleConfig
-        let savedConfig: ScheduleConfigView | null
-        if (params.draftConfig) {
-            baseConfig = normalizeAndValidateScheduleConfig(params.draftConfig)
-            savedConfig = await repository.getConfig()
-        } else {
-            savedConfig = await getConfig()
-            baseConfig = savedConfig
-        }
-
-        const settings: Pick<
-            ScheduleSettings,
-            "slot_minutes" | "seats_per_slot" | "window_days" | "min_notice_days"
-        > = {
-            slot_minutes: baseConfig.slotMinutes,
-            seats_per_slot: baseConfig.seatsPerSlot,
-            window_days: baseConfig.windowDays,
-            min_notice_days: baseConfig.minNoticeDays,
-        }
-
-        const ranges: Pick<
-            ScheduleRange,
-            "weekday" | "slot_index" | "start_time" | "end_time"
-        >[] = baseConfig.ranges.map((r) => ({
-            weekday: r.weekday,
-            slot_index: r.slotIndex,
-            start_time: r.startTime,
-            end_time: r.endTime,
-        }))
-
-        const blockedDates: Pick<
-            BlockedDate,
-            "date" | "start_time" | "end_time" | "description"
-        >[] = baseConfig.blockedDates.map((b) => ({
-            date: b.date,
-            start_time: b.startTime,
-            end_time: b.endTime,
-            description: b.description,
-        }))
-
         const { firstDateStr, lastDateStr } = getMonthDateBounds(targetMonth)
-        const windowEndBound = addDaysToDateString(todayStr, settings.window_days + 15)
         const minDateStr = firstDateStr < todayStr ? firstDateStr : todayStr
-        const maxDateStr = lastDateStr > windowEndBound ? lastDateStr : windowEndBound
+        const versionsEnd = lastDateStr > addDaysToDateString(todayStr, 195)
+            ? lastDateStr
+            : addDaysToDateString(todayStr, 195)
+        let versions = await repository.getScheduleVersions(minDateStr, versionsEnd)
+        let draftConfig: NormalizedScheduleConfig | null = null
+        let draftEffectiveFrom: string | null = null
+        let previousVersion: ScheduleVersion | null = null
+
+        if (params.draftConfig) {
+            draftConfig = normalizeAndValidateScheduleConfig(params.draftConfig)
+            draftEffectiveFrom = params.draftEffectiveFrom ?? todayStr
+            if (!isValidCalendarDate(draftEffectiveFrom)) {
+                throw new BadRequestError("Data de início inválida")
+            }
+            const existing = versions.find((version) => version.effectiveFrom === draftEffectiveFrom)
+            const priorDate = addDaysToDateString(draftEffectiveFrom, -1)
+            previousVersion = effectiveVersionOf(versions, priorDate)
+            const draftView: ScheduleConfigView = {
+                ...draftConfig,
+                effectiveFrom: draftEffectiveFrom,
+                updatedBy: existing?.config.updatedBy ?? null,
+                updatedAt: existing?.config.updatedAt ?? null,
+            }
+            versions = versions
+                .filter((version) => version.effectiveFrom !== draftEffectiveFrom)
+                .concat({ effectiveFrom: draftEffectiveFrom, config: draftView })
+                .sort((a, b) => (a.effectiveFrom ?? "").localeCompare(b.effectiveFrom ?? ""))
+        }
+
+        if (versions.length === 0) {
+            throw new ScheduleNotConfiguredError()
+        }
+
+        const maxWindowDays = Math.max(...versions.map((version) => version.config.windowDays))
+        const windowEnd = addDaysToDateString(todayStr, maxWindowDays)
+        const maxDateStr = lastDateStr > windowEnd ? lastDateStr : windowEnd
 
         const fromDatetime = parseLocalDate(minDateStr, "00:00")
         const toDatetime = parseLocalDate(maxDateStr, "23:59")
@@ -271,23 +377,98 @@ export function createScheduleService(
             toDatetime,
         )
 
-        const preview = calculateMonthlyPreview({
-            month: targetMonth,
-            now,
-            settings,
-            ranges,
-            blockedDates,
-            activeCounts,
+        const months: string[] = []
+        let monthCursor = minDateStr.slice(0, 7)
+        const lastMonth = maxDateStr.slice(0, 7)
+        while (monthCursor <= lastMonth) {
+            months.push(monthCursor)
+            const [year, month] = monthCursor.split("-").map(Number)
+            const nextMonth = month === 12 ? 1 : month! + 1
+            const nextYear = month === 12 ? year! + 1 : year!
+            monthCursor = `${nextYear}-${String(nextMonth).padStart(2, "0")}`
+        }
+
+        const previewCache = new Map<string, Map<string, MonthlyPreviewResult>>()
+        for (const version of versions) {
+            const key = version.effectiveFrom ?? "baseline"
+            const perMonth = new Map<string, MonthlyPreviewResult>()
+            const settings = scheduleSettingsOf(version.config)
+            const ranges = scheduleRangesOf(version.config)
+            const blockedDates = scheduleBlockedDatesOf(version.config)
+            for (const month of months) {
+                perMonth.set(month, {
+                    ...calculateMonthlyPreview({
+                        month,
+                        now,
+                        settings,
+                        ranges,
+                        blockedDates,
+                        activeCounts,
+                    }),
+                    conflicts: [],
+                })
+            }
+            previewCache.set(key, perMonth)
+        }
+
+        function dayPreview(date: string) {
+            const version = effectiveVersionOf(versions, date)
+            if (!version) {
+                return null
+            }
+            return previewCache.get(version.effectiveFrom ?? "baseline")?.get(date.slice(0, 7))
+                ?.days.find((day) => day.date === date) ?? null
+        }
+
+        const currentVersion = effectiveVersionOf(versions, todayStr)!
+        const currentPreview = previewCache.get(currentVersion.effectiveFrom ?? "baseline")?.get(todayStr.slice(0, 7))!
+        const requestedDays = Array.from({ length: Number(lastDateStr.slice(-2)) }, (_, index) => {
+            const date = `${targetMonth}-${String(index + 1).padStart(2, "0")}`
+            return dayPreview(date)!
         })
+        let totalWindowSlots = 0
+        let totalWindowSeats = 0
+        let usedWindowSeats = 0
+        for (let date = currentPreview.windowStart; date <= windowEnd; date = addDaysToDateString(date, 1)) {
+            const day = dayPreview(date)
+            if (!day) {
+                continue
+            }
+            totalWindowSlots += day.slots.filter((slot) => slot.offered).length
+            totalWindowSeats += day.capacity
+            usedWindowSeats += day.usedSeats
+        }
 
-        const futureAppointments = await repository.listFutureActiveAppointments(now)
-        const conflicts = detectScheduleConflicts(
-            baseConfig,
-            futureAppointments,
-            savedConfig?.slotMinutes ?? null,
-        ).map(previewConflictOf)
+        let conflicts: SchedulePreviewConflict[] = []
+        if (draftConfig && draftEffectiveFrom) {
+            const nextVersion = versions.find((version) =>
+                version.effectiveFrom !== null && version.effectiveFrom > draftEffectiveFrom!,
+            )
+            const futureAppointments = (await repository.listFutureActiveAppointments(now)).filter((appointment) => {
+                const { dateStr } = getLocalParts(appointment.appointmentDatetime)
+                return dateStr >= draftEffectiveFrom! &&
+                    (nextVersion?.effectiveFrom === undefined || nextVersion.effectiveFrom === null || dateStr < nextVersion.effectiveFrom)
+            })
+            conflicts = detectScheduleConflicts(
+                draftConfig,
+                futureAppointments,
+                previousVersion?.config.slotMinutes ?? null,
+            ).map(previewConflictOf)
+        }
 
-        return { ...preview, conflicts }
+        return {
+            month: targetMonth,
+            today: todayStr,
+            windowStart: currentPreview.windowStart,
+            windowEnd,
+            totalWindowSlots,
+            totalWindowSeats,
+            usedWindowSeats,
+            freeWindowSeats: totalWindowSeats - usedWindowSeats,
+            weekdays: currentPreview.weekdays,
+            days: requestedDays,
+            conflicts,
+        }
     }
 
     async function getBookedDays(now = new Date()): Promise<BookedDaysResult> {
@@ -322,7 +503,11 @@ export function createScheduleService(
         getAvailableSlots,
         bookSlot,
         getConfig,
+        getConfigForDate,
+        listScheduledConfigs,
         saveConfig,
+        saveScheduledConfig,
+        deleteScheduledConfig,
         getMonthlyPreview,
         getBookedDays,
     }

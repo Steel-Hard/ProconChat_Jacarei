@@ -11,12 +11,19 @@ type PreviewDraft = {
     hasErrors: boolean
     input: ScheduleConfigInput | null
     signature: string
+    effectiveFrom?: string
 }
 
 const DEBOUNCE_MS = 400
 const NO_CONFLICTS: SchedulePreviewConflict[] = []
 
-function useSchedulePreview({ hasChanges, hasErrors, input, signature }: PreviewDraft) {
+function useSchedulePreview({
+    hasChanges,
+    hasErrors,
+    input,
+    signature,
+    effectiveFrom
+}: PreviewDraft) {
     const [month, setMonth] = useState<string | undefined>(undefined)
     const [selectedDate, setSelectedDate] = useState<string | null>(null)
     const [debounced, setDebounced] = useState<string | null>(null)
@@ -36,7 +43,7 @@ function useSchedulePreview({ hasChanges, hasErrors, input, signature }: Preview
     const draftReady = wantsDraft && debounced === signature
     const savedQuery = scheduleApi.useGetSchedulePreviewQuery(hasChanges ? skipToken : month)
     const draftQuery = scheduleApi.usePreviewScheduleDraftQuery(
-        draftReady && input !== null ? { month, config: input } : skipToken
+        draftReady && input !== null ? { month, config: input, effectiveFrom } : skipToken
     )
     const current = hasChanges
         ? draftReady

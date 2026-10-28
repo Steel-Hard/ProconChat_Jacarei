@@ -10,6 +10,13 @@ import ScheduleWindowFields from "@/components/ScheduleWindowFields"
 import UnsavedChangesBar from "@/components/UnsavedChangesBar"
 import useSchedule from "@/pages/hooks/useSchedule"
 import css from "@/styles/pages/schedule.module.css"
+import formatDate from "@/utils/formatDate"
+
+function dayAfter(date: string): string {
+    const next = new Date(`${date}T12:00:00Z`)
+    next.setUTCDate(next.getUTCDate() + 1)
+    return next.toISOString().slice(0, 10)
+}
 
 function SchedulePage() {
     const { t } = useTranslation(["schedule", "common"])
@@ -50,6 +57,76 @@ function SchedulePage() {
                         {page.actionError}
                     </p>
                 ) : null}
+                <section className={css.versions} aria-label={t("versions.title")}>
+                    <div className={css.versionControls}>
+                        <div className={css.versionInfo}>
+                            <strong>
+                                {page.effectiveFrom
+                                    ? t("versions.editing", {
+                                          date: formatDate(page.effectiveFrom) ?? page.effectiveFrom
+                                      })
+                                    : t("versions.current")}
+                            </strong>
+                            {page.effectiveFrom ? (
+                                <button type="button" onClick={() => page.selectEffectiveFrom("")}>
+                                    {t("versions.returnCurrent")}
+                                </button>
+                            ) : null}
+                        </div>
+                        <label className={css.effectiveDate}>
+                            <span>{t("versions.effectiveFrom")}</span>
+                            <input
+                                type="date"
+                                value={page.effectiveFrom}
+                                min={
+                                    page.preview.preview
+                                        ? dayAfter(page.preview.preview.today)
+                                        : undefined
+                                }
+                                onChange={(event) =>
+                                    page.selectEffectiveFrom(event.currentTarget.value)
+                                }
+                            />
+                        </label>
+                    </div>
+                    {page.versionsFailed ? (
+                        <p role="alert" className={css.alert}>
+                            {t("versions.loadFailed")}
+                        </p>
+                    ) : page.versions.length > 0 ? (
+                        <div className={css.versionList}>
+                            <h2>{t("versions.title")}</h2>
+                            <ul>
+                                {page.versions.map((version) => (
+                                    <li key={version.effectiveFrom}>
+                                        <span>
+                                            {formatDate(version.effectiveFrom) ??
+                                                version.effectiveFrom}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                page.selectEffectiveFrom(version.effectiveFrom)
+                                            }
+                                        >
+                                            {t("versions.edit")}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                void page.cancelScheduledVersion(
+                                                    version.effectiveFrom
+                                                )
+                                            }
+                                        >
+                                            {t("versions.cancel")}
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    ) : null}
+                </section>
                 {draft && page.bookedDaysFailed ? (
                     <p className={css.warning}>{t("bookedDaysFailed")}</p>
                 ) : null}

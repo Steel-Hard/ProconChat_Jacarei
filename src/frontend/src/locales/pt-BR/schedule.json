@@ -200,6 +200,19 @@
         }
     },
     "subtitle": "Define os horários livres que o chatbot oferece ao cidadão para o atendimento presencial.",
+    "versions": {
+        "title": "Mudanças agendadas",
+        "current": "Editando a configuração que vale hoje",
+        "editing": "Editando a configuração a partir de {{date}}",
+        "effectiveFrom": "Valer a partir de",
+        "returnCurrent": "Voltar à configuração de hoje",
+        "edit": "Editar",
+        "cancel": "Cancelar mudança",
+        "cancelConfirm": "Cancelar a mudança de horários a partir de {{date}}?",
+        "cancelled": "Mudança de horários cancelada.",
+        "cancelFailed": "Não foi possível cancelar esta mudança de horários.",
+        "loadFailed": "Não foi possível carregar as mudanças agendadas."
+    },
     "loadFailed": "Não foi possível carregar os horários de atendimento. Atualize a página para tentar de novo.",
     "bookedDaysFailed": "Não foi possível verificar os dias que já têm agendamento. A prévia e o salvamento continuam apontando os agendamentos afetados.",
     "changes": {
@@ -217,6 +230,7 @@
     },
     "save": {
         "toast": "Horários salvos. O chatbot passa a oferecer a nova grade.",
+        "scheduledToast": "Mudança de horários agendada.",
         "failed": "Não foi possível salvar os horários. Confira os dados e tente de novo.",
         "hintErrors_one": "{{count}} campo com erro. Corrija para salvar.",
         "hintErrors_other": "{{count}} campos com erro. Corrija para salvar.",

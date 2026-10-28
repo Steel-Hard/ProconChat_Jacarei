@@ -50,6 +50,88 @@
     font-size: 13.5px;
 }
 
+.versions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+.versionControls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    justify-content: space-between;
+    gap: 12px 20px;
+}
+
+.versionInfo,
+.effectiveDate {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.versionInfo strong,
+.effectiveDate span {
+    font-size: 13px;
+}
+
+.effectiveDate input {
+    min-height: 36px;
+    padding: 6px 9px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+}
+
+.versionList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.versionList h2 {
+    font-size: 14px;
+}
+
+.versionList ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.versionList li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.versionList button,
+.versionInfo button {
+    min-height: 32px;
+    padding: 5px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    cursor: pointer;
+}
+
+.versionList button:hover,
+.versionInfo button:hover {
+    background: var(--surface-hover);
+}
+
 .columns {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));

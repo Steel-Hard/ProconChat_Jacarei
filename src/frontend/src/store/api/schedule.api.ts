@@ -3,10 +3,12 @@ import type BookedDay from "@/types/schedule/BookedDay.types"
 import type MonthlyPreview from "@/types/schedule/MonthlyPreview.types"
 import type ScheduleConfigInput from "@/types/schedule/ScheduleConfigInput.types"
 import type ScheduleConfigView from "@/types/schedule/ScheduleConfigView.types"
+import type ScheduleVersion from "@/types/schedule/ScheduleVersion.types"
 
 type Envelope<T> = { data: T }
 
-type DraftPreviewArgs = { month?: string; config: ScheduleConfigInput }
+type DraftPreviewArgs = { month?: string; config: ScheduleConfigInput; effectiveFrom?: string }
+type SaveScheduleArgs = { config: ScheduleConfigInput; effectiveFrom?: string }
 
 const SCHEDULE_PATH = "/api/v1/schedule"
 const PREVIEW_PATH = `${SCHEDULE_PATH}/preview`
@@ -24,16 +26,32 @@ const scheduleApi = api.injectEndpoints({
     endpoints: (build) => ({
         getSchedule: build.query<ScheduleConfigView, void>({
             query: () => SCHEDULE_PATH,
-            transformResponse: unwrap<ScheduleConfigView>
-        }),
-        saveSchedule: build.mutation<ScheduleConfigView, ScheduleConfigInput>({
-            query: (body) => ({ url: SCHEDULE_PATH, method: "PUT", body }),
             transformResponse: unwrap<ScheduleConfigView>,
-            invalidatesTags: (result) => (result ? ["SchedulePreview"] : []),
-            async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+            providesTags: ["CurrentSchedule"]
+        }),
+        getScheduleEffective: build.query<ScheduleConfigView, string>({
+            query: (date) => `${SCHEDULE_PATH}/effective?date=${encodeURIComponent(date)}`,
+            transformResponse: unwrap<ScheduleConfigView>,
+            providesTags: ["ScheduleEffective"]
+        }),
+        getScheduleVersions: build.query<ScheduleVersion[], void>({
+            query: () => `${SCHEDULE_PATH}/versions`,
+            transformResponse: unwrap<ScheduleVersion[]>,
+            providesTags: ["ScheduleVersions"]
+        }),
+        saveSchedule: build.mutation<ScheduleConfigView, SaveScheduleArgs>({
+            query: ({ config, effectiveFrom }) => ({
+                url: effectiveFrom ? `${SCHEDULE_PATH}/versions/${effectiveFrom}` : SCHEDULE_PATH,
+                method: "PUT",
+                body: config
+            }),
+            transformResponse: unwrap<ScheduleConfigView>,
+            invalidatesTags: (result) =>
+                result ? ["SchedulePreview", "ScheduleVersions", "ScheduleEffective"] : [],
+            async onQueryStarted({ effectiveFrom }, { dispatch, queryFulfilled }) {
                 const result = await queryFulfilled.catch(() => null)
 
-                if (result !== null) {
+                if (result !== null && !effectiveFrom) {
                     dispatch(
                         scheduleApi.util.upsertQueryEntries([
                             { endpointName: "getSchedule", arg: undefined, value: result.data }
@@ -56,6 +74,13 @@ const scheduleApi = api.injectEndpoints({
             query: () => `${SCHEDULE_PATH}/booked-days`,
             transformResponse: (response: Envelope<{ days: BookedDay[] }>) => response.data.days,
             keepUnusedDataFor: 0
+        }),
+        deleteScheduleVersion: build.mutation<void, string>({
+            query: (effectiveFrom) => ({
+                url: `${SCHEDULE_PATH}/versions/${effectiveFrom}`,
+                method: "DELETE"
+            }),
+            invalidatesTags: ["ScheduleVersions", "ScheduleEffective", "SchedulePreview"]
         })
     })
 })

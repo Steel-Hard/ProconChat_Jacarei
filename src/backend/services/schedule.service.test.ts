@@ -28,10 +28,50 @@ describe("ScheduleService", () => {
             getSettings: vi.fn().mockResolvedValue(defaultSettings),
             getRanges: vi.fn().mockResolvedValue(defaultRanges),
             getBlockedDates: vi.fn().mockResolvedValue([]),
+            getConfigForDate: vi.fn(),
+            getScheduleVersions: vi.fn(async (fromDate: string, toDate: string) => {
+                const settings = await repoMock.getSettings()
+                if (!settings) {
+                    return []
+                }
+                const [ranges, blockedDates] = await Promise.all([
+                    repoMock.getRanges(),
+                    repoMock.getBlockedDates(fromDate, toDate),
+                ])
+                return [{
+                    effectiveFrom: null,
+                    config: buildDefaultScheduleConfigView({
+                        slotMinutes: settings.slot_minutes as 20 | 30 | 40 | 60,
+                        seatsPerSlot: settings.seats_per_slot,
+                        windowDays: settings.window_days,
+                        minNoticeDays: settings.min_notice_days as 0 | 1 | 2 | 3 | 5,
+                        waitAlertDays: settings.wait_alert_days,
+                        unitAddress: settings.unit_address,
+                        unitAddressComplement: settings.unit_address_complement,
+                        reminderEnabled: settings.reminder_enabled,
+                        reminderHours: settings.reminder_hours as 2 | 6 | 12 | 24 | 48,
+                        ranges: ranges.map((range) => ({
+                            weekday: range.weekday,
+                            slotIndex: range.slot_index,
+                            startTime: range.start_time.slice(0, 5),
+                            endTime: range.end_time.slice(0, 5),
+                        })),
+                        blockedDates: blockedDates.map((block) => ({
+                            date: block.date,
+                            startTime: block.start_time?.slice(0, 5) ?? null,
+                            endTime: block.end_time?.slice(0, 5) ?? null,
+                            description: block.description,
+                        })),
+                    }),
+                }]
+            }),
+            listScheduledConfigs: vi.fn().mockResolvedValue([]),
             countActiveAppointmentsPerSlot: vi.fn().mockResolvedValue(new Map()),
             bookAppointment: vi.fn(),
             getConfig: vi.fn().mockResolvedValue(buildDefaultScheduleConfigView()),
             saveConfig: vi.fn().mockResolvedValue(buildDefaultScheduleConfigView()),
+            saveScheduledConfig: vi.fn(),
+            deleteScheduledConfig: vi.fn(),
             listFutureActiveAppointments: vi.fn().mockResolvedValue([]),
         }
         service = createScheduleService(repoMock)
@@ -175,6 +215,34 @@ describe("ScheduleService", () => {
         expect(slots).toEqual([])
     })
 
+    it("usa a configuração vigente em cada data ao oferecer horários", async () => {
+        const baseline = buildDefaultScheduleConfigView({
+            windowDays: 10,
+            minNoticeDays: 0,
+            ranges: [{ weekday: 2, slotIndex: 1, startTime: "08:00", endTime: "10:00" }],
+        })
+        const scheduled = buildDefaultScheduleConfigView({
+            windowDays: 10,
+            minNoticeDays: 0,
+            seatsPerSlot: 4,
+            ranges: [{ weekday: 3, slotIndex: 1, startTime: "14:00", endTime: "16:00" }],
+        })
+        vi.mocked(repoMock.getScheduleVersions).mockResolvedValueOnce([
+            { effectiveFrom: null, config: baseline },
+            { effectiveFrom: "2026-10-07", config: scheduled },
+        ])
+
+        const slots = await service.getAvailableSlots(new Date("2026-10-05T07:00:00-03:00"))
+
+        expect(slots.filter((slot) => slot.dateStr === "2026-10-06").map((slot) => slot.timeStr)).toEqual([
+            "08:00", "08:30", "09:00", "09:30",
+        ])
+        expect(slots.filter((slot) => slot.dateStr === "2026-10-07").map((slot) => slot.timeStr)).toEqual([
+            "14:00", "14:30", "15:00", "15:30",
+        ])
+        expect(slots.find((slot) => slot.dateStr === "2026-10-07")?.remainingSeats).toBe(4)
+    })
+
     describe("getConfig, saveConfig e getMonthlyPreview", () => {
         it("lança ScheduleNotConfiguredError quando não há configuração salva", async () => {
             vi.mocked(repoMock.getConfig).mockResolvedValueOnce(null)
@@ -309,6 +377,63 @@ describe("ScheduleService", () => {
                     new Date("2026-10-05T09:00:00-03:00"),
                 ),
             ).rejects.toBeInstanceOf(ConflictError)
+        })
+
+        it("prévia mensal usa a configuração efetiva em cada dia", async () => {
+            const baseline = buildDefaultScheduleConfigView({
+                windowDays: 10,
+                minNoticeDays: 0,
+                ranges: [{ weekday: 2, slotIndex: 1, startTime: "08:00", endTime: "10:00" }],
+            })
+            const scheduled = buildDefaultScheduleConfigView({
+                windowDays: 10,
+                minNoticeDays: 0,
+                ranges: [{ weekday: 3, slotIndex: 1, startTime: "14:00", endTime: "16:00" }],
+            })
+            const repository = createScheduleStubRepository({
+                config: baseline,
+                scheduledConfigs: [{ effectiveFrom: "2026-10-07", config: scheduled }],
+            })
+            const realService = createScheduleService(repository)
+
+            const preview = await realService.getMonthlyPreview({
+                month: "2026-10",
+                now: new Date("2026-10-05T07:00:00-03:00"),
+            })
+
+            expect(preview.days.find((day) => day.date === "2026-10-06")?.slots.map((slot) => slot.time)).toEqual([
+                "08:00", "08:30", "09:00", "09:30",
+            ])
+            expect(preview.days.find((day) => day.date === "2026-10-07")?.slots.map((slot) => slot.time)).toEqual([
+                "14:00", "14:30", "15:00", "15:30",
+            ])
+        })
+
+        it("ignora agendamento anterior à data de início ao validar mudança futura", async () => {
+            const current = buildDefaultScheduleConfigView()
+            const repository = createScheduleStubRepository({
+                config: current,
+                appointments: [{
+                    id: "10",
+                    protocol: "A1B2C3D4",
+                    name: "Maria Oliveira",
+                    cpfMasked: "***.456.789-**",
+                    appointmentDatetime: new Date("2026-10-06T08:00:00-03:00"),
+                    requestDatetime: new Date("2026-10-01T10:00:00-03:00"),
+                    status: "CONFIRMED",
+                }],
+            })
+            const realService = createScheduleService(repository)
+
+            await expect(realService.saveScheduledConfig(
+                {
+                    ...current,
+                    ranges: [],
+                },
+                "2026-10-07",
+                2,
+                new Date("2026-10-05T09:00:00-03:00"),
+            )).resolves.toMatchObject({ effectiveFrom: "2026-10-07" })
         })
 
         it("rejeita mês inválido em getMonthlyPreview", async () => {

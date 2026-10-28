@@ -7,6 +7,8 @@ import { IScheduleRepository } from "../repositories/schedule.repository.interfa
 import {
     previewScheduleBodySchema,
     previewScheduleQuerySchema,
+    scheduleDateQuerySchema,
+    scheduleEffectiveDateSchema,
     scheduleConfigBodySchema,
 } from "../schemas/schedule.schema"
 import { createScheduleService, IScheduleService } from "../services/schedule.service"
@@ -39,11 +41,29 @@ export class ScheduleRoutes {
         this.router.use(requirePermission("schedule.configure"))
 
         this.router.get("/", controller.getConfig.bind(controller))
+        this.router.get(
+            "/effective",
+            validateRequest({ query: scheduleDateQuerySchema }, { withIssues: true }),
+            controller.getConfigForDate.bind(controller),
+        )
+        this.router.get("/versions", controller.listScheduledConfigs.bind(controller))
 
         this.router.put(
             "/",
             validateRequest({ body: scheduleConfigBodySchema }, { withIssues: true }),
             controller.saveConfig.bind(controller),
+        )
+
+        this.router.put(
+            "/versions/:effectiveFrom",
+            validateRequest({ params: scheduleEffectiveDateSchema, body: scheduleConfigBodySchema }, { withIssues: true }),
+            controller.saveScheduledConfig.bind(controller),
+        )
+
+        this.router.delete(
+            "/versions/:effectiveFrom",
+            validateRequest({ params: scheduleEffectiveDateSchema }, { withIssues: true }),
+            controller.deleteScheduledConfig.bind(controller),
         )
 
         this.router.get(
