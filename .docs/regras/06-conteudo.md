@@ -6,11 +6,11 @@ Manter as categorias e perguntas que o cidadão navega no WhatsApp, com as respo
 
 ## Quem acessa
 
-**Gerenciar conteúdo do chatbot.**
+**Gerenciar conteúdo do chatbot** (`content.manage` ou Administrador).
 
 ## Estado da tela
 
-**Ainda não construída (issue #63).** O conteúdo atual vem da carga inicial do sistema.
+**API no backend pronta (`GET/POST/PUT/PATCH /api/v1/content/*`, issue #63); tela no frontend na Sprint 3.** O conteúdo inicial vem da carga idempotente do sistema (`db/seeds/content.seed.ts`) e qualquer item editado pelo painel passa a ter `updated_by` preenchido, sendo preservado em execuções seguintes do seed.
 
 ## Como o conteúdo funciona
 
@@ -55,7 +55,7 @@ A área da direita lista as perguntas da categoria selecionada, em ordem. Cada u
 
 ### Busca
 
-Campo que procura no texto da pergunta ou da resposta **em todas as categorias**, mostrando a categoria de cada resultado. Durante a busca, as setas de reordenar somem.
+Campo que procura no texto da pergunta, no texto da resposta e no título curto **em todas as categorias**, sem diferenciar maiúsculas nem acentos, mostrando a categoria de cada resultado. Durante a busca, as setas de reordenar somem.
 
 ### Listas com mais de 10 itens
 
