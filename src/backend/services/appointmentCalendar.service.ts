@@ -1,16 +1,17 @@
 import { AppointmentRepository } from "../repositories/appointment.repository.interface"
 import { IScheduleRepository } from "../repositories/schedule.repository.interface"
 import type { AppointmentCalendar, CalendarDay, CalendarFilters } from "../types/appointment.types"
-import type { BlockedDate, ScheduleRange, ScheduleSettings } from "../types/schedule.types"
+import type { ScheduleVersion } from "../types/schedule.types"
 import { addDaysToDateString, getLocalParts, parseLocalDate, toLocalDateString } from "../utils/date.utils"
 import { WEEK_START_DAY, weekRange } from "../utils/week.utils"
 import { freeSlotStartsOfDay, fromMinutes, IScheduleService } from "./schedule.service"
+import { effectiveVersionOf, scheduleBlockedDatesOf, scheduleRangesOf } from "./scheduleRules"
 
 export type AppointmentCalendarAppointments = Pick<AppointmentRepository, "findWeek">
 
 export interface AppointmentCalendarDependencies {
     schedule: Pick<IScheduleService, "getAvailableSlots">
-    scheduleRepository: Pick<IScheduleRepository, "getSettings" | "getRanges" | "getBlockedDates">
+    scheduleRepository: Pick<IScheduleRepository, "getScheduleVersions">
     appointments: AppointmentCalendarAppointments
     clock?: () => Date
     weekStartDay?: number
@@ -30,12 +31,13 @@ function hourMinute(time: string): string {
 
 function buildDay(
     date: string,
-    settings: ScheduleSettings,
-    ranges: ScheduleRange[],
-    blockedDates: BlockedDate[],
+    version: ScheduleVersion,
     offered: Map<string, number>,
 ): CalendarDay | null {
-    const grid = freeSlotStartsOfDay(date, ranges, [], settings.slot_minutes)
+    const config = version.config
+    const ranges = scheduleRangesOf(config)
+    const blockedDates = scheduleBlockedDatesOf(config)
+    const grid = freeSlotStartsOfDay(date, ranges, [], config.slotMinutes)
     if (grid.length === 0) {
         return null
     }
@@ -76,16 +78,17 @@ export function createAppointmentCalendarService({
             const to = parseLocalDate(addDaysToDateString(range.weekEnd, 1), "00:00")
             const records = await appointments.findWeek(from, to, { status, responsible, currentUserId }, now)
 
-            const settings = await scheduleRepository.getSettings()
             let days: CalendarDay[] = []
-            if (settings) {
-                const ranges = await scheduleRepository.getRanges()
-                const blockedDates = await scheduleRepository.getBlockedDates(range.weekStart, range.weekEnd)
+            const versions = await scheduleRepository.getScheduleVersions(range.weekStart, range.weekEnd)
+            if (versions.length > 0) {
                 const offered = new Map(
                     (await schedule.getAvailableSlots(now)).map((slot) => [`${slot.dateStr} ${slot.timeStr}`, slot.remainingSeats]),
                 )
                 days = range.dates
-                    .map((day) => buildDay(day, settings, ranges, blockedDates, offered))
+                    .map((day) => {
+                        const version = effectiveVersionOf(versions, day)
+                        return version ? buildDay(day, version, offered) : null
+                    })
                     .filter((day): day is CalendarDay => day !== null)
             }
 

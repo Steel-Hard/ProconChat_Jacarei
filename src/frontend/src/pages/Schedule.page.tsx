@@ -5,6 +5,7 @@ import ScheduleConflictList from "@/components/ScheduleConflictList"
 import ScheduleDurationSeats from "@/components/ScheduleDurationSeats"
 import SchedulePreview from "@/components/SchedulePreview"
 import ScheduleUnitFields from "@/components/ScheduleUnitFields"
+import ScheduleVersions from "@/components/ScheduleVersions"
 import ScheduleWeekGrid from "@/components/ScheduleWeekGrid"
 import ScheduleWindowFields from "@/components/ScheduleWindowFields"
 import UnsavedChangesBar from "@/components/UnsavedChangesBar"
@@ -50,6 +51,7 @@ function SchedulePage() {
                         {page.actionError}
                     </p>
                 ) : null}
+                <ScheduleVersions view={page.versionsView} actions={page.versionActions} />
                 {draft && page.bookedDaysFailed ? (
                     <p className={css.warning}>{t("bookedDaysFailed")}</p>
                 ) : null}

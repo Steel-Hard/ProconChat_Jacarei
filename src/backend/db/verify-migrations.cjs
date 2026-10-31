@@ -14,7 +14,7 @@ const encrypted = 'v1:aXY=:dGFn:Y2lwaGVy';
 const expectedTables = [
     'appointmentevents', 'appointmentnotes', 'appointments', 'attendancedocuments', 'blockeddates',
     'categories', 'conversationevents', 'permissions', 'pgmigrations', 'questions', 'requireddocuments',
-    'scheduleranges', 'schedulesettings', 'sessions', 'userpermissions', 'users', 'whatsappsettings',
+    'schedulechanges', 'scheduleranges', 'schedulesettings', 'sessions', 'userpermissions', 'users', 'whatsappsettings',
 ];
 const expectedEnums = {
     appointment_status: ['PENDING', 'CONFIRMED', 'ATTENDED', 'NO_SHOW', 'CANCELED'],
@@ -48,7 +48,7 @@ const rootEnv = { ROOT_EMAIL: '  Admin@Verify.Test ', ROOT_PASSWORD: 'senha-de-v
 const rootEmail = 'admin@verify.test';
 
 function run(args, url, extraEnv = {}) {
-    const env = { ...process.env, DB_URL: url, ...extraEnv };
+    const env = { ...process.env, DB_URL: url, ...extraEnv, SKIP_DOTENV: 'true' };
     for (const [key, value] of Object.entries(env)) {
         if (value === undefined) delete env[key];
     }
@@ -155,8 +155,8 @@ async function withDatabase(admin, baseUrl, fn) {
 
 function checkMigrationFile() {
     const files = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql'));
-    assert.equal(files.length, 16);
-    for (const file of ['11_sprint2_schema.sql', '12_short_text_checks.sql', '13_conversation_events_data_checks.sql', '14_whatsapp_settings_display_number.sql', '15_whatsapp_settings_access_token_lifetime.sql', '16_user_permissions.sql']) {
+    assert.equal(files.length, 17);
+    for (const file of ['11_sprint2_schema.sql', '12_short_text_checks.sql', '13_conversation_events_data_checks.sql', '14_whatsapp_settings_display_number.sql', '15_whatsapp_settings_access_token_lifetime.sql', '16_user_permissions.sql', '17_schedule_changes.sql']) {
         const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
         assert.doesNotMatch(sql, /add\s+value/i, file);
         assert.match(sql, /^-- Up Migration/, file);
@@ -166,7 +166,7 @@ function checkMigrationFile() {
 
 async function checkFreshSchema(db) {
     assert.deepEqual(await tableNames(db), expectedTables);
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 16);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 17);
     for (const [name, values] of Object.entries(expectedEnums)) {
         assert.deepEqual(await enumValues(db, name), values, name);
     }
@@ -180,6 +180,9 @@ async function checkFreshSchema(db) {
     assert.deepEqual(await column(db, 'whatsappsettings', 'access_token_permanent'), { data_type: 'boolean', is_nullable: 'YES', column_default: null });
     assert.deepEqual(await column(db, 'whatsappsettings', 'access_token_expires_at'), { data_type: 'timestamp with time zone', is_nullable: 'YES', column_default: null });
     assert.equal(await count(db, "SELECT 1 FROM pg_constraint WHERE conname = 'chk_whatsapp_settings_access_token_lifetime'"), 1);
+    assert.equal(await count(db, "SELECT 1 FROM pg_constraint WHERE conname = 'chk_schedule_changes_config_object' AND convalidated"), 1);
+    assert.deepEqual(await column(db, 'schedulechanges', 'effective_from'), { data_type: 'date', is_nullable: 'NO', column_default: null });
+    assert.deepEqual(await column(db, 'schedulechanges', 'config'), { data_type: 'jsonb', is_nullable: 'NO', column_default: null });
     assert.equal(await count(db, "SELECT 1 FROM pg_extension WHERE extname = 'unaccent'"), 1);
     assert.equal((await db.query("SELECT unaccent('Cobrança Vício') AS v")).rows[0].v, 'Cobranca Vicio');
     assert.equal(await count(db, "SELECT 1 FROM pg_constraint WHERE conname IN ('chk_sessions_step_finished', 'chk_sessions_abandoned_step_not_finished') AND convalidated"), 2);
@@ -350,9 +353,22 @@ async function checkConstraints(db) {
     await rejects(db, 'UPDATE users SET permissions_updated_by = $1 WHERE id = $2', [admin, staff], '23514');
     await rejects(db, 'UPDATE users SET permissions_updated_at = now() WHERE id = $1', [staff], '23514');
     await db.query('UPDATE users SET permissions_updated_by = $1, permissions_updated_at = now() WHERE id = $2', [admin, staff]);
+
+    const insertScheduleChange = 'INSERT INTO schedulechanges(effective_from, config, updated_by) VALUES ($1, $2::jsonb, $3)';
+    await rejects(db, insertScheduleChange, ['2030-01-07', '[]', admin], '23514');
+    await rejects(db, insertScheduleChange, ['2030-01-07', '"texto"', admin], '23514');
+    await db.query(insertScheduleChange, ['2030-01-07', JSON.stringify({ slotMinutes: 30 }), admin]);
+    await rejects(db, insertScheduleChange, ['2030-01-07', '{}', admin], '23505');
+    await rejects(db, insertScheduleChange, ['2030-01-08', '{}', 999999], '23503');
+    assert.equal(await count(db, "SELECT 1 FROM schedulechanges WHERE effective_from = '2030-01-07' AND config->>'slotMinutes' = '30'"), 1);
+    await db.query("DELETE FROM schedulechanges WHERE effective_from = '2030-01-07'");
+    assert.equal(await count(db, 'SELECT 1 FROM schedulechanges'), 0);
 }
 
 async function checkRollback(db, url) {
+    mustMigrate(url, 'down', '1');
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 16);
+    assert.equal((await tableNames(db)).includes('schedulechanges'), false);
     mustMigrate(url, 'down', '1');
     assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 15);
     assert.equal((await tableNames(db)).includes('permissions'), false);
@@ -406,9 +422,9 @@ async function checkRollback(db, url) {
     assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 10);
     await db.query("DELETE FROM sessions WHERE phone_hash = 's3'");
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 16);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 17);
     assert.deepEqual(await tableNames(db), expectedTables);
-    mustMigrate(url, 'down', '16');
+    mustMigrate(url, 'down', '17');
     assert.deepEqual(await tableNames(db), ['pgmigrations']);
     assert.equal(await count(db, "SELECT 1 FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace WHERE n.nspname = 'public' AND t.typtype = 'e'"), 0);
     mustMigrate(url, 'up');
@@ -439,7 +455,7 @@ async function checkUpgradeWithSeed(db, url) {
     await db.query("INSERT INTO sessions(phone_hash, status, current_step, current_category_id, started_at, ended_at) VALUES ('abandoned', 'ABANDONED', 'AWAITING_QUESTION', $1, '2030-01-01T10:00:00Z', '2030-01-01T10:40:00Z')", [category]);
 
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 16);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 17);
     assert.deepEqual(await snapshotContent(db), before);
 
     const outOfScope = before.questions.find(q => q.out_of_scope).id;
@@ -482,7 +498,7 @@ async function checkNonEmptyAppointmentsGuard(db, url) {
     assert.deepEqual(await enumValues(db, 'session_step'), ['AWAITING_CATEGORY', 'AWAITING_QUESTION', 'FINISHED']);
     await db.query('DELETE FROM appointments');
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 16);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 17);
 }
 
 async function checkShortTextNormalization(db, url) {
@@ -491,12 +507,12 @@ async function checkShortTextNormalization(db, url) {
     const category = (await db.query("INSERT INTO categories(title, short_title) VALUES ('Abc', 'Abc ') RETURNING id")).rows[0].id;
     const question = (await db.query("INSERT INTO questions(category_id, question, answer, short_title, short_description) VALUES ($1, 'Q', 'A', ' Pergunta ', ' Descrição ') RETURNING id", [category])).rows[0].id;
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 16);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 17);
     assert.equal((await db.query('SELECT short_title FROM categories WHERE id = $1', [category])).rows[0].short_title, 'Abc');
     assert.deepEqual((await db.query('SELECT short_title, short_description FROM questions WHERE id = $1', [question])).rows[0], { short_title: 'Pergunta', short_description: 'Descrição' });
-    mustMigrate(url, 'down', '5');
+    mustMigrate(url, 'down', '6');
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 16);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 17);
 }
 
 async function checkConversationEventData(db, sessionId, appointmentId) {
@@ -536,7 +552,7 @@ async function checkConversationEventKeyUpgrade(db, url) {
         session, { llmStatus: 'NOT_CALLED' }, { byRepresentative: true }, { step: 'AWAITING_QUESTION' },
     ]);
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 16);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 17);
     const dataOf = async () => (await db.query('SELECT type, data FROM conversationevents WHERE session_id = $1 ORDER BY id', [session])).rows;
     const converted = [
         { type: 'ANSWER_SENT', data: { llm: 'NOT_CALLED' } },
@@ -544,11 +560,11 @@ async function checkConversationEventKeyUpgrade(db, url) {
         { type: 'ABANDONED', data: { step: 'AWAITING_QUESTION' } },
     ];
     assert.deepEqual(await dataOf(), converted);
-    mustMigrate(url, 'down', '4');
+    mustMigrate(url, 'down', '5');
     assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 12);
     assert.deepEqual(await dataOf(), converted);
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 16);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 17);
 }
 
 async function checkConversationEventDataGuard(db, url) {
@@ -562,7 +578,7 @@ async function checkConversationEventDataGuard(db, url) {
     assert.equal(await count(db, "SELECT 1 FROM pg_constraint WHERE conname LIKE 'chk_conversation_events_data_%'"), 1);
     await db.query('DELETE FROM conversationevents WHERE session_id = $1', [session]);
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 16);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 17);
 }
 
 async function checkSessionStepUpgrade(db, url) {
@@ -571,7 +587,7 @@ async function checkSessionStepUpgrade(db, url) {
     await db.query("INSERT INTO sessions(phone_hash, status, outcome, current_step, abandoned_at_step) VALUES ('legacy-abandoned', 'ABANDONED', 'ABANDONED', 'AWAITING_SLOT', 'AWAITING_SLOT')");
     await db.query("INSERT INTO sessions(phone_hash, current_step) VALUES ('legacy-in-progress', 'AWAITING_QUESTION')");
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 16);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 17);
     assert.deepEqual((await db.query('SELECT phone_hash, status, current_step, abandoned_at_step FROM sessions ORDER BY id')).rows, [
         { phone_hash: 'legacy-finished', status: 'FINISHED', current_step: 'FINISHED', abandoned_at_step: null },
         { phone_hash: 'legacy-abandoned', status: 'ABANDONED', current_step: 'FINISHED', abandoned_at_step: 'AWAITING_SLOT' },
@@ -595,7 +611,7 @@ async function checkSessionStepGuard(db, url) {
     await assertAborts();
     await db.query("DELETE FROM sessions WHERE phone_hash = 'abandoned-finished'");
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 16);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 17);
 }
 
 async function checkWhatsAppDisplayNumberUpgrade(db, url) {
@@ -603,19 +619,19 @@ async function checkWhatsAppDisplayNumberUpgrade(db, url) {
     assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
     await db.query('INSERT INTO whatsappsettings(verify_token, phone_number_id, access_token_encrypted, app_secret_encrypted, credentials_valid) VALUES ($1, $2, $3, $3, true)', ['verify', '100000000000001', encrypted]);
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 16);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 17);
     assert.deepEqual((await db.query('SELECT verify_token, phone_number_id, credentials_valid, display_phone_number, verified_name FROM whatsappsettings')).rows, [
         { verify_token: 'verify', phone_number_id: '100000000000001', credentials_valid: true, display_phone_number: null, verified_name: null },
     ]);
     await db.query('UPDATE whatsappsettings SET display_phone_number = $1, verified_name = $2', ['+55 12 3955-9000', 'PROCON Jacareí']);
-    mustMigrate(url, 'down', '3');
+    mustMigrate(url, 'down', '4');
     assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 13);
     assert.equal(await column(db, 'whatsappsettings', 'display_phone_number'), undefined);
     assert.deepEqual((await db.query('SELECT verify_token, phone_number_id, credentials_valid FROM whatsappsettings')).rows, [
         { verify_token: 'verify', phone_number_id: '100000000000001', credentials_valid: true },
     ]);
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 16);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 17);
 }
 
 async function checkWhatsAppAccessTokenLifetimeUpgrade(db, url) {
@@ -623,19 +639,19 @@ async function checkWhatsAppAccessTokenLifetimeUpgrade(db, url) {
     assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 14);
     await db.query('INSERT INTO whatsappsettings(verify_token, phone_number_id, access_token_encrypted, app_secret_encrypted, credentials_valid, display_phone_number, verified_name) VALUES ($1, $2, $3, $3, true, $4, $5)', ['verify', '100000000000001', encrypted, '+55 12 3955-9000', 'PROCON Jacareí']);
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 16);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 17);
     assert.deepEqual((await db.query('SELECT verify_token, phone_number_id, credentials_valid, display_phone_number, verified_name, access_token_permanent, access_token_expires_at FROM whatsappsettings')).rows, [
         { verify_token: 'verify', phone_number_id: '100000000000001', credentials_valid: true, display_phone_number: '+55 12 3955-9000', verified_name: 'PROCON Jacareí', access_token_permanent: null, access_token_expires_at: null },
     ]);
     await db.query('UPDATE whatsappsettings SET access_token_permanent = false, access_token_expires_at = $1', ['2030-01-01T12:00:00Z']);
-    mustMigrate(url, 'down', '2');
+    mustMigrate(url, 'down', '3');
     assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 14);
     assert.equal(await column(db, 'whatsappsettings', 'access_token_permanent'), undefined);
     assert.deepEqual((await db.query('SELECT verify_token, phone_number_id, credentials_valid, display_phone_number, verified_name FROM whatsappsettings')).rows, [
         { verify_token: 'verify', phone_number_id: '100000000000001', credentials_valid: true, display_phone_number: '+55 12 3955-9000', verified_name: 'PROCON Jacareí' },
     ]);
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 16);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 17);
     assert.deepEqual((await db.query('SELECT access_token_permanent, access_token_expires_at FROM whatsappsettings')).rows, [{ access_token_permanent: null, access_token_expires_at: null }]);
 }
 
@@ -646,7 +662,7 @@ async function checkUserPermissionsUpgrade(db, url) {
     await db.query("UPDATE users SET active = false WHERE email = 'Equipe@Upgrade.Test'");
     const usersBefore = (await db.query('SELECT id, name, email, password_hash, active, is_admin, session_version FROM users ORDER BY id')).rows;
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 16);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 17);
     assert.deepEqual((await db.query('SELECT id, name, email, password_hash, active, is_admin, session_version FROM users ORDER BY id')).rows, usersBefore);
     assert.equal(await count(db, 'SELECT 1 FROM users WHERE permissions_updated_by IS NOT NULL OR permissions_updated_at IS NOT NULL'), 0);
     assert.equal(await count(db, 'SELECT 1 FROM userpermissions'), 0);
@@ -655,11 +671,11 @@ async function checkUserPermissionsUpgrade(db, url) {
     await db.query("INSERT INTO userpermissions(user_id, permission_key, granted_by) VALUES ($1, 'sessions.view', $2)", [staffRow.id, adminRow.id]);
     await db.query('UPDATE users SET permissions_updated_by = $1, permissions_updated_at = now() WHERE id = $2', [adminRow.id, staffRow.id]);
     await rejects(db, "INSERT INTO users(name, email, password_hash) VALUES ('Repetida', 'equipe@upgrade.test', 'z')", [], '23505');
-    mustMigrate(url, 'down', '1');
+    mustMigrate(url, 'down', '2');
     assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 15);
     assert.deepEqual((await db.query('SELECT id, name, email, password_hash, active, is_admin, session_version FROM users ORDER BY id')).rows, usersBefore);
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 16);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 17);
     assert.equal(await count(db, 'SELECT 1 FROM permissions'), 8);
     assert.equal(await count(db, 'SELECT 1 FROM userpermissions'), 0);
 }
@@ -675,7 +691,7 @@ async function checkDuplicateEmailGuard(db, url) {
     assert.equal(await column(db, 'users', 'permissions_updated_by'), undefined);
     await db.query("DELETE FROM users WHERE email = 'Pessoa@Guard.Test'");
     mustMigrate(url, 'up');
-    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 16);
+    assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 17);
 }
 
 async function rowsAsJson(db, table) {
@@ -989,7 +1005,7 @@ async function main() {
             mustMigrate(url, 'up');
             await checkFreshSchema(db);
             mustMigrate(url, 'up');
-            assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 16);
+            assert.equal(await count(db, 'SELECT 1 FROM pgmigrations'), 17);
             await checkConstraints(db);
             await checkRollback(db, url);
         });

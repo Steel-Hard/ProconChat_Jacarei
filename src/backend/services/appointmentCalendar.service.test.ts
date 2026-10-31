@@ -3,7 +3,9 @@ import type { IScheduleRepository } from "../repositories/schedule.repository.in
 import type { WeekAppointmentRecord } from "../types/appointment.types"
 import { parseLocalDate } from "../utils/date.utils"
 import { AppointmentCalendarAppointments, createAppointmentCalendarService } from "./appointmentCalendar.service"
+import { scheduleVersionOf } from "./mock/scheduleVersion.builders"
 import { buildScheduleSettings, fullDayBlock, partialBlock, weekdayRanges } from "./mock/schedule.fixtures"
+import { buildDefaultScheduleConfigView } from "../repositories/mock/scheduleStub.repository"
 import { createScheduleService } from "./schedule.service"
 
 const NOW = new Date("2026-10-20T13:00:00.000Z")
@@ -47,12 +49,22 @@ describe("appointmentCalendar.service", () => {
                 partialBlock("2026-10-22", "08:00:00", "09:00:00"),
                 fullDayBlock("2026-10-23"),
             ]),
+            getConfigForDate: vi.fn(),
+            getScheduleVersions: vi.fn(async (fromDate: string, toDate: string) => {
+                const settings = await scheduleRepository.getSettings()
+                return settings
+                    ? [scheduleVersionOf(settings, await scheduleRepository.getRanges(), await scheduleRepository.getBlockedDates(fromDate, toDate))]
+                    : []
+            }),
+            listScheduledConfigs: vi.fn().mockResolvedValue([]),
             countActiveAppointmentsPerSlot: vi
                 .fn()
                 .mockResolvedValue(new Map([[parseLocalDate("2026-10-21", "08:00").toISOString(), 2]])),
             bookAppointment: vi.fn(),
             getConfig: vi.fn(),
             saveConfig: vi.fn(),
+            saveScheduledConfig: vi.fn(),
+            deleteScheduledConfig: vi.fn(),
             listFutureActiveAppointments: vi.fn(),
         }
         appointments = { findWeek: vi.fn().mockResolvedValue([]) }
@@ -155,6 +167,32 @@ describe("appointmentCalendar.service", () => {
             periods: [],
         })
         expect(scheduleRepository.getBlockedDates).toHaveBeenCalledWith("2026-10-18", "2026-10-24")
+    })
+
+    it("mostra no calendário a grade vigente em cada dia da semana", async () => {
+        const baseline = buildDefaultScheduleConfigView({
+            windowDays: 30,
+            minNoticeDays: 0,
+            ranges: [{ weekday: 3, slotIndex: 1, startTime: "08:00", endTime: "10:00" }],
+        })
+        const scheduled = buildDefaultScheduleConfigView({
+            windowDays: 30,
+            minNoticeDays: 0,
+            ranges: [{ weekday: 4, slotIndex: 1, startTime: "14:00", endTime: "16:00" }],
+        })
+        vi.mocked(scheduleRepository.getScheduleVersions).mockResolvedValueOnce([
+            { effectiveFrom: null, config: baseline },
+            { effectiveFrom: "2026-10-22", config: scheduled },
+        ])
+
+        const result = await build().calendar.getCalendar({ date: "2026-10-21" })
+
+        expect(result.days.find((day) => day.date === "2026-10-21")?.slots.map((slot) => slot.time)).toEqual([
+            "08:00", "08:30", "09:00", "09:30",
+        ])
+        expect(result.days.find((day) => day.date === "2026-10-22")?.slots.map((slot) => slot.time)).toEqual([
+            "14:00", "14:30", "15:00", "15:30",
+        ])
     })
 
     it("pede ao repositório os agendamentos da semana com os filtros e devolve data e hora locais", async () => {

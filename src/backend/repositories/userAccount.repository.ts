@@ -274,7 +274,7 @@ export function createUserAccountRepository(pool: Pool = getPool()): UserAccount
                     .filter((account) => batchIds.includes(account.id))
                     .map((account) => ({ ...account, futureAppointments: future.get(account.id) ?? [] }))
                 const targets = locked.filter((account) => targetIds.includes(account.id))
-                const slotMinutes = await readSlotMinutes(client)
+                const slotMinutes = await readSlotMinutes(client, now)
                 const assigning = new Set(
                     changes.filter((change) => change.reassignment?.mode === "assign").map((change) => change.userId),
                 )

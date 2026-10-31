@@ -10,15 +10,62 @@ import type {
     MonthlyGridPreview,
     NormalizedScheduleConfig,
     ScheduleConfigInput,
+    ScheduleConfigView,
     ScheduleConflictCode,
     ScheduleConflictItem,
     ScheduleRange,
     ScheduleRangeItem,
     ScheduleSettings,
+    ScheduleVersion,
     WeekdayPreview,
 } from "../types/schedule.types"
 import { addDaysToDateString, getLocalParts, parseLocalDate } from "../utils/date.utils"
 import { validateSchema } from "../utils/validateSchema"
+
+export function effectiveVersionOf(versions: ScheduleVersion[], date: string): ScheduleVersion | null {
+    let effective: ScheduleVersion | null = null
+    for (const version of versions) {
+        if (version.effectiveFrom === null || version.effectiveFrom <= date) {
+            effective = version
+        }
+    }
+    return effective
+}
+
+export function scheduleSettingsOf(config: ScheduleConfigView): ScheduleSettings {
+    return {
+        id: 1,
+        slot_minutes: config.slotMinutes,
+        seats_per_slot: config.seatsPerSlot,
+        window_days: config.windowDays,
+        min_notice_days: config.minNoticeDays,
+        wait_alert_days: config.waitAlertDays,
+        unit_address: config.unitAddress,
+        unit_address_complement: config.unitAddressComplement,
+        reminder_enabled: config.reminderEnabled,
+        reminder_hours: config.reminderHours,
+    }
+}
+
+export function scheduleRangesOf(config: Pick<ScheduleConfigView, "ranges">): ScheduleRange[] {
+    return config.ranges.map((range, index) => ({
+        id: index + 1,
+        weekday: range.weekday,
+        slot_index: range.slotIndex,
+        start_time: range.startTime,
+        end_time: range.endTime,
+    }))
+}
+
+export function scheduleBlockedDatesOf(config: Pick<ScheduleConfigView, "blockedDates">): BlockedDate[] {
+    return config.blockedDates.map((block, index) => ({
+        id: index + 1,
+        date: block.date,
+        start_time: block.startTime,
+        end_time: block.endTime,
+        description: block.description,
+    }))
+}
 
 export function toMinutes(timeStr: string): number {
     const [h, m] = timeStr.split(":").map(Number)
@@ -113,14 +160,20 @@ export interface WindowBounds {
     hasValidStart: boolean
 }
 
-export function computeWindowBounds(
+export interface DayGrid {
+    ranges: Pick<ScheduleRange, "weekday" | "slot_index" | "start_time" | "end_time">[]
+    blockedDates: Pick<BlockedDate, "date" | "start_time" | "end_time">[]
+    slotMinutes: number
+}
+
+export function computeVersionedWindowBounds(
     todayStr: string,
-    settings: Pick<ScheduleSettings, "window_days" | "min_notice_days" | "slot_minutes">,
-    ranges: Pick<ScheduleRange, "weekday" | "slot_index" | "start_time" | "end_time">[],
-    blockedDates: Pick<BlockedDate, "date" | "start_time" | "end_time">[],
+    settings: Pick<ScheduleSettings, "window_days" | "min_notice_days">,
+    gridOf: (dateStr: string) => DayGrid | null,
+    hasRanges: boolean,
 ): WindowBounds {
     const endDateStr = addDaysToDateString(todayStr, settings.window_days)
-    if (ranges.length === 0) {
+    if (!hasRanges) {
         return { startDateStr: todayStr, endDateStr, hasValidStart: false }
     }
 
@@ -133,7 +186,8 @@ export function computeWindowBounds(
         while (n < settings.min_notice_days && iterations < maxIterations) {
             iterations++
             d = addDaysToDateString(d, 1)
-            if (isBusinessDay(d, ranges, blockedDates, settings.slot_minutes)) {
+            const grid = gridOf(d)
+            if (grid && isBusinessDay(d, grid.ranges, grid.blockedDates, grid.slotMinutes)) {
                 n++
             }
         }
@@ -148,6 +202,20 @@ export function computeWindowBounds(
         endDateStr,
         hasValidStart: startDateStr <= endDateStr,
     }
+}
+
+export function computeWindowBounds(
+    todayStr: string,
+    settings: Pick<ScheduleSettings, "window_days" | "min_notice_days" | "slot_minutes">,
+    ranges: Pick<ScheduleRange, "weekday" | "slot_index" | "start_time" | "end_time">[],
+    blockedDates: Pick<BlockedDate, "date" | "start_time" | "end_time">[],
+): WindowBounds {
+    return computeVersionedWindowBounds(
+        todayStr,
+        settings,
+        () => ({ ranges, blockedDates, slotMinutes: settings.slot_minutes }),
+        ranges.length > 0,
+    )
 }
 
 export function normalizeAndValidateScheduleConfig(
@@ -276,6 +344,63 @@ function detectResponsibleOverlaps(
     return items
 }
 
+export interface ScheduleFieldIssue {
+    path: string
+    message: string
+}
+
+export interface BlockVigency {
+    today: string
+    start: string
+    next: string | null
+}
+
+function dayMonthOf(dateStr: string): string {
+    const [, month, day] = dateStr.split("-")
+    return `${day}/${month}`
+}
+
+function blockKeyOf(block: Pick<BlockedDateItem, "date"> & { startTime?: string | null; endTime?: string | null }): string {
+    return `${block.date} ${block.startTime?.slice(0, 5) ?? ""} ${block.endTime?.slice(0, 5) ?? ""}`
+}
+
+export function blockVigencyIssues(
+    blocks: (Pick<BlockedDateItem, "date"> & { startTime?: string | null; endTime?: string | null })[],
+    reference: BlockedDateItem[],
+    { today, start, next }: BlockVigency,
+): ScheduleFieldIssue[] {
+    const kept = new Set(reference.map(blockKeyOf))
+    const issues: ScheduleFieldIssue[] = []
+    blocks.forEach((block, index) => {
+        if (block.date < today || kept.has(blockKeyOf(block))) {
+            return
+        }
+        if (block.date < start) {
+            issues.push({
+                path: `blockedDates.${index}.date`,
+                message: `Esta data vem antes do início desta mudança (${dayMonthOf(start)}). Bloqueie na configuração que vale nessa data.`,
+            })
+        } else if (next !== null && block.date >= next) {
+            issues.push({
+                path: `blockedDates.${index}.date`,
+                message: `Esta data segue a mudança de ${dayMonthOf(next)}. Bloqueie lá.`,
+            })
+        }
+    })
+    return issues
+}
+
+export function appointmentsInScheduleInterval(
+    appointments: FutureActiveAppointment[],
+    fromDate: string,
+    nextDate: string | null,
+): FutureActiveAppointment[] {
+    return appointments.filter((appointment) => {
+        const { dateStr } = getLocalParts(appointment.appointmentDatetime)
+        return dateStr >= fromDate && (nextDate === null || dateStr < nextDate)
+    })
+}
+
 export function detectScheduleConflicts(
     config: NormalizedScheduleConfig,
     futureAppointments: FutureActiveAppointment[],
@@ -402,6 +527,7 @@ export interface CalculateMonthlyPreviewInput {
     ranges: Pick<ScheduleRange, "weekday" | "slot_index" | "start_time" | "end_time">[]
     blockedDates: Pick<BlockedDate, "date" | "start_time" | "end_time" | "description">[]
     activeCounts: Map<string, number>
+    windowBounds?: WindowBounds
 }
 
 export function calculateMonthlyPreview({
@@ -411,11 +537,12 @@ export function calculateMonthlyPreview({
     ranges,
     blockedDates,
     activeCounts,
+    windowBounds,
 }: CalculateMonthlyPreviewInput): MonthlyGridPreview {
     const { dateStr: todayStr, timeStr: nowTimeStr } = getLocalParts(now)
     const nowMinutes = toMinutes(nowTimeStr)
 
-    const { startDateStr, endDateStr, hasValidStart } = computeWindowBounds(
+    const { startDateStr, endDateStr, hasValidStart } = windowBounds ?? computeWindowBounds(
         todayStr,
         settings,
         ranges,

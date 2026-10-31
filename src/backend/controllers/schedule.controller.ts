@@ -23,6 +23,25 @@ class ScheduleController {
         }
     }
 
+    public async getConfigForDate(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const date = typeof req.query.date === "string" ? req.query.date : ""
+            const config = await this.service.getConfigForDate(date)
+            res.status(200).json({ data: config })
+        } catch (error) {
+            next(error)
+        }
+    }
+
+    public async listScheduledConfigs(_req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const versions = await this.service.listScheduledConfigs()
+            res.status(200).json({ data: versions })
+        } catch (error) {
+            next(error)
+        }
+    }
+
     public async saveConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const actorUserId = this.userId(req)
@@ -31,6 +50,35 @@ class ScheduleController {
                 actorUserId,
             )
             res.status(200).json({ data: updated })
+        } catch (error) {
+            next(error)
+        }
+    }
+
+    public async saveScheduledConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const actorUserId = this.userId(req)
+            const effectiveFrom = typeof req.params.effectiveFrom === "string"
+                ? req.params.effectiveFrom
+                : ""
+            const updated = await this.service.saveScheduledConfig(
+                req.body as ScheduleConfigInput,
+                effectiveFrom,
+                actorUserId,
+            )
+            res.status(200).json({ data: updated })
+        } catch (error) {
+            next(error)
+        }
+    }
+
+    public async deleteScheduledConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const effectiveFrom = typeof req.params.effectiveFrom === "string"
+                ? req.params.effectiveFrom
+                : ""
+            await this.service.deleteScheduledConfig(effectiveFrom)
+            res.status(204).end()
         } catch (error) {
             next(error)
         }
@@ -48,13 +96,15 @@ class ScheduleController {
 
     public async postPreview(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { month, config } = req.body as {
+            const { month, config, effectiveFrom } = req.body as {
                 month?: string
                 config?: ScheduleConfigInput
+                effectiveFrom?: string
             }
             const preview = await this.service.getMonthlyPreview({
                 month,
                 draftConfig: config,
+                draftEffectiveFrom: effectiveFrom,
             })
             res.status(200).json({ data: preview })
         } catch (error) {
