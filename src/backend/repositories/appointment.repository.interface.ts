@@ -4,6 +4,10 @@ import {
     AppointmentListFilters,
     AppointmentListItem,
     CalendarFilters,
+    CancellationNoticeTarget,
+    CancellationReason,
+    CitizenNotificationKind,
+    CitizenNotificationOutcome,
     CorrectionResult,
     StaffMember,
     WeekAppointmentRecord,
@@ -61,6 +65,24 @@ export interface AppointmentRepository {
 
     markNoShow(
         id: string,
+        actorUserId: number,
+        now?: Date,
+    ): Promise<void>
+
+    cancel(
+        id: string,
+        actorUserId: number,
+        reason: CancellationReason,
+        note: string | undefined,
+        now?: Date,
+    ): Promise<void>
+
+    findCancellationNoticeTarget(id: string): Promise<CancellationNoticeTarget | null>
+
+    recordCitizenNotification(
+        id: string,
+        outcome: CitizenNotificationOutcome,
+        kind: CitizenNotificationKind,
         actorUserId: number,
         now?: Date,
     ): Promise<void>

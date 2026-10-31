@@ -6,6 +6,10 @@ import type {
     AppointmentDetailRecord,
     AppointmentListFilters,
     AppointmentListItem,
+    CancellationNoticeTarget,
+    CancellationReason,
+    CitizenNotificationKind,
+    CitizenNotificationOutcome,
     CorrectionResult,
     CalendarFilters,
     CorrectionWarning,
@@ -41,6 +45,22 @@ export interface AppointmentNoteCall {
     now: Date | undefined
 }
 
+export interface AppointmentCancelCall {
+    id: string
+    actorUserId: number
+    reason: CancellationReason
+    note: string | undefined
+    now: Date | undefined
+}
+
+export interface CitizenNotificationCall {
+    id: string
+    outcome: CitizenNotificationOutcome
+    kind: CitizenNotificationKind
+    actorUserId: number
+    now: Date | undefined
+}
+
 export type AppointmentCorrectionWarning = (call: AppointmentActionCall) => CorrectionWarning | null
 
 export type AppointmentFailAction = (call: AppointmentActionCall) => Error | null
@@ -60,12 +80,16 @@ export interface AppointmentStubScenario {
     afterAction?: AppointmentAfterAction
     failAction?: AppointmentFailAction
     correctionWarning?: AppointmentCorrectionWarning
+    noticeTargets?: Record<string, CancellationNoticeTarget>
 }
 
 export class AppointmentRepositoryStub implements AppointmentRepository {
     public readonly findListCalls: { filters: AppointmentListFilters; now: Date | undefined }[] = []
     public readonly actionCalls: AppointmentActionCall[] = []
     public readonly noteCalls: AppointmentNoteCall[] = []
+    public readonly cancelCalls: AppointmentCancelCall[] = []
+    public readonly notificationCalls: CitizenNotificationCall[] = []
+    public readonly callOrder: string[] = []
     public readonly findWeekCalls: { from: Date; to: Date; filters: CalendarFilters; now: Date | undefined }[] = []
     private details: AppointmentDetailRecord[]
     private readonly list: AppointmentStubList
@@ -76,6 +100,7 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
     private readonly afterAction: AppointmentAfterAction | undefined
     private readonly failAction: AppointmentFailAction | undefined
     private readonly correctionWarning: AppointmentCorrectionWarning | undefined
+    private readonly noticeTargets: Record<string, CancellationNoticeTarget>
 
     constructor(scenario: AppointmentStubScenario = {}) {
         this.details = (scenario.details ?? []).map((detail) => structuredClone(detail))
@@ -87,6 +112,7 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
         this.afterAction = scenario.afterAction
         this.failAction = scenario.failAction
         this.correctionWarning = scenario.correctionWarning
+        this.noticeTargets = scenario.noticeTargets ?? {}
     }
 
     async findList(filters: AppointmentListFilters, now?: Date): Promise<AppointmentStubList> {
@@ -151,6 +177,35 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
             text,
             created_at: (now ?? new Date()).toISOString(),
         })
+    }
+
+    async cancel(
+        id: string,
+        actorUserId: number,
+        reason: CancellationReason,
+        note: string | undefined,
+        now?: Date,
+    ): Promise<void> {
+        this.callOrder.push("cancel")
+        this.cancelCalls.push({ id, actorUserId, reason, note, now })
+        this.applyAction({ action: "cancel", id, actorUserId, now })
+    }
+
+    async findCancellationNoticeTarget(id: string): Promise<CancellationNoticeTarget | null> {
+        this.callOrder.push("findCancellationNoticeTarget")
+        const target = this.noticeTargets[id]
+        return target ? structuredClone(target) : null
+    }
+
+    async recordCitizenNotification(
+        id: string,
+        outcome: CitizenNotificationOutcome,
+        kind: CitizenNotificationKind,
+        actorUserId: number,
+        now?: Date,
+    ): Promise<void> {
+        this.callOrder.push("recordCitizenNotification")
+        this.notificationCalls.push({ id, outcome, kind, actorUserId, now })
     }
 
     async getCurrentDocumentsConfig(): Promise<{ group: string[]; question: string[] }> {

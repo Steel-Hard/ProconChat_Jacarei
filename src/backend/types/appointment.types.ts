@@ -62,6 +62,20 @@ export const CANCELLATION_REASONS = ["UNIT_CLOSED", "CITIZEN_REQUEST", "DUPLICAT
 
 export type CancellationReason = (typeof CANCELLATION_REASONS)[number]
 
+export type CitizenNotificationKind = "CANCELLATION"
+
+export type CitizenNotificationOutcome = "NOTIFIED" | "FAILED"
+
+export interface CancellationNoticeTarget {
+    status: AppointmentStatus
+    appointmentDatetime: Date
+    name: string
+    protocol: string
+    phoneEncrypted: string | null
+    lastStaffCancelReason: CancellationReason | null
+    lastCancellationNotice: CitizenNotificationOutcome | null
+}
+
 export type AppointmentActionType = "claim" | "attended" | "no_show" | "assign" | "correct_record" | "cancel"
 
 export type AppointmentAvailableActionKey = AppointmentActionType | "add_note" | "retry_cancellation_notice"
