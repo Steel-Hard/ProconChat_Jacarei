@@ -1,6 +1,7 @@
 import express from "express"
 import request from "supertest"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import ConflictError from "../errors/ConflictError"
 import { createRequireAuth } from "../middleware/auth.middleware"
 import errorHandler from "../middleware/errorHandler.middleware"
 import { MockAuthRepository } from "../repositories/mock/authMock.repository"
@@ -212,35 +213,60 @@ describe("schedule.routes (HTTP)", () => {
         expect(canceled.status).toBe(204)
     })
 
-    it("continua recusando mudança futura que afeta agendamento na vigência", async () => {
-        repository.setAppointments([{
+    it("responde 409 SCHEDULE_CONFLICTS em PUT /versions com os conflitos que o repositório devolve e repassa a mudança", async () => {
+        const conflict = {
             id: "43",
             protocol: "ABCD4321",
             name: "Ana Beatriz",
             cpfMasked: "***.123.456-**",
-            appointmentDatetime: new Date("2027-11-03T08:00:00-03:00"),
-            requestDatetime: new Date("2026-10-01T10:00:00-03:00"),
+            appointmentDatetime: "2027-11-03T11:00:00.000Z",
+            date: "2027-11-03",
+            time: "08:00",
             status: "CONFIRMED",
-        }])
+            code: "DATE_BLOCKED",
+            reason: "Data bloqueada: Recesso",
+        }
+        repository.setScheduledSaveError(
+            new ConflictError("Esta alteração afeta agendamentos futuros", "SCHEDULE_CONFLICTS", { conflicts: [conflict] }),
+        )
         const base = buildDefaultScheduleConfigView()
+        const recess = { date: "2027-11-03", startTime: null, endTime: null, description: "Recesso" }
+
         const response = await request(app)
             .put("/api/v1/schedule/versions/2027-11-01")
             .set("Cookie", cookieOf(CONFIGURER_ID))
-            .send({
-                ...base,
-                blockedDates: [{
-                    date: "2027-11-03",
-                    startTime: null,
-                    endTime: null,
-                    description: "Recesso",
-                }],
-            })
+            .send({ ...base, blockedDates: [recess] })
+
+        expect(response.status).toBe(409)
+        expect(response.body).toEqual({
+            error: {
+                code: "SCHEDULE_CONFLICTS",
+                message: "Esta alteração afeta agendamentos futuros",
+                details: { conflicts: [conflict] },
+            },
+        })
+        expect(repository.scheduledSaveCalls).toEqual([
+            expect.objectContaining({
+                effectiveFrom: "2027-11-01",
+                actorUserId: CONFIGURER_ID,
+                now: DEFAULT_STUB_NOW,
+                config: expect.objectContaining({ blockedDates: [recess] }),
+            }),
+        ])
+    })
+
+    it("responde 409 SCHEDULE_CONFLICTS em DELETE /versions com os conflitos que o repositório devolve", async () => {
+        repository.setScheduledDeleteError(
+            new ConflictError("O cancelamento afeta agendamentos futuros", "SCHEDULE_CONFLICTS", { conflicts: [] }),
+        )
+
+        const response = await request(app)
+            .delete("/api/v1/schedule/versions/2027-11-01")
+            .set("Cookie", cookieOf(CONFIGURER_ID))
 
         expect(response.status).toBe(409)
         expect(response.body.error.code).toBe("SCHEDULE_CONFLICTS")
-        expect(response.body.error.details.conflicts).toEqual([
-            expect.objectContaining({ id: "43", date: "2027-11-03", code: "DATE_BLOCKED" }),
-        ])
+        expect(repository.scheduledDeleteCalls).toEqual([{ effectiveFrom: "2027-11-01", now: DEFAULT_STUB_NOW }])
     })
 
     it("aceita PUT /api/v1/schedule sem nenhuma faixa quando não há agendamentos futuros", async () => {

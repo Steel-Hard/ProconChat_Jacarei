@@ -380,21 +380,11 @@ describe("ScheduleService", () => {
             ])
         })
 
-        it("ignora agendamento anterior à data de início ao validar mudança futura", async () => {
+        it("repassa ao repositório a mudança futura normalizada com a data de início, o autor e o instante", async () => {
             const current = buildDefaultScheduleConfigView()
-            const repository = createScheduleStubRepository({
-                config: current,
-                appointments: [{
-                    id: "10",
-                    protocol: "A1B2C3D4",
-                    name: "Maria Oliveira",
-                    cpfMasked: "***.456.789-**",
-                    appointmentDatetime: new Date("2026-10-06T08:00:00-03:00"),
-                    requestDatetime: new Date("2026-10-01T10:00:00-03:00"),
-                    status: "CONFIRMED",
-                }],
-            })
+            const repository = createScheduleStubRepository({ config: current })
             const realService = createScheduleService(repository)
+            const now = new Date("2026-10-05T09:00:00-03:00")
 
             await expect(realService.saveScheduledConfig(
                 {
@@ -403,8 +393,17 @@ describe("ScheduleService", () => {
                 },
                 "2026-10-07",
                 2,
-                new Date("2026-10-05T09:00:00-03:00"),
+                now,
             )).resolves.toMatchObject({ effectiveFrom: "2026-10-07" })
+            expect(repository.scheduledSaveCalls).toEqual([
+                expect.objectContaining({
+                    effectiveFrom: "2026-10-07",
+                    actorUserId: 2,
+                    now,
+                    config: expect.objectContaining({ ranges: [], unitAddress: current.unitAddress }),
+                    validateAgainstVersions: expect.any(Function),
+                }),
+            ])
         })
 
         it("rejeita mês inválido em getMonthlyPreview", async () => {

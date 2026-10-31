@@ -1,8 +1,6 @@
 import ConflictError from "../../errors/ConflictError"
-import BadRequestError from "../../errors/BadRequestError"
-import NotFoundError from "../../errors/NotFoundError"
 import ScheduleNotConfiguredError from "../../errors/ScheduleNotConfiguredError"
-import { appointmentsInScheduleInterval, detectScheduleConflicts } from "../../services/scheduleRules"
+import { detectScheduleConflicts } from "../../services/scheduleRules"
 import {
     BlockedDate,
     BookAppointmentInput,
@@ -13,7 +11,6 @@ import {
     ScheduleSettings,
     ScheduleVersion,
 } from "../../types/schedule.types"
-import { addDaysToDateString, getLocalParts } from "../../utils/date.utils"
 import {
     IScheduleRepository,
     SaveScheduleConfigRepoParams,
@@ -30,12 +27,18 @@ export interface ScheduleStubOptions {
     scheduledConfigs?: ScheduleVersion[]
     appointments?: StoredStubAppointment[]
     users?: Map<number, string>
-    now?: Date
 }
 
 export interface ScheduleVersionsCall {
     fromDate: string
     toDate: string
+}
+
+export type ScheduledSaveCall = SaveScheduleConfigRepoParams & { effectiveFrom: string }
+
+export interface ScheduledDeleteCall {
+    effectiveFrom: string
+    now: Date
 }
 
 export const DEFAULT_STUB_NOW = new Date("2026-10-05T09:00:00-03:00")
@@ -69,8 +72,13 @@ export function createScheduleStubRepository(
 ): IScheduleRepository & {
     setConfig(config: ScheduleConfigView | null): void
     setAppointments(appointments: StoredStubAppointment[]): void
+    setScheduledSaveError(error: Error | null): void
+    setScheduledDeleteError(error: Error | null): void
     listFutureCalls: Date[]
     versionCalls: ScheduleVersionsCall[]
+    configForDateCalls: string[]
+    scheduledSaveCalls: ScheduledSaveCall[]
+    scheduledDeleteCalls: ScheduledDeleteCall[]
 } {
     let currentConfig: ScheduleConfigView | null =
         options.config === undefined
@@ -80,7 +88,8 @@ export function createScheduleStubRepository(
         (options.scheduledConfigs ?? []).map((version) => [version.effectiveFrom!, version.config]),
     )
     let appointments: StoredStubAppointment[] = [...(options.appointments ?? [])]
-    const clockNow = options.now ?? DEFAULT_STUB_NOW
+    let scheduledSaveError: Error | null = null
+    let scheduledDeleteError: Error | null = null
     const users =
         options.users ??
         new Map<number, string>([
@@ -189,8 +198,7 @@ export function createScheduleStubRepository(
     }
 
     async function getConfig(): Promise<ScheduleConfigView | null> {
-        const today = getLocalParts(clockNow).dateStr
-        return (await getConfigForDate(today))?.config ?? null
+        return currentConfig ? copyConfig(currentConfig) : null
     }
 
     function copyConfig(config: ScheduleConfigView): ScheduleConfigView {
@@ -202,15 +210,11 @@ export function createScheduleStubRepository(
         }
     }
 
+    const configForDateCalls: string[] = []
+
     async function getConfigForDate(date: string): Promise<ScheduleVersion | null> {
-        const effectiveFrom = [...scheduledConfigs.keys()]
-            .filter((key) => key <= date)
-            .sort()
-            .at(-1)
-        const config = effectiveFrom ? scheduledConfigs.get(effectiveFrom) : currentConfig
-        return config
-            ? { effectiveFrom: effectiveFrom ?? null, config: copyConfig(config) }
-            : null
+        configForDateCalls.push(date)
+        return currentConfig ? { effectiveFrom: null, config: copyConfig(currentConfig) } : null
     }
 
     const versionCalls: ScheduleVersionsCall[] = []
@@ -282,61 +286,33 @@ export function createScheduleStubRepository(
             updatedAt: now.toISOString(),
         }
 
-        return (await getConfigForDate(getLocalParts(now).dateStr))!.config
+        return copyConfig(currentConfig)
     }
 
-    function nextChangeAfter(effectiveFrom: string): string | null {
-        return [...scheduledConfigs.keys()].filter((date) => date > effectiveFrom).sort()[0] ?? null
-    }
+    const scheduledSaveCalls: ScheduledSaveCall[] = []
 
-    function futureOf(): FutureActiveAppointment[] {
-        return appointments.map((appointment) => ({
-            ...appointment,
-            assignedUserId: appointment.assignedUserId ?? null,
-            offGrid: appointment.offGrid ?? false,
-        }))
-    }
-
-    async function saveScheduledConfig({ config, actorUserId, now, effectiveFrom, validateAgainstVersions }: SaveScheduleConfigRepoParams & { effectiveFrom: string }): Promise<ScheduleConfigView> {
-        if (effectiveFrom <= getLocalParts(now).dateStr) {
-            throw new BadRequestError("A data de início da mudança deve ser futura")
+    async function saveScheduledConfig(params: ScheduledSaveCall): Promise<ScheduleConfigView> {
+        scheduledSaveCalls.push(params)
+        if (scheduledSaveError) {
+            throw scheduledSaveError
         }
-        validateAgainstVersions?.(configuredVersions())
-        const nextDate = nextChangeAfter(effectiveFrom)
-        const affected = appointmentsInScheduleInterval(futureOf(), effectiveFrom, nextDate)
-        const previous = await getConfigForDate(addDaysToDateString(effectiveFrom, -1))
-        const conflicts = detectScheduleConflicts(config, affected, previous?.config.slotMinutes ?? null)
-        if (conflicts.length > 0) {
-            throw new ConflictError("Esta alteração afeta agendamentos futuros", "SCHEDULE_CONFLICTS", { conflicts })
-        }
-        const actorName = users.get(actorUserId) ?? "Usuário"
-        const saved = buildDefaultScheduleConfigView({
+        params.validateAgainstVersions?.(configuredVersions())
+        const { config, actorUserId, now, effectiveFrom } = params
+        return buildDefaultScheduleConfigView({
             ...config,
             effectiveFrom,
-            updatedBy: { id: actorUserId, name: actorName },
+            updatedBy: { id: actorUserId, name: users.get(actorUserId) ?? "Usuário" },
             updatedAt: now.toISOString(),
         })
-        scheduledConfigs.set(effectiveFrom, saved)
-        return copyConfig(saved)
     }
 
+    const scheduledDeleteCalls: ScheduledDeleteCall[] = []
+
     async function deleteScheduledConfig(effectiveFrom: string, now: Date): Promise<void> {
-        if (effectiveFrom <= getLocalParts(now).dateStr) {
-            throw new BadRequestError("Não é possível cancelar uma mudança que já começou")
+        scheduledDeleteCalls.push({ effectiveFrom, now })
+        if (scheduledDeleteError) {
+            throw scheduledDeleteError
         }
-        if (!scheduledConfigs.has(effectiveFrom)) {
-            throw new NotFoundError("Mudança de horário não encontrada")
-        }
-        const nextDate = nextChangeAfter(effectiveFrom)
-        const previous = await getConfigForDate(addDaysToDateString(effectiveFrom, -1))
-        const affected = appointmentsInScheduleInterval(futureOf(), effectiveFrom, nextDate)
-        const conflicts = previous
-            ? detectScheduleConflicts(previous.config, affected, previous.config.slotMinutes)
-            : []
-        if (conflicts.length > 0) {
-            throw new ConflictError("O cancelamento afeta agendamentos futuros", "SCHEDULE_CONFLICTS", { conflicts })
-        }
-        scheduledConfigs.delete(effectiveFrom)
     }
 
     return {
@@ -355,6 +331,15 @@ export function createScheduleStubRepository(
         listFutureActiveAppointments,
         listFutureCalls,
         versionCalls,
+        configForDateCalls,
+        scheduledSaveCalls,
+        scheduledDeleteCalls,
+        setScheduledSaveError(error: Error | null) {
+            scheduledSaveError = error
+        },
+        setScheduledDeleteError(error: Error | null) {
+            scheduledDeleteError = error
+        },
         setConfig(config: ScheduleConfigView | null) {
             currentConfig = config
         },

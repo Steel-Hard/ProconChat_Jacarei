@@ -17,7 +17,6 @@ function holiday(date: string): BlockedDateItem {
 
 function serviceWith(baseBlocks: BlockedDateItem[] = [], changeBlocks: BlockedDateItem[] = []) {
     const repository = createScheduleStubRepository({
-        now: NOW,
         config: buildDefaultScheduleConfigView({ blockedDates: baseBlocks }),
         scheduledConfigs: [
             { effectiveFrom: CHANGE_DATE, config: buildDefaultScheduleConfigView({ blockedDates: changeBlocks }) },
