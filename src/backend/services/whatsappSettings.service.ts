@@ -54,7 +54,7 @@ export interface WhatsAppSettingsService {
 interface WhatsAppSettingsServiceDependencies {
     settings: WhatsAppSettingsRepository
     meta: MetaGraphClient
-    gateway: GatewayClient
+    gateway: Pick<GatewayClient, "notifyConfigChanged">
     encrypt: (plaintext: string) => string
     decrypt: (text: string) => string
     env: WhatsAppSettingsEnv
