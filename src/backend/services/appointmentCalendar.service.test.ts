@@ -3,6 +3,7 @@ import type { IScheduleRepository } from "../repositories/schedule.repository.in
 import type { WeekAppointmentRecord } from "../types/appointment.types"
 import { parseLocalDate } from "../utils/date.utils"
 import { AppointmentCalendarAppointments, createAppointmentCalendarService } from "./appointmentCalendar.service"
+import { scheduleVersionOf } from "./mock/scheduleVersion.builders"
 import { buildScheduleSettings, fullDayBlock, partialBlock, weekdayRanges } from "./mock/schedule.fixtures"
 import { buildDefaultScheduleConfigView } from "../repositories/mock/scheduleStub.repository"
 import { createScheduleService } from "./schedule.service"
@@ -51,39 +52,9 @@ describe("appointmentCalendar.service", () => {
             getConfigForDate: vi.fn(),
             getScheduleVersions: vi.fn(async (fromDate: string, toDate: string) => {
                 const settings = await scheduleRepository.getSettings()
-                if (!settings) {
-                    return []
-                }
-                const [ranges, blockedDates] = await Promise.all([
-                    scheduleRepository.getRanges(),
-                    scheduleRepository.getBlockedDates(fromDate, toDate),
-                ])
-                return [{
-                    effectiveFrom: null,
-                    config: buildDefaultScheduleConfigView({
-                        slotMinutes: settings.slot_minutes as 20 | 30 | 40 | 60,
-                        seatsPerSlot: settings.seats_per_slot,
-                        windowDays: settings.window_days,
-                        minNoticeDays: settings.min_notice_days as 0 | 1 | 2 | 3 | 5,
-                        waitAlertDays: settings.wait_alert_days,
-                        unitAddress: settings.unit_address,
-                        unitAddressComplement: settings.unit_address_complement,
-                        reminderEnabled: settings.reminder_enabled,
-                        reminderHours: settings.reminder_hours as 2 | 6 | 12 | 24 | 48,
-                        ranges: ranges.map((range) => ({
-                            weekday: range.weekday,
-                            slotIndex: range.slot_index,
-                            startTime: range.start_time.slice(0, 5),
-                            endTime: range.end_time.slice(0, 5),
-                        })),
-                        blockedDates: blockedDates.map((block) => ({
-                            date: block.date,
-                            startTime: block.start_time?.slice(0, 5) ?? null,
-                            endTime: block.end_time?.slice(0, 5) ?? null,
-                            description: block.description,
-                        })),
-                    }),
-                }]
+                return settings
+                    ? [scheduleVersionOf(settings, await scheduleRepository.getRanges(), await scheduleRepository.getBlockedDates(fromDate, toDate))]
+                    : []
             }),
             listScheduledConfigs: vi.fn().mockResolvedValue([]),
             countActiveAppointmentsPerSlot: vi
