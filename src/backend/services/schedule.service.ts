@@ -24,7 +24,8 @@ import { addDaysToDateString, getLocalParts, parseLocalDate } from "../utils/dat
 import {
     appointmentsInScheduleInterval,
     calculateMonthlyPreview,
-    computeWindowBounds,
+    computeVersionedWindowBounds,
+    DayGrid,
     detectScheduleConflicts,
     freeSlotStartsOfDay,
     fromMinutes,
@@ -32,6 +33,7 @@ import {
     getMonthDateBounds,
     normalizeAndValidateScheduleConfig,
     toMinutes,
+    WindowBounds,
 } from "./scheduleRules"
 
 export { freeSlotStartsOfDay, fromMinutes, getDowFromDateStr, toMinutes }
@@ -131,6 +133,27 @@ function scheduleBlockedDatesOf(config: ScheduleConfigView): BlockedDate[] {
     }))
 }
 
+function dayGridOf(config: ScheduleConfigView): DayGrid {
+    return {
+        ranges: scheduleRangesOf(config),
+        blockedDates: scheduleBlockedDatesOf(config),
+        slotMinutes: config.slotMinutes,
+    }
+}
+
+function windowBoundsOf(versions: ScheduleVersion[], current: ScheduleVersion, todayStr: string): WindowBounds {
+    const grids = new Map(versions.map((version) => [version, dayGridOf(version.config)]))
+    return computeVersionedWindowBounds(
+        todayStr,
+        scheduleSettingsOf(current.config),
+        (dateStr) => {
+            const version = effectiveVersionOf(versions, dateStr)
+            return version ? grids.get(version) ?? null : null
+        },
+        versions.some((version) => version.config.ranges.length > 0),
+    )
+}
+
 export function createScheduleService(
     repository: IScheduleRepository,
 ): IScheduleService {
@@ -144,9 +167,16 @@ export function createScheduleService(
             return []
         }
 
+        const currentVersion = effectiveVersionOf(versions, todayStr)
+        if (!currentVersion) {
+            return []
+        }
+        const { startDateStr, endDateStr, hasValidStart } = windowBoundsOf(versions, currentVersion, todayStr)
+        if (!hasValidStart) {
+            return []
+        }
+
         const nowMinutes = toMinutes(nowTimeStr)
-        const maxWindowDays = Math.max(...versions.map((version) => version.config.windowDays))
-        const maxDateStr = addDaysToDateString(todayStr, maxWindowDays)
 
         interface CandidateSlot {
             datetime: Date
@@ -157,31 +187,13 @@ export function createScheduleService(
         }
 
         const candidateSlots: CandidateSlot[] = []
-        let curr = todayStr
+        let curr = startDateStr
 
-        while (curr <= maxDateStr) {
-            const version = effectiveVersionOf(versions, curr)
-            if (!version) {
-                curr = addDaysToDateString(curr, 1)
-                continue
-            }
-            const config = version.config
+        while (curr <= endDateStr) {
+            const config = (effectiveVersionOf(versions, curr) ?? currentVersion).config
             const settings = scheduleSettingsOf(config)
             const ranges = scheduleRangesOf(config)
             const blockedDates = scheduleBlockedDatesOf(config)
-            const { startDateStr, endDateStr, hasValidStart } = computeWindowBounds(
-                todayStr,
-                settings,
-                ranges,
-                blockedDates,
-            )
-            const effectiveStart = version.effectiveFrom && version.effectiveFrom > startDateStr
-                ? version.effectiveFrom
-                : startDateStr
-            if (!hasValidStart || curr < effectiveStart || curr > endDateStr) {
-                curr = addDaysToDateString(curr, 1)
-                continue
-            }
 
             const dow = getDowFromDateStr(curr)
             const freeStarts = freeSlotStartsOfDay(
@@ -366,8 +378,12 @@ export function createScheduleService(
             throw new ScheduleNotConfiguredError()
         }
 
-        const maxWindowDays = Math.max(...versions.map((version) => version.config.windowDays))
-        const windowEnd = addDaysToDateString(todayStr, maxWindowDays)
+        const currentVersion = effectiveVersionOf(versions, todayStr)
+        if (!currentVersion) {
+            throw new ScheduleNotConfiguredError()
+        }
+        const windowBounds = windowBoundsOf(versions, currentVersion, todayStr)
+        const windowEnd = windowBounds.endDateStr
         const maxDateStr = lastDateStr > windowEnd ? lastDateStr : windowEnd
 
         const fromDatetime = parseLocalDate(minDateStr, "00:00")
@@ -405,6 +421,7 @@ export function createScheduleService(
                         ranges,
                         blockedDates,
                         activeCounts,
+                        windowBounds,
                     }),
                     conflicts: [],
                 })
@@ -421,11 +438,9 @@ export function createScheduleService(
                 ?.days.find((day) => day.date === date) ?? null
         }
 
-        const currentVersion = effectiveVersionOf(versions, todayStr)
-        const currentPreview = currentVersion
-            ? previewCache.get(currentVersion.effectiveFrom ?? "baseline")?.get(todayStr.slice(0, 7))
-            : undefined
-        if (!currentVersion || !currentPreview) {
+        const weekdaysVersion = draftEffectiveFrom ?? currentVersion.effectiveFrom ?? "baseline"
+        const weekdaysPreview = previewCache.get(weekdaysVersion)?.get(todayStr.slice(0, 7))
+        if (!weekdaysPreview) {
             throw new ScheduleNotConfiguredError()
         }
         const requestedDays = Array.from({ length: Number(lastDateStr.slice(-2)) }, (_, index) => {
@@ -435,7 +450,7 @@ export function createScheduleService(
         let totalWindowSlots = 0
         let totalWindowSeats = 0
         let usedWindowSeats = 0
-        for (let date = currentPreview.windowStart; date <= windowEnd; date = addDaysToDateString(date, 1)) {
+        for (let date = windowBounds.startDateStr; date <= windowEnd; date = addDaysToDateString(date, 1)) {
             const day = dayPreview(date)
             if (!day) {
                 continue
@@ -474,13 +489,13 @@ export function createScheduleService(
         return {
             month: targetMonth,
             today: todayStr,
-            windowStart: currentPreview.windowStart,
+            windowStart: windowBounds.startDateStr,
             windowEnd,
             totalWindowSlots,
             totalWindowSeats,
             usedWindowSeats,
             freeWindowSeats: totalWindowSeats - usedWindowSeats,
-            weekdays: currentPreview.weekdays,
+            weekdays: weekdaysPreview.weekdays,
             days: requestedDays,
             conflicts,
         }

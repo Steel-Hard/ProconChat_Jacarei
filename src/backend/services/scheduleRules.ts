@@ -113,14 +113,20 @@ export interface WindowBounds {
     hasValidStart: boolean
 }
 
-export function computeWindowBounds(
+export interface DayGrid {
+    ranges: Pick<ScheduleRange, "weekday" | "slot_index" | "start_time" | "end_time">[]
+    blockedDates: Pick<BlockedDate, "date" | "start_time" | "end_time">[]
+    slotMinutes: number
+}
+
+export function computeVersionedWindowBounds(
     todayStr: string,
-    settings: Pick<ScheduleSettings, "window_days" | "min_notice_days" | "slot_minutes">,
-    ranges: Pick<ScheduleRange, "weekday" | "slot_index" | "start_time" | "end_time">[],
-    blockedDates: Pick<BlockedDate, "date" | "start_time" | "end_time">[],
+    settings: Pick<ScheduleSettings, "window_days" | "min_notice_days">,
+    gridOf: (dateStr: string) => DayGrid | null,
+    hasRanges: boolean,
 ): WindowBounds {
     const endDateStr = addDaysToDateString(todayStr, settings.window_days)
-    if (ranges.length === 0) {
+    if (!hasRanges) {
         return { startDateStr: todayStr, endDateStr, hasValidStart: false }
     }
 
@@ -133,7 +139,8 @@ export function computeWindowBounds(
         while (n < settings.min_notice_days && iterations < maxIterations) {
             iterations++
             d = addDaysToDateString(d, 1)
-            if (isBusinessDay(d, ranges, blockedDates, settings.slot_minutes)) {
+            const grid = gridOf(d)
+            if (grid && isBusinessDay(d, grid.ranges, grid.blockedDates, grid.slotMinutes)) {
                 n++
             }
         }
@@ -148,6 +155,20 @@ export function computeWindowBounds(
         endDateStr,
         hasValidStart: startDateStr <= endDateStr,
     }
+}
+
+export function computeWindowBounds(
+    todayStr: string,
+    settings: Pick<ScheduleSettings, "window_days" | "min_notice_days" | "slot_minutes">,
+    ranges: Pick<ScheduleRange, "weekday" | "slot_index" | "start_time" | "end_time">[],
+    blockedDates: Pick<BlockedDate, "date" | "start_time" | "end_time">[],
+): WindowBounds {
+    return computeVersionedWindowBounds(
+        todayStr,
+        settings,
+        () => ({ ranges, blockedDates, slotMinutes: settings.slot_minutes }),
+        ranges.length > 0,
+    )
 }
 
 export function normalizeAndValidateScheduleConfig(
@@ -413,6 +434,7 @@ export interface CalculateMonthlyPreviewInput {
     ranges: Pick<ScheduleRange, "weekday" | "slot_index" | "start_time" | "end_time">[]
     blockedDates: Pick<BlockedDate, "date" | "start_time" | "end_time" | "description">[]
     activeCounts: Map<string, number>
+    windowBounds?: WindowBounds
 }
 
 export function calculateMonthlyPreview({
@@ -422,11 +444,12 @@ export function calculateMonthlyPreview({
     ranges,
     blockedDates,
     activeCounts,
+    windowBounds,
 }: CalculateMonthlyPreviewInput): MonthlyGridPreview {
     const { dateStr: todayStr, timeStr: nowTimeStr } = getLocalParts(now)
     const nowMinutes = toMinutes(nowTimeStr)
 
-    const { startDateStr, endDateStr, hasValidStart } = computeWindowBounds(
+    const { startDateStr, endDateStr, hasValidStart } = windowBounds ?? computeWindowBounds(
         todayStr,
         settings,
         ranges,
