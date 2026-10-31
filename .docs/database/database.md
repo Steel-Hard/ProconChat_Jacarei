@@ -3,7 +3,7 @@
 > Persistência única em PostgreSQL, compartilhada entre o chatbot e o painel ([`../architecture/architecture.md`](../architecture/architecture.md)).
 >
 > Este documento tem duas partes:
-> 1. **[Schema atual](#parte-1--schema-atual-implementado)**: o que existe depois das migrations `01` a `09`, `010`, `11`, `12`, `13`, `14`, `15` e `16` (a `11_sprint2_schema.sql` é o schema da Sprint 2, issue #52; a `12_short_text_checks.sql` ajusta o limite dos títulos curtos, issue #61; a `13_conversation_events_data_checks.sql` limita as chaves e os valores de `ConversationEvents.data` e amarra `current_step = 'FINISHED'` às sessões encerradas, issue #16; a `14_whatsapp_settings_display_number.sql` guarda o número e o nome verificados do WhatsApp, issue #54; a `15_whatsapp_settings_access_token_lifetime.sql` guarda se o token de acesso do WhatsApp expira, issue #54; a `16_user_permissions.sql` cria as permissões granulares das contas e o e-mail único sem diferenciar maiúsculas, issue #62).
+> 1. **[Schema atual](#parte-1--schema-atual-implementado)**: o que existe depois das migrations `01` a `09`, `010`, `11`, `12`, `13`, `14`, `15`, `16` e `17` (a `11_sprint2_schema.sql` é o schema da Sprint 2, issue #52; a `12_short_text_checks.sql` ajusta o limite dos títulos curtos, issue #61; a `13_conversation_events_data_checks.sql` limita as chaves e os valores de `ConversationEvents.data` e amarra `current_step = 'FINISHED'` às sessões encerradas, issue #16; a `14_whatsapp_settings_display_number.sql` guarda o número e o nome verificados do WhatsApp, issue #54; a `15_whatsapp_settings_access_token_lifetime.sql` guarda se o token de acesso do WhatsApp expira, issue #54; a `16_user_permissions.sql` cria as permissões granulares das contas e o e-mail único sem diferenciar maiúsculas, issue #62; a `17_schedule_changes.sql` guarda snapshots de agenda com data efetiva, issue #134).
 > 2. **[Schema planejado](#parte-2--schema-planejado-sprint-3)**: o que ainda falta criar, com a issue de cada parte.
 >
 > Antes de mexer no banco, leia também o SQL em `src/backend/db/schema/` e as convenções em [`migrations.md`](migrations.md): **toda mudança é uma migration nova**, nunca edição de migration antiga.
@@ -28,6 +28,7 @@
 | `14` | Número e nome verificados do WhatsApp (#54): adiciona `display_phone_number VARCHAR(40)` e `verified_name VARCHAR(255)`, ambos opcionais, em `WhatsAppSettings`. A linha existente fica com os dois `NULL` até o próximo teste ou salvar bem-sucedido. O `Down` remove as duas colunas |
 | `15` | Tipo do token de acesso do WhatsApp (#54): adiciona `access_token_permanent BOOLEAN` e `access_token_expires_at TIMESTAMPTZ`, ambos opcionais, em `WhatsAppSettings`, com `chk_whatsapp_settings_access_token_lifetime` (as duas nulas, `TRUE` sem data ou `FALSE` com data). A linha existente fica com as duas `NULL` (tipo desconhecido) até o próximo teste dos valores salvos ou salvar bem-sucedido. O `Down` remove a constraint e as duas colunas |
 | `16` | Permissões granulares das contas (#62): cria `Permissions` com as 8 permissões (nome e descrição do protótipo) e `UserPermissions`, adiciona `permissions_updated_by` e `permissions_updated_at` em `Users` com `chk_users_permissions_updated` (as duas preenchidas ou as duas nulas) e cria `uniq_users_email_lower` (e-mail único sem diferenciar maiúsculas). Antes do índice, aborta com mensagem clara se houver e-mails repetidos ignorando maiúsculas. As contas existentes ficam sem permissões. O `Down` remove o índice, a constraint, as duas colunas e as duas tabelas |
+| `17` | Agenda com data efetiva (#134): cria `ScheduleChanges`, que armazena snapshots completos da configuração, data local de início, autor e última alteração. O `Down` remove os snapshots |
 
 ### Diagrama
 
@@ -52,7 +53,7 @@ erDiagram
     Permissions ||--o{ UserPermissions : "concedida em"
 ```
 
-Tabelas de configuração, sem relação com as demais além de `updated_by` → `Users`: `ScheduleSettings`, `ScheduleRanges`, `BlockedDates`, `AttendanceDocuments` e `WhatsAppSettings`. `Categories` e `Questions` também têm `updated_by` → `Users`.
+Tabelas de configuração, sem relação com as demais além de `updated_by` → `Users`: `ScheduleSettings`, `ScheduleRanges`, `BlockedDates`, `ScheduleChanges`, `AttendanceDocuments` e `WhatsAppSettings`. `Categories` e `Questions` também têm `updated_by` → `Users`.
 
 A extensão `unaccent` é criada na migration `11`, para a busca de agendamentos pelo nome sem diferenciar acentos (#60).
 
@@ -602,7 +603,7 @@ CREATE INDEX idx_appointment_events_appointment ON AppointmentEvents(appointment
 
 `actor_user_id` `NULL` = foi o cidadão ou o sistema.
 
-### Agenda e unidade — [decisão 007](../decisoes/007-agenda-configuravel.md)
+### Agenda e unidade — [decisões 007](../decisoes/007-agenda-configuravel.md) e [008](../decisoes/008-horarios-agendados.md)
 
 ```sql
 CREATE TABLE ScheduleSettings (
@@ -662,9 +663,20 @@ CREATE INDEX idx_blocked_dates_date ON BlockedDates(date);
 
 - **`ScheduleSettings` tem linha única** (`id = 1`), criada pelo seed da #61 **uma única vez**, com os valores de `db/seeds/data/configuracao-inicial.data.ts` (junto com a grade de `ScheduleRanges` e as listas de `AttendanceDocuments`); a migration não a insere. Se a linha já existe, o seed não toca em nenhuma das três tabelas, e o que o PROCON alterar sobrevive a todo deploy. O seed não insere nada em `BlockedDates` (feriados ficam para a tela de Horários, #64). Sem ela, a #56 trata a agenda como "não configurada" (sem horários). Os `CHECK` limitam cada campo aos valores da tela (duração de 20, 30, 40 ou 60 minutos; 1 a 20 vagas; janela de 1 a 180 dias; antecedência de 0, 1, 2, 3 ou 5 dias; alerta de espera de 1 a 60 dias; lembrete 2, 6, 12, 24 ou 48 horas antes).
 - `updated_by`/`updated_at` de `ScheduleSettings` servem ao "Última alteração por … em …" da tela inteira de Horários: grade e bloqueios são salvos juntos.
+- `ScheduleSettings`, `ScheduleRanges` e `BlockedDates` formam a configuração-base. Conforme a decisão 008, mudanças futuras são snapshots integrais em `ScheduleChanges`; para cada atendimento vale o snapshot mais recente com `effective_from` menor ou igual à data local marcada. Conflitos só são verificados no intervalo dessa versão, até a véspera da próxima mudança. Agendamentos anteriores à data de início não são afetados.
 - **Grade semanal:** `weekday` 0 = domingo … 6 = sábado. `slot_index` 1..3 com `UNIQUE (weekday, slot_index)` garante **até 3 faixas por dia**. Dia "desligado" = dia sem faixas. O fim da faixa tem que ser depois do início.
 - **Bloqueio:** período com os dois horários preenchidos (fim depois do início) ou dia inteiro com os dois `NULL`.
 - Ficam na aplicação: sobreposição de faixas, "a faixa comporta ao menos um atendimento" e o cálculo de dias úteis da antecedência (dias com faixa e não bloqueados).
+
+```sql
+CREATE TABLE ScheduleChanges (
+    effective_from DATE PRIMARY KEY,
+    config JSONB NOT NULL,
+    updated_by BIGINT NOT NULL REFERENCES Users(id),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_schedule_changes_config_object CHECK (jsonb_typeof(config) = 'object')
+);
+```
 
 ### AttendanceDocuments
 

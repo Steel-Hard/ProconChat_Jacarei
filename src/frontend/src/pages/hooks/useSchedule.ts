@@ -1,3 +1,5 @@
+import { useState } from "react"
+import { skipToken } from "@reduxjs/toolkit/query/react"
 import { useTranslation } from "react-i18next"
 import useToast from "@/hooks/useToast"
 import NAV_ITEMS_READY from "@/navigation/navItemsReady"
@@ -44,8 +46,14 @@ function useSchedule() {
     const { t } = useTranslation(["schedule", "common"])
     const { showToast } = useToast()
     const account = useAppSelector((state) => state.account.current)
-    const query = scheduleApi.useGetScheduleQuery()
-    const view = query.data
+    const [effectiveFrom, setEffectiveFrom] = useState("")
+    const currentQuery = scheduleApi.useGetScheduleQuery()
+    const effectiveQuery = scheduleApi.useGetScheduleEffectiveQuery(effectiveFrom || skipToken)
+    const versionsQuery = scheduleApi.useGetScheduleVersionsQuery()
+    const view = effectiveFrom ? effectiveQuery.currentData : currentQuery.currentData
+    const queryFailed = effectiveFrom ? effectiveQuery.isError : currentQuery.isError
+    const [deleteVersion] = scheduleApi.useDeleteScheduleVersionMutation()
+    const [versionActionError, setVersionActionError] = useState<string | null>(null)
     const booked = useBookedDays()
     const draft = useScheduleDraft(view, booked.days)
     const errors = draft.errors
@@ -55,7 +63,8 @@ function useSchedule() {
         hasChanges,
         hasErrors: errorCount > 0,
         input: draft.built?.input ?? null,
-        signature: draft.signature
+        signature: draft.signature,
+        effectiveFrom: effectiveFrom || undefined
     })
     const saver = useScheduleSave(draft.revision)
     const outcome = saver.outcome?.error ?? null
@@ -176,11 +185,12 @@ function useSchedule() {
               ? t("save.hintConflicts")
               : undefined
     const actionError =
-        outcome?.kind === "invalidOrigin"
+        versionActionError ??
+        (outcome?.kind === "invalidOrigin"
             ? t("common:errors.invalidOrigin")
             : outcome?.kind === "failed" || unknownIssue
               ? t("save.failed")
-              : null
+              : null)
     const lastChange: LastChange | null =
         view?.updatedBy && view.updatedAt
             ? { changedBy: view.updatedBy.name, changedAt: view.updatedAt }
@@ -196,17 +206,44 @@ function useSchedule() {
         void saver.save({
             built: draft.built,
             revision: sentRevision,
+            effectiveFrom: effectiveFrom || undefined,
             onSaved: () => {
                 draft.resetIfUnchangedSince(sentRevision)
-                showToast(t("save.toast"))
+                showToast(t(effectiveFrom ? "save.scheduledToast" : "save.toast"))
             },
             onConflicts: booked.refetch
         })
     }
 
+    async function cancelScheduledVersion(date: string) {
+        if (!window.confirm(t("versions.cancelConfirm", { date: formatDate(date) ?? date }))) {
+            return
+        }
+        setVersionActionError(null)
+        try {
+            await deleteVersion(date).unwrap()
+            if (effectiveFrom === date) {
+                draft.discard()
+                setEffectiveFrom("")
+            }
+            showToast(t("versions.cancelled"))
+        } catch {
+            setVersionActionError(t("versions.cancelFailed"))
+        }
+    }
+
     return {
-        status: view ? "ready" : query.isError ? "error" : "loading",
+        status: view ? "ready" : queryFailed ? "error" : "loading",
         draft: draft.current,
+        effectiveFrom,
+        versions: versionsQuery.currentData ?? [],
+        versionsFailed: versionsQuery.isError,
+        selectEffectiveFrom: (date: string) => {
+            setVersionActionError(null)
+            draft.discard()
+            setEffectiveFrom(date)
+        },
+        cancelScheduledVersion,
         days,
         blocks,
         newBlock: draft.newBlock,

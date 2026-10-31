@@ -12,7 +12,7 @@ numerados sozinhos ainda precisariam de histórico, transações e locking.
 Referências: [ferramenta](https://github.com/salsita/node-pg-migrate/tree/v8.0.4),
 [CLI](https://salsita.github.io/node-pg-migrate/cli).
 
-Existem 16 migrations em `src/backend/db/migrations`: `01` a `07` criam as
+Existem 17 migrations em `src/backend/db/migrations`: `01` a `07` criam as
 tabelas da Sprint 1, `08`, `09` e `010` ajustam `Sessions`,
 `11_sprint2_schema.sql` é o schema da Sprint 2 (#52),
 `12_short_text_checks.sql` ajusta o limite dos títulos curtos (#61),
@@ -21,8 +21,9 @@ tabelas da Sprint 1, `08`, `09` e `010` ajustam `Sessions`,
 sessões encerradas (#16), `14_whatsapp_settings_display_number.sql` guarda o
 número e o nome verificados do WhatsApp (#54),
 `15_whatsapp_settings_access_token_lifetime.sql` guarda se o token de acesso do
-WhatsApp expira (#54) e `16_user_permissions.sql` cria as permissões granulares
-das contas e o e-mail único sem diferenciar maiúsculas (#62). O que cada uma faz está
+WhatsApp expira (#54), `16_user_permissions.sql` cria as permissões granulares
+das contas e o e-mail único sem diferenciar maiúsculas (#62), e
+`17_schedule_changes.sql` cria snapshots da agenda com data efetiva (#134). O que cada uma faz está
 em [`database.md`](database.md#histórico-das-migrations). Os nomes sem aspas
 são convertidos para minúsculas pelo PostgreSQL (por exemplo,
 `RequiredDocuments` vira `requireddocuments`). Cada migration tem
@@ -31,7 +32,7 @@ são convertidos para minúsculas pelo PostgreSQL (por exemplo,
 **Numeração.** O node-pg-migrate 8 ordena os arquivos pelo **prefixo lido como
 número**, não como texto: `010_alter_sessions.sql` é a versão 10, e um arquivo
 `10_...` empataria com ela. Por isso a migration da Sprint 2 é a `11_`, e a
-**próxima livre é `17_`**. Não renomeie a `010`: ela já está registrada com esse
+**próxima livre é `18_`**. Não renomeie a `010`: ela já está registrada com esse
 nome em `pgmigrations` nos bancos existentes. O executor imprime
 `Can't determine timestamp for 01` (e os demais prefixos), pois seu formato
 padrão é timestamp. Esse aviso não impede a execução.
@@ -137,7 +138,7 @@ npm run test:db
 O teste cria bancos temporários com nome aleatório e os remove ao terminar;
 não limpa o banco informado. Ele cobre estes cenários:
 
-- **Do zero:** `up` aplica as 16 migrations; as tabelas públicas são exatamente
+- **Do zero:** `up` aplica as 17 migrations; as tabelas públicas são exatamente
   as do schema atual (`interactions` não existe); cada enum tem os valores
   esperados (`appointment_status` 5, `session_outcome` 8, `session_step` 12);
   `users.session_version` é `integer not null default 0`; `short_title` é
@@ -163,20 +164,21 @@ não limpa o banco informado. Ele cobre estes cenários:
   `permission_key` ou um `user_id` inexistentes, e com `23514`
   `permissions_updated_by` sem `permissions_updated_at` e o contrário. Por fim, a volta à versão 10
   (`interactions` de volta, `appointment_status` com 3 valores, etapas novas
-  mapeadas) é feita em seis passos de `down 1`: o primeiro desfaz a `16`
-  (somem `Permissions`, `UserPermissions`, as duas colunas de `Users` e
-  `uniq_users_email_lower`, e as contas continuam), o segundo desfaz a `15`
+  mapeadas) é feita em sete passos de `down 1`: o primeiro desfaz a `17`
+  (some `ScheduleChanges`), o segundo desfaz a `16` (somem `Permissions`,
+  `UserPermissions`, as duas colunas de `Users` e `uniq_users_email_lower`, e
+  as contas continuam), e o terceiro desfaz a `15`
   (somem `access_token_permanent`, `access_token_expires_at` e a constraint, e
-  a linha de `WhatsAppSettings` continua), o terceiro desfaz a `14` (somem
-  `display_phone_number` e `verified_name`, e a linha continua), o quarto
+  a linha de `WhatsAppSettings` continua), o quarto desfaz a `14` (somem
+  `display_phone_number` e `verified_name`, e a linha continua), o quinto
   desfaz a `13` (sobra só `chk_conversation_events_data_object`, um evento com
   chave livre volta a ser aceito e uma sessão em andamento em `FINISHED`
-  também), o quinto desfaz a `12` (os `CHECK` de tamanho voltam a aceitar
-  espaço nas pontas) e o sexto desfaz a `11`. A volta à versão 10 perde a
+  também), o sexto desfaz a `12` (os `CHECK` de tamanho voltam a aceitar
+  espaço nas pontas) e o sétimo desfaz a `11`. A volta à versão 10 perde a
   etapa do abandono: a `11` reaplicada copia `current_step = 'FINISHED'` para
   `abandoned_at_step`, e por isso o `up` seguinte falha na guarda de sessões da
   `13` enquanto houver sessão abandonada; depois de apagar a sessão abandonada
-  da versão 10, `up` reaplica, `down 16` deixa só `pgmigrations` e `up` reaplica tudo. Os `CHECK` da `12`
+  da versão 10, `up` reaplica, `down 17` deixa só `pgmigrations` e `up` reaplica tudo. Os `CHECK` da `12`
   recusam título curto com espaço nas pontas ou com 25 caracteres e aceitam 24.
 - **Sobre a versão 10 com o conteúdo do seed:** `up 10`, carga dos dados de
   `db/seeds/data` com as colunas da versão 10, sessões `IN_PROGRESS`,

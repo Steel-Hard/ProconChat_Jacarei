@@ -98,6 +98,7 @@ export interface BlockedDateItem {
 }
 
 export interface ScheduleConfigView {
+    effectiveFrom?: string | null
     slotMinutes: SlotMinutes
     seatsPerSlot: number
     windowDays: number
@@ -111,6 +112,11 @@ export interface ScheduleConfigView {
     blockedDates: BlockedDateItem[]
     updatedBy: ScheduleUpdatedBy | null
     updatedAt: string | null
+}
+
+export interface ScheduleVersion {
+    effectiveFrom: string | null
+    config: ScheduleConfigView
 }
 
 export interface ScheduleRangeInputItem {

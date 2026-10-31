@@ -284,4 +284,89 @@ describe("Schedule config & preview integration tests (Postgres)", () => {
 
         expect(allowedAfterOffGrid.status).toBe(200)
     })
+
+    it("valida mudança agendada só contra agendamentos na vigência e usa a versão no bot", async () => {
+        const today = getLocalParts(new Date()).dateStr
+        const beforeDate = nextWeekdayDateStr(today, 2)
+        const effectiveFrom = addDaysToDateString(beforeDate, 1)
+        const afterDate = nextWeekdayDateStr(effectiveFrom, 2)
+        const phones = ["5512988887701", "5512988887702"]
+        const cpfHashes = ["1", "2"].map((digit) => digit.repeat(64))
+        const appointmentIds: string[] = []
+
+        try {
+            for (const [index, date] of [beforeDate, afterDate].entries()) {
+                const session = await sessionRepository.findOrCreateActive(phoneHash(phones[index]!))
+                const booked = await scheduleRepository.bookAppointment({
+                    sessionId: session.id,
+                    questionId: testQuestionId,
+                    reason: "REQUIRES_IN_PERSON",
+                    name: `Cidadão Mudança ${index}`,
+                    cpfHash: cpfHashes[index]!,
+                    cpfMasked: `***.000.00${index}-**`,
+                    phone: phones[index],
+                    byRepresentative: false,
+                    appointmentDatetime: parseLocalDate(date, "09:00"),
+                })
+                appointmentIds.push(booked.id)
+                createdAppointmentIds.push(booked.id)
+            }
+
+            const currentResponse = await request(app)
+                .get("/api/v1/schedule")
+                .set("Cookie", configurer.cookie)
+            const current = currentResponse.body.data
+            const scheduledConfig = {
+                ...current,
+                blockedDates: [
+                    ...current.blockedDates.filter((block: { date: string }) => block.date !== afterDate),
+                    {
+                        date: afterDate,
+                        startTime: null,
+                        endTime: null,
+                        description: "Mudança de horário",
+                    },
+                ],
+            }
+
+            const conflicted = await request(app)
+                .put(`/api/v1/schedule/versions/${effectiveFrom}`)
+                .set("Cookie", configurer.cookie)
+                .set("Origin", ORIGIN)
+                .send(scheduledConfig)
+
+            expect(conflicted.status).toBe(409)
+            expect(conflicted.body.error.details.conflicts).toEqual([
+                expect.objectContaining({ id: appointmentIds[1], date: afterDate, code: "DATE_BLOCKED" }),
+            ])
+
+            await getPool().query("UPDATE Appointments SET off_grid = TRUE WHERE id = $1", [appointmentIds[1]])
+            const saved = await request(app)
+                .put(`/api/v1/schedule/versions/${effectiveFrom}`)
+                .set("Cookie", configurer.cookie)
+                .set("Origin", ORIGIN)
+                .send(scheduledConfig)
+
+            expect(saved.status).toBe(200)
+            expect(saved.body.data.effectiveFrom).toBe(effectiveFrom)
+
+            const versions = await scheduleRepository.listScheduledConfigs(today)
+            expect(versions.map((version) => version.effectiveFrom)).toContain(effectiveFrom)
+            const slots = await createScheduleService(scheduleRepository).getAvailableSlots(new Date())
+            expect(slots.some((slot) => slot.dateStr === beforeDate && slot.timeStr === "09:00")).toBe(true)
+            expect(slots.some((slot) => slot.dateStr === afterDate)).toBe(false)
+        } finally {
+            await getPool().query("DELETE FROM ScheduleChanges WHERE effective_from = $1", [effectiveFrom])
+            await cleanupScheduleTestData({
+                phoneHashes: phones.map((phone) => phoneHash(phone)),
+                appointmentIds,
+            })
+            for (const appointmentId of appointmentIds) {
+                const index = createdAppointmentIds.indexOf(appointmentId)
+                if (index >= 0) {
+                    createdAppointmentIds.splice(index, 1)
+                }
+            }
+        }
+    })
 })

@@ -1,7 +1,7 @@
 import { AppointmentRepository } from "../repositories/appointment.repository.interface"
 import { IScheduleRepository } from "../repositories/schedule.repository.interface"
 import type { AppointmentCalendar, CalendarDay, CalendarFilters } from "../types/appointment.types"
-import type { BlockedDate, ScheduleRange, ScheduleSettings } from "../types/schedule.types"
+import type { BlockedDate, ScheduleRange, ScheduleSettings, ScheduleVersion } from "../types/schedule.types"
 import { addDaysToDateString, getLocalParts, parseLocalDate, toLocalDateString } from "../utils/date.utils"
 import { WEEK_START_DAY, weekRange } from "../utils/week.utils"
 import { freeSlotStartsOfDay, fromMinutes, IScheduleService } from "./schedule.service"
@@ -10,7 +10,7 @@ export type AppointmentCalendarAppointments = Pick<AppointmentRepository, "findW
 
 export interface AppointmentCalendarDependencies {
     schedule: Pick<IScheduleService, "getAvailableSlots">
-    scheduleRepository: Pick<IScheduleRepository, "getSettings" | "getRanges" | "getBlockedDates">
+    scheduleRepository: Pick<IScheduleRepository, "getScheduleVersions">
     appointments: AppointmentCalendarAppointments
     clock?: () => Date
     weekStartDay?: number
@@ -30,11 +30,38 @@ function hourMinute(time: string): string {
 
 function buildDay(
     date: string,
-    settings: ScheduleSettings,
-    ranges: ScheduleRange[],
-    blockedDates: BlockedDate[],
+    version: ScheduleVersion,
     offered: Map<string, number>,
 ): CalendarDay | null {
+    const config = version.config
+    const settings: ScheduleSettings = {
+        id: 1,
+        slot_minutes: config.slotMinutes,
+        seats_per_slot: config.seatsPerSlot,
+        window_days: config.windowDays,
+        min_notice_days: config.minNoticeDays,
+        wait_alert_days: config.waitAlertDays,
+        unit_address: config.unitAddress,
+        unit_address_complement: config.unitAddressComplement,
+        reminder_enabled: config.reminderEnabled,
+        reminder_hours: config.reminderHours,
+    }
+    const ranges: ScheduleRange[] = config.ranges.map((range, index) => ({
+        id: index + 1,
+        weekday: range.weekday,
+        slot_index: range.slotIndex,
+        start_time: range.startTime,
+        end_time: range.endTime,
+    }))
+    const blockedDates: BlockedDate[] = config.blockedDates
+        .filter((block) => block.date === date)
+        .map((block, index) => ({
+            id: index + 1,
+            date: block.date,
+            start_time: block.startTime,
+            end_time: block.endTime,
+            description: block.description,
+        }))
     const grid = freeSlotStartsOfDay(date, ranges, [], settings.slot_minutes)
     if (grid.length === 0) {
         return null
@@ -76,16 +103,17 @@ export function createAppointmentCalendarService({
             const to = parseLocalDate(addDaysToDateString(range.weekEnd, 1), "00:00")
             const records = await appointments.findWeek(from, to, { status, responsible, currentUserId }, now)
 
-            const settings = await scheduleRepository.getSettings()
             let days: CalendarDay[] = []
-            if (settings) {
-                const ranges = await scheduleRepository.getRanges()
-                const blockedDates = await scheduleRepository.getBlockedDates(range.weekStart, range.weekEnd)
+            const versions = await scheduleRepository.getScheduleVersions(range.weekStart, range.weekEnd)
+            if (versions.length > 0) {
                 const offered = new Map(
                     (await schedule.getAvailableSlots(now)).map((slot) => [`${slot.dateStr} ${slot.timeStr}`, slot.remainingSeats]),
                 )
                 days = range.dates
-                    .map((day) => buildDay(day, settings, ranges, blockedDates, offered))
+                    .map((day) => {
+                        const version = versions.filter((item) => item.effectiveFrom === null || item.effectiveFrom <= day).at(-1)
+                        return version ? buildDay(day, version, offered) : null
+                    })
                     .filter((day): day is CalendarDay => day !== null)
             }
 

@@ -1,7 +1,9 @@
 import { Pool } from "pg"
 import dotenv from "dotenv"
 
-dotenv.config({ quiet: true })
+if (process.env.SKIP_DOTENV !== "true") {
+    dotenv.config({ quiet: true })
+}
 
 let pool: Pool | undefined
 

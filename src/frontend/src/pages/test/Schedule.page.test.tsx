@@ -143,6 +143,91 @@ describe("SchedulePage", () => {
         expect(calls.slice(before).filter((call) => call.method !== "GET")).toEqual([])
     })
 
+    it("carrega uma mudança agendada para edição pela data de início", async () => {
+        const effectiveFrom = "2026-11-10"
+        const version = { ...SAVED, effectiveFrom }
+        await loaded({
+            handlers: {
+                "GET /api/v1/schedule/versions": () => ({
+                    status: 200,
+                    body: { data: [{ effectiveFrom, config: version }] }
+                }),
+                "GET /api/v1/schedule/effective": () => ({
+                    status: 200,
+                    body: { data: version }
+                })
+            }
+        })
+
+        await screen.findByText("10/11/2026")
+        fireEvent.change(screen.getByLabelText("Valer a partir de"), {
+            target: { value: effectiveFrom }
+        })
+
+        expect(
+            await screen.findByText("Editando a configuração a partir de 10/11/2026")
+        ).toBeInTheDocument()
+        expect(screen.getByLabelText("Valer a partir de")).toHaveValue(effectiveFrom)
+    })
+
+    it("salva edição no endpoint da versão e informa que a mudança foi agendada", async () => {
+        const effectiveFrom = "2026-11-10"
+        const version = { ...SAVED, effectiveFrom }
+        const { user, callsTo } = await loaded({
+            handlers: {
+                "GET /api/v1/schedule/versions": () => ({
+                    status: 200,
+                    body: { data: [{ effectiveFrom, config: version }] }
+                }),
+                "GET /api/v1/schedule/effective": () => ({
+                    status: 200,
+                    body: { data: version }
+                }),
+                [`PUT /api/v1/schedule/versions/${effectiveFrom}`]: () => ({
+                    status: 200,
+                    body: { data: version }
+                })
+            }
+        })
+
+        await screen.findByText("10/11/2026")
+        await user.click(screen.getByRole("button", { name: "Editar" }))
+        await screen.findByRole("checkbox", { name: "Segunda-feira" }, SLOW)
+        await user.clear(screen.getByLabelText("Vagas simultâneas por horário"))
+        await user.type(screen.getByLabelText("Vagas simultâneas por horário"), "3")
+        await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
+
+        await screen.findByText("Mudança de horários agendada.", {}, SLOW)
+        expect(callsTo("PUT", `/api/v1/schedule/versions/${effectiveFrom}`)).toHaveLength(1)
+        expect(callsTo("PUT", "/api/v1/schedule")).toEqual([])
+    })
+
+    it("cancela uma mudança futura depois de confirmar", async () => {
+        const effectiveFrom = "2026-11-10"
+        const confirm = vi.spyOn(window, "confirm").mockReturnValue(true)
+        const { user, callsTo } = await loaded({
+            handlers: {
+                "GET /api/v1/schedule/versions": () => ({
+                    status: 200,
+                    body: { data: [{ effectiveFrom, config: { ...SAVED, effectiveFrom } }] }
+                }),
+                [`DELETE /api/v1/schedule/versions/${effectiveFrom}`]: () => ({ status: 204 })
+            }
+        })
+
+        await screen.findByText("10/11/2026")
+        await user.click(screen.getByRole("button", { name: "Cancelar mudança" }))
+
+        await waitFor(() =>
+            expect(callsTo("DELETE", `/api/v1/schedule/versions/${effectiveFrom}`)).toHaveLength(1)
+        )
+        expect(confirm).toHaveBeenCalledWith(
+            "Cancelar a mudança de horários a partir de 10/11/2026?"
+        )
+        expect(await screen.findByText("Mudança de horários cancelada.")).toBeInTheDocument()
+        confirm.mockRestore()
+    })
+
     it("mostra o erro na faixa e não deixa salvar", async () => {
         const { user, callsTo } = await loaded()
 

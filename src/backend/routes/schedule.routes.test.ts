@@ -64,7 +64,11 @@ describe("schedule.routes (HTTP)", () => {
 
     const routes = [
         ["get", "/api/v1/schedule"],
+        ["get", "/api/v1/schedule/effective?date=2027-11-01"],
+        ["get", "/api/v1/schedule/versions"],
         ["put", "/api/v1/schedule"],
+        ["put", "/api/v1/schedule/versions/2027-11-01"],
+        ["delete", "/api/v1/schedule/versions/2027-11-01"],
         ["get", "/api/v1/schedule/preview"],
         ["post", "/api/v1/schedule/preview"],
         ["get", "/api/v1/schedule/booked-days"],
@@ -158,6 +162,67 @@ describe("schedule.routes (HTTP)", () => {
             ],
             updatedBy: { id: CONFIGURER_ID, name: "Patrícia Lima" },
         })
+    })
+
+    it("consulta configuração efetiva e lista as mudanças futuras", async () => {
+        const effective = await request(app)
+            .get("/api/v1/schedule/effective?date=2027-11-01")
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+        const versions = await request(app)
+            .get("/api/v1/schedule/versions")
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+
+        expect(effective.status).toBe(200)
+        expect(effective.body.data.slotMinutes).toBe(30)
+        expect(versions.status).toBe(200)
+        expect(versions.body.data).toEqual([])
+    })
+
+    it("salva e cancela uma mudança futura pela data efetiva", async () => {
+        const base = buildDefaultScheduleConfigView()
+        const date = "2027-11-01"
+        const saved = await request(app)
+            .put(`/api/v1/schedule/versions/${date}`)
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+            .send({ ...base, ranges: [] })
+        const canceled = await request(app)
+            .delete(`/api/v1/schedule/versions/${date}`)
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+
+        expect(saved.status).toBe(200)
+        expect(saved.body.data.effectiveFrom).toBe(date)
+        expect(canceled.status).toBe(204)
+    })
+
+    it("continua recusando mudança futura que afeta agendamento na vigência", async () => {
+        repository.setAppointments([{
+            id: "43",
+            protocol: "ABCD4321",
+            name: "Ana Beatriz",
+            cpfMasked: "***.123.456-**",
+            appointmentDatetime: new Date("2027-11-03T08:00:00-03:00"),
+            requestDatetime: new Date("2026-10-01T10:00:00-03:00"),
+            status: "CONFIRMED",
+        }])
+        const base = buildDefaultScheduleConfigView()
+        const response = await request(app)
+            .put("/api/v1/schedule/versions/2027-11-01")
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+            .send({
+                ...base,
+                blockedDates: [{
+                    date: "2027-11-03",
+                    startTime: null,
+                    endTime: null,
+                    description: "Recesso",
+                }],
+            })
+
+        expect(response.status).toBe(409)
+        expect(response.body.error.code).toBe("SCHEDULE_CONFLICTS")
+        expect(response.body.error.details.conflicts).toEqual([
+            expect.objectContaining({ id: "43", date: "2027-11-03", code: "DATE_BLOCKED" }),
+        ])
     })
 
     it("aceita PUT /api/v1/schedule sem nenhuma faixa quando não há agendamentos futuros", async () => {
@@ -300,6 +365,7 @@ describe("schedule.routes (HTTP)", () => {
             .set("Cookie", cookieOf(CONFIGURER_ID))
             .send({
                 month: "2026-10",
+                effectiveFrom: "2026-10-01",
                 config: {
                     slotMinutes: 60,
                     seatsPerSlot: 1,
