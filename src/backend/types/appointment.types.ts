@@ -58,6 +58,10 @@ export type AppointmentSortBy =
 
 export type AppointmentSortOrder = "asc" | "desc"
 
+export const CANCELLATION_REASONS = ["UNIT_CLOSED", "CITIZEN_REQUEST", "DUPLICATE", "OTHER"] as const
+
+export type CancellationReason = (typeof CANCELLATION_REASONS)[number]
+
 export type AppointmentActionType = "claim" | "attended" | "no_show" | "assign" | "correct_record" | "cancel"
 
 export type AppointmentAvailableActionKey = AppointmentActionType | "add_note" | "retry_cancellation_notice"
