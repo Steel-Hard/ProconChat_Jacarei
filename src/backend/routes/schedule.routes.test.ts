@@ -1,12 +1,13 @@
 import express from "express"
 import request from "supertest"
-import { beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { createRequireAuth } from "../middleware/auth.middleware"
 import errorHandler from "../middleware/errorHandler.middleware"
 import { MockAuthRepository } from "../repositories/mock/authMock.repository"
 import {
     buildDefaultScheduleConfigView,
     createScheduleStubRepository,
+    DEFAULT_STUB_NOW,
 } from "../repositories/mock/scheduleStub.repository"
 import { sessionTokens } from "../utils/sessionToken"
 import { ScheduleRoutes } from "./schedule.routes"
@@ -48,6 +49,8 @@ describe("schedule.routes (HTTP)", () => {
     let app: express.Express
 
     beforeEach(() => {
+        vi.useFakeTimers({ toFake: ["Date"] })
+        vi.setSystemTime(DEFAULT_STUB_NOW)
         repository = createScheduleStubRepository()
         const authMiddleware = createRequireAuth({
             users: authUsers,
@@ -60,6 +63,10 @@ describe("schedule.routes (HTTP)", () => {
             new ScheduleRoutes({ repository, authMiddleware }).getRouter(),
         )
         app.use(errorHandler)
+    })
+
+    afterEach(() => {
+        vi.useRealTimers()
     })
 
     const routes = [

@@ -38,7 +38,7 @@ export interface ScheduleVersionsCall {
     toDate: string
 }
 
-const DEFAULT_STUB_NOW = new Date("2026-10-05T09:00:00-03:00")
+export const DEFAULT_STUB_NOW = new Date("2026-10-05T09:00:00-03:00")
 
 export function buildDefaultScheduleConfigView(
     overrides: Partial<ScheduleConfigView> = {},
