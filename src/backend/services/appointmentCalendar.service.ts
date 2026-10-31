@@ -1,10 +1,11 @@
 import { AppointmentRepository } from "../repositories/appointment.repository.interface"
 import { IScheduleRepository } from "../repositories/schedule.repository.interface"
 import type { AppointmentCalendar, CalendarDay, CalendarFilters } from "../types/appointment.types"
-import type { BlockedDate, ScheduleRange, ScheduleSettings, ScheduleVersion } from "../types/schedule.types"
+import type { ScheduleVersion } from "../types/schedule.types"
 import { addDaysToDateString, getLocalParts, parseLocalDate, toLocalDateString } from "../utils/date.utils"
 import { WEEK_START_DAY, weekRange } from "../utils/week.utils"
 import { freeSlotStartsOfDay, fromMinutes, IScheduleService } from "./schedule.service"
+import { effectiveVersionOf, scheduleBlockedDatesOf, scheduleRangesOf } from "./scheduleRules"
 
 export type AppointmentCalendarAppointments = Pick<AppointmentRepository, "findWeek">
 
@@ -34,35 +35,9 @@ function buildDay(
     offered: Map<string, number>,
 ): CalendarDay | null {
     const config = version.config
-    const settings: ScheduleSettings = {
-        id: 1,
-        slot_minutes: config.slotMinutes,
-        seats_per_slot: config.seatsPerSlot,
-        window_days: config.windowDays,
-        min_notice_days: config.minNoticeDays,
-        wait_alert_days: config.waitAlertDays,
-        unit_address: config.unitAddress,
-        unit_address_complement: config.unitAddressComplement,
-        reminder_enabled: config.reminderEnabled,
-        reminder_hours: config.reminderHours,
-    }
-    const ranges: ScheduleRange[] = config.ranges.map((range, index) => ({
-        id: index + 1,
-        weekday: range.weekday,
-        slot_index: range.slotIndex,
-        start_time: range.startTime,
-        end_time: range.endTime,
-    }))
-    const blockedDates: BlockedDate[] = config.blockedDates
-        .filter((block) => block.date === date)
-        .map((block, index) => ({
-            id: index + 1,
-            date: block.date,
-            start_time: block.startTime,
-            end_time: block.endTime,
-            description: block.description,
-        }))
-    const grid = freeSlotStartsOfDay(date, ranges, [], settings.slot_minutes)
+    const ranges = scheduleRangesOf(config)
+    const blockedDates = scheduleBlockedDatesOf(config)
+    const grid = freeSlotStartsOfDay(date, ranges, [], config.slotMinutes)
     if (grid.length === 0) {
         return null
     }
@@ -111,7 +86,7 @@ export function createAppointmentCalendarService({
                 )
                 days = range.dates
                     .map((day) => {
-                        const version = versions.filter((item) => item.effectiveFrom === null || item.effectiveFrom <= day).at(-1)
+                        const version = effectiveVersionOf(versions, day)
                         return version ? buildDay(day, version, offered) : null
                     })
                     .filter((day): day is CalendarDay => day !== null)

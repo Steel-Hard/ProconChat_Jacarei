@@ -11,6 +11,8 @@ import {
     appointmentsInScheduleInterval,
     detectScheduleConflicts,
     freeSlotStartsOfDay,
+    scheduleBlockedDatesOf,
+    scheduleRangesOf,
     toMinutes,
     trimTime,
 } from "../services/scheduleRules"
@@ -646,22 +648,8 @@ async function isSlotInScheduleConfig(
     config: ScheduleConfigView,
 ): Promise<boolean> {
     const { dateStr, timeStr } = getLocalParts(appointmentDatetime)
-    const ranges = config.ranges.map((range, index) => ({
-        id: index + 1,
-        weekday: range.weekday,
-        slot_index: range.slotIndex,
-        start_time: range.startTime,
-        end_time: range.endTime,
-    }))
-    const blockedDates = config.blockedDates
-        .filter((block) => block.date === dateStr)
-        .map((block, index) => ({
-            id: index + 1,
-            date: block.date,
-            start_time: block.startTime,
-            end_time: block.endTime,
-            description: block.description,
-        }))
+    const ranges = scheduleRangesOf(config)
+    const blockedDates = scheduleBlockedDatesOf(config)
     return freeSlotStartsOfDay(dateStr, ranges, blockedDates, config.slotMinutes).includes(toMinutes(timeStr))
 }
 

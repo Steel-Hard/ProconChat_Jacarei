@@ -10,15 +10,62 @@ import type {
     MonthlyGridPreview,
     NormalizedScheduleConfig,
     ScheduleConfigInput,
+    ScheduleConfigView,
     ScheduleConflictCode,
     ScheduleConflictItem,
     ScheduleRange,
     ScheduleRangeItem,
     ScheduleSettings,
+    ScheduleVersion,
     WeekdayPreview,
 } from "../types/schedule.types"
 import { addDaysToDateString, getLocalParts, parseLocalDate } from "../utils/date.utils"
 import { validateSchema } from "../utils/validateSchema"
+
+export function effectiveVersionOf(versions: ScheduleVersion[], date: string): ScheduleVersion | null {
+    let effective: ScheduleVersion | null = null
+    for (const version of versions) {
+        if (version.effectiveFrom === null || version.effectiveFrom <= date) {
+            effective = version
+        }
+    }
+    return effective
+}
+
+export function scheduleSettingsOf(config: ScheduleConfigView): ScheduleSettings {
+    return {
+        id: 1,
+        slot_minutes: config.slotMinutes,
+        seats_per_slot: config.seatsPerSlot,
+        window_days: config.windowDays,
+        min_notice_days: config.minNoticeDays,
+        wait_alert_days: config.waitAlertDays,
+        unit_address: config.unitAddress,
+        unit_address_complement: config.unitAddressComplement,
+        reminder_enabled: config.reminderEnabled,
+        reminder_hours: config.reminderHours,
+    }
+}
+
+export function scheduleRangesOf(config: Pick<ScheduleConfigView, "ranges">): ScheduleRange[] {
+    return config.ranges.map((range, index) => ({
+        id: index + 1,
+        weekday: range.weekday,
+        slot_index: range.slotIndex,
+        start_time: range.startTime,
+        end_time: range.endTime,
+    }))
+}
+
+export function scheduleBlockedDatesOf(config: Pick<ScheduleConfigView, "blockedDates">): BlockedDate[] {
+    return config.blockedDates.map((block, index) => ({
+        id: index + 1,
+        date: block.date,
+        start_time: block.startTime,
+        end_time: block.endTime,
+        description: block.description,
+    }))
+}
 
 export function toMinutes(timeStr: string): number {
     const [h, m] = timeStr.split(":").map(Number)

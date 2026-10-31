@@ -5,7 +5,6 @@ import { IScheduleRepository } from "../repositories/schedule.repository.interfa
 import { isValidCalendarDate, isValidMonthString } from "../schemas/schedule.schema"
 import {
     AvailableSlot,
-    BlockedDate,
     BookAppointmentInput,
     BookAppointmentResult,
     BookedDay,
@@ -15,8 +14,6 @@ import {
     ScheduleConfigInput,
     ScheduleConfigView,
     ScheduleConflictItem,
-    ScheduleRange,
-    ScheduleSettings,
     SchedulePreviewConflict,
     ScheduleVersion,
 } from "../types/schedule.types"
@@ -28,11 +25,15 @@ import {
     computeVersionedWindowBounds,
     DayGrid,
     detectScheduleConflicts,
+    effectiveVersionOf,
     freeSlotStartsOfDay,
     fromMinutes,
     getDowFromDateStr,
     getMonthDateBounds,
     normalizeAndValidateScheduleConfig,
+    scheduleBlockedDatesOf,
+    scheduleRangesOf,
+    scheduleSettingsOf,
     toMinutes,
     WindowBounds,
 } from "./scheduleRules"
@@ -87,51 +88,6 @@ function previewConflictOf(item: ScheduleConflictItem): SchedulePreviewConflict 
         code: item.code,
         reason: item.reason,
     }
-}
-
-function effectiveVersionOf(versions: ScheduleVersion[], date: string): ScheduleVersion | null {
-    let effective: ScheduleVersion | null = null
-    for (const version of versions) {
-        if (version.effectiveFrom === null || version.effectiveFrom <= date) {
-            effective = version
-        }
-    }
-    return effective
-}
-
-function scheduleSettingsOf(config: ScheduleConfigView): ScheduleSettings {
-    return {
-        id: 1,
-        slot_minutes: config.slotMinutes,
-        seats_per_slot: config.seatsPerSlot,
-        window_days: config.windowDays,
-        min_notice_days: config.minNoticeDays,
-        wait_alert_days: config.waitAlertDays,
-        unit_address: config.unitAddress,
-        unit_address_complement: config.unitAddressComplement,
-        reminder_enabled: config.reminderEnabled,
-        reminder_hours: config.reminderHours,
-    }
-}
-
-function scheduleRangesOf(config: ScheduleConfigView): ScheduleRange[] {
-    return config.ranges.map((range, index) => ({
-        id: index + 1,
-        weekday: range.weekday,
-        slot_index: range.slotIndex,
-        start_time: range.startTime,
-        end_time: range.endTime,
-    }))
-}
-
-function scheduleBlockedDatesOf(config: ScheduleConfigView): BlockedDate[] {
-    return config.blockedDates.map((block, index) => ({
-        id: index + 1,
-        date: block.date,
-        start_time: block.startTime,
-        end_time: block.endTime,
-        description: block.description,
-    }))
 }
 
 function dayGridOf(config: ScheduleConfigView): DayGrid {
