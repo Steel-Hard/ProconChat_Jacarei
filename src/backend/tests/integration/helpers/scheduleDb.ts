@@ -9,6 +9,7 @@ export interface ScheduleConfigSnapshot {
     settings: Row[]
     ranges: Row[]
     blockedDates: Row[]
+    scheduleChanges: Row[]
 }
 
 export interface ScheduleSettingsInput {
@@ -51,6 +52,7 @@ export type CountableTable =
     | "ScheduleSettings"
     | "ScheduleRanges"
     | "BlockedDates"
+    | "ScheduleChanges"
 
 export async function snapshotScheduleConfig(): Promise<ScheduleConfigSnapshot> {
     const pool = getPool()
@@ -72,7 +74,19 @@ export async function snapshotScheduleConfig(): Promise<ScheduleConfigSnapshot> 
          ORDER BY id`,
     )
 
-    return { settings: settings.rows, ranges: ranges.rows, blockedDates: blockedDates.rows }
+    const scheduleChanges = await pool.query<Row>(
+        `SELECT effective_from::text AS effective_from, config::text AS config, updated_by,
+                updated_at::text AS updated_at
+         FROM ScheduleChanges
+         ORDER BY effective_from`,
+    )
+
+    return {
+        settings: settings.rows,
+        ranges: ranges.rows,
+        blockedDates: blockedDates.rows,
+        scheduleChanges: scheduleChanges.rows,
+    }
 }
 
 async function insertRows(client: PoolClient, table: string, rows: Row[]): Promise<void> {
@@ -102,17 +116,20 @@ async function inTransaction(callback: (client: PoolClient) => Promise<void>): P
 
 export async function restoreScheduleConfig(snapshot: ScheduleConfigSnapshot): Promise<void> {
     await inTransaction(async (client) => {
+        await client.query("DELETE FROM ScheduleChanges")
         await client.query("DELETE FROM BlockedDates")
         await client.query("DELETE FROM ScheduleRanges")
         await client.query("DELETE FROM ScheduleSettings")
         await insertRows(client, "ScheduleSettings", snapshot.settings)
         await insertRows(client, "ScheduleRanges", snapshot.ranges)
         await insertRows(client, "BlockedDates", snapshot.blockedDates)
+        await insertRows(client, "ScheduleChanges", snapshot.scheduleChanges)
     })
 }
 
 export async function useScheduleConfig({ settings, ranges, blockedDates = [] }: ScheduleConfigInput): Promise<void> {
     await inTransaction(async (client) => {
+        await client.query("DELETE FROM ScheduleChanges")
         await client.query("DELETE FROM BlockedDates")
         await client.query("DELETE FROM ScheduleRanges")
         await client.query("DELETE FROM ScheduleSettings")
@@ -120,6 +137,18 @@ export async function useScheduleConfig({ settings, ranges, blockedDates = [] }:
         await insertRows(client, "ScheduleRanges", ranges.map((range) => ({ ...range })))
         await insertRows(client, "BlockedDates", blockedDates.map((blocked) => ({ ...blocked })))
     })
+}
+
+export async function insertScheduleChange(
+    effectiveFrom: string,
+    config: object,
+    updatedBy: number | string,
+): Promise<void> {
+    await getPool().query(
+        `INSERT INTO ScheduleChanges (effective_from, config, updated_by)
+         VALUES ($1, $2::jsonb, $3)`,
+        [effectiveFrom, JSON.stringify(config), updatedBy],
+    )
 }
 
 export async function createTestQuestion(): Promise<{ categoryId: number; questionId: number }> {
