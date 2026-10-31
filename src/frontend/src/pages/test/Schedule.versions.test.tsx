@@ -229,6 +229,31 @@ describe("SchedulePage: mudanças agendadas", () => {
         expect(callsTo("GET", "/api/v1/schedule/effective")).toEqual([])
     })
 
+    it("recusa no campo a data de hoje em São Paulo enquanto a prévia não carregou", async () => {
+        vi.useFakeTimers({ toFake: ["Date"] })
+        vi.setSystemTime(new Date("2026-10-24T23:30:00-03:00"))
+        try {
+            const { callsTo } = await withVersions({
+                "GET /api/v1/schedule/preview": () => ({
+                    status: 500,
+                    body: { error: { code: "INTERNAL_SERVER_ERROR", message: "x" } }
+                })
+            })
+            await formReady()
+
+            fireEvent.change(screen.getByLabelText("Valer a partir de"), {
+                target: { value: "2026-10-24" }
+            })
+
+            expect(screen.getByLabelText("Valer a partir de")).toHaveAccessibleDescription(
+                "Escolha uma data a partir de amanhã."
+            )
+            expect(callsTo("GET", "/api/v1/schedule/effective")).toEqual([])
+        } finally {
+            vi.useRealTimers()
+        }
+    })
+
     it("avisa quando a lista de mudanças agendadas não carrega", async () => {
         await renderSchedulePage({
             handlers: {

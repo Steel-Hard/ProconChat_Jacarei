@@ -31,6 +31,7 @@ import formatDate from "@/utils/formatDate"
 import rangeHasBooking from "@/utils/schedule/rangeHasBooking"
 import rangeKey from "@/utils/schedule/rangeKey"
 import scheduleSaveErrorOf from "@/utils/schedule/scheduleSaveErrorOf"
+import todayInSaoPaulo from "@/utils/schedule/todayInSaoPaulo"
 
 type IssueTarget = Extract<ScheduleIssueField, { kind: "field" }>["field"]
 type FieldMessages = Partial<Record<IssueTarget, string[]>>
@@ -231,7 +232,7 @@ function useSchedule() {
         })
     }
 
-    const today = preview.preview?.today ?? null
+    const today = preview.preview?.today ?? todayInSaoPaulo()
 
     function applyVersion(date: string) {
         setVersionActionError(null)
@@ -261,7 +262,7 @@ function useSchedule() {
     function changeDate(value: string) {
         setDateInput(value)
 
-        if (value !== "" && today !== null && value <= today) {
+        if (value !== "" && value <= today) {
             setDateInvalid(true)
             return
         }
@@ -311,7 +312,7 @@ function useSchedule() {
         effectiveFrom,
         currentSince: effectiveFrom ? null : (currentQuery.currentData?.effectiveFrom ?? null),
         date: dateInput,
-        dateMin: today ? dayAfter(today) : undefined,
+        dateMin: dayAfter(today),
         dateError: dateInvalid ? t("versions.dateError") : null,
         versions,
         versionsFailed: versionsQuery.isError,
