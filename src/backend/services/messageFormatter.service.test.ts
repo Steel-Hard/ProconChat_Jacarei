@@ -17,6 +17,10 @@ import {
     criarMensagensSlots,
     formatarErroSlot,
     ERRO_NOME,
+    CORPO_AVISO_CANCELAMENTO,
+    MODELO_AVISO_CANCELAMENTO,
+    parametrosAvisoCancelamento,
+    renderizarModelo,
 } from "./messageFormatter.service"
 import type { OutgoingMessage } from "../types/message.types"
 import type { AvailableSlot } from "../types/schedule.types"
@@ -522,6 +526,66 @@ describe("messageFormatter.service", () => {
                     "3. Terça-feira, 06/10 às 17:30",
                     "4. Voltar para opções anteriores",
                 ].join("\n"),
+            )
+        })
+    })
+
+    describe("Aviso de cancelamento pela equipe (#67)", () => {
+        const aviso = {
+            name: "  Maria  da Silva",
+            protocol: "1A2B3C4D",
+            appointmentDatetime: new Date("2026-11-05T17:00:00.000Z"),
+            reason: "UNIT_CLOSED" as const,
+        }
+
+        test.each([
+            { name: "  Maria  da Silva" },
+            { name: "Maria" },
+            { name: "Maria\tda Silva" },
+        ])("usa só o primeiro nome em {{1}} para o nome $name", ({ name }) => {
+            expect(parametrosAvisoCancelamento({ ...aviso, name })[0]).toBe("Maria")
+        })
+
+        test("usa a data e a hora de Brasília em {{3}} e {{4}}, e não as de UTC", () => {
+            const parametros = parametrosAvisoCancelamento({
+                ...aviso,
+                appointmentDatetime: new Date("2026-11-05T03:30:00.000Z"),
+            })
+
+            expect(parametros.slice(2, 4)).toEqual(["05/11", "00:30"])
+        })
+
+        test.each([
+            { reason: "UNIT_CLOSED", frase: "a unidade estará fechada nesta data" },
+            { reason: "CITIZEN_REQUEST", frase: "cancelamento solicitado por você" },
+            { reason: "DUPLICATE", frase: "foi identificado outro agendamento em seu nome" },
+            { reason: "OTHER", frase: "não será possível realizar o atendimento neste horário" },
+        ] as const)("põe em {{5}} a frase do motivo $reason", ({ reason, frase }) => {
+            expect(parametrosAvisoCancelamento({ ...aviso, reason })[4]).toBe(frase)
+        })
+
+        test("renderiza o aviso do caso fixo exatamente como a prévia da spec", () => {
+            const texto = renderizarModelo(
+                CORPO_AVISO_CANCELAMENTO,
+                parametrosAvisoCancelamento({ ...aviso, protocol: "1a2b3c4d".toUpperCase() }),
+            )
+
+            expect(texto).toBe(
+                "Olá, Maria. Seu agendamento 1A2B3C4D no PROCON Jacareí, marcado para 05/11 às 14:00, foi cancelado. Motivo: a unidade estará fechada nesta data. Para agendar novamente, envie uma mensagem para este número.",
+            )
+        })
+
+        test("troca {{1}} a {{5}} na ordem e não deixa nenhum {{ no texto", () => {
+            const texto = renderizarModelo("{{2}}|{{1}}|{{5}}|{{3}}|{{4}}|{{1}}", ["um", "dois", "três", "quatro", "cinco"])
+
+            expect(texto).toBe("dois|um|cinco|três|quatro|um")
+            expect(texto).not.toContain("{{")
+        })
+
+        test("usa o modelo aviso_cancelamento em pt_BR com o corpo cadastrado na Meta", () => {
+            expect(MODELO_AVISO_CANCELAMENTO).toEqual({ name: "aviso_cancelamento", languageCode: "pt_BR" })
+            expect(CORPO_AVISO_CANCELAMENTO).toBe(
+                "Olá, {{1}}. Seu agendamento {{2}} no PROCON Jacareí, marcado para {{3}} às {{4}}, foi cancelado. Motivo: {{5}}. Para agendar novamente, envie uma mensagem para este número.",
             )
         })
     })

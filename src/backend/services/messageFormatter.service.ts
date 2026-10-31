@@ -1,6 +1,8 @@
 import { OutgoingMessage, ListRow, ReplyButton } from "../types/message.types"
 import { Categoria, Pergunta, RespostaFinalOutput } from "../types/motorDecisao.types"
 import { AvailableSlot } from "../types/schedule.types"
+import { CancellationReason } from "../types/appointment.types"
+import { getLocalParts } from "../utils/date.utils"
 
 export const SAUDACAO =
     "Olá! Sou o assistente virtual do PROCON Jacareí. As orientações a seguir têm caráter informativo e não substituem o atendimento formal.\n\n" +
@@ -83,6 +85,36 @@ export interface ConfirmacaoAgendamentoInput {
 
 export const MENSAGEM_ATENDIMENTO_PAUSADO =
     "O atendimento automático do PROCON Jacareí está temporariamente indisponível. Tente novamente mais tarde."
+
+export const CORPO_AVISO_CANCELAMENTO =
+    "Olá, {{1}}. Seu agendamento {{2}} no PROCON Jacareí, marcado para {{3}} às {{4}}, foi cancelado. Motivo: {{5}}. Para agendar novamente, envie uma mensagem para este número."
+
+export const MODELO_AVISO_CANCELAMENTO = { name: "aviso_cancelamento", languageCode: "pt_BR" } as const
+
+export const FRASES_MOTIVO_CANCELAMENTO: Record<CancellationReason, string> = {
+    UNIT_CLOSED: "a unidade estará fechada nesta data",
+    CITIZEN_REQUEST: "cancelamento solicitado por você",
+    DUPLICATE: "foi identificado outro agendamento em seu nome",
+    OTHER: "não será possível realizar o atendimento neste horário",
+}
+
+export interface AvisoCancelamentoInput {
+    name: string
+    protocol: string
+    appointmentDatetime: Date
+    reason: CancellationReason
+}
+
+export function parametrosAvisoCancelamento(input: AvisoCancelamentoInput): string[] {
+    const primeiroNome = input.name.trim().split(/\s+/)[0] ?? ""
+    const { dateStr, timeStr } = getLocalParts(input.appointmentDatetime)
+    const [, mes, dia] = dateStr.split("-")
+    return [primeiroNome, input.protocol, `${dia}/${mes}`, timeStr, FRASES_MOTIVO_CANCELAMENTO[input.reason]]
+}
+
+export function renderizarModelo(corpo: string, parametros: string[]): string {
+    return corpo.replace(/\{\{(\d+)\}\}/g, (marcador, posicao: string) => parametros[Number(posicao) - 1] ?? marcador)
+}
 
 export interface PaginatedResult<T> {
     itensPagina: T[]
