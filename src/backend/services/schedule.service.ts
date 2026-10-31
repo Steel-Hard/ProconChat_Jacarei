@@ -420,8 +420,13 @@ export function createScheduleService(
                 ?.days.find((day) => day.date === date) ?? null
         }
 
-        const currentVersion = effectiveVersionOf(versions, todayStr)!
-        const currentPreview = previewCache.get(currentVersion.effectiveFrom ?? "baseline")?.get(todayStr.slice(0, 7))!
+        const currentVersion = effectiveVersionOf(versions, todayStr)
+        const currentPreview = currentVersion
+            ? previewCache.get(currentVersion.effectiveFrom ?? "baseline")?.get(todayStr.slice(0, 7))
+            : undefined
+        if (!currentVersion || !currentPreview) {
+            throw new ScheduleNotConfiguredError()
+        }
         const requestedDays = Array.from({ length: Number(lastDateStr.slice(-2)) }, (_, index) => {
             const date = `${targetMonth}-${String(index + 1).padStart(2, "0")}`
             return dayPreview(date)!
