@@ -215,8 +215,7 @@ export function createScheduleStubRepository(
 
     const versionCalls: ScheduleVersionsCall[] = []
 
-    async function getScheduleVersions(fromDate: string, toDate: string): Promise<ScheduleVersion[]> {
-        versionCalls.push({ fromDate, toDate })
+    function configuredVersions(): ScheduleVersion[] {
         const base: ScheduleVersion[] = currentConfig
             ? [{ effectiveFrom: null, config: copyConfig(currentConfig) }]
             : []
@@ -225,6 +224,11 @@ export function createScheduleStubRepository(
                 .sort(([a], [b]) => a.localeCompare(b))
                 .map(([effectiveFrom, config]) => ({ effectiveFrom, config: copyConfig(config) })),
         )
+    }
+
+    async function getScheduleVersions(fromDate: string, toDate: string): Promise<ScheduleVersion[]> {
+        versionCalls.push({ fromDate, toDate })
+        return configuredVersions()
     }
 
     async function listScheduledConfigs(fromDate: string): Promise<ScheduleVersion[]> {
@@ -238,7 +242,9 @@ export function createScheduleStubRepository(
         config,
         actorUserId,
         now,
+        validateAgainstVersions,
     }: SaveScheduleConfigRepoParams): Promise<ScheduleConfigView> {
+        validateAgainstVersions?.(configuredVersions())
         const future: FutureActiveAppointment[] = appointments
             .filter((a) => a.appointmentDatetime > now)
             .map((a) => ({
@@ -291,10 +297,11 @@ export function createScheduleStubRepository(
         }))
     }
 
-    async function saveScheduledConfig({ config, actorUserId, now, effectiveFrom }: SaveScheduleConfigRepoParams & { effectiveFrom: string }): Promise<ScheduleConfigView> {
+    async function saveScheduledConfig({ config, actorUserId, now, effectiveFrom, validateAgainstVersions }: SaveScheduleConfigRepoParams & { effectiveFrom: string }): Promise<ScheduleConfigView> {
         if (effectiveFrom <= getLocalParts(now).dateStr) {
             throw new BadRequestError("A data de início da mudança deve ser futura")
         }
+        validateAgainstVersions?.(configuredVersions())
         const nextDate = nextChangeAfter(effectiveFrom)
         const affected = appointmentsInScheduleInterval(futureOf(), effectiveFrom, nextDate)
         const previous = await getConfigForDate(addDaysToDateString(effectiveFrom, -1))

@@ -980,9 +980,11 @@ proteção CSRF (`403 INVALID_ORIGIN` nos métodos que enviam corpo), por `requi
   grava uma mudança nova com início hoje, sem tocar na anterior. Um bloqueio novo com data de hoje em
   diante fora da vigência da versão salva é recusado com `400` e `details.issues`
   (`blockedDates.N.date`, com o índice do corpo enviado); bloqueios que já estavam na cópia de
-  referência continuam aceitos. Essa checagem roda no service, fora da trava `schedule_config`: um
-  `PUT /versions` concorrente entre a checagem e a gravação pode deixar passar um bloqueio que a outra
-  mudança passou a governar.
+  referência continuam aceitos. A regra fica no service (`blocksInVigencyCheck`), que a entrega ao
+  repositório em `validateAgainstVersions`; o repositório a roda dentro da transação, depois da trava
+  `schedule_config`, com todas as versões de hoje em diante. Assim, uma mudança gravada por outro
+  salvamento enquanto este esperava a trava já conta na checagem
+  (`scheduleChanges.race.integration.test.ts`).
 - **Consistência entre bot e prévia:** o cálculo de vagas disponíveis do bot (`getAvailableSlots`) e
   o cálculo da prévia mensal (`getMonthlyPreview`) compartilham as mesmas funções puras de
   `services/scheduleRules.ts` (`slotsForWeekday`, `freeSlotStartsOfDay`, `isBusinessDay`,

@@ -155,31 +155,30 @@ function windowBoundsOf(versions: ScheduleVersion[], current: ScheduleVersion, t
     )
 }
 
-const OPEN_END_DATE = "9999-12-31"
-
 export function createScheduleService(
     repository: IScheduleRepository,
 ): IScheduleService {
-    async function ensureBlocksInVigency(
+    function blocksInVigencyCheck(
         input: ScheduleConfigInput,
         start: string,
         todayStr: string,
-    ): Promise<void> {
-        const versions = await repository.getScheduleVersions(todayStr, OPEN_END_DATE)
-        const reference = effectiveVersionOf(versions, start)
-        const next = versions.find((version) =>
-            version.effectiveFrom !== null && version.effectiveFrom > start,
-        )?.effectiveFrom ?? null
-        const issues = blockVigencyIssues(input.blockedDates, reference?.config.blockedDates ?? [], {
-            today: todayStr,
-            start,
-            next,
-        })
-        if (issues.length > 0) {
-            throw new BadRequestError(
-                `Dados inválidos: ${issues.map((issue) => `${issue.path}: ${issue.message}`).join("; ")}`,
-                { issues },
-            )
+    ): (versions: ScheduleVersion[]) => void {
+        return (versions) => {
+            const reference = effectiveVersionOf(versions, start)
+            const next = versions.find((version) =>
+                version.effectiveFrom !== null && version.effectiveFrom > start,
+            )?.effectiveFrom ?? null
+            const issues = blockVigencyIssues(input.blockedDates, reference?.config.blockedDates ?? [], {
+                today: todayStr,
+                start,
+                next,
+            })
+            if (issues.length > 0) {
+                throw new BadRequestError(
+                    `Dados inválidos: ${issues.map((issue) => `${issue.path}: ${issue.message}`).join("; ")}`,
+                    { issues },
+                )
+            }
         }
     }
 
@@ -324,11 +323,11 @@ export function createScheduleService(
     ): Promise<ScheduleConfigView> {
         const normalized = normalizeAndValidateScheduleConfig(input)
         const todayStr = getLocalParts(now).dateStr
-        await ensureBlocksInVigency(input, todayStr, todayStr)
         return repository.saveConfig({
             config: normalized,
             actorUserId,
             now,
+            validateAgainstVersions: blocksInVigencyCheck(input, todayStr, todayStr),
         })
     }
 
@@ -345,12 +344,12 @@ export function createScheduleService(
             throw new BadRequestError("A data de início da mudança deve ser futura")
         }
         const normalized = normalizeAndValidateScheduleConfig(input)
-        await ensureBlocksInVigency(input, effectiveFrom, getLocalParts(now).dateStr)
         return repository.saveScheduledConfig({
             config: normalized,
             effectiveFrom,
             actorUserId,
             now,
+            validateAgainstVersions: blocksInVigencyCheck(input, effectiveFrom, getLocalParts(now).dateStr),
         })
     }
 

@@ -44,7 +44,9 @@ equipe pretende mudar os horários somente a partir de uma data posterior.
    ou, antes do início de uma mudança, "Esta data vem antes do início desta
    mudança (dd/mm). Bloqueie na configuração que vale nessa data." Bloqueios
    que já estavam na cópia de referência (a própria versão, ou a versão
-   copiada ao criar a mudança) continuam aceitos. A tela avisa que as
+   copiada ao criar a mudança) continuam aceitos. A checagem roda dentro da
+   transação do salvamento, depois da trava `schedule_config`, para enxergar
+   uma mudança gravada por outro salvamento concorrente. A tela avisa que as
    mudanças agendadas têm cópia própria dos horários, das datas bloqueadas e
    do endereço.
 8. Janela de agendamento, antecedência mínima e alerta de espera vêm da versão

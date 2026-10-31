@@ -235,6 +235,18 @@ function versionFromRow(row: {
     }
 }
 
+const OPEN_END_DATE = "9999-12-31"
+
+async function validateAgainstAllVersions(
+    client: PoolClient,
+    today: string,
+    validate: SaveScheduleConfigRepoParams["validateAgainstVersions"],
+): Promise<void> {
+    if (validate) {
+        validate(await selectScheduledVersions(client, today, OPEN_END_DATE))
+    }
+}
+
 async function selectScheduledVersions(
     db: Queryable,
     fromDate: string,
@@ -329,6 +341,7 @@ async function saveScheduledConfig({
     actorUserId,
     now,
     effectiveFrom,
+    validateAgainstVersions,
 }: SaveScheduleConfigRepoParams & { effectiveFrom: string }): Promise<ScheduleConfigView> {
     const today = getLocalParts(now).dateStr
     if (effectiveFrom <= today) {
@@ -341,6 +354,7 @@ async function saveScheduledConfig({
         await client.query("BEGIN")
         await client.query("SELECT pg_advisory_xact_lock(hashtext('schedule_config'))")
         await lockAccounts(client, [actorUserId])
+        await validateAgainstAllVersions(client, today, validateAgainstVersions)
 
         const nextDate = await nextScheduleChangeDate(client, effectiveFrom)
         const previousDate = addDaysToDateString(effectiveFrom, -1)
@@ -509,6 +523,7 @@ async function saveConfig({
     config,
     actorUserId,
     now,
+    validateAgainstVersions,
 }: SaveScheduleConfigRepoParams): Promise<ScheduleConfigView> {
     const pool = getPool()
     const client = await pool.connect()
@@ -518,6 +533,7 @@ async function saveConfig({
         await client.query("SELECT pg_advisory_xact_lock(hashtext('schedule_config'))")
         await lockAccounts(client, [actorUserId])
         const today = getLocalParts(now).dateStr
+        await validateAgainstAllVersions(client, today, validateAgainstVersions)
         const currentVersions = await selectScheduledVersions(client, today, today)
         const currentVersion = currentVersions.at(-1)
         const current = await client.query<{ slot_minutes: number }>(

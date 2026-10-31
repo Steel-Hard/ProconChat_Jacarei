@@ -83,6 +83,14 @@ async function waitForLockWaiters(count: number): Promise<void> {
     }
 }
 
+function dayMonthOf(date: string): string {
+    return `${date.slice(8, 10)}/${date.slice(5, 7)}`
+}
+
+function holiday(date: string) {
+    return { date, startTime: null, endTime: null, description: "Feriado" }
+}
+
 function settled<T>(promise: Promise<T>): Promise<PromiseSettledResult<T>> {
     return promise.then(
         (value): PromiseSettledResult<T> => ({ status: "fulfilled", value }),
@@ -156,6 +164,48 @@ describe("corrida entre mudança agendada, reserva e atribuição (Postgres)", (
 
     async function savedChanges(): Promise<number> {
         const result = await getPool().query("SELECT 1 FROM ScheduleChanges")
+        return result.rowCount ?? 0
+    }
+
+    async function saveWhileChangeIsCommitted(
+        writtenChange: string,
+        saving: () => Promise<request.Response>,
+    ): Promise<request.Response> {
+        const writer: PoolClient = await getPool().connect()
+        let pending: Promise<PromiseSettledResult<request.Response>> | null = null
+        let committed = false
+        try {
+            await writer.query("BEGIN")
+            await writer.query("SELECT pg_advisory_xact_lock(hashtext('schedule_config'))")
+            await writer.query(
+                `INSERT INTO ScheduleChanges (effective_from, config, updated_by)
+                 VALUES ($1, $2::jsonb, $3)`,
+                [writtenChange, JSON.stringify(configOn([1, 2, 3, 4, 5])), configurer.id],
+            )
+            pending = settled(saving())
+            await waitForLockWaiters(1)
+            await writer.query("COMMIT")
+            committed = true
+        } finally {
+            if (!committed) {
+                await writer.query("ROLLBACK")
+            }
+            writer.release()
+        }
+        const result = await pending
+        if (result.status === "rejected") {
+            throw result.reason
+        }
+        return result.value
+    }
+
+    async function blockedOn(date: string): Promise<number> {
+        const result = await getPool().query("SELECT 1 FROM BlockedDates WHERE date = $1", [date])
+        return result.rowCount ?? 0
+    }
+
+    async function changesOn(date: string): Promise<number> {
+        const result = await getPool().query("SELECT 1 FROM ScheduleChanges WHERE effective_from = $1", [date])
         return result.rowCount ?? 0
     }
 
@@ -302,6 +352,54 @@ describe("corrida entre mudança agendada, reserva e atribuição (Postgres)", (
             expect(results.map((result) => result.status)).toEqual(["fulfilled", "fulfilled"])
             expect(results[0].status === "fulfilled" && results[0].value.status).toBe(200)
             expect(await appointmentState(id)).toEqual({ status: "CONFIRMED", assignedUserId: configurer.id })
+        }
+    })
+
+    it("recusa em PUT /schedule o bloqueio novo que passou a seguir a mudança gravada enquanto o salvamento esperava a trava", async () => {
+        const today = getLocalParts(new Date()).dateStr
+        const lateBlock = addDaysToDateString(changeDate, 3)
+        const body = bodyOf({
+            ...configOn([1, 2, 3, 4, 5]),
+            blockedDates: [holiday(lateBlock), holiday(addDaysToDateString(today, 1))],
+        })
+
+        for (let round = 0; round < ROUNDS; round += 1) {
+            await resetRound()
+
+            const response = await saveWhileChangeIsCommitted(changeDate, () =>
+                request(app).put("/api/v1/schedule").set("Cookie", configurer.cookie).set("Origin", ORIGIN).send(body),
+            )
+
+            expect(response.status).toBe(400)
+            expect(response.body.error.details).toEqual({
+                issues: [
+                    { path: "blockedDates.0.date", message: `Esta data segue a mudança de ${dayMonthOf(changeDate)}. Bloqueie lá.` },
+                ],
+            })
+            expect(await blockedOn(lateBlock)).toBe(0)
+        }
+    })
+
+    it("recusa em PUT /versions o bloqueio novo que passou a seguir a mudança posterior gravada enquanto o salvamento esperava a trava", async () => {
+        const laterChange = addDaysToDateString(changeDate, 7)
+        const lateBlock = addDaysToDateString(laterChange, 2)
+        const config = {
+            ...configOn([1, 2, 3, 4, 5]),
+            blockedDates: [holiday(lateBlock), holiday(addDaysToDateString(changeDate, 2))],
+        }
+
+        for (let round = 0; round < ROUNDS; round += 1) {
+            await resetRound()
+
+            const response = await saveWhileChangeIsCommitted(laterChange, () => putVersion(config))
+
+            expect(response.status).toBe(400)
+            expect(response.body.error.details).toEqual({
+                issues: [
+                    { path: "blockedDates.0.date", message: `Esta data segue a mudança de ${dayMonthOf(laterChange)}. Bloqueie lá.` },
+                ],
+            })
+            expect(await changesOn(changeDate)).toBe(0)
         }
     })
 })
