@@ -60,7 +60,7 @@ export type AppointmentSortOrder = "asc" | "desc"
 
 export type AppointmentActionType = "claim" | "attended" | "no_show" | "assign" | "correct_record" | "cancel"
 
-export type AppointmentAvailableActionKey = AppointmentActionType | "add_note"
+export type AppointmentAvailableActionKey = AppointmentActionType | "add_note" | "retry_cancellation_notice"
 
 export interface AppointmentListItem {
     id: string
@@ -136,6 +136,9 @@ export type TransitionErrorCode =
     | "ASSIGNEE_BUSY"
     | "PERMISSION_REQUIRED"
     | "CANCEL_AFTER_START"
+    | "NOTIFICATION_NOT_RETRYABLE"
+    | "CITIZEN_PHONE_UNAVAILABLE"
+    | "NOTIFICATION_AFTER_START"
 
 export interface AppointmentActionAvailability {
     allowed: boolean

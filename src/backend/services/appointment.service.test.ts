@@ -190,6 +190,7 @@ describe("appointment.service", () => {
                 correct_record: PERMISSION_REQUIRED,
                 add_note: PERMISSION_REQUIRED,
                 cancel: PERMISSION_REQUIRED,
+                retry_cancellation_notice: PERMISSION_REQUIRED,
             })
         })
 
@@ -204,6 +205,7 @@ describe("appointment.service", () => {
                 correct_record: { allowed: false, code: "RECORD_NOT_CORRECTABLE" },
                 add_note: { allowed: true, code: null },
                 cancel: { allowed: true, code: null },
+                retry_cancellation_notice: { allowed: false, code: "NOTIFICATION_NOT_RETRYABLE" },
             })
         })
 
