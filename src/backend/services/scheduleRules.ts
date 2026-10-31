@@ -276,6 +276,17 @@ function detectResponsibleOverlaps(
     return items
 }
 
+export function appointmentsInScheduleInterval(
+    appointments: FutureActiveAppointment[],
+    fromDate: string,
+    nextDate: string | null,
+): FutureActiveAppointment[] {
+    return appointments.filter((appointment) => {
+        const { dateStr } = getLocalParts(appointment.appointmentDatetime)
+        return dateStr >= fromDate && (nextDate === null || dateStr < nextDate)
+    })
+}
+
 export function detectScheduleConflicts(
     config: NormalizedScheduleConfig,
     futureAppointments: FutureActiveAppointment[],

@@ -8,6 +8,7 @@ import NotFoundError from "../errors/NotFoundError"
 import ScheduleNotConfiguredError from "../errors/ScheduleNotConfiguredError"
 import SlotFullError from "../errors/SlotFullError"
 import {
+    appointmentsInScheduleInterval,
     detectScheduleConflicts,
     freeSlotStartsOfDay,
     toMinutes,
@@ -321,17 +322,6 @@ async function nextScheduleChangeDate(db: Queryable, effectiveFrom: string): Pro
         [effectiveFrom],
     )
     return result.rows[0]?.effective_from ?? null
-}
-
-function appointmentsInScheduleInterval(
-    appointments: FutureActiveAppointment[],
-    fromDate: string,
-    nextDate: string | null,
-): FutureActiveAppointment[] {
-    return appointments.filter((appointment) => {
-        const { dateStr } = getLocalParts(appointment.appointmentDatetime)
-        return dateStr >= fromDate && (nextDate === null || dateStr < nextDate)
-    })
 }
 
 async function saveScheduledConfig({

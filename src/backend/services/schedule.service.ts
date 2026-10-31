@@ -22,6 +22,7 @@ import {
 } from "../types/schedule.types"
 import { addDaysToDateString, getLocalParts, parseLocalDate } from "../utils/date.utils"
 import {
+    appointmentsInScheduleInterval,
     calculateMonthlyPreview,
     computeWindowBounds,
     detectScheduleConflicts,
@@ -444,21 +445,30 @@ export function createScheduleService(
             usedWindowSeats += day.usedSeats
         }
 
-        let conflicts: SchedulePreviewConflict[] = []
+        const futureAppointments = await repository.listFutureActiveAppointments(now)
+        let conflicts: SchedulePreviewConflict[]
         if (draftConfig && draftEffectiveFrom) {
+            const draftStart = draftEffectiveFrom
             const nextVersion = versions.find((version) =>
-                version.effectiveFrom !== null && version.effectiveFrom > draftEffectiveFrom!,
+                version.effectiveFrom !== null && version.effectiveFrom > draftStart,
             )
-            const futureAppointments = (await repository.listFutureActiveAppointments(now)).filter((appointment) => {
-                const { dateStr } = getLocalParts(appointment.appointmentDatetime)
-                return dateStr >= draftEffectiveFrom! &&
-                    (nextVersion?.effectiveFrom === undefined || nextVersion.effectiveFrom === null || dateStr < nextVersion.effectiveFrom)
-            })
             conflicts = detectScheduleConflicts(
                 draftConfig,
-                futureAppointments,
+                appointmentsInScheduleInterval(futureAppointments, draftStart, nextVersion?.effectiveFrom ?? null),
                 previousVersion?.config.slotMinutes ?? null,
             ).map(previewConflictOf)
+        } else {
+            conflicts = versions.flatMap((version, index) => {
+                const start = version.effectiveFrom !== null && version.effectiveFrom > todayStr
+                    ? version.effectiveFrom
+                    : todayStr
+                const next = versions[index + 1]?.effectiveFrom ?? null
+                return detectScheduleConflicts(
+                    version.config,
+                    appointmentsInScheduleInterval(futureAppointments, start, next),
+                    version.config.slotMinutes,
+                ).map(previewConflictOf)
+            })
         }
 
         return {
