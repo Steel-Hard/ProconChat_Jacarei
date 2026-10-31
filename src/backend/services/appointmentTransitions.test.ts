@@ -245,6 +245,57 @@ describe("appointmentTransitions", () => {
         })
     })
 
+    describe("decideTransition para cancelar", () => {
+        it("recusa cancelar no horário exato do atendimento com CANCEL_AFTER_START", () => {
+            const decision = decideTransition("cancel", { status: "CONFIRMED", appointmentDatetime: now }, now)
+
+            expect(decision.allowed).toBe(false)
+            if (!decision.allowed) {
+                expect(decision.error.statusCode).toBe(409)
+                expect(decision.error.code).toBe("CANCEL_AFTER_START")
+                expect(decision.error.message).toBe("Só é possível cancelar antes do horário do atendimento")
+            }
+        })
+
+        it("recusa cancelar 1 ms depois do horário do atendimento com CANCEL_AFTER_START", () => {
+            const decision = decideTransition(
+                "cancel",
+                { status: "PENDING", appointmentDatetime: new Date(now.getTime() - 1) },
+                now,
+            )
+
+            expect(decision.allowed).toBe(false)
+            if (!decision.allowed) {
+                expect(decision.error.code).toBe("CANCEL_AFTER_START")
+            }
+        })
+
+        it.each(["PENDING", "CONFIRMED"] as const)("permite cancelar %s 1 ms antes do horário do atendimento", (status) => {
+            const decision = decideTransition(
+                "cancel",
+                { status, appointmentDatetime: new Date(now.getTime() + 1) },
+                now,
+            )
+
+            expect(decision).toEqual({ allowed: true })
+        })
+
+        it.each([
+            { status: "CANCELED", code: "APPOINTMENT_CANCELED", message: "Agendamento já está cancelado" },
+            { status: "ATTENDED", code: "ALREADY_ATTENDED", message: "Agendamento já foi marcado como atendido" },
+            { status: "NO_SHOW", code: "ALREADY_NO_SHOW", message: "Agendamento já foi registrado como não compareceu" },
+        ] as const)("recusa cancelar um agendamento $status com $code", ({ status, code, message }) => {
+            const decision = decideTransition("cancel", { status, appointmentDatetime: future }, now)
+
+            expect(decision.allowed).toBe(false)
+            if (!decision.allowed) {
+                expect(decision.error.statusCode).toBe(409)
+                expect(decision.error.code).toBe(code)
+                expect(decision.error.message).toBe(message)
+            }
+        })
+    })
+
     describe("availableActions por permissão", () => {
         it.each(ALL_STATUSES)(
             "sem appointments.manage, todas as ações de gerenciar saem com PERMISSION_REQUIRED no status %s",
@@ -258,6 +309,7 @@ describe("appointmentTransitions", () => {
                     assign: PERMISSION_REQUIRED,
                     correct_record: PERMISSION_REQUIRED,
                     add_note: PERMISSION_REQUIRED,
+                    cancel: PERMISSION_REQUIRED,
                 })
             },
         )
@@ -272,6 +324,7 @@ describe("appointmentTransitions", () => {
                 assign: { allowed: true, code: null },
                 correct_record: { allowed: false, code: "RECORD_NOT_CORRECTABLE" },
                 add_note: { allowed: true, code: null },
+                cancel: { allowed: false, code: "CANCEL_AFTER_START" },
             })
         })
 
@@ -285,6 +338,7 @@ describe("appointmentTransitions", () => {
                 assign: { allowed: false, code: "ALREADY_ATTENDED" },
                 correct_record: { allowed: true, code: null },
                 add_note: { allowed: true, code: null },
+                cancel: { allowed: false, code: "ALREADY_ATTENDED" },
             })
         })
 
@@ -298,6 +352,7 @@ describe("appointmentTransitions", () => {
                 assign: { allowed: false, code: "APPOINTMENT_CANCELED" },
                 correct_record: { allowed: false, code: "RECORD_NOT_CORRECTABLE" },
                 add_note: { allowed: true, code: null },
+                cancel: { allowed: false, code: "APPOINTMENT_CANCELED" },
             })
         })
 
@@ -308,6 +363,20 @@ describe("appointmentTransitions", () => {
             expect(actions.correct_record).toEqual({ allowed: false, code: "RECORD_NOT_CORRECTABLE" })
             expect(actions.claim).toEqual({ allowed: false, code: "APPOINTMENT_ALREADY_CLAIMED" })
         })
+
+        it.each([
+            { status: "PENDING", appointmentDatetime: future, expected: { allowed: true, code: null } },
+            { status: "CONFIRMED", appointmentDatetime: future, expected: { allowed: true, code: null } },
+            { status: "CONFIRMED", appointmentDatetime: now, expected: { allowed: false, code: "CANCEL_AFTER_START" } },
+            { status: "NO_SHOW", appointmentDatetime: past, expected: { allowed: false, code: "ALREADY_NO_SHOW" } },
+        ] as const)(
+            "com appointments.manage, cancel de um $status segue a decisão de cancelar",
+            ({ status, appointmentDatetime, expected }) => {
+                const actions = availableActions({ status, appointmentDatetime }, now, { canManage: true })
+
+                expect(actions.cancel).toEqual(expected)
+            },
+        )
     })
 
     describe("restoredStateAfterCorrection", () => {

@@ -189,6 +189,7 @@ describe("appointment.service", () => {
                 assign: PERMISSION_REQUIRED,
                 correct_record: PERMISSION_REQUIRED,
                 add_note: PERMISSION_REQUIRED,
+                cancel: PERMISSION_REQUIRED,
             })
         })
 
@@ -202,6 +203,7 @@ describe("appointment.service", () => {
                 assign: { allowed: true, code: null },
                 correct_record: { allowed: false, code: "RECORD_NOT_CORRECTABLE" },
                 add_note: { allowed: true, code: null },
+                cancel: { allowed: true, code: null },
             })
         })
 

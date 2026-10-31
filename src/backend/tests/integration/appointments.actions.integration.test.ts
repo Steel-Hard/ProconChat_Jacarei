@@ -124,13 +124,13 @@ describe("Ações do agendamento ponta a ponta com Postgres", () => {
             expect(res.status).toBe(expected)
         })
 
-        it("no Detalhe, a conta só com Ver agendamentos recebe PERMISSION_REQUIRED nas seis ações", async () => {
+        it("no Detalhe, a conta só com Ver agendamentos recebe PERMISSION_REQUIRED nas sete ações", async () => {
             const id = await appointment("PENDING", false)
 
             const res = await request(app).get(`/api/v1/appointments/${id}`).set("Cookie", viewer.cookie)
 
             expect(Object.values(res.body.data.available_actions)).toEqual(
-                Array(6).fill({ allowed: false, code: "PERMISSION_REQUIRED" }),
+                Array(7).fill({ allowed: false, code: "PERMISSION_REQUIRED" }),
             )
         })
     })

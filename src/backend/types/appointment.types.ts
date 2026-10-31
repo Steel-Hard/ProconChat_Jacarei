@@ -58,7 +58,7 @@ export type AppointmentSortBy =
 
 export type AppointmentSortOrder = "asc" | "desc"
 
-export type AppointmentActionType = "claim" | "attended" | "no_show" | "assign" | "correct_record"
+export type AppointmentActionType = "claim" | "attended" | "no_show" | "assign" | "correct_record" | "cancel"
 
 export type AppointmentAvailableActionKey = AppointmentActionType | "add_note"
 
@@ -135,6 +135,7 @@ export type TransitionErrorCode =
     | "INVALID_ASSIGNEE"
     | "ASSIGNEE_BUSY"
     | "PERMISSION_REQUIRED"
+    | "CANCEL_AFTER_START"
 
 export interface AppointmentActionAvailability {
     allowed: boolean

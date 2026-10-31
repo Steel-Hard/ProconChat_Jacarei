@@ -107,6 +107,17 @@ function decideNoShow(target: TransitionTarget, now: Date): TransitionDecision {
     return ALLOWED
 }
 
+function decideCancel(target: TransitionTarget, now: Date): TransitionDecision {
+    const statusDecision = decideRecordStatus(target.status, "Agendamento já está cancelado")
+    if (statusDecision) {
+        return statusDecision
+    }
+    if (isDatetimePast(target.appointmentDatetime, now)) {
+        return refuse("Só é possível cancelar antes do horário do atendimento", "CANCEL_AFTER_START")
+    }
+    return ALLOWED
+}
+
 export function decideTransition(
     action: AppointmentActionType,
     target: TransitionTarget,
@@ -123,6 +134,9 @@ export function decideTransition(
     }
     if (action === "correct_record") {
         return decideCorrectRecord(target.status)
+    }
+    if (action === "cancel") {
+        return decideCancel(target, now)
     }
     return decideNoShow(target, now)
 }
@@ -148,6 +162,7 @@ export function availableActions(
             assign: PERMISSION_REQUIRED,
             correct_record: PERMISSION_REQUIRED,
             add_note: PERMISSION_REQUIRED,
+            cancel: PERMISSION_REQUIRED,
         }
     }
     return {
@@ -157,6 +172,7 @@ export function availableActions(
         assign: availabilityOf(decideTransition("assign", target, now)),
         correct_record: availabilityOf(decideTransition("correct_record", target, now)),
         add_note: { allowed: true, code: null },
+        cancel: availabilityOf(decideTransition("cancel", target, now)),
     }
 }
 

@@ -72,7 +72,7 @@ const DETAIL_KEYS = [
 ]
 const TIMELINE_STEP_KEYS = ["created_at", "data", "generated_by_ai", "id", "type"]
 const EVENT_KEYS = ["actor_user_id", "actor_user_name", "created_at", "data", "id", "type"]
-const ACTION_KEYS = ["add_note", "assign", "attended", "claim", "correct_record", "no_show"]
+const ACTION_KEYS = ["add_note", "assign", "attended", "cancel", "claim", "correct_record", "no_show"]
 const AVAILABILITY_KEYS = ["allowed", "code"]
 const ERROR_KEYS = ["code", "message"]
 const PATCH_CONFLICT_CODES = [
@@ -86,6 +86,7 @@ const PATCH_CONFLICT_CODES = [
     "ALREADY_ASSIGNED_TO_USER",
     "INVALID_ASSIGNEE",
     "ASSIGNEE_BUSY",
+    "CANCEL_AFTER_START",
 ]
 const AVAILABILITY_CODES = [...PATCH_CONFLICT_CODES, "PERMISSION_REQUIRED"]
 const FORBIDDEN_FIELDS = ["cpf_hash", "phone_encrypted", "phone_hash"]
