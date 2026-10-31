@@ -860,7 +860,13 @@ regra: depois da trava consultiva exclusiva `schedule_config`, `saveConfig` trav
 travar os agendamentos futuros. Sem isso, salvar a grade enquanto outra pessoa atribui um agendamento
 futuro a quem salva fechava um ciclo (o salvamento com o agendamento esperando a conta, a atribuição
 com a conta esperando o agendamento). A prova fica em
-`tests/integration/scheduleConfig.lockOrder.integration.test.ts`.
+`tests/integration/scheduleConfig.lockOrder.integration.test.ts`. Salvar uma mudança agendada
+(`PUT /api/v1/schedule/versions/:effectiveFrom`) segue a mesma ordem, e ela e o cancelamento
+(`DELETE`) pegam a mesma trava exclusiva `schedule_config` que a reserva pega compartilhada. A prova
+fica em `tests/integration/scheduleChanges.race.integration.test.ts`: o salvamento que tira um horário
+espera a reserva em andamento e responde `409`, a reserva e o salvamento nunca passam juntos, e a
+atribuição a quem salva não fecha ciclo. Os critérios da mudança agendada contra o Postgres ficam em
+`tests/integration/scheduleChanges.integration.test.ts`.
 
 **Corrigir registro (`correct_record`).** Volta ao estado anterior ao `ATTENDED`/`NO_SHOW` mais recente:
 `PENDING` sem responsável quando esse terminal veio junto de um `CLAIMED { auto_claimed: true }` no
