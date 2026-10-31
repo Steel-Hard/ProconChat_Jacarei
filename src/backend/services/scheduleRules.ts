@@ -297,6 +297,52 @@ function detectResponsibleOverlaps(
     return items
 }
 
+export interface ScheduleFieldIssue {
+    path: string
+    message: string
+}
+
+export interface BlockVigency {
+    today: string
+    start: string
+    next: string | null
+}
+
+function dayMonthOf(dateStr: string): string {
+    const [, month, day] = dateStr.split("-")
+    return `${day}/${month}`
+}
+
+function blockKeyOf(block: Pick<BlockedDateItem, "date"> & { startTime?: string | null; endTime?: string | null }): string {
+    return `${block.date} ${block.startTime?.slice(0, 5) ?? ""} ${block.endTime?.slice(0, 5) ?? ""}`
+}
+
+export function blockVigencyIssues(
+    blocks: (Pick<BlockedDateItem, "date"> & { startTime?: string | null; endTime?: string | null })[],
+    reference: BlockedDateItem[],
+    { today, start, next }: BlockVigency,
+): ScheduleFieldIssue[] {
+    const kept = new Set(reference.map(blockKeyOf))
+    const issues: ScheduleFieldIssue[] = []
+    blocks.forEach((block, index) => {
+        if (block.date < today || kept.has(blockKeyOf(block))) {
+            return
+        }
+        if (block.date < start) {
+            issues.push({
+                path: `blockedDates.${index}.date`,
+                message: `Esta data vem antes do início desta mudança (${dayMonthOf(start)}). Bloqueie na configuração que vale nessa data.`,
+            })
+        } else if (next !== null && block.date >= next) {
+            issues.push({
+                path: `blockedDates.${index}.date`,
+                message: `Esta data segue a mudança de ${dayMonthOf(next)}. Bloqueie lá.`,
+            })
+        }
+    })
+    return issues
+}
+
 export function appointmentsInScheduleInterval(
     appointments: FutureActiveAppointment[],
     fromDate: string,

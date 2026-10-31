@@ -542,10 +542,13 @@ async function saveConfig({
 
         if (currentVersion?.effectiveFrom) {
             await client.query(
-                `UPDATE ScheduleChanges
-                 SET config = $2::jsonb, updated_by = $3, updated_at = NOW()
-                 WHERE effective_from = $1`,
-                [currentVersion.effectiveFrom, JSON.stringify(config), actorUserId],
+                `INSERT INTO ScheduleChanges (effective_from, config, updated_by, updated_at)
+                 VALUES ($1, $2::jsonb, $3, NOW())
+                 ON CONFLICT (effective_from) DO UPDATE SET
+                    config = EXCLUDED.config,
+                    updated_by = EXCLUDED.updated_by,
+                    updated_at = NOW()`,
+                [today, JSON.stringify(config), actorUserId],
             )
         } else {
             await client.query(
