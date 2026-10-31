@@ -250,7 +250,7 @@ async function ensureActorCanTake(
         return
     }
     const appointmentDatetime = new Date(appointment.appointment_datetime)
-    const slotMinutes = await readSlotMinutes(client)
+    const slotMinutes = await readSlotMinutes(client, appointmentDatetime)
     const conflict = findResponsibleConflict({
         candidate: actor,
         appointmentId: String(appointment.id),
@@ -760,7 +760,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                     throw invalid
                 }
                 const appointmentDatetime = new Date(current.appointment_datetime)
-                const slotMinutes = await readSlotMinutes(client)
+                const slotMinutes = await readSlotMinutes(client, appointmentDatetime)
                 const conflict = findResponsibleConflict({
                     candidate: target,
                     appointmentId: String(current.id),
@@ -810,7 +810,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                 let warning: CorrectionWarning | null = null
 
                 if (target.status === "CONFIRMED" && !isDatetimePast(appointmentDatetime, now)) {
-                    const slotMinutes = await readSlotMinutes(client)
+                    const slotMinutes = await readSlotMinutes(client, appointmentDatetime)
                     const conflict: ResponsibleConflict | null = responsible
                         ? findResponsibleConflict({
                               candidate: responsible,
