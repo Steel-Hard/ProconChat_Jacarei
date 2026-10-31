@@ -21,6 +21,7 @@ import { hashPhone } from "./helpers/phone"
 import {
     cleanupScheduleTestData,
     createTestQuestion,
+    insertScheduleChange,
     restoreScheduleConfig,
     ScheduleConfigSnapshot,
     snapshotScheduleConfig,
@@ -197,6 +198,38 @@ describe("corrida entre mudança agendada, reserva e atribuição (Postgres)", (
             throw result.reason
         }
         return result.value
+    }
+
+    function deleteVersion(): Promise<request.Response> {
+        return request(app)
+            .delete(`/api/v1/schedule/versions/${changeDate}`)
+            .set("Cookie", configurer.cookie)
+            .set("Origin", ORIGIN)
+            .then((response) => response)
+    }
+
+    async function startRoundWithTuesdayOnlyInChange(): Promise<void> {
+        await useScheduleConfig({
+            settings: {
+                slot_minutes: 30,
+                seats_per_slot: 2,
+                window_days: 30,
+                min_notice_days: 0,
+                wait_alert_days: 7,
+                unit_address: "Rua do Procon, 100",
+                unit_address_complement: null,
+                reminder_enabled: true,
+                reminder_hours: 24,
+            },
+            ranges: [1, 3, 4, 5].map((weekday) => ({
+                weekday,
+                slot_index: 1,
+                start_time: "08:00",
+                end_time: "12:00",
+            })),
+        })
+        await resetRound()
+        await insertScheduleChange(changeDate, configOn([1, 2, 3, 4, 5]), configurer.id)
     }
 
     async function blockedOn(date: string): Promise<number> {
@@ -400,6 +433,63 @@ describe("corrida entre mudança agendada, reserva e atribuição (Postgres)", (
                 ],
             })
             expect(await changesOn(changeDate)).toBe(0)
+        }
+    })
+
+    it("o cancelamento que devolveria a terça à grade sem ela espera a reserva em andamento e responde 409, mantendo a mudança", async () => {
+        for (let round = 0; round < ROUNDS; round += 1) {
+            await startRoundWithTuesdayOnlyInChange()
+            const input = await bookingInput()
+            const booking: PoolClient = await getPool().connect()
+            let canceling: Promise<PromiseSettledResult<request.Response>> | null = null
+            let committed = false
+            try {
+                await booking.query("BEGIN")
+                await booking.query("SELECT pg_advisory_xact_lock_shared(hashtext('schedule_config'))")
+                await booking.query(
+                    `INSERT INTO Appointments (session_id, question_id, reason, name, cpf_hash, cpf_masked,
+                                               by_representative, documents_sent, appointment_datetime, status)
+                     VALUES ($1, $2, $3, $4, $5, $6, false, '{"group": [], "question": []}'::jsonb, $7, 'PENDING')`,
+                    [input.sessionId, questionId, input.reason, input.name, input.cpfHash, input.cpfMasked, input.appointmentDatetime],
+                )
+                canceling = settled(deleteVersion())
+                await waitForLockWaiters(1)
+                await booking.query("COMMIT")
+                committed = true
+            } finally {
+                if (!committed) {
+                    await booking.query("ROLLBACK")
+                }
+                booking.release()
+            }
+            const result = await canceling
+
+            expect(result.status === "fulfilled" && result.value.status).toBe(409)
+            expect(await changesOn(changeDate)).toBe(1)
+            expect(await bookedOnTuesday()).toBe(1)
+        }
+    })
+
+    it("nunca deixa passar ao mesmo tempo a reserva da terça e o cancelamento da mudança que abre a terça", async () => {
+        for (let round = 0; round < ROUNDS; round += 1) {
+            await startRoundWithTuesdayOnlyInChange()
+            const input = await bookingInput()
+
+            const [booking, canceling] = await Promise.all([
+                settled(scheduleRepository.bookAppointment(input)),
+                settled(deleteVersion()),
+            ])
+
+            const booked = booking.status === "fulfilled"
+            const canceled = canceling.status === "fulfilled" && canceling.value.status === 204
+            expect(booked && canceled).toBe(false)
+            if (!booked) {
+                expect(booking.reason).toBeInstanceOf(SlotFullError)
+            }
+            if (!canceled) {
+                expect(canceling.status === "fulfilled" && canceling.value.status).toBe(409)
+            }
+            expect([await bookedOnTuesday(), await changesOn(changeDate)]).toEqual([booked ? 1 : 0, canceled ? 0 : 1])
         }
     })
 })
