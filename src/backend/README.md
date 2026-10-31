@@ -99,6 +99,14 @@ criam (categorias, perguntas, sessões com os seus eventos, agendamentos e usuá
 usa o Admin que já existe ou cria um "Admin Teste" e o apaga no fim. Se a execução for interrompida, a configuração da agenda
 pode ficar trocada: rode num banco descartável, como acima.
 
+`npm run test:db` (`db/verify-migrations.cjs`) cria bancos temporários a partir de `DB_TEST_URL` (o
+usuário precisa de `CREATEDB`) e roda as migrations e o seed em processos filhos. Para provar que o
+seed falha sem `ROOT_EMAIL`/`ROOT_PASSWORD`, o verificador tira essas variáveis do ambiente do filho.
+Como `db/connection.ts` chama `dotenv.config()`, um `src/backend/.env` local devolveria as credenciais
+apagadas e a checagem passaria ou falharia errado. Por isso o verificador passa `SKIP_DOTENV=true` aos
+processos filhos, e `db/connection.ts` não carrega o `.env` quando recebe essa flag. Ela é só do
+`test:db`: não entra no `validateEnv`, nos `.env.example` nem no `compose.yaml`.
+
 `GET /health` responde `200` com `{ "data": { "status": "ok" } }` e não depende do banco de dados — serve como healthcheck de infraestrutura (Docker, load balancer) e como exemplo do padrão de código para copiar em novos recursos.
 
 `POST /api/v1/whatsapp/sessions` recebe `{ phone, text?, optionId? }` do Gateway WhatsApp (`text` para mensagem digitada, `optionId` para toque numa lista ou botão)
