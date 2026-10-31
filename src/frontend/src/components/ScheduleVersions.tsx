@@ -90,6 +90,7 @@ function ScheduleVersions({ view, actions }: ScheduleVersionsProps) {
             <ConfirmDialog
                 open={view.cancelTarget !== null}
                 title={t("versions.cancelConfirm", { date: dateText(view.cancelTarget ?? "") })}
+                description={t("versions.cancelDescription")}
                 confirmLabel={t("versions.cancel")}
                 tone="danger"
                 busy={view.cancelling}
@@ -99,6 +100,7 @@ function ScheduleVersions({ view, actions }: ScheduleVersionsProps) {
             <ConfirmDialog
                 open={view.switchPending}
                 title={t("versions.discardConfirm")}
+                description={t("versions.discardDescription")}
                 confirmLabel={t("common:unsavedChangesBar.discard")}
                 tone="danger"
                 onConfirm={actions.confirmSwitch}

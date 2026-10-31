@@ -217,7 +217,9 @@
         "loadFailed": "Não foi possível carregar as mudanças agendadas.",
         "ownCopy": "As mudanças agendadas têm cópia própria dos horários, das datas bloqueadas e do endereço.",
         "dateError": "Escolha uma data a partir de amanhã.",
-        "discardConfirm": "Descartar as alterações não salvas?"
+        "discardConfirm": "Descartar as alterações não salvas?",
+        "discardDescription": "Tudo o que você alterou nesta tela e ainda não salvou será perdido.",
+        "cancelDescription": "A mudança será excluída e, a partir dessa data, o atendimento seguirá a configuração anterior."
     },
     "loadFailed": "Não foi possível carregar os horários de atendimento. Atualize a página para tentar de novo.",
     "bookedDaysFailed": "Não foi possível verificar os dias que já têm agendamento. A prévia e o salvamento continuam apontando os agendamentos afetados.",
