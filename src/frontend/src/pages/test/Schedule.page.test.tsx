@@ -160,6 +160,14 @@ describe("SchedulePage", () => {
         })
 
         await screen.findByText("10/11/2026")
+        await waitFor(
+            () =>
+                expect(screen.getByLabelText("Valer a partir de")).toHaveAttribute(
+                    "min",
+                    "2026-10-25"
+                ),
+            SLOW
+        )
         fireEvent.change(screen.getByLabelText("Valer a partir de"), {
             target: { value: effectiveFrom }
         })
