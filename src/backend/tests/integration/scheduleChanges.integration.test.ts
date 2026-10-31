@@ -196,6 +196,16 @@ describe("mudanças de horário agendadas com Postgres", () => {
         }
     })
 
+    it("devolve em GET / a mudança que já começou, com a data de início, e a tira da lista de mudanças futuras", async () => {
+        const yesterday = addDaysToDateString(today, -1)
+        await insertScheduleChange(yesterday, weekdayConfig({ seatsPerSlot: 3 }), author.id)
+
+        const current = await request(app).get("/api/v1/schedule").set("Cookie", configurer.cookie)
+
+        expect(current.body.data).toMatchObject({ effectiveFrom: yesterday, seatsPerSlot: 3 })
+        expect(await listedVersions()).toEqual([])
+    })
+
     it("grava a configuração de hoje como mudança nova a partir de hoje e mantém intacta a que já tinha começado", async () => {
         const yesterday = addDaysToDateString(today, -1)
         await insertScheduleChange(yesterday, weekdayConfig({ seatsPerSlot: 3 }), author.id)

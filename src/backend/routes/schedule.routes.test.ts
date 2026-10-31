@@ -178,6 +178,17 @@ describe("schedule.routes (HTTP)", () => {
         expect(versions.body.data).toEqual([])
     })
 
+    it("responde 500 SCHEDULE_NOT_CONFIGURED em GET /effective sem configuração-base nem mudança", async () => {
+        repository.setConfig(null)
+
+        const response = await request(app)
+            .get("/api/v1/schedule/effective?date=2027-11-01")
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+
+        expect(response.status).toBe(500)
+        expect(response.body.error.code).toBe("SCHEDULE_NOT_CONFIGURED")
+    })
+
     it("salva e cancela uma mudança futura pela data efetiva", async () => {
         const base = buildDefaultScheduleConfigView()
         const date = "2027-11-01"
