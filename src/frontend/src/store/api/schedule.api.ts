@@ -26,8 +26,7 @@ const scheduleApi = api.injectEndpoints({
     endpoints: (build) => ({
         getSchedule: build.query<ScheduleConfigView, void>({
             query: () => SCHEDULE_PATH,
-            transformResponse: unwrap<ScheduleConfigView>,
-            providesTags: ["CurrentSchedule"]
+            transformResponse: unwrap<ScheduleConfigView>
         }),
         getScheduleEffective: build.query<ScheduleConfigView, string>({
             query: (date) => `${SCHEDULE_PATH}/effective?date=${encodeURIComponent(date)}`,

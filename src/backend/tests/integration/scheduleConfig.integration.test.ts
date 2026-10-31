@@ -356,7 +356,6 @@ describe("Schedule config & preview integration tests (Postgres)", () => {
             expect(slots.some((slot) => slot.dateStr === beforeDate && slot.timeStr === "09:00")).toBe(true)
             expect(slots.some((slot) => slot.dateStr === afterDate)).toBe(false)
         } finally {
-            await getPool().query("DELETE FROM ScheduleChanges WHERE effective_from = $1", [effectiveFrom])
             await cleanupScheduleTestData({
                 phoneHashes: phones.map((phone) => phoneHash(phone)),
                 appointmentIds,

@@ -16,7 +16,7 @@ import {
 import { AppointmentRepositoryStub } from "../repositories/mock/appointmentStub.repository"
 import ConflictError from "../errors/ConflictError"
 import { createAppointmentCalendarService } from "../services/appointmentCalendar.service"
-import { buildScheduleSettings, weekdayRanges } from "../services/mock/schedule.fixtures"
+import { buildDefaultScheduleConfigView } from "../repositories/mock/scheduleStub.repository"
 import type { CorrectionWarning } from "../types/appointment.types"
 import { parseLocalDate } from "../utils/date.utils"
 import { MockAuthRepository } from "../repositories/mock/authMock.repository"
@@ -245,9 +245,17 @@ describe("contrato da API de agendamentos", () => {
                 calendar: createAppointmentCalendarService({
                     schedule: { getAvailableSlots: async () => [] },
                     scheduleRepository: {
-                        getSettings: async () => buildScheduleSettings(),
-                        getRanges: async () => weekdayRanges("08:00:00", "10:00:00"),
-                        getBlockedDates: async () => [],
+                        getScheduleVersions: async () => [{
+                            effectiveFrom: null,
+                            config: buildDefaultScheduleConfigView({
+                                ranges: [1, 2, 3, 4, 5].map((weekday) => ({
+                                    weekday,
+                                    slotIndex: 1,
+                                    startTime: "08:00",
+                                    endTime: "10:00",
+                                })),
+                            }),
+                        }],
                     },
                     appointments: repository,
                 }),

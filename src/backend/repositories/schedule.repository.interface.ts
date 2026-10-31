@@ -14,6 +14,7 @@ export interface SaveScheduleConfigRepoParams {
     config: NormalizedScheduleConfig
     actorUserId: number
     now: Date
+    validateAgainstVersions?: (versions: ScheduleVersion[]) => void
 }
 
 export interface IScheduleRepository {

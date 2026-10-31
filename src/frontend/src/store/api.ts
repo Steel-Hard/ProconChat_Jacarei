@@ -10,7 +10,6 @@ const api = createApi({
         "AppointmentPendingCount",
         "UserList",
         "SchedulePreview",
-        "CurrentSchedule",
         "ScheduleEffective",
         "ScheduleVersions"
     ],

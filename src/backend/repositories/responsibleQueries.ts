@@ -1,6 +1,7 @@
 import { Pool, PoolClient } from "pg"
 import { Permission, PERMISSIONS } from "../types/auth.types"
 import type { BusyAppointment, RuleAccount } from "../types/userAccount.types"
+import { getLocalParts } from "../utils/date.utils"
 
 export const PROTOCOL_SQL = "UPPER(SUBSTRING(a.appointment_code::text, 1, 8))"
 
@@ -52,8 +53,18 @@ export async function lockAccounts(client: PoolClient, ids: number[]): Promise<R
     })
 }
 
-export async function readSlotMinutes(client: PoolClient): Promise<number | null> {
-    const result = await client.query<{ slot_minutes: number }>("SELECT slot_minutes FROM ScheduleSettings WHERE id = 1")
+export async function readSlotMinutes(client: PoolClient, at: Date): Promise<number | null> {
+    const result = await client.query<{ slot_minutes: number | null }>(
+        `SELECT COALESCE(
+                    (SELECT (config->>'slotMinutes')::int
+                     FROM ScheduleChanges
+                     WHERE effective_from <= $1
+                     ORDER BY effective_from DESC
+                     LIMIT 1),
+                    (SELECT slot_minutes FROM ScheduleSettings WHERE id = 1)
+                ) AS slot_minutes`,
+        [getLocalParts(at).dateStr],
+    )
     return result.rows[0]?.slot_minutes ?? null
 }
 

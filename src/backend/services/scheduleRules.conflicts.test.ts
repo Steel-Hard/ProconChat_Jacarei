@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest"
 import { FutureActiveAppointment, NormalizedScheduleConfig } from "../types/schedule.types"
 import { buildScheduleConfigInput as baseInput } from "./mock/scheduleConfig.builders"
-import { detectScheduleConflicts, normalizeAndValidateScheduleConfig } from "./scheduleRules"
+import {
+    appointmentsInScheduleInterval,
+    detectScheduleConflicts,
+    normalizeAndValidateScheduleConfig,
+} from "./scheduleRules"
 
 function makeAppt(
     id: string,
@@ -315,5 +319,46 @@ describe("detectScheduleConflicts", () => {
 
             expect(conflicts).toEqual([])
         })
+    })
+})
+
+describe("appointmentsInScheduleInterval", () => {
+    const appointments = [
+        makeAppt("1", "2026-10-11T23:30:00-03:00"),
+        makeAppt("2", "2026-10-12T08:00:00-03:00"),
+        makeAppt("3", "2026-10-16T17:00:00-03:00"),
+        makeAppt("4", "2026-10-19T08:00:00-03:00"),
+    ]
+
+    function idsOf(selected: FutureActiveAppointment[]): string[] {
+        return selected.map((appointment) => appointment.id)
+    }
+
+    it("inclui o agendamento no próprio dia de início da vigência", () => {
+        const selected = appointmentsInScheduleInterval(appointments, "2026-10-12", "2026-10-19")
+
+        expect(idsOf(selected)).toContain("2")
+    })
+
+    it("deixa de fora o agendamento no dia em que a próxima mudança começa", () => {
+        const selected = appointmentsInScheduleInterval(appointments, "2026-10-12", "2026-10-19")
+
+        expect(idsOf(selected)).toEqual(["2", "3"])
+    })
+
+    it("vai até o fim quando não há próxima mudança", () => {
+        const selected = appointmentsInScheduleInterval(appointments, "2026-10-12", null)
+
+        expect(idsOf(selected)).toEqual(["2", "3", "4"])
+    })
+
+    it("usa a data de São Paulo, deixando de fora as 23:30 da véspera mesmo já sendo o dia seguinte em UTC", () => {
+        const selected = appointmentsInScheduleInterval(
+            [makeAppt("1", "2026-10-11T23:30:00-03:00")],
+            "2026-10-12",
+            null,
+        )
+
+        expect(selected).toEqual([])
     })
 })

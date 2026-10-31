@@ -353,6 +353,16 @@ async function checkConstraints(db) {
     await rejects(db, 'UPDATE users SET permissions_updated_by = $1 WHERE id = $2', [admin, staff], '23514');
     await rejects(db, 'UPDATE users SET permissions_updated_at = now() WHERE id = $1', [staff], '23514');
     await db.query('UPDATE users SET permissions_updated_by = $1, permissions_updated_at = now() WHERE id = $2', [admin, staff]);
+
+    const insertScheduleChange = 'INSERT INTO schedulechanges(effective_from, config, updated_by) VALUES ($1, $2::jsonb, $3)';
+    await rejects(db, insertScheduleChange, ['2030-01-07', '[]', admin], '23514');
+    await rejects(db, insertScheduleChange, ['2030-01-07', '"texto"', admin], '23514');
+    await db.query(insertScheduleChange, ['2030-01-07', JSON.stringify({ slotMinutes: 30 }), admin]);
+    await rejects(db, insertScheduleChange, ['2030-01-07', '{}', admin], '23505');
+    await rejects(db, insertScheduleChange, ['2030-01-08', '{}', 999999], '23503');
+    assert.equal(await count(db, "SELECT 1 FROM schedulechanges WHERE effective_from = '2030-01-07' AND config->>'slotMinutes' = '30'"), 1);
+    await db.query("DELETE FROM schedulechanges WHERE effective_from = '2030-01-07'");
+    assert.equal(await count(db, 'SELECT 1 FROM schedulechanges'), 0);
 }
 
 async function checkRollback(db, url) {

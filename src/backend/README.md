@@ -99,6 +99,14 @@ criam (categorias, perguntas, sessões com os seus eventos, agendamentos e usuá
 usa o Admin que já existe ou cria um "Admin Teste" e o apaga no fim. Se a execução for interrompida, a configuração da agenda
 pode ficar trocada: rode num banco descartável, como acima.
 
+`npm run test:db` (`db/verify-migrations.cjs`) cria bancos temporários a partir de `DB_TEST_URL` (o
+usuário precisa de `CREATEDB`) e roda as migrations e o seed em processos filhos. Para provar que o
+seed falha sem `ROOT_EMAIL`/`ROOT_PASSWORD`, o verificador tira essas variáveis do ambiente do filho.
+Como `db/connection.ts` chama `dotenv.config()`, um `src/backend/.env` local devolveria as credenciais
+apagadas e a checagem passaria ou falharia errado. Por isso o verificador passa `SKIP_DOTENV=true` aos
+processos filhos, e `db/connection.ts` não carrega o `.env` quando recebe essa flag. Ela é só do
+`test:db`: não entra no `validateEnv`, nos `.env.example` nem no `compose.yaml`.
+
 `GET /health` responde `200` com `{ "data": { "status": "ok" } }` e não depende do banco de dados — serve como healthcheck de infraestrutura (Docker, load balancer) e como exemplo do padrão de código para copiar em novos recursos.
 
 `POST /api/v1/whatsapp/sessions` recebe `{ phone, text?, optionId? }` do Gateway WhatsApp (`text` para mensagem digitada, `optionId` para toque numa lista ou botão)
@@ -462,8 +470,12 @@ lote, não. Senão, `409 INVALID_REASSIGNMENT_TARGET`.
 
 **Uma pessoa não atende dois agendamentos ao mesmo tempo** (`services/responsibleAvailability.ts`,
 `findResponsibleConflict` e `countFreeStaff`). Dois `CONFIRMED` da mesma conta não podem ter
-intervalos `[início, início + duração)` sobrepostos. A duração é o `ScheduleSettings.slot_minutes`
-vigente, porque o agendamento não guarda a sua; sem configuração, só o mesmo início conflita. Com 30
+intervalos `[início, início + duração)` sobrepostos. A duração é a da versão da agenda que vale hoje
+(`readSlotMinutes(client, now)` em `repositories/responsibleQueries.ts`: a última mudança de
+`ScheduleChanges` com início até a data ou, sem mudança, `ScheduleSettings.slot_minutes`), porque o
+agendamento não guarda a sua; sem configuração, só o mesmo início conflita. O lote ainda usa essa
+duração para todos os agendamentos dele, mesmo os que caem depois de uma mudança agendada com outra
+duração. Com 30
 minutos, quem tem 13:00 não pode receber 13:00 nem 13:20, mas pode receber 13:30. Cada agendamento
 redistribuído é conferido contra os `CONFIRMED` do destino e contra os que o mesmo lote já levou para
 ele; com sobreposição, `409 REASSIGNMENT_TARGET_BUSY` e nada do lote é gravado. Se a duração mudar
@@ -826,8 +838,9 @@ horário: um Confirmado já passado também pode ser atribuído.
 
 **Uma pessoa não atende dois agendamentos ao mesmo tempo** (`findResponsibleConflict`, a mesma regra do
 lote de contas). Vale em `assign`, em `claim` e no auto-claim de `attended`/`no_show` sobre um
-`PENDING`: se a pessoa já tem outro `CONFIRMED` com intervalo sobreposto (duração =
-`ScheduleSettings.slot_minutes` vigente), a resposta é `409 ASSIGNEE_BUSY` com
+`PENDING`: se a pessoa já tem outro `CONFIRMED` com intervalo sobreposto (duração = a da versão da
+agenda que vale na data do agendamento, por `readSlotMinutes(client, appointmentDatetime)`, a mesma
+usada na correção de registro), a resposta é `409 ASSIGNEE_BUSY` com
 `details: { assigneeUserId, conflictingAppointmentId, conflictingProtocol }`, e nada é gravado. O
 auto-claim de um agendamento cuja data e hora já passaram não confere o horário (registra o que já
 aconteceu); `claim` confere sempre. Se a conta de quem clica, já travada, não pode mais ser
@@ -852,7 +865,13 @@ regra: depois da trava consultiva exclusiva `schedule_config`, `saveConfig` trav
 travar os agendamentos futuros. Sem isso, salvar a grade enquanto outra pessoa atribui um agendamento
 futuro a quem salva fechava um ciclo (o salvamento com o agendamento esperando a conta, a atribuição
 com a conta esperando o agendamento). A prova fica em
-`tests/integration/scheduleConfig.lockOrder.integration.test.ts`.
+`tests/integration/scheduleConfig.lockOrder.integration.test.ts`. Salvar uma mudança agendada
+(`PUT /api/v1/schedule/versions/:effectiveFrom`) segue a mesma ordem, e ela e o cancelamento
+(`DELETE`) pegam a mesma trava exclusiva `schedule_config` que a reserva pega compartilhada. A prova
+fica em `tests/integration/scheduleChanges.race.integration.test.ts`: o salvamento que tira um horário
+espera a reserva em andamento e responde `409`, a reserva e o salvamento nunca passam juntos, e a
+atribuição a quem salva não fecha ciclo. Os critérios da mudança agendada contra o Postgres ficam em
+`tests/integration/scheduleChanges.integration.test.ts`.
 
 **Corrigir registro (`correct_record`).** Volta ao estado anterior ao `ATTENDED`/`NO_SHOW` mais recente:
 `PENDING` sem responsável quando esse terminal veio junto de um `CLAIMED { auto_claimed: true }` no
@@ -926,6 +945,7 @@ conferir nada. Duas correções simultâneas: uma grava, a outra recebe `409 REC
 ## Horários de atendimento (/api/v1/schedule, #64)
 
 Configuração da agenda presencial e prévia mensal de vagas ([decisão 007](../../.docs/decisoes/007-agenda-configuravel.md),
+[decisão 012](../../.docs/decisoes/012-horarios-agendados.md) para as mudanças agendadas,
 [regras da tela](../../.docs/regras/08-horarios-de-atendimento.md)). Todas as rotas passam pela
 proteção CSRF (`403 INVALID_ORIGIN` nos métodos que enviam corpo), por `requireAuth` e por
 `requirePermission("schedule.configure")`, e respondem com `Cache-Control: no-store`. Camadas:
@@ -937,12 +957,34 @@ proteção CSRF (`403 INVALID_ORIGIN` nos métodos que enviam corpo), por `requi
 
 | Rota | Entrada | Sucesso | Erros |
 | --- | --- | --- | --- |
-| `GET /api/v1/schedule` | — | `200 { data: ScheduleConfigView }` | `401 UNAUTHORIZED`, `403 FORBIDDEN`, `500 SCHEDULE_NOT_CONFIGURED` |
+| `GET /api/v1/schedule` | — | `200 { data: ScheduleConfigView }` (a versão que vale hoje; `effectiveFrom` é `null` na configuração-base e a data de início quando é uma mudança que já começou) | `401 UNAUTHORIZED`, `403 FORBIDDEN`, `500 SCHEDULE_NOT_CONFIGURED` |
 | `PUT /api/v1/schedule` | `ScheduleConfigInput` | `200 { data: ScheduleConfigView }` | `400 BAD_REQUEST`, `401`, `403`, `409 SCHEDULE_CONFLICTS` com `details.conflicts` |
+| `GET /api/v1/schedule/effective?date=YYYY-MM-DD` | `date` obrigatório | `200 { data: ScheduleConfigView }` (a versão que vale na data, com `effectiveFrom`) | `400 BAD_REQUEST`, `401`, `403`, `500 SCHEDULE_NOT_CONFIGURED` |
+| `GET /api/v1/schedule/versions` | — | `200 { data: ScheduleVersion[] }` (as mudanças com início depois de hoje, em ordem de data; `[]` se não houver) | `401`, `403` |
+| `PUT /api/v1/schedule/versions/:effectiveFrom` | `ScheduleConfigInput`; `effectiveFrom` `YYYY-MM-DD` depois de hoje | `200 { data: ScheduleConfigView }` (cria ou substitui a mudança, com novo autor e horário) | `400 BAD_REQUEST` (data inválida, hoje ou passada, ou bloqueio fora da vigência), `401`, `403`, `409 SCHEDULE_CONFLICTS` com `details.conflicts` |
+| `DELETE /api/v1/schedule/versions/:effectiveFrom` | `effectiveFrom` `YYYY-MM-DD` depois de hoje | `204` sem corpo | `400 BAD_REQUEST` (data inválida, hoje ou passada), `401`, `403`, `404 NOT_FOUND`, `409 SCHEDULE_CONFLICTS` com `details.conflicts` |
 | `GET /api/v1/schedule/preview?month=YYYY-MM` | `month` opcional (padrão: mês atual em `America/Sao_Paulo`) | `200 { data: MonthlyPreviewResult }` | `400 BAD_REQUEST`, `401`, `403` |
-| `POST /api/v1/schedule/preview` | `{ month?: "YYYY-MM", config?: ScheduleConfigInput }` | `200 { data: MonthlyPreviewResult }` (calcula sobre o rascunho `config` sem gravar no banco, ou sobre a configuração salva se `config` for omitido) | `400 BAD_REQUEST`, `401`, `403` |
+| `POST /api/v1/schedule/preview` | `{ month?: "YYYY-MM", config?: ScheduleConfigInput, effectiveFrom?: "YYYY-MM-DD" }` | `200 { data: MonthlyPreviewResult }` (calcula sobre o rascunho `config` sem gravar no banco, ou sobre a configuração salva se `config` for omitido; com `effectiveFrom`, o rascunho vale a partir dessa data e os dias anteriores seguem a versão salva) | `400 BAD_REQUEST`, `401`, `403` |
 | `GET /api/v1/schedule/booked-days` | — | `200 { data: { days: BookedDay[] } }` | `401`, `403` |
 
+- **Mudanças agendadas (#134):** cada mudança é uma cópia integral da configuração em
+  `ScheduleChanges` (`effective_from`, `config` JSONB, autor e horário). Para uma data vale a cópia com
+  a maior `effective_from` menor ou igual a ela; sem cópia, vale a configuração-base de
+  `ScheduleSettings`, `ScheduleRanges` e `BlockedDates`. A grade, a duração, as vagas, os bloqueios e o
+  endereço vêm da versão de cada dia; a janela, a antecedência e o alerta de espera vêm da versão que
+  vale hoje, e os dias úteis da antecedência contam com a grade de cada dia
+  (`computeVersionedWindowBounds`). Os conflitos de uma versão são conferidos só na vigência dela, da
+  data de início até a véspera da próxima mudança (`appointmentsInScheduleInterval` em
+  `services/scheduleRules.ts`), tanto ao salvar (`PUT`) quanto ao cancelar (`DELETE`, contra a versão
+  anterior) e na prévia salva. Salvar a configuração de hoje quando ela é uma mudança que já começou
+  grava uma mudança nova com início hoje, sem tocar na anterior. Um bloqueio novo com data de hoje em
+  diante fora da vigência da versão salva é recusado com `400` e `details.issues`
+  (`blockedDates.N.date`, com o índice do corpo enviado); bloqueios que já estavam na cópia de
+  referência continuam aceitos. A regra fica no service (`blocksInVigencyCheck`), que a entrega ao
+  repositório em `validateAgainstVersions`; o repositório a roda dentro da transação, depois da trava
+  `schedule_config`, com todas as versões de hoje em diante. Assim, uma mudança gravada por outro
+  salvamento enquanto este esperava a trava já conta na checagem
+  (`scheduleChanges.race.integration.test.ts`).
 - **Consistência entre bot e prévia:** o cálculo de vagas disponíveis do bot (`getAvailableSlots`) e
   o cálculo da prévia mensal (`getMonthlyPreview`) compartilham as mesmas funções puras de
   `services/scheduleRules.ts` (`slotsForWeekday`, `freeSlotStartsOfDay`, `isBusinessDay`,
@@ -1026,11 +1068,12 @@ proteção CSRF (`403 INVALID_ORIGIN` nos métodos que enviam corpo), por `requi
   pertence à #75.
 
 - **Conflitos na prévia (#125):** `MonthlyPreviewResult` traz também `conflicts`, no `GET` e no
-  `POST /api/v1/schedule/preview`. O service lê os agendamentos futuros ativos **sem trava**
+  `POST /api/v1/schedule/preview`. O service lê os agendamentos futuros ativos **uma vez e sem trava**
   (`listFutureActiveAppointments(now)` no repositório, o mesmo `SELECT` do `saveConfig` sem
-  `FOR UPDATE`) e a duração salva, e chama `detectScheduleConflicts(configuraçãoDaPrévia, agendamentos,
-  duraçãoSalva)`, a mesma função do `PUT`. No `GET` a configuração da prévia é a salva (normalmente sem
-  conflitos); no `POST`, o rascunho. Os conflitos não dependem do `month`: cobrem todos os agendamentos
+  `FOR UPDATE`) e chama `detectScheduleConflicts(configuração, agendamentos, duraçãoAtual)`, a mesma
+  função do `PUT`. No `GET`, cada versão salva é conferida com os agendamentos da própria vigência, com
+  a própria duração como a atual (normalmente sem conflitos); no `POST`, o rascunho é conferido com os
+  agendamentos da vigência dele, com a duração da versão anterior como a atual. Os conflitos não dependem do `month`: cobrem todos os agendamentos
   futuros. Cada item é recortado para protocolo, data, hora, status, código e motivo, sem nome, CPF,
   telefone, id do agendamento ou do responsável. A ordem é a do `409`. A leitura sem trava é só aviso:
   a garantia continua no `409` do `PUT`.

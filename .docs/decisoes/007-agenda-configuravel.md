@@ -33,3 +33,4 @@ Para o chatbot agendar sozinho (RF07), ele precisa saber quais horários existem
 - Novas tabelas ou colunas de configuração para grade, bloqueios, janela, lembrete e dados da unidade.
 - A verificação de conflitos precisa rodar **no servidor** ao salvar.
 - O cancelamento em massa reaproveita o envio de avisos de [005](005-mensagens-ao-cidadao.md).
+- A configuração continua única por data, mas pode ter versões com data de início: a [decisão 012](012-horarios-agendados.md) complementa esta com as mudanças de horários agendadas.

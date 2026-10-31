@@ -8,8 +8,11 @@ import NotFoundError from "../errors/NotFoundError"
 import ScheduleNotConfiguredError from "../errors/ScheduleNotConfiguredError"
 import SlotFullError from "../errors/SlotFullError"
 import {
+    appointmentsInScheduleInterval,
     detectScheduleConflicts,
     freeSlotStartsOfDay,
+    scheduleBlockedDatesOf,
+    scheduleRangesOf,
     toMinutes,
     trimTime,
 } from "../services/scheduleRules"
@@ -234,6 +237,18 @@ function versionFromRow(row: {
     }
 }
 
+const OPEN_END_DATE = "9999-12-31"
+
+async function validateAgainstAllVersions(
+    client: PoolClient,
+    today: string,
+    validate: SaveScheduleConfigRepoParams["validateAgainstVersions"],
+): Promise<void> {
+    if (validate) {
+        validate(await selectScheduledVersions(client, today, OPEN_END_DATE))
+    }
+}
+
 async function selectScheduledVersions(
     db: Queryable,
     fromDate: string,
@@ -323,22 +338,12 @@ async function nextScheduleChangeDate(db: Queryable, effectiveFrom: string): Pro
     return result.rows[0]?.effective_from ?? null
 }
 
-function appointmentsInScheduleInterval(
-    appointments: FutureActiveAppointment[],
-    fromDate: string,
-    nextDate: string | null,
-): FutureActiveAppointment[] {
-    return appointments.filter((appointment) => {
-        const { dateStr } = getLocalParts(appointment.appointmentDatetime)
-        return dateStr >= fromDate && (nextDate === null || dateStr < nextDate)
-    })
-}
-
 async function saveScheduledConfig({
     config,
     actorUserId,
     now,
     effectiveFrom,
+    validateAgainstVersions,
 }: SaveScheduleConfigRepoParams & { effectiveFrom: string }): Promise<ScheduleConfigView> {
     const today = getLocalParts(now).dateStr
     if (effectiveFrom <= today) {
@@ -351,6 +356,7 @@ async function saveScheduledConfig({
         await client.query("BEGIN")
         await client.query("SELECT pg_advisory_xact_lock(hashtext('schedule_config'))")
         await lockAccounts(client, [actorUserId])
+        await validateAgainstAllVersions(client, today, validateAgainstVersions)
 
         const nextDate = await nextScheduleChangeDate(client, effectiveFrom)
         const previousDate = addDaysToDateString(effectiveFrom, -1)
@@ -519,6 +525,7 @@ async function saveConfig({
     config,
     actorUserId,
     now,
+    validateAgainstVersions,
 }: SaveScheduleConfigRepoParams): Promise<ScheduleConfigView> {
     const pool = getPool()
     const client = await pool.connect()
@@ -528,6 +535,7 @@ async function saveConfig({
         await client.query("SELECT pg_advisory_xact_lock(hashtext('schedule_config'))")
         await lockAccounts(client, [actorUserId])
         const today = getLocalParts(now).dateStr
+        await validateAgainstAllVersions(client, today, validateAgainstVersions)
         const currentVersions = await selectScheduledVersions(client, today, today)
         const currentVersion = currentVersions.at(-1)
         const current = await client.query<{ slot_minutes: number }>(
@@ -552,10 +560,13 @@ async function saveConfig({
 
         if (currentVersion?.effectiveFrom) {
             await client.query(
-                `UPDATE ScheduleChanges
-                 SET config = $2::jsonb, updated_by = $3, updated_at = NOW()
-                 WHERE effective_from = $1`,
-                [currentVersion.effectiveFrom, JSON.stringify(config), actorUserId],
+                `INSERT INTO ScheduleChanges (effective_from, config, updated_by, updated_at)
+                 VALUES ($1, $2::jsonb, $3, NOW())
+                 ON CONFLICT (effective_from) DO UPDATE SET
+                    config = EXCLUDED.config,
+                    updated_by = EXCLUDED.updated_by,
+                    updated_at = NOW()`,
+                [today, JSON.stringify(config), actorUserId],
             )
         } else {
             await client.query(
@@ -637,22 +648,8 @@ async function isSlotInScheduleConfig(
     config: ScheduleConfigView,
 ): Promise<boolean> {
     const { dateStr, timeStr } = getLocalParts(appointmentDatetime)
-    const ranges = config.ranges.map((range, index) => ({
-        id: index + 1,
-        weekday: range.weekday,
-        slot_index: range.slotIndex,
-        start_time: range.startTime,
-        end_time: range.endTime,
-    }))
-    const blockedDates = config.blockedDates
-        .filter((block) => block.date === dateStr)
-        .map((block, index) => ({
-            id: index + 1,
-            date: block.date,
-            start_time: block.startTime,
-            end_time: block.endTime,
-            description: block.description,
-        }))
+    const ranges = scheduleRangesOf(config)
+    const blockedDates = scheduleBlockedDatesOf(config)
     return freeSlotStartsOfDay(dateStr, ranges, blockedDates, config.slotMinutes).includes(toMinutes(timeStr))
 }
 

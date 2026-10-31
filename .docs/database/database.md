@@ -603,7 +603,7 @@ CREATE INDEX idx_appointment_events_appointment ON AppointmentEvents(appointment
 
 `actor_user_id` `NULL` = foi o cidadão ou o sistema.
 
-### Agenda e unidade — [decisões 007](../decisoes/007-agenda-configuravel.md) e [008](../decisoes/008-horarios-agendados.md)
+### Agenda e unidade — [decisões 007](../decisoes/007-agenda-configuravel.md) e [012](../decisoes/012-horarios-agendados.md)
 
 ```sql
 CREATE TABLE ScheduleSettings (
@@ -663,7 +663,7 @@ CREATE INDEX idx_blocked_dates_date ON BlockedDates(date);
 
 - **`ScheduleSettings` tem linha única** (`id = 1`), criada pelo seed da #61 **uma única vez**, com os valores de `db/seeds/data/configuracao-inicial.data.ts` (junto com a grade de `ScheduleRanges` e as listas de `AttendanceDocuments`); a migration não a insere. Se a linha já existe, o seed não toca em nenhuma das três tabelas, e o que o PROCON alterar sobrevive a todo deploy. O seed não insere nada em `BlockedDates` (feriados ficam para a tela de Horários, #64). Sem ela, a #56 trata a agenda como "não configurada" (sem horários). Os `CHECK` limitam cada campo aos valores da tela (duração de 20, 30, 40 ou 60 minutos; 1 a 20 vagas; janela de 1 a 180 dias; antecedência de 0, 1, 2, 3 ou 5 dias; alerta de espera de 1 a 60 dias; lembrete 2, 6, 12, 24 ou 48 horas antes).
 - `updated_by`/`updated_at` de `ScheduleSettings` servem ao "Última alteração por … em …" da tela inteira de Horários: grade e bloqueios são salvos juntos.
-- `ScheduleSettings`, `ScheduleRanges` e `BlockedDates` formam a configuração-base. Conforme a decisão 008, mudanças futuras são snapshots integrais em `ScheduleChanges`; para cada atendimento vale o snapshot mais recente com `effective_from` menor ou igual à data local marcada. Conflitos só são verificados no intervalo dessa versão, até a véspera da próxima mudança. Agendamentos anteriores à data de início não são afetados.
+- `ScheduleSettings`, `ScheduleRanges` e `BlockedDates` formam a configuração-base. Conforme a [decisão 012](../decisoes/012-horarios-agendados.md), mudanças futuras são snapshots integrais em `ScheduleChanges`; para cada atendimento vale o snapshot mais recente com `effective_from` menor ou igual à data local marcada. Conflitos só são verificados no intervalo dessa versão, até a véspera da próxima mudança. Agendamentos anteriores à data de início não são afetados.
 - **Grade semanal:** `weekday` 0 = domingo … 6 = sábado. `slot_index` 1..3 com `UNIQUE (weekday, slot_index)` garante **até 3 faixas por dia**. Dia "desligado" = dia sem faixas. O fim da faixa tem que ser depois do início.
 - **Bloqueio:** período com os dois horários preenchidos (fim depois do início) ou dia inteiro com os dois `NULL`.
 - Ficam na aplicação: sobreposição de faixas, "a faixa comporta ao menos um atendimento" e o cálculo de dias úteis da antecedência (dias com faixa e não bloqueados).

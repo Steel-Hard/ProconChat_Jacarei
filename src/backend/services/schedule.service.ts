@@ -5,7 +5,6 @@ import { IScheduleRepository } from "../repositories/schedule.repository.interfa
 import { isValidCalendarDate, isValidMonthString } from "../schemas/schedule.schema"
 import {
     AvailableSlot,
-    BlockedDate,
     BookAppointmentInput,
     BookAppointmentResult,
     BookedDay,
@@ -15,22 +14,28 @@ import {
     ScheduleConfigInput,
     ScheduleConfigView,
     ScheduleConflictItem,
-    ScheduleRange,
-    ScheduleSettings,
     SchedulePreviewConflict,
     ScheduleVersion,
 } from "../types/schedule.types"
 import { addDaysToDateString, getLocalParts, parseLocalDate } from "../utils/date.utils"
 import {
+    appointmentsInScheduleInterval,
+    blockVigencyIssues,
     calculateMonthlyPreview,
-    computeWindowBounds,
+    computeVersionedWindowBounds,
+    DayGrid,
     detectScheduleConflicts,
+    effectiveVersionOf,
     freeSlotStartsOfDay,
     fromMinutes,
     getDowFromDateStr,
     getMonthDateBounds,
     normalizeAndValidateScheduleConfig,
+    scheduleBlockedDatesOf,
+    scheduleRangesOf,
+    scheduleSettingsOf,
     toMinutes,
+    WindowBounds,
 } from "./scheduleRules"
 
 export { freeSlotStartsOfDay, fromMinutes, getDowFromDateStr, toMinutes }
@@ -85,54 +90,54 @@ function previewConflictOf(item: ScheduleConflictItem): SchedulePreviewConflict 
     }
 }
 
-function effectiveVersionOf(versions: ScheduleVersion[], date: string): ScheduleVersion | null {
-    let effective: ScheduleVersion | null = null
-    for (const version of versions) {
-        if (version.effectiveFrom === null || version.effectiveFrom <= date) {
-            effective = version
-        }
-    }
-    return effective
-}
-
-function scheduleSettingsOf(config: ScheduleConfigView): ScheduleSettings {
+function dayGridOf(config: ScheduleConfigView): DayGrid {
     return {
-        id: 1,
-        slot_minutes: config.slotMinutes,
-        seats_per_slot: config.seatsPerSlot,
-        window_days: config.windowDays,
-        min_notice_days: config.minNoticeDays,
-        wait_alert_days: config.waitAlertDays,
-        unit_address: config.unitAddress,
-        unit_address_complement: config.unitAddressComplement,
-        reminder_enabled: config.reminderEnabled,
-        reminder_hours: config.reminderHours,
+        ranges: scheduleRangesOf(config),
+        blockedDates: scheduleBlockedDatesOf(config),
+        slotMinutes: config.slotMinutes,
     }
 }
 
-function scheduleRangesOf(config: ScheduleConfigView): ScheduleRange[] {
-    return config.ranges.map((range, index) => ({
-        id: index + 1,
-        weekday: range.weekday,
-        slot_index: range.slotIndex,
-        start_time: range.startTime,
-        end_time: range.endTime,
-    }))
-}
-
-function scheduleBlockedDatesOf(config: ScheduleConfigView): BlockedDate[] {
-    return config.blockedDates.map((block, index) => ({
-        id: index + 1,
-        date: block.date,
-        start_time: block.startTime,
-        end_time: block.endTime,
-        description: block.description,
-    }))
+function windowBoundsOf(versions: ScheduleVersion[], current: ScheduleVersion, todayStr: string): WindowBounds {
+    const grids = new Map(versions.map((version) => [version, dayGridOf(version.config)]))
+    return computeVersionedWindowBounds(
+        todayStr,
+        scheduleSettingsOf(current.config),
+        (dateStr) => {
+            const version = effectiveVersionOf(versions, dateStr)
+            return version ? grids.get(version) ?? null : null
+        },
+        versions.some((version) => version.config.ranges.length > 0),
+    )
 }
 
 export function createScheduleService(
     repository: IScheduleRepository,
 ): IScheduleService {
+    function blocksInVigencyCheck(
+        input: ScheduleConfigInput,
+        start: string,
+        todayStr: string,
+    ): (versions: ScheduleVersion[]) => void {
+        return (versions) => {
+            const reference = effectiveVersionOf(versions, start)
+            const next = versions.find((version) =>
+                version.effectiveFrom !== null && version.effectiveFrom > start,
+            )?.effectiveFrom ?? null
+            const issues = blockVigencyIssues(input.blockedDates, reference?.config.blockedDates ?? [], {
+                today: todayStr,
+                start,
+                next,
+            })
+            if (issues.length > 0) {
+                throw new BadRequestError(
+                    `Dados inválidos: ${issues.map((issue) => `${issue.path}: ${issue.message}`).join("; ")}`,
+                    { issues },
+                )
+            }
+        }
+    }
+
     async function getAvailableSlots(now = new Date()): Promise<AvailableSlot[]> {
         const { dateStr: todayStr, timeStr: nowTimeStr } = getLocalParts(now)
         const versions = await repository.getScheduleVersions(
@@ -143,9 +148,16 @@ export function createScheduleService(
             return []
         }
 
+        const currentVersion = effectiveVersionOf(versions, todayStr)
+        if (!currentVersion) {
+            return []
+        }
+        const { startDateStr, endDateStr, hasValidStart } = windowBoundsOf(versions, currentVersion, todayStr)
+        if (!hasValidStart) {
+            return []
+        }
+
         const nowMinutes = toMinutes(nowTimeStr)
-        const maxWindowDays = Math.max(...versions.map((version) => version.config.windowDays))
-        const maxDateStr = addDaysToDateString(todayStr, maxWindowDays)
 
         interface CandidateSlot {
             datetime: Date
@@ -156,31 +168,13 @@ export function createScheduleService(
         }
 
         const candidateSlots: CandidateSlot[] = []
-        let curr = todayStr
+        let curr = startDateStr
 
-        while (curr <= maxDateStr) {
-            const version = effectiveVersionOf(versions, curr)
-            if (!version) {
-                curr = addDaysToDateString(curr, 1)
-                continue
-            }
-            const config = version.config
+        while (curr <= endDateStr) {
+            const config = (effectiveVersionOf(versions, curr) ?? currentVersion).config
             const settings = scheduleSettingsOf(config)
             const ranges = scheduleRangesOf(config)
             const blockedDates = scheduleBlockedDatesOf(config)
-            const { startDateStr, endDateStr, hasValidStart } = computeWindowBounds(
-                todayStr,
-                settings,
-                ranges,
-                blockedDates,
-            )
-            const effectiveStart = version.effectiveFrom && version.effectiveFrom > startDateStr
-                ? version.effectiveFrom
-                : startDateStr
-            if (!hasValidStart || curr < effectiveStart || curr > endDateStr) {
-                curr = addDaysToDateString(curr, 1)
-                continue
-            }
 
             const dow = getDowFromDateStr(curr)
             const freeStarts = freeSlotStartsOfDay(
@@ -284,10 +278,12 @@ export function createScheduleService(
         now = new Date(),
     ): Promise<ScheduleConfigView> {
         const normalized = normalizeAndValidateScheduleConfig(input)
+        const todayStr = getLocalParts(now).dateStr
         return repository.saveConfig({
             config: normalized,
             actorUserId,
             now,
+            validateAgainstVersions: blocksInVigencyCheck(input, todayStr, todayStr),
         })
     }
 
@@ -309,6 +305,7 @@ export function createScheduleService(
             effectiveFrom,
             actorUserId,
             now,
+            validateAgainstVersions: blocksInVigencyCheck(input, effectiveFrom, getLocalParts(now).dateStr),
         })
     }
 
@@ -365,8 +362,12 @@ export function createScheduleService(
             throw new ScheduleNotConfiguredError()
         }
 
-        const maxWindowDays = Math.max(...versions.map((version) => version.config.windowDays))
-        const windowEnd = addDaysToDateString(todayStr, maxWindowDays)
+        const currentVersion = effectiveVersionOf(versions, todayStr)
+        if (!currentVersion) {
+            throw new ScheduleNotConfiguredError()
+        }
+        const windowBounds = windowBoundsOf(versions, currentVersion, todayStr)
+        const windowEnd = windowBounds.endDateStr
         const maxDateStr = lastDateStr > windowEnd ? lastDateStr : windowEnd
 
         const fromDatetime = parseLocalDate(minDateStr, "00:00")
@@ -404,6 +405,7 @@ export function createScheduleService(
                         ranges,
                         blockedDates,
                         activeCounts,
+                        windowBounds,
                     }),
                     conflicts: [],
                 })
@@ -420,8 +422,11 @@ export function createScheduleService(
                 ?.days.find((day) => day.date === date) ?? null
         }
 
-        const currentVersion = effectiveVersionOf(versions, todayStr)!
-        const currentPreview = previewCache.get(currentVersion.effectiveFrom ?? "baseline")?.get(todayStr.slice(0, 7))!
+        const weekdaysVersion = draftEffectiveFrom ?? currentVersion.effectiveFrom ?? "baseline"
+        const weekdaysPreview = previewCache.get(weekdaysVersion)?.get(todayStr.slice(0, 7))
+        if (!weekdaysPreview) {
+            throw new ScheduleNotConfiguredError()
+        }
         const requestedDays = Array.from({ length: Number(lastDateStr.slice(-2)) }, (_, index) => {
             const date = `${targetMonth}-${String(index + 1).padStart(2, "0")}`
             return dayPreview(date)!
@@ -429,7 +434,7 @@ export function createScheduleService(
         let totalWindowSlots = 0
         let totalWindowSeats = 0
         let usedWindowSeats = 0
-        for (let date = currentPreview.windowStart; date <= windowEnd; date = addDaysToDateString(date, 1)) {
+        for (let date = windowBounds.startDateStr; date <= windowEnd; date = addDaysToDateString(date, 1)) {
             const day = dayPreview(date)
             if (!day) {
                 continue
@@ -439,33 +444,42 @@ export function createScheduleService(
             usedWindowSeats += day.usedSeats
         }
 
-        let conflicts: SchedulePreviewConflict[] = []
+        const futureAppointments = await repository.listFutureActiveAppointments(now)
+        let conflicts: SchedulePreviewConflict[]
         if (draftConfig && draftEffectiveFrom) {
+            const draftStart = draftEffectiveFrom
             const nextVersion = versions.find((version) =>
-                version.effectiveFrom !== null && version.effectiveFrom > draftEffectiveFrom!,
+                version.effectiveFrom !== null && version.effectiveFrom > draftStart,
             )
-            const futureAppointments = (await repository.listFutureActiveAppointments(now)).filter((appointment) => {
-                const { dateStr } = getLocalParts(appointment.appointmentDatetime)
-                return dateStr >= draftEffectiveFrom! &&
-                    (nextVersion?.effectiveFrom === undefined || nextVersion.effectiveFrom === null || dateStr < nextVersion.effectiveFrom)
-            })
             conflicts = detectScheduleConflicts(
                 draftConfig,
-                futureAppointments,
+                appointmentsInScheduleInterval(futureAppointments, draftStart, nextVersion?.effectiveFrom ?? null),
                 previousVersion?.config.slotMinutes ?? null,
             ).map(previewConflictOf)
+        } else {
+            conflicts = versions.flatMap((version, index) => {
+                const start = version.effectiveFrom !== null && version.effectiveFrom > todayStr
+                    ? version.effectiveFrom
+                    : todayStr
+                const next = versions[index + 1]?.effectiveFrom ?? null
+                return detectScheduleConflicts(
+                    version.config,
+                    appointmentsInScheduleInterval(futureAppointments, start, next),
+                    version.config.slotMinutes,
+                ).map(previewConflictOf)
+            })
         }
 
         return {
             month: targetMonth,
             today: todayStr,
-            windowStart: currentPreview.windowStart,
+            windowStart: windowBounds.startDateStr,
             windowEnd,
             totalWindowSlots,
             totalWindowSeats,
             usedWindowSeats,
             freeWindowSeats: totalWindowSeats - usedWindowSeats,
-            weekdays: currentPreview.weekdays,
+            weekdays: weekdaysPreview.weekdays,
             days: requestedDays,
             conflicts,
         }
