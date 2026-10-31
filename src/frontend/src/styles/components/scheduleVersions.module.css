@@ -1,0 +1,112 @@
+.versions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    justify-content: space-between;
+    gap: 12px 20px;
+}
+
+.info,
+.effectiveDate {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.info strong,
+.info span,
+.effectiveDate span {
+    font-size: 13px;
+}
+
+.dateField {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.effectiveDate input {
+    min-height: 36px;
+    padding: 6px 9px;
+    border: 1px solid var(--border-input);
+    border-radius: 6px;
+    background: var(--bg-surface);
+    color: var(--text-body);
+    font: inherit;
+}
+
+.effectiveDate input[aria-invalid="true"] {
+    border-color: var(--error-border);
+}
+
+.error {
+    font-size: 12.5px;
+    color: var(--error-text);
+}
+
+.alert {
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: var(--error-bg);
+    color: var(--error-text);
+    font-size: 13.5px;
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.title {
+    font-size: 14px;
+}
+
+.notice {
+    padding: 10px 14px;
+    border: 1px solid var(--warn-border);
+    border-radius: 10px;
+    background: var(--warn-bg);
+    color: var(--warn-text);
+    font-size: 13px;
+}
+
+.items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.button {
+    min-height: 32px;
+    padding: 5px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-surface);
+    color: var(--text-strong);
+    font: inherit;
+    cursor: pointer;
+}
+
+.button:hover {
+    background: var(--bg-accent-soft);
+}

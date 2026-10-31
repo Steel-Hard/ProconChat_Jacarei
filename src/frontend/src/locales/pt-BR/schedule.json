@@ -203,15 +203,21 @@
     "versions": {
         "title": "Mudanças agendadas",
         "current": "Editando a configuração que vale hoje",
+        "currentSince": "Valendo desde {{date}}",
         "editing": "Editando a configuração a partir de {{date}}",
         "effectiveFrom": "Valer a partir de",
         "returnCurrent": "Voltar à configuração de hoje",
         "edit": "Editar",
+        "editLabel": "Editar a mudança de {{date}}",
         "cancel": "Cancelar mudança",
+        "cancelLabel": "Cancelar a mudança de {{date}}",
         "cancelConfirm": "Cancelar a mudança de horários a partir de {{date}}?",
         "cancelled": "Mudança de horários cancelada.",
         "cancelFailed": "Não foi possível cancelar esta mudança de horários.",
-        "loadFailed": "Não foi possível carregar as mudanças agendadas."
+        "loadFailed": "Não foi possível carregar as mudanças agendadas.",
+        "ownCopy": "As mudanças agendadas têm cópia própria dos horários, das datas bloqueadas e do endereço.",
+        "dateError": "Escolha uma data a partir de amanhã.",
+        "discardConfirm": "Descartar as alterações não salvas?"
     },
     "loadFailed": "Não foi possível carregar os horários de atendimento. Atualize a página para tentar de novo.",
     "bookedDaysFailed": "Não foi possível verificar os dias que já têm agendamento. A prévia e o salvamento continuam apontando os agendamentos afetados.",

@@ -191,7 +191,7 @@ describe("SchedulePage", () => {
         })
 
         await screen.findByText("10/11/2026")
-        await user.click(screen.getByRole("button", { name: "Editar" }))
+        await user.click(screen.getByRole("button", { name: "Editar a mudança de 10/11/2026" }))
         await screen.findByRole("checkbox", { name: "Segunda-feira" }, SLOW)
         await user.clear(screen.getByLabelText("Vagas simultâneas por horário"))
         await user.type(screen.getByLabelText("Vagas simultâneas por horário"), "3")
@@ -204,7 +204,6 @@ describe("SchedulePage", () => {
 
     it("cancela uma mudança futura depois de confirmar", async () => {
         const effectiveFrom = "2026-11-10"
-        const confirm = vi.spyOn(window, "confirm").mockReturnValue(true)
         const { user, callsTo } = await loaded({
             handlers: {
                 "GET /api/v1/schedule/versions": () => ({
@@ -216,16 +215,16 @@ describe("SchedulePage", () => {
         })
 
         await screen.findByText("10/11/2026")
-        await user.click(screen.getByRole("button", { name: "Cancelar mudança" }))
+        await user.click(screen.getByRole("button", { name: "Cancelar a mudança de 10/11/2026" }))
+        const dialog = screen.getByRole("dialog", {
+            name: "Cancelar a mudança de horários a partir de 10/11/2026?"
+        })
+        await user.click(within(dialog).getByRole("button", { name: "Cancelar mudança" }))
 
         await waitFor(() =>
             expect(callsTo("DELETE", `/api/v1/schedule/versions/${effectiveFrom}`)).toHaveLength(1)
         )
-        expect(confirm).toHaveBeenCalledWith(
-            "Cancelar a mudança de horários a partir de 10/11/2026?"
-        )
         expect(await screen.findByText("Mudança de horários cancelada.")).toBeInTheDocument()
-        confirm.mockRestore()
     })
 
     it("mostra o erro na faixa e não deixa salvar", async () => {

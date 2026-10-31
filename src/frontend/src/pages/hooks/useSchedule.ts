@@ -14,6 +14,8 @@ import type LastChange from "@/types/settings/LastChange.types"
 import type BlockedDateProblem from "@/types/schedule/BlockedDateProblem.types"
 import type ScheduleBlockedDateView from "@/types/schedule/ScheduleBlockedDateView.types"
 import type ScheduleConflictRowView from "@/types/schedule/ScheduleConflictRowView.types"
+import type ScheduleVersionsActions from "@/types/schedule/ScheduleVersionsActions.types"
+import type ScheduleVersionsView from "@/types/schedule/ScheduleVersionsView.types"
 import type ScheduleDayView from "@/types/schedule/ScheduleDayView.types"
 import type ScheduleDraftField from "@/types/schedule/ScheduleDraftField.types"
 import type ScheduleIssueField from "@/types/schedule/ScheduleIssueField.types"
@@ -22,11 +24,13 @@ import type ScheduleProblem from "@/types/schedule/ScheduleProblem.types"
 import bookedDatesOfWeekday from "@/utils/schedule/bookedDatesOfWeekday"
 import bookedDaysInVigency from "@/utils/schedule/bookedDaysInVigency"
 import conflictTargets from "@/utils/schedule/conflictTargets"
+import dayAfter from "@/utils/schedule/dayAfter"
 import dayMonthOf from "@/utils/schedule/dayMonthOf"
 import fieldOfIssuePath from "@/utils/schedule/fieldOfIssuePath"
 import formatDate from "@/utils/formatDate"
 import rangeHasBooking from "@/utils/schedule/rangeHasBooking"
 import rangeKey from "@/utils/schedule/rangeKey"
+import scheduleSaveErrorOf from "@/utils/schedule/scheduleSaveErrorOf"
 
 type IssueTarget = Extract<ScheduleIssueField, { kind: "field" }>["field"]
 type FieldMessages = Partial<Record<IssueTarget, string[]>>
@@ -48,12 +52,18 @@ function useSchedule() {
     const { showToast } = useToast()
     const account = useAppSelector((state) => state.account.current)
     const [effectiveFrom, setEffectiveFrom] = useState("")
+    const [dateInput, setDateInput] = useState("")
+    const [dateInvalid, setDateInvalid] = useState(false)
+    const [pendingVersion, setPendingVersion] = useState<string | null>(null)
+    const [cancelTarget, setCancelTarget] = useState<string | null>(null)
+    const [cancelConflicts, setCancelConflicts] = useState<ScheduleConflictRowView[] | null>(null)
     const currentQuery = scheduleApi.useGetScheduleQuery()
     const effectiveQuery = scheduleApi.useGetScheduleEffectiveQuery(effectiveFrom || skipToken)
     const versionsQuery = scheduleApi.useGetScheduleVersionsQuery()
     const view = effectiveFrom ? effectiveQuery.currentData : currentQuery.currentData
     const queryFailed = effectiveFrom ? effectiveQuery.isError : currentQuery.isError
-    const [deleteVersion] = scheduleApi.useDeleteScheduleVersionMutation()
+    const [deleteVersion, { isLoading: cancelling }] =
+        scheduleApi.useDeleteScheduleVersionMutation()
     const [versionActionError, setVersionActionError] = useState<string | null>(null)
     const booked = useBookedDays()
     const versions = versionsQuery.currentData ?? []
@@ -182,7 +192,8 @@ function useSchedule() {
     const conflictRows: ScheduleConflictRowView[] | null =
         saveConflicts ?? (preview.draftConflicts.length > 0 ? preview.draftConflicts : null)
     const blockedBySave = saveConflicts !== null
-    const saveDisabled = errorCount > 0 || preview.draftConflicts.length > 0 || blockedBySave
+    const saveDisabled =
+        errorCount > 0 || preview.draftConflicts.length > 0 || blockedBySave || dateInvalid
     const saveHint =
         errorCount > 0
             ? t("save.hintErrors", { count: errorCount })
@@ -220,35 +231,116 @@ function useSchedule() {
         })
     }
 
-    async function cancelScheduledVersion(date: string) {
-        if (!window.confirm(t("versions.cancelConfirm", { date: formatDate(date) ?? date }))) {
+    const today = preview.preview?.today ?? null
+
+    function applyVersion(date: string) {
+        setVersionActionError(null)
+        setCancelConflicts(null)
+        setPendingVersion(null)
+        setDateInvalid(false)
+        draft.discard()
+        setEffectiveFrom(date)
+        setDateInput(date)
+    }
+
+    function requestVersion(date: string) {
+        if (date === effectiveFrom) {
+            setDateInput(date)
+            setDateInvalid(false)
             return
         }
+
+        if (hasChanges) {
+            setPendingVersion(date)
+            return
+        }
+
+        applyVersion(date)
+    }
+
+    function changeDate(value: string) {
+        setDateInput(value)
+
+        if (value !== "" && today !== null && value <= today) {
+            setDateInvalid(true)
+            return
+        }
+
+        setDateInvalid(false)
+        requestVersion(value)
+    }
+
+    function dismissSwitch() {
+        setPendingVersion(null)
+        setDateInput(effectiveFrom)
+        setDateInvalid(false)
+    }
+
+    async function confirmCancel() {
+        const date = cancelTarget
+
+        if (date === null) {
+            return
+        }
+
         setVersionActionError(null)
+        setCancelConflicts(null)
+
         try {
             await deleteVersion(date).unwrap()
+            setCancelTarget(null)
+
             if (effectiveFrom === date) {
-                draft.discard()
-                setEffectiveFrom("")
+                applyVersion("")
             }
+
             showToast(t("versions.cancelled"))
-        } catch {
-            setVersionActionError(t("versions.cancelFailed"))
+        } catch (caught) {
+            setCancelTarget(null)
+            const error = scheduleSaveErrorOf(caught)
+
+            if (error?.kind === "conflicts") {
+                setCancelConflicts(error.conflicts)
+            } else if (error !== null) {
+                setVersionActionError(t("versions.cancelFailed"))
+            }
         }
+    }
+
+    const versionsView: ScheduleVersionsView = {
+        effectiveFrom,
+        currentSince: effectiveFrom ? null : (currentQuery.currentData?.effectiveFrom ?? null),
+        date: dateInput,
+        dateMin: today ? dayAfter(today) : undefined,
+        dateError: dateInvalid ? t("versions.dateError") : null,
+        versions,
+        versionsFailed: versionsQuery.isError,
+        cancelConflicts,
+        cancelTarget,
+        cancelling,
+        switchPending: pendingVersion !== null
+    }
+
+    const versionActions: ScheduleVersionsActions = {
+        changeDate,
+        returnCurrent: () => requestVersion(""),
+        edit: requestVersion,
+        askCancel: setCancelTarget,
+        confirmCancel: () => void confirmCancel(),
+        dismissCancel: () => setCancelTarget(null),
+        confirmSwitch: () => {
+            if (pendingVersion !== null) {
+                applyVersion(pendingVersion)
+            }
+        },
+        dismissSwitch
     }
 
     return {
         status: view ? "ready" : queryFailed ? "error" : "loading",
         draft: draft.current,
-        effectiveFrom,
-        versions,
-        versionsFailed: versionsQuery.isError,
-        selectEffectiveFrom: (date: string) => {
-            setVersionActionError(null)
-            draft.discard()
-            setEffectiveFrom(date)
-        },
-        cancelScheduledVersion,
+        versionsView,
+        versionActions,
         days,
         blocks,
         newBlock: draft.newBlock,
