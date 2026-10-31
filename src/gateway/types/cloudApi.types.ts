@@ -78,3 +78,12 @@ export interface CloudApiButtonsBody extends CloudApiOutgoingBase {
 }
 
 export type CloudApiOutgoingBody = CloudApiTextBody | CloudApiListBody | CloudApiButtonsBody
+
+export interface CloudApiTemplateBody extends CloudApiOutgoingBase {
+    type: "template"
+    template: {
+        name: string
+        language: { code: string }
+        components: { type: "body"; parameters: { type: "text"; text: string }[] }[]
+    }
+}
