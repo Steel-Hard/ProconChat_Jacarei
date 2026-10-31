@@ -20,6 +20,7 @@ import type ScheduleIssueField from "@/types/schedule/ScheduleIssueField.types"
 import type SchedulePreviewConflict from "@/types/schedule/SchedulePreviewConflict.types"
 import type ScheduleProblem from "@/types/schedule/ScheduleProblem.types"
 import bookedDatesOfWeekday from "@/utils/schedule/bookedDatesOfWeekday"
+import bookedDaysInVigency from "@/utils/schedule/bookedDaysInVigency"
 import conflictTargets from "@/utils/schedule/conflictTargets"
 import dayMonthOf from "@/utils/schedule/dayMonthOf"
 import fieldOfIssuePath from "@/utils/schedule/fieldOfIssuePath"
@@ -55,7 +56,11 @@ function useSchedule() {
     const [deleteVersion] = scheduleApi.useDeleteScheduleVersionMutation()
     const [versionActionError, setVersionActionError] = useState<string | null>(null)
     const booked = useBookedDays()
-    const draft = useScheduleDraft(view, booked.days)
+    const versions = versionsQuery.currentData ?? []
+    const nextChange =
+        versions.find((version) => version.effectiveFrom > effectiveFrom)?.effectiveFrom ?? null
+    const vigencyDays = bookedDaysInVigency(booked.days, effectiveFrom, nextChange)
+    const draft = useScheduleDraft(view, vigencyDays)
     const errors = draft.errors
     const errorCount = errors?.count ?? 0
     const hasChanges = draft.changes.length > 0
@@ -123,7 +128,7 @@ function useSchedule() {
     }
 
     function lockReason(weekday: number): string | null {
-        const dates = bookedDatesOfWeekday(booked.days, weekday)
+        const dates = bookedDatesOfWeekday(vigencyDays, weekday)
 
         if (dates.length === 0) {
             return null
@@ -153,7 +158,7 @@ function useSchedule() {
             return {
                 ...range,
                 error: problem ? problemText(problem) : (rangeIssues[key] ?? null),
-                removeLocked: rangeHasBooking(range, day.weekday, booked.days)
+                removeLocked: rangeHasBooking(range, day.weekday, vigencyDays)
             }
         }),
         canAdd: day.enabled && day.ranges.length < MAX_RANGES,
@@ -236,7 +241,7 @@ function useSchedule() {
         status: view ? "ready" : queryFailed ? "error" : "loading",
         draft: draft.current,
         effectiveFrom,
-        versions: versionsQuery.currentData ?? [],
+        versions,
         versionsFailed: versionsQuery.isError,
         selectEffectiveFrom: (date: string) => {
             setVersionActionError(null)
