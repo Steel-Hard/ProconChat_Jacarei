@@ -355,6 +355,31 @@ describe("conversationFlow.service: retorno de quem já tem agendamento (#59)", 
             expect(updateNavigationState).not.toHaveBeenCalled()
         })
 
+        test("cai na lista de categorias, sem cancelar de novo nem registrar consulta, quando o Sim, cancelar chega de novo depois da sessão encerrada", async () => {
+            findOrCreateActive.mockResolvedValueOnce(sessionAt("AWAITING_CANCEL_CONFIRMATION", { draft: target }))
+            findReturningAppointment.mockResolvedValueOnce(buildReturningAppointment())
+            cancelByCitizen.mockResolvedValueOnce({ protocol: "AB12CD34" })
+            await processIncomingMessage({ phone: PHONE, optionId: "cancel_yes" })
+            vi.clearAllMocks()
+            findOrCreateActive.mockResolvedValueOnce(buildActiveSession({ id: "s2", created: true }))
+            findReturningAppointment.mockResolvedValueOnce(null)
+            iniciarSessao.mockResolvedValue(categorias)
+
+            const result = await processIncomingMessage({ phone: PHONE, optionId: "cancel_yes" })
+
+            expect(cancelByCitizen).not.toHaveBeenCalled()
+            expect(recordEvent).not.toHaveBeenCalled()
+            expect(result).toEqual({
+                sessionId: "s2",
+                newSession: true,
+                reply: {
+                    text: formatarListaCategorias(categorias, 1),
+                    step: "AWAITING_CATEGORY",
+                    messages: criarMensagensCategorias(categorias, 1),
+                },
+            })
+        })
+
         test("avisa que o agendamento não pode mais ser alterado quando o cancelamento é recusado na transação", async () => {
             findOrCreateActive.mockResolvedValueOnce(sessionAt("AWAITING_CANCEL_CONFIRMATION", { draft: target }))
             findReturningAppointment.mockResolvedValueOnce(buildReturningAppointment())
