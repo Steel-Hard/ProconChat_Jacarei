@@ -365,6 +365,17 @@ describe("appointmentTransitions", () => {
             }
         })
 
+        it("recusa com NOTIFICATION_AFTER_START o reenvio no horário exato de um agendamento sem telefone", () => {
+            const decision = decideRetryCancellationNotice({ ...failedNotice, hasPhone: false, appointmentDatetime: now }, now)
+
+            expect(decision.allowed).toBe(false)
+            if (!decision.allowed) {
+                expect(decision.error.statusCode).toBe(409)
+                expect(decision.error.code).toBe("NOTIFICATION_AFTER_START")
+                expect(decision.error.message).toBe("O horário do atendimento já passou e o aviso não serve mais")
+            }
+        })
+
         it("permite o reenvio quando o último aviso falhou, há telefone e o horário não passou", () => {
             const decision = decideRetryCancellationNotice(failedNotice, now)
 
@@ -474,6 +485,16 @@ describe("appointmentTransitions", () => {
                 expect(actions.retry_cancellation_notice).toEqual(expected)
             },
         )
+
+        it("com appointments.manage, retry_cancellation_notice de um cancelado com aviso FAILED, sem telefone e horário passado dá NOTIFICATION_AFTER_START", () => {
+            const actions = availableActions({ status: "CANCELED", appointmentDatetime: past }, now, { canManage: true }, {
+                hasStaffCancellation: true,
+                lastCancellationNotice: "FAILED",
+                hasPhone: false,
+            })
+
+            expect(actions.retry_cancellation_notice).toEqual({ allowed: false, code: "NOTIFICATION_AFTER_START" })
+        })
     })
 
     describe("restoredStateAfterCorrection", () => {
