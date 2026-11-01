@@ -5,6 +5,8 @@ import {
     BlockedDate,
     BookAppointmentInput,
     BookAppointmentResult,
+    CitizenCancelInput,
+    CitizenCancelResult,
     FutureActiveAppointment,
     ReturningAppointment,
     ScheduleConfigView,
@@ -75,6 +77,7 @@ export function createScheduleStubRepository(
     setAppointments(appointments: StoredStubAppointment[]): void
     setReturningAppointment(returning: ReturningAppointment | null): void
     returningCalls: { phoneHash: string; now?: Date }[]
+    citizenCancelCalls: CitizenCancelInput[]
     setScheduledSaveError(error: Error | null): void
     setScheduledDeleteError(error: Error | null): void
     listFutureCalls: Date[]
@@ -206,6 +209,13 @@ export function createScheduleStubRepository(
     async function findReturningAppointment(phoneHash: string, now?: Date): Promise<ReturningAppointment | null> {
         returningCalls.push({ phoneHash, now })
         return returningAppointment
+    }
+
+    const citizenCancelCalls: CitizenCancelInput[] = []
+
+    async function cancelByCitizen(input: CitizenCancelInput): Promise<CitizenCancelResult> {
+        citizenCancelCalls.push(input)
+        return { protocol: "STUB0000" }
     }
 
     async function getConfig(): Promise<ScheduleConfigView | null> {
@@ -343,6 +353,8 @@ export function createScheduleStubRepository(
         listFutureCalls,
         findReturningAppointment,
         returningCalls,
+        cancelByCitizen,
+        citizenCancelCalls,
         setReturningAppointment(returning: ReturningAppointment | null) {
             returningAppointment = returning
         },

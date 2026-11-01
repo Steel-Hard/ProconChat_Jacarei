@@ -67,6 +67,7 @@ describe("appointmentCalendar.service", () => {
             deleteScheduledConfig: vi.fn(),
             listFutureActiveAppointments: vi.fn(),
             findReturningAppointment: vi.fn(),
+            cancelByCitizen: vi.fn(),
         }
         appointments = { findWeek: vi.fn().mockResolvedValue([]) }
     })

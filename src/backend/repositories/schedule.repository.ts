@@ -1,5 +1,6 @@
 import type { PoolClient } from "pg"
 import getPool from "../db/connection"
+import AppointmentNotChangeableError from "../errors/AppointmentNotChangeableError"
 import BookingFailedError from "../errors/BookingFailedError"
 import BadRequestError from "../errors/BadRequestError"
 import ConflictError from "../errors/ConflictError"
@@ -20,6 +21,8 @@ import {
     BlockedDate,
     BookAppointmentInput,
     BookAppointmentResult,
+    CitizenCancelInput,
+    CitizenCancelResult,
     DocumentsSent,
     FutureActiveAppointment,
     MinNoticeDays,
@@ -869,6 +872,66 @@ async function findReturningAppointment(
     }
 }
 
+interface LockedCitizenAppointment {
+    id: string
+    appointment_code: string
+}
+
+async function lockCitizenAppointment(
+    client: PoolClient,
+    appointmentId: number | string,
+    phoneHash: string,
+    now: Date,
+): Promise<LockedCitizenAppointment> {
+    const result = await client.query<LockedCitizenAppointment>(
+        `SELECT a.id::text AS id, a.appointment_code::text AS appointment_code
+         FROM Appointments a
+         JOIN Sessions s ON s.id = a.session_id
+         WHERE a.id = $1
+           AND s.phone_hash = $2
+           AND a.status IN ('PENDING', 'CONFIRMED')
+           AND a.appointment_datetime > $3
+         FOR UPDATE OF a`,
+        [appointmentId, phoneHash, now],
+    )
+    const row = result.rows[0]
+    if (!row) {
+        throw new AppointmentNotChangeableError()
+    }
+    return row
+}
+
+async function cancelByCitizen(input: CitizenCancelInput): Promise<CitizenCancelResult> {
+    const client = await getPool().connect()
+
+    try {
+        await client.query("BEGIN")
+        const locked = await lockCitizenAppointment(
+            client,
+            input.appointmentId,
+            input.phoneHash,
+            input.now ?? new Date(),
+        )
+        await client.query("UPDATE Appointments SET status = 'CANCELED' WHERE id = $1", [locked.id])
+        await client.query(
+            `INSERT INTO AppointmentEvents (appointment_id, type, actor_user_id, data)
+             VALUES ($1, 'CANCELED_BY_CITIZEN', NULL, '{}'::jsonb)`,
+            [locked.id],
+        )
+        await finishSessionWith(client, input.sessionId, {
+            outcome: "MANAGED_APPOINTMENT",
+            event: { type: "APPOINTMENT_CANCELED", appointmentId: Number(locked.id) },
+        })
+        await client.query("COMMIT")
+        return { protocol: locked.appointment_code.slice(0, 8).toUpperCase() }
+    } catch (err) {
+        await client.query("ROLLBACK")
+        throw err
+    } finally {
+        client.release()
+    }
+}
+
 export function createScheduleRepository(): IScheduleRepository {
     return {
         getSettings,
@@ -885,6 +948,7 @@ export function createScheduleRepository(): IScheduleRepository {
         deleteScheduledConfig,
         listFutureActiveAppointments,
         findReturningAppointment,
+        cancelByCitizen,
     }
 }
 

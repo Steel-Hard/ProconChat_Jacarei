@@ -167,6 +167,17 @@ export interface ReturningAppointment {
     status: "PENDING" | "CONFIRMED"
 }
 
+export interface CitizenCancelInput {
+    sessionId: string
+    appointmentId: number | string
+    phoneHash: string
+    now?: Date
+}
+
+export interface CitizenCancelResult {
+    protocol: string
+}
+
 export interface FutureActiveAppointment {
     id: string
     protocol: string
