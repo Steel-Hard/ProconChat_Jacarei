@@ -72,7 +72,16 @@ const DETAIL_KEYS = [
 ]
 const TIMELINE_STEP_KEYS = ["created_at", "data", "generated_by_ai", "id", "type"]
 const EVENT_KEYS = ["actor_user_id", "actor_user_name", "created_at", "data", "id", "type"]
-const ACTION_KEYS = ["add_note", "assign", "attended", "claim", "correct_record", "no_show"]
+const ACTION_KEYS = [
+    "add_note",
+    "assign",
+    "attended",
+    "cancel",
+    "claim",
+    "correct_record",
+    "no_show",
+    "retry_cancellation_notice",
+]
 const AVAILABILITY_KEYS = ["allowed", "code"]
 const ERROR_KEYS = ["code", "message"]
 const PATCH_CONFLICT_CODES = [
@@ -86,6 +95,10 @@ const PATCH_CONFLICT_CODES = [
     "ALREADY_ASSIGNED_TO_USER",
     "INVALID_ASSIGNEE",
     "ASSIGNEE_BUSY",
+    "CANCEL_AFTER_START",
+    "NOTIFICATION_NOT_RETRYABLE",
+    "CITIZEN_PHONE_UNAVAILABLE",
+    "NOTIFICATION_AFTER_START",
 ]
 const AVAILABILITY_CODES = [...PATCH_CONFLICT_CODES, "PERMISSION_REQUIRED"]
 const FORBIDDEN_FIELDS = ["cpf_hash", "phone_encrypted", "phone_hash"]
@@ -339,7 +352,7 @@ describe("contrato da API de agendamentos", () => {
             }
         })
 
-        it("available_actions traz as seis ações com allowed e code", async () => {
+        it("available_actions traz as oito ações com allowed e code", async () => {
             const res = await get("/1")
 
             const actions = res.body.data.available_actions

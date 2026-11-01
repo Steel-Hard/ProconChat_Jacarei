@@ -89,6 +89,28 @@ WhatsApp do painel (só Admin, API `/api/v1/whatsapp/settings` descrita no
 
 Nenhum desses valores aparece em log nem em arquivo versionado.
 
+### Envio de modelo (#67)
+
+O Backend pede ao gateway o envio de um modelo aprovado pela Meta (hoje, o aviso de cancelamento) em
+`POST /internal/whatsapp/messages/template`, com `X-Internal-Token`:
+
+```json
+{ "to": "5512999990000", "name": "aviso_cancelamento", "languageCode": "pt_BR", "bodyParameters": ["Maria", "1A2B3C4D", "05/11", "14:00", "a unidade estará fechada nesta data"] }
+```
+
+- O gateway envia `type: "template"` para `POST /<versão>/<phoneNumberId>/messages`, com os parâmetros
+  do corpo na ordem, e responde `200 { data: { providerMessageId } }` (o `messages[0].id` da Meta, ou
+  `null`).
+- `401 UNAUTHORIZED` sem o token interno ou com um token errado; `400 BAD_REQUEST` quando `to` não tem
+  de 8 a 15 dígitos, `name` foge de `^[a-z0-9_]{1,512}$`, `languageCode` foge de
+  `^[a-z]{2}(_[A-Z]{2})?$` ou algum parâmetro está vazio, tem quebra de linha, tabulação ou mais de 4
+  espaços seguidos. Nesses casos a Meta não é chamada.
+- Com o cache frio, o gateway carrega a configuração antes de enviar. Sem configuração, responde
+  `503 SERVICE_UNAVAILABLE`. A Meta recusar ou não responder em 10 s dá `502 PROVIDER_ERROR`.
+- O log de falha (`template_send_failed`) registra só o nome do modelo, nunca o telefone nem os
+  parâmetros. O cadastro dos modelos está em
+  [`.docs/whatsapp/modelos-de-mensagem.md`](../../.docs/whatsapp/modelos-de-mensagem.md).
+
 ## 2. Endereços locais
 
 - Backend: http://localhost:3000 (`GET /health`)

@@ -21,3 +21,14 @@ export type OutgoingMessage =
     | { type: "text"; text: string }
     | { type: "list"; text: string; buttonText: string; rows: ListRow[] }
     | { type: "buttons"; text: string; buttons: ReplyButton[] }
+
+export interface OutgoingTemplate {
+    name: string
+    languageCode: string
+    bodyParameters: string[]
+}
+
+export interface OutgoingTemplateRequest {
+    to: string
+    template: OutgoingTemplate
+}

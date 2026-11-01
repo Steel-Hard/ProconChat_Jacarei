@@ -373,6 +373,8 @@ describe("appointment.routes (HTTP)", () => {
                     assign: { allowed: true, code: null },
                     correct_record: { allowed: false, code: "RECORD_NOT_CORRECTABLE" },
                     add_note: { allowed: true, code: null },
+                    cancel: { allowed: true, code: null },
+                    retry_cancellation_notice: { allowed: false, code: "NOTIFICATION_NOT_RETRYABLE" },
                 })
             })
 
@@ -393,6 +395,8 @@ describe("appointment.routes (HTTP)", () => {
                     assign: { allowed: true, code: null },
                     correct_record: { allowed: false, code: "RECORD_NOT_CORRECTABLE" },
                     add_note: { allowed: true, code: null },
+                    cancel: { allowed: true, code: null },
+                    retry_cancellation_notice: { allowed: false, code: "NOTIFICATION_NOT_RETRYABLE" },
                 })
             })
 
@@ -408,6 +412,8 @@ describe("appointment.routes (HTTP)", () => {
                     assign: { allowed: true, code: null },
                     correct_record: { allowed: false, code: "RECORD_NOT_CORRECTABLE" },
                     add_note: { allowed: true, code: null },
+                    cancel: { allowed: false, code: "CANCEL_AFTER_START" },
+                    retry_cancellation_notice: { allowed: false, code: "NOTIFICATION_NOT_RETRYABLE" },
                 })
             })
 
@@ -424,6 +430,8 @@ describe("appointment.routes (HTTP)", () => {
                     assign: PERMISSION_REQUIRED,
                     correct_record: PERMISSION_REQUIRED,
                     add_note: PERMISSION_REQUIRED,
+                    cancel: PERMISSION_REQUIRED,
+                    retry_cancellation_notice: PERMISSION_REQUIRED,
                 })
             })
 
@@ -442,6 +450,8 @@ describe("appointment.routes (HTTP)", () => {
                     assign: { allowed: false, code: "ALREADY_ATTENDED" },
                     correct_record: { allowed: true, code: null },
                     add_note: { allowed: true, code: null },
+                    cancel: { allowed: false, code: "ALREADY_ATTENDED" },
+                    retry_cancellation_notice: { allowed: false, code: "NOTIFICATION_NOT_RETRYABLE" },
                 })
             })
         })

@@ -4,6 +4,10 @@ import {
     AppointmentListFilters,
     AppointmentListItem,
     CalendarFilters,
+    CancellationNoticeTarget,
+    CancellationReason,
+    CitizenNotificationKind,
+    CitizenNotificationOutcome,
     CorrectionResult,
     StaffMember,
     WeekAppointmentRecord,
@@ -64,6 +68,26 @@ export interface AppointmentRepository {
         actorUserId: number,
         now?: Date,
     ): Promise<void>
+
+    cancel(
+        id: string,
+        actorUserId: number,
+        reason: CancellationReason,
+        note: string | undefined,
+        now?: Date,
+    ): Promise<void>
+
+    findCancellationNoticeTarget(id: string): Promise<CancellationNoticeTarget | null>
+
+    recordCitizenNotification(
+        id: string,
+        outcome: CitizenNotificationOutcome,
+        kind: CitizenNotificationKind,
+        actorUserId: number,
+        now?: Date,
+    ): Promise<void>
+
+    countNotifiedPhonesBetween(from: Date, to: Date): Promise<number>
 
     getCurrentDocumentsConfig(
         byRepresentative: boolean,

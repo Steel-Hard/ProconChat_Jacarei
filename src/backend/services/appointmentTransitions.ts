@@ -20,6 +20,22 @@ export interface ActionAccess {
     canManage: boolean
 }
 
+export interface CancellationNoticeState {
+    status: AppointmentStatus
+    hasStaffCancellation: boolean
+    lastCancellationNotice: "NOTIFIED" | "FAILED" | null
+    hasPhone: boolean
+    appointmentDatetime: Date
+}
+
+export type CancellationNoticeFacts = Omit<CancellationNoticeState, "status" | "appointmentDatetime">
+
+const NO_CANCELLATION_NOTICE: CancellationNoticeFacts = {
+    hasStaffCancellation: false,
+    lastCancellationNotice: null,
+    hasPhone: false,
+}
+
 export type TransitionDecision =
     | { allowed: true }
     | { allowed: false; error: AppError; code: TransitionErrorCode }
@@ -107,6 +123,17 @@ function decideNoShow(target: TransitionTarget, now: Date): TransitionDecision {
     return ALLOWED
 }
 
+function decideCancel(target: TransitionTarget, now: Date): TransitionDecision {
+    const statusDecision = decideRecordStatus(target.status, "Agendamento já está cancelado")
+    if (statusDecision) {
+        return statusDecision
+    }
+    if (isDatetimePast(target.appointmentDatetime, now)) {
+        return refuse("Só é possível cancelar antes do horário do atendimento", "CANCEL_AFTER_START")
+    }
+    return ALLOWED
+}
+
 export function decideTransition(
     action: AppointmentActionType,
     target: TransitionTarget,
@@ -124,7 +151,23 @@ export function decideTransition(
     if (action === "correct_record") {
         return decideCorrectRecord(target.status)
     }
+    if (action === "cancel") {
+        return decideCancel(target, now)
+    }
     return decideNoShow(target, now)
+}
+
+export function decideRetryCancellationNotice(state: CancellationNoticeState, now: Date): TransitionDecision {
+    if (state.status !== "CANCELED" || !state.hasStaffCancellation || state.lastCancellationNotice === "NOTIFIED") {
+        return refuse("Não há aviso de cancelamento com falha para reenviar", "NOTIFICATION_NOT_RETRYABLE")
+    }
+    if (!state.hasPhone) {
+        return refuse("O agendamento não tem telefone para enviar o aviso", "CITIZEN_PHONE_UNAVAILABLE")
+    }
+    if (isDatetimePast(state.appointmentDatetime, now)) {
+        return refuse("O horário do atendimento já passou e o aviso não serve mais", "NOTIFICATION_AFTER_START")
+    }
+    return ALLOWED
 }
 
 function availabilityOf(decision: TransitionDecision): AppointmentActionAvailability {
@@ -139,6 +182,7 @@ export function availableActions(
     target: TransitionTarget,
     now: Date,
     access: ActionAccess,
+    notice: CancellationNoticeFacts = NO_CANCELLATION_NOTICE,
 ): AppointmentAvailableActions {
     if (!access.canManage) {
         return {
@@ -148,6 +192,8 @@ export function availableActions(
             assign: PERMISSION_REQUIRED,
             correct_record: PERMISSION_REQUIRED,
             add_note: PERMISSION_REQUIRED,
+            cancel: PERMISSION_REQUIRED,
+            retry_cancellation_notice: PERMISSION_REQUIRED,
         }
     }
     return {
@@ -157,6 +203,8 @@ export function availableActions(
         assign: availabilityOf(decideTransition("assign", target, now)),
         correct_record: availabilityOf(decideTransition("correct_record", target, now)),
         add_note: { allowed: true, code: null },
+        cancel: availabilityOf(decideTransition("cancel", target, now)),
+        retry_cancellation_notice: availabilityOf(decideRetryCancellationNotice({ ...notice, ...target }, now)),
     }
 }
 

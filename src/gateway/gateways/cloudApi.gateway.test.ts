@@ -387,3 +387,55 @@ describe("Cloud API provider: send", () => {
         expect(fetchFn).not.toHaveBeenCalled()
     })
 })
+
+describe("Cloud API provider: sendTemplate", () => {
+    afterEach(() => {
+        vi.restoreAllMocks()
+    })
+
+    const template = {
+        name: "aviso_cancelamento",
+        languageCode: "pt_BR",
+        bodyParameters: ["Maria", "1A2B3C4D", "05/11", "14:00", "a unidade estará fechada nesta data"],
+    }
+
+    test("envia o modelo para a Graph API com o token, a versão, o corpo type template e os parâmetros na ordem", async () => {
+        const fetchFn = vi.fn().mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve({}) })
+        const timeoutSpy = vi.spyOn(AbortSignal, "timeout")
+        const provider = createCloudApiProvider({ getConfig: () => config, fetchFn })
+
+        await provider.sendTemplate("5500000000001", template)
+
+        expect(fetchFn).toHaveBeenCalledOnce()
+        const [url, init] = fetchFn.mock.calls[0] as [string, RequestInit]
+        expect(url).toBe("https://graph.facebook.com/v26.0/100000000000001/messages")
+        expect(init.method).toBe("POST")
+        expect(init.headers).toEqual({
+            "Content-Type": "application/json",
+            Authorization: "Bearer test-only-access-token",
+        })
+        expect(JSON.parse(init.body as string)).toEqual({
+            messaging_product: "whatsapp",
+            recipient_type: "individual",
+            to: "5500000000001",
+            type: "template",
+            template: {
+                name: "aviso_cancelamento",
+                language: { code: "pt_BR" },
+                components: [
+                    {
+                        type: "body",
+                        parameters: [
+                            { type: "text", text: "Maria" },
+                            { type: "text", text: "1A2B3C4D" },
+                            { type: "text", text: "05/11" },
+                            { type: "text", text: "14:00" },
+                            { type: "text", text: "a unidade estará fechada nesta data" },
+                        ],
+                    },
+                ],
+            },
+        })
+        expect(timeoutSpy).toHaveBeenCalledWith(10_000)
+    })
+})

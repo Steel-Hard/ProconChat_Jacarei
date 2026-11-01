@@ -1,11 +1,12 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
 import { IgnoredIncoming, MessageProvider, ParsedIncoming } from "./messageProvider"
 import { OutgoingMessageValidationError, validateOutgoingMessage } from "./outgoingMessage.validation"
-import { IncomingMessage, OutgoingMessage } from "../types/message.types"
+import { IncomingMessage, OutgoingMessage, OutgoingTemplate } from "../types/message.types"
 import {
     CloudApiConfig,
     CloudApiIncomingMessage,
     CloudApiOutgoingBody,
+    CloudApiTemplateBody,
     CloudApiWebhookPayload,
 } from "../types/cloudApi.types"
 import { whatsappConfigStore } from "../services/whatsappConfigStore"
@@ -13,7 +14,7 @@ import { whatsappConfigStore } from "../services/whatsappConfigStore"
 const SIGNATURE_PATTERN = /^sha256=([0-9a-f]{64})$/i
 const SEND_TIMEOUT_MS = 10_000
 
-type FetchFn = (url: string, init: RequestInit) => Promise<Pick<Response, "ok" | "status">>
+type FetchFn = (url: string, init: RequestInit) => Promise<Pick<Response, "ok" | "status" | "json">>
 
 interface CloudApiProviderDependencies {
     getConfig: () => CloudApiConfig
@@ -126,10 +127,60 @@ function buildBody(to: string, message: OutgoingMessage): CloudApiOutgoingBody {
     }
 }
 
+async function readProviderMessageId(response: Pick<Response, "json">): Promise<string | null> {
+    try {
+        const payload = (await response.json()) as { messages?: { id?: unknown }[] }
+        const id = payload?.messages?.[0]?.id
+        return typeof id === "string" && id !== "" ? id : null
+    } catch {
+        return null
+    }
+}
+
+function buildTemplateBody(to: string, template: OutgoingTemplate): CloudApiTemplateBody {
+    return {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to,
+        type: "template",
+        template: {
+            name: template.name,
+            language: { code: template.languageCode },
+            components: [
+                {
+                    type: "body",
+                    parameters: template.bodyParameters.map((text) => ({ type: "text", text })),
+                },
+            ],
+        },
+    }
+}
+
 export function createCloudApiProvider({
     getConfig,
     fetchFn = (url, init) => fetch(url, init),
 }: CloudApiProviderDependencies): MessageProvider {
+    async function postMessage(body: CloudApiOutgoingBody | CloudApiTemplateBody): Promise<Pick<Response, "json">> {
+        const { phoneNumberId, accessToken, graphApiVersion } = getConfig()
+        const response = await fetchFn(
+            `https://graph.facebook.com/${encodeURIComponent(graphApiVersion)}/${encodeURIComponent(phoneNumberId)}/messages`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify(body),
+                signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
+            },
+        )
+
+        if (!response.ok) {
+            throw new Error(`Cloud API returned HTTP ${response.status}`)
+        }
+        return response
+    }
+
     return {
         verifySignature(rawBody: Buffer, signatureHeader: string | undefined): boolean {
             const match = signatureHeader ? SIGNATURE_PATTERN.exec(signatureHeader) : null
@@ -206,23 +257,12 @@ export function createCloudApiProvider({
                 throw new OutgoingMessageValidationError(validation.reason)
             }
 
-            const { phoneNumberId, accessToken, graphApiVersion } = getConfig()
-            const response = await fetchFn(
-                `https://graph.facebook.com/${encodeURIComponent(graphApiVersion)}/${encodeURIComponent(phoneNumberId)}/messages`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${accessToken}`,
-                    },
-                    body: JSON.stringify(buildBody(to, message)),
-                    signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
-                },
-            )
+            await postMessage(buildBody(to, message))
+        },
 
-            if (!response.ok) {
-                throw new Error(`Cloud API returned HTTP ${response.status}`)
-            }
+        async sendTemplate(to: string, template: OutgoingTemplate): Promise<{ providerMessageId: string | null }> {
+            const response = await postMessage(buildTemplateBody(to, template))
+            return { providerMessageId: await readProviderMessageId(response) }
         },
     }
 }

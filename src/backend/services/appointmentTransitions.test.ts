@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 import type { AppointmentActionType, AppointmentStatus, CorrectionHistoryEvent } from "../types/appointment.types"
-import { availableActions, decideTransition, restoredStateAfterCorrection } from "./appointmentTransitions"
+import {
+    availableActions,
+    CancellationNoticeState,
+    decideRetryCancellationNotice,
+    decideTransition,
+    restoredStateAfterCorrection,
+} from "./appointmentTransitions"
 
 const past = new Date("2026-10-19T09:00:00-03:00")
 const future = new Date("2026-10-25T09:00:00-03:00")
@@ -245,6 +251,127 @@ describe("appointmentTransitions", () => {
         })
     })
 
+    describe("decideTransition para cancelar", () => {
+        it("recusa cancelar no horário exato do atendimento com CANCEL_AFTER_START", () => {
+            const decision = decideTransition("cancel", { status: "CONFIRMED", appointmentDatetime: now }, now)
+
+            expect(decision.allowed).toBe(false)
+            if (!decision.allowed) {
+                expect(decision.error.statusCode).toBe(409)
+                expect(decision.error.code).toBe("CANCEL_AFTER_START")
+                expect(decision.error.message).toBe("Só é possível cancelar antes do horário do atendimento")
+            }
+        })
+
+        it("recusa cancelar 1 ms depois do horário do atendimento com CANCEL_AFTER_START", () => {
+            const decision = decideTransition(
+                "cancel",
+                { status: "PENDING", appointmentDatetime: new Date(now.getTime() - 1) },
+                now,
+            )
+
+            expect(decision.allowed).toBe(false)
+            if (!decision.allowed) {
+                expect(decision.error.code).toBe("CANCEL_AFTER_START")
+            }
+        })
+
+        it.each(["PENDING", "CONFIRMED"] as const)("permite cancelar %s 1 ms antes do horário do atendimento", (status) => {
+            const decision = decideTransition(
+                "cancel",
+                { status, appointmentDatetime: new Date(now.getTime() + 1) },
+                now,
+            )
+
+            expect(decision).toEqual({ allowed: true })
+        })
+
+        it.each([
+            { status: "CANCELED", code: "APPOINTMENT_CANCELED", message: "Agendamento já está cancelado" },
+            { status: "ATTENDED", code: "ALREADY_ATTENDED", message: "Agendamento já foi marcado como atendido" },
+            { status: "NO_SHOW", code: "ALREADY_NO_SHOW", message: "Agendamento já foi registrado como não compareceu" },
+        ] as const)("recusa cancelar um agendamento $status com $code", ({ status, code, message }) => {
+            const decision = decideTransition("cancel", { status, appointmentDatetime: future }, now)
+
+            expect(decision.allowed).toBe(false)
+            if (!decision.allowed) {
+                expect(decision.error.statusCode).toBe(409)
+                expect(decision.error.code).toBe(code)
+                expect(decision.error.message).toBe(message)
+            }
+        })
+    })
+
+    describe("decideRetryCancellationNotice", () => {
+        const failedNotice: CancellationNoticeState = {
+            status: "CANCELED",
+            hasStaffCancellation: true,
+            lastCancellationNotice: "FAILED",
+            hasPhone: true,
+            appointmentDatetime: future,
+        }
+
+        it.each([
+            { label: "sem CANCELED_BY_STAFF", state: { ...failedNotice, hasStaffCancellation: false } },
+            { label: "com status CONFIRMED", state: { ...failedNotice, status: "CONFIRMED" as const } },
+        ])("recusa o reenvio $label com NOTIFICATION_NOT_RETRYABLE", ({ state }) => {
+            const decision = decideRetryCancellationNotice(state, now)
+
+            expect(decision.allowed).toBe(false)
+            if (!decision.allowed) {
+                expect(decision.error.statusCode).toBe(409)
+                expect(decision.error.code).toBe("NOTIFICATION_NOT_RETRYABLE")
+                expect(decision.error.message).toBe("Não há aviso de cancelamento com falha para reenviar")
+            }
+        })
+
+        it("recusa o reenvio com NOTIFICATION_NOT_RETRYABLE quando o último aviso é NOTIFIED", () => {
+            const decision = decideRetryCancellationNotice({ ...failedNotice, lastCancellationNotice: "NOTIFIED" }, now)
+
+            expect(decision.allowed).toBe(false)
+            if (!decision.allowed) {
+                expect(decision.error.code).toBe("NOTIFICATION_NOT_RETRYABLE")
+            }
+        })
+
+        it("permite o reenvio quando houve cancelamento pela equipe e nenhum evento de aviso foi gravado", () => {
+            const decision = decideRetryCancellationNotice({ ...failedNotice, lastCancellationNotice: null }, now)
+
+            expect(decision).toEqual({ allowed: true })
+        })
+
+        it("recusa o reenvio sem telefone com CITIZEN_PHONE_UNAVAILABLE", () => {
+            const decision = decideRetryCancellationNotice({ ...failedNotice, hasPhone: false }, now)
+
+            expect(decision.allowed).toBe(false)
+            if (!decision.allowed) {
+                expect(decision.error.statusCode).toBe(409)
+                expect(decision.error.code).toBe("CITIZEN_PHONE_UNAVAILABLE")
+                expect(decision.error.message).toBe("O agendamento não tem telefone para enviar o aviso")
+            }
+        })
+
+        it.each([
+            { label: "no horário exato", appointmentDatetime: now },
+            { label: "1 ms depois do horário", appointmentDatetime: new Date(now.getTime() - 1) },
+        ])("recusa o reenvio $label com NOTIFICATION_AFTER_START", ({ appointmentDatetime }) => {
+            const decision = decideRetryCancellationNotice({ ...failedNotice, appointmentDatetime }, now)
+
+            expect(decision.allowed).toBe(false)
+            if (!decision.allowed) {
+                expect(decision.error.statusCode).toBe(409)
+                expect(decision.error.code).toBe("NOTIFICATION_AFTER_START")
+                expect(decision.error.message).toBe("O horário do atendimento já passou e o aviso não serve mais")
+            }
+        })
+
+        it("permite o reenvio quando o último aviso falhou, há telefone e o horário não passou", () => {
+            const decision = decideRetryCancellationNotice(failedNotice, now)
+
+            expect(decision).toEqual({ allowed: true })
+        })
+    })
+
     describe("availableActions por permissão", () => {
         it.each(ALL_STATUSES)(
             "sem appointments.manage, todas as ações de gerenciar saem com PERMISSION_REQUIRED no status %s",
@@ -258,6 +385,8 @@ describe("appointmentTransitions", () => {
                     assign: PERMISSION_REQUIRED,
                     correct_record: PERMISSION_REQUIRED,
                     add_note: PERMISSION_REQUIRED,
+                    cancel: PERMISSION_REQUIRED,
+                    retry_cancellation_notice: PERMISSION_REQUIRED,
                 })
             },
         )
@@ -272,6 +401,8 @@ describe("appointmentTransitions", () => {
                 assign: { allowed: true, code: null },
                 correct_record: { allowed: false, code: "RECORD_NOT_CORRECTABLE" },
                 add_note: { allowed: true, code: null },
+                cancel: { allowed: false, code: "CANCEL_AFTER_START" },
+                retry_cancellation_notice: { allowed: false, code: "NOTIFICATION_NOT_RETRYABLE" },
             })
         })
 
@@ -285,6 +416,8 @@ describe("appointmentTransitions", () => {
                 assign: { allowed: false, code: "ALREADY_ATTENDED" },
                 correct_record: { allowed: true, code: null },
                 add_note: { allowed: true, code: null },
+                cancel: { allowed: false, code: "ALREADY_ATTENDED" },
+                retry_cancellation_notice: { allowed: false, code: "NOTIFICATION_NOT_RETRYABLE" },
             })
         })
 
@@ -298,6 +431,8 @@ describe("appointmentTransitions", () => {
                 assign: { allowed: false, code: "APPOINTMENT_CANCELED" },
                 correct_record: { allowed: false, code: "RECORD_NOT_CORRECTABLE" },
                 add_note: { allowed: true, code: null },
+                cancel: { allowed: false, code: "APPOINTMENT_CANCELED" },
+                retry_cancellation_notice: { allowed: false, code: "NOTIFICATION_NOT_RETRYABLE" },
             })
         })
 
@@ -308,6 +443,37 @@ describe("appointmentTransitions", () => {
             expect(actions.correct_record).toEqual({ allowed: false, code: "RECORD_NOT_CORRECTABLE" })
             expect(actions.claim).toEqual({ allowed: false, code: "APPOINTMENT_ALREADY_CLAIMED" })
         })
+
+        it.each([
+            { status: "PENDING", appointmentDatetime: future, expected: { allowed: true, code: null } },
+            { status: "CONFIRMED", appointmentDatetime: future, expected: { allowed: true, code: null } },
+            { status: "CONFIRMED", appointmentDatetime: now, expected: { allowed: false, code: "CANCEL_AFTER_START" } },
+            { status: "NO_SHOW", appointmentDatetime: past, expected: { allowed: false, code: "ALREADY_NO_SHOW" } },
+        ] as const)(
+            "com appointments.manage, cancel de um $status segue a decisão de cancelar",
+            ({ status, appointmentDatetime, expected }) => {
+                const actions = availableActions({ status, appointmentDatetime }, now, { canManage: true })
+
+                expect(actions.cancel).toEqual(expected)
+            },
+        )
+
+        it.each([
+            { lastCancellationNotice: "FAILED", hasPhone: true, expected: { allowed: true, code: null } },
+            { lastCancellationNotice: "FAILED", hasPhone: false, expected: { allowed: false, code: "CITIZEN_PHONE_UNAVAILABLE" } },
+            { lastCancellationNotice: "NOTIFIED", hasPhone: true, expected: { allowed: false, code: "NOTIFICATION_NOT_RETRYABLE" } },
+        ] as const)(
+            "com appointments.manage, retry_cancellation_notice com último aviso $lastCancellationNotice e telefone $hasPhone segue a decisão do reenvio",
+            ({ lastCancellationNotice, hasPhone, expected }) => {
+                const actions = availableActions({ status: "CANCELED", appointmentDatetime: future }, now, { canManage: true }, {
+                    hasStaffCancellation: true,
+                    lastCancellationNotice,
+                    hasPhone,
+                })
+
+                expect(actions.retry_cancellation_notice).toEqual(expected)
+            },
+        )
     })
 
     describe("restoredStateAfterCorrection", () => {

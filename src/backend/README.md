@@ -243,6 +243,25 @@ em `POST`/`PUT` sem origem confiável e `400 BAD_REQUEST` `"Malformed JSON body"
 | `PUT /` | igual ao teste | `200 { data: WhatsAppSettingsView }` | `400`; `422 { error: { code: <reason>, message: "WhatsApp connection test failed" } }` |
 | `POST /pause` | — | `200 { data: WhatsAppSettingsView }` com `autoReplyPaused: true` | — |
 | `POST /resume` | — | `200 { data: WhatsAppSettingsView }` com `autoReplyPaused: false` | — |
+| `GET /templates` | — | `200 { data: { checkedAt, templates: [{ kind: "CANCELLATION" \| "REMINDER", name, languageCode, status, metaStatus }] } }` | `409 WHATSAPP_NOT_CONFIGURED` (sem ID da conta, token ou App Secret); `422 { error: { code: <reason> } }` |
+| `GET /number-status` | — | `200 { data: { checkedAt, qualityRating, messagingLimit: { tier, dailyLimit, usedLast24h } } }` | `409 WHATSAPP_NOT_CONFIGURED` (sem ID do número, token ou App Secret); `422 { error: { code: <reason> } }` |
+
+**Modelos e estado do número (#67).** As duas rotas consultam a Meta a cada chamada, sem cache, com o
+`appsecret_proof`, e usam os motivos do teste de conexão no `422`.
+
+- `GET /templates` faz uma consulta por modelo (`GET /<versão>/<businessAccountId>/message_templates?fields=name,status,language&name=<nome>`)
+  e só aceita o nome e o idioma exatos de `MODELO_AVISO_CANCELAMENTO` e `MODELO_LEMBRETE_ATENDIMENTO`.
+  `status`: `APPROVED`; `PENDING` (também `IN_APPEAL`); `REJECTED`; `NOT_FOUND` (a Meta não devolveu o
+  modelo); `OTHER` (`PAUSED`, `DISABLED`, `PENDING_DELETION`, `DELETED`, `LIMIT_EXCEEDED`, `ARCHIVED`).
+  `metaStatus` traz o valor bruto da Meta, ou `null`.
+- `GET /number-status` lê `quality_rating` e `whatsapp_business_manager_messaging_limit` (o
+  `messaging_limit_tier` está obsoleto na Meta). `qualityRating`: `GREEN` → `HIGH`, `YELLOW` →
+  `MEDIUM`, `RED` → `LOW`, qualquer outro (inclusive `NA`) → `UNKNOWN`. `tier` é o valor bruto da Meta,
+  e `dailyLimit` só é preenchido para `TIER_250`. `usedLast24h` conta no banco os telefones distintos
+  (`Sessions.phone_hash`) com `CITIZEN_NOTIFIED` de `kind` `CANCELLATION` ou `REMINDER` em
+  `[agora - 24h, agora]`.
+
+O cadastro dos modelos na Meta está em [`.docs/whatsapp/modelos-de-mensagem.md`](../../.docs/whatsapp/modelos-de-mensagem.md).
 
 `WhatsAppSettingsView`:
 
@@ -528,7 +547,9 @@ repositório dentro da transação, pelo mock e pelo detalhe.
 | `GET /api/v1/appointments/calendar` | `appointments.view` | Calendário semanal (seção abaixo). Query: `date` (`AAAA-MM-DD`, padrão hoje em São Paulo), `status` e `responsible` com os mesmos valores da lista | `200 { data: Calendar }` | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN` |
 | `GET /api/v1/appointments` | `appointments.view` | Lista com busca, filtros, ordenação, paginação e contagem dos chips (query abaixo) | `200 { data: { items, total, page, limit, totalPages, chipCounts } }` | `400 BAD_REQUEST`, `401`, `403` |
 | `GET /api/v1/appointments/:id` | `appointments.view` | Detalhe com histórico (`events`), linha do tempo da conversa de origem (`timeline`) e ações disponíveis (`available_actions`) | `200 { data: AppointmentDetail }` | `400 BAD_REQUEST` (id que não é inteiro positivo ou passa do limite do `bigint`), `401`, `403`, `404 NOT_FOUND` |
-| `PATCH /api/v1/appointments/:id/status` | `appointments.manage` | Executa uma ação. Corpo: `{ "action": "claim" \| "attended" \| "no_show" \| "correct_record" }` ou `{ "action": "assign", "assigneeUserId": <id> }` (número ou texto numérico) | `200 { data: AppointmentDetail }`, o mesmo objeto que um `GET /:id` feito em seguida. `correct_record` pode trazer também `warning` (abaixo) | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN`, `403 INVALID_ORIGIN`, `404 NOT_FOUND`, `409` (codes na tabela de ações) |
+| `PATCH /api/v1/appointments/:id/status` | `appointments.manage` | Executa uma ação. Corpo: `{ "action": "claim" \| "attended" \| "no_show" \| "correct_record" }`, `{ "action": "assign", "assigneeUserId": <id> }` (número ou texto numérico) ou `{ "action": "cancel", "reason": "UNIT_CLOSED" \| "CITIZEN_REQUEST" \| "DUPLICATE" \| "OTHER", "note"?: "..." }` (seção "Cancelamento pela equipe") | `200 { data: AppointmentDetail }`, o mesmo objeto que um `GET /:id` feito em seguida. `correct_record` pode trazer também `warning` (abaixo) | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN`, `403 INVALID_ORIGIN`, `404 NOT_FOUND`, `409` (codes na tabela de ações) |
+| `GET /api/v1/appointments/:id/cancellation-preview` | `appointments.manage` | A mensagem exata que o cidadão recebe para cada motivo, na ordem `UNIT_CLOSED`, `CITIZEN_REQUEST`, `DUPLICATE`, `OTHER` | `200 { data: { previews: [{ reason, message }] } }` | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN`, `404 NOT_FOUND` |
+| `POST /api/v1/appointments/:id/cancellation-notice/retry` | `appointments.manage` | Reenvia o aviso de cancelamento que falhou | `200 { data: AppointmentDetail }` | `401`, `403 FORBIDDEN`, `403 INVALID_ORIGIN`, `404 NOT_FOUND`, `409 NOTIFICATION_NOT_RETRYABLE`, `409 CITIZEN_PHONE_UNAVAILABLE`, `409 NOTIFICATION_AFTER_START`, `409 NOTIFICATION_IN_PROGRESS` |
 | `POST /api/v1/appointments/:id/notes` | `appointments.manage` | Grava uma observação interna. Corpo: `{ "text": "..." }`, de 1 a 2000 caracteres depois de aparar. Não há rota de edição nem de exclusão, e o trigger `trg_appointment_notes_immutable` recusa `UPDATE` e `DELETE` | `201 { data: AppointmentDetail }` | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN`, `403 INVALID_ORIGIN`, `404 NOT_FOUND` |
 
 Erros sempre no envelope `{ "error": { "code": "...", "message": "..." } }`. O painel traduz pelo
@@ -822,10 +843,38 @@ transação. Todas as recusas são `409`:
 | `no_show` | assume automaticamente e vira `NO_SHOW` | vira `NO_SHOW` | `409 ALREADY_ATTENDED` | `409 ALREADY_NO_SHOW` | `409 APPOINTMENT_CANCELED` |
 | `assign` | vira `CONFIRMED` com o destino (`ASSIGNED { assignee_user_id }`) | troca o responsável (`ASSIGNED`) | `409 ALREADY_ATTENDED` | `409 ALREADY_NO_SHOW` | `409 APPOINTMENT_CANCELED` |
 | `correct_record` | `409 RECORD_NOT_CORRECTABLE` | `409 RECORD_NOT_CORRECTABLE` | volta ao estado anterior (`RECORD_CORRECTED`) | volta ao estado anterior (`RECORD_CORRECTED`) | `409 RECORD_NOT_CORRECTABLE` |
+| `cancel` | vira `CANCELED` (`CANCELED_BY_STAFF { reason }`) | vira `CANCELED`, mantendo o responsável | `409 ALREADY_ATTENDED` | `409 ALREADY_NO_SHOW` | `409 APPOINTMENT_CANCELED` |
 
 Regra de data, conferida depois do status: `attended` só a partir do dia do atendimento em
 `America/Sao_Paulo` (antes disso, `409 ATTENDANCE_NOT_YET_AVAILABLE`), e `no_show` só depois do
-horário marcado (antes disso, `409 NO_SHOW_NOT_YET_AVAILABLE`).
+horário marcado (antes disso, `409 NO_SHOW_NOT_YET_AVAILABLE`). `cancel` só antes do horário
+marcado (no horário ou depois, `409 CANCEL_AFTER_START`).
+
+### Cancelamento pela equipe (#67)
+
+- `PATCH /:id/status` com `action: "cancel"` trava a conta de quem age e o agendamento, grava
+  `CANCELED`, o evento `CANCELED_BY_STAFF { reason }` e, se vier `note` não vazia depois de aparar (até
+  2000 caracteres), uma observação interna em `AppointmentNotes`, tudo na mesma transação. Cancelar
+  libera a vaga, porque a contagem de vagas só considera `PENDING` e `CONFIRMED`.
+- **Depois do `COMMIT`**, `services/citizenNotification.service.ts` decifra `phone_encrypted` e pede ao
+  gateway o envio do modelo `aviso_cancelamento` (`gatewayClient.sendTemplate`, tempo limite de 15 s,
+  maior que os 10 s do gateway). Os parâmetros vêm de `parametrosAvisoCancelamento` (nome, protocolo,
+  data e hora em Brasília e a frase do motivo), os mesmos da prévia. A observação interna nunca vai ao
+  cidadão.
+- O resultado vira `CITIZEN_NOTIFIED` ou `CITIZEN_NOTIFICATION_FAILED`, com `data: { kind:
+  "CANCELLATION" }` e quem agiu. Falha do gateway, gateway não configurado ou telefone ausente ou
+  ilegível gravam a falha, e o cancelamento continua respondendo `200`. A pausa das respostas
+  automáticas não bloqueia o aviso.
+- Se o próprio aviso lança depois do `COMMIT` (por exemplo, a gravação do resultado falha), o
+  cancelamento responde `200` com o detalhe `CANCELED` e o log registra só o id do agendamento e o
+  código do erro, sem telefone. Se a leitura do detalhe também falhar, a resposta é `500`, mas o
+  cancelamento continua gravado.
+- `available_actions.retry_cancellation_notice` só fica `allowed` quando o agendamento foi cancelado
+  pela equipe, o último aviso de `kind` `CANCELLATION` (por `created_at, id`) falhou ou não existe, há
+  telefone e o horário ainda não passou. O reenvio tem uma trava em memória por agendamento
+  (`409 NOTIFICATION_IN_PROGRESS`), suficiente porque o backend roda numa instância só. Dentro da trava
+  o alvo é relido, e um aviso que já saiu (`CITIZEN_NOTIFIED`) recusa o reenvio com
+  `409 NOTIFICATION_NOT_RETRYABLE`.
 
 Se duas ações chegam juntas (por exemplo, Atendido e Não compareceu), a segunda espera a trava, lê o
 status já alterado e recebe o `409` coerente com a ação que ganhou (`ALREADY_ATTENDED` ou

@@ -38,6 +38,7 @@ function setup(row: Partial<WhatsAppSettingsRow> | null = savedRow(), env: Recor
         settings,
         meta,
         gateway,
+        usage: { countNotifiedPhonesBetween: vi.fn(async () => 0) },
         encrypt,
         decrypt,
         env: { WHATSAPP_GRAPH_API_VERSION: "v26.0", ...env },

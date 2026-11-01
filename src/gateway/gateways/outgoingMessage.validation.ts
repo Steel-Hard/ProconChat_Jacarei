@@ -1,4 +1,4 @@
-import { ListRow, OutgoingMessage, ReplyButton } from "../types/message.types"
+import { ListRow, OutgoingMessage, OutgoingTemplateRequest, ReplyButton } from "../types/message.types"
 
 export const OUTGOING_LIMITS = {
     textBody: 4096,
@@ -98,4 +98,41 @@ function findProblem(message: OutgoingMessage): string | undefined {
 export function validateOutgoingMessage(message: OutgoingMessage): OutgoingMessageValidation {
     const reason = findProblem(message)
     return reason === undefined ? { ok: true } : { ok: false, reason }
+}
+
+const TEMPLATE_TO_PATTERN = /^\d{8,15}$/
+const TEMPLATE_NAME_PATTERN = /^[a-z0-9_]{1,512}$/
+const TEMPLATE_LANGUAGE_PATTERN = /^[a-z]{2}(_[A-Z]{2})?$/
+
+function isValidParameter(value: unknown): value is string {
+    return typeof value === "string" && value.trim() !== "" && !/[\n\t]/.test(value) && !/ {5,}/.test(value)
+}
+
+function isValidParameterList(value: unknown): value is string[] {
+    return Array.isArray(value) && value.every(isValidParameter)
+}
+
+export type OutgoingTemplateValidation = { ok: true; value: OutgoingTemplateRequest } | { ok: false; reason: string }
+
+export function validateOutgoingTemplate(input: unknown): OutgoingTemplateValidation {
+    const { to, name, languageCode, bodyParameters } = (input ?? {}) as Record<string, unknown>
+    if (typeof to !== "string" || !TEMPLATE_TO_PATTERN.test(to)) {
+        return { ok: false, reason: "invalid_to" }
+    }
+    if (typeof name !== "string" || !TEMPLATE_NAME_PATTERN.test(name)) {
+        return { ok: false, reason: "invalid_template_name" }
+    }
+    if (typeof languageCode !== "string" || !TEMPLATE_LANGUAGE_PATTERN.test(languageCode)) {
+        return { ok: false, reason: "invalid_language_code" }
+    }
+    if (!isValidParameterList(bodyParameters)) {
+        return { ok: false, reason: "invalid_parameter" }
+    }
+    return {
+        ok: true,
+        value: {
+            to,
+            template: { name, languageCode, bodyParameters },
+        },
+    }
 }
