@@ -65,6 +65,31 @@ describe("conversationFlow.service", () => {
         expect(result.reply.messages?.[1]).toMatchObject({ type: "list", footer: RODAPE_ATENDIMENTO })
     })
 
+    test("sessão nova com o provedor de link devolvendo a URL leva a linha da política na saudação", async () => {
+        findOrCreateActive.mockResolvedValueOnce(buildActiveSession({ created: true }))
+        iniciarSessao.mockResolvedValueOnce(categorias)
+        const privacyLink = vi.fn(async () => "https://exemplo.sslip.io/privacidade")
+
+        const result = await createFlow({ privacyLink })({ phone: "5511999999999", text: "Olá" })
+
+        const linha = "\n\nSaiba como tratamos seus dados: https://exemplo.sslip.io/privacidade"
+        const primeira = result.reply.messages?.[0]
+        expect(primeira?.type === "text" ? primeira.text.endsWith(linha) : false).toBe(true)
+        expect(result.reply.text.startsWith(`${SAUDACAO}${linha}\n\n`)).toBe(true)
+    })
+
+    test("sessão nova com o provedor de link devolvendo null responde como hoje", async () => {
+        findOrCreateActive.mockResolvedValueOnce(buildActiveSession({ created: true }))
+        iniciarSessao.mockResolvedValueOnce(categorias).mockResolvedValueOnce(categorias)
+        const semProvedor = await processIncomingMessage({ phone: "5511999999999", text: "Olá" })
+        findOrCreateActive.mockResolvedValueOnce(buildActiveSession({ created: true }))
+
+        const result = await createFlow({ privacyLink: async () => null })({ phone: "5511999999999", text: "Olá" })
+
+        expect(result).toEqual(semProvedor)
+        expect(result.reply.messages?.[0]).toEqual({ type: "text", text: SAUDACAO })
+    })
+
     test("AWAITING_CATEGORY: escolha inválida reenvia a lista de categorias com o rodapé de LGPD", async () => {
         findOrCreateActive.mockResolvedValueOnce(buildActiveSession())
         iniciarSessao.mockResolvedValueOnce(categorias)
@@ -115,6 +140,41 @@ describe("conversationFlow.service", () => {
         })
         expect(result.reply.step).toBe("AWAITING_CATEGORY")
         expect(result.reply.text).toContain("Categoria 10")
+    })
+
+    test("AWAITING_CATEGORY: a troca de página repete a saudação com a linha da política", async () => {
+        const muitasCategorias: Categoria[] = Array.from({ length: 15 }, (_, i) => ({
+            id: i + 1,
+            title: `Categoria ${i + 1}`,
+            active: true,
+        }))
+        findOrCreateActive.mockResolvedValueOnce(buildActiveSession())
+        iniciarSessao.mockResolvedValueOnce(muitasCategorias)
+
+        const result = await createFlow({ privacyLink: async () => "https://exemplo.sslip.io/privacidade" })({
+            phone: "5511999999999",
+            optionId: "page_2",
+        })
+
+        expect(result.reply.messages?.[0]).toEqual({
+            type: "text",
+            text: `${SAUDACAO}\n\nSaiba como tratamos seus dados: https://exemplo.sslip.io/privacidade`,
+        })
+    })
+
+    test("AWAITING_CATEGORY: a escolha inválida repete a saudação com a linha da política", async () => {
+        findOrCreateActive.mockResolvedValueOnce(buildActiveSession())
+        iniciarSessao.mockResolvedValueOnce(categorias)
+
+        const result = await createFlow({ privacyLink: async () => "https://exemplo.sslip.io/privacidade" })({
+            phone: "5511999999999",
+            text: "99",
+        })
+
+        expect(result.reply.messages?.[0]).toEqual({
+            type: "text",
+            text: `${SAUDACAO}\n\nSaiba como tratamos seus dados: https://exemplo.sslip.io/privacidade`,
+        })
     })
 
     test("AWAITING_QUESTION: pergunta padrão grava QUESTION_CHOSEN e ANSWER_SENT e avança para AWAITING_RESOLVED", async () => {

@@ -11,6 +11,12 @@ const INSTRUCAO_DIGITAR_NUMERO = "Escolha uma das opções abaixo digitando o n�
 
 export const RODAPE_ATENDIMENTO = "Orientação informativa · Dados tratados conforme a LGPD"
 
+export const PREFIXO_POLITICA_PRIVACIDADE = "Saiba como tratamos seus dados:"
+
+function saudacaoCom(linkPolitica: string | null): string {
+    return linkPolitica === null ? SAUDACAO : `${SAUDACAO}\n\n${PREFIXO_POLITICA_PRIVACIDADE} ${linkPolitica}`
+}
+
 export const ERRO_PREFIXO = "Não entendi. Digite o número de uma das opções abaixo:"
 
 export const AVISO_NAO_VINCULANTE =
@@ -232,6 +238,7 @@ function formatarListaPaginada(
 export function formatarListaCategorias(
     categorias: Categoria[],
     pagina: number = 1,
+    linkPolitica: string | null = null,
 ): string {
     if (categorias.length === 0) {
         return "Olá! Sou o assistente virtual do PROCON Jacareí. Nosso catálogo de orientações está em atualização no momento. Por favor, tente novamente em instantes."
@@ -241,7 +248,7 @@ export function formatarListaCategorias(
     const paginacao = paginarItens(titulos, pagina)
     const listaFormatada = formatarListaPaginada(paginacao)
 
-    return `${SAUDACAO}\n\n${INSTRUCAO_DIGITAR_NUMERO}\n${listaFormatada}\n\n${RODAPE_ATENDIMENTO}`
+    return `${saudacaoCom(linkPolitica)}\n\n${INSTRUCAO_DIGITAR_NUMERO}\n${listaFormatada}\n\n${RODAPE_ATENDIMENTO}`
 }
 
 export function formatarErroCategoria(
@@ -435,6 +442,7 @@ function linhasDeNavegacao<T>(
 export function criarMensagensCategorias(
     categorias: Categoria[],
     pagina: number = 1,
+    linkPolitica: string | null = null,
 ): OutgoingMessage[] {
     if (categorias.length === 0) {
         return [{ type: "text", text: formatarListaCategorias(categorias, pagina) }]
@@ -450,7 +458,7 @@ export function criarMensagensCategorias(
     rows.push(...linhasDeNavegacao(paginacao, "Ver categorias anteriores", "Exibir mais categorias"))
 
     return [
-        { type: "text", text: SAUDACAO },
+        { type: "text", text: saudacaoCom(linkPolitica) },
         {
             type: "list",
             text: "Selecione a categoria correspondente à sua dúvida:",

@@ -761,3 +761,40 @@ describe("messageFormatter.service", () => {
         })
     })
 })
+
+describe("Link da política de privacidade na saudação", () => {
+    const LINK = "https://exemplo.sslip.io/privacidade"
+    const categoriasDoLink: Categoria[] = [
+        { id: 1, title: "Contrato", short_title: "Contrato", active: true },
+        { id: 2, title: "Garantias", short_title: "Garantias", active: true },
+    ]
+
+    test("com link null, a saudação e o texto de reserva ficam como hoje", () => {
+        expect(criarMensagensCategorias(categoriasDoLink, 1, null)).toEqual(criarMensagensCategorias(categoriasDoLink, 1))
+        expect(formatarListaCategorias(categoriasDoLink, 1, null)).toBe(
+            `${SAUDACAO}\n\nEscolha uma das opções abaixo digitando o número correspondente:\n1. Contrato\n2. Garantias\n\n${RODAPE_ATENDIMENTO}`,
+        )
+    })
+
+    test("com catálogo vazio, a mensagem de catálogo em atualização fica como hoje, sem o link", () => {
+        expect(criarMensagensCategorias([], 1, LINK)).toEqual(criarMensagensCategorias([], 1))
+        expect(formatarListaCategorias([], 1, LINK)).toBe(formatarListaCategorias([]))
+    })
+
+    test("com link, a primeira mensagem traz a saudação e a linha da política, e a lista mantém o rodapé", () => {
+        const mensagens = criarMensagensCategorias(categoriasDoLink, 1, LINK)
+
+        expect(mensagens[0]).toEqual({
+            type: "text",
+            text: `${SAUDACAO}\n\nSaiba como tratamos seus dados: https://exemplo.sslip.io/privacidade`,
+        })
+        expect(mensagens[1]).toMatchObject({ type: "list", footer: RODAPE_ATENDIMENTO })
+    })
+
+    test("com link, o texto de reserva traz a linha da política entre a saudação e a instrução", () => {
+        expect(formatarListaCategorias(categoriasDoLink, 1, LINK)).toBe(
+            `${SAUDACAO}\n\nSaiba como tratamos seus dados: https://exemplo.sslip.io/privacidade\n\nEscolha uma das opções abaixo digitando o número correspondente:\n1. Contrato\n2. Garantias\n\n${RODAPE_ATENDIMENTO}`,
+        )
+    })
+})
+
