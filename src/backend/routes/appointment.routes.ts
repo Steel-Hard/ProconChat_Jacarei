@@ -16,12 +16,14 @@ import { AppointmentCalendarService, createAppointmentCalendarService } from "..
 import { createScheduleService } from "../services/schedule.service"
 import { scheduleRepository } from "../repositories/schedule.repository"
 import { conversationEventService as defaultConversationEventService, ConversationEventService } from "../services/conversationEvent.service"
+import { CitizenNotificationService } from "../services/citizenNotification.service"
 
 interface AppointmentRoutesDependencies {
     repository?: AppointmentRepository
     conversationEvents?: ConversationEventService
     authMiddleware?: RequestHandler
     calendar?: AppointmentCalendarService
+    notifications?: CitizenNotificationService
 }
 
 export class AppointmentRoutes {
@@ -37,8 +39,9 @@ export class AppointmentRoutes {
             scheduleRepository,
             appointments: repository,
         }),
+        notifications,
     }: AppointmentRoutesDependencies = {}) {
-        const service = createAppointmentService({ repository, conversationEvents })
+        const service = createAppointmentService({ repository, conversationEvents, notifications })
         this.appointmentController = new AppointmentController({ service, calendar })
         const controller = this.appointmentController
 
@@ -85,6 +88,20 @@ export class AppointmentRoutes {
                 body: updateStatusBodySchema,
             }),
             controller.updateAppointmentStatus.bind(controller),
+        )
+
+        this.router.get(
+            "/:id/cancellation-preview",
+            requirePermission("appointments.manage"),
+            validateRequest({ params: appointmentIdParamSchema }),
+            controller.getCancellationPreview.bind(controller),
+        )
+
+        this.router.post(
+            "/:id/cancellation-notice/retry",
+            requirePermission("appointments.manage"),
+            validateRequest({ params: appointmentIdParamSchema }),
+            controller.retryCancellationNotice.bind(controller),
         )
 
         this.router.post(

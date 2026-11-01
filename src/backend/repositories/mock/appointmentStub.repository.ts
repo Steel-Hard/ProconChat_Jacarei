@@ -206,6 +206,15 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
     ): Promise<void> {
         this.callOrder.push("recordCitizenNotification")
         this.notificationCalls.push({ id, outcome, kind, actorUserId, now })
+        const current = this.details.find((record) => record.id === id)
+        current?.events.unshift({
+            id: String(current.events.length + 1),
+            type: outcome === "NOTIFIED" ? "CITIZEN_NOTIFIED" : "CITIZEN_NOTIFICATION_FAILED",
+            actor_user_id: String(actorUserId),
+            actor_user_name: null,
+            data: { kind },
+            created_at: (now ?? new Date()).toISOString(),
+        })
     }
 
     async getCurrentDocumentsConfig(): Promise<{ group: string[]; question: string[] }> {

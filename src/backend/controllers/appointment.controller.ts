@@ -94,6 +94,8 @@ class AppointmentController {
                 result = await this.service.markNoShow(id, actorUserId, access)
             } else if (body.action === "assign") {
                 result = await this.service.assignAppointment(id, body.assigneeUserId, actorUserId, access)
+            } else if (body.action === "cancel") {
+                result = await this.service.cancelAppointment(id, actorUserId, body.reason, body.note, access)
             } else {
                 const corrected = await this.service.correctRecord(id, actorUserId, access)
                 res.status(200).json(
@@ -117,6 +119,29 @@ class AppointmentController {
             }
             const result = await this.service.addNote(id, req.authUser.id, text, accessOf(req.authUser))
             res.status(201).json({ data: result })
+        } catch (error) {
+            next(error)
+        }
+    }
+
+    public async getCancellationPreview(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const { id } = req.params as { id: string }
+            const result = await this.service.getCancellationPreview(id)
+            res.status(200).json({ data: result })
+        } catch (error) {
+            next(error)
+        }
+    }
+
+    public async retryCancellationNotice(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const { id } = req.params as { id: string }
+            if (!req.authUser) {
+                throw new UnauthorizedError("Authentication required")
+            }
+            const result = await this.service.retryCancellationNotice(id, req.authUser.id, accessOf(req.authUser))
+            res.status(200).json({ data: result })
         } catch (error) {
             next(error)
         }

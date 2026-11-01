@@ -75,7 +75,7 @@ const userIdSchema = z
     .transform((value) => Number(value))
     .pipe(z.number().int().positive().max(Number.MAX_SAFE_INTEGER))
 
-export const updateStatusBodySchema = z.discriminatedUnion(
+const updateStatusBodyUnion = z.discriminatedUnion(
     "action",
     [
         z.object({ action: z.literal("claim") }),
@@ -96,7 +96,9 @@ export const updateStatusBodySchema = z.discriminatedUnion(
         }),
     ],
     { error: ACTION_MESSAGE },
-).transform((body) => {
+)
+
+export const updateStatusBodySchema = updateStatusBodyUnion.transform((body): z.infer<typeof updateStatusBodyUnion> => {
     if (body.action !== "cancel" || body.note) {
         return body
     }
