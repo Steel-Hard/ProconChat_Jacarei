@@ -3,6 +3,7 @@ import type PrivacySettings from "@/types/privacy/PrivacySettings.types"
 import type PublicPrivacySettings from "@/types/privacy/PublicPrivacySettings.types"
 
 type PrivacyEnvelope = { data: PrivacySettings }
+type PublicPrivacyEnvelope = { data: PublicPrivacySettings }
 
 const PRIVACY_PATH = "/api/v1/whatsapp/settings/privacy"
 
@@ -12,6 +13,10 @@ function unwrap(response: PrivacyEnvelope): PrivacySettings {
 
 const privacySettingsApi = api.injectEndpoints({
     endpoints: (build) => ({
+        getPublicPrivacy: build.query<PublicPrivacySettings, void>({
+            query: () => "/api/v1/privacy",
+            transformResponse: (response: PublicPrivacyEnvelope) => response.data
+        }),
         getPrivacySettings: build.query<PrivacySettings, void>({
             query: () => PRIVACY_PATH,
             transformResponse: unwrap
