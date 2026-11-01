@@ -45,7 +45,7 @@ export function createCitizenNotificationService({
             throw new NotFoundError("Agendamento não encontrado")
         }
         const reason = target.lastStaffCancelReason
-        if (reason === null) {
+        if (reason === null || target.lastCancellationNotice === "NOTIFIED") {
             throw new ConflictError("Não há aviso de cancelamento com falha para reenviar", "NOTIFICATION_NOT_RETRYABLE")
         }
         let outcome: CitizenNotificationOutcome = "FAILED"

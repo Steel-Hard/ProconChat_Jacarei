@@ -99,6 +99,21 @@ describe("appointment.service: cancelamento pela equipe", () => {
         expect(sendTemplate).not.toHaveBeenCalled()
     })
 
+    it("retryCancellationNotice recusa com NOTIFICATION_NOT_RETRYABLE quando o aviso foi entregue entre a checagem e a trava, sem chamar o gateway", async () => {
+        const { repository, sendTemplate, service } = setup({ status: "CANCELED" })
+        vi.spyOn(repository, "findCancellationNoticeTarget")
+            .mockResolvedValueOnce(noticeTarget({ lastCancellationNotice: "FAILED" }))
+            .mockResolvedValueOnce(noticeTarget({ lastCancellationNotice: "NOTIFIED" }))
+
+        await expect(service.retryCancellationNotice("1", 42, MANAGER, FIXED_NOW)).rejects.toMatchObject({
+            statusCode: 409,
+            code: "NOTIFICATION_NOT_RETRYABLE",
+        })
+
+        expect(sendTemplate).not.toHaveBeenCalled()
+        expect(repository.notificationCalls).toEqual([])
+    })
+
     it("retryCancellationNotice reenvia quando o último aviso falhou e grava o novo resultado com o ator", async () => {
         const { repository, sendTemplate, service } = setup({
             status: "CANCELED",
