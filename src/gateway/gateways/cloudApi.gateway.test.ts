@@ -324,6 +324,33 @@ describe("Cloud API provider: parseIncoming", () => {
         expect(wrongNumber.eventReceived).toBe(false)
     })
 
+    test("mantem o codigo de erro de 40 caracteres e troca por null o de 41, sem tirar o status da lista", () => {
+        const payload = payloadWithStatuses([
+            { id: "wamid.quarenta", status: "failed", errors: [{ code: "9".repeat(40) }] },
+            { id: "wamid.quarentaeum", status: "failed", errors: [{ code: "9".repeat(41) }] },
+        ])
+
+        const result = provider.parseIncoming(payload)
+
+        expect(result.statuses).toEqual([
+            { providerMessageId: "wamid.quarenta", status: "failed", timestamp: null, errorCode: "9".repeat(40) },
+            { providerMessageId: "wamid.quarentaeum", status: "failed", timestamp: null, errorCode: null },
+        ])
+    })
+
+    test.each([
+        { timestamp: 0, expected: 0 },
+        { timestamp: "253402300799", expected: 253402300799 },
+        { timestamp: -1, expected: null },
+        { timestamp: "253402300800", expected: null },
+        { timestamp: 1.5, expected: null },
+        { timestamp: "abc", expected: null },
+    ])("manda o timestamp $timestamp do status como $expected, sem tirar o status da lista", ({ timestamp, expected }) => {
+        const result = provider.parseIncoming(payloadWithStatuses([{ id: "wamid.data", status: "sent", timestamp }]))
+
+        expect(result.statuses).toEqual([{ providerMessageId: "wamid.data", status: "sent", timestamp: expected, errorCode: null }])
+    })
+
     test("ignora object, field ou phone_number_id diferentes do esperado", () => {
         const message = { id: "wamid.1", from: "5500000000001", type: "text", text: { body: "oi" } }
 

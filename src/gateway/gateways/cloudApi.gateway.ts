@@ -15,6 +15,8 @@ import { whatsappConfigStore } from "../services/whatsappConfigStore"
 const SIGNATURE_PATTERN = /^sha256=([0-9a-f]{64})$/i
 const SEND_TIMEOUT_MS = 10_000
 const PROVIDER_MESSAGE_ID_MAX = 128
+const ERROR_CODE_MAX = 40
+const STATUS_TIMESTAMP_MAX = 253402300799
 const DELIVERY_STATUSES: readonly string[] = ["sent", "delivered", "read", "failed"]
 
 type FetchFn = (url: string, init: RequestInit) => Promise<Pick<Response, "ok" | "status" | "json">>
@@ -86,9 +88,18 @@ function toIncoming(message: CloudApiIncomingMessage): IncomingMessage | Ignored
     return incoming
 }
 
+function readStatusTimestamp(raw: string | number | undefined): number | null {
+    const seconds = parseTimestampSeconds(raw)
+    return seconds !== null && Number.isInteger(seconds) && seconds >= 0 && seconds <= STATUS_TIMESTAMP_MAX ? seconds : null
+}
+
 function readErrorCode(status: CloudApiStatus): string | null {
     const code = Array.isArray(status.errors) ? status.errors[0]?.code : undefined
-    return code === undefined || code === null ? null : String(code)
+    if (code === undefined || code === null) {
+        return null
+    }
+    const text = String(code)
+    return text.length <= ERROR_CODE_MAX ? text : null
 }
 
 function toDeliveryStatus(status: CloudApiStatus): DeliveryStatus | IgnoredIncoming {
@@ -102,7 +113,7 @@ function toDeliveryStatus(status: CloudApiStatus): DeliveryStatus | IgnoredIncom
     return {
         providerMessageId: id,
         status: status.status as DeliveryStatusValue,
-        timestamp: parseTimestampSeconds(status.timestamp),
+        timestamp: readStatusTimestamp(status.timestamp),
         errorCode: readErrorCode(status),
     }
 }

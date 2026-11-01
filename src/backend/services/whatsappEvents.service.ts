@@ -22,10 +22,11 @@ export type RecordWhatsAppEvents = (body: unknown) => Promise<void>
 
 const PROVIDER_MESSAGE_ID_MAX = 128
 const ERROR_CODE_MAX = 40
+const TIMESTAMP_MAX = 253402300799
 const DELIVERY_STATUSES: readonly string[] = ["sent", "delivered", "read", "failed"]
 
 function isValidTimestamp(value: unknown): value is number | null {
-    return value === null || (typeof value === "number" && !Number.isNaN(new Date(value * 1000).getTime()))
+    return value === null || (Number.isInteger(value) && (value as number) >= 0 && (value as number) <= TIMESTAMP_MAX)
 }
 
 function isValidStatus(value: unknown): value is IncomingStatus {

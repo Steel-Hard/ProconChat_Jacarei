@@ -64,6 +64,9 @@ describe("whatsappEvents.service", () => {
         { label: "timestamp em texto", body: { statuses: [{ ...VALID, timestamp: "1730000000" }] } },
         { label: "timestamp ausente", body: { statuses: [{ providerMessageId: "wamid.ok", status: "sent", errorCode: null }] } },
         { label: "timestamp fora do intervalo de datas", body: { statuses: [{ ...VALID, timestamp: 1e300 }] } },
+        { label: "timestamp acima de 253402300799", body: { statuses: [{ ...VALID, timestamp: 253402300800 }] } },
+        { label: "timestamp com fração", body: { statuses: [{ ...VALID, timestamp: 1.5 }] } },
+        { label: "timestamp negativo", body: { statuses: [{ ...VALID, timestamp: -1 }] } },
         { label: "errorCode numerico", body: { statuses: [{ ...VALID, errorCode: 131047 }] } },
         { label: "errorCode acima da coluna de 40 caracteres", body: { statuses: [{ ...VALID, errorCode: "1".repeat(41) }] } },
         { label: "item nulo", body: { statuses: [null] } },
@@ -74,5 +77,19 @@ describe("whatsappEvents.service", () => {
         await expect(result).rejects.toMatchObject({ statusCode: 400, code: "BAD_REQUEST" })
         expect(settings.webhookEventTouches).toEqual([])
         expect(outbound.appliedCalls).toEqual([])
+    })
+
+    test("aceita os timestamps 0 e 253402300799, as pontas do intervalo", async () => {
+        await service()({
+            statuses: [
+                { ...VALID, providerMessageId: "wamid.inicio", timestamp: 0 },
+                { ...VALID, providerMessageId: "wamid.fim", timestamp: 253402300799 },
+            ],
+        })
+
+        expect(outbound.appliedCalls[0]?.statuses.map((status) => status.statusAt)).toEqual([
+            new Date(0),
+            new Date(253402300799 * 1000),
+        ])
     })
 })
