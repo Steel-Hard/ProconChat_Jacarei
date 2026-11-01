@@ -104,3 +104,42 @@ export interface WhatsAppInternalConfig {
     verifyToken: string
     graphApiVersion: string
 }
+
+export type MetaAuthInput = Pick<ConnectionCheckInput, "accessToken" | "appSecret" | "graphApiVersion">
+
+export type MessageTemplateKind = "CANCELLATION" | "REMINDER"
+
+export type MessageTemplateStatusCode = "APPROVED" | "PENDING" | "REJECTED" | "NOT_FOUND" | "OTHER"
+
+export interface MessageTemplateRef {
+    kind: MessageTemplateKind
+    name: string
+    languageCode: string
+}
+
+export interface MessageTemplateStatus extends MessageTemplateRef {
+    status: MessageTemplateStatusCode
+    metaStatus: string | null
+}
+
+export type TemplatesStatusResult =
+    | { ok: true; templates: MessageTemplateStatus[] }
+    | { ok: false; reason: ConnectionTestReason }
+
+export interface TemplatesStatusView {
+    checkedAt: string
+    templates: MessageTemplateStatus[]
+}
+
+export type QualityRating = "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN"
+
+export type PhoneNumberStatusResult =
+    | { ok: true; qualityRating: QualityRating; tier: string | null; dailyLimit: number | null }
+    | { ok: false; reason: ConnectionTestReason }
+
+export interface NumberStatusView {
+    checkedAt: string
+    qualityRating: QualityRating
+    messagingLimit: { tier: string | null; dailyLimit: number | null; usedLast24h: number }
+}
+

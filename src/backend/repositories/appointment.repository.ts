@@ -952,6 +952,21 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             )
         },
 
+        async countNotifiedPhonesBetween(from: Date, to: Date): Promise<number> {
+            const result = await pool.query<{ count: number }>(
+                `SELECT COUNT(DISTINCT s.phone_hash)::int AS count
+                 FROM AppointmentEvents e
+                 JOIN Appointments a ON a.id = e.appointment_id
+                 JOIN Sessions s ON s.id = a.session_id
+                 WHERE e.type = 'CITIZEN_NOTIFIED'
+                   AND e.data->>'kind' IN ('CANCELLATION', 'REMINDER')
+                   AND e.created_at >= $1
+                   AND e.created_at <= $2`,
+                [from, to],
+            )
+            return result.rows[0]?.count ?? 0
+        },
+
         async markAttended(
             id: string,
             actorUserId: number,

@@ -1,24 +1,31 @@
 import { randomBytes } from "node:crypto"
 import BadRequestError from "../errors/BadRequestError"
+import ConflictError from "../errors/ConflictError"
 import InternalServerError from "../errors/InternalServerError"
 import WhatsAppConnectionError from "../errors/WhatsAppConnectionError"
 import { MetaGraphClient } from "../clients/metaGraph.client.interface"
 import { metaGraphClient } from "../clients/metaGraph.client"
 import { GatewayClient, gatewayClient } from "../clients/gateway.client"
 import { WhatsAppSettingsRepository } from "../repositories/whatsappSettings.repository.interface"
+import { AppointmentRepository } from "../repositories/appointment.repository.interface"
+import { appointmentRepository } from "../repositories/appointment.repository"
 import { whatsappSettingsRepository } from "../repositories/whatsappSettings.repository"
 import {
     ConnectionCheckInput,
     ConnectionTestReason,
     ConnectionTestResult,
+    MessageTemplateRef,
+    MetaAuthInput,
+    NumberStatusView,
     SecretView,
+    TemplatesStatusView,
     WhatsAppInternalConfig,
     WhatsAppSettingsInput,
     WhatsAppSettingsRow,
     WhatsAppSettingsView,
 } from "../types/whatsappSettings.types"
 import { decrypt as defaultDecrypt, encrypt as defaultEncrypt } from "../utils/crypto.utils"
-import { MENSAGEM_ATENDIMENTO_PAUSADO } from "./messageFormatter.service"
+import { MENSAGEM_ATENDIMENTO_PAUSADO, MODELO_AVISO_CANCELAMENTO, MODELO_LEMBRETE_ATENDIMENTO } from "./messageFormatter.service"
 
 export const DEFAULT_GRAPH_API_VERSION = "v26.0"
 
@@ -27,6 +34,12 @@ const ACCESS_TOKEN_PATTERN = /^\S{1,2048}$/
 const APP_SECRET_PATTERN = /^\S{1,256}$/
 const MIN_LENGTH_FOR_LAST4 = 9
 const WEBHOOK_PATH = "/webhooks/whatsapp"
+const USAGE_WINDOW_MS = 24 * 60 * 60 * 1000
+
+const MESSAGE_TEMPLATES: MessageTemplateRef[] = [
+    { kind: "CANCELLATION", ...MODELO_AVISO_CANCELAMENTO },
+    { kind: "REMINDER", ...MODELO_LEMBRETE_ATENDIMENTO },
+]
 
 const DEFINITIVE_FAILURES: ReadonlySet<ConnectionTestReason> = new Set([
     "INVALID_TOKEN",
@@ -49,12 +62,15 @@ export interface WhatsAppSettingsService {
     resume(userId: number): Promise<WhatsAppSettingsView>
     getInternalConfig(): Promise<WhatsAppInternalConfig>
     isAutoReplyPaused(): Promise<boolean>
+    getTemplatesStatus(): Promise<TemplatesStatusView>
+    getNumberStatus(): Promise<NumberStatusView>
 }
 
 interface WhatsAppSettingsServiceDependencies {
     settings: WhatsAppSettingsRepository
     meta: MetaGraphClient
     gateway: Pick<GatewayClient, "notifyConfigChanged">
+    usage: Pick<AppointmentRepository, "countNotifiedPhonesBetween">
     encrypt: (plaintext: string) => string
     decrypt: (text: string) => string
     env: WhatsAppSettingsEnv
@@ -116,6 +132,7 @@ export function createWhatsAppSettingsService({
     settings,
     meta,
     gateway,
+    usage,
     encrypt,
     decrypt,
     env,
@@ -225,7 +242,51 @@ export function createWhatsAppSettingsService({
         return plaintext
     }
 
+    function notConfigured(): ConflictError {
+        return new ConflictError("A integração com o WhatsApp não está configurada", "WHATSAPP_NOT_CONFIGURED")
+    }
+
+    async function savedAuth(): Promise<{ row: WhatsAppSettingsRow; auth: MetaAuthInput }> {
+        const row = await ensureRow()
+        const accessToken = row.accessTokenEncrypted === null ? null : tryDecrypt(row.accessTokenEncrypted, "accessToken")
+        const appSecret = row.appSecretEncrypted === null ? null : tryDecrypt(row.appSecretEncrypted, "appSecret")
+        if (accessToken === null || appSecret === null) {
+            throw notConfigured()
+        }
+        return { row, auth: { accessToken, appSecret, graphApiVersion: graphApiVersion() } }
+    }
+
     return {
+        async getTemplatesStatus() {
+            const { row, auth } = await savedAuth()
+            if (!row.businessAccountId) {
+                throw notConfigured()
+            }
+            const result = await meta.listMessageTemplates({ ...auth, businessAccountId: row.businessAccountId }, MESSAGE_TEMPLATES)
+            if (!result.ok) {
+                throw new WhatsAppConnectionError(result.reason)
+            }
+            return { checkedAt: now().toISOString(), templates: result.templates }
+        },
+
+        async getNumberStatus() {
+            const { row, auth } = await savedAuth()
+            if (!row.phoneNumberId) {
+                throw notConfigured()
+            }
+            const result = await meta.getPhoneNumberStatus({ ...auth, phoneNumberId: row.phoneNumberId })
+            if (!result.ok) {
+                throw new WhatsAppConnectionError(result.reason)
+            }
+            const checkedAt = now()
+            const usedLast24h = await usage.countNotifiedPhonesBetween(new Date(checkedAt.getTime() - USAGE_WINDOW_MS), checkedAt)
+            return {
+                checkedAt: checkedAt.toISOString(),
+                qualityRating: result.qualityRating,
+                messagingLimit: { tier: result.tier, dailyLimit: result.dailyLimit, usedLast24h },
+            }
+        },
+
         async getView() {
             return toView(await ensureRow())
         },
@@ -304,6 +365,7 @@ export const whatsappSettingsService = createWhatsAppSettingsService({
     settings: whatsappSettingsRepository,
     meta: metaGraphClient,
     gateway: gatewayClient,
+    usage: appointmentRepository,
     encrypt: defaultEncrypt,
     decrypt: defaultDecrypt,
     env: process.env,

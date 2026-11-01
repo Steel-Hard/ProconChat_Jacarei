@@ -91,6 +91,8 @@ export const CORPO_AVISO_CANCELAMENTO =
 
 export const MODELO_AVISO_CANCELAMENTO = { name: "aviso_cancelamento", languageCode: "pt_BR" } as const
 
+export const MODELO_LEMBRETE_ATENDIMENTO = { name: "lembrete_atendimento", languageCode: "pt_BR" } as const
+
 export const FRASES_MOTIVO_CANCELAMENTO: Record<CancellationReason, string> = {
     UNIT_CLOSED: "a unidade estará fechada nesta data",
     CITIZEN_REQUEST: "cancelamento solicitado por você",

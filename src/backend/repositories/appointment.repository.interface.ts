@@ -87,6 +87,8 @@ export interface AppointmentRepository {
         now?: Date,
     ): Promise<void>
 
+    countNotifiedPhonesBetween(from: Date, to: Date): Promise<number>
+
     getCurrentDocumentsConfig(
         byRepresentative: boolean,
         questionId: number,

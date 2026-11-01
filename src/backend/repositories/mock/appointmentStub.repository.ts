@@ -81,6 +81,7 @@ export interface AppointmentStubScenario {
     failAction?: AppointmentFailAction
     correctionWarning?: AppointmentCorrectionWarning
     noticeTargets?: Record<string, CancellationNoticeTarget>
+    notifiedPhones?: number
 }
 
 export class AppointmentRepositoryStub implements AppointmentRepository {
@@ -101,6 +102,8 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
     private readonly failAction: AppointmentFailAction | undefined
     private readonly correctionWarning: AppointmentCorrectionWarning | undefined
     private readonly noticeTargets: Record<string, CancellationNoticeTarget>
+    private readonly notifiedPhones: number
+    public readonly countNotifiedCalls: { from: Date; to: Date }[] = []
 
     constructor(scenario: AppointmentStubScenario = {}) {
         this.details = (scenario.details ?? []).map((detail) => structuredClone(detail))
@@ -113,6 +116,7 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
         this.failAction = scenario.failAction
         this.correctionWarning = scenario.correctionWarning
         this.noticeTargets = scenario.noticeTargets ?? {}
+        this.notifiedPhones = scenario.notifiedPhones ?? 0
     }
 
     async findList(filters: AppointmentListFilters, now?: Date): Promise<AppointmentStubList> {
@@ -215,6 +219,11 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
             data: { kind },
             created_at: (now ?? new Date()).toISOString(),
         })
+    }
+
+    async countNotifiedPhonesBetween(from: Date, to: Date): Promise<number> {
+        this.countNotifiedCalls.push({ from, to })
+        return this.notifiedPhones
     }
 
     async getCurrentDocumentsConfig(): Promise<{ group: string[]; question: string[] }> {

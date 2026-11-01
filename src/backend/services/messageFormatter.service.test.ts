@@ -19,6 +19,7 @@ import {
     ERRO_NOME,
     CORPO_AVISO_CANCELAMENTO,
     MODELO_AVISO_CANCELAMENTO,
+    MODELO_LEMBRETE_ATENDIMENTO,
     parametrosAvisoCancelamento,
     renderizarModelo,
 } from "./messageFormatter.service"
@@ -582,8 +583,9 @@ describe("messageFormatter.service", () => {
             expect(texto).not.toContain("{{")
         })
 
-        test("usa o modelo aviso_cancelamento em pt_BR com o corpo cadastrado na Meta", () => {
+        test("usa os modelos aviso_cancelamento e lembrete_atendimento em pt_BR, com o corpo do aviso cadastrado na Meta", () => {
             expect(MODELO_AVISO_CANCELAMENTO).toEqual({ name: "aviso_cancelamento", languageCode: "pt_BR" })
+            expect(MODELO_LEMBRETE_ATENDIMENTO).toEqual({ name: "lembrete_atendimento", languageCode: "pt_BR" })
             expect(CORPO_AVISO_CANCELAMENTO).toBe(
                 "Olá, {{1}}. Seu agendamento {{2}} no PROCON Jacareí, marcado para {{3}} às {{4}}, foi cancelado. Motivo: {{5}}. Para agendar novamente, envie uma mensagem para este número.",
             )
