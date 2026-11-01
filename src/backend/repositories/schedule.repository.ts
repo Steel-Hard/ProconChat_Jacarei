@@ -23,6 +23,8 @@ import {
     BookAppointmentResult,
     CitizenCancelInput,
     CitizenCancelResult,
+    CitizenRescheduleInput,
+    CitizenRescheduleResult,
     DocumentsSent,
     FutureActiveAppointment,
     MinNoticeDays,
@@ -38,6 +40,7 @@ import {
 import { encrypt } from "../utils/crypto.utils"
 import { addDaysToDateString, getLocalParts } from "../utils/date.utils"
 import { insertConversationEvent, Queryable } from "./conversationEvent.repository"
+import { returnAppointmentToPending } from "./appointmentReassignment"
 import { lockAccounts } from "./responsibleQueries"
 import { finishSessionWith } from "./session.repository"
 import {
@@ -875,6 +878,11 @@ async function findReturningAppointment(
 interface LockedCitizenAppointment {
     id: string
     appointment_code: string
+    appointment_datetime: Date
+    status: "PENDING" | "CONFIRMED"
+    cpf_hash: string
+    documents_sent: DocumentsSent
+    by_representative: boolean
 }
 
 async function lockCitizenAppointment(
@@ -884,7 +892,8 @@ async function lockCitizenAppointment(
     now: Date,
 ): Promise<LockedCitizenAppointment> {
     const result = await client.query<LockedCitizenAppointment>(
-        `SELECT a.id::text AS id, a.appointment_code::text AS appointment_code
+        `SELECT a.id::text AS id, a.appointment_code::text AS appointment_code, a.appointment_datetime,
+                a.status, a.cpf_hash, a.documents_sent, a.by_representative
          FROM Appointments a
          JOIN Sessions s ON s.id = a.session_id
          WHERE a.id = $1
@@ -932,6 +941,83 @@ async function cancelByCitizen(input: CitizenCancelInput): Promise<CitizenCancel
     }
 }
 
+async function rescheduleByCitizen(input: CitizenRescheduleInput): Promise<CitizenRescheduleResult> {
+    const client = await getPool().connect()
+
+    try {
+        await client.query("BEGIN")
+        await lockScheduleConfigShared(client)
+        await lockSlot(client, input.appointmentDatetime.toISOString())
+        const now = input.now ?? new Date()
+        const locked = await lockCitizenAppointment(client, input.appointmentId, input.phoneHash, now)
+
+        const { dateStr } = getLocalParts(input.appointmentDatetime)
+        const config = (await selectScheduledVersions(client, dateStr, dateStr)).at(-1)?.config
+        if (!config) {
+            throw new ScheduleNotConfiguredError()
+        }
+        if (!(await isSlotInScheduleConfig(input.appointmentDatetime, config))) {
+            throw new SlotFullError()
+        }
+        if ((await countActiveInSlot(client, input.appointmentDatetime)) >= config.seatsPerSlot) {
+            throw new SlotFullError()
+        }
+        if (await hasActiveAppointmentForCpf(client, locked.cpf_hash, input.appointmentDatetime)) {
+            throw new DuplicateAppointmentError()
+        }
+
+        const from = new Date(locked.appointment_datetime)
+        const to = input.appointmentDatetime
+        await client.query(
+            `UPDATE Appointments
+             SET appointment_datetime = $2, rescheduled_from = COALESCE(rescheduled_from, appointment_datetime)
+             WHERE id = $1`,
+            [locked.id, to],
+        )
+        await client.query(
+            `INSERT INTO AppointmentEvents (appointment_id, type, actor_user_id, data, created_at)
+             VALUES ($1, 'RESCHEDULED', NULL, $2::jsonb, $3)`,
+            [locked.id, JSON.stringify({ from: from.toISOString(), to: to.toISOString() }), now],
+        )
+        if (locked.status === "CONFIRMED") {
+            await returnAppointmentToPending(client, {
+                appointmentId: locked.id,
+                actorUserId: null,
+                data: { reason: "RESCHEDULED" },
+                now,
+            })
+        }
+        await finishSessionWith(client, input.sessionId, {
+            outcome: "MANAGED_APPOINTMENT",
+            event: {
+                type: "APPOINTMENT_RESCHEDULED",
+                appointmentId: Number(locked.id),
+                from: from.toISOString(),
+                to: to.toISOString(),
+            },
+        })
+
+        await client.query("COMMIT")
+
+        return {
+            protocol: locked.appointment_code.slice(0, 8).toUpperCase(),
+            from,
+            appointmentDatetime: to,
+            unitAddress: config.unitAddress,
+            unitAddressComplement: config.unitAddressComplement,
+            documentsSent: locked.documents_sent,
+            byRepresentative: locked.by_representative,
+            reminderEnabled: config.reminderEnabled,
+            reminderHours: config.reminderHours,
+        }
+    } catch (err) {
+        await client.query("ROLLBACK")
+        throw err
+    } finally {
+        client.release()
+    }
+}
+
 export function createScheduleRepository(): IScheduleRepository {
     return {
         getSettings,
@@ -949,6 +1035,7 @@ export function createScheduleRepository(): IScheduleRepository {
         listFutureActiveAppointments,
         findReturningAppointment,
         cancelByCitizen,
+        rescheduleByCitizen,
     }
 }
 

@@ -31,7 +31,7 @@ export interface AssignedEventData {
 }
 
 export interface BackToPendingEventData {
-    reason: AppointmentReassignmentReason
+    reason: AppointmentReassignmentReason | "RESCHEDULED"
 }
 
 export type AppointmentFilterStatus =

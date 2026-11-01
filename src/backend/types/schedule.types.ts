@@ -178,6 +178,26 @@ export interface CitizenCancelResult {
     protocol: string
 }
 
+export interface CitizenRescheduleInput {
+    sessionId: string
+    appointmentId: number | string
+    phoneHash: string
+    appointmentDatetime: Date
+    now?: Date
+}
+
+export interface CitizenRescheduleResult {
+    protocol: string
+    from: Date
+    appointmentDatetime: Date
+    unitAddress: string
+    unitAddressComplement: string | null
+    documentsSent: DocumentsSent
+    byRepresentative: boolean
+    reminderEnabled: boolean
+    reminderHours: number
+}
+
 export interface FutureActiveAppointment {
     id: string
     protocol: string

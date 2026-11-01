@@ -46,6 +46,7 @@ describe("ScheduleService", () => {
             listFutureActiveAppointments: vi.fn().mockResolvedValue([]),
             findReturningAppointment: vi.fn(),
             cancelByCitizen: vi.fn(),
+            rescheduleByCitizen: vi.fn(),
         }
         service = createScheduleService(repoMock)
     })
@@ -445,6 +446,32 @@ describe("ScheduleService", () => {
 
             expect(repoMock.cancelByCitizen).toHaveBeenCalledWith(input)
             expect(result).toEqual({ protocol: "AB12CD34" })
+        })
+
+        it("rescheduleByCitizen repassa a entrada ao repositório e devolve o resultado", async () => {
+            const input = {
+                sessionId: "s1",
+                appointmentId: 7,
+                phoneHash: "hash-5512",
+                appointmentDatetime: new Date("2026-11-10T12:00:00Z"),
+            }
+            const rescheduled = {
+                protocol: "AB12CD34",
+                from: new Date("2026-11-09T12:00:00Z"),
+                appointmentDatetime: input.appointmentDatetime,
+                unitAddress: "Rua do Procon, 100",
+                unitAddressComplement: null,
+                documentsSent: { group: ["RG"], question: [] },
+                byRepresentative: false,
+                reminderEnabled: true,
+                reminderHours: 24,
+            }
+            vi.mocked(repoMock.rescheduleByCitizen).mockResolvedValue(rescheduled)
+
+            const result = await service.rescheduleByCitizen(input)
+
+            expect(repoMock.rescheduleByCitizen).toHaveBeenCalledWith(input)
+            expect(result).toBe(rescheduled)
         })
     })
 })

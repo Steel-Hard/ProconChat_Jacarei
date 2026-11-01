@@ -1,6 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import getPool from "../../db/connection"
 import AppointmentNotChangeableError from "../../errors/AppointmentNotChangeableError"
+import SlotFullError from "../../errors/SlotFullError"
+import DuplicateAppointmentError from "../../errors/DuplicateAppointmentError"
 import { scheduleRepository } from "../../repositories/schedule.repository"
 import { sessionRepository } from "../../repositories/session.repository"
 import { scheduleService } from "../../services/schedule.service"
@@ -32,6 +34,19 @@ const phones = {
     cancelFinished: "5512999990601",
     cancelConfirmed: "5512999990602",
     cancelFreesSlot: "5512999990603",
+    slotBlocker: "5512999990604",
+    rescheduleOwner: "5512999990605",
+    rescheduleIntruder: "5512999990606",
+    rescheduleSlotFull: "5512999990607",
+    slotFullBlocker: "5512999990608",
+    rescheduleDuplicate: "5512999990609",
+    rescheduleCanceled: "5512999990610",
+    reschedulePast: "5512999990611",
+    rescheduleFinished: "5512999990612",
+    rescheduleConfirmed: "5512999990613",
+    rescheduleResult: "5512999990614",
+    reschedulePending: "5512999990615",
+    rescheduleTwice: "5512999990616",
 }
 
 const HOUR = 60 * 60 * 1000
@@ -57,7 +72,7 @@ async function useTuesdayMorning(seatsPerSlot: number): Promise<void> {
             reminder_enabled: true,
             reminder_hours: 24,
         },
-        ranges: [{ weekday: 2, slot_index: 1, start_time: "08:00", end_time: "10:00" }],
+        ranges: [{ weekday: 2, slot_index: 1, start_time: "08:00", end_time: "12:00" }],
     })
 }
 
@@ -280,6 +295,255 @@ describe("agendamento de retorno do cidadão (Postgres)", () => {
             })
 
             expect(await isListed()).toBe(true)
+        })
+    })
+
+    describe("rescheduleByCitizen", () => {
+        it("recusa com AppointmentNotChangeableError, e não com SlotFullError, o agendamento de outro telefone num horário lotado", async () => {
+            await useTuesdayMorning(1)
+            const fullSlot = parseLocalDate(tuesday, "08:00")
+            await appointmentFor(phones.slotBlocker, { appointmentDatetime: fullSlot })
+            const appointmentId = await appointmentFor(phones.rescheduleOwner)
+            const sessionId = await currentSessionOf(phones.rescheduleIntruder)
+
+            const attempt = scheduleRepository.rescheduleByCitizen({
+                sessionId,
+                appointmentId,
+                phoneHash: hashPhone(phones.rescheduleIntruder),
+                appointmentDatetime: fullSlot,
+                now,
+            })
+
+            await expect(attempt).rejects.toBeInstanceOf(AppointmentNotChangeableError)
+        })
+
+        it.each([
+            ["fora da grade do novo dia", "07:00", false],
+            ["lotado", "09:00", true],
+        ])("recusa com SlotFullError um horário %s, sem alterar o agendamento", async (_caso, time, occupied) => {
+            await useTuesdayMorning(1)
+            if (occupied) {
+                await appointmentFor(phones.slotFullBlocker, { appointmentDatetime: parseLocalDate(tuesday, time) })
+            }
+            const appointmentId = await appointmentFor(phones.rescheduleSlotFull)
+            const sessionId = await currentSessionOf(phones.rescheduleSlotFull)
+            const before = await storedCitizenAppointment(appointmentId)
+
+            const attempt = scheduleRepository.rescheduleByCitizen({
+                sessionId,
+                appointmentId,
+                phoneHash: hashPhone(phones.rescheduleSlotFull),
+                appointmentDatetime: parseLocalDate(tuesday, time),
+                now,
+            })
+
+            await expect(attempt).rejects.toBeInstanceOf(SlotFullError)
+            expect(await storedCitizenAppointment(appointmentId)).toEqual(before)
+            expect(await citizenEventTypes(appointmentId)).toEqual([])
+        })
+
+        it("recusa com DuplicateAppointmentError quando o mesmo CPF já tem outro agendamento ativo no novo horário", async () => {
+            await useTuesdayMorning(2)
+            const newSlot = parseLocalDate(tuesday, "09:30")
+            const cpfHash = "d".repeat(64)
+            const otherId = await insertCitizenAppointment({
+                phone: phones.slotFullBlocker,
+                questionId,
+                cpfHash,
+                appointmentDatetime: newSlot,
+            })
+            createdAppointmentIds.push(otherId)
+            const appointmentId = await appointmentFor(phones.rescheduleDuplicate, { cpfHash })
+            const sessionId = await currentSessionOf(phones.rescheduleDuplicate)
+            const before = await storedCitizenAppointment(appointmentId)
+
+            const attempt = scheduleRepository.rescheduleByCitizen({
+                sessionId,
+                appointmentId,
+                phoneHash: hashPhone(phones.rescheduleDuplicate),
+                appointmentDatetime: newSlot,
+                now,
+            })
+
+            await expect(attempt).rejects.toBeInstanceOf(DuplicateAppointmentError)
+            expect(await storedCitizenAppointment(appointmentId)).toEqual(before)
+        })
+
+        it.each([
+            ["de outro telefone", phones.rescheduleOwner, phones.rescheduleIntruder, {}],
+            ["já Cancelado", phones.rescheduleCanceled, phones.rescheduleCanceled, { status: "CANCELED" as const }],
+            ["com horário igual a agora", phones.reschedulePast, phones.reschedulePast, { appointmentDatetime: now }],
+        ])("recusa com AppointmentNotChangeableError um agendamento %s", async (_caso, owner, caller, input) => {
+            await useTuesdayMorning(2)
+            const appointmentId = await appointmentFor(owner, input)
+            const sessionId = await currentSessionOf(caller)
+            const before = await storedCitizenAppointment(appointmentId)
+
+            const attempt = scheduleRepository.rescheduleByCitizen({
+                sessionId,
+                appointmentId,
+                phoneHash: hashPhone(caller),
+                appointmentDatetime: parseLocalDate(tuesday, "10:00"),
+                now,
+            })
+
+            await expect(attempt).rejects.toBeInstanceOf(AppointmentNotChangeableError)
+            expect(await storedCitizenAppointment(appointmentId)).toEqual(before)
+        })
+
+        it("volta a transação inteira quando a sessão já terminou e o encerramento falha", async () => {
+            await useTuesdayMorning(2)
+            const appointmentId = await appointmentFor(phones.rescheduleFinished, { status: "CONFIRMED" })
+            const sessionId = await finishedSessionOf(phones.rescheduleFinished)
+            const before = await storedCitizenAppointment(appointmentId)
+
+            const attempt = scheduleRepository.rescheduleByCitizen({
+                sessionId,
+                appointmentId,
+                phoneHash: hashPhone(phones.rescheduleFinished),
+                appointmentDatetime: parseLocalDate(tuesday, "10:00"),
+                now,
+            })
+
+            await expect(attempt).rejects.toThrow("Conversation session was changed or finished")
+            expect(await storedCitizenAppointment(appointmentId)).toEqual(before)
+            expect(await citizenEventTypes(appointmentId)).toEqual([])
+        })
+
+        it("remarca o Confirmado mantendo o protocolo e os dados, volta a Pendente sem responsável e encerra a sessão", async () => {
+            await useTuesdayMorning(2)
+            const original = new Date(now.getTime() + 30 * HOUR)
+            const newSlot = parseLocalDate(tuesday, "10:30")
+            const appointmentId = await appointmentFor(phones.rescheduleConfirmed, {
+                status: "CONFIRMED",
+                appointmentDatetime: original,
+            })
+            const sessionId = await currentSessionOf(phones.rescheduleConfirmed)
+            const before = await storedCitizenAppointment(appointmentId)
+
+            await scheduleRepository.rescheduleByCitizen({
+                sessionId,
+                appointmentId,
+                phoneHash: hashPhone(phones.rescheduleConfirmed),
+                appointmentDatetime: newSlot,
+                now,
+            })
+
+            expect(await storedCitizenAppointment(appointmentId)).toEqual({
+                ...before,
+                appointmentDatetime: newSlot.toISOString(),
+                rescheduledFrom: original.toISOString(),
+                status: "PENDING",
+                assignedUserId: null,
+            })
+            const events = await eventsOf([Number(appointmentId)])
+            expect(events.map(({ type, actorUserId, data }) => ({ type, actorUserId, data }))).toEqual([
+                {
+                    type: "RESCHEDULED",
+                    actorUserId: null,
+                    data: { from: original.toISOString(), to: newSlot.toISOString() },
+                },
+                { type: "BACK_TO_PENDING", actorUserId: null, data: { reason: "RESCHEDULED" } },
+            ])
+            expect(await sessionRow(sessionId)).toEqual({ status: "FINISHED", outcome: "MANAGED_APPOINTMENT", draft: null })
+            const closing = (await conversationEventsOf(sessionId)).filter((event) => event.type !== "STARTED")
+            expect(closing).toEqual([
+                {
+                    type: "APPOINTMENT_RESCHEDULED",
+                    appointment_id: appointmentId,
+                    data: { from: original.toISOString(), to: newSlot.toISOString() },
+                },
+            ])
+        })
+
+        it("devolve o protocolo, os documentos guardados no agendamento e o endereço e o lembrete da agenda do novo dia", async () => {
+            await useTuesdayMorning(2)
+            const newSlot = parseLocalDate(tuesday, "11:00")
+            const stored = { group: ["Documento guardado"], question: ["Contrato guardado"] }
+            const appointmentId = await appointmentFor(phones.rescheduleResult, {
+                documentsSent: stored,
+                byRepresentative: true,
+            })
+            const sessionId = await currentSessionOf(phones.rescheduleResult)
+            const before = await storedCitizenAppointment(appointmentId)
+            const currentDocument = await getPool().query<{ id: string }>(
+                "INSERT INTO AttendanceDocuments (attendee_group, description, position) VALUES ('REPRESENTATIVE', 'Documento atual da configuração', 0) RETURNING id",
+            )
+
+            try {
+                const result = await scheduleRepository.rescheduleByCitizen({
+                    sessionId,
+                    appointmentId,
+                    phoneHash: hashPhone(phones.rescheduleResult),
+                    appointmentDatetime: newSlot,
+                    now,
+                })
+
+                expect(result).toEqual({
+                    protocol: before.appointmentCode.slice(0, 8).toUpperCase(),
+                    from: new Date(before.appointmentDatetime),
+                    appointmentDatetime: newSlot,
+                    unitAddress: "Rua do Procon, 100",
+                    unitAddressComplement: "Sala 2",
+                    documentsSent: stored,
+                    byRepresentative: true,
+                    reminderEnabled: true,
+                    reminderHours: 24,
+                })
+            } finally {
+                await getPool().query("DELETE FROM AttendanceDocuments WHERE id = $1", [currentDocument.rows[0]!.id])
+            }
+        })
+
+        it("não grava BACK_TO_PENDING ao remarcar um agendamento Pendente", async () => {
+            await useTuesdayMorning(2)
+            const appointmentId = await appointmentFor(phones.reschedulePending)
+            const sessionId = await currentSessionOf(phones.reschedulePending)
+
+            await scheduleRepository.rescheduleByCitizen({
+                sessionId,
+                appointmentId,
+                phoneHash: hashPhone(phones.reschedulePending),
+                appointmentDatetime: parseLocalDate(tuesday, "11:30"),
+                now,
+            })
+
+            expect(await citizenEventTypes(appointmentId)).toEqual(["RESCHEDULED"])
+            expect((await storedCitizenAppointment(appointmentId)).status).toBe("PENDING")
+        })
+
+        it("mantém em rescheduled_from o horário do primeiro agendamento ao remarcar de novo em outra sessão", async () => {
+            await useTuesdayMorning(2)
+            const original = new Date(now.getTime() + 36 * HOUR)
+            const second = parseLocalDate(addDaysToDateString(tuesday, 7), "08:00")
+            const third = parseLocalDate(addDaysToDateString(tuesday, 7), "08:30")
+            const appointmentId = await appointmentFor(phones.rescheduleTwice, { appointmentDatetime: original })
+            const phoneHash = hashPhone(phones.rescheduleTwice)
+            await scheduleRepository.rescheduleByCitizen({
+                sessionId: await currentSessionOf(phones.rescheduleTwice),
+                appointmentId,
+                phoneHash,
+                appointmentDatetime: second,
+                now,
+            })
+
+            await scheduleRepository.rescheduleByCitizen({
+                sessionId: await currentSessionOf(phones.rescheduleTwice),
+                appointmentId,
+                phoneHash,
+                appointmentDatetime: third,
+                now,
+            })
+
+            expect(await storedCitizenAppointment(appointmentId)).toMatchObject({
+                appointmentDatetime: third.toISOString(),
+                rescheduledFrom: original.toISOString(),
+            })
+            const rescheduled = (await eventsOf([Number(appointmentId)])).filter((event) => event.type === "RESCHEDULED")
+            expect(rescheduled.map((event) => event.data)).toEqual([
+                { from: original.toISOString(), to: second.toISOString() },
+                { from: second.toISOString(), to: third.toISOString() },
+            ])
         })
     })
 })

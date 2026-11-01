@@ -7,6 +7,8 @@ import type {
     BookAppointmentResult,
     CitizenCancelInput,
     CitizenCancelResult,
+    CitizenRescheduleInput,
+    CitizenRescheduleResult,
     ReturningAppointment,
 } from "./schedule.types"
 
@@ -54,4 +56,5 @@ export interface ScheduleProvider {
     bookSlot(input: BookAppointmentInput): Promise<BookAppointmentResult>
     findReturningAppointment(phoneHash: string, now?: Date): Promise<ReturningAppointment | null>
     cancelByCitizen(input: CitizenCancelInput): Promise<CitizenCancelResult>
+    rescheduleByCitizen(input: CitizenRescheduleInput): Promise<CitizenRescheduleResult>
 }

@@ -4,6 +4,8 @@ import {
     BookAppointmentResult,
     CitizenCancelInput,
     CitizenCancelResult,
+    CitizenRescheduleInput,
+    CitizenRescheduleResult,
     FutureActiveAppointment,
     NormalizedScheduleConfig,
     ReturningAppointment,
@@ -41,4 +43,5 @@ export interface IScheduleRepository {
     listFutureActiveAppointments(now: Date): Promise<FutureActiveAppointment[]>
     findReturningAppointment(phoneHash: string, now?: Date): Promise<ReturningAppointment | null>
     cancelByCitizen(input: CitizenCancelInput): Promise<CitizenCancelResult>
+    rescheduleByCitizen(input: CitizenRescheduleInput): Promise<CitizenRescheduleResult>
 }
