@@ -446,6 +446,59 @@ describe("WhatsApp webhook service", () => {
         expect(loggedOutput()).toContain("events_forward_failed")
     })
 
+    test("repassa os dois status do lote com o codigo de 41 caracteres e a data fora do limite como null e o item valido intacto", async () => {
+        const phoneNumberId = "100000000000001"
+        const realProvider = createCloudApiProvider({
+            getConfig: () => ({ phoneNumberId, accessToken: "t", appSecret: "s", graphApiVersion: "v26.0" }),
+            fetchFn: vi.fn(),
+        })
+        const handle = createWhatsappWebhookService({
+            backend,
+            provider: realProvider,
+            deduplicator,
+            queue: createPhoneQueue(),
+            now: () => NOW,
+        })
+
+        await handle({
+            object: "whatsapp_business_account",
+            entry: [
+                {
+                    changes: [
+                        {
+                            field: "messages",
+                            value: {
+                                metadata: { phone_number_id: phoneNumberId },
+                                statuses: [
+                                    {
+                                        id: "wamid.invalido",
+                                        status: "failed",
+                                        timestamp: "253402300800",
+                                        errors: [{ code: "9".repeat(41) }],
+                                    },
+                                    {
+                                        id: "wamid.valido",
+                                        status: "failed",
+                                        timestamp: "1780000000",
+                                        errors: [{ code: 131047 }],
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
+            ],
+        })
+
+        expect(reportWebhookEvents).toHaveBeenCalledOnce()
+        expect(reportWebhookEvents).toHaveBeenCalledWith({
+            statuses: [
+                { providerMessageId: "wamid.invalido", status: "failed", timestamp: null, errorCode: null },
+                { providerMessageId: "wamid.valido", status: "failed", timestamp: 1780000000, errorCode: "131047" },
+            ],
+        })
+    })
+
     test("nao repassa nem registra em log o telefone do destinatario nem os textos do erro da Meta", async () => {
         const phoneNumberId = "100000000000001"
         const realProvider = createCloudApiProvider({
