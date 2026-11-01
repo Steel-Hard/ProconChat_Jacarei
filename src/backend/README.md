@@ -865,10 +865,16 @@ marcado (no horário ou depois, `409 CANCEL_AFTER_START`).
   "CANCELLATION" }` e quem agiu. Falha do gateway, gateway não configurado ou telefone ausente ou
   ilegível gravam a falha, e o cancelamento continua respondendo `200`. A pausa das respostas
   automáticas não bloqueia o aviso.
+- Se o próprio aviso lança depois do `COMMIT` (por exemplo, a gravação do resultado falha), o
+  cancelamento responde `200` com o detalhe `CANCELED` e o log registra só o id do agendamento e o
+  código do erro, sem telefone. Se a leitura do detalhe também falhar, a resposta é `500`, mas o
+  cancelamento continua gravado.
 - `available_actions.retry_cancellation_notice` só fica `allowed` quando o agendamento foi cancelado
-  pela equipe, o último aviso de `kind` `CANCELLATION` (por `created_at, id`) falhou, há telefone e o
-  horário ainda não passou. O reenvio tem uma trava em memória por agendamento
-  (`409 NOTIFICATION_IN_PROGRESS`), suficiente porque o backend roda numa instância só.
+  pela equipe, o último aviso de `kind` `CANCELLATION` (por `created_at, id`) falhou ou não existe, há
+  telefone e o horário ainda não passou. O reenvio tem uma trava em memória por agendamento
+  (`409 NOTIFICATION_IN_PROGRESS`), suficiente porque o backend roda numa instância só. Dentro da trava
+  o alvo é relido, e um aviso que já saiu (`CITIZEN_NOTIFIED`) recusa o reenvio com
+  `409 NOTIFICATION_NOT_RETRYABLE`.
 
 Se duas ações chegam juntas (por exemplo, Atendido e Não compareceu), a segunda espera a trava, lê o
 status já alterado e recebe o `409` coerente com a ação que ganhou (`ALREADY_ATTENDED` ou
