@@ -9,7 +9,7 @@ import { createWhatsAppConfigStore } from "../services/whatsappConfigStore"
 import { InternalMessagesRoutes } from "./internalMessages.routes"
 
 vi.mock("../clients/backend.client", () => ({
-    backendClient: { createWhatsappSession: vi.fn(), getWhatsappConfig: vi.fn() },
+    backendClient: { createWhatsappSession: vi.fn(), getWhatsappConfig: vi.fn(), reportWebhookEvents: vi.fn() },
 }))
 
 const PATH = "/internal/whatsapp/messages/template"

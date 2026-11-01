@@ -1,4 +1,4 @@
-import { OutgoingMessage } from "../types/message.types"
+import { DeliveryStatus, OutgoingMessage } from "../types/message.types"
 import { WhatsAppConfig } from "../utils/whatsappConfig"
 
 const BACKEND_TIMEOUT_MS = 10_000
@@ -16,9 +16,14 @@ export interface WhatsappSessionResponse {
     reply: { text: string; step: string | null; messages?: OutgoingMessage[] }
 }
 
+export interface WebhookEventsRequest {
+    statuses: DeliveryStatus[]
+}
+
 export interface BackendClient {
     createWhatsappSession(input: WhatsappSessionRequest): Promise<WhatsappSessionResponse>
     getWhatsappConfig(): Promise<WhatsAppConfig>
+    reportWebhookEvents(input: WebhookEventsRequest): Promise<void>
 }
 
 function backendTarget(): { baseUrl: string; internalToken: string } {
@@ -103,5 +108,23 @@ export const backendClient: BackendClient = {
             body = undefined
         }
         return toWhatsAppConfig(body)
+    },
+
+    async reportWebhookEvents(input: WebhookEventsRequest): Promise<void> {
+        const { baseUrl, internalToken } = backendTarget()
+
+        const response = await fetch(`${baseUrl}/api/v1/internal/whatsapp/events`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-Internal-Token": internalToken,
+            },
+            body: JSON.stringify(input),
+            signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
+        })
+
+        if (!response.ok) {
+            throw new Error(`Backend returned HTTP ${response.status}`)
+        }
     },
 }
