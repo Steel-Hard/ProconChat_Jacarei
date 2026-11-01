@@ -5,8 +5,9 @@ import { CancellationReason } from "../types/appointment.types"
 import { getLocalParts } from "../utils/date.utils"
 
 export const SAUDACAO =
-    "Olá! Sou o assistente virtual do PROCON Jacareí. As orientações a seguir têm caráter informativo e não substituem o atendimento formal.\n\n" +
-    "Escolha uma das opções abaixo digitando o número correspondente:"
+    "Olá! Sou o assistente virtual do PROCON Jacareí. As orientações a seguir têm caráter informativo e não substituem o atendimento formal."
+
+const INSTRUCAO_DIGITAR_NUMERO = "Escolha uma das opções abaixo digitando o número correspondente:"
 
 export const RODAPE_ATENDIMENTO = "Orientação informativa · Dados tratados conforme a LGPD"
 
@@ -240,7 +241,7 @@ export function formatarListaCategorias(
     const paginacao = paginarItens(titulos, pagina)
     const listaFormatada = formatarListaPaginada(paginacao)
 
-    return `${SAUDACAO}\n${listaFormatada}\n\n${RODAPE_ATENDIMENTO}`
+    return `${SAUDACAO}\n\n${INSTRUCAO_DIGITAR_NUMERO}\n${listaFormatada}\n\n${RODAPE_ATENDIMENTO}`
 }
 
 export function formatarErroCategoria(
