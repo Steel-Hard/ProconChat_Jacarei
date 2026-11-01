@@ -77,6 +77,14 @@ class WhatsAppSettingsController {
         }
     }
 
+    public async history(_req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            res.status(200).json({ data: await this.settings.getHistory() })
+        } catch (error) {
+            next(error)
+        }
+    }
+
     private userId(req: Request): number {
         if (!req.authUser) {
             throw new UnauthorizedError("Authentication required")

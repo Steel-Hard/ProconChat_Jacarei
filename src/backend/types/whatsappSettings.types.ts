@@ -41,7 +41,22 @@ export interface SaveCredentialsInput {
     verifiedName: string
     accessTokenLifetime: AccessTokenLifetime | null
     updatedBy: number
+    auditFields: WhatsAppAuditField[]
 }
+
+export interface WhatsAppHistoryItemView {
+    id: string
+    action: string
+    fields: string[]
+    actor: WhatsAppSettingsUpdatedBy | null
+    createdAt: string
+}
+
+export interface WhatsAppHistoryView {
+    items: WhatsAppHistoryItemView[]
+}
+
+export type WhatsAppAuditField = "phoneNumberId" | "businessAccountId" | "accessToken" | "appSecret"
 
 export interface SecretView {
     configured: boolean

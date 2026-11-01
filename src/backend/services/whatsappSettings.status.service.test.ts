@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 import { MockMetaGraphClient } from "../clients/metaGraphMock.client"
+import { AuditLogStubRepository } from "../repositories/mock/auditLogStub.repository"
 import { OutboundMessageStubRepository } from "../repositories/mock/outboundMessageStub.repository"
 import { MockWhatsAppSettingsRepository } from "../repositories/mock/whatsappSettingsMock.repository"
 import { WhatsAppSettingsRow } from "../types/whatsappSettings.types"
@@ -36,6 +37,7 @@ function setup(row: Partial<WhatsAppSettingsRow> = savedRow(), notifiedPhones = 
     const service = createWhatsAppSettingsService({
         settings,
         outbound,
+        audit: new AuditLogStubRepository(),
         meta,
         gateway: { notifyConfigChanged: vi.fn(async () => undefined) },
         usage,

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { createWhatsAppSettingsService } from "./whatsappSettings.service"
 import { MENSAGEM_ATENDIMENTO_PAUSADO } from "./messageFormatter.service"
 import { MockWhatsAppSettingsRepository } from "../repositories/mock/whatsappSettingsMock.repository"
+import { AuditLogStubRepository } from "../repositories/mock/auditLogStub.repository"
 import { OutboundMessageStubRepository } from "../repositories/mock/outboundMessageStub.repository"
 import { MockMetaGraphClient } from "../clients/metaGraphMock.client"
 import { decrypt, encrypt } from "../utils/crypto.utils"
@@ -38,6 +39,7 @@ function setup(row: Partial<WhatsAppSettingsRow> | null = savedRow(), env: Recor
     const service = createWhatsAppSettingsService({
         settings,
         outbound: new OutboundMessageStubRepository(),
+        audit: new AuditLogStubRepository(),
         meta,
         gateway,
         usage: { countNotifiedPhonesBetween: vi.fn(async () => 0) },

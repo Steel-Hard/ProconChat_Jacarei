@@ -12,6 +12,8 @@ import { appointmentRepository } from "../repositories/appointment.repository"
 import { whatsappSettingsRepository } from "../repositories/whatsappSettings.repository"
 import { OutboundMessageRepository } from "../repositories/outboundMessage.repository.interface"
 import { outboundMessageRepository } from "../repositories/outboundMessage.repository"
+import { AuditLogRepository } from "../repositories/auditLog.repository.interface"
+import { auditLogRepository } from "../repositories/auditLog.repository"
 import {
     ConnectionCheckInput,
     ConnectionTestReason,
@@ -24,6 +26,8 @@ import {
     SecretView,
     TemplatesStatusView,
     WebhookStatusView,
+    WhatsAppAuditField,
+    WhatsAppHistoryView,
     WhatsAppInternalConfig,
     WhatsAppSettingsInput,
     WhatsAppSettingsRow,
@@ -43,6 +47,8 @@ const USAGE_WINDOW_MS = 24 * 60 * 60 * 1000
 const WEBHOOK_STALE_AFTER_MS = 24 * 60 * 60 * 1000
 const DELIVERY_FAILURES_WINDOW_MS = 24 * 60 * 60 * 1000
 const DELIVERY_FAILURES_LIMIT = 50
+const HISTORY_AREA = "whatsapp"
+const HISTORY_LIMIT = 50
 
 const MESSAGE_TEMPLATES: MessageTemplateRef[] = [
     { kind: "CANCELLATION", ...MODELO_AVISO_CANCELAMENTO },
@@ -73,11 +79,13 @@ export interface WhatsAppSettingsService {
     getTemplatesStatus(): Promise<TemplatesStatusView>
     getNumberStatus(): Promise<NumberStatusView>
     getDeliveryFailures(): Promise<DeliveryFailuresView>
+    getHistory(): Promise<WhatsAppHistoryView>
 }
 
 interface WhatsAppSettingsServiceDependencies {
     settings: WhatsAppSettingsRepository
     outbound: Pick<OutboundMessageRepository, "listRecentFailures">
+    audit: Pick<AuditLogRepository, "listByArea">
     meta: MetaGraphClient
     gateway: Pick<GatewayClient, "notifyConfigChanged">
     usage: Pick<AppointmentRepository, "countNotifiedPhonesBetween">
@@ -93,6 +101,23 @@ interface PreparedCheck {
     row: WhatsAppSettingsRow
     input: WhatsAppSettingsInput
     check: ConnectionCheckInput
+}
+
+function changedFields(row: WhatsAppSettingsRow, input: WhatsAppSettingsInput): WhatsAppAuditField[] {
+    const fields: WhatsAppAuditField[] = []
+    if (input.phoneNumberId !== row.phoneNumberId) {
+        fields.push("phoneNumberId")
+    }
+    if (input.businessAccountId !== row.businessAccountId) {
+        fields.push("businessAccountId")
+    }
+    if (input.accessToken !== null) {
+        fields.push("accessToken")
+    }
+    if (input.appSecret !== null) {
+        fields.push("appSecret")
+    }
+    return fields
 }
 
 function readId(value: unknown, field: string, required: boolean): string | null {
@@ -141,6 +166,7 @@ function parseInput(body: unknown): WhatsAppSettingsInput {
 export function createWhatsAppSettingsService({
     settings,
     outbound,
+    audit,
     meta,
     gateway,
     usage,
@@ -340,6 +366,19 @@ export function createWhatsAppSettingsService({
             }
         },
 
+        async getHistory() {
+            const entries = await audit.listByArea(HISTORY_AREA, HISTORY_LIMIT)
+            return {
+                items: entries.map((entry) => ({
+                    id: entry.id,
+                    action: entry.action,
+                    fields: entry.fields,
+                    actor: entry.actor,
+                    createdAt: entry.createdAt.toISOString(),
+                })),
+            }
+        },
+
         async getView() {
             return toView(await ensureRow())
         },
@@ -381,6 +420,7 @@ export function createWhatsAppSettingsService({
                 verifiedName: result.verifiedName,
                 accessTokenLifetime: input.accessToken === null && accessTokenLifetime.kind === "UNKNOWN" ? null : accessTokenLifetime,
                 updatedBy: userId,
+                auditFields: changedFields(row, input),
             })
             await notifyGateway()
             return toView(saved)
@@ -417,6 +457,7 @@ export function createWhatsAppSettingsService({
 export const whatsappSettingsService = createWhatsAppSettingsService({
     settings: whatsappSettingsRepository,
     outbound: outboundMessageRepository,
+    audit: auditLogRepository,
     meta: metaGraphClient,
     gateway: gatewayClient,
     usage: appointmentRepository,

@@ -5,6 +5,7 @@ export class MockWhatsAppSettingsRepository implements WhatsAppSettingsRepositor
     public row: WhatsAppSettingsRow | null
     public readonly credentialChecks: boolean[] = []
     public saveCalls = 0
+    public readonly saveInputs: SaveCredentialsInput[] = []
     public readonly webhookEventTouches: Date[] = []
 
     private readonly userNames = new Map<number, string>()
@@ -37,6 +38,7 @@ export class MockWhatsAppSettingsRepository implements WhatsAppSettingsRepositor
     async saveCredentials(input: SaveCredentialsInput): Promise<WhatsAppSettingsRow> {
         const row = this.requireRow()
         this.saveCalls += 1
+        this.saveInputs.push(input)
         this.row = {
             ...row,
             phoneNumberId: input.phoneNumberId,
