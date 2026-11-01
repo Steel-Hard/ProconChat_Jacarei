@@ -6,6 +6,15 @@ export interface IncomingMessage {
     optionId?: string
 }
 
+export type DeliveryStatusValue = "sent" | "delivered" | "read" | "failed"
+
+export interface DeliveryStatus {
+    providerMessageId: string
+    status: DeliveryStatusValue
+    timestamp: number | null
+    errorCode: string | null
+}
+
 export interface ListRow {
     id: string
     title: string

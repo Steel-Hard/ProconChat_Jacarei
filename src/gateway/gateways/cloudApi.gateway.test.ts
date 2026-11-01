@@ -2,7 +2,7 @@ import { createHmac } from "node:crypto"
 import { afterEach, describe, expect, test, vi } from "vitest"
 import { createCloudApiProvider } from "./cloudApi.gateway"
 import { OutgoingMessageValidationError } from "./outgoingMessage.validation"
-import { CloudApiConfig, CloudApiIncomingMessage } from "../types/cloudApi.types"
+import { CloudApiConfig, CloudApiIncomingMessage, CloudApiStatus } from "../types/cloudApi.types"
 
 const config: CloudApiConfig = {
     phoneNumberId: "100000000000001",
@@ -36,6 +36,22 @@ function payloadWith(
                             contacts: [{ profile: { name: "Pessoa Teste" }, wa_id: "5500000000001" }],
                             messages,
                         },
+                    },
+                ],
+            },
+        ],
+    }
+}
+
+function payloadWithStatuses(statuses: CloudApiStatus[]) {
+    return {
+        object: "whatsapp_business_account",
+        entry: [
+            {
+                changes: [
+                    {
+                        field: "messages",
+                        value: { metadata: { phone_number_id: config.phoneNumberId }, statuses },
                     },
                 ],
             },
@@ -99,7 +115,9 @@ describe("Cloud API provider: parseIncoming", () => {
 
         expect(result).toEqual({
             messages: [{ id: "wamid.1", from: "5500000000001", timestampMs: 1_790_000_000_000, text: "oi" }],
+            statuses: [],
             ignored: [],
+            eventReceived: true,
         })
     })
 
@@ -168,11 +186,13 @@ describe("Cloud API provider: parseIncoming", () => {
 
         expect(result).toEqual({
             messages: [],
+            statuses: [],
             ignored: [
                 { reason: "unsupported_message", messageId: "wamid.audio" },
                 { reason: "unsupported_message", messageId: "wamid.vazio" },
                 { reason: "unsupported_message", messageId: "wamid.semid" },
             ],
+            eventReceived: true,
         })
     })
 
@@ -186,11 +206,13 @@ describe("Cloud API provider: parseIncoming", () => {
 
         expect(result).toEqual({
             messages: [],
+            statuses: [],
             ignored: [{ reason: "missing_message_id" }, { reason: "missing_phone", messageId: "wamid.semfrom" }],
+            eventReceived: true,
         })
     })
 
-    test("ignora eventos que so trazem statuses", () => {
+    test("repassa em statuses o status de entrega de eventos que so trazem statuses, sem coloca-lo em ignored", () => {
         const payload = {
             object: "whatsapp_business_account",
             entry: [
@@ -210,7 +232,96 @@ describe("Cloud API provider: parseIncoming", () => {
 
         const result = provider.parseIncoming(payload)
 
-        expect(result).toEqual({ messages: [], ignored: [{ reason: "status_update", messageId: "wamid.enviada" }] })
+        expect(result).toEqual({
+            messages: [],
+            statuses: [{ providerMessageId: "wamid.enviada", status: "delivered", timestamp: null, errorCode: null }],
+            ignored: [],
+            eventReceived: true,
+        })
+    })
+
+    test("descarta com unsupported_status o status sem id, com status desconhecido ou com id acima de 128 caracteres", () => {
+        const longId = "w".repeat(129)
+        const payload = payloadWithStatuses([
+            { status: "delivered" },
+            { id: "wamid.apagada", status: "deleted" },
+            { id: longId, status: "sent" },
+        ])
+
+        const result = provider.parseIncoming(payload)
+
+        expect(result.statuses).toEqual([])
+        expect(result.ignored).toEqual([
+            { reason: "unsupported_status" },
+            { reason: "unsupported_status", messageId: "wamid.apagada" },
+            { reason: "unsupported_status" },
+        ])
+    })
+
+    test("extrai o status failed com o timestamp em segundos e o codigo do primeiro erro como texto", () => {
+        const payload = payloadWithStatuses([
+            {
+                id: "wamid.falhou",
+                status: "failed",
+                timestamp: "1730000000",
+                recipient_id: "5500000000001",
+                errors: [
+                    {
+                        code: 131047,
+                        title: "Re-engagement message",
+                        message: "Mais de 24 horas desde a ultima resposta",
+                        error_data: { details: "Mensagem fora da janela" },
+                    },
+                ],
+            },
+        ])
+
+        const result = provider.parseIncoming(payload)
+
+        expect(result.statuses).toEqual([
+            { providerMessageId: "wamid.falhou", status: "failed", timestamp: 1730000000, errorCode: "131047" },
+        ])
+    })
+
+    test("manda timestamp e codigo de erro nulos quando o timestamp nao e numero e a lista de erros esta vazia", () => {
+        const payload = payloadWithStatuses([{ id: "wamid.lida", status: "read", timestamp: "abc", errors: [] }])
+
+        const result = provider.parseIncoming(payload)
+
+        expect(result.statuses).toEqual([
+            { providerMessageId: "wamid.lida", status: "read", timestamp: null, errorCode: null },
+        ])
+    })
+
+    test("nao devolve o telefone do destinatario nem os textos do erro da Meta", () => {
+        const payload = payloadWithStatuses([
+            {
+                id: "wamid.falhou",
+                status: "failed",
+                recipient_id: "5512988887777",
+                errors: [{ code: 131026, title: "Titulo do erro sigiloso", message: "Mensagem do erro sigilosa" }],
+            },
+        ])
+
+        const serialized = JSON.stringify(provider.parseIncoming(payload))
+
+        expect(serialized).not.toContain("5512988887777")
+        expect(serialized).not.toContain("Titulo do erro sigiloso")
+        expect(serialized).not.toContain("Mensagem do erro sigilosa")
+    })
+
+    test("marca eventReceived quando ha ao menos uma change aceita e nao marca quando todas sao recusadas", () => {
+        const message = { id: "wamid.1", from: "5500000000001", type: "text", text: { body: "oi" } }
+
+        const accepted = provider.parseIncoming(payloadWith([message]))
+        const wrongObject = provider.parseIncoming(payloadWith([message], { object: "page" }))
+        const wrongField = provider.parseIncoming(payloadWith([message], { field: "account_update" }))
+        const wrongNumber = provider.parseIncoming(payloadWith([message], { phoneNumberId: "999" }))
+
+        expect(accepted.eventReceived).toBe(true)
+        expect(wrongObject.eventReceived).toBe(false)
+        expect(wrongField.eventReceived).toBe(false)
+        expect(wrongNumber.eventReceived).toBe(false)
     })
 
     test("ignora object, field ou phone_number_id diferentes do esperado", () => {
@@ -220,9 +331,24 @@ describe("Cloud API provider: parseIncoming", () => {
         const wrongField = provider.parseIncoming(payloadWith([message], { field: "account_update" }))
         const wrongNumber = provider.parseIncoming(payloadWith([message], { phoneNumberId: "999" }))
 
-        expect(wrongObject).toEqual({ messages: [], ignored: [{ reason: "unsupported_object" }] })
-        expect(wrongField).toEqual({ messages: [], ignored: [{ reason: "unsupported_field" }] })
-        expect(wrongNumber).toEqual({ messages: [], ignored: [{ reason: "unknown_phone_number_id" }] })
+        expect(wrongObject).toEqual({
+            messages: [],
+            statuses: [],
+            ignored: [{ reason: "unsupported_object" }],
+            eventReceived: false,
+        })
+        expect(wrongField).toEqual({
+            messages: [],
+            statuses: [],
+            ignored: [{ reason: "unsupported_field" }],
+            eventReceived: false,
+        })
+        expect(wrongNumber).toEqual({
+            messages: [],
+            statuses: [],
+            ignored: [{ reason: "unknown_phone_number_id" }],
+            eventReceived: false,
+        })
     })
 
     test("deixa o timestamp ausente quando ele nao e numero", () => {
