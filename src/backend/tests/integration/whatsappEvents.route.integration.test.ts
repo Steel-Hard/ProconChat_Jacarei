@@ -167,20 +167,23 @@ describe("Rota interna de eventos do webhook com Postgres", () => {
         expect(settings.rows[0]?.updated_by).toBe(String(staff.id))
     })
 
-    test("lote com errorCode de 41 caracteres responde 400 sem gravar nada e sem mudar o ultimo evento", async () => {
+    test.each([
+        { campo: "errorCode de 41 caracteres", invalid: { timestamp: 1780000000, errorCode: "9".repeat(41) } },
+        { campo: "timestamp 253402300800", invalid: { timestamp: 253402300800, errorCode: "131047" } },
+    ])("lote com $campo responde 400 sem gravar nada e sem mudar o ultimo evento", async ({ invalid }) => {
         const previousEvent = new Date("2020-01-01T00:00:00.000Z")
         await insertSettings(previousEvent, new Date("2020-01-02T00:00:00.000Z"))
         const valid = wamid()
-        const invalid = wamid()
+        const rejected = wamid()
 
         const response = await postEvents([
             { providerMessageId: valid, status: "failed", timestamp: 1780000000, errorCode: "131047" },
-            { providerMessageId: invalid, status: "failed", timestamp: 253402300800, errorCode: "9".repeat(41) },
+            { providerMessageId: rejected, status: "failed", ...invalid },
         ])
 
         expect(response.status).toBe(400)
         expect(await rowsOf(valid)).toEqual([])
-        expect(await rowsOf(invalid)).toEqual([])
+        expect(await rowsOf(rejected)).toEqual([])
         const settings = await getPool().query<{ last_webhook_event_at: Date }>("SELECT last_webhook_event_at FROM WhatsAppSettings WHERE id = 1")
         expect(settings.rows[0]?.last_webhook_event_at).toEqual(previousEvent)
     })
