@@ -175,6 +175,7 @@ export async function deleteAppointmentScope(scope: OwnedAppointmentScope): Prom
     const pool = getPool()
     if (scope.createdAppointmentIds.length > 0) {
         await deleteAppointmentNotes(scope.createdAppointmentIds)
+        await pool.query("DELETE FROM OutboundMessages WHERE appointment_id = ANY($1::bigint[])", [scope.createdAppointmentIds])
         await pool.query("DELETE FROM AppointmentEvents WHERE appointment_id = ANY($1::bigint[])", [scope.createdAppointmentIds])
         await pool.query("DELETE FROM Appointments WHERE id = ANY($1::bigint[])", [scope.createdAppointmentIds])
     }

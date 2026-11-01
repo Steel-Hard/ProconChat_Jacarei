@@ -48,7 +48,7 @@ describe("citizenNotification.service", () => {
 
         expect(sendTemplate).not.toHaveBeenCalled()
         expect(appointments.notificationCalls).toEqual([
-            { id: "1", outcome: "FAILED", kind: "CANCELLATION", actorUserId: 42, now: FIXED_NOW },
+            { id: "1", outcome: "FAILED", kind: "CANCELLATION", actorUserId: 42, now: FIXED_NOW, providerMessageId: null },
         ])
     })
 
@@ -71,14 +71,14 @@ describe("citizenNotification.service", () => {
         })
     })
 
-    it("grava CITIZEN_NOTIFIED com kind CANCELLATION e o ator quando o gateway aceita", async () => {
+    it("grava CITIZEN_NOTIFIED com kind CANCELLATION, o ator e o id da mensagem na Meta quando o gateway aceita", async () => {
         const { appointments, service } = setup()
 
         const outcome = await service.notifyCancellation("1", 42, FIXED_NOW)
 
         expect(outcome).toBe("NOTIFIED")
         expect(appointments.notificationCalls).toEqual([
-            { id: "1", outcome: "NOTIFIED", kind: "CANCELLATION", actorUserId: 42, now: FIXED_NOW },
+            { id: "1", outcome: "NOTIFIED", kind: "CANCELLATION", actorUserId: 42, now: FIXED_NOW, providerMessageId: "wamid.X" },
         ])
     })
 
@@ -94,7 +94,7 @@ describe("citizenNotification.service", () => {
         expect(outcome).toBe("FAILED")
         expect(sendTemplate).not.toHaveBeenCalled()
         expect(appointments.notificationCalls).toEqual([
-            { id: "1", outcome: "FAILED", kind: "CANCELLATION", actorUserId: 42, now: FIXED_NOW },
+            { id: "1", outcome: "FAILED", kind: "CANCELLATION", actorUserId: 42, now: FIXED_NOW, providerMessageId: null },
         ])
         expect(JSON.parse(String(logger.log.mock.calls[0]?.[0]))).toEqual({
             event: "citizen_notification_failed",
@@ -113,7 +113,7 @@ describe("citizenNotification.service", () => {
 
             expect(outcome).toBe("FAILED")
             expect(appointments.notificationCalls).toEqual([
-                { id: "1", outcome: "FAILED", kind: "CANCELLATION", actorUserId: 42, now: FIXED_NOW },
+                { id: "1", outcome: "FAILED", kind: "CANCELLATION", actorUserId: 42, now: FIXED_NOW, providerMessageId: null },
             ])
             expect(JSON.parse(String(logger.log.mock.calls[0]?.[0]))).toEqual({
                 event: "citizen_notification_failed",

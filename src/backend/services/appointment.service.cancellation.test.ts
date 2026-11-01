@@ -78,7 +78,7 @@ describe("appointment.service: cancelamento pela equipe", () => {
 
         expect(detail.status).toBe("CANCELED")
         expect(repository.notificationCalls).toEqual([
-            { id: "1", outcome: "FAILED", kind: "CANCELLATION", actorUserId: 42, now: FIXED_NOW },
+            { id: "1", outcome: "FAILED", kind: "CANCELLATION", actorUserId: 42, now: FIXED_NOW, providerMessageId: null },
         ])
     })
 
@@ -145,7 +145,7 @@ describe("appointment.service: cancelamento pela equipe", () => {
         expect(sendTemplate).toHaveBeenCalledTimes(1)
         expect(sendTemplate.mock.calls[0]?.[0].bodyParameters[4]).toBe("não será possível realizar o atendimento neste horário")
         expect(repository.notificationCalls).toEqual([
-            { id: "1", outcome: "NOTIFIED", kind: "CANCELLATION", actorUserId: 77, now: FIXED_NOW },
+            { id: "1", outcome: "NOTIFIED", kind: "CANCELLATION", actorUserId: 77, now: FIXED_NOW, providerMessageId: "wamid.X" },
         ])
         expect(detail.id).toBe("1")
     })

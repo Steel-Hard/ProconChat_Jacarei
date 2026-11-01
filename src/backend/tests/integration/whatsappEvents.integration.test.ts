@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, test } from "vitest"
+import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest"
 import getPool from "../../db/connection"
 import { createAppointmentRepository } from "../../repositories/appointment.repository"
 import { outboundMessageRepository } from "../../repositories/outboundMessage.repository"
@@ -88,6 +88,24 @@ async function canceledAppointment(): Promise<number> {
     return id
 }
 
+async function outboundOfAppointment(appointmentId: number) {
+    const result = await getPool().query<StoredOutbound & { provider_message_id: string | null }>(
+        "SELECT provider_message_id, kind, status, error_code, status_at, appointment_id FROM OutboundMessages WHERE appointment_id = $1",
+        [appointmentId],
+    )
+    return result.rows
+}
+
+async function noticeEvents(appointmentId: number) {
+    const result = await getPool().query<{ type: string; actor_user_id: string | null; data: unknown; created_at: Date }>(
+        `SELECT type, actor_user_id, data, created_at FROM AppointmentEvents
+         WHERE appointment_id = $1 AND type IN ('CITIZEN_NOTIFIED', 'CITIZEN_NOTIFICATION_FAILED') AND created_at >= $2
+         ORDER BY created_at, id`,
+        [appointmentId, NOW],
+    )
+    return result.rows
+}
+
 async function failureEvents(appointmentId: number) {
     const result = await getPool().query<{ actor_user_id: string | null; data: unknown; created_at: Date }>(
         "SELECT actor_user_id, data, created_at FROM AppointmentEvents WHERE appointment_id = $1 AND type = 'CITIZEN_NOTIFICATION_FAILED'",
@@ -101,6 +119,13 @@ describe("Repositorio de mensagens enviadas com Postgres", () => {
         originalSettings = (await getPool().query<Record<string, unknown>>("SELECT * FROM WhatsAppSettings WHERE id = 1")).rows[0]
         staff = await createTestUser()
         scope = await createAppointmentScope(staff.id, "it88_outbound")
+    })
+
+    afterEach(async () => {
+        await getPool().query("DELETE FROM OutboundMessages WHERE provider_message_id LIKE $1 AND status_at >= $2", [
+            `${PREFIX}%`,
+            WINDOW_START,
+        ])
     })
 
     afterAll(async () => {
@@ -290,5 +315,88 @@ describe("Repositorio de mensagens enviadas com Postgres", () => {
 
         expect(touched.rows).toEqual([{ last_webhook_event_at: eventAt, updated_by: String(staff.id), updated_at: updatedAt }])
         expect(afterMissing.rows).toEqual([])
+    })
+
+    test("aviso aceito com wamid grava CITIZEN_NOTIFIED e a mensagem CANCELLATION SENT ligada ao agendamento", async () => {
+        const appointmentId = await canceledAppointment()
+        const id = wamid()
+
+        await createAppointmentRepository().recordCitizenNotification(String(appointmentId), "NOTIFIED", "CANCELLATION", staff.id, NOW, id)
+
+        expect(await noticeEvents(appointmentId)).toEqual([
+            { type: "CITIZEN_NOTIFIED", actor_user_id: String(staff.id), data: { kind: "CANCELLATION" }, created_at: NOW },
+        ])
+        expect(await outboundOfAppointment(appointmentId)).toEqual([
+            {
+                provider_message_id: id,
+                kind: "CANCELLATION",
+                status: "SENT",
+                error_code: null,
+                status_at: NOW,
+                appointment_id: String(appointmentId),
+            },
+        ])
+    })
+
+    test("aviso aceito sem wamid grava so o CITIZEN_NOTIFIED", async () => {
+        const appointmentId = await canceledAppointment()
+
+        await createAppointmentRepository().recordCitizenNotification(String(appointmentId), "NOTIFIED", "CANCELLATION", staff.id, NOW, null)
+
+        expect((await noticeEvents(appointmentId)).map((event) => event.type)).toEqual(["CITIZEN_NOTIFIED"])
+        expect(await outboundOfAppointment(appointmentId)).toEqual([])
+    })
+
+    test("aviso recusado grava a falha no historico e a mensagem CANCELLATION FAILED sem wamid que entra nas falhas recentes", async () => {
+        const appointmentId = await canceledAppointment()
+        const failedAt = new Date("2031-04-02T09:30:00.000Z")
+
+        await createAppointmentRepository().recordCitizenNotification(String(appointmentId), "FAILED", "CANCELLATION", staff.id, failedAt)
+
+        expect((await noticeEvents(appointmentId)).map((event) => event.type)).toEqual(["CITIZEN_NOTIFICATION_FAILED"])
+        const rows = await outboundOfAppointment(appointmentId)
+        expect(rows).toEqual([
+            {
+                provider_message_id: null,
+                kind: "CANCELLATION",
+                status: "FAILED",
+                error_code: null,
+                status_at: failedAt,
+                appointment_id: String(appointmentId),
+            },
+        ])
+        const page = await outboundMessageRepository.listRecentFailures(new Date(failedAt.getTime() - 1), 50)
+        expect(page.items.find((item) => item.appointmentId === String(appointmentId))).toEqual({
+            id: expect.any(String),
+            kind: "CANCELLATION",
+            errorCode: null,
+            failedAt,
+            appointmentId: String(appointmentId),
+        })
+    })
+
+    test("failed que chega antes da gravacao do envio fica uma linha CANCELLATION FAILED e o historico termina em FAILED, em 5 rodadas", async () => {
+        for (let round = 0; round < 5; round += 1) {
+            const appointmentId = await canceledAppointment()
+            const id = wamid()
+            await apply(id, "FAILED", "131047")
+
+            await createAppointmentRepository().recordCitizenNotification(String(appointmentId), "NOTIFIED", "CANCELLATION", staff.id, NOW, id)
+
+            expect(await storedRows(id)).toEqual([
+                { kind: "CANCELLATION", status: "FAILED", error_code: "131047", status_at: NOW, appointment_id: String(appointmentId) },
+            ])
+            expect(await noticeEvents(appointmentId)).toEqual([
+                { type: "CITIZEN_NOTIFIED", actor_user_id: String(staff.id), data: { kind: "CANCELLATION" }, created_at: NOW },
+                {
+                    type: "CITIZEN_NOTIFICATION_FAILED",
+                    actor_user_id: null,
+                    data: { kind: "CANCELLATION" },
+                    created_at: new Date(NOW.getTime() + 1),
+                },
+            ])
+            const target = await createAppointmentRepository().findCancellationNoticeTarget(String(appointmentId))
+            expect(target?.lastCancellationNotice).toBe("FAILED")
+        }
     })
 })

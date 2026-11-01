@@ -59,6 +59,7 @@ export interface CitizenNotificationCall {
     kind: CitizenNotificationKind
     actorUserId: number
     now: Date | undefined
+    providerMessageId: string | null
 }
 
 export type AppointmentCorrectionWarning = (call: AppointmentActionCall) => CorrectionWarning | null
@@ -207,9 +208,10 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
         kind: CitizenNotificationKind,
         actorUserId: number,
         now?: Date,
+        providerMessageId: string | null = null,
     ): Promise<void> {
         this.callOrder.push("recordCitizenNotification")
-        this.notificationCalls.push({ id, outcome, kind, actorUserId, now })
+        this.notificationCalls.push({ id, outcome, kind, actorUserId, now, providerMessageId })
         const current = this.details.find((record) => record.id === id)
         current?.events.unshift({
             id: String(current.events.length + 1),
