@@ -47,7 +47,9 @@ function nextTuesday(): string {
 
 async function advisoryWaiters(): Promise<number> {
     const result = await getPool().query<{ waiting: number }>(
-        "SELECT COUNT(*)::int AS waiting FROM pg_locks WHERE locktype = 'advisory' AND NOT granted",
+        `SELECT COUNT(*)::int AS waiting FROM pg_locks
+         WHERE locktype = 'advisory' AND NOT granted
+           AND database = (SELECT oid FROM pg_database WHERE datname = current_database())`,
     )
     return result.rows[0]?.waiting ?? 0
 }
@@ -148,6 +150,34 @@ async function holdsNothingBehindTheWait(appointmentId: string, slot: Date): Pro
     } finally {
         await probe.query("ROLLBACK")
         probe.release()
+    }
+}
+
+async function probeWhileWaiting<T>(
+    lock: { sql: string; params: unknown[] },
+    startReschedule: () => Promise<unknown>,
+    probe: () => Promise<T>,
+): Promise<{ probed: T; outcome: PromiseSettledResult<unknown> }> {
+    const blocker = await getPool().connect()
+    let pending: Promise<PromiseSettledResult<unknown>> | null = null
+    let committed = false
+    try {
+        await blocker.query("BEGIN")
+        await blocker.query(lock.sql, lock.params)
+        pending = settle(startReschedule())
+        await waitForAdvisoryWaiters(1)
+        const probed = await probe()
+        await blocker.query("COMMIT")
+        committed = true
+        return { probed, outcome: await pending }
+    } finally {
+        if (!committed) {
+            await blocker.query("ROLLBACK").catch(() => undefined)
+        }
+        blocker.release()
+        if (pending && !committed) {
+            await pending
+        }
     }
 }
 
@@ -293,42 +323,28 @@ describe("corridas da remarcação pelo cidadão (Postgres)", () => {
     it("espera pela trava da configuração sem segurar a trava do horário nem a linha do agendamento", async () => {
         const slot = parseLocalDate(addDaysToDateString(tuesday, 21), "08:00")
         const citizen = await returningCitizen(phones.staffCanceled(1), 70)
-        const blocker = await getPool().connect()
-        let pending: Promise<PromiseSettledResult<unknown>>
-        let held: { rowFree: boolean; slotFree: boolean }
-        try {
-            await blocker.query("BEGIN")
-            await blocker.query("SELECT pg_advisory_xact_lock(hashtext('schedule_config'))")
-            pending = settle(scheduleRepository.rescheduleByCitizen({ ...citizen, appointmentDatetime: slot, now }))
-            await waitForAdvisoryWaiters(1)
-            held = await holdsNothingBehindTheWait(citizen.appointmentId, slot)
-            await blocker.query("COMMIT")
-        } finally {
-            blocker.release()
-        }
 
-        expect(held).toEqual({ rowFree: true, slotFree: true })
-        expect((await pending).status).toBe("fulfilled")
+        const { probed, outcome } = await probeWhileWaiting(
+            { sql: "SELECT pg_advisory_xact_lock(hashtext('schedule_config'))", params: [] },
+            () => scheduleRepository.rescheduleByCitizen({ ...citizen, appointmentDatetime: slot, now }),
+            () => holdsNothingBehindTheWait(citizen.appointmentId, slot),
+        )
+
+        expect(probed).toEqual({ rowFree: true, slotFree: true })
+        expect(outcome.status).toBe("fulfilled")
     })
 
     it("espera pela trava do horário sem segurar a linha do agendamento", async () => {
         const slot = parseLocalDate(addDaysToDateString(tuesday, 28), "08:00")
         const citizen = await returningCitizen(phones.staffCanceled(2), 80)
-        const blocker = await getPool().connect()
-        let pending: Promise<PromiseSettledResult<unknown>>
-        let rowFree: boolean
-        try {
-            await blocker.query("BEGIN")
-            await blocker.query("SELECT pg_advisory_xact_lock(hashtext('slot:' || $1::text))", [slot.toISOString()])
-            pending = settle(scheduleRepository.rescheduleByCitizen({ ...citizen, appointmentDatetime: slot, now }))
-            await waitForAdvisoryWaiters(1)
-            rowFree = (await holdsNothingBehindTheWait(citizen.appointmentId, slot)).rowFree
-            await blocker.query("COMMIT")
-        } finally {
-            blocker.release()
-        }
 
-        expect(rowFree).toBe(true)
-        expect((await pending).status).toBe("fulfilled")
+        const { probed, outcome } = await probeWhileWaiting(
+            { sql: "SELECT pg_advisory_xact_lock(hashtext('slot:' || $1::text))", params: [slot.toISOString()] },
+            () => scheduleRepository.rescheduleByCitizen({ ...citizen, appointmentDatetime: slot, now }),
+            () => holdsNothingBehindTheWait(citizen.appointmentId, slot),
+        )
+
+        expect(probed.rowFree).toBe(true)
+        expect(outcome.status).toBe("fulfilled")
     })
 })
