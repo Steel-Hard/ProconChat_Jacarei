@@ -1391,3 +1391,23 @@ Esta regra roda quando o mesmo número volta a escrever. A **varredura periódic
 (`services/abandonedSessionsSweep.service.ts`, iniciada em `index.ts`) cuida das sessões de quem nunca
 volta e aplica exatamente a mesma regra. A correspondência entre
 etapa e os nomes de abandono dos Relatórios é da #68.
+
+
+## Conteúdo do chatbot (/api/v1/content)
+
+Rotas do painel para gerenciamento de categorias e perguntas do chatbot (#63, `.docs/regras/06-conteudo.md`). Todas exigem sessão (`requireAuth`), permissão `content.manage` (`requirePermission("content.manage")`, concedida também ao Admin) e devolvem `Cache-Control: no-store`. As rotas de escrita passam pela proteção CSRF (`403 INVALID_ORIGIN` quando `Origin` difere de `FRONTEND_ORIGIN`) e usam validação Zod com erros por campo (`details.issues` com `{ path, message }`).
+
+| Rota | Método | O que faz |
+| --- | --- | --- |
+| `/api/v1/content/categories` | `GET` | Lista todas as categorias em `position ASC, id ASC` com `questionsCount`, `activeQuestionsCount`, `hiddenInChatbot` (`active && activeQuestionsCount === 0`), `whatsappPage`, `pageBreak` (`"Página 2 no WhatsApp"` etc.), `updatedBy` e `updatedAt` |
+| `/api/v1/content/categories` | `POST` | Cria categoria ativa no fim da lista (`201 Created`). Recusa `title` duplicado sem diferenciar maiúsculas nem acentos (`409 CATEGORY_TITLE_CONFLICT`) |
+| `/api/v1/content/categories/:id` | `PUT` | Edita `title`, `shortTitle` (1..24 caracteres), `description` e opcionalmente `active`, gravando `updated_by` e `updated_at` |
+| `/api/v1/content/categories/:id/active` | `PATCH` | Ativa ou desativa a categoria (`{ active: boolean }`) |
+| `/api/v1/content/categories/reorder` | `PUT` | Reordena todas as categorias (`{ categoryIds: number[] }`) em transação e devolve a lista recalculada |
+| `/api/v1/content/questions` | `GET` | Lista perguntas da categoria (`?categoryId=<id>`, com `whatsappPage` e `pageBreak`) ou busca em todas as categorias (`?search=<termo>`, sem diferenciar maiúsculas nem acentos em `question`, `answer` e `short_title`) |
+| `/api/v1/content/categories/:id/questions` | `GET` | Atalho para listar as perguntas da categoria `:id` |
+| `/api/v1/content/questions` | `POST` | Cria pergunta no fim da categoria (`201 Created`), sincronizando `RequiredDocuments` em transação e calculando `answerLengthWarning` (`answer.length >= 1000`) |
+| `/api/v1/content/questions/:id` | `PUT` | Edita pergunta e sincroniza `RequiredDocuments` em transação (recusa mudança de `categoryId`) |
+| `/api/v1/content/questions/:id/active` | `PATCH` | Ativa ou desativa a pergunta (`{ active: boolean }`) |
+| `/api/v1/content/categories/:id/questions/reorder` | `PUT` | Reordena todas as perguntas da categoria `:id` (`{ questionIds: number[] }`) |
+| `/api/v1/content/preview` e `/api/v1/content/questions/preview` | `POST` | Gera a prévia "Ver como o cidadão recebe" usando `AVISO_NAO_VINCULANTE`, `PERGUNTA_RESOLVIDA`, `OFERTA_AGENDAMENTO`, `formatarRespostaFinal` e `paginarItens` de `services/messageFormatter.service.ts` |
