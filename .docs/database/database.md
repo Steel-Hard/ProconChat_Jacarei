@@ -309,8 +309,8 @@ WHERE status = 'IN_PROGRESS';
 | `AWAITING_HOLDER_NAME` | Nome completo do titular |
 | `AWAITING_HOLDER_CPF` | CPF do titular |
 | `AWAITING_SLOT` | Escolha do horário. Também usada na remarcação (#59), com `draft.target_appointment_id` indicando o agendamento |
-| `AWAITING_RETURN_CHOICE` | Remarcar / Cancelar / Tenho outra dúvida (#59, Sprint 3) |
-| `AWAITING_CANCEL_CONFIRMATION` | Confirmação do cancelamento por botão (#59, Sprint 3) |
+| `AWAITING_RETURN_CHOICE` | Remarcar / Cancelar / Tenho outra dúvida (#59). Primeira etapa da sessão nova de quem tem agendamento futuro, com `draft.target_appointment_id` |
+| `AWAITING_CANCEL_CONFIRMATION` | Confirmação do cancelamento por botão (#59) |
 | `FINISHED` | Conversa encerrada |
 
 A correspondência entre etapa e os 6 nomes de abandono dos Relatórios é da aplicação e fica com a #68. A #16 só grava a etapa em `abandoned_at_step` e no evento `ABANDONED`.
@@ -593,7 +593,7 @@ CREATE INDEX idx_appointment_events_appointment ON AppointmentEvents(appointment
 | `CLAIMED` | — ("Assumir para mim"). Marcar um pendente como atendido ou não compareceu assume automaticamente: grava `CLAIMED` com `{ "auto_claimed": true }` + `ATTENDED`/`NO_SHOW`, no mesmo instante |
 | `ASSIGNED` | `{ "assignee_user_id": ... }` ("Atribuir a outro funcionário", #87, sem `reason`). Na redistribuição da tela de Usuários (#62) leva também `"reason": "USER_DEACTIVATED" \| "MANAGE_PERMISSION_REMOVED"` |
 | `RESCHEDULED` | `{ "from": ..., "to": ... }` |
-| `BACK_TO_PENDING` | `{ "reason": "RESCHEDULED" \| "USER_DEACTIVATED" \| "MANAGE_PERMISSION_REMOVED" \| ... }`. A redistribuição da tela de Usuários (#62) grava `USER_DEACTIVATED` ou `MANAGE_PERMISSION_REMOVED` |
+| `BACK_TO_PENDING` | `{ "reason": "RESCHEDULED" \| "USER_DEACTIVATED" \| "MANAGE_PERMISSION_REMOVED" \| ... }`. A remarcação pelo cidadão (#59) grava `RESCHEDULED`, com `actor_user_id NULL`, quando o agendamento estava Confirmado. A redistribuição da tela de Usuários (#62) grava `USER_DEACTIVATED` ou `MANAGE_PERMISSION_REMOVED` |
 | `ATTENDED`, `NO_SHOW` | — |
 | `RECORD_CORRECTED` | `{ "previous_status": ..., "previous_assigned_user_id": ... }` ("Corrigir registro", #87): o status (`ATTENDED` ou `NO_SHOW`) e o responsável de **antes** da correção. O agendamento volta a `PENDING` sem responsável quando o registro corrigido veio de um auto-claim, ou quando, num agendamento futuro, o responsável não pode mais atender ou já tem outro confirmado no horário; senão, volta a `CONFIRMED` com o mesmo responsável |
 | `CANCELED_BY_CITIZEN` | — |

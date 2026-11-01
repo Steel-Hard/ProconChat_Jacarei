@@ -8,7 +8,8 @@ registrar seus passos. As regras funcionais adotadas estão nas decisões
 ## Visão rápida
 
 Retrato do fluxo em 19/10/2026, depois das issues #16, #55 e #56 e da reorganização do bot nos PRs #111 e #112. A volta de
-quem já tem agendamento (remarcar e cancelar) é da #59 e ainda não existe.
+quem já tem agendamento (remarcar e cancelar) foi implementada depois, pela #59 (ver
+`src/backend/README.md`, seção "Retorno de quem já tem agendamento").
 
 ```text
 Mensagem recebida
@@ -143,8 +144,8 @@ a resposta. Uma falha no encerramento do fluxo atual também só vai para o log;
 a sessão fica em andamento e é abandonada pelo timeout. Já a criação do
 agendamento (#56) e a remarcação ou o cancelamento (#59) gravam o evento e o
 desfecho na mesma transação da reserva: se algo falhar, tudo volta e o cidadão
-é avisado de que o agendamento não foi gravado. A criação do agendamento já
-funciona; a remarcação e o cancelamento ainda não.
+é avisado de que o agendamento não foi gravado. A criação do agendamento, a
+remarcação e o cancelamento (#59) já funcionam.
 
 ## Sessão, desfecho e abandono
 
@@ -185,11 +186,9 @@ Os eventos de resolução e de agendamento novo já são emitidos pelo fluxo
 
 Ainda faltam:
 
-- `APPOINTMENT_CONSULTED`, `APPOINTMENT_RESCHEDULED` e `APPOINTMENT_CANCELED`,
-  com o desfecho `MANAGED_APPOINTMENT`: dependem da conversa de retorno de
-  quem já tem agendamento (#59). As etapas `AWAITING_RETURN_CHOICE` e
-  `AWAITING_CANCEL_CONFIRMATION` já existem no schema, mas o fluxo ainda não
-  as usa;
+- ~~`APPOINTMENT_CONSULTED`, `APPOINTMENT_RESCHEDULED` e `APPOINTMENT_CANCELED`,
+  com o desfecho `MANAGED_APPOINTMENT`~~: implementados pela #59, com as etapas
+  `AWAITING_RETURN_CHOICE` e `AWAITING_CANCEL_CONFIRMATION`;
 - `llm: "USED"` e `llm: "FAILED"` em `ANSWER_SENT`: dependem do complemento
   por IA no fluxo (#66).
 
