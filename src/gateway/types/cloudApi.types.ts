@@ -61,6 +61,7 @@ export interface CloudApiListBody extends CloudApiOutgoingBase {
     interactive: {
         type: "list"
         body: { text: string }
+        footer?: { text: string }
         action: {
             button: string
             sections: { rows: { id: string; title: string; description?: string }[] }[]

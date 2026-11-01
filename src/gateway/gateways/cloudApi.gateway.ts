@@ -95,6 +95,7 @@ function buildBody(to: string, message: OutgoingMessage): CloudApiOutgoingBody {
                 interactive: {
                     type: "list",
                     body: { text: message.text },
+                    ...(message.footer === undefined ? {} : { footer: { text: message.footer } }),
                     action: {
                         button: message.buttonText,
                         sections: [

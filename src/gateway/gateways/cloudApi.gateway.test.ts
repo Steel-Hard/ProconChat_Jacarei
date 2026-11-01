@@ -443,6 +443,67 @@ describe("Cloud API provider: send", () => {
         const [, init] = fetchFn.mock.calls[0] as [string, RequestInit]
         expect(JSON.parse(init.body as string).interactive).not.toHaveProperty("footer")
     })
+
+    test("nao envia lista com rodape de 61 caracteres e rejeita com erro de validacao", async () => {
+        const fetchFn = okFetch()
+        const provider = createCloudApiProvider({ getConfig: () => config, fetchFn })
+
+        const result = provider.send("5500000000001", {
+            type: "list",
+            text: "Selecione a categoria",
+            buttonText: "Ver opcoes",
+            rows: [{ id: "cat_1", title: "Compras" }],
+            footer: "r".repeat(61),
+        })
+
+        await expect(result).rejects.toBeInstanceOf(OutgoingMessageValidationError)
+        expect(fetchFn).not.toHaveBeenCalled()
+    })
+
+    test("envia o rodape da lista em interactive.footer quando a mensagem tem rodape", async () => {
+        const fetchFn = okFetch()
+        const provider = createCloudApiProvider({ getConfig: () => config, fetchFn })
+
+        await provider.send("5500000000001", {
+            type: "list",
+            text: "Selecione a categoria",
+            buttonText: "Ver opcoes",
+            rows: [{ id: "cat_1", title: "Compras" }],
+            footer: "Orientacao informativa",
+        })
+
+        const [, init] = fetchFn.mock.calls[0] as [string, RequestInit]
+        expect(JSON.parse(init.body as string)).toEqual({
+            messaging_product: "whatsapp",
+            recipient_type: "individual",
+            to: "5500000000001",
+            type: "interactive",
+            interactive: {
+                type: "list",
+                body: { text: "Selecione a categoria" },
+                footer: { text: "Orientacao informativa" },
+                action: {
+                    button: "Ver opcoes",
+                    sections: [{ rows: [{ id: "cat_1", title: "Compras" }] }],
+                },
+            },
+        })
+    })
+
+    test("envia lista sem a chave footer quando a mensagem nao tem rodape", async () => {
+        const fetchFn = okFetch()
+        const provider = createCloudApiProvider({ getConfig: () => config, fetchFn })
+
+        await provider.send("5500000000001", {
+            type: "list",
+            text: "Selecione a pergunta",
+            buttonText: "Ver opcoes",
+            rows: [{ id: "q_1", title: "Troca" }],
+        })
+
+        const [, init] = fetchFn.mock.calls[0] as [string, RequestInit]
+        expect(JSON.parse(init.body as string).interactive).not.toHaveProperty("footer")
+    })
 })
 
 describe("Cloud API provider: sendTemplate", () => {
