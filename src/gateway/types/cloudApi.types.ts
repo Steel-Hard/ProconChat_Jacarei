@@ -73,6 +73,7 @@ export interface CloudApiButtonsBody extends CloudApiOutgoingBase {
     interactive: {
         type: "button"
         body: { text: string }
+        footer?: { text: string }
         action: { buttons: { type: "reply"; reply: { id: string; title: string } }[] }
     }
 }

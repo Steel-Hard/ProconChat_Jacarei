@@ -116,6 +116,7 @@ function buildBody(to: string, message: OutgoingMessage): CloudApiOutgoingBody {
                 interactive: {
                     type: "button",
                     body: { text: message.text },
+                    ...(message.footer === undefined ? {} : { footer: { text: message.footer } }),
                     action: {
                         buttons: message.buttons.map((button) => ({
                             type: "reply",
