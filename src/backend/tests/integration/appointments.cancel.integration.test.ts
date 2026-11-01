@@ -283,6 +283,29 @@ describe("Cancelamento pela equipe com Postgres", () => {
         }
     })
 
+    it("assumir e cancelar ao mesmo tempo com o assumir primeiro: as duas passam e o cancelado mantém quem assumiu, sem deadlock", async () => {
+        const claimer = await createTestUser({ name: "Equipe Assume Primeiro", permissions: MANAGE })
+        createdUserIds.push(claimer.createdId)
+
+        for (let round = 0; round < ROUNDS; round += 1) {
+            const id = await appointment("PENDING")
+
+            const results = await raceOnBlockedAppointment(
+                id,
+                () => repository.claim(String(id), claimer.id, NOW),
+                () => repository.cancel(String(id), staff.id, "UNIT_CLOSED", undefined, NOW),
+            )
+
+            expect(results).toEqual([
+                { status: "fulfilled", value: undefined },
+                { status: "fulfilled", value: undefined },
+            ])
+            expect(await appointmentState(id)).toEqual({ status: "CANCELED", assignedUserId: claimer.id })
+            expect(await countEvents(id, "CLAIMED")).toBe(1)
+            expect(await countEvents(id, "CANCELED_BY_STAFF")).toBe(1)
+        }
+    })
+
     it("lê o alvo do aviso com o aviso de cancelamento mais recente, ignorando outro kind e desempatando por id", async () => {
         const datetime = new Date(Date.UTC(2031, 8, 3, 17, 0))
         const id = await appointment("CANCELED", datetime)
