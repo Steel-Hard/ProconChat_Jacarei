@@ -3,12 +3,17 @@ import { AppointmentService } from "../services/appointment.service"
 import { AddNoteBody, CalendarQuery, ListAppointmentsQuery, UpdateStatusBody } from "../schemas/appointment.schema"
 import { AppointmentCalendarService } from "../services/appointmentCalendar.service"
 import { AppointmentListFilters } from "../types/appointment.types"
+import BadRequestError from "../errors/BadRequestError"
 import UnauthorizedError from "../errors/UnauthorizedError"
 import { ActionAccess } from "../services/appointmentTransitions"
 import { AuthenticatedUser } from "../types/auth.types"
 
 function accessOf(user: AuthenticatedUser | undefined): ActionAccess {
     return { canManage: Boolean(user && (user.isAdmin || user.permissions.includes("appointments.manage"))) }
+}
+
+function unhandledAction(_body: never): never {
+    throw new BadRequestError("Ação inválida")
 }
 
 interface AppointmentControllerDependencies {
@@ -96,12 +101,14 @@ class AppointmentController {
                 result = await this.service.assignAppointment(id, body.assigneeUserId, actorUserId, access)
             } else if (body.action === "cancel") {
                 result = await this.service.cancelAppointment(id, actorUserId, body.reason, body.note, access)
-            } else {
+            } else if (body.action === "correct_record") {
                 const corrected = await this.service.correctRecord(id, actorUserId, access)
                 res.status(200).json(
                     corrected.warning ? { data: corrected.detail, warning: corrected.warning } : { data: corrected.detail },
                 )
                 return
+            } else {
+                unhandledAction(body)
             }
 
             res.status(200).json({ data: result })
