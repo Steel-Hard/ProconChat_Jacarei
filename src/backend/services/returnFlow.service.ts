@@ -394,7 +394,12 @@ export function createReturnFlow({ sessions, events, schedule, logger, startOver
             })
         } catch (err: unknown) {
             if (err instanceof SlotFullError) {
-                const updatedSlots = await rescheduleSlots(returning)
+                let updatedSlots: AvailableSlot[]
+                try {
+                    updatedSlots = await rescheduleSlots(returning)
+                } catch (readError: unknown) {
+                    return rescheduleFailed(session.id, readError)
+                }
                 return updatedSlots.length === 0
                     ? noRescheduleSlot(session, returning)
                     : showRescheduleSlots(session, updatedSlots, 1, ERRO_SLOT_OCUPADO)
