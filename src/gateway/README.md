@@ -214,8 +214,10 @@ configuração do painel (seção "Configuração do WhatsApp"), não variáveis
   10 s, uma vez e antes de repassar as mensagens do mesmo webhook. O corpo é
   `{ statuses: [{ providerMessageId, status, timestamp, errorCode }] }`, com a lista vazia quando o
   webhook só traz mensagens: o Backend usa a chamada para marcar o último evento recebido.
-- `status` é `sent`, `delivered`, `read` ou `failed`; `timestamp` vem em segundos, ou `null` quando
-  ausente ou não numérico; `errorCode` é `String(errors[0].code)`, ou `null`.
+- `status` é `sent`, `delivered`, `read` ou `failed`; `timestamp` vem em segundos Unix, inteiro de 0 a
+  253402300799, ou `null` quando ausente, não numérico ou fora desse intervalo; `errorCode` é
+  `String(errors[0].code)`, ou `null` quando ausente ou com mais de 40 caracteres. Nesses casos o item
+  continua no lote, só com o campo em `null`.
 - Item sem `id`, com outro status ou com `id` acima de 128 caracteres é descartado com o log
   `unsupported_status`.
 - O `recipient_id` (o telefone) e os textos do erro (`title`, `message`, `error_data`) nunca são

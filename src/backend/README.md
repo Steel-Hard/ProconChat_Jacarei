@@ -403,8 +403,10 @@ comparado em tempo constante (`utils/internalToken.ts`) e `Cache-Control: no-sto
 `X-Internal-Token` e `Cache-Control: no-store`. O Gateway chama uma vez por webhook aceito:
 
 - corpo `{ statuses: [{ providerMessageId, status, timestamp, errorCode }] }`, com `status` em
-  `sent`/`delivered`/`read`/`failed`, `providerMessageId` de 1 a 128 caracteres, `timestamp` em
-  segundos Unix ou `null`, e `errorCode` em texto de até 40 caracteres ou `null`. A lista pode vir vazia;
+  `sent`/`delivered`/`read`/`failed`, `providerMessageId` de 1 a 128 caracteres, `timestamp` inteiro
+  em segundos Unix, de 0 a 253402300799, ou `null`, e `errorCode` em texto de até 40 caracteres ou
+  `null`. Um `timestamp` fora desse intervalo ou um `errorCode` acima de 40 caracteres dá `400`. A lista
+  pode vir vazia;
 - sem token válido: `401 UNAUTHORIZED`; corpo fora do formato: `400 BAD_REQUEST`, sem gravar nada;
 - `204` sem corpo. Grava `WhatsAppSettings.last_webhook_event_at` (sem mudar `updated_by`/`updated_at`
   e sem criar a linha) e aplica os status em `OutboundMessages`. `FAILED` vence qualquer status, entre
