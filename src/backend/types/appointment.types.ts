@@ -66,6 +66,10 @@ export type CitizenNotificationKind = "CANCELLATION"
 
 export type CitizenNotificationOutcome = "NOTIFIED" | "FAILED"
 
+export interface CancellationPreview {
+    previews: { reason: CancellationReason; message: string }[]
+}
+
 export interface CancellationNoticeTarget {
     status: AppointmentStatus
     appointmentDatetime: Date

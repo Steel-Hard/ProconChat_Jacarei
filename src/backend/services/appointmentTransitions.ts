@@ -204,7 +204,7 @@ export function availableActions(
         correct_record: availabilityOf(decideTransition("correct_record", target, now)),
         add_note: { allowed: true, code: null },
         cancel: availabilityOf(decideTransition("cancel", target, now)),
-        retry_cancellation_notice: availabilityOf(decideRetryCancellationNotice({ ...target, ...notice }, now)),
+        retry_cancellation_notice: availabilityOf(decideRetryCancellationNotice({ ...notice, ...target }, now)),
     }
 }
 
