@@ -161,6 +161,12 @@ export interface NormalizedScheduleConfig {
     blockedDates: BlockedDateItem[]
 }
 
+export interface ReturningAppointment {
+    id: string
+    appointmentDatetime: Date
+    status: "PENDING" | "CONFIRMED"
+}
+
 export interface FutureActiveAppointment {
     id: string
     protocol: string

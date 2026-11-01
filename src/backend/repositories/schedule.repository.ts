@@ -25,6 +25,7 @@ import {
     MinNoticeDays,
     NormalizedScheduleConfig,
     ReminderHours,
+    ReturningAppointment,
     ScheduleConfigView,
     ScheduleRange,
     ScheduleSettings,
@@ -838,6 +839,36 @@ async function bookAppointment(
     }
 }
 
+async function findReturningAppointment(
+    phoneHash: string,
+    now: Date = new Date(),
+): Promise<ReturningAppointment | null> {
+    const result = await getPool().query<{
+        id: string
+        appointment_datetime: Date
+        status: "PENDING" | "CONFIRMED"
+    }>(
+        `SELECT a.id::text AS id, a.appointment_datetime, a.status
+         FROM Appointments a
+         JOIN Sessions s ON s.id = a.session_id
+         WHERE s.phone_hash = $1
+           AND a.status IN ('PENDING', 'CONFIRMED')
+           AND a.appointment_datetime > $2
+         ORDER BY a.appointment_datetime, a.id
+         LIMIT 1`,
+        [phoneHash, now],
+    )
+    const row = result.rows[0]
+    if (!row) {
+        return null
+    }
+    return {
+        id: row.id,
+        appointmentDatetime: new Date(row.appointment_datetime),
+        status: row.status,
+    }
+}
+
 export function createScheduleRepository(): IScheduleRepository {
     return {
         getSettings,
@@ -853,6 +884,7 @@ export function createScheduleRepository(): IScheduleRepository {
         saveScheduledConfig,
         deleteScheduledConfig,
         listFutureActiveAppointments,
+        findReturningAppointment,
     }
 }
 

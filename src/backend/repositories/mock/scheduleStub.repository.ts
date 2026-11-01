@@ -6,6 +6,7 @@ import {
     BookAppointmentInput,
     BookAppointmentResult,
     FutureActiveAppointment,
+    ReturningAppointment,
     ScheduleConfigView,
     ScheduleRange,
     ScheduleSettings,
@@ -72,6 +73,8 @@ export function createScheduleStubRepository(
 ): IScheduleRepository & {
     setConfig(config: ScheduleConfigView | null): void
     setAppointments(appointments: StoredStubAppointment[]): void
+    setReturningAppointment(returning: ReturningAppointment | null): void
+    returningCalls: { phoneHash: string; now?: Date }[]
     setScheduledSaveError(error: Error | null): void
     setScheduledDeleteError(error: Error | null): void
     listFutureCalls: Date[]
@@ -195,6 +198,14 @@ export function createScheduleStubRepository(
             assignedUserId: a.assignedUserId ?? null,
             offGrid: a.offGrid ?? false,
         }))
+    }
+
+    let returningAppointment: ReturningAppointment | null = null
+    const returningCalls: { phoneHash: string; now?: Date }[] = []
+
+    async function findReturningAppointment(phoneHash: string, now?: Date): Promise<ReturningAppointment | null> {
+        returningCalls.push({ phoneHash, now })
+        return returningAppointment
     }
 
     async function getConfig(): Promise<ScheduleConfigView | null> {
@@ -330,6 +341,11 @@ export function createScheduleStubRepository(
         deleteScheduledConfig,
         listFutureActiveAppointments,
         listFutureCalls,
+        findReturningAppointment,
+        returningCalls,
+        setReturningAppointment(returning: ReturningAppointment | null) {
+            returningAppointment = returning
+        },
         versionCalls,
         configForDateCalls,
         scheduledSaveCalls,

@@ -4,6 +4,7 @@ import {
     BookAppointmentResult,
     FutureActiveAppointment,
     NormalizedScheduleConfig,
+    ReturningAppointment,
     ScheduleConfigView,
     ScheduleRange,
     ScheduleSettings,
@@ -36,4 +37,5 @@ export interface IScheduleRepository {
     ): Promise<ScheduleConfigView>
     deleteScheduledConfig(effectiveFrom: string, now: Date): Promise<void>
     listFutureActiveAppointments(now: Date): Promise<FutureActiveAppointment[]>
+    findReturningAppointment(phoneHash: string, now?: Date): Promise<ReturningAppointment | null>
 }

@@ -11,6 +11,7 @@ import {
     BookedDaysResult,
     MonthlyPreviewResult,
     NormalizedScheduleConfig,
+    ReturningAppointment,
     ScheduleConfigInput,
     ScheduleConfigView,
     ScheduleConflictItem,
@@ -77,6 +78,7 @@ export interface IScheduleService {
     deleteScheduledConfig(effectiveFrom: string, now?: Date): Promise<void>
     getMonthlyPreview(params?: GetMonthlyPreviewParams): Promise<MonthlyPreviewResult>
     getBookedDays(now?: Date): Promise<BookedDaysResult>
+    findReturningAppointment(phoneHash: string, now?: Date): Promise<ReturningAppointment | null>
 }
 
 function previewConflictOf(item: ScheduleConflictItem): SchedulePreviewConflict {
@@ -243,6 +245,13 @@ export function createScheduleService(
         input: BookAppointmentInput,
     ): Promise<BookAppointmentResult> {
         return repository.bookAppointment(input)
+    }
+
+    async function findReturningAppointment(
+        phoneHash: string,
+        now?: Date,
+    ): Promise<ReturningAppointment | null> {
+        return repository.findReturningAppointment(phoneHash, now)
     }
 
     async function getConfig(): Promise<ScheduleConfigView> {
@@ -524,6 +533,7 @@ export function createScheduleService(
         deleteScheduledConfig,
         getMonthlyPreview,
         getBookedDays,
+        findReturningAppointment,
     }
 }
 
