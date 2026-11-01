@@ -4,7 +4,9 @@ import {
     DEFAULT_SWEEP_INTERVAL_MS,
     startAbandonedSessionsSweep,
 } from "./services/abandonedSessionsSweep.service"
+import { sweepPastAppointmentPhones } from "./services/appointmentRetention.service"
 import { sweepAbandonedSessions } from "./services/conversationFlow.service"
+import { startPeriodicSweep } from "./services/periodicSweep.service"
 
 const port = process.env.PORT ? Number(process.env.PORT) : 3000
 
@@ -33,6 +35,13 @@ const stopAbandonedSessionsSweep = startAbandonedSessionsSweep({
     logger: console,
 })
 
+const stopPastAppointmentPhonesSweep = startPeriodicSweep({
+    sweep: sweepPastAppointmentPhones,
+    intervalMs: DEFAULT_SWEEP_INTERVAL_MS,
+    logger: console,
+    failureMessage: "Failed to erase phones of past appointments",
+})
+
 const SHUTDOWN_TIMEOUT_MS = 10_000
 let shuttingDown = false
 
@@ -42,6 +51,7 @@ function shutdown(signal: NodeJS.Signals): void {
     }
     shuttingDown = true
     stopAbandonedSessionsSweep()
+    stopPastAppointmentPhonesSweep()
 
     console.log(`Recebido ${signal}, encerrando servidor...`)
 
