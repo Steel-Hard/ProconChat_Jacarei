@@ -344,5 +344,33 @@ describe("conversationFlow.service: remarcação pelo cidadão (#59)", () => {
             })
             expect(updateNavigationState).not.toHaveBeenCalled()
         })
+
+        test.each([
+            ["da reconferência do agendamento", "consulta"],
+            ["da leitura dos horários livres", "horarios"],
+        ])("registra no log a falha %s no clique do horário, avisa a instabilidade e mantém a etapa", async (_caso, origem) => {
+            findOrCreateActive.mockResolvedValueOnce(sessionAt("AWAITING_SLOT", { id: "42", listPage: 1 }))
+            const failure = Object.assign(new Error("db down"), { code: "ECONNREFUSED" })
+            if (origem === "consulta") {
+                findReturningAppointment.mockRejectedValueOnce(failure)
+            } else {
+                getAvailableSlots.mockRejectedValueOnce(failure)
+            }
+
+            const result = await processIncomingMessage({ phone: PHONE, optionId: slotOptionId(otherSlot) })
+
+            expect(logger.error).toHaveBeenCalledWith("Failed to change appointment", {
+                type: "APPOINTMENT_RESCHEDULED",
+                sessionId: "42",
+                code: "ECONNREFUSED",
+            })
+            expect(result.reply).toEqual({
+                text: ERRO_FALHA_ALTERACAO,
+                step: "AWAITING_SLOT",
+                messages: [{ type: "text", text: ERRO_FALHA_ALTERACAO }],
+            })
+            expect(rescheduleByCitizen).not.toHaveBeenCalled()
+            expect(updateNavigationState).not.toHaveBeenCalled()
+        })
     })
 })

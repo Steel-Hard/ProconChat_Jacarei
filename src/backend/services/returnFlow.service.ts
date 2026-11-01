@@ -275,23 +275,28 @@ export function createReturnFlow({ sessions, events, schedule, logger, startOver
     }
 
     async function confirmCancel(session: ActiveSession, phoneHash: string): Promise<ConversationFlowResult> {
-        const returning = await currentTarget(session, phoneHash)
-        if (!returning) {
-            return notChangeable(session.id)
-        }
-        const appointmentId = Number(returning.id)
-        let canceled: CitizenCancelResult
+        let canceled: CitizenCancelResult | null = null
         try {
-            canceled = await schedule.cancelByCitizen({ sessionId: session.id, appointmentId, phoneHash })
+            const returning = await currentTarget(session, phoneHash)
+            if (returning) {
+                canceled = await schedule.cancelByCitizen({
+                    sessionId: session.id,
+                    appointmentId: Number(returning.id),
+                    phoneHash,
+                })
+            }
         } catch (err: unknown) {
             if (err instanceof AppointmentNotChangeableError) {
                 return notChangeable(session.id)
             }
             logger.error(
                 "Failed to change appointment",
-                conversationEventFailureLog(session.id, { type: "APPOINTMENT_CANCELED", appointmentId }, err),
+                conversationEventFailureLog(session.id, { type: "APPOINTMENT_CANCELED" }, err),
             )
             return changeFailed(session.id, "AWAITING_CANCEL_CONFIRMATION")
+        }
+        if (!canceled) {
+            return notChangeable(session.id)
         }
         const texto = RESPOSTA_CANCELADO(canceled.protocol)
         return replyOf(session.id, "FINISHED", texto, [{ type: "text", text: texto }])
@@ -334,6 +339,43 @@ export function createReturnFlow({ sessions, events, schedule, logger, startOver
         return prefix ? prefixed(listing, prefix) : listing
     }
 
+    function rescheduleFailed(sessionId: string, err: unknown): ConversationFlowResult {
+        logger.error(
+            "Failed to change appointment",
+            conversationEventFailureLog(sessionId, { type: "APPOINTMENT_RESCHEDULED" }, err),
+        )
+        return changeFailed(sessionId, "AWAITING_SLOT")
+    }
+
+    async function chooseRescheduleSlot(
+        session: ActiveSession,
+        phoneHash: string,
+        slotIso: string,
+    ): Promise<ConversationFlowResult> {
+        let returning: ReturningAppointment | null
+        let slots: AvailableSlot[] = []
+        try {
+            returning = await currentTarget(session, phoneHash)
+            if (returning) {
+                slots = await rescheduleSlots(returning)
+            }
+        } catch (err: unknown) {
+            return rescheduleFailed(session.id, err)
+        }
+        if (!returning) {
+            return notChangeable(session.id)
+        }
+        if (slots.length === 0) {
+            return noRescheduleSlot(session, returning)
+        }
+        const chosenSlot = slots.find((slot) => slot.datetime.toISOString() === slotIso)
+        if (!chosenSlot) {
+            return showRescheduleSlots(session, slots, 1, ERRO_SLOT_OCUPADO)
+        }
+        const currentPage = paginarItens(slots, session.listPage || 1).paginaAtual
+        return rescheduleTo(session, phoneHash, returning, chosenSlot, slots, currentPage)
+    }
+
     async function rescheduleTo(
         session: ActiveSession,
         phoneHash: string,
@@ -342,12 +384,11 @@ export function createReturnFlow({ sessions, events, schedule, logger, startOver
         slots: AvailableSlot[],
         currentPage: number,
     ): Promise<ConversationFlowResult> {
-        const appointmentId = Number(returning.id)
         let result: CitizenRescheduleResult
         try {
             result = await schedule.rescheduleByCitizen({
                 sessionId: session.id,
-                appointmentId,
+                appointmentId: Number(returning.id),
                 phoneHash,
                 appointmentDatetime: chosenSlot.datetime,
             })
@@ -364,11 +405,7 @@ export function createReturnFlow({ sessions, events, schedule, logger, startOver
             if (err instanceof AppointmentNotChangeableError) {
                 return notChangeable(session.id)
             }
-            logger.error(
-                "Failed to change appointment",
-                conversationEventFailureLog(session.id, { type: "APPOINTMENT_RESCHEDULED", appointmentId }, err),
-            )
-            return changeFailed(session.id, "AWAITING_SLOT")
+            return rescheduleFailed(session.id, err)
         }
         const confirmation = formatarConfirmacaoAgendamento({
             titulo: "Agendamento remarcado",
@@ -391,6 +428,10 @@ export function createReturnFlow({ sessions, events, schedule, logger, startOver
         _text: string | undefined,
         optionId: string | undefined,
     ): Promise<ConversationFlowResult> {
+        if (optionId?.startsWith("slot_")) {
+            return chooseRescheduleSlot(session, phoneHash, optionId.replace("slot_", ""))
+        }
+
         const returning = await currentTarget(session, phoneHash)
         if (!returning) {
             return notChangeable(session.id)
@@ -406,15 +447,6 @@ export function createReturnFlow({ sessions, events, schedule, logger, startOver
             if (targetPage >= 1 && targetPage <= paginacao.totalPaginas) {
                 return showRescheduleSlots(session, slots, targetPage)
             }
-        }
-
-        if (optionId?.startsWith("slot_")) {
-            const slotIso = optionId.replace("slot_", "")
-            const chosenSlot = slots.find((slot) => slot.datetime.toISOString() === slotIso)
-            if (chosenSlot) {
-                return rescheduleTo(session, phoneHash, returning, chosenSlot, slots, paginacao.paginaAtual)
-            }
-            return showRescheduleSlots(session, slots, 1, ERRO_SLOT_OCUPADO)
         }
 
         return replyOf(

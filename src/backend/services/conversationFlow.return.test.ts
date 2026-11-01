@@ -387,5 +387,27 @@ describe("conversationFlow.service: retorno de quem já tem agendamento (#59)", 
             })
             expect(updateNavigationState).not.toHaveBeenCalled()
         })
+
+        test("registra a falha da reconferência do agendamento no log, avisa a instabilidade e mantém a etapa", async () => {
+            findOrCreateActive.mockResolvedValueOnce(
+                sessionAt("AWAITING_CANCEL_CONFIRMATION", { id: "42", draft: target }),
+            )
+            findReturningAppointment.mockRejectedValueOnce(Object.assign(new Error("db down"), { code: "ECONNREFUSED" }))
+
+            const result = await processIncomingMessage({ phone: PHONE, optionId: "cancel_yes" })
+
+            expect(logger.error).toHaveBeenCalledWith("Failed to change appointment", {
+                type: "APPOINTMENT_CANCELED",
+                sessionId: "42",
+                code: "ECONNREFUSED",
+            })
+            expect(result.reply).toEqual({
+                text: ERRO_FALHA_ALTERACAO,
+                step: "AWAITING_CANCEL_CONFIRMATION",
+                messages: [{ type: "text", text: ERRO_FALHA_ALTERACAO }],
+            })
+            expect(cancelByCitizen).not.toHaveBeenCalled()
+            expect(updateNavigationState).not.toHaveBeenCalled()
+        })
     })
 })
