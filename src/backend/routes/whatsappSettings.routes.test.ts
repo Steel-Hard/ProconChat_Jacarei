@@ -81,6 +81,8 @@ function savedView(overrides: Record<string, unknown> = {}) {
         displayPhoneNumber: null,
         verifiedName: null,
         accessTokenLifetime: { kind: "UNKNOWN", expiresAt: null },
+        credentialsStatus: "NOT_CHECKED",
+        webhook: { lastEventAt: null, stale: true },
         ...overrides,
     }
 }
@@ -102,6 +104,7 @@ describe("/api/v1/whatsapp/settings", () => {
             displayPhoneNumber: null,
             verifiedName: null,
             accessTokenLifetime: { kind: "UNKNOWN", expiresAt: null },
+            lastWebhookEventAt: null,
             updatedBy: null,
             updatedAt: NOW,
         }
@@ -150,6 +153,19 @@ describe("/api/v1/whatsapp/settings", () => {
         expect(response.text).not.toContain(SAVED_TOKEN)
         expect(response.text).not.toContain(SAVED_SECRET)
         expect(response.text).not.toContain("v1:")
+    })
+
+    test("GET devolve ao Admin o estado das credenciais e o ultimo evento do webhook", async () => {
+        if (settings.row) {
+            settings.row.credentialsValid = false
+            settings.row.lastWebhookEventAt = new Date(NOW.getTime() - 60 * 60 * 1000)
+        }
+
+        const response = await call("get", "/api/v1/whatsapp/settings")
+
+        expect(response.status).toBe(200)
+        expect(response.body.data.credentialsStatus).toBe("INVALID")
+        expect(response.body.data.webhook).toEqual({ lastEventAt: "2026-10-14T12:00:00.000Z", stale: false })
     })
 
     test("GET devolve o tipo do token guardado sem consultar a Meta", async () => {
@@ -224,6 +240,7 @@ describe("/api/v1/whatsapp/settings", () => {
             data: savedView({
                 accessToken: { configured: true, last4: "77Zz" },
                 credentialsValid: true,
+                credentialsStatus: "VALID",
                 credentialsCheckedAt: NOW.toISOString(),
                 updatedBy: { id: 1, name: "Admin" },
                 displayPhoneNumber: "+55 12 99999-0000",

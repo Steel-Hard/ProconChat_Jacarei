@@ -100,6 +100,7 @@ export class MockWhatsAppSettingsRepository implements WhatsAppSettingsRepositor
             displayPhoneNumber: null,
             verifiedName: null,
             accessTokenLifetime: { kind: "UNKNOWN", expiresAt: null },
+            lastWebhookEventAt: null,
             updatedBy: null,
             updatedAt: this.clock(),
         }

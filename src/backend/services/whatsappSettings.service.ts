@@ -10,15 +10,20 @@ import { WhatsAppSettingsRepository } from "../repositories/whatsappSettings.rep
 import { AppointmentRepository } from "../repositories/appointment.repository.interface"
 import { appointmentRepository } from "../repositories/appointment.repository"
 import { whatsappSettingsRepository } from "../repositories/whatsappSettings.repository"
+import { OutboundMessageRepository } from "../repositories/outboundMessage.repository.interface"
+import { outboundMessageRepository } from "../repositories/outboundMessage.repository"
 import {
     ConnectionCheckInput,
     ConnectionTestReason,
     ConnectionTestResult,
+    CredentialsStatus,
+    DeliveryFailuresView,
     MessageTemplateRef,
     MetaAuthInput,
     NumberStatusView,
     SecretView,
     TemplatesStatusView,
+    WebhookStatusView,
     WhatsAppInternalConfig,
     WhatsAppSettingsInput,
     WhatsAppSettingsRow,
@@ -35,6 +40,9 @@ const APP_SECRET_PATTERN = /^\S{1,256}$/
 const MIN_LENGTH_FOR_LAST4 = 9
 const WEBHOOK_PATH = "/webhooks/whatsapp"
 const USAGE_WINDOW_MS = 24 * 60 * 60 * 1000
+const WEBHOOK_STALE_AFTER_MS = 24 * 60 * 60 * 1000
+const DELIVERY_FAILURES_WINDOW_MS = 24 * 60 * 60 * 1000
+const DELIVERY_FAILURES_LIMIT = 50
 
 const MESSAGE_TEMPLATES: MessageTemplateRef[] = [
     { kind: "CANCELLATION", ...MODELO_AVISO_CANCELAMENTO },
@@ -64,10 +72,12 @@ export interface WhatsAppSettingsService {
     isAutoReplyPaused(): Promise<boolean>
     getTemplatesStatus(): Promise<TemplatesStatusView>
     getNumberStatus(): Promise<NumberStatusView>
+    getDeliveryFailures(): Promise<DeliveryFailuresView>
 }
 
 interface WhatsAppSettingsServiceDependencies {
     settings: WhatsAppSettingsRepository
+    outbound: Pick<OutboundMessageRepository, "listRecentFailures">
     meta: MetaGraphClient
     gateway: Pick<GatewayClient, "notifyConfigChanged">
     usage: Pick<AppointmentRepository, "countNotifiedPhonesBetween">
@@ -130,6 +140,7 @@ function parseInput(body: unknown): WhatsAppSettingsInput {
 
 export function createWhatsAppSettingsService({
     settings,
+    outbound,
     meta,
     gateway,
     usage,
@@ -187,6 +198,32 @@ export function createWhatsAppSettingsService({
             displayPhoneNumber: row.displayPhoneNumber,
             verifiedName: row.verifiedName,
             accessTokenLifetime: row.accessTokenLifetime,
+            credentialsStatus: credentialsStatus(row),
+            webhook: webhookStatus(row.lastWebhookEventAt),
+        }
+    }
+
+    function credentialsStatus(row: WhatsAppSettingsRow): CredentialsStatus {
+        if (row.credentialsValid === null) {
+            return "NOT_CHECKED"
+        }
+        if (!row.credentialsValid) {
+            return "INVALID"
+        }
+        const lifetime = row.accessTokenLifetime
+        if (lifetime.kind === "EXPIRING" && Date.parse(lifetime.expiresAt) <= now().getTime()) {
+            return "EXPIRED"
+        }
+        return "VALID"
+    }
+
+    function webhookStatus(lastEventAt: Date | null): WebhookStatusView {
+        if (lastEventAt === null) {
+            return { lastEventAt: null, stale: true }
+        }
+        return {
+            lastEventAt: lastEventAt.toISOString(),
+            stale: now().getTime() - lastEventAt.getTime() > WEBHOOK_STALE_AFTER_MS,
         }
     }
 
@@ -287,6 +324,22 @@ export function createWhatsAppSettingsService({
             }
         },
 
+        async getDeliveryFailures() {
+            const since = new Date(now().getTime() - DELIVERY_FAILURES_WINDOW_MS)
+            const page = await outbound.listRecentFailures(since, DELIVERY_FAILURES_LIMIT)
+            return {
+                since: since.toISOString(),
+                count: page.count,
+                items: page.items.map((item) => ({
+                    id: item.id,
+                    kind: item.kind,
+                    errorCode: item.errorCode,
+                    failedAt: item.failedAt.toISOString(),
+                    appointmentId: item.appointmentId,
+                })),
+            }
+        },
+
         async getView() {
             return toView(await ensureRow())
         },
@@ -363,6 +416,7 @@ export function createWhatsAppSettingsService({
 
 export const whatsappSettingsService = createWhatsAppSettingsService({
     settings: whatsappSettingsRepository,
+    outbound: outboundMessageRepository,
     meta: metaGraphClient,
     gateway: gatewayClient,
     usage: appointmentRepository,

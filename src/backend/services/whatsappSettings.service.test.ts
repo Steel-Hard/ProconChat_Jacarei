@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { createWhatsAppSettingsService } from "./whatsappSettings.service"
 import { MENSAGEM_ATENDIMENTO_PAUSADO } from "./messageFormatter.service"
 import { MockWhatsAppSettingsRepository } from "../repositories/mock/whatsappSettingsMock.repository"
+import { OutboundMessageStubRepository } from "../repositories/mock/outboundMessageStub.repository"
 import { MockMetaGraphClient } from "../clients/metaGraphMock.client"
 import { decrypt, encrypt } from "../utils/crypto.utils"
 import { WhatsAppSettingsRow } from "../types/whatsappSettings.types"
@@ -36,6 +37,7 @@ function setup(row: Partial<WhatsAppSettingsRow> | null = savedRow(), env: Recor
     const logger = { log: vi.fn() }
     const service = createWhatsAppSettingsService({
         settings,
+        outbound: new OutboundMessageStubRepository(),
         meta,
         gateway,
         usage: { countNotifiedPhonesBetween: vi.fn(async () => 0) },
@@ -83,6 +85,8 @@ describe("whatsappSettings service", () => {
                 displayPhoneNumber: null,
                 verifiedName: null,
                 accessTokenLifetime: UNKNOWN,
+                credentialsStatus: "NOT_CHECKED",
+                webhook: { lastEventAt: null, stale: true },
             })
             expect(serialized(view)).not.toContain(SAVED_TOKEN)
             expect(serialized(view)).not.toContain(SAVED_SECRET)

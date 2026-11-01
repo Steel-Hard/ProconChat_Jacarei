@@ -15,6 +15,7 @@ interface SettingsRow {
     verified_name: string | null
     access_token_permanent: boolean | null
     access_token_expires_at: Date | null
+    last_webhook_event_at: Date | null
     updated_by: string | null
     updated_by_name: string | null
     updated_at: Date
@@ -23,7 +24,8 @@ interface SettingsRow {
 const SELECT_WITH_USER = `
     SELECT s.phone_number_id, s.business_account_id, s.access_token_encrypted, s.app_secret_encrypted,
            s.verify_token, s.auto_reply_paused, s.credentials_checked_at, s.credentials_valid,
-           s.display_phone_number, s.verified_name, s.access_token_permanent, s.access_token_expires_at, s.updated_by, u.name AS updated_by_name, s.updated_at
+           s.display_phone_number, s.verified_name, s.access_token_permanent, s.access_token_expires_at,
+           s.last_webhook_event_at, s.updated_by, u.name AS updated_by_name, s.updated_at
     FROM settings s
     LEFT JOIN Users u ON u.id = s.updated_by`
 
@@ -60,6 +62,7 @@ function toRow(row: SettingsRow): WhatsAppSettingsRow {
         displayPhoneNumber: row.display_phone_number,
         verifiedName: row.verified_name,
         accessTokenLifetime: lifetimeOf(row),
+        lastWebhookEventAt: row.last_webhook_event_at,
         updatedBy: row.updated_by === null ? null : { id: Number(row.updated_by), name: row.updated_by_name ?? "" },
         updatedAt: row.updated_at,
     }

@@ -1,3 +1,5 @@
+import { OutboundKind } from "./outboundMessage.types"
+
 export type AccessTokenLifetime =
     | { kind: "PERMANENT"; expiresAt: null }
     | { kind: "EXPIRING"; expiresAt: string }
@@ -20,6 +22,7 @@ export interface WhatsAppSettingsRow {
     displayPhoneNumber: string | null
     verifiedName: string | null
     accessTokenLifetime: AccessTokenLifetime
+    lastWebhookEventAt: Date | null
     updatedBy: WhatsAppSettingsUpdatedBy | null
     updatedAt: Date
 }
@@ -62,6 +65,29 @@ export interface WhatsAppSettingsView {
     displayPhoneNumber: string | null
     verifiedName: string | null
     accessTokenLifetime: AccessTokenLifetime
+    credentialsStatus: CredentialsStatus
+    webhook: WebhookStatusView
+}
+
+export interface DeliveryFailureView {
+    id: string
+    kind: OutboundKind
+    errorCode: string | null
+    failedAt: string
+    appointmentId: string | null
+}
+
+export interface DeliveryFailuresView {
+    since: string
+    count: number
+    items: DeliveryFailureView[]
+}
+
+export type CredentialsStatus = "NOT_CHECKED" | "INVALID" | "EXPIRED" | "VALID"
+
+export interface WebhookStatusView {
+    lastEventAt: string | null
+    stale: boolean
 }
 
 export interface WhatsAppSettingsInput {
