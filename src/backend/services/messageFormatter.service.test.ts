@@ -481,6 +481,16 @@ describe("messageFormatter.service", () => {
             }
         })
 
+        test("criarMensagensCategorias usa o título curto da categoria na linha da lista em vez de cortar o título completo", () => {
+            const linhas = linhasDaLista(
+                criarMensagensCategorias([
+                    { id: 7, title: "Cobrança/Desconto Indevido em conta", short_title: "Cobrança indevida", active: true },
+                ]),
+            )
+
+            expect(linhas).toEqual([{ id: "cat_7", title: "Cobrança indevida", description: undefined }])
+        })
+
         test("criarMensagensPerguntas e criarMensagensSlots devolvem a lista sem a chave footer", () => {
             const [listaPerguntas] = criarMensagensPerguntas(vintePerguntas, 1)
             const [listaSlots] = criarMensagensSlots(vinteSlots, 1)
