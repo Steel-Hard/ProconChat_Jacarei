@@ -158,7 +158,7 @@ export function decideTransition(
 }
 
 export function decideRetryCancellationNotice(state: CancellationNoticeState, now: Date): TransitionDecision {
-    if (state.status !== "CANCELED" || !state.hasStaffCancellation || state.lastCancellationNotice !== "FAILED") {
+    if (state.status !== "CANCELED" || !state.hasStaffCancellation || state.lastCancellationNotice === "NOTIFIED") {
         return refuse("Não há aviso de cancelamento com falha para reenviar", "NOTIFICATION_NOT_RETRYABLE")
     }
     if (!state.hasPhone) {

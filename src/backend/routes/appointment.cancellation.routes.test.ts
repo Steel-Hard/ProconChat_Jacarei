@@ -170,6 +170,22 @@ describe("appointment.routes: cancelamento pela equipe (HTTP)", () => {
         expect(sendTemplate).not.toHaveBeenCalled()
     })
 
+    it("C1 com a gravação do aviso e a leitura do detalhe falhando responde 500 genérico, com o cancelamento já gravado", async () => {
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
+        vi.spyOn(repository, "recordCitizenNotification").mockRejectedValueOnce(new Error("gravação falhou"))
+        vi.spyOn(repository, "findById").mockRejectedValueOnce(new Error("leitura falhou"))
+
+        const res = await request(app)
+            .patch("/api/v1/appointments/1/status")
+            .set("Cookie", cookieFor(OPERATOR))
+            .send({ action: "cancel", reason: "UNIT_CLOSED" })
+        consoleError.mockRestore()
+
+        expect(res.status).toBe(500)
+        expect(res.body).toEqual({ error: { code: "INTERNAL_SERVER_ERROR", message: "Internal Server Error" } })
+        expect(repository.cancelCalls).toHaveLength(1)
+    })
+
     it("C1 válido responde 200 com o detalhe cancelado e os eventos de cancelamento e de aviso", async () => {
         const res = await request(app)
             .patch("/api/v1/appointments/1/status")

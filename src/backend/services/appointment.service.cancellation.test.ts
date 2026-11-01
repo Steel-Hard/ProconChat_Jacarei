@@ -44,12 +44,14 @@ function setup({
         decrypt: () => PHONE,
         logger: { log: vi.fn() },
     })
+    const logger = { error: vi.fn() }
     const service = createAppointmentService({
         repository,
         conversationEvents: conversationEventsOf({}),
         notifications,
+        logger,
     })
-    return { repository, sendTemplate, service }
+    return { repository, sendTemplate, service, logger }
 }
 
 describe("appointment.service: cancelamento pela equipe", () => {
@@ -78,6 +80,24 @@ describe("appointment.service: cancelamento pela equipe", () => {
         expect(repository.notificationCalls).toEqual([
             { id: "1", outcome: "FAILED", kind: "CANCELLATION", actorUserId: 42, now: FIXED_NOW },
         ])
+    })
+
+    it("com a gravação do resultado do aviso lançando depois do cancelamento, devolve o detalhe cancelado e loga só o id e o código", async () => {
+        const { logger, repository, service } = setup()
+        vi.spyOn(repository, "recordCitizenNotification").mockRejectedValueOnce(
+            Object.assign(new Error(`falha ao gravar o aviso para ${PHONE}`), { code: "ECONNRESET" }),
+        )
+
+        const detail = await service.cancelAppointment("1", 42, "UNIT_CLOSED", undefined, MANAGER, FIXED_NOW)
+
+        expect(detail.status).toBe("CANCELED")
+        expect(logger.error).toHaveBeenCalledTimes(1)
+        expect(logger.error).toHaveBeenCalledWith("Erro ao registrar o resultado do aviso de cancelamento ao cidadão", {
+            appointmentId: "1",
+            code: "ECONNRESET",
+        })
+        expect(JSON.stringify(logger.error.mock.calls)).not.toContain(PHONE)
+        expect(JSON.stringify(logger.error.mock.calls)).not.toContain("falha ao gravar")
     })
 
     it("o detalhe calcula retry_cancellation_notice a partir do último aviso de cancelamento", async () => {

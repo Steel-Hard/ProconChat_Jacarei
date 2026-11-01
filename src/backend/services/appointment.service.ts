@@ -367,7 +367,14 @@ export function createAppointmentService(deps?: {
             now: Date = new Date(),
         ): Promise<AppointmentDetail> {
             await repository.cancel(String(idOrCode), actorUserId, reason, note, now)
-            await notifications.notifyCancellation(String(idOrCode), actorUserId, now)
+            try {
+                await notifications.notifyCancellation(String(idOrCode), actorUserId, now)
+            } catch (error) {
+                logger.error("Erro ao registrar o resultado do aviso de cancelamento ao cidadão", {
+                    appointmentId: String(idOrCode),
+                    code: errorCodeOf(error),
+                })
+            }
             return getAppointmentDetail(idOrCode, access, now)
         },
 

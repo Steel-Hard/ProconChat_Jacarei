@@ -325,17 +325,20 @@ describe("appointmentTransitions", () => {
             }
         })
 
-        it.each(["NOTIFIED", null] as const)(
-            "recusa o reenvio com NOTIFICATION_NOT_RETRYABLE quando o último aviso é %s",
-            (lastCancellationNotice) => {
-                const decision = decideRetryCancellationNotice({ ...failedNotice, lastCancellationNotice }, now)
+        it("recusa o reenvio com NOTIFICATION_NOT_RETRYABLE quando o último aviso é NOTIFIED", () => {
+            const decision = decideRetryCancellationNotice({ ...failedNotice, lastCancellationNotice: "NOTIFIED" }, now)
 
-                expect(decision.allowed).toBe(false)
-                if (!decision.allowed) {
-                    expect(decision.error.code).toBe("NOTIFICATION_NOT_RETRYABLE")
-                }
-            },
-        )
+            expect(decision.allowed).toBe(false)
+            if (!decision.allowed) {
+                expect(decision.error.code).toBe("NOTIFICATION_NOT_RETRYABLE")
+            }
+        })
+
+        it("permite o reenvio quando houve cancelamento pela equipe e nenhum evento de aviso foi gravado", () => {
+            const decision = decideRetryCancellationNotice({ ...failedNotice, lastCancellationNotice: null }, now)
+
+            expect(decision).toEqual({ allowed: true })
+        })
 
         it("recusa o reenvio sem telefone com CITIZEN_PHONE_UNAVAILABLE", () => {
             const decision = decideRetryCancellationNotice({ ...failedNotice, hasPhone: false }, now)
