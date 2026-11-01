@@ -370,7 +370,7 @@ export function createAppointmentService(deps?: {
             try {
                 await notifications.notifyCancellation(String(idOrCode), actorUserId, now)
             } catch (error) {
-                logger.error("Erro ao registrar o resultado do aviso de cancelamento ao cidadão", {
+                logger.error("Erro no aviso de cancelamento ao cidadão depois do cancelamento", {
                     appointmentId: String(idOrCode),
                     code: errorCodeOf(error),
                 })

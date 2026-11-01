@@ -92,7 +92,7 @@ describe("appointment.service: cancelamento pela equipe", () => {
 
         expect(detail.status).toBe("CANCELED")
         expect(logger.error).toHaveBeenCalledTimes(1)
-        expect(logger.error).toHaveBeenCalledWith("Erro ao registrar o resultado do aviso de cancelamento ao cidadão", {
+        expect(logger.error).toHaveBeenCalledWith("Erro no aviso de cancelamento ao cidadão depois do cancelamento", {
             appointmentId: "1",
             code: "ECONNRESET",
         })
