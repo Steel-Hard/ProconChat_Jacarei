@@ -5,6 +5,28 @@
     "heading": "WhatsApp",
     "subtitle": "Conexão do número institucional com a WhatsApp Cloud API, oficial da Meta. Acesso exclusivo da conta admin.",
     "loadFailed": "Não foi possível carregar a configuração do WhatsApp agora. Tente de novo.",
+    "tabs": {
+        "label": "Seções da tela de WhatsApp",
+        "connection": "Conexão",
+        "privacy": "Privacidade"
+    },
+    "privacy": {
+        "heading": "Privacidade",
+        "description": "Dados de quem responde pelo tratamento dos dados pessoais. Eles aparecem na página pública de privacidade, e o link dela entra na saudação do bot quando o nome do controlador e o e-mail de contato estão preenchidos.",
+        "loadFailed": "Não foi possível carregar a configuração de privacidade.",
+        "fields": {
+            "controllerName": "Nome do controlador",
+            "dpoName": "Nome do encarregado (DPO)",
+            "contactEmail": "E-mail de contato para pedidos do titular",
+            "inPersonContact": "Atendimento presencial (opcional)",
+            "retentionText": "Prazos de guarda"
+        },
+        "invalidEmail": "Informe um e-mail válido.",
+        "tooLong": "Use no máximo {{max}} caracteres.",
+        "errors": {
+            "save": "Não foi possível salvar a configuração de privacidade agora. Tente de novo."
+        }
+    },
     "pausedBanner": {
         "text": "As respostas automáticas estão pausadas. O chatbot não está respondendo aos cidadãos.",
         "resume": "Reativar respostas"

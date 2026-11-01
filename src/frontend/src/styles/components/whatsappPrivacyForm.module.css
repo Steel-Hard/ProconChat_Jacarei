@@ -1,0 +1,69 @@
+.card {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 22px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg-surface);
+}
+
+.title {
+    font: 700 16px var(--font-heading);
+}
+
+.description {
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.fields {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-width: 640px;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-strong);
+}
+
+.input {
+    min-width: 0;
+    padding: 9px 11px;
+    border: 1px solid var(--border-input);
+    border-radius: 8px;
+    color: var(--text-body);
+    font: 14px var(--font-body);
+}
+
+.textarea {
+    resize: vertical;
+    line-height: 1.5;
+}
+
+.changed {
+    border-color: var(--warn-accent);
+}
+
+.input:focus {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 0;
+}
+
+.input[aria-invalid="true"] {
+    border-color: var(--danger);
+}
+
+.error {
+    font-size: 12.5px;
+    color: var(--error-text);
+}
