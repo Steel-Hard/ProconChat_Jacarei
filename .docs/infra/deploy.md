@@ -485,7 +485,7 @@ Conferir no dia seguinte:
 ls -l /opt/proconchat/backups/
 ```
 
-**Retenção e LGPD.** O dump contém o telefone criptografado dos agendamentos, o hash do telefone das sessões e o CPF em hash e mascarado. Com 7 dias de retenção, um telefone apagado ao fim do agendamento (decisão 002) sobrevive menos de 7 dias nos backups: o dump mais antigo é apagado quando completa 7 dias. Isso faz parte da política de retenção, e o restante dela é da #69.
+**Retenção e LGPD.** O dump contém o telefone criptografado dos agendamentos, o hash do telefone das sessões e o CPF em hash e mascarado. Com 7 dias de retenção, um telefone apagado quando chega o horário do agendamento (decisão 002, seção Retenção) sobrevive menos de 7 dias nos backups: o dump mais antigo é apagado quando completa 7 dias. A página pública `/privacidade` informa esse prazo, e o restante da política de retenção está na decisão 002 (#69).
 
 **Não há cópia fora da VM.** Os dumps ficam só no disco da VM. Perder a VM ou a conta AWS (por exemplo, no fim do crédito) perde também os backups. A cópia externa (por exemplo, um bucket S3) ficou para depois.
 

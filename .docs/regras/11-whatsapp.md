@@ -10,9 +10,23 @@ Conectar o painel ao número institucional na **WhatsApp Cloud API** (oficial da
 
 ## Estado da tela
 
-**Entregue em parte (issue #54).** Já funcionam: topo com número e situação, pausa, credenciais, "Configure no painel da Meta" e teste de conexão. Ainda não construídos na tela: **Modelos de mensagem** e a qualidade e o limite do **Estado do número** (API pronta na issue #67, tela na #127), o resto do **Estado do número** e o **Histórico de alterações** (API pronta na issue #88, tela na #129).
+**Entregue em parte (issues #54 e #69).** Já funcionam: topo com número e situação, pausa, credenciais, "Configure no painel da Meta", teste de conexão e a aba **Privacidade** (issue #69). Ainda não construídos na tela: **Modelos de mensagem** e a qualidade e o limite do **Estado do número** (API pronta na issue #67, tela na #127), o resto do **Estado do número** e o **Histórico de alterações** (API pronta na issue #88, tela na #129).
 
 ## O que a tela mostra
+
+### Abas
+
+A tela tem duas abas logo abaixo do título:
+
+- **Conexão** (aberta por padrão): todo o conteúdo descrito abaixo, de "Estado do número" a "Histórico de alterações", mais a faixa de pausa e o resumo do topo.
+- **Privacidade**: os dados de privacidade (seção [Privacidade](#privacidade)).
+
+Regras da troca de abas:
+
+- as abas são navegáveis pelo teclado (setas para a esquerda e para a direita);
+- trocar de aba **não descarta** as alterações pendentes de nenhuma das duas: cada aba guarda as suas até salvar ou descartar;
+- a nota "Última alteração por [nome] em [data]" e a barra "N alterações não salvas" do topo seguem a aba ativa. Na Conexão, mostram as credenciais; na Privacidade, os dados de privacidade;
+- a configuração de privacidade só é lida quando a aba Privacidade é aberta pela primeira vez.
 
 ### Topo
 
@@ -84,6 +98,26 @@ Mensagens enviadas fora da conversa precisam de modelo aprovado pela Meta ([deci
 - Cada um mostra o status na Meta: **Aprovado**, **Em análise** ou **Rejeitado**, com o botão **"Atualizar status"**.
 - Se algum não estiver aprovado: "Enquanto este modelo não for aprovado, [lembretes / avisos de cancelamento] não serão enviados."
 
+### Privacidade
+
+**Entregue (issue #69).** Dados de quem responde pelo tratamento dos dados pessoais ([decisão 002](../decisoes/002-lgpd-dados-pessoais.md)). Eles mudam na passagem para o PROCON, por isso ficam no painel e não no código.
+
+| Campo | Limite | Observação |
+|---|---|---|
+| Nome do controlador | até 150 caracteres | |
+| Nome do encarregado (DPO) | até 150 caracteres | |
+| E-mail de contato para pedidos do titular | até 254 caracteres | precisa ter o formato `nome@dominio.tld` |
+| Atendimento presencial (opcional) | até 300 caracteres | telefone ou endereço |
+| Prazos de guarda | até 2000 caracteres | texto livre, várias linhas |
+
+- **Segue o padrão de salvar** ([regras gerais](00-regras-gerais.md#3-salvar-descartar-e-registrar-quem-alterou)): as alterações ficam pendentes até **Salvar**, **Descartar** volta aos valores salvos e o topo mostra "Última alteração por [nome] em [data]".
+- Todos os campos podem ficar vazios. Os espaços nas pontas são removidos ao salvar, e campo vazio é gravado como "não cadastrado".
+- Com um e-mail fora do formato, o campo mostra **"Informe um e-mail válido."**; com texto acima do limite, **"Use no máximo N caracteres."**, com N do campo. Nos dois casos, **Salvar** fica desabilitado.
+- Se a leitura falhar, a aba mostra "Não foi possível carregar a configuração de privacidade." e nenhum formulário. Se o salvamento falhar, aparece "Não foi possível salvar a configuração de privacidade agora. Tente de novo." e as alterações continuam pendentes.
+- **Página pública:** esses dados aparecem na página `/privacidade` do painel, aberta sem login. Campo vazio aparece como **"Informação ainda não cadastrada"**; o atendimento presencial vazio não aparece.
+- **Saudação do bot:** a saudação ganha a linha **"Saiba como tratamos seus dados: <endereço público>/privacidade"** só quando o **nome do controlador e o e-mail de contato** estão preenchidos **e** o servidor tem o endereço público (`PUBLIC_BASE_URL`). A linha vai em toda mensagem que repete a saudação, inclusive na troca de página das categorias. Apagar o controlador ou o e-mail tira a linha já na próxima saudação.
+- O salvamento da privacidade não entra no "Histórico de alterações" (#129); a aba mostra só a última alteração.
+
 ### Histórico de alterações
 
 **Ainda não construído na tela.** A API está pronta (issue #88, `GET /api/v1/whatsapp/settings/history`, só Admin, as 50 alterações mais recentes) e a tela fica com a #129. Hoje a tela mostra só "Última alteração por [nome] em [data]", que muda ao salvar credenciais e também ao pausar ou reativar as respostas.
@@ -94,6 +128,7 @@ Quem alterou o quê e quando. **Os valores do token e do App Secret não são re
 
 | Ação | Regra |
 |---|---|
+| Editar os dados de privacidade | **Segue o padrão de salvar**. Não exige teste. Um e-mail fora do formato ou um texto acima do limite desabilitam o Salvar |
 | Editar IDs, substituir segredos | **Segue o padrão de salvar** ([regras gerais](00-regras-gerais.md#3-salvar-descartar-e-registrar-quem-alterou)). Salvar credenciais novas exige teste bem-sucedido |
 | Testar conexão | Pode ser feito a qualquer momento |
 | Atualizar status dos modelos | Consulta a Meta de novo. API pronta (issue #67), **botão na tela com a #127** |

@@ -30,6 +30,7 @@
 | `16` | Permissões granulares das contas (#62): cria `Permissions` com as 8 permissões (nome e descrição do protótipo) e `UserPermissions`, adiciona `permissions_updated_by` e `permissions_updated_at` em `Users` com `chk_users_permissions_updated` (as duas preenchidas ou as duas nulas) e cria `uniq_users_email_lower` (e-mail único sem diferenciar maiúsculas). Antes do índice, aborta com mensagem clara se houver e-mails repetidos ignorando maiúsculas. As contas existentes ficam sem permissões. O `Down` remove o índice, a constraint, as duas colunas e as duas tabelas |
 | `17` | Agenda com data efetiva (#134): cria `ScheduleChanges`, que armazena snapshots completos da configuração, data local de início, autor e última alteração. O `Down` remove os snapshots |
 | `18` | Mensagens enviadas e histórico de alterações (#88): cria os tipos `outbound_kind` e `outbound_status`, a tabela `OutboundMessages` (com o HMAC do wamid em `provider_message_hash` e `chk_outbound_messages_provider_message_hash`, o índice parcial das falhas e os índices das FKs) e a tabela `AuditLog` (com `chk_audit_log_data_object`). O `Down` remove as duas tabelas e os dois tipos |
+| `19` | Configuração de privacidade (#69): cria a tabela de linha única `PrivacySettings` (controlador, encarregado, e-mail de contato, atendimento presencial e prazos de guarda), com `CHECK` de linha única, de tamanho, de espaço nas pontas e do formato do e-mail. Não insere linha. O `Down` remove a tabela |
 
 ### Diagrama
 
@@ -57,7 +58,7 @@ erDiagram
     Users |o--o{ AuditLog : "autor"
 ```
 
-Tabelas de configuração, sem relação com as demais além de `updated_by` → `Users`: `ScheduleSettings`, `ScheduleRanges`, `BlockedDates`, `ScheduleChanges`, `AttendanceDocuments` e `WhatsAppSettings`. `Categories` e `Questions` também têm `updated_by` → `Users`.
+Tabelas de configuração, sem relação com as demais além de `updated_by` → `Users`: `ScheduleSettings`, `ScheduleRanges`, `BlockedDates`, `ScheduleChanges`, `AttendanceDocuments`, `WhatsAppSettings` e `PrivacySettings`. `Categories` e `Questions` também têm `updated_by` → `Users`.
 
 A extensão `unaccent` é criada na migration `11`, para a busca de agendamentos pelo nome sem diferenciar acentos (#60).
 
@@ -528,7 +529,7 @@ CREATE UNIQUE INDEX uniq_appointments_active
 - **Vagas por horário:** como pode haver mais de uma vaga (`seats_per_slot`), não há índice único por horário. A #56 conta as vagas numa transação com `pg_advisory_xact_lock` pela data e hora, usando o índice parcial `idx_appointments_datetime_active`. O mesmo CPF não pode ter dois agendamentos `PENDING`/`CONFIRMED` no mesmo horário (`uniq_appointments_active`).
 - `session_id` não é `UNIQUE`: não está decidido se o cidadão pode cancelar e agendar de novo na mesma conversa.
 - **Busca por telefone** (retorno de quem já tem agendamento, #59): `phone_encrypted` não é pesquisável, então a busca é por `Sessions.phone_hash` via `session_id`.
-- O apagamento de `phone_encrypted` quando o agendamento termina é regra de aplicação/retenção (#69), não `CHECK`: o aviso de cancelamento pela equipe é enviado depois de mudar o status e pode ser reenviado.
+- O apagamento de `phone_encrypted` é regra de aplicação (#69), não `CHECK`: quando chega o horário do agendamento (`appointment_datetime <= agora`), em qualquer status, uma varredura do backend a cada 60 s grava `phone_encrypted = NULL` sem mudar mais nada e sem evento. Antes do horário o telefone ainda serve para o reenvio do aviso de cancelamento e para o lembrete.
 
 ### AppointmentNotes e AppointmentEvents
 
@@ -743,6 +744,32 @@ CREATE TABLE WhatsAppSettings (
 - `access_token_permanent` e `access_token_expires_at` (#54, migration `15`): o tipo do token de acesso salvo, descoberto pelo `debug_token` da Meta. `TRUE` sem data = não expira; `FALSE` com a data = expira nessa data; as duas `NULL` = não se sabe (nunca verificado ou a Meta não respondeu). O `CHECK` usa `IS TRUE`/`IS FALSE` porque, com `= TRUE`, uma data sem `access_token_permanent` daria `NULL` no `CHECK` e passaria. Um teste dos valores salvos só grava o tipo quando a Meta o informa; o salvar que troca o token sempre grava o tipo do token novo (inclusive desconhecido). Gravar pelo teste não muda `updated_by`/`updated_at`. A validade fica velha se o token for revogado direto na Meta. A #88 não detecta isso (a decisão ficou fora do escopo, Q5 da spec): a tela segue com o "Testar conexão", e o estado `EXPIRED` cobre o token com validade vencida.
 - `last_webhook_event_at` (#88): a data do último POST do webhook com ao menos uma `change` aceita, gravada pela rota interna `POST /api/v1/internal/whatsapp/events` a cada chamada, sem mudar `updated_by`/`updated_at` e sem criar a linha. A leitura do painel marca o webhook como parado acima de 24h sem evento, ou quando nunca houve evento.
 
+### PrivacySettings — #69, [decisão 002](../decisoes/002-lgpd-dados-pessoais.md)
+
+```sql
+CREATE TABLE PrivacySettings (
+    id SMALLINT PRIMARY KEY DEFAULT 1,
+    controller_name VARCHAR(150),
+    dpo_name VARCHAR(150),
+    contact_email VARCHAR(254),
+    in_person_contact VARCHAR(300),
+    retention_text TEXT,
+    updated_by BIGINT REFERENCES Users(id),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_privacy_settings_singleton CHECK (id = 1),
+    CONSTRAINT chk_privacy_settings_controller_name CHECK (controller_name IS NULL OR (char_length(controller_name) BETWEEN 1 AND 150 AND controller_name = btrim(controller_name))),
+    CONSTRAINT chk_privacy_settings_dpo_name CHECK (dpo_name IS NULL OR (char_length(dpo_name) BETWEEN 1 AND 150 AND dpo_name = btrim(dpo_name))),
+    CONSTRAINT chk_privacy_settings_contact_email CHECK (contact_email IS NULL OR (contact_email ~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' AND contact_email = btrim(contact_email))),
+    CONSTRAINT chk_privacy_settings_in_person_contact CHECK (in_person_contact IS NULL OR (char_length(in_person_contact) BETWEEN 1 AND 300 AND in_person_contact = btrim(in_person_contact))),
+    CONSTRAINT chk_privacy_settings_retention_text CHECK (retention_text IS NULL OR (char_length(retention_text) BETWEEN 1 AND 2000 AND retention_text = btrim(retention_text)))
+);
+```
+
+- Linha única (`id = 1`), editada pelo Admin na aba Privacidade da tela de WhatsApp (`PUT /api/v1/whatsapp/settings/privacy`, upsert no `id = 1`; vale o último). Sem linha, a leitura devolve todos os campos `NULL`. O seed não cria a linha.
+- Os cinco textos são públicos por natureza (dados da organização, não do cidadão) e são lidos sem login pela página `/privacidade` (`GET /api/v1/privacy`), sem `updated_by` nem `updated_at`.
+- A aplicação apara os espaços e grava texto vazio como `NULL`; o `CHECK` recusa espaço nas pontas e texto vazio gravado por fora.
+- `updated_by`/`updated_at` = "Última alteração por [nome] em [data]" da aba. O salvamento não grava em `AuditLog`.
+
 ### OutboundMessages — #88, [decisão 005](../decisoes/005-mensagens-ao-cidadao.md)
 
 ```sql
@@ -799,7 +826,7 @@ CREATE INDEX idx_audit_log_area ON AuditLog(area, created_at DESC, id DESC);
 | Dado | Coluna | Forma | Garantia no banco |
 |---|---|---|---|
 | Telefone (sessão) | `Sessions.phone_hash` | HMAC-SHA256 hex | — |
-| Telefone (agendamento) | `Appointments.phone_encrypted` | Cifrado, anulável (apagado quando o agendamento termina, #69) | `CHECK` de formato `v1:...` |
+| Telefone (agendamento) | `Appointments.phone_encrypted` | Cifrado, anulável (apagado quando chega o horário do agendamento, #69) | `CHECK` de formato `v1:...` |
 | CPF | `Appointments.cpf_hash` + `cpf_masked` | HMAC-SHA256 com `CPF_HASH_SECRET`, em hex de 64 + `***.456.789-**` | `CHECK` de formato nas duas |
 | Nome do titular | `Appointments.name` | Texto (decisão 002: a equipe precisa identificar a pessoa) | — |
 | Segredos da Cloud API | `WhatsAppSettings.*_encrypted` | Cifrado | `CHECK` de formato `v1:...` |
@@ -808,7 +835,7 @@ CREATE INDEX idx_audit_log_area ON AuditLog(area, created_at DESC, id DESC);
 
 **Formato cifrado:** `v1:<iv>:<authTag>:<ciphertext>`, cada parte em base64, AES-256-GCM. O `CHECK` por regex impede que um valor em claro (um telefone `5512...`, um token `EAA...`) seja gravado por engano. O prefixo `v1` permite trocar de algoritmo ou de chave no futuro. O utilitário de criptografia é único e compartilhado entre a #56 e a #83 (`src/backend/utils/crypto.utils.ts`, `encrypt`/`decrypt`), e a chave-mestra vem do `.env` (decisões 002 e 003): `ENCRYPTION_KEY`, obrigatória, com exatamente 64 caracteres hexadecimais (`openssl rand -hex 32`), usada direto como chave AES de 256 bits, sem derivação nem valor alternativo. IV aleatório de 12 bytes e tag de 16 bytes. Um valor adulterado ou cifrado com outra chave é recusado.
 
-A política de retenção (por quanto tempo sessões, eventos e agendamentos ficam guardados) é da #69.
+A política de retenção está na [decisão 002](../decisoes/002-lgpd-dados-pessoais.md#retenção) (#69): o telefone do agendamento é apagado no horário; os prazos de sessões, eventos e agendamentos ficam no texto "Prazos de guarda" de `PrivacySettings`, e a exclusão ou anonimização automática por prazo vai para uma issue nova.
 
 ### Nomes que mudaram em relação à proposta da Sprint 2
 
