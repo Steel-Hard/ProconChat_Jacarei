@@ -6,8 +6,9 @@ import { getLocalParts } from "../utils/date.utils"
 
 export const SAUDACAO =
     "Olá! Sou o assistente virtual do PROCON Jacareí. As orientações a seguir têm caráter informativo e não substituem o atendimento formal.\n\n" +
-    "🔒 Privacidade (LGPD): utilizamos o identificador do seu telefone de forma anonimizada e as opções selecionadas exclusivamente para prestar este atendimento e orientar sua dúvida. Não armazenamos mensagens de texto abertas.\n\n" +
     "Escolha uma das opções abaixo digitando o número correspondente:"
+
+export const RODAPE_ATENDIMENTO = "Orientação informativa · Dados tratados conforme a LGPD"
 
 export const ERRO_PREFIXO = "Não entendi. Digite o número de uma das opções abaixo:"
 
@@ -239,7 +240,7 @@ export function formatarListaCategorias(
     const paginacao = paginarItens(titulos, pagina)
     const listaFormatada = formatarListaPaginada(paginacao)
 
-    return `${SAUDACAO}\n${listaFormatada}`
+    return `${SAUDACAO}\n${listaFormatada}\n\n${RODAPE_ATENDIMENTO}`
 }
 
 export function formatarErroCategoria(
@@ -454,6 +455,7 @@ export function criarMensagensCategorias(
             text: "Selecione a categoria correspondente à sua dúvida:",
             buttonText: "Ver categorias",
             rows,
+            footer: RODAPE_ATENDIMENTO,
         },
     ]
 }
@@ -550,8 +552,6 @@ export function criarMensagensSlots(
         },
     ]
 }
-
-export const RODAPE_RETORNO = "Orientação informativa · Privacidade (LGPD) protegida"
 
 export const ERRO_MENU_RETORNO =
     "Não entendi. Por favor, escolha uma das opções:\n1. Remarcar\n2. Cancelar\n3. Tenho outra dúvida"

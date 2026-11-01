@@ -28,7 +28,7 @@ import {
     MENU_RETORNO,
     paginarItens,
     RESPOSTA_CANCELADO,
-    RODAPE_RETORNO,
+    RODAPE_ATENDIMENTO,
     SEM_HORARIOS_REMARCACAO,
     TEXTO_BOTOES_RETORNO,
 } from "./messageFormatter.service"
@@ -98,7 +98,7 @@ function returnMenu(sessionId: string, newSession: boolean, appointmentDatetime:
         sessionId,
         "AWAITING_RETURN_CHOICE",
         MENU_RETORNO(quando),
-        [{ type: "buttons", text: TEXTO_BOTOES_RETORNO(quando), footer: RODAPE_RETORNO, buttons: criarBotoesRetorno() }],
+        [{ type: "buttons", text: TEXTO_BOTOES_RETORNO(quando), footer: RODAPE_ATENDIMENTO, buttons: criarBotoesRetorno() }],
         newSession,
     )
 }

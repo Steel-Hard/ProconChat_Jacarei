@@ -10,7 +10,7 @@ import {
     ERRO_MENU_RETORNO,
     formatarListaCategorias,
     RESPOSTA_CANCELADO,
-    RODAPE_RETORNO,
+    RODAPE_ATENDIMENTO,
 } from "./messageFormatter.service"
 import { buildActiveSession, buildReturningAppointment, categorias } from "./mock/conversationFlow.fixtures"
 import { createConversationFlowHarness } from "./mock/conversationFlowHarness"
@@ -153,7 +153,7 @@ describe("conversationFlow.service: retorno de quem já tem agendamento (#59)", 
                         {
                             type: "buttons",
                             text: `Você tem atendimento marcado em ${QUANDO}.`,
-                            footer: RODAPE_RETORNO,
+                            footer: RODAPE_ATENDIMENTO,
                             buttons: MENU_BUTTONS,
                         },
                     ],
@@ -327,7 +327,7 @@ describe("conversationFlow.service: retorno de quem já tem agendamento (#59)", 
                         {
                             type: "buttons",
                             text: `Você tem atendimento marcado em ${QUANDO}.`,
-                            footer: RODAPE_RETORNO,
+                            footer: RODAPE_ATENDIMENTO,
                             buttons: MENU_BUTTONS,
                         },
                     ],

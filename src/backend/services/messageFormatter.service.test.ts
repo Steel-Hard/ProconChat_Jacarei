@@ -25,7 +25,7 @@ import {
     formatarQuando,
     MENU_RETORNO,
     criarBotoesRetorno,
-    RODAPE_RETORNO,
+    RODAPE_ATENDIMENTO,
     CONFIRMA_CANCELAMENTO,
     criarBotoesConfirmaCancelamento,
     RESPOSTA_CANCELADO,
@@ -35,6 +35,7 @@ import {
     AGENDAMENTO_NAO_ALTERAVEL,
     ERRO_FALHA_ALTERACAO,
     TEXTO_BOTOES_RETORNO,
+    SAUDACAO,
 } from "./messageFormatter.service"
 import type { OutgoingMessage } from "../types/message.types"
 import type { AvailableSlot } from "../types/schedule.types"
@@ -149,11 +150,18 @@ describe("messageFormatter.service", () => {
         expect(texto).toContain(AVISO_NAO_VINCULANTE)
     })
 
-    test("formatarListaCategorias menciona o carater informativo e LGPD na saudacao de abertura", () => {
+    test("SAUDACAO mantém o caráter informativo e não traz mais o parágrafo de privacidade", () => {
+        expect(SAUDACAO).toBe(
+            "Olá! Sou o assistente virtual do PROCON Jacareí. As orientações a seguir têm caráter informativo e não substituem o atendimento formal.\n\nEscolha uma das opções abaixo digitando o número correspondente:",
+        )
+        expect(SAUDACAO).not.toContain("Privacidade (LGPD)")
+        expect(SAUDACAO).not.toContain("anonimizada")
+    })
+
+    test("formatarListaCategorias abre com a saudação e termina com o rodapé de LGPD no texto de reserva", () => {
         const texto = formatarListaCategorias(categorias)
 
-        expect(texto).toContain("caráter informativo")
-        expect(texto).toContain("LGPD")
+        expect(texto).toBe(`${SAUDACAO}\n1. Contrato\n2. Garantias\n3. Cobrança Indevida\n\n${RODAPE_ATENDIMENTO}`)
         expect(texto).not.toContain(AVISO_NAO_VINCULANTE)
     })
 
@@ -449,6 +457,35 @@ describe("messageFormatter.service", () => {
             ])
         })
 
+        test("criarMensagensCategorias põe o rodapé de LGPD na lista da primeira e da segunda página, depois da saudação", () => {
+            const primeira = criarMensagensCategorias(vinteCategorias, 1)
+            const segunda = criarMensagensCategorias(vinteCategorias, 2)
+
+            for (const [mensagens, pagina] of [
+                [primeira, 1],
+                [segunda, 2],
+            ] as const) {
+                expect(mensagens).toEqual([
+                    { type: "text", text: SAUDACAO },
+                    {
+                        type: "list",
+                        text: "Selecione a categoria correspondente à sua dúvida:",
+                        buttonText: "Ver categorias",
+                        rows: linhasDaLista(criarMensagensCategorias(vinteCategorias, pagina)),
+                        footer: RODAPE_ATENDIMENTO,
+                    },
+                ])
+            }
+        })
+
+        test("criarMensagensPerguntas e criarMensagensSlots devolvem a lista sem a chave footer", () => {
+            const [listaPerguntas] = criarMensagensPerguntas(vintePerguntas, 1)
+            const [listaSlots] = criarMensagensSlots(vinteSlots, 1)
+
+            expect(listaPerguntas).not.toHaveProperty("footer")
+            expect(listaSlots).not.toHaveProperty("footer")
+        })
+
         test("criarMensagensPerguntas na última página termina só com Voltar opções", () => {
             const linhas = linhasDaLista(criarMensagensPerguntas(vintePerguntas, 3))
 
@@ -631,9 +668,9 @@ describe("messageFormatter.service", () => {
             expect(botoes.every((botao) => Array.from(botao.title).length <= 20)).toBe(true)
         })
 
-        test("RODAPE_RETORNO é o aviso curto aprovado e cabe nos 60 caracteres do rodapé da Cloud API", () => {
-            expect(RODAPE_RETORNO).toBe("Orientação informativa · Privacidade (LGPD) protegida")
-            expect(Array.from(RODAPE_RETORNO).length).toBeLessThanOrEqual(60)
+        test("RODAPE_ATENDIMENTO é o aviso curto de LGPD decidido e cabe nos 60 caracteres do rodapé da Cloud API", () => {
+            expect(RODAPE_ATENDIMENTO).toBe("Orientação informativa · Dados tratados conforme a LGPD")
+            expect(Array.from(RODAPE_ATENDIMENTO).length).toBeLessThanOrEqual(60)
         })
 
         test("CONFIRMA_CANCELAMENTO pede a confirmação com o horário e as duas opções", () => {
