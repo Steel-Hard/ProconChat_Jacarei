@@ -34,6 +34,7 @@ import {
     ERRO_CONFIRMA_CANCELAMENTO,
     AGENDAMENTO_NAO_ALTERAVEL,
     ERRO_FALHA_ALTERACAO,
+    TEXTO_BOTOES_RETORNO,
 } from "./messageFormatter.service"
 import type { OutgoingMessage } from "../types/message.types"
 import type { AvailableSlot } from "../types/schedule.types"
@@ -701,6 +702,12 @@ describe("messageFormatter.service", () => {
             expect(ERRO_FALHA_ALTERACAO).toBe(
                 "Não foi possível concluir a alteração no momento devido a uma instabilidade. Seu agendamento não foi alterado. Por favor, tente novamente mais tarde.",
             )
+        })
+
+        test("TEXTO_BOTOES_RETORNO é a frase do horário marcado, sem as opções numeradas", () => {
+            const texto = TEXTO_BOTOES_RETORNO("09/11 às 23:30")
+
+            expect(texto).toBe("Você tem atendimento marcado em 09/11 às 23:30.")
         })
     })
 })

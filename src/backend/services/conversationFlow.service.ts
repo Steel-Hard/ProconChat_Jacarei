@@ -51,6 +51,7 @@ import type {
 } from "../types/conversationFlow.types"
 import { createSessionCloser } from "./conversationClosing.service"
 import { createSchedulingFlow } from "./schedulingFlow.service"
+import { createReturnFlow } from "./returnFlow.service"
 
 export type {
     ConversationFlowInput,
@@ -199,6 +200,8 @@ export function createConversationFlowService({
             },
         }
     }
+
+    const returnFlow = createReturnFlow({ sessions, events, schedule, logger, startOver })
 
     async function handleAwaitingCategory(
         sessionId: string,
@@ -701,10 +704,12 @@ export function createConversationFlowService({
             return pausedReply()
         }
 
-        const session = await sessions.findOrCreateActive(hashPhoneOf(phone))
+        const phoneHash = hashPhoneOf(phone)
+        const session = await sessions.findOrCreateActive(phoneHash)
 
         if (session.created) {
-            return startOver(session.id, session.created)
+            const returnMenu = await returnFlow.offerReturnMenu(session.id, phoneHash)
+            return returnMenu ?? startOver(session.id, session.created)
         }
 
         await sessions.touch(session.id)
@@ -747,6 +752,14 @@ export function createConversationFlowService({
 
         if (session.currentStep === "AWAITING_SLOT") {
             return scheduling.handleAwaitingSlot(session, phone, text, optionId)
+        }
+
+        if (session.currentStep === "AWAITING_RETURN_CHOICE") {
+            return returnFlow.handleReturnChoice(session, phoneHash, text, optionId)
+        }
+
+        if (session.currentStep === "AWAITING_CANCEL_CONFIRMATION") {
+            return returnFlow.handleCancelConfirmation(session, phoneHash, text, optionId)
         }
 
         // Se estiver em outro step futuro ou inesperado, recomeça

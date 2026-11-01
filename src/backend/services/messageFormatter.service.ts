@@ -565,8 +565,12 @@ export const AGENDAMENTO_NAO_ALTERAVEL =
 export const ERRO_FALHA_ALTERACAO =
     "Não foi possível concluir a alteração no momento devido a uma instabilidade. Seu agendamento não foi alterado. Por favor, tente novamente mais tarde."
 
+export function TEXTO_BOTOES_RETORNO(quando: string): string {
+    return `Você tem atendimento marcado em ${quando}.`
+}
+
 export function MENU_RETORNO(quando: string): string {
-    return `Você tem atendimento marcado em ${quando}.\n1. Remarcar\n2. Cancelar\n3. Tenho outra dúvida`
+    return `${TEXTO_BOTOES_RETORNO(quando)}\n1. Remarcar\n2. Cancelar\n3. Tenho outra dúvida`
 }
 
 export function CONFIRMA_CANCELAMENTO(quando: string): string {

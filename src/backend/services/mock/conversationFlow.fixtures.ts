@@ -1,6 +1,6 @@
 import { ActiveSession, SessionDraft } from "../../repositories/session.repository"
 import { Categoria, Pergunta, RespostaFinalOutput } from "../../types/motorDecisao.types"
-import { AvailableSlot, BookAppointmentResult } from "../../types/schedule.types"
+import { AvailableSlot, BookAppointmentResult, ReturningAppointment } from "../../types/schedule.types"
 
 export const categorias: Categoria[] = [
     { id: 1, title: "Contrato", short_title: "Contrato", active: true },
@@ -132,4 +132,13 @@ export function buildBookingDraft(overrides: Partial<SessionDraft> = {}): Sessio
 
 export function slotOptionId(slot: AvailableSlot): string {
     return `slot_${slot.datetime.toISOString()}`
+}
+
+export function buildReturningAppointment(overrides: Partial<ReturningAppointment> = {}): ReturningAppointment {
+    return {
+        id: "7",
+        appointmentDatetime: new Date("2026-11-10T13:00:00Z"),
+        status: "PENDING",
+        ...overrides,
+    }
 }
