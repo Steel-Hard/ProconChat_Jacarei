@@ -37,7 +37,16 @@ export function createConversationFlowHarness() {
 
     const getAvailableSlots = vi.fn()
     const bookSlot = vi.fn()
-    const schedule: ScheduleProvider = { getAvailableSlots, bookSlot }
+    const findReturningAppointment = vi.fn<ScheduleProvider["findReturningAppointment"]>(async () => null)
+    const cancelByCitizen = vi.fn<ScheduleProvider["cancelByCitizen"]>()
+    const rescheduleByCitizen = vi.fn<ScheduleProvider["rescheduleByCitizen"]>()
+    const schedule: ScheduleProvider = {
+        getAvailableSlots,
+        bookSlot,
+        findReturningAppointment,
+        cancelByCitizen,
+        rescheduleByCitizen,
+    }
 
     const hashPhone = vi.fn((phone: string) => `hash-${phone}`)
     const isAutoReplyPaused = vi.fn<() => Promise<boolean>>(async () => false)
@@ -73,6 +82,9 @@ export function createConversationFlowHarness() {
         motor,
         getAvailableSlots,
         bookSlot,
+        findReturningAppointment,
+        cancelByCitizen,
+        rescheduleByCitizen,
         schedule,
         hashPhone,
         isAutoReplyPaused,

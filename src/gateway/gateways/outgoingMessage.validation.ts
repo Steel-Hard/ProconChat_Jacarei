@@ -12,6 +12,7 @@ export const OUTGOING_LIMITS = {
     buttonsMax: 3,
     buttonTitle: 20,
     buttonId: 256,
+    footer: 60,
 } as const
 
 export type OutgoingMessageValidation = { ok: true } | { ok: false; reason: string }
@@ -88,6 +89,9 @@ function findProblem(message: OutgoingMessage): string | undefined {
         case "buttons":
             if (!isFilledWithin(message.text, OUTGOING_LIMITS.buttonsBody)) {
                 return "invalid_text"
+            }
+            if (message.footer !== undefined && !isFilledWithin(message.footer, OUTGOING_LIMITS.footer)) {
+                return "invalid_footer"
             }
             return validateButtons(message.buttons)
         default:

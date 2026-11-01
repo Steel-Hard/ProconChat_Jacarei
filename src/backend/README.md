@@ -1179,9 +1179,13 @@ passam por `services/conversationClosing.service.ts` (`finishOrLog`), e os tipos
 | `AWAITING_HOLDER_NAME` | nome do titular (regra abaixo) | `AWAITING_HOLDER_CPF` |
 | `AWAITING_HOLDER_CPF` | CPF válido, com ou sem pontuação. Vai para o rascunho só como hash e máscara | `AWAITING_SLOT` (ou encerra com `NO_SLOT` se não houver horário) |
 | `AWAITING_SLOT` | linha `slot_<ISO 8601 UTC>` da lista ou `page_<n>` para paginar | `FINISHED` com desfecho `SCHEDULED` |
+| `AWAITING_SLOT` com `draft.target_appointment_id` (remarcação, #59) | linha `slot_<ISO 8601 UTC>` da lista sem o horário atual do agendamento, ou `page_<n>` | `FINISHED` com desfecho `MANAGED_APPOINTMENT` |
+| `AWAITING_RETURN_CHOICE` (#59) | botão `return_reschedule`, `return_cancel` ou `return_other`, ou o texto `1`, `2` ou `3` | `AWAITING_SLOT`, `AWAITING_CANCEL_CONFIRMATION` ou `AWAITING_CATEGORY` |
+| `AWAITING_CANCEL_CONFIRMATION` (#59) | botão `cancel_yes` ou `cancel_no`, ou o texto exato `1`/`sim` ou `2`/`não`/`nao` | `FINISHED` com desfecho `MANAGED_APPOINTMENT`, ou volta a `AWAITING_RETURN_CHOICE` |
 
 O rascunho fica em `Sessions.draft`, com as chaves `by_representative`, `holder_name`, `cpf_hash` e
-`cpf_masked` (`target_appointment_id` é da #59). O `chk_sessions_draft_keys` recusa qualquer outra.
+`cpf_masked` na reserva, e só `target_appointment_id` no retorno de quem já tem agendamento (#59, seção
+abaixo). O `chk_sessions_draft_keys` recusa qualquer outra.
 O motivo do agendamento (`REQUIRES_IN_PERSON` ou `NOT_RESOLVED`) é o do último `SCHEDULE_OFFERED`
 da sessão registrado depois da última pergunta escolhida (`QUESTION_CHOSEN`), lido na reserva por
 `services/scheduleOfferReason.ts`. Assim o agendamento guarda o motivo que o bot mostrou na oferta,
@@ -1220,6 +1224,47 @@ checagem de duplicidade por CPF e horário, documentos, `INSERT` do agendamento 
 `ENCRYPTION_KEY`), evento `CREATED` em `AppointmentEvents`, `PHONE_NOTICE_SHOWN` por
 `insertConversationEvent(client, ...)` e encerramento por `finishSessionWith(client, ...)` com
 `APPOINTMENT_CREATED`/`SCHEDULED`. Qualquer falha desfaz tudo.
+
+
+## Retorno de quem já tem agendamento (#59)
+
+Quando uma mensagem abre uma sessão nova, `services/returnFlow.service.ts` (`createReturnFlow`) procura
+um agendamento `PENDING` ou `CONFIRMED` com horário futuro cuja sessão de origem tem o mesmo `phone_hash`
+(`scheduleRepository.findReturningAppointment`, só pelo HMAC, sem ler `phone_encrypted`). Se achar,
+grava `APPOINTMENT_CONSULTED`, guarda o id em `draft.target_appointment_id` e responde com o menu
+**Remarcar / Cancelar / Tenho outra dúvida**, em botões com o rodapé curto
+`Orientação informativa · Privacidade (LGPD) protegida` (`RODAPE_RETORNO`, enviado pelo Gateway em
+`interactive.footer.text`). Sem agendamento, ou se a consulta falhar (log
+`Failed to read returning appointment`), a sessão segue para a lista de categorias como antes. Sessões
+que já estavam em andamento não consultam.
+
+- **Tenho outra dúvida**: lista de categorias, com o rascunho zerado.
+- **Cancelar**: pede confirmação por botão (`cancel_yes`/`cancel_no`; a confirmação não usa a heurística
+  de "agendar"). "Não, manter" volta ao menu. "Sim, cancelar" chama `scheduleRepository.cancelByCitizen`.
+- **Remarcar**: oferece `getAvailableSlots()` sem o horário atual do agendamento. Sem outro horário,
+  responde `SEM_HORARIOS_REMARCACAO` e volta ao menu, sem desfecho. Na escolha, chama
+  `scheduleRepository.rescheduleByCitizen` e responde a confirmação com o título "Agendamento remarcado",
+  o mesmo protocolo, os documentos guardados no agendamento e o endereço e o lembrete da agenda do novo
+  dia.
+
+A cada clique o agendamento é conferido de novo pelo `phone_hash`. Se não for mais o mesmo (cancelado
+pela equipe, já passou, rascunho inválido) ou a transação recusar com `AppointmentNotChangeableError`
+(409, `APPOINTMENT_NOT_CHANGEABLE`), o bot responde "Este agendamento não pode mais ser alterado pelo
+chatbot..." e mostra a lista de categorias. Falha inesperada fica no log como
+`Failed to change appointment` (só `{ type, sessionId, code }`), o cidadão recebe a mensagem de
+instabilidade e a etapa não muda.
+
+As duas alterações rodam numa transação que também encerra a sessão (`finishSessionWith`, desfecho
+`MANAGED_APPOINTMENT`). Se qualquer passo falhar, tudo volta.
+
+| Alteração | Passos na transação |
+| --- | --- |
+| Cancelar | `SELECT ... FOR UPDATE OF a` do agendamento com `JOIN Sessions`, conferindo `phone_hash`, status ativo e horário futuro → `status = 'CANCELED'` (o responsável fica) → `CANCELED_BY_CITIZEN` com `actor_user_id NULL` e `{}` → `APPOINTMENT_CANCELED` |
+| Remarcar | `pg_advisory_xact_lock_shared` da agenda → trava consultiva do novo horário → `SELECT ... FOR UPDATE OF a` do agendamento (mesma conferência) → horário na grade do novo dia e com vaga (`SlotFullError`) → mesmo CPF já ativo no novo horário (`DuplicateAppointmentError`) → `appointment_datetime` novo e `rescheduled_from = COALESCE(rescheduled_from, antigo)` → `RESCHEDULED` `{ from, to }` → se estava `CONFIRMED`, `BACK_TO_PENDING` `{ "reason": "RESCHEDULED" }` sem responsável → `APPOINTMENT_RESCHEDULED` `{ appointmentId, from, to }` |
+
+A ordem das travas da remarcação é a mesma da reserva (agenda compartilhada → horário → linha), então
+não cruza com o salvamento da grade nem com o cancelamento da equipe (que trava a conta e depois a linha).
+Os eventos do agendamento não guardam nome, CPF, telefone nem texto do cidadão.
 
 ## Eventos da conversa
 

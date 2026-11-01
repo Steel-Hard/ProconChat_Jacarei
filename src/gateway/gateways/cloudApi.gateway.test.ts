@@ -386,6 +386,63 @@ describe("Cloud API provider: send", () => {
         await expect(result).rejects.toBeInstanceOf(OutgoingMessageValidationError)
         expect(fetchFn).not.toHaveBeenCalled()
     })
+
+    test("nao envia botoes com rodape de 61 caracteres e rejeita com erro de validacao", async () => {
+        const fetchFn = okFetch()
+        const provider = createCloudApiProvider({ getConfig: () => config, fetchFn })
+
+        const result = provider.send("5500000000001", {
+            type: "buttons",
+            text: "Escolha",
+            buttons: [{ id: "1", title: "Um" }],
+            footer: "r".repeat(61),
+        })
+
+        await expect(result).rejects.toBeInstanceOf(OutgoingMessageValidationError)
+        expect(fetchFn).not.toHaveBeenCalled()
+    })
+
+    test("envia o rodape dos botoes em interactive.footer quando a mensagem tem rodape", async () => {
+        const fetchFn = okFetch()
+        const provider = createCloudApiProvider({ getConfig: () => config, fetchFn })
+
+        await provider.send("5500000000001", {
+            type: "buttons",
+            text: "Voce tem atendimento marcado.",
+            buttons: [{ id: "return_other", title: "Outra duvida" }],
+            footer: "Orientacao informativa",
+        })
+
+        const [, init] = fetchFn.mock.calls[0] as [string, RequestInit]
+        expect(JSON.parse(init.body as string)).toEqual({
+            messaging_product: "whatsapp",
+            recipient_type: "individual",
+            to: "5500000000001",
+            type: "interactive",
+            interactive: {
+                type: "button",
+                body: { text: "Voce tem atendimento marcado." },
+                footer: { text: "Orientacao informativa" },
+                action: {
+                    buttons: [{ type: "reply", reply: { id: "return_other", title: "Outra duvida" } }],
+                },
+            },
+        })
+    })
+
+    test("envia botoes sem a chave footer quando a mensagem nao tem rodape", async () => {
+        const fetchFn = okFetch()
+        const provider = createCloudApiProvider({ getConfig: () => config, fetchFn })
+
+        await provider.send("5500000000001", {
+            type: "buttons",
+            text: "Resolveu?",
+            buttons: [{ id: "sim", title: "Sim" }],
+        })
+
+        const [, init] = fetchFn.mock.calls[0] as [string, RequestInit]
+        expect(JSON.parse(init.body as string).interactive).not.toHaveProperty("footer")
+    })
 })
 
 describe("Cloud API provider: sendTemplate", () => {

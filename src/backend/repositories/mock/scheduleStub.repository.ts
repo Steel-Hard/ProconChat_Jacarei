@@ -5,7 +5,12 @@ import {
     BlockedDate,
     BookAppointmentInput,
     BookAppointmentResult,
+    CitizenCancelInput,
+    CitizenCancelResult,
+    CitizenRescheduleInput,
+    CitizenRescheduleResult,
     FutureActiveAppointment,
+    ReturningAppointment,
     ScheduleConfigView,
     ScheduleRange,
     ScheduleSettings,
@@ -72,6 +77,11 @@ export function createScheduleStubRepository(
 ): IScheduleRepository & {
     setConfig(config: ScheduleConfigView | null): void
     setAppointments(appointments: StoredStubAppointment[]): void
+    setReturningAppointment(returning: ReturningAppointment | null): void
+    returningCalls: { phoneHash: string; now?: Date }[]
+    citizenCancelCalls: CitizenCancelInput[]
+    setRescheduleResult(result: CitizenRescheduleResult): void
+    citizenRescheduleCalls: CitizenRescheduleInput[]
     setScheduledSaveError(error: Error | null): void
     setScheduledDeleteError(error: Error | null): void
     listFutureCalls: Date[]
@@ -195,6 +205,32 @@ export function createScheduleStubRepository(
             assignedUserId: a.assignedUserId ?? null,
             offGrid: a.offGrid ?? false,
         }))
+    }
+
+    let returningAppointment: ReturningAppointment | null = null
+    const returningCalls: { phoneHash: string; now?: Date }[] = []
+
+    async function findReturningAppointment(phoneHash: string, now?: Date): Promise<ReturningAppointment | null> {
+        returningCalls.push({ phoneHash, now })
+        return returningAppointment
+    }
+
+    const citizenCancelCalls: CitizenCancelInput[] = []
+
+    async function cancelByCitizen(input: CitizenCancelInput): Promise<CitizenCancelResult> {
+        citizenCancelCalls.push(input)
+        return { protocol: "STUB0000" }
+    }
+
+    const citizenRescheduleCalls: CitizenRescheduleInput[] = []
+    let rescheduleResult: CitizenRescheduleResult | null = null
+
+    async function rescheduleByCitizen(input: CitizenRescheduleInput): Promise<CitizenRescheduleResult> {
+        citizenRescheduleCalls.push(input)
+        if (!rescheduleResult) {
+            throw new Error("Resultado da remarcação não configurado no stub")
+        }
+        return rescheduleResult
     }
 
     async function getConfig(): Promise<ScheduleConfigView | null> {
@@ -330,6 +366,18 @@ export function createScheduleStubRepository(
         deleteScheduledConfig,
         listFutureActiveAppointments,
         listFutureCalls,
+        findReturningAppointment,
+        returningCalls,
+        cancelByCitizen,
+        citizenCancelCalls,
+        rescheduleByCitizen,
+        citizenRescheduleCalls,
+        setRescheduleResult(result: CitizenRescheduleResult) {
+            rescheduleResult = result
+        },
+        setReturningAppointment(returning: ReturningAppointment | null) {
+            returningAppointment = returning
+        },
         versionCalls,
         configForDateCalls,
         scheduledSaveCalls,

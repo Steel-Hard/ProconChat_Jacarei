@@ -44,6 +44,9 @@ describe("ScheduleService", () => {
             saveScheduledConfig: vi.fn(),
             deleteScheduledConfig: vi.fn(),
             listFutureActiveAppointments: vi.fn().mockResolvedValue([]),
+            findReturningAppointment: vi.fn(),
+            cancelByCitizen: vi.fn(),
+            rescheduleByCitizen: vi.fn(),
         }
         service = createScheduleService(repoMock)
     })
@@ -420,6 +423,55 @@ describe("ScheduleService", () => {
                 freeSlotStartsOfDay("2026-10-21", defaultRanges, [partialBlock("2026-10-21", "08:00:00", "09:00:00")], 30),
             ).toEqual([540, 570])
             expect(freeSlotStartsOfDay("2026-10-24", defaultRanges, [], 30)).toEqual([])
+        })
+    })
+
+    describe("retorno do cidadão (#59)", () => {
+        it("findReturningAppointment repassa o hash do telefone e o instante ao repositório e devolve o resultado", async () => {
+            const now = new Date("2026-11-01T12:00:00Z")
+            const returning = { id: "7", appointmentDatetime: new Date("2026-11-10T13:00:00Z"), status: "PENDING" as const }
+            vi.mocked(repoMock.findReturningAppointment).mockResolvedValue(returning)
+
+            const found = await service.findReturningAppointment("hash-5512", now)
+
+            expect(repoMock.findReturningAppointment).toHaveBeenCalledWith("hash-5512", now)
+            expect(found).toBe(returning)
+        })
+
+        it("cancelByCitizen repassa a entrada ao repositório e devolve o protocolo", async () => {
+            const input = { sessionId: "s1", appointmentId: 7, phoneHash: "hash-5512" }
+            vi.mocked(repoMock.cancelByCitizen).mockResolvedValue({ protocol: "AB12CD34" })
+
+            const result = await service.cancelByCitizen(input)
+
+            expect(repoMock.cancelByCitizen).toHaveBeenCalledWith(input)
+            expect(result).toEqual({ protocol: "AB12CD34" })
+        })
+
+        it("rescheduleByCitizen repassa a entrada ao repositório e devolve o resultado", async () => {
+            const input = {
+                sessionId: "s1",
+                appointmentId: 7,
+                phoneHash: "hash-5512",
+                appointmentDatetime: new Date("2026-11-10T12:00:00Z"),
+            }
+            const rescheduled = {
+                protocol: "AB12CD34",
+                from: new Date("2026-11-09T12:00:00Z"),
+                appointmentDatetime: input.appointmentDatetime,
+                unitAddress: "Rua do Procon, 100",
+                unitAddressComplement: null,
+                documentsSent: { group: ["RG"], question: [] },
+                byRepresentative: false,
+                reminderEnabled: true,
+                reminderHours: 24,
+            }
+            vi.mocked(repoMock.rescheduleByCitizen).mockResolvedValue(rescheduled)
+
+            const result = await service.rescheduleByCitizen(input)
+
+            expect(repoMock.rescheduleByCitizen).toHaveBeenCalledWith(input)
+            expect(result).toBe(rescheduled)
         })
     })
 })

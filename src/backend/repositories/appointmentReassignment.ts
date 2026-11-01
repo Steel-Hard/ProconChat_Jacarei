@@ -11,7 +11,7 @@ export interface AssignAppointmentInput {
 
 export interface ReturnAppointmentToPendingInput {
     appointmentId: string
-    actorUserId: number
+    actorUserId: number | null
     data: BackToPendingEventData
     now: Date
 }

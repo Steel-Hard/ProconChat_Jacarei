@@ -81,6 +81,7 @@ export interface ConfirmacaoAgendamentoInput {
     questionDocuments: string[]
     reminderEnabled: boolean
     reminderHours: number
+    titulo?: string
 }
 
 export const MENSAGEM_ATENDIMENTO_PAUSADO =
@@ -112,6 +113,12 @@ export function parametrosAvisoCancelamento(input: AvisoCancelamentoInput): stri
     const { dateStr, timeStr } = getLocalParts(input.appointmentDatetime)
     const [, mes, dia] = dateStr.split("-")
     return [primeiroNome, input.protocol, `${dia}/${mes}`, timeStr, FRASES_MOTIVO_CANCELAMENTO[input.reason]]
+}
+
+export function formatarQuando(data: Date): string {
+    const { dateStr, timeStr } = getLocalParts(data)
+    const [, mes, dia] = dateStr.split("-")
+    return `${dia}/${mes} às ${timeStr}`
 }
 
 export function renderizarModelo(corpo: string, parametros: string[]): string {
@@ -308,7 +315,7 @@ export function formatarErroSlot(
 
 export function formatarConfirmacaoAgendamento(input: ConfirmacaoAgendamentoInput): string {
     const linhas: string[] = [
-        "Agendamento realizado",
+        input.titulo ?? "Agendamento realizado",
         `Protocolo: ${input.protocol}`,
         `Data e hora: ${input.quando}`,
     ]
@@ -544,3 +551,51 @@ export function criarMensagensSlots(
     ]
 }
 
+export const RODAPE_RETORNO = "Orientação informativa · Privacidade (LGPD) protegida"
+
+export const ERRO_MENU_RETORNO =
+    "Não entendi. Por favor, escolha uma das opções:\n1. Remarcar\n2. Cancelar\n3. Tenho outra dúvida"
+
+export const ERRO_CONFIRMA_CANCELAMENTO =
+    "Não entendi. Por favor, confirme se deseja cancelar o atendimento:\n1. Sim, cancelar\n2. Não, manter"
+
+export const AGENDAMENTO_NAO_ALTERAVEL =
+    "Este agendamento não pode mais ser alterado pelo chatbot. Se precisar de orientação, escolha uma das opções abaixo."
+
+export const ERRO_FALHA_ALTERACAO =
+    "Não foi possível concluir a alteração no momento devido a uma instabilidade. Seu agendamento não foi alterado. Por favor, tente novamente mais tarde."
+
+export function TEXTO_BOTOES_RETORNO(quando: string): string {
+    return `Você tem atendimento marcado em ${quando}.`
+}
+
+export function MENU_RETORNO(quando: string): string {
+    return `${TEXTO_BOTOES_RETORNO(quando)}\n1. Remarcar\n2. Cancelar\n3. Tenho outra dúvida`
+}
+
+export function CONFIRMA_CANCELAMENTO(quando: string): string {
+    return `Deseja mesmo cancelar o atendimento marcado em ${quando}? O cancelamento não pode ser desfeito.\n1. Sim, cancelar\n2. Não, manter`
+}
+
+export function RESPOSTA_CANCELADO(protocolo: string): string {
+    return `Seu agendamento ${protocolo} foi cancelado e o horário foi liberado. Para agendar novamente, envie uma mensagem para este número.`
+}
+
+export function SEM_HORARIOS_REMARCACAO(quando: string): string {
+    return `No momento não há outros horários disponíveis para remarcar. Seu atendimento continua marcado em ${quando}.`
+}
+
+export function criarBotoesRetorno(): ReplyButton[] {
+    return [
+        { id: "return_reschedule", title: "Remarcar" },
+        { id: "return_cancel", title: "Cancelar" },
+        { id: "return_other", title: "Tenho outra dúvida" },
+    ]
+}
+
+export function criarBotoesConfirmaCancelamento(): ReplyButton[] {
+    return [
+        { id: "cancel_yes", title: "Sim, cancelar" },
+        { id: "cancel_no", title: "Não, manter" },
+    ]
+}

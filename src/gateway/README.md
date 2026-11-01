@@ -201,7 +201,8 @@ configuração do painel (seção "Configuração do WhatsApp"), não variáveis
 - As mensagens do mesmo telefone são processadas em fila: a resposta inteira de uma mensagem é enviada
   antes de a próxima ser repassada ao Backend.
 - O Backend pode devolver `reply.messages` com itens `text`, `list` (até 10 linhas, título ≤ 24,
-  descrição ≤ 72, `buttonText` ≤ 20, corpo ≤ 4096) ou `buttons` (até 3, título ≤ 20, corpo ≤ 1024).
+  descrição ≤ 72, `buttonText` ≤ 20, corpo ≤ 4096) ou `buttons` (até 3, título ≤ 20, corpo ≤ 1024, com `footer` opcional de até 60 caracteres, enviado em
+  `interactive.footer.text`; rodapé vazio ou maior é recusado com o motivo `invalid_footer`).
   Sem `reply.messages`, o Gateway envia `reply.text` como texto (corpo ≤ 4096). Mensagem fora dos limites
   não é enviada, dividida nem truncada: fica no log como `invalid_outgoing_message`.
 

@@ -22,6 +22,19 @@ import {
     MODELO_LEMBRETE_ATENDIMENTO,
     parametrosAvisoCancelamento,
     renderizarModelo,
+    formatarQuando,
+    MENU_RETORNO,
+    criarBotoesRetorno,
+    RODAPE_RETORNO,
+    CONFIRMA_CANCELAMENTO,
+    criarBotoesConfirmaCancelamento,
+    RESPOSTA_CANCELADO,
+    SEM_HORARIOS_REMARCACAO,
+    ERRO_MENU_RETORNO,
+    ERRO_CONFIRMA_CANCELAMENTO,
+    AGENDAMENTO_NAO_ALTERAVEL,
+    ERRO_FALHA_ALTERACAO,
+    TEXTO_BOTOES_RETORNO,
 } from "./messageFormatter.service"
 import type { OutgoingMessage } from "../types/message.types"
 import type { AvailableSlot } from "../types/schedule.types"
@@ -589,6 +602,112 @@ describe("messageFormatter.service", () => {
             expect(CORPO_AVISO_CANCELAMENTO).toBe(
                 "Olá, {{1}}. Seu agendamento {{2}} no PROCON Jacareí, marcado para {{3}} às {{4}}, foi cancelado. Motivo: {{5}}. Para agendar novamente, envie uma mensagem para este número.",
             )
+        })
+    })
+
+    describe("Retorno de quem já tem agendamento (#59)", () => {
+        test("formatarQuando mostra dia, mês e hora de São Paulo perto da virada do dia em UTC", () => {
+            const texto = formatarQuando(new Date("2026-11-10T02:30:00Z"))
+
+            expect(texto).toBe("09/11 às 23:30")
+        })
+
+        test("MENU_RETORNO lista as três opções depois do horário marcado", () => {
+            const texto = MENU_RETORNO("09/11 às 23:30")
+
+            expect(texto).toBe(
+                "Você tem atendimento marcado em 09/11 às 23:30.\n1. Remarcar\n2. Cancelar\n3. Tenho outra dúvida",
+            )
+        })
+
+        test("criarBotoesRetorno devolve Remarcar, Cancelar e Tenho outra dúvida, nessa ordem e dentro do limite de 20 caracteres", () => {
+            const botoes = criarBotoesRetorno()
+
+            expect(botoes).toEqual([
+                { id: "return_reschedule", title: "Remarcar" },
+                { id: "return_cancel", title: "Cancelar" },
+                { id: "return_other", title: "Tenho outra dúvida" },
+            ])
+            expect(botoes.every((botao) => Array.from(botao.title).length <= 20)).toBe(true)
+        })
+
+        test("RODAPE_RETORNO é o aviso curto aprovado e cabe nos 60 caracteres do rodapé da Cloud API", () => {
+            expect(RODAPE_RETORNO).toBe("Orientação informativa · Privacidade (LGPD) protegida")
+            expect(Array.from(RODAPE_RETORNO).length).toBeLessThanOrEqual(60)
+        })
+
+        test("CONFIRMA_CANCELAMENTO pede a confirmação com o horário e as duas opções", () => {
+            const texto = CONFIRMA_CANCELAMENTO("09/11 às 23:30")
+
+            expect(texto).toBe(
+                "Deseja mesmo cancelar o atendimento marcado em 09/11 às 23:30? O cancelamento não pode ser desfeito.\n1. Sim, cancelar\n2. Não, manter",
+            )
+        })
+
+        test("criarBotoesConfirmaCancelamento devolve Sim, cancelar e Não, manter", () => {
+            const botoes = criarBotoesConfirmaCancelamento()
+
+            expect(botoes).toEqual([
+                { id: "cancel_yes", title: "Sim, cancelar" },
+                { id: "cancel_no", title: "Não, manter" },
+            ])
+        })
+
+        test("RESPOSTA_CANCELADO informa o protocolo cancelado e o horário liberado", () => {
+            const texto = RESPOSTA_CANCELADO("AB12CD34")
+
+            expect(texto).toBe(
+                "Seu agendamento AB12CD34 foi cancelado e o horário foi liberado. Para agendar novamente, envie uma mensagem para este número.",
+            )
+        })
+
+        test("SEM_HORARIOS_REMARCACAO avisa que não há outro horário e que o atendimento continua marcado", () => {
+            const texto = SEM_HORARIOS_REMARCACAO("09/11 às 23:30")
+
+            expect(texto).toBe(
+                "No momento não há outros horários disponíveis para remarcar. Seu atendimento continua marcado em 09/11 às 23:30.",
+            )
+        })
+
+        test("formatarConfirmacaoAgendamento começa pelo título Agendamento remarcado quando recebe o título, e por Agendamento realizado sem ele", () => {
+            const confirmacao = {
+                protocol: "A3F9C21B",
+                quando: "Terça-feira, 10/11 às 09:30",
+                unitAddress: "Rua do Procon, 100",
+                byRepresentative: false,
+                groupDocuments: ["RG"],
+                questionDocuments: [],
+                reminderEnabled: true,
+                reminderHours: 24,
+            }
+
+            const remarcado = formatarConfirmacaoAgendamento({ ...confirmacao, titulo: "Agendamento remarcado" })
+            const realizado = formatarConfirmacaoAgendamento(confirmacao)
+
+            expect(remarcado.split("\n")[0]).toBe("Agendamento remarcado")
+            expect(remarcado).not.toContain("Agendamento realizado")
+            expect(realizado.split("\n")[0]).toBe("Agendamento realizado")
+        })
+
+        test("os textos fixos de erro e de alvo não alterável do retorno são os aprovados", () => {
+            expect(ERRO_MENU_RETORNO).toBe(
+                "Não entendi. Por favor, escolha uma das opções:\n1. Remarcar\n2. Cancelar\n3. Tenho outra dúvida",
+            )
+            expect(ERRO_CONFIRMA_CANCELAMENTO).toBe(
+                "Não entendi. Por favor, confirme se deseja cancelar o atendimento:\n1. Sim, cancelar\n2. Não, manter",
+            )
+            expect(AGENDAMENTO_NAO_ALTERAVEL).toBe(
+                "Este agendamento não pode mais ser alterado pelo chatbot. Se precisar de orientação, escolha uma das opções abaixo.",
+            )
+            expect(ERRO_FALHA_ALTERACAO).toBe(
+                "Não foi possível concluir a alteração no momento devido a uma instabilidade. Seu agendamento não foi alterado. Por favor, tente novamente mais tarde.",
+            )
+        })
+
+        test("TEXTO_BOTOES_RETORNO é a frase do horário marcado, sem as opções numeradas", () => {
+            const texto = TEXTO_BOTOES_RETORNO("09/11 às 23:30")
+
+            expect(texto).toBe("Você tem atendimento marcado em 09/11 às 23:30.")
         })
     })
 })

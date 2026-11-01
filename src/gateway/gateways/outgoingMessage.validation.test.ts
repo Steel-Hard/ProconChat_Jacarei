@@ -129,6 +129,20 @@ describe("validateOutgoingMessage", () => {
             validateOutgoingMessage(buttonsMessage({ buttons: [{ id: "i".repeat(257), title: "Sim" }] })).ok,
         ).toBe(false)
     })
+
+    test("aceita rodape dos botoes com 60 caracteres e recusa com 61 pelo motivo invalid_footer", () => {
+        const accepted = validateOutgoingMessage(buttonsMessage({ footer: "r".repeat(60) }))
+        const refused = validateOutgoingMessage(buttonsMessage({ footer: "r".repeat(61) }))
+
+        expect(accepted).toEqual({ ok: true })
+        expect(refused).toEqual({ ok: false, reason: "invalid_footer" })
+    })
+
+    test("recusa rodape vazio ou so com espacos pelo motivo invalid_footer e aceita botoes sem rodape", () => {
+        expect(validateOutgoingMessage(buttonsMessage({ footer: "" }))).toEqual({ ok: false, reason: "invalid_footer" })
+        expect(validateOutgoingMessage(buttonsMessage({ footer: "   " }))).toEqual({ ok: false, reason: "invalid_footer" })
+        expect(validateOutgoingMessage(buttonsMessage())).toEqual({ ok: true })
+    })
 })
 
 describe("validateOutgoingTemplate", () => {
