@@ -186,6 +186,25 @@ describe("appointment.routes: cancelamento pela equipe (HTTP)", () => {
         expect(repository.cancelCalls).toHaveLength(1)
     })
 
+    it("C1 válido com só a gravação do aviso falhando responde 200 CANCELED e registra no log só o id e o código", async () => {
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
+        vi.spyOn(repository, "recordCitizenNotification").mockRejectedValueOnce(new Error("gravação falhou"))
+
+        const res = await request(app)
+            .patch("/api/v1/appointments/1/status")
+            .set("Cookie", cookieFor(OPERATOR))
+            .send({ action: "cancel", reason: "UNIT_CLOSED" })
+        const logged = [...consoleError.mock.calls]
+        consoleError.mockRestore()
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.status).toBe("CANCELED")
+        expect(repository.cancelCalls).toHaveLength(1)
+        expect(logged).toHaveLength(1)
+        expect(logged[0]?.[1]).toEqual({ appointmentId: "1", code: "UNKNOWN" })
+        expect(JSON.stringify(logged)).not.toContain(PHONE)
+    })
+
     it("C1 válido responde 200 com o detalhe cancelado e os eventos de cancelamento e de aviso", async () => {
         const res = await request(app)
             .patch("/api/v1/appointments/1/status")
@@ -277,5 +296,16 @@ describe("appointment.routes: cancelamento pela equipe (HTTP)", () => {
             data: { kind: "CANCELLATION" },
         })
         expect(sendTemplate).toHaveBeenCalledTimes(1)
+    })
+
+    it("C3 com o último aviso ainda sem registro envia uma vez e grava o aviso como entregue", async () => {
+        const res = await request(app)
+            .post("/api/v1/appointments/6/cancellation-notice/retry")
+            .set("Cookie", cookieFor(OPERATOR))
+
+        expect(res.status).toBe(200)
+        expect(sendTemplate).toHaveBeenCalledTimes(1)
+        expect(repository.notificationCalls).toHaveLength(1)
+        expect(repository.notificationCalls[0]).toMatchObject({ id: "6", outcome: "NOTIFIED", kind: "CANCELLATION" })
     })
 })
