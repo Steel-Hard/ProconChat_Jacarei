@@ -136,6 +136,29 @@ describe("citizenNotification.service", () => {
         expect(appointments.notificationCalls).toEqual([])
     })
 
+    it("recusa com NOTIFICATION_NOT_RETRYABLE, sem decifrar, chamar o gateway nem gravar, quando o último aviso releito já foi entregue", async () => {
+        const decrypt = vi.fn(() => PHONE)
+        const { appointments, sendTemplate, service } = setup({ notice: target({ lastCancellationNotice: "NOTIFIED" }), decrypt })
+
+        await expect(service.notifyCancellation("1", 42, FIXED_NOW)).rejects.toMatchObject({
+            statusCode: 409,
+            code: "NOTIFICATION_NOT_RETRYABLE",
+        })
+
+        expect(decrypt).not.toHaveBeenCalled()
+        expect(sendTemplate).not.toHaveBeenCalled()
+        expect(appointments.notificationCalls).toEqual([])
+    })
+
+    it("libera a trava depois de recusar o aviso já entregue, e a chamada seguinte não recebe NOTIFICATION_IN_PROGRESS", async () => {
+        const { service } = setup({ notice: target({ lastCancellationNotice: "NOTIFIED" }) })
+        await expect(service.notifyCancellation("1", 42, FIXED_NOW)).rejects.toMatchObject({ code: "NOTIFICATION_NOT_RETRYABLE" })
+
+        const second = service.notifyCancellation("1", 43, FIXED_NOW)
+
+        await expect(second).rejects.toMatchObject({ statusCode: 409, code: "NOTIFICATION_NOT_RETRYABLE" })
+    })
+
     describe("trava contra envios simultâneos", () => {
         function pendingGateway() {
             const releases: ((result: SendTemplateResult) => void)[] = []
