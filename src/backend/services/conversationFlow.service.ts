@@ -750,6 +750,10 @@ export function createConversationFlowService({
             return scheduling.handleAwaitingHolderCpf(session, text)
         }
 
+        if (session.currentStep === "AWAITING_SLOT" && session.draft?.target_appointment_id !== undefined) {
+            return returnFlow.handleRescheduleSlot(session, phoneHash, text, optionId)
+        }
+
         if (session.currentStep === "AWAITING_SLOT") {
             return scheduling.handleAwaitingSlot(session, phone, text, optionId)
         }

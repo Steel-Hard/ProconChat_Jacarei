@@ -1,20 +1,35 @@
 import AppointmentNotChangeableError from "../errors/AppointmentNotChangeableError"
+import DuplicateAppointmentError from "../errors/DuplicateAppointmentError"
+import SlotFullError from "../errors/SlotFullError"
 import type { ActiveSession, ActiveSessionStep, SessionRepository } from "../repositories/session.repository"
 import type { ConversationFlowResult, ScheduleProvider } from "../types/conversationFlow.types"
 import type { OutgoingMessage } from "../types/message.types"
-import type { CitizenCancelResult, ReturningAppointment } from "../types/schedule.types"
+import type {
+    AvailableSlot,
+    CitizenCancelResult,
+    CitizenRescheduleResult,
+    ReturningAppointment,
+} from "../types/schedule.types"
 import {
     AGENDAMENTO_NAO_ALTERAVEL,
     CONFIRMA_CANCELAMENTO,
     criarBotoesConfirmaCancelamento,
     criarBotoesRetorno,
+    criarMensagensSlots,
     ERRO_CONFIRMA_CANCELAMENTO,
+    ERRO_DUPLICATE_APPOINTMENT,
     ERRO_FALHA_ALTERACAO,
     ERRO_MENU_RETORNO,
+    ERRO_SLOT_OCUPADO,
+    formatarConfirmacaoAgendamento,
+    formatarErroSlot,
+    formatarListaSlots,
     formatarQuando,
     MENU_RETORNO,
+    paginarItens,
     RESPOSTA_CANCELADO,
     RODAPE_RETORNO,
+    SEM_HORARIOS_REMARCACAO,
     TEXTO_BOTOES_RETORNO,
 } from "./messageFormatter.service"
 import {
@@ -45,6 +60,12 @@ export interface ReturnFlow {
         text: string | undefined,
         optionId: string | undefined,
     ): Promise<ConversationFlowResult>
+    handleRescheduleSlot(
+        session: ActiveSession,
+        phoneHash: string,
+        text: string | undefined,
+        optionId: string | undefined,
+    ): Promise<ConversationFlowResult>
 }
 
 function replyOf(
@@ -55,6 +76,20 @@ function replyOf(
     newSession = false,
 ): ConversationFlowResult {
     return { sessionId, newSession, reply: { text, step, messages } }
+}
+
+function prefixed(result: ConversationFlowResult, prefix: string): ConversationFlowResult {
+    return replyOf(
+        result.sessionId,
+        result.reply.step,
+        `${prefix}\n${result.reply.text}`,
+        [{ type: "text", text: prefix }, ...(result.reply.messages ?? [])],
+        result.newSession,
+    )
+}
+
+function slotList(sessionId: string, slots: AvailableSlot[], page: number): ConversationFlowResult {
+    return replyOf(sessionId, "AWAITING_SLOT", formatarListaSlots(slots, page), criarMensagensSlots(slots, page))
 }
 
 function returnMenu(sessionId: string, newSession: boolean, appointmentDatetime: Date): ConversationFlowResult {
@@ -149,15 +184,40 @@ export function createReturnFlow({ sessions, events, schedule, logger, startOver
     }
 
     async function notChangeable(sessionId: string): Promise<ConversationFlowResult> {
-        const categories = await startOver(sessionId, false)
-        return {
-            ...categories,
-            reply: {
-                ...categories.reply,
-                text: `${AGENDAMENTO_NAO_ALTERAVEL}\n${categories.reply.text}`,
-                messages: [{ type: "text", text: AGENDAMENTO_NAO_ALTERAVEL }, ...(categories.reply.messages ?? [])],
-            },
+        return prefixed(await startOver(sessionId, false), AGENDAMENTO_NAO_ALTERAVEL)
+    }
+
+    async function rescheduleSlots(returning: ReturningAppointment): Promise<AvailableSlot[]> {
+        const slots = await schedule.getAvailableSlots()
+        return slots.filter((slot) => slot.datetime.getTime() !== returning.appointmentDatetime.getTime())
+    }
+
+    async function noRescheduleSlot(
+        session: ActiveSession,
+        returning: ReturningAppointment,
+    ): Promise<ConversationFlowResult> {
+        await sessions.updateNavigationState(session.id, {
+            currentStep: "AWAITING_RETURN_CHOICE",
+            currentCategoryId: null,
+            currentQuestionId: null,
+            listPage: 1,
+        })
+        return prefixed(
+            returnMenu(session.id, false, returning.appointmentDatetime),
+            SEM_HORARIOS_REMARCACAO(formatarQuando(returning.appointmentDatetime)),
+        )
+    }
+
+    async function offerRescheduleSlots(session: ActiveSession, phoneHash: string): Promise<ConversationFlowResult> {
+        const returning = await currentTarget(session, phoneHash)
+        if (!returning) {
+            return notChangeable(session.id)
         }
+        const slots = await rescheduleSlots(returning)
+        if (slots.length === 0) {
+            return noRescheduleSlot(session, returning)
+        }
+        return showRescheduleSlots(session, slots, 1)
     }
 
     async function askCancelConfirmation(
@@ -185,6 +245,10 @@ export function createReturnFlow({ sessions, events, schedule, logger, startOver
 
         if (choice === "other") {
             return startOver(session.id, false)
+        }
+
+        if (choice === "reschedule") {
+            return offerRescheduleSlots(session, phoneHash)
         }
 
         if (choice === "cancel") {
@@ -254,5 +318,112 @@ export function createReturnFlow({ sessions, events, schedule, logger, startOver
         ])
     }
 
-    return { offerReturnMenu, handleReturnChoice, handleCancelConfirmation }
+    async function showRescheduleSlots(
+        session: ActiveSession,
+        slots: AvailableSlot[],
+        page: number,
+        prefix?: string,
+    ): Promise<ConversationFlowResult> {
+        await sessions.updateNavigationState(session.id, {
+            currentStep: "AWAITING_SLOT",
+            currentCategoryId: null,
+            currentQuestionId: null,
+            listPage: page,
+        })
+        const listing = slotList(session.id, slots, page)
+        return prefix ? prefixed(listing, prefix) : listing
+    }
+
+    async function rescheduleTo(
+        session: ActiveSession,
+        phoneHash: string,
+        returning: ReturningAppointment,
+        chosenSlot: AvailableSlot,
+        slots: AvailableSlot[],
+        currentPage: number,
+    ): Promise<ConversationFlowResult> {
+        const appointmentId = Number(returning.id)
+        let result: CitizenRescheduleResult
+        try {
+            result = await schedule.rescheduleByCitizen({
+                sessionId: session.id,
+                appointmentId,
+                phoneHash,
+                appointmentDatetime: chosenSlot.datetime,
+            })
+        } catch (err: unknown) {
+            if (err instanceof SlotFullError) {
+                const updatedSlots = await rescheduleSlots(returning)
+                return updatedSlots.length === 0
+                    ? noRescheduleSlot(session, returning)
+                    : showRescheduleSlots(session, updatedSlots, 1, ERRO_SLOT_OCUPADO)
+            }
+            if (err instanceof DuplicateAppointmentError) {
+                return prefixed(slotList(session.id, slots, currentPage), ERRO_DUPLICATE_APPOINTMENT)
+            }
+            if (err instanceof AppointmentNotChangeableError) {
+                return notChangeable(session.id)
+            }
+            logger.error(
+                "Failed to change appointment",
+                conversationEventFailureLog(session.id, { type: "APPOINTMENT_RESCHEDULED", appointmentId }, err),
+            )
+            return changeFailed(session.id, "AWAITING_SLOT")
+        }
+        const confirmation = formatarConfirmacaoAgendamento({
+            titulo: "Agendamento remarcado",
+            protocol: result.protocol,
+            quando: chosenSlot.formatted,
+            unitAddress: result.unitAddress,
+            unitAddressComplement: result.unitAddressComplement,
+            byRepresentative: result.byRepresentative,
+            groupDocuments: result.documentsSent.group,
+            questionDocuments: result.documentsSent.question,
+            reminderEnabled: result.reminderEnabled,
+            reminderHours: result.reminderHours,
+        })
+        return replyOf(session.id, "FINISHED", confirmation, [{ type: "text", text: confirmation }])
+    }
+
+    async function handleRescheduleSlot(
+        session: ActiveSession,
+        phoneHash: string,
+        _text: string | undefined,
+        optionId: string | undefined,
+    ): Promise<ConversationFlowResult> {
+        const returning = await currentTarget(session, phoneHash)
+        if (!returning) {
+            return notChangeable(session.id)
+        }
+        const slots = await rescheduleSlots(returning)
+        if (slots.length === 0) {
+            return noRescheduleSlot(session, returning)
+        }
+        const paginacao = paginarItens(slots, session.listPage || 1)
+
+        if (optionId?.startsWith("page_")) {
+            const targetPage = Number(optionId.replace("page_", ""))
+            if (targetPage >= 1 && targetPage <= paginacao.totalPaginas) {
+                return showRescheduleSlots(session, slots, targetPage)
+            }
+        }
+
+        if (optionId?.startsWith("slot_")) {
+            const slotIso = optionId.replace("slot_", "")
+            const chosenSlot = slots.find((slot) => slot.datetime.toISOString() === slotIso)
+            if (chosenSlot) {
+                return rescheduleTo(session, phoneHash, returning, chosenSlot, slots, paginacao.paginaAtual)
+            }
+            return showRescheduleSlots(session, slots, 1, ERRO_SLOT_OCUPADO)
+        }
+
+        return replyOf(
+            session.id,
+            "AWAITING_SLOT",
+            formatarErroSlot(slots, paginacao.paginaAtual),
+            criarMensagensSlots(slots, paginacao.paginaAtual),
+        )
+    }
+
+    return { offerReturnMenu, handleReturnChoice, handleCancelConfirmation, handleRescheduleSlot }
 }
