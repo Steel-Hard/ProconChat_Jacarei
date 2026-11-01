@@ -150,18 +150,21 @@ describe("messageFormatter.service", () => {
         expect(texto).toContain(AVISO_NAO_VINCULANTE)
     })
 
-    test("SAUDACAO mantém o caráter informativo e não traz mais o parágrafo de privacidade", () => {
+    test("SAUDACAO mantém o caráter informativo sem o parágrafo de privacidade nem a instrução de digitar o número", () => {
         expect(SAUDACAO).toBe(
-            "Olá! Sou o assistente virtual do PROCON Jacareí. As orientações a seguir têm caráter informativo e não substituem o atendimento formal.\n\nEscolha uma das opções abaixo digitando o número correspondente:",
+            "Olá! Sou o assistente virtual do PROCON Jacareí. As orientações a seguir têm caráter informativo e não substituem o atendimento formal.",
         )
         expect(SAUDACAO).not.toContain("Privacidade (LGPD)")
         expect(SAUDACAO).not.toContain("anonimizada")
+        expect(SAUDACAO).not.toContain("digitando o número")
     })
 
     test("formatarListaCategorias abre com a saudação e termina com o rodapé de LGPD no texto de reserva", () => {
         const texto = formatarListaCategorias(categorias)
 
-        expect(texto).toBe(`${SAUDACAO}\n1. Contrato\n2. Garantias\n3. Cobrança Indevida\n\n${RODAPE_ATENDIMENTO}`)
+        expect(texto).toBe(
+            `${SAUDACAO}\n\nEscolha uma das opções abaixo digitando o número correspondente:\n1. Contrato\n2. Garantias\n3. Cobrança Indevida\n\n${RODAPE_ATENDIMENTO}`,
+        )
         expect(texto).not.toContain(AVISO_NAO_VINCULANTE)
     })
 
