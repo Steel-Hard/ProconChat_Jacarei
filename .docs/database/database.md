@@ -29,6 +29,7 @@
 | `15` | Tipo do token de acesso do WhatsApp (#54): adiciona `access_token_permanent BOOLEAN` e `access_token_expires_at TIMESTAMPTZ`, ambos opcionais, em `WhatsAppSettings`, com `chk_whatsapp_settings_access_token_lifetime` (as duas nulas, `TRUE` sem data ou `FALSE` com data). A linha existente fica com as duas `NULL` (tipo desconhecido) até o próximo teste dos valores salvos ou salvar bem-sucedido. O `Down` remove a constraint e as duas colunas |
 | `16` | Permissões granulares das contas (#62): cria `Permissions` com as 8 permissões (nome e descrição do protótipo) e `UserPermissions`, adiciona `permissions_updated_by` e `permissions_updated_at` em `Users` com `chk_users_permissions_updated` (as duas preenchidas ou as duas nulas) e cria `uniq_users_email_lower` (e-mail único sem diferenciar maiúsculas). Antes do índice, aborta com mensagem clara se houver e-mails repetidos ignorando maiúsculas. As contas existentes ficam sem permissões. O `Down` remove o índice, a constraint, as duas colunas e as duas tabelas |
 | `17` | Agenda com data efetiva (#134): cria `ScheduleChanges`, que armazena snapshots completos da configuração, data local de início, autor e última alteração. O `Down` remove os snapshots |
+| `18` | Mensagens enviadas e histórico de alterações (#88): cria os tipos `outbound_kind` e `outbound_status`, a tabela `OutboundMessages` (com o índice parcial das falhas e os índices das FKs) e a tabela `AuditLog` (com `chk_audit_log_data_object`). O `Down` remove as duas tabelas e os dois tipos |
 
 ### Diagrama
 
@@ -51,6 +52,9 @@ erDiagram
     Users |o--o{ AppointmentEvents : "ator"
     Users ||--o{ UserPermissions : has
     Permissions ||--o{ UserPermissions : "concedida em"
+    Appointments |o--o{ OutboundMessages : "aviso enviado"
+    Sessions |o--o{ OutboundMessages : "resposta enviada"
+    Users |o--o{ AuditLog : "autor"
 ```
 
 Tabelas de configuração, sem relação com as demais além de `updated_by` → `Users`: `ScheduleSettings`, `ScheduleRanges`, `BlockedDates`, `ScheduleChanges`, `AttendanceDocuments` e `WhatsAppSettings`. `Categories` e `Questions` também têm `updated_by` → `Users`.
@@ -736,8 +740,58 @@ CREATE TABLE WhatsAppSettings (
 - `auto_reply_paused` + `updated_by`/`updated_at` = pausa das respostas automáticas e última alteração.
 - `credentials_valid`: `NULL` enquanto nunca testadas; `TRUE` depois de salvar (o salvar refaz o teste com a Meta e só grava com sucesso) ou de um teste bem-sucedido dos valores salvos; `FALSE` quando um teste dos valores salvos falha por motivo definitivo (token, App Secret, IDs ou permissão). Falha de rede ou da Meta não grava. Teste de valores novos não grava nada. `credentials_checked_at` acompanha cada gravação de `credentials_valid`, sem mudar `updated_by`/`updated_at`.
 - `display_phone_number` e `verified_name` (#54): o número institucional e o nome verificado que a Meta devolveu no último salvar ou teste bem-sucedido dos valores salvos. `NULL` até o primeiro sucesso. Teste de valores novos ou que falha não muda os dois, e gravá-los não muda `updated_by`/`updated_at` quando vêm do teste.
-- `access_token_permanent` e `access_token_expires_at` (#54, migration `15`): o tipo do token de acesso salvo, descoberto pelo `debug_token` da Meta. `TRUE` sem data = não expira; `FALSE` com a data = expira nessa data; as duas `NULL` = não se sabe (nunca verificado ou a Meta não respondeu). O `CHECK` usa `IS TRUE`/`IS FALSE` porque, com `= TRUE`, uma data sem `access_token_permanent` daria `NULL` no `CHECK` e passaria. Um teste dos valores salvos só grava o tipo quando a Meta o informa; o salvar que troca o token sempre grava o tipo do token novo (inclusive desconhecido). Gravar pelo teste não muda `updated_by`/`updated_at`. A validade fica velha se o token for revogado direto na Meta; acompanhar isso é da #88.
-- `last_webhook_event_at` continua sem ser gravado até a #88 (estado do número).
+- `access_token_permanent` e `access_token_expires_at` (#54, migration `15`): o tipo do token de acesso salvo, descoberto pelo `debug_token` da Meta. `TRUE` sem data = não expira; `FALSE` com a data = expira nessa data; as duas `NULL` = não se sabe (nunca verificado ou a Meta não respondeu). O `CHECK` usa `IS TRUE`/`IS FALSE` porque, com `= TRUE`, uma data sem `access_token_permanent` daria `NULL` no `CHECK` e passaria. Um teste dos valores salvos só grava o tipo quando a Meta o informa; o salvar que troca o token sempre grava o tipo do token novo (inclusive desconhecido). Gravar pelo teste não muda `updated_by`/`updated_at`. A validade fica velha se o token for revogado direto na Meta. A #88 não detecta isso (a decisão ficou fora do escopo, Q5 da spec): a tela segue com o "Testar conexão", e o estado `EXPIRED` cobre o token com validade vencida.
+- `last_webhook_event_at` (#88): a data do último POST do webhook com ao menos uma `change` aceita, gravada pela rota interna `POST /api/v1/internal/whatsapp/events` a cada chamada, sem mudar `updated_by`/`updated_at` e sem criar a linha. A leitura do painel marca o webhook como parado acima de 24h sem evento, ou quando nunca houve evento.
+
+### OutboundMessages — #88, [decisão 005](../decisoes/005-mensagens-ao-cidadao.md)
+
+```sql
+CREATE TYPE outbound_kind AS ENUM ('REPLY', 'CONFIRMATION', 'PAUSED', 'CANCELLATION', 'REMINDER');
+CREATE TYPE outbound_status AS ENUM ('SENT', 'DELIVERED', 'READ', 'FAILED');
+
+CREATE TABLE OutboundMessages (
+    id BIGSERIAL PRIMARY KEY,
+    provider_message_id VARCHAR(128) UNIQUE,
+    kind outbound_kind NOT NULL,
+    session_id BIGINT REFERENCES Sessions(id),
+    appointment_id BIGINT REFERENCES Appointments(id),
+    status outbound_status NOT NULL DEFAULT 'SENT',
+    error_code VARCHAR(40),
+    sent_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    status_at TIMESTAMPTZ
+);
+
+CREATE INDEX idx_outbound_messages_failed ON OutboundMessages(status, status_at) WHERE status = 'FAILED';
+CREATE INDEX idx_outbound_messages_appointment ON OutboundMessages(appointment_id);
+CREATE INDEX idx_outbound_messages_session ON OutboundMessages(session_id);
+```
+
+- Base de "Falhas de entrega (24h)". **Não guarda o texto nem o telefone**, só o tipo, o status, o código de erro da Meta e o id da mensagem na Meta (`provider_message_id`, o wamid).
+- Os status vêm do Gateway pela rota interna `POST /api/v1/internal/whatsapp/events`. Regra de transição: `FAILED` vence qualquer status; entre `SENT < DELIVERED < READ` (a ordem do enum) o status só avança; depois de `FAILED` nada muda. `status_at` é a data da Meta, ou a hora do backend quando a Meta não a manda.
+- Id desconhecido: `failed` insere uma linha `REPLY`/`FAILED` sem sessão nem agendamento. O Gateway não informa o id das respostas comuns, então elas não têm linha até falhar, e toda falha de id desconhecido entra como `REPLY`. Os outros status de id desconhecido são ignorados, para a tabela não crescer três linhas por resposta.
+- Aviso de cancelamento: aceito com id grava `CANCELLATION`/`SENT` com o agendamento; recusado na hora grava `CANCELLATION`/`FAILED` sem id, com `status_at` = agora (conta nas falhas de 24h). Quando uma linha `CANCELLATION` passa a `FAILED`, o mesmo comando grava `CITIZEN_NOTIFICATION_FAILED` (ator nulo) em `AppointmentEvents`. Se o `failed` chega antes da gravação do envio, a gravação do envio corrige `kind` e `appointment_id`, mantém o `FAILED` e grava `CITIZEN_NOTIFIED` e, 1 ms depois, `CITIZEN_NOTIFICATION_FAILED`, na mesma transação.
+- `CONFIRMATION`, `PAUSED` e `REMINDER` estão reservados (o lembrete é da #74).
+- "Falhas de entrega (24h)": `status = 'FAILED'` e `status_at` maior que agora menos 24h, da mais recente para a mais antiga (desempate pelo `id`), no máximo 50 itens, com a contagem total da janela.
+
+### AuditLog — #88
+
+```sql
+CREATE TABLE AuditLog (
+    id BIGSERIAL PRIMARY KEY,
+    area VARCHAR(40) NOT NULL,
+    action VARCHAR(80) NOT NULL,
+    actor_user_id BIGINT REFERENCES Users(id),
+    data JSONB NOT NULL DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_audit_log_data_object CHECK (jsonb_typeof(data) = 'object')
+);
+
+CREATE INDEX idx_audit_log_area ON AuditLog(area, created_at DESC, id DESC);
+```
+
+- Nasce genérica, mas hoje só a área `whatsapp` é gravada, na mesma instrução SQL (CTE) que altera `WhatsAppSettings`. Ações: `credentials_saved` com `data = { "fields": [...] }` (o subconjunto, nesta ordem, de `phoneNumberId` e `businessAccountId` quando mudaram, e de `accessToken` e `appSecret` quando foram substituídos; pode ser `[]`), `auto_reply_paused` e `auto_reply_resumed` com `data = {}`.
+- **`data` nunca contém valores**: nem segredos (claro, cifrado ou os 4 últimos caracteres) nem os IDs.
+- Alimenta o "Histórico de alterações" da tela de WhatsApp (as 50 alterações mais recentes). Outras áreas (`schedule`, `documents`, `content`, `users`) podem passar a gravar aqui quando as telas delas precisarem.
 
 ### Dados pessoais e segredos (RNF03)
 
@@ -770,44 +824,4 @@ A proposta de referência que ficava na Parte 2 deste documento foi implementada
 
 ## Parte 2 — Schema planejado (Sprint 3)
 
-O que as decisões ainda exigem e não entrou nas migrations `11` a `16`. Cada parte vira uma migration própria na issue indicada. Nomes e tipos podem ser ajustados na implementação, mas as regras não.
-
-### Mensagens enviadas e falhas de entrega — #88, [decisão 005](../decisoes/005-mensagens-ao-cidadao.md)
-
-```sql
-CREATE TYPE outbound_kind AS ENUM ('REPLY', 'CONFIRMATION', 'PAUSED', 'CANCELLATION', 'REMINDER');
-CREATE TYPE outbound_status AS ENUM ('SENT', 'DELIVERED', 'READ', 'FAILED');
-
-CREATE TABLE OutboundMessages (
-    id BIGSERIAL PRIMARY KEY,
-    provider_message_id VARCHAR(128) UNIQUE,
-    kind outbound_kind NOT NULL,
-    session_id BIGINT REFERENCES Sessions(id),
-    appointment_id BIGINT REFERENCES Appointments(id),
-    status outbound_status NOT NULL DEFAULT 'SENT',
-    error_code VARCHAR(40),
-    sent_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    status_at TIMESTAMPTZ
-);
-CREATE INDEX idx_outbound_failed ON OutboundMessages(status, sent_at) WHERE status = 'FAILED';
-```
-
-- Base de "Falhas de entrega" e do reenvio. **Não guarda o texto nem o telefone**, só o tipo e o status.
-- Qualidade do número, limite de envios e status dos modelos são consultados na API da Meta e não precisam de tabela.
-
-### Auditoria das configurações — #88
-
-```sql
-CREATE TABLE AuditLog (
-    id BIGSERIAL PRIMARY KEY,
-    area VARCHAR(40) NOT NULL,
-    action VARCHAR(80) NOT NULL,
-    actor_user_id BIGINT REFERENCES Users(id),
-    data JSONB NOT NULL DEFAULT '{}',
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-CREATE INDEX idx_audit_log_area ON AuditLog(area, created_at);
-```
-
-- `area`: `whatsapp`, `schedule`, `documents`, `content`, `users`. `action`: por exemplo `credentials_replaced`, `paused`, `ranges_changed`. `data` nunca contém segredos.
-- Alimenta o "Histórico de alterações" da tela de WhatsApp e o "Última alteração por … em …" das telas de configuração que não têm `updated_by` próprio (como Documentos, #65).
+Nada planejado no momento. `OutboundMessages` e `AuditLog`, que estavam aqui, foram criadas na migration `18` (#88) e estão descritas na Parte 1.

@@ -22,8 +22,10 @@ sessões encerradas (#16), `14_whatsapp_settings_display_number.sql` guarda o
 número e o nome verificados do WhatsApp (#54),
 `15_whatsapp_settings_access_token_lifetime.sql` guarda se o token de acesso do
 WhatsApp expira (#54), `16_user_permissions.sql` cria as permissões granulares
-das contas e o e-mail único sem diferenciar maiúsculas (#62), e
-`17_schedule_changes.sql` cria snapshots da agenda com data efetiva (#134). O que cada uma faz está
+das contas e o e-mail único sem diferenciar maiúsculas (#62),
+`17_schedule_changes.sql` cria snapshots da agenda com data efetiva (#134), e
+`18_outbound_messages_audit_log.sql` cria as mensagens enviadas e o histórico de
+alterações (#88). O que cada uma faz está
 em [`database.md`](database.md#histórico-das-migrations). Os nomes sem aspas
 são convertidos para minúsculas pelo PostgreSQL (por exemplo,
 `RequiredDocuments` vira `requireddocuments`). Cada migration tem
@@ -32,7 +34,7 @@ são convertidos para minúsculas pelo PostgreSQL (por exemplo,
 **Numeração.** O node-pg-migrate 8 ordena os arquivos pelo **prefixo lido como
 número**, não como texto: `010_alter_sessions.sql` é a versão 10, e um arquivo
 `10_...` empataria com ela. Por isso a migration da Sprint 2 é a `11_`, e a
-**próxima livre é `18_`**. Não renomeie a `010`: ela já está registrada com esse
+**próxima livre é `19_`**. Não renomeie a `010`: ela já está registrada com esse
 nome em `pgmigrations` nos bancos existentes. O executor imprime
 `Can't determine timestamp for 01` (e os demais prefixos), pois seu formato
 padrão é timestamp. Esse aviso não impede a execução.

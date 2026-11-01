@@ -245,6 +245,24 @@ em `POST`/`PUT` sem origem confiável e `400 BAD_REQUEST` `"Malformed JSON body"
 | `POST /resume` | — | `200 { data: WhatsAppSettingsView }` com `autoReplyPaused: false` | — |
 | `GET /templates` | — | `200 { data: { checkedAt, templates: [{ kind: "CANCELLATION" \| "REMINDER", name, languageCode, status, metaStatus }] } }` | `409 WHATSAPP_NOT_CONFIGURED` (sem ID da conta, token ou App Secret); `422 { error: { code: <reason> } }` |
 | `GET /number-status` | — | `200 { data: { checkedAt, qualityRating, messagingLimit: { tier, dailyLimit, usedLast24h } } }` | `409 WHATSAPP_NOT_CONFIGURED` (sem ID do número, token ou App Secret); `422 { error: { code: <reason> } }` |
+| `GET /delivery-failures` | — | `200 { data: { since, count, items: [{ id, kind, errorCode, failedAt, appointmentId }] } }` | — |
+| `GET /history` | — | `200 { data: { items: [{ id, action, fields, actor: { id, name } \| null, createdAt }] } }` | — |
+
+**Estado do número, falhas e histórico (#88).** Não consultam a Meta.
+
+- A `WhatsAppSettingsView` traz `credentialsStatus` (`NOT_CHECKED` sem verificação; `INVALID`;
+  `EXPIRED` quando o token `EXPIRING` já venceu; `VALID`) e `webhook: { lastEventAt, stale }`, com
+  `stale` verdadeiro quando o último evento tem mais de 24h, ou quando nunca houve evento.
+- `GET /delivery-failures` lê `OutboundMessages` com `status = 'FAILED'` e `status_at` nas últimas
+  24h (exclusivo), da mais recente para a mais antiga, no máximo 50. `count` é o total da janela.
+  `kind`: `REPLY` (resposta comum; o Gateway não informa o id das respostas, então toda falha de id
+  desconhecido entra assim), `CANCELLATION` (aviso de cancelamento, com o agendamento), e
+  `CONFIRMATION`, `PAUSED` e `REMINDER`, reservados. Sem telefone, texto nem id da mensagem na Meta.
+- `GET /history` lê `AuditLog` da área `whatsapp`, da alteração mais recente para a mais antiga
+  (desempate pelo `id`), no máximo 50. `action`: `credentials_saved` (com `fields`, o subconjunto de
+  `phoneNumberId` e `businessAccountId` quando mudaram, e de `accessToken` e `appSecret` quando foram
+  substituídos), `auto_reply_paused` e `auto_reply_resumed` (com `fields: []`). Os valores nunca são
+  registrados. A linha é gravada na mesma instrução SQL que altera `WhatsAppSettings`.
 
 **Modelos e estado do número (#67).** As duas rotas consultam a Meta a cada chamada, sem cache, com o
 `appsecret_proof`, e usam os motivos do teste de conexão no `422`.
@@ -380,6 +398,24 @@ comparado em tempo constante (`utils/internalToken.ts`) e `Cache-Control: no-sto
   segredos decifrados. `phoneNumberId`, `accessToken` e `appSecret` podem ser `null`;
 - segredo que não decifra, ou linha de `WhatsAppSettings` ausente: `500` genérico. O endpoint só lê:
   nunca cria a linha.
+
+`POST /api/v1/internal/whatsapp/events` (#88), também antes de `requireTrustedOrigin`, com o mesmo
+`X-Internal-Token` e `Cache-Control: no-store`. O Gateway chama uma vez por webhook aceito:
+
+- corpo `{ statuses: [{ providerMessageId, status, timestamp, errorCode }] }`, com `status` em
+  `sent`/`delivered`/`read`/`failed`, `providerMessageId` de 1 a 128 caracteres, `timestamp` em
+  segundos Unix ou `null`, e `errorCode` em texto de até 40 caracteres ou `null`. A lista pode vir vazia;
+- sem token válido: `401 UNAUTHORIZED`; corpo fora do formato: `400 BAD_REQUEST`, sem gravar nada;
+- `204` sem corpo. Grava `WhatsAppSettings.last_webhook_event_at` (sem mudar `updated_by`/`updated_at`
+  e sem criar a linha) e aplica os status em `OutboundMessages`. `FAILED` vence qualquer status, entre
+  `SENT < DELIVERED < READ` o status só avança, e depois de `FAILED` nada muda. Um `failed` de id
+  desconhecido vira uma linha `REPLY`; os demais status de id desconhecido são ignorados. Quando uma
+  linha `CANCELLATION` passa a `FAILED`, entra `CITIZEN_NOTIFICATION_FAILED` no histórico do agendamento,
+  o que libera o "Tentar novamente".
+
+O aviso de cancelamento grava a própria linha: `CANCELLATION`/`SENT` com o id que o Gateway devolveu,
+ou `CANCELLATION`/`FAILED` sem id quando o envio é recusado na hora (essa falha também conta em
+`GET /delivery-failures`).
 
 Em produção o Caddy responde `404` para `/api/v1/internal*` e o `deploy.sh` confere isso. O gateway
 alcança o backend só pela rede interna do Docker.
@@ -1233,8 +1269,9 @@ um agendamento `PENDING` ou `CONFIRMED` com horário futuro cuja sessão de orig
 (`scheduleRepository.findReturningAppointment`, só pelo HMAC, sem ler `phone_encrypted`). Se achar,
 grava `APPOINTMENT_CONSULTED`, guarda o id em `draft.target_appointment_id` e responde com o menu
 **Remarcar / Cancelar / Tenho outra dúvida**, em botões com o rodapé curto
-`Orientação informativa · Privacidade (LGPD) protegida` (`RODAPE_RETORNO`, enviado pelo Gateway em
-`interactive.footer.text`). Sem agendamento, ou se a consulta falhar (log
+`Orientação informativa · Dados tratados conforme a LGPD` (`RODAPE_ATENDIMENTO`, enviado pelo Gateway em
+`interactive.footer.text`). O mesmo rodapé vai na lista de categorias (#88), e a saudação não traz mais o
+parágrafo de privacidade. Sem agendamento, ou se a consulta falhar (log
 `Failed to read returning appointment`), a sessão segue para a lista de categorias como antes. Sessões
 que já estavam em andamento não consultam.
 

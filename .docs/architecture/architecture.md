@@ -49,7 +49,7 @@ O LLM Service só recebe chamadas do Backend e não tem acesso ao banco nem à s
 
 | Componente | Papel | Container | Estado |
 |---|---|---|---|
-| **Gateway WhatsApp** | Recebe o webhook da Meta, valida a assinatura, deduplica, processa em fila por telefone e repassa ao Backend; envia as respostas do Backend (texto, lista, botões); lê a configuração do WhatsApp no Backend; envio de modelos e repasse dos status de entrega | `gateway` | ✅ Cloud API, respostas e configuração (#53, #83) · ✅ envio de modelos pela rota interna `POST /internal/whatsapp/messages/template` (#67) · 🟠 status de entrega (#88): hoje os eventos de status são descartados |
+| **Gateway WhatsApp** | Recebe o webhook da Meta, valida a assinatura, deduplica, processa em fila por telefone e repassa ao Backend; envia as respostas do Backend (texto, lista, botões); lê a configuração do WhatsApp no Backend; envio de modelos e repasse dos status de entrega | `gateway` | ✅ Cloud API, respostas e configuração (#53, #83) · ✅ envio de modelos pela rota interna `POST /internal/whatsapp/messages/template` (#67) · ✅ status de entrega (#88): repassa `sent`/`delivered`/`read`/`failed` ao Backend, sem o telefone do destinatário |
 | **Backend API** | Orquestrador: conversa, Motor de Decisão, agenda, mensagens ao cidadão, registro de eventos, API do painel, autenticação e permissões | `backend` | ✅ parcial (ver módulos) · 🟠 demais módulos |
 | **Frontend (painel)** | Painel da equipe do PROCON (RF08), a partir do `template-react` | `frontend` (nginx) | ✅ estrutura, layout, login, "Minha conta", Agendamentos, Detalhe do agendamento e WhatsApp (#58, #81, #84, #85, #86, #54); `/` redireciona para Agendamentos enquanto não há Dashboard (PR #115) · 🟠 Dashboard, Relatórios, Conteúdo, Sessões, Horários, Documentos e Usuários (hoje "Em construção") |
 | **LLM Service** | Ollama com `llama3.2:3b`; gera só o texto complementar (RF05) | `ollama` + `llm-pull` | ✅ serviço pronto · 🟠 ligado ao fluxo (S3-05) |
@@ -66,7 +66,7 @@ Não são containers separados: são módulos de código, organizados no padrão
 | **Conversa** | Máquina de estados do bot: saudação, listas, "resolveu?", agendamento, retorno, timeout de 30 minutos, pausa | ✅ saudação, listas, "resolveu?", agendamento, timeout com varredura periódica e pausa (#55, #56, #83) · ✅ retorno de quem já tem agendamento (#59) |
 | **Motor de Decisão** | Lê categorias e perguntas do banco e monta as opções e a resposta final. Não guarda estado | ✅ com paginação e categoria oculta |
 | **Agenda** | Calcula horários livres a partir da configuração; cria, remarca e cancela agendamentos; controla vagas com concorrência | ✅ horários livres e reserva com trava por horário (#56) · ✅ remarcar e cancelar pelo cidadão (#59) |
-| **Mensagens ao cidadão** | Monta os textos fixos (confirmação, pausa) e os modelos (cancelamento, lembrete); registra falhas de envio | ✅ textos fixos de confirmação e de pausa · ✅ modelo do aviso de cancelamento, com a falha síncrona de envio no histórico e o reenvio (#67) · 🟠 lembrete (#74) e falhas de entrega assíncronas (#88) |
+| **Mensagens ao cidadão** | Monta os textos fixos (confirmação, pausa) e os modelos (cancelamento, lembrete); registra falhas de envio | ✅ textos fixos de confirmação e de pausa · ✅ modelo do aviso de cancelamento, com a falha síncrona de envio no histórico e o reenvio (#67) · ✅ falhas de entrega assíncronas (#88), com a do aviso de cancelamento no histórico do agendamento · 🟠 lembrete (#74) |
 | **Registro de eventos** | Grava cada passo da conversa e o desfecho da sessão | ✅ (#16) |
 | **API do painel** | Agendamentos, conteúdo, configuração, usuários, relatórios, configuração do WhatsApp | ✅ agendamentos: lista, detalhe, assumir, atendido e não compareceu (#60), usados pelas telas de Agendamentos e Detalhe (#85, #86); atribuir, corrigir registro, observações internas, lista de funcionários e calendário semanal (#87, telas na #126); configuração do WhatsApp (#83); contas e permissões: listar, criar, salvar em lote, redefinir senha e agendamentos futuros de uma conta (#62, tela na #123) · 🟠 demais |
 | **Autenticação e permissões** | Login, sessão, `requirePermission` com 8 permissões marcadas por conta; o Admin tem todas | ✅ login, sessão, troca de senha e `requirePermission` (#57, #84); permissões reais de cada conta, lidas a cada requisição, e regras contra escalada validadas na API (#62) |
@@ -98,13 +98,13 @@ sequenceDiagram
         L-->>B: texto complementar
         B-->>G: complemento com "Gerado com auxílio de IA"
     end
-    opt status de entrega (#88, ainda não implementado)
-        M->>G: status (entregue / falhou)
-        G->>B: status, gravado se falhou
+    opt status de entrega (#88)
+        M->>G: status (enviado / entregue / lido / falhou)
+        G->>B: POST /internal/whatsapp/events, sem o telefone
     end
 ```
 
-Hoje o Gateway recebe os eventos de status da Meta e os descarta (`status_update` no log). O registro das falhas de entrega é da #88.
+O Gateway repassa os status de entrega uma vez por webhook aceito, antes das mensagens, em `POST /api/v1/internal/whatsapp/events` (só `id`, status, data e o código numérico do erro; nunca o `recipient_id` nem os textos do erro). O Backend grava o último evento do webhook em `WhatsAppSettings.last_webhook_event_at` e as falhas em `OutboundMessages`. A falha do aviso de cancelamento entra no histórico do agendamento e libera o "Tentar novamente". Se o Backend estiver fora, os status daquele webhook se perdem, e a resposta à Meta continua `200`.
 
 ### Mensagem iniciada pelo sistema
 

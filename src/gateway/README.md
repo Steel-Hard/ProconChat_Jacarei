@@ -190,9 +190,9 @@ configuração do painel (seção "Configuração do WhatsApp"), não variáveis
   assinatura errada: `401 UNAUTHORIZED`, nada é processado. Corpo assinado que não é JSON:
   `400 BAD_REQUEST`. Sem a configuração: `503 SERVICE_UNAVAILABLE`.
 - Mensagens de texto vão ao Backend como `{ phone, text }`; toques em lista ou botão vão como
-  `{ phone, optionId }`. Eventos de status, outros números, outros campos, mensagens repetidas (mesmo
-  `wamid`), mensagens com mais de 5 minutos e tipos sem texto (áudio, imagem etc.) são ignorados com um
-  log JSON que tem só `reason` e `messageRef`, nunca telefone, texto ou token.
+  `{ phone, optionId }`. Outros números, outros campos, mensagens repetidas (mesmo `wamid`), mensagens
+  com mais de 5 minutos e tipos sem texto (áudio, imagem etc.) são ignorados com um log JSON que tem só
+  `reason` e `messageRef`, nunca telefone, texto ou token.
 - O `wamid` da Meta carrega o telefone em base64, por isso nunca aparece em log. Os logs da Cloud API
   usam `messageRef`: os 16 primeiros caracteres hex do SHA-256 do `wamid`, estável para a mesma mensagem
   e só serve para correlacionar eventos. Para achar a linha de uma mensagem conhecida:
@@ -201,10 +201,27 @@ configuração do painel (seção "Configuração do WhatsApp"), não variáveis
 - As mensagens do mesmo telefone são processadas em fila: a resposta inteira de uma mensagem é enviada
   antes de a próxima ser repassada ao Backend.
 - O Backend pode devolver `reply.messages` com itens `text`, `list` (até 10 linhas, título ≤ 24,
-  descrição ≤ 72, `buttonText` ≤ 20, corpo ≤ 4096) ou `buttons` (até 3, título ≤ 20, corpo ≤ 1024, com `footer` opcional de até 60 caracteres, enviado em
-  `interactive.footer.text`; rodapé vazio ou maior é recusado com o motivo `invalid_footer`).
+  descrição ≤ 72, `buttonText` ≤ 20, corpo ≤ 4096) ou `buttons` (até 3, título ≤ 20, corpo ≤ 1024). Os dois
+  aceitam `footer` opcional de até 60 caracteres, enviado em `interactive.footer.text`; rodapé vazio ou
+  maior é recusado com o motivo `invalid_footer`.
   Sem `reply.messages`, o Gateway envia `reply.text` como texto (corpo ≤ 4096). Mensagem fora dos limites
   não é enviada, dividida nem truncada: fica no log como `invalid_outgoing_message`.
+
+### Status de entrega (#88)
+
+- Quando o webhook tem ao menos uma `change` aceita (campo `messages` e o ID do número configurado), o
+  gateway chama `POST /api/v1/internal/whatsapp/events` no Backend, com `X-Internal-Token` e timeout de
+  10 s, uma vez e antes de repassar as mensagens do mesmo webhook. O corpo é
+  `{ statuses: [{ providerMessageId, status, timestamp, errorCode }] }`, com a lista vazia quando o
+  webhook só traz mensagens: o Backend usa a chamada para marcar o último evento recebido.
+- `status` é `sent`, `delivered`, `read` ou `failed`; `timestamp` vem em segundos, ou `null` quando
+  ausente ou não numérico; `errorCode` é `String(errors[0].code)`, ou `null`.
+- Item sem `id`, com outro status ou com `id` acima de 128 caracteres é descartado com o log
+  `unsupported_status`.
+- O `recipient_id` (o telefone) e os textos do erro (`title`, `message`, `error_data`) nunca são
+  repassados nem registrados.
+- Se a chamada falhar, o log registra `events_forward_failed`, as mensagens seguem normalmente e a
+  resposta à Meta continua `200`. Os status daquele webhook se perdem.
 
 ### Túnel HTTPS para o teste
 
@@ -270,8 +287,10 @@ tiver a verificação de empresa (erro `141010`), toda entrega para número bras
 Por isso, a validação manual usa um número real registrado na conta do WhatsApp Business (status
 `CONNECTED`), com o ID dele salvo na configuração do painel.
 
-O gateway ainda descarta os eventos de status (`status_update` no log, sem o código de erro); o registro
-de `sent`/`delivered`/`read`/`failed` vem na issue #88. Até lá, quando a resposta não chega ao celular:
+Desde a issue #88, o gateway repassa os status `sent`/`delivered`/`read`/`failed` ao backend
+(`POST /api/v1/internal/whatsapp/events`, ver "Status de entrega") e as falhas aparecem em
+`GET /api/v1/whatsapp/settings/delivery-failures`, com o código de erro da Meta. Quando a resposta não
+chega ao celular:
 
 1. Conferir a saúde do número. `GRAPH_API_VERSION` é a versão mostrada na tela (`graphApiVersion`),
    `PHONE_NUMBER_ID` é o ID do número da tela e `ACCESS_TOKEN` é o token de acesso salvo, preenchido à mão
