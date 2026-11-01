@@ -10,7 +10,7 @@ Conectar o painel ao número institucional na **WhatsApp Cloud API** (oficial da
 
 ## Estado da tela
 
-**Entregue em parte (issue #54).** Já funcionam: topo com número e situação, pausa, credenciais, "Configure no painel da Meta" e teste de conexão. Ainda não construídos: **Estado do número** e **Histórico de alterações** (issue #88) e **Modelos de mensagem** (issue #67).
+**Entregue em parte (issue #54).** Já funcionam: topo com número e situação, pausa, credenciais, "Configure no painel da Meta" e teste de conexão. Ainda não construídos na tela: **Modelos de mensagem** e a qualidade e o limite do **Estado do número** (API pronta na issue #67, tela na #127), o resto do **Estado do número** e o **Histórico de alterações** (issue #88).
 
 ## O que a tela mostra
 
@@ -23,7 +23,7 @@ Conectar o painel ao número institucional na **WhatsApp Cloud API** (oficial da
 
 ### Estado do número
 
-**Ainda não construído (issue #88).** Hoje a tela mostra só a situação geral no topo.
+**Ainda não construído na tela.** Hoje a tela mostra só a situação geral no topo. A **qualidade** e o **limite de envios** já têm API (issue #67, `GET /api/v1/whatsapp/settings/number-status`, só Admin) e a tela fica com a #127. As **credenciais** e o **último evento do webhook** ficam com a #88.
 
 | Item | O que mostra |
 |---|---|
@@ -72,7 +72,7 @@ E o passo a passo:
 
 ### Modelos de mensagem
 
-**Ainda não construído (issue #67).**
+**API pronta (issue #67), tela na #127.** `GET /api/v1/whatsapp/settings/templates` (só Admin) consulta a Meta a cada chamada. O cadastro dos modelos na Meta está no [guia de modelos de mensagem](../whatsapp/modelos-de-mensagem.md).
 
 Mensagens enviadas fora da conversa precisam de modelo aprovado pela Meta ([decisão 005](../decisoes/005-mensagens-ao-cidadao.md)).
 
@@ -96,7 +96,7 @@ Quem alterou o quê e quando. **Os valores do token e do App Secret não são re
 |---|---|
 | Editar IDs, substituir segredos | **Segue o padrão de salvar** ([regras gerais](00-regras-gerais.md#3-salvar-descartar-e-registrar-quem-alterou)). Salvar credenciais novas exige teste bem-sucedido |
 | Testar conexão | Pode ser feito a qualquer momento |
-| Atualizar status dos modelos | Consulta a Meta. **Ainda não construído (issue #67)** |
+| Atualizar status dos modelos | Consulta a Meta de novo. API pronta (issue #67), **botão na tela com a #127** |
 | **Pausar respostas automáticas** | **Age na hora**, sem passar pelo Salvar, porque é de emergência. Pede confirmação: "O chatbot deixará de responder aos cidadãos até ser reativado" |
 | **Reativar respostas** | Age na hora, sem confirmação |
 
@@ -114,5 +114,5 @@ Quem alterou o quê e quando. **Os valores do token e do App Secret não são re
 
 ## Relações
 
-- A **Saúde do chatbot** no [Dashboard](02-dashboard.md) (também só Admin) resume os itens de "Estado do número" e a pausa, quando o Dashboard (issue #71) e o Estado do número (issue #88) forem entregues.
+- A **Saúde do chatbot** no [Dashboard](02-dashboard.md) (também só Admin) resume os itens de "Estado do número" e a pausa, quando o Dashboard (issue #71) e a tela do Estado do número (issues #127 e #88) forem entregues.
 - Durante o desenvolvimento, o sistema usa um número de testes do time. O PROCON troca pelo próprio número por esta tela, seguindo o guia de passagem.

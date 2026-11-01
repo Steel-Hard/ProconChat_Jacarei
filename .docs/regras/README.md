@@ -21,14 +21,14 @@ A referência visual é o protótipo navegável aprovado no Claude Design, copia
 | [01-login-e-conta.md](01-login-e-conta.md) | Login, "Minha conta" e menu | Entregue (#84) |
 | [02-dashboard.md](02-dashboard.md) | Dashboard | Pendente (#71) |
 | [03-agendamentos.md](03-agendamentos.md) | Agendamentos: lista, calendário e busca | Entregue (#85). Calendário semanal: API na #87, tela na #126 |
-| [04-detalhe-do-agendamento.md](04-detalhe-do-agendamento.md) | Detalhe do agendamento | Entregue (#86). Atribuir, observações internas e corrigir registro: API na #87, tela na #126. Cancelar com aviso ao cidadão: #67 |
+| [04-detalhe-do-agendamento.md](04-detalhe-do-agendamento.md) | Detalhe do agendamento | Entregue (#86). Atribuir, observações internas e corrigir registro: API na #87, tela na #126. Cancelar com aviso ao cidadão: API na #67, tela na #127 |
 | [05-relatorios.md](05-relatorios.md) | Relatórios | Pendente (#68, #73) |
 | [06-conteudo.md](06-conteudo.md) | Conteúdo do chatbot | Pendente (#63) |
 | [07-sessoes.md](07-sessoes.md) | Sessões | Pendente (#72, #76) |
 | [08-horarios-de-atendimento.md](08-horarios-de-atendimento.md) | Horários de atendimento | Pendente (#64, #74, #75, #77) |
 | [09-documentos.md](09-documentos.md) | Documentos para atendimento presencial | Pendente (#65) |
 | [10-usuarios.md](10-usuarios.md) | Usuários | Entregue (#62, #123) |
-| [11-whatsapp.md](11-whatsapp.md) | WhatsApp | Entregue em parte (#54). Estado do número e histórico de alterações: #88. Modelos de mensagem: #67 |
+| [11-whatsapp.md](11-whatsapp.md) | WhatsApp | Entregue em parte (#54). Modelos de mensagem e a qualidade e o limite do número: API na #67, tela na #127. Credenciais, último evento do webhook e histórico de alterações: #88 |
 
 Enquanto uma tela está pendente, o item dela não aparece no menu e o endereço da tela mostra "Em construção.". A tela inicial abre na primeira tela pronta que a conta pode acessar, e quem não tem nenhuma tela pronta vê o aviso de conta sem tela disponível ([Login e conta](01-login-e-conta.md#menu-lateral)). Cada arquivo de tela pendente descreve como a tela **vai** funcionar.
 
