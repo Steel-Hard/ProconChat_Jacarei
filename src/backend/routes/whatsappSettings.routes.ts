@@ -1,6 +1,9 @@
 import { NextFunction, Request, Response, Router } from "express"
+import PrivacySettingsController from "../controllers/privacySettings.controller"
 import WhatsAppSettingsController from "../controllers/whatsappSettings.controller"
 import { requireAuth, requirePermission } from "../middleware/auth.middleware"
+import { validateRequest } from "../middleware/validateRequest.middleware"
+import { privacySettingsBodySchema } from "../schemas/privacySettings.schema"
 import { ADMIN_ONLY } from "../types/auth.types"
 
 class WhatsAppSettingsRoutes {
@@ -10,6 +13,7 @@ class WhatsAppSettingsRoutes {
     constructor() {
         this.whatsAppSettingsController = new WhatsAppSettingsController()
         const controller = this.whatsAppSettingsController
+        const privacy = new PrivacySettingsController()
         const adminOnly = [requireAuth, requirePermission(ADMIN_ONLY)]
 
         this.router.use((_req: Request, res: Response, next: NextFunction) => {
@@ -26,6 +30,13 @@ class WhatsAppSettingsRoutes {
         this.router.get("/number-status", ...adminOnly, controller.numberStatus.bind(controller))
         this.router.get("/delivery-failures", ...adminOnly, controller.deliveryFailures.bind(controller))
         this.router.get("/history", ...adminOnly, controller.history.bind(controller))
+        this.router.get("/privacy", ...adminOnly, privacy.getAdmin.bind(privacy))
+        this.router.put(
+            "/privacy",
+            ...adminOnly,
+            validateRequest({ body: privacySettingsBodySchema }, { withIssues: true }),
+            privacy.save.bind(privacy),
+        )
     }
 
     public getRouter(): Router {
