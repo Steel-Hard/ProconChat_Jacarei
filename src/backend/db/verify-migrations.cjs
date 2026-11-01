@@ -193,7 +193,9 @@ async function checkFreshSchema(db) {
 }
 
 async function checkOutboundAndAuditSchema(db) {
-    assert.deepEqual(await column(db, 'outboundmessages', 'provider_message_id'), { data_type: 'character varying', is_nullable: 'YES', column_default: null });
+    assert.deepEqual(await column(db, 'outboundmessages', 'provider_message_hash'), { data_type: 'character', is_nullable: 'YES', column_default: null });
+    assert.equal(await column(db, 'outboundmessages', 'provider_message_id'), undefined);
+    assert.equal(await count(db, "SELECT 1 FROM pg_constraint WHERE conname = 'chk_outbound_messages_provider_message_hash' AND convalidated"), 1);
     assert.deepEqual(await column(db, 'outboundmessages', 'kind'), { data_type: 'USER-DEFINED', is_nullable: 'NO', column_default: null });
     assert.deepEqual(await column(db, 'outboundmessages', 'status'), { data_type: 'USER-DEFINED', is_nullable: 'NO', column_default: "'SENT'::outbound_status" });
     assert.deepEqual(await column(db, 'outboundmessages', 'status_at'), { data_type: 'timestamp with time zone', is_nullable: 'YES', column_default: null });
@@ -378,16 +380,20 @@ async function checkConstraints(db) {
     await db.query("DELETE FROM schedulechanges WHERE effective_from = '2030-01-07'");
     assert.equal(await count(db, 'SELECT 1 FROM schedulechanges'), 0);
 
-    const insertOutbound = 'INSERT INTO outboundmessages(provider_message_id, kind, status) VALUES ($1, $2, $3)';
-    await db.query(insertOutbound, ['wamid.verify', 'REPLY', 'FAILED']);
-    await rejects(db, insertOutbound, ['wamid.verify', 'CANCELLATION', 'SENT'], '23505');
+    const insertOutbound = 'INSERT INTO outboundmessages(provider_message_hash, kind, status) VALUES ($1, $2, $3)';
+    await db.query(insertOutbound, [hex64, 'REPLY', 'FAILED']);
+    await rejects(db, insertOutbound, [hex64, 'CANCELLATION', 'SENT'], '23505');
     await db.query(insertOutbound, [null, 'CANCELLATION', 'FAILED']);
     await db.query(insertOutbound, [null, 'CANCELLATION', 'FAILED']);
-    await rejects(db, insertOutbound, ['wamid.kind', 'OTHER', 'SENT'], '22P02');
-    await rejects(db, insertOutbound, ['wamid.status', 'REPLY', 'DELETED'], '22P02');
-    await rejects(db, insertOutbound, ['w'.repeat(129), 'REPLY', 'SENT'], '22001');
+    await rejects(db, insertOutbound, ['wamid.HBgNNTUxMjk5OTk5MDAwMBUCABEYEjE0QzdGRDQ4QkQ3RjFBMjMwQQA=', 'REPLY', 'SENT'], '23514');
+    await rejects(db, insertOutbound, ['a'.repeat(65), 'REPLY', 'SENT'], '22001');
+    await rejects(db, insertOutbound, ['A'.repeat(64), 'REPLY', 'SENT'], '23514');
+    await rejects(db, insertOutbound, ['g'.repeat(64), 'REPLY', 'SENT'], '23514');
+    await rejects(db, insertOutbound, ['a'.repeat(63), 'REPLY', 'SENT'], '23514');
+    await rejects(db, insertOutbound, [otherHex64, 'OTHER', 'SENT'], '22P02');
+    await rejects(db, insertOutbound, [otherHex64, 'REPLY', 'DELETED'], '22P02');
     await rejects(db, 'INSERT INTO outboundmessages(kind, appointment_id) VALUES ($1, $2)', ['CANCELLATION', 999999], '23503');
-    assert.equal(await count(db, 'SELECT 1 FROM outboundmessages WHERE provider_message_id IS NULL'), 2);
+    assert.equal(await count(db, 'SELECT 1 FROM outboundmessages WHERE provider_message_hash IS NULL'), 2);
     await db.query('DELETE FROM outboundmessages');
 
     const insertAudit = 'INSERT INTO auditlog(area, action, actor_user_id, data) VALUES ($1, $2, $3, $4::jsonb)';

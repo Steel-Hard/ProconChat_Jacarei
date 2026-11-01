@@ -33,6 +33,7 @@ import {
     WeekAppointmentRecord,
 } from "../types/appointment.types"
 import { cleanCpf, hashCpf } from "../utils/cpf.utils"
+import { hashProviderMessageId } from "../utils/providerMessageHash"
 import {
     getThisWeekBounds,
     getTodayBounds,
@@ -964,12 +965,12 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                     return
                 }
                 const sent = await client.query<{ status: string }>(
-                    `INSERT INTO OutboundMessages (provider_message_id, kind, appointment_id, status, status_at)
+                    `INSERT INTO OutboundMessages (provider_message_hash, kind, appointment_id, status, status_at)
                      VALUES ($1, $2::outbound_kind, $3, 'SENT', $4)
-                     ON CONFLICT (provider_message_id) DO UPDATE
+                     ON CONFLICT (provider_message_hash) DO UPDATE
                      SET kind = EXCLUDED.kind, appointment_id = EXCLUDED.appointment_id
                      RETURNING status`,
-                    [providerMessageId, kind, id, now],
+                    [hashProviderMessageId(providerMessageId), kind, id, now],
                 )
                 if (sent.rows[0]?.status === "FAILED") {
                     await client.query(

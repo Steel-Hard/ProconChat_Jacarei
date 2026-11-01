@@ -3,6 +3,7 @@ import getPool from "../../db/connection"
 import { createAppointmentRepository } from "../../repositories/appointment.repository"
 import { outboundMessageRepository } from "../../repositories/outboundMessage.repository"
 import { whatsappSettingsRepository } from "../../repositories/whatsappSettings.repository"
+import { hashProviderMessageId } from "../../utils/providerMessageHash"
 import { createAppointmentScope, createTestAppointment, deleteAppointmentScope, OwnedAppointmentScope } from "./helpers/appointmentsDb"
 import { createTestUser, deleteTestUsers, TestUser } from "./helpers/usersDb"
 
@@ -15,6 +16,11 @@ function windowSince(day: number): Date {
 }
 const PREFIX = `wamid.it88.${process.pid}.${Date.now()}`
 let sequence = 0
+const createdWamids: string[] = []
+
+function createdHashes(): string[] {
+    return createdWamids.map(hashProviderMessageId)
+}
 let staff: TestUser
 let scope: OwnedAppointmentScope
 let originalSettings: Record<string, unknown> | undefined
@@ -33,7 +39,9 @@ async function restoreSettings(): Promise<void> {
 
 function wamid(): string {
     sequence += 1
-    return `${PREFIX}.${sequence}`
+    const id = `${PREFIX}.${sequence}`
+    createdWamids.push(id)
+    return id
 }
 
 interface StoredOutbound {
@@ -46,17 +54,17 @@ interface StoredOutbound {
 
 async function storedRows(providerMessageId: string): Promise<StoredOutbound[]> {
     const result = await getPool().query<StoredOutbound>(
-        "SELECT kind, status, error_code, status_at, appointment_id FROM OutboundMessages WHERE provider_message_id = $1",
-        [providerMessageId],
+        "SELECT kind, status, error_code, status_at, appointment_id FROM OutboundMessages WHERE provider_message_hash = $1",
+        [hashProviderMessageId(providerMessageId)],
     )
     return result.rows
 }
 
 async function insertSent(providerMessageId: string, kind = "REPLY", appointmentId: number | null = null): Promise<void> {
     await getPool().query(
-        `INSERT INTO OutboundMessages (provider_message_id, kind, appointment_id, status, status_at)
+        `INSERT INTO OutboundMessages (provider_message_hash, kind, appointment_id, status, status_at)
          VALUES ($1, $2::outbound_kind, $3, 'SENT', $4)`,
-        [providerMessageId, kind, appointmentId, NOW],
+        [hashProviderMessageId(providerMessageId), kind, appointmentId, NOW],
     )
 }
 
@@ -70,10 +78,10 @@ async function statusOf(providerMessageId: string): Promise<string | undefined> 
 
 async function insertWithStatus(status: string, statusAt: Date, errorCode: string | null = "131047"): Promise<string> {
     const result = await getPool().query<{ id: string }>(
-        `INSERT INTO OutboundMessages (provider_message_id, kind, status, error_code, status_at)
+        `INSERT INTO OutboundMessages (provider_message_hash, kind, status, error_code, status_at)
          VALUES ($1, 'REPLY', $2::outbound_status, $3, $4)
          RETURNING id`,
-        [wamid(), status, errorCode, statusAt],
+        [hashProviderMessageId(wamid()), status, errorCode, statusAt],
     )
     return String(result.rows[0]?.id)
 }
@@ -89,8 +97,8 @@ async function canceledAppointment(): Promise<number> {
 }
 
 async function outboundOfAppointment(appointmentId: number) {
-    const result = await getPool().query<StoredOutbound & { provider_message_id: string | null }>(
-        "SELECT provider_message_id, kind, status, error_code, status_at, appointment_id FROM OutboundMessages WHERE appointment_id = $1",
+    const result = await getPool().query<StoredOutbound & { provider_message_hash: string | null }>(
+        "SELECT provider_message_hash, kind, status, error_code, status_at, appointment_id FROM OutboundMessages WHERE appointment_id = $1",
         [appointmentId],
     )
     return result.rows
@@ -122,15 +130,15 @@ describe("Repositorio de mensagens enviadas com Postgres", () => {
     })
 
     afterEach(async () => {
-        await getPool().query("DELETE FROM OutboundMessages WHERE provider_message_id LIKE $1 AND status_at >= $2", [
-            `${PREFIX}%`,
+        await getPool().query("DELETE FROM OutboundMessages WHERE provider_message_hash = ANY($1::text[]) AND status_at >= $2", [
+            createdHashes(),
             WINDOW_START,
         ])
     })
 
     afterAll(async () => {
         try {
-            await getPool().query("DELETE FROM OutboundMessages WHERE provider_message_id LIKE $1", [`${PREFIX}%`])
+            await getPool().query("DELETE FROM OutboundMessages WHERE provider_message_hash = ANY($1::text[])", [createdHashes()])
             await getPool().query("DELETE FROM OutboundMessages WHERE appointment_id = ANY($1::bigint[])", [scope.createdAppointmentIds])
             await deleteAppointmentScope(scope)
             await restoreSettings()
@@ -152,6 +160,20 @@ describe("Repositorio de mensagens enviadas com Postgres", () => {
         expect(await storedRows(id)).toEqual([
             { kind: "REPLY", status: "FAILED", error_code: "131047", status_at: statusAt, appointment_id: null },
         ])
+    })
+
+    test("failed de wamid desconhecido grava so o HMAC do wamid e nenhuma coluna guarda o wamid", async () => {
+        const id = wamid()
+
+        await apply(id, "FAILED", "131047")
+
+        const result = await getPool().query<Record<string, unknown>>(
+            "SELECT * FROM OutboundMessages WHERE provider_message_hash = $1",
+            [hashProviderMessageId(id)],
+        )
+        expect(result.rows).toHaveLength(1)
+        expect(result.rows[0]?.provider_message_hash).toBe(hashProviderMessageId(id))
+        expect(JSON.stringify(result.rows)).not.toContain(id)
     })
 
     test("sent, delivered e read de wamid desconhecido nao inserem nada", async () => {
@@ -328,9 +350,28 @@ describe("Repositorio de mensagens enviadas com Postgres", () => {
         ])
         expect(await outboundOfAppointment(appointmentId)).toEqual([
             {
-                provider_message_id: id,
+                provider_message_hash: hashProviderMessageId(id),
                 kind: "CANCELLATION",
                 status: "SENT",
+                error_code: null,
+                status_at: NOW,
+                appointment_id: String(appointmentId),
+            },
+        ])
+    })
+
+    test("delivered posterior ao aviso aceito acha a linha do aviso pelo HMAC do mesmo wamid", async () => {
+        const appointmentId = await canceledAppointment()
+        const id = wamid()
+        await createAppointmentRepository().recordCitizenNotification(String(appointmentId), "NOTIFIED", "CANCELLATION", staff.id, NOW, id)
+
+        await apply(id, "DELIVERED")
+
+        expect(await outboundOfAppointment(appointmentId)).toEqual([
+            {
+                provider_message_hash: hashProviderMessageId(id),
+                kind: "CANCELLATION",
+                status: "DELIVERED",
                 error_code: null,
                 status_at: NOW,
                 appointment_id: String(appointmentId),
@@ -357,7 +398,7 @@ describe("Repositorio de mensagens enviadas com Postgres", () => {
         const rows = await outboundOfAppointment(appointmentId)
         expect(rows).toEqual([
             {
-                provider_message_id: null,
+                provider_message_hash: null,
                 kind: "CANCELLATION",
                 status: "FAILED",
                 error_code: null,

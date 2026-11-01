@@ -29,7 +29,7 @@
 | `15` | Tipo do token de acesso do WhatsApp (#54): adiciona `access_token_permanent BOOLEAN` e `access_token_expires_at TIMESTAMPTZ`, ambos opcionais, em `WhatsAppSettings`, com `chk_whatsapp_settings_access_token_lifetime` (as duas nulas, `TRUE` sem data ou `FALSE` com data). A linha existente fica com as duas `NULL` (tipo desconhecido) até o próximo teste dos valores salvos ou salvar bem-sucedido. O `Down` remove a constraint e as duas colunas |
 | `16` | Permissões granulares das contas (#62): cria `Permissions` com as 8 permissões (nome e descrição do protótipo) e `UserPermissions`, adiciona `permissions_updated_by` e `permissions_updated_at` em `Users` com `chk_users_permissions_updated` (as duas preenchidas ou as duas nulas) e cria `uniq_users_email_lower` (e-mail único sem diferenciar maiúsculas). Antes do índice, aborta com mensagem clara se houver e-mails repetidos ignorando maiúsculas. As contas existentes ficam sem permissões. O `Down` remove o índice, a constraint, as duas colunas e as duas tabelas |
 | `17` | Agenda com data efetiva (#134): cria `ScheduleChanges`, que armazena snapshots completos da configuração, data local de início, autor e última alteração. O `Down` remove os snapshots |
-| `18` | Mensagens enviadas e histórico de alterações (#88): cria os tipos `outbound_kind` e `outbound_status`, a tabela `OutboundMessages` (com o índice parcial das falhas e os índices das FKs) e a tabela `AuditLog` (com `chk_audit_log_data_object`). O `Down` remove as duas tabelas e os dois tipos |
+| `18` | Mensagens enviadas e histórico de alterações (#88): cria os tipos `outbound_kind` e `outbound_status`, a tabela `OutboundMessages` (com o HMAC do wamid em `provider_message_hash` e `chk_outbound_messages_provider_message_hash`, o índice parcial das falhas e os índices das FKs) e a tabela `AuditLog` (com `chk_audit_log_data_object`). O `Down` remove as duas tabelas e os dois tipos |
 
 ### Diagrama
 
@@ -751,14 +751,15 @@ CREATE TYPE outbound_status AS ENUM ('SENT', 'DELIVERED', 'READ', 'FAILED');
 
 CREATE TABLE OutboundMessages (
     id BIGSERIAL PRIMARY KEY,
-    provider_message_id VARCHAR(128) UNIQUE,
+    provider_message_hash CHAR(64) UNIQUE,
     kind outbound_kind NOT NULL,
     session_id BIGINT REFERENCES Sessions(id),
     appointment_id BIGINT REFERENCES Appointments(id),
     status outbound_status NOT NULL DEFAULT 'SENT',
     error_code VARCHAR(40),
     sent_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    status_at TIMESTAMPTZ
+    status_at TIMESTAMPTZ,
+    CONSTRAINT chk_outbound_messages_provider_message_hash CHECK (provider_message_hash ~ '^[0-9a-f]{64}$')
 );
 
 CREATE INDEX idx_outbound_messages_failed ON OutboundMessages(status, status_at) WHERE status = 'FAILED';
@@ -766,7 +767,7 @@ CREATE INDEX idx_outbound_messages_appointment ON OutboundMessages(appointment_i
 CREATE INDEX idx_outbound_messages_session ON OutboundMessages(session_id);
 ```
 
-- Base de "Falhas de entrega (24h)". **Não guarda o texto nem o telefone**, só o tipo, o status, o código de erro da Meta e o id da mensagem na Meta (`provider_message_id`, o wamid).
+- Base de "Falhas de entrega (24h)". **Não guarda o texto nem o telefone.** Guarda o tipo, o status, o código de erro da Meta e um HMAC do id da mensagem na Meta (`provider_message_hash`, HMAC-SHA256 com `PHONE_HASH_SECRET`), porque o wamid carrega o telefone em base64.
 - Os status vêm do Gateway pela rota interna `POST /api/v1/internal/whatsapp/events`. Regra de transição: `FAILED` vence qualquer status; entre `SENT < DELIVERED < READ` (a ordem do enum) o status só avança; depois de `FAILED` nada muda. `status_at` é a data da Meta, ou a hora do backend quando a Meta não a manda.
 - Id desconhecido: `failed` insere uma linha `REPLY`/`FAILED` sem sessão nem agendamento. O Gateway não informa o id das respostas comuns, então elas não têm linha até falhar, e toda falha de id desconhecido entra como `REPLY`. Os outros status de id desconhecido são ignorados, para a tabela não crescer três linhas por resposta.
 - Aviso de cancelamento: aceito com id grava `CANCELLATION`/`SENT` com o agendamento; recusado na hora grava `CANCELLATION`/`FAILED` sem id, com `status_at` = agora (conta nas falhas de 24h). Quando uma linha `CANCELLATION` passa a `FAILED`, o mesmo comando grava `CITIZEN_NOTIFICATION_FAILED` (ator nulo) em `AppointmentEvents`. Se o `failed` chega antes da gravação do envio, a gravação do envio corrige `kind` e `appointment_id`, mantém o `FAILED` e grava `CITIZEN_NOTIFIED` e, 1 ms depois, `CITIZEN_NOTIFICATION_FAILED`, na mesma transação.

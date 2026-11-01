@@ -3,6 +3,7 @@ import getPool from "../db/connection"
 import { OutboundKind } from "../types/outboundMessage.types"
 import { OutboundMessageRepository } from "./outboundMessage.repository.interface"
 import { inTransaction } from "./responsibleQueries"
+import { hashProviderMessageId } from "../utils/providerMessageHash"
 
 export function createOutboundMessageRepository(pool: Pool = getPool()): OutboundMessageRepository {
     return {
@@ -10,12 +11,13 @@ export function createOutboundMessageRepository(pool: Pool = getPool()): Outboun
             await inTransaction(pool, async (client) => {
                 for (const status of statuses) {
                     const statusAt = status.statusAt ?? now
+                    const providerMessageHash = hashProviderMessageId(status.providerMessageId)
                     if (status.status === "FAILED") {
                         await client.query(
                             `WITH failed AS (
-                                 INSERT INTO OutboundMessages (provider_message_id, kind, status, error_code, status_at)
+                                 INSERT INTO OutboundMessages (provider_message_hash, kind, status, error_code, status_at)
                                  VALUES ($1, 'REPLY', 'FAILED', $2, $3)
-                                 ON CONFLICT (provider_message_id) DO UPDATE
+                                 ON CONFLICT (provider_message_hash) DO UPDATE
                                  SET status = 'FAILED', error_code = EXCLUDED.error_code, status_at = EXCLUDED.status_at
                                  WHERE OutboundMessages.status <> 'FAILED'
                                  RETURNING kind, appointment_id
@@ -24,15 +26,15 @@ export function createOutboundMessageRepository(pool: Pool = getPool()): Outboun
                              SELECT appointment_id, 'CITIZEN_NOTIFICATION_FAILED', NULL, '{"kind":"CANCELLATION"}'::jsonb, $4
                              FROM failed
                              WHERE kind = 'CANCELLATION' AND appointment_id IS NOT NULL`,
-                            [status.providerMessageId, status.errorCode, statusAt, now],
+                            [providerMessageHash, status.errorCode, statusAt, now],
                         )
                         continue
                     }
                     await client.query(
                         `UPDATE OutboundMessages
                          SET status = $2::outbound_status, status_at = $3
-                         WHERE provider_message_id = $1 AND status < $2::outbound_status`,
-                        [status.providerMessageId, status.status, statusAt],
+                         WHERE provider_message_hash = $1 AND status < $2::outbound_status`,
+                        [providerMessageHash, status.status, statusAt],
                     )
                 }
             })

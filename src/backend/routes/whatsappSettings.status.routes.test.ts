@@ -184,6 +184,7 @@ describe("/api/v1/whatsapp/settings: modelos e estado do número", () => {
             },
         })
         expect(JSON.stringify(response.body)).not.toContain("provider_message_id")
+        expect(JSON.stringify(response.body)).not.toContain("provider_message_hash")
         expect(JSON.stringify(response.body)).not.toContain("providerMessageId")
     })
 
