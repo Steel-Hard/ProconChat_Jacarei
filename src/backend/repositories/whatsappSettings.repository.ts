@@ -170,4 +170,8 @@ export const whatsappSettingsRepository: WhatsAppSettingsRepository = {
              RETURNING *`,
             [paused, updatedBy],
         ),
+
+    async touchLastWebhookEvent(at) {
+        await getPool().query("UPDATE WhatsAppSettings SET last_webhook_event_at = $1 WHERE id = 1", [at])
+    },
 }

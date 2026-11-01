@@ -5,6 +5,7 @@ export class MockWhatsAppSettingsRepository implements WhatsAppSettingsRepositor
     public row: WhatsAppSettingsRow | null
     public readonly credentialChecks: boolean[] = []
     public saveCalls = 0
+    public readonly webhookEventTouches: Date[] = []
 
     private readonly userNames = new Map<number, string>()
     private readonly clock: () => Date
@@ -69,6 +70,10 @@ export class MockWhatsAppSettingsRepository implements WhatsAppSettingsRepositor
         const row = this.requireRow()
         this.row = { ...row, autoReplyPaused: paused, updatedBy: this.userOf(updatedBy), updatedAt: this.clock() }
         return { ...this.row }
+    }
+
+    async touchLastWebhookEvent(at: Date): Promise<void> {
+        this.webhookEventTouches.push(at)
     }
 
     private userOf(id: number): { id: number; name: string } {
