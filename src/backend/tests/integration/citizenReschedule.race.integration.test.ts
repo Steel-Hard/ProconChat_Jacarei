@@ -135,6 +135,22 @@ async function activeInSlot(slot: Date): Promise<number> {
     return result.rows[0]?.count ?? 0
 }
 
+async function holdsNothingBehindTheWait(appointmentId: string, slot: Date): Promise<{ rowFree: boolean; slotFree: boolean }> {
+    const probe = await getPool().connect()
+    try {
+        await probe.query("BEGIN")
+        const row = await probe.query("SELECT id FROM Appointments WHERE id = $1 FOR UPDATE SKIP LOCKED", [appointmentId])
+        const slotLock = await probe.query<{ free: boolean }>(
+            "SELECT pg_try_advisory_xact_lock(hashtext('slot:' || $1::text)) AS free",
+            [slot.toISOString()],
+        )
+        return { rowFree: row.rowCount === 1, slotFree: slotLock.rows[0]?.free === true }
+    } finally {
+        await probe.query("ROLLBACK")
+        probe.release()
+    }
+}
+
 describe("corridas da remarcação pelo cidadão (Postgres)", () => {
     const createdAppointmentIds: string[] = []
     const tuesday = nextTuesday()
@@ -272,5 +288,47 @@ describe("corridas da remarcação pelo cidadão (Postgres)", () => {
         expect(reschedule.status === "rejected" ? reschedule.reason : null).toBeInstanceOf(AppointmentNotChangeableError)
         expect(await storedCitizenAppointment(citizen.appointmentId)).toEqual({ ...before, status: "CANCELED" })
         expect((await eventsOf([Number(citizen.appointmentId)])).map((event) => event.type)).toEqual(["CANCELED_BY_STAFF"])
+    })
+
+    it("espera pela trava da configuração sem segurar a trava do horário nem a linha do agendamento", async () => {
+        const slot = parseLocalDate(addDaysToDateString(tuesday, 21), "08:00")
+        const citizen = await returningCitizen(phones.staffCanceled(1), 70)
+        const blocker = await getPool().connect()
+        let pending: Promise<PromiseSettledResult<unknown>>
+        let held: { rowFree: boolean; slotFree: boolean }
+        try {
+            await blocker.query("BEGIN")
+            await blocker.query("SELECT pg_advisory_xact_lock(hashtext('schedule_config'))")
+            pending = settle(scheduleRepository.rescheduleByCitizen({ ...citizen, appointmentDatetime: slot, now }))
+            await waitForAdvisoryWaiters(1)
+            held = await holdsNothingBehindTheWait(citizen.appointmentId, slot)
+            await blocker.query("COMMIT")
+        } finally {
+            blocker.release()
+        }
+
+        expect(held).toEqual({ rowFree: true, slotFree: true })
+        expect((await pending).status).toBe("fulfilled")
+    })
+
+    it("espera pela trava do horário sem segurar a linha do agendamento", async () => {
+        const slot = parseLocalDate(addDaysToDateString(tuesday, 28), "08:00")
+        const citizen = await returningCitizen(phones.staffCanceled(2), 80)
+        const blocker = await getPool().connect()
+        let pending: Promise<PromiseSettledResult<unknown>>
+        let rowFree: boolean
+        try {
+            await blocker.query("BEGIN")
+            await blocker.query("SELECT pg_advisory_xact_lock(hashtext('slot:' || $1::text))", [slot.toISOString()])
+            pending = settle(scheduleRepository.rescheduleByCitizen({ ...citizen, appointmentDatetime: slot, now }))
+            await waitForAdvisoryWaiters(1)
+            rowFree = (await holdsNothingBehindTheWait(citizen.appointmentId, slot)).rowFree
+            await blocker.query("COMMIT")
+        } finally {
+            blocker.release()
+        }
+
+        expect(rowFree).toBe(true)
+        expect((await pending).status).toBe("fulfilled")
     })
 })
