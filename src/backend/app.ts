@@ -12,6 +12,7 @@ import authRoutes from "./routes/auth.routes"
 import appointmentRoutes from "./routes/appointment.routes"
 import whatsappSettingsRoutes from "./routes/whatsappSettings.routes"
 import whatsappInternalConfigRoutes from "./routes/whatsappInternalConfig.routes"
+import whatsappInternalEventsRoutes from "./routes/whatsappInternalEvents.routes"
 import userAccountRoutes from "./routes/userAccount.routes"
 import scheduleRoutes from "./routes/schedule.routes"
 import { createRequireTrustedOrigin } from "./middleware/trustedOrigin.middleware"
@@ -33,6 +34,7 @@ app.use(requestLoggerMiddleware)
 app.use("/health", healthRoutes)
 app.use("/api/v1/whatsapp/sessions", whatsappSessionRoutes)
 app.use("/api/v1/internal/whatsapp/config", whatsappInternalConfigRoutes)
+app.use("/api/v1/internal/whatsapp/events", whatsappInternalEventsRoutes)
 app.use("/api/v1", createRequireTrustedOrigin(frontendOrigin))
 app.use("/api/v1/auth", authRoutes)
 app.use("/api/v1/appointments", appointmentRoutes)

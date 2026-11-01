@@ -15,6 +15,7 @@ interface SettingsRow {
     verified_name: string | null
     access_token_permanent: boolean | null
     access_token_expires_at: Date | null
+    last_webhook_event_at: Date | null
     updated_by: string | null
     updated_by_name: string | null
     updated_at: Date
@@ -23,7 +24,8 @@ interface SettingsRow {
 const SELECT_WITH_USER = `
     SELECT s.phone_number_id, s.business_account_id, s.access_token_encrypted, s.app_secret_encrypted,
            s.verify_token, s.auto_reply_paused, s.credentials_checked_at, s.credentials_valid,
-           s.display_phone_number, s.verified_name, s.access_token_permanent, s.access_token_expires_at, s.updated_by, u.name AS updated_by_name, s.updated_at
+           s.display_phone_number, s.verified_name, s.access_token_permanent, s.access_token_expires_at,
+           s.last_webhook_event_at, s.updated_by, u.name AS updated_by_name, s.updated_at
     FROM settings s
     LEFT JOIN Users u ON u.id = s.updated_by`
 
@@ -60,19 +62,25 @@ function toRow(row: SettingsRow): WhatsAppSettingsRow {
         displayPhoneNumber: row.display_phone_number,
         verifiedName: row.verified_name,
         accessTokenLifetime: lifetimeOf(row),
+        lastWebhookEventAt: row.last_webhook_event_at,
         updatedBy: row.updated_by === null ? null : { id: Number(row.updated_by), name: row.updated_by_name ?? "" },
         updatedAt: row.updated_at,
     }
 }
 
-async function querySettings(statement: string, params: unknown[] = []): Promise<WhatsAppSettingsRow | null> {
-    const result = await getPool().query<SettingsRow>(`WITH settings AS (${statement}) ${SELECT_WITH_USER}`, params)
+const INSERT_AUDIT = (actorParam: number, actionParam: number, dataParam: number) => `
+    INSERT INTO AuditLog (area, action, actor_user_id, data)
+    SELECT 'whatsapp', $${actionParam}, $${actorParam}, $${dataParam}::jsonb FROM settings`
+
+async function querySettings(statement: string, params: unknown[] = [], auditStatement?: string): Promise<WhatsAppSettingsRow | null> {
+    const audit = auditStatement === undefined ? "" : `, audit AS (${auditStatement})`
+    const result = await getPool().query<SettingsRow>(`WITH settings AS (${statement})${audit} ${SELECT_WITH_USER}`, params)
     const row = result.rows[0]
     return row ? toRow(row) : null
 }
 
-async function requireSettings(statement: string, params: unknown[]): Promise<WhatsAppSettingsRow> {
-    const row = await querySettings(statement, params)
+async function requireSettings(statement: string, params: unknown[], auditStatement?: string): Promise<WhatsAppSettingsRow> {
+    const row = await querySettings(statement, params, auditStatement)
     if (!row) {
         throw new Error("WhatsAppSettings row not found")
     }
@@ -106,6 +114,7 @@ export const whatsappSettingsRepository: WhatsAppSettingsRepository = {
         verifiedName,
         accessTokenLifetime,
         updatedBy,
+        auditFields,
     }) => {
         const [permanent, expiresAt] = accessTokenLifetime === null ? [null, null] : lifetimeColumns(accessTokenLifetime)
         return requireSettings(
@@ -129,7 +138,10 @@ export const whatsappSettingsRepository: WhatsAppSettingsRepository = {
                 accessTokenLifetime !== null,
                 permanent,
                 expiresAt,
+                "credentials_saved",
+                JSON.stringify({ fields: auditFields }),
             ],
+            INSERT_AUDIT(7, 11, 12),
         )
     },
 
@@ -168,6 +180,11 @@ export const whatsappSettingsRepository: WhatsAppSettingsRepository = {
              SET auto_reply_paused = $1, updated_by = $2, updated_at = now()
              WHERE id = 1
              RETURNING *`,
-            [paused, updatedBy],
+            [paused, updatedBy, paused ? "auto_reply_paused" : "auto_reply_resumed", "{}"],
+            INSERT_AUDIT(2, 3, 4),
         ),
+
+    async touchLastWebhookEvent(at) {
+        await getPool().query("UPDATE WhatsAppSettings SET last_webhook_event_at = $1 WHERE id = 1", [at])
+    },
 }

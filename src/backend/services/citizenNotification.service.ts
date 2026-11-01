@@ -49,6 +49,7 @@ export function createCitizenNotificationService({
             throw new ConflictError("Não há aviso de cancelamento com falha para reenviar", "NOTIFICATION_NOT_RETRYABLE")
         }
         let outcome: CitizenNotificationOutcome = "FAILED"
+        let providerMessageId: string | null = null
         const to = phoneOf(target.phoneEncrypted)
         if (to === null) {
             logFailure(id, "PHONE_UNAVAILABLE")
@@ -66,11 +67,12 @@ export function createCitizenNotificationService({
             })
             if (result.ok) {
                 outcome = "NOTIFIED"
+                providerMessageId = result.providerMessageId
             } else {
                 logFailure(id, result.reason)
             }
         }
-        await appointments.recordCitizenNotification(id, outcome, "CANCELLATION", actorUserId, now)
+        await appointments.recordCitizenNotification(id, outcome, "CANCELLATION", actorUserId, now, providerMessageId)
         return outcome
     }
 

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
 import { BackendClient, WhatsappSessionResponse } from "../clients/backend.client"
+import { createCloudApiProvider } from "../gateways/cloudApi.gateway"
 import { MessageProvider, ParsedIncoming } from "../gateways/messageProvider"
 import { OutgoingMessageValidationError } from "../gateways/outgoingMessage.validation"
 import { IncomingMessage, OutgoingMessage } from "../types/message.types"
@@ -31,9 +32,10 @@ function deferred<T>() {
 
 describe("WhatsApp webhook service", () => {
     const createWhatsappSession = vi.fn<BackendClient["createWhatsappSession"]>()
+    const reportWebhookEvents = vi.fn<BackendClient["reportWebhookEvents"]>()
     const parseIncoming = vi.fn<MessageProvider["parseIncoming"]>()
     const send = vi.fn<MessageProvider["send"]>()
-    const backend: BackendClient = { createWhatsappSession }
+    const backend: BackendClient = { createWhatsappSession, getWhatsappConfig: vi.fn(), reportWebhookEvents }
     const provider: MessageProvider = { verifySignature: vi.fn(), parseIncoming, send }
     let deduplicator: MemoryMessageDeduplicator
     let logSpy: ReturnType<typeof vi.spyOn>
@@ -50,7 +52,7 @@ describe("WhatsApp webhook service", () => {
     }
 
     function incoming(...messages: IncomingMessage[]): ParsedIncoming {
-        return { messages, ignored: [] }
+        return { messages, statuses: [], ignored: [], eventReceived: true }
     }
 
     function loggedOutput(): string {
@@ -61,6 +63,7 @@ describe("WhatsApp webhook service", () => {
         vi.clearAllMocks()
         deduplicator = new MemoryMessageDeduplicator(300_000)
         send.mockResolvedValue(undefined)
+        reportWebhookEvents.mockResolvedValue(undefined)
         logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined)
         errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
     })
@@ -189,20 +192,22 @@ describe("WhatsApp webhook service", () => {
     test("devolve e loga os descartes do parse sem chamar o backend", async () => {
         parseIncoming.mockReturnValue({
             messages: [],
-            ignored: [{ reason: "status_update", messageId: "wamid.status" }, { reason: "unsupported_field" }],
+            statuses: [],
+            ignored: [{ reason: "unsupported_status", messageId: "wamid.status" }, { reason: "unsupported_field" }],
+            eventReceived: true,
         })
 
         const result = await service()({})
 
         expect(result).toEqual({
             results: [
-                { status: "ignored", reason: "status_update", messageId: "wamid.status" },
+                { status: "ignored", reason: "unsupported_status", messageId: "wamid.status" },
                 { status: "ignored", reason: "unsupported_field" },
             ],
         })
         expect(createWhatsappSession).not.toHaveBeenCalled()
         expect(send).not.toHaveBeenCalled()
-        expect(loggedOutput()).toContain("status_update")
+        expect(loggedOutput()).toContain("unsupported_status")
     })
 
     test("envia toda a resposta da primeira mensagem antes de chamar o backend para a segunda do mesmo telefone", async () => {
@@ -328,7 +333,9 @@ describe("WhatsApp webhook service", () => {
                 textMessage("wamid.1"),
                 { id: "wamid.velha", from: PHONE, timestampMs: NOW - 400_000, text: CITIZEN_TEXT },
             ],
+            statuses: [],
             ignored: [{ reason: "unsupported_message", messageId: "wamid.audio" }],
+            eventReceived: true,
         })
         createWhatsappSession.mockResolvedValue(reply({ messages: [{ type: "buttons", text: CITIZEN_TEXT, buttons: [] }] }))
         send.mockRejectedValue(new OutgoingMessageValidationError("invalid_button_count"))
@@ -355,10 +362,12 @@ describe("WhatsApp webhook service", () => {
                 { id: processedId, from: PHONE, timestampMs: NOW - 1000, text: "oi" },
                 { id: staleId, from: PHONE, timestampMs: NOW - 400_000, text: "oi" },
             ],
+            statuses: [],
             ignored: [
-                { reason: "status_update", messageId: statusId },
+                { reason: "unsupported_status", messageId: statusId },
                 { reason: "unsupported_message", messageId: unsupportedId },
             ],
+            eventReceived: true,
         })
         parseIncoming.mockReturnValueOnce(incoming({ id: processedId, from: PHONE, text: "oi" }))
         parseIncoming.mockReturnValueOnce(incoming({ id: invalidId, from: PHONE, text: "oi" }))
@@ -373,7 +382,7 @@ describe("WhatsApp webhook service", () => {
         await handle({})
 
         const output = loggedOutput()
-        for (const reason of ["send_failed", "stale_message", "status_update", "unsupported_message", "duplicate_message", "invalid_outgoing_message"]) {
+        for (const reason of ["send_failed", "stale_message", "unsupported_status", "unsupported_message", "duplicate_message", "invalid_outgoing_message"]) {
             expect(output).toContain(reason)
         }
         for (const id of [processedId, staleId, invalidId, statusId, unsupportedId]) {
@@ -382,5 +391,159 @@ describe("WhatsApp webhook service", () => {
         }
         expect(output).not.toContain("HBgNNTUwMDAwMDAwMDAx")
         expect(output).not.toContain("messageId")
+    })
+
+    test("repassa os status ao backend uma vez, antes de criar a sessao das mensagens do mesmo webhook", async () => {
+        const statuses = [
+            { providerMessageId: "wamid.enviada", status: "delivered" as const, timestamp: 1730000000, errorCode: null },
+            { providerMessageId: "wamid.falhou", status: "failed" as const, timestamp: null, errorCode: "131047" },
+        ]
+        parseIncoming.mockReturnValue({ ...incoming(textMessage("wamid.1")), statuses })
+        createWhatsappSession.mockResolvedValue(reply())
+
+        await service()({})
+
+        expect(reportWebhookEvents).toHaveBeenCalledOnce()
+        expect(reportWebhookEvents).toHaveBeenCalledWith({ statuses })
+        expect(reportWebhookEvents.mock.invocationCallOrder[0]).toBeLessThan(
+            createWhatsappSession.mock.invocationCallOrder[0] ?? 0,
+        )
+    })
+
+    test("nao repassa eventos ao backend quando nenhuma change do webhook foi aceita", async () => {
+        parseIncoming.mockReturnValue({
+            messages: [],
+            statuses: [],
+            ignored: [{ reason: "unknown_phone_number_id" }],
+            eventReceived: false,
+        })
+
+        await service()({})
+
+        expect(reportWebhookEvents).not.toHaveBeenCalled()
+    })
+
+    test("repassa a lista vazia de status quando o webhook aceito so traz mensagens", async () => {
+        parseIncoming.mockReturnValue(incoming(textMessage("wamid.1")))
+        createWhatsappSession.mockResolvedValue(reply())
+
+        await service()({})
+
+        expect(reportWebhookEvents).toHaveBeenCalledOnce()
+        expect(reportWebhookEvents).toHaveBeenCalledWith({ statuses: [] })
+    })
+
+    test("registra events_forward_failed e ainda processa a mensagem quando o repasse de eventos falha", async () => {
+        parseIncoming.mockReturnValue(incoming(textMessage("wamid.1")))
+        reportWebhookEvents.mockRejectedValue(new Error("Backend returned HTTP 500"))
+        createWhatsappSession.mockResolvedValue(reply({ text: "Escolha uma categoria" }))
+
+        const result = await service()({})
+
+        expect(createWhatsappSession).toHaveBeenCalledWith({ phone: PHONE, text: CITIZEN_TEXT })
+        expect(send).toHaveBeenCalledWith(PHONE, { type: "text", text: "Escolha uma categoria" })
+        expect(result).toEqual({ results: [{ status: "processed", messageId: "wamid.1" }] })
+        expect(loggedOutput()).toContain("events_forward_failed")
+    })
+
+    test("repassa os dois status do lote com o codigo de 41 caracteres e a data fora do limite como null e o item valido intacto", async () => {
+        const phoneNumberId = "100000000000001"
+        const realProvider = createCloudApiProvider({
+            getConfig: () => ({ phoneNumberId, accessToken: "t", appSecret: "s", graphApiVersion: "v26.0" }),
+            fetchFn: vi.fn(),
+        })
+        const handle = createWhatsappWebhookService({
+            backend,
+            provider: realProvider,
+            deduplicator,
+            queue: createPhoneQueue(),
+            now: () => NOW,
+        })
+
+        await handle({
+            object: "whatsapp_business_account",
+            entry: [
+                {
+                    changes: [
+                        {
+                            field: "messages",
+                            value: {
+                                metadata: { phone_number_id: phoneNumberId },
+                                statuses: [
+                                    {
+                                        id: "wamid.invalido",
+                                        status: "failed",
+                                        timestamp: "253402300800",
+                                        errors: [{ code: "9".repeat(41) }],
+                                    },
+                                    {
+                                        id: "wamid.valido",
+                                        status: "failed",
+                                        timestamp: "1780000000",
+                                        errors: [{ code: 131047 }],
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
+            ],
+        })
+
+        expect(reportWebhookEvents).toHaveBeenCalledOnce()
+        expect(reportWebhookEvents).toHaveBeenCalledWith({
+            statuses: [
+                { providerMessageId: "wamid.invalido", status: "failed", timestamp: null, errorCode: null },
+                { providerMessageId: "wamid.valido", status: "failed", timestamp: 1780000000, errorCode: "131047" },
+            ],
+        })
+    })
+
+    test("nao repassa nem registra em log o telefone do destinatario nem os textos do erro da Meta", async () => {
+        const phoneNumberId = "100000000000001"
+        const realProvider = createCloudApiProvider({
+            getConfig: () => ({ phoneNumberId, accessToken: "t", appSecret: "s", graphApiVersion: "v26.0" }),
+            fetchFn: vi.fn(),
+        })
+        reportWebhookEvents.mockRejectedValue(new Error("Backend returned HTTP 503"))
+        const handle = createWhatsappWebhookService({
+            backend,
+            provider: realProvider,
+            deduplicator,
+            queue: createPhoneQueue(),
+            now: () => NOW,
+        })
+
+        await handle({
+            object: "whatsapp_business_account",
+            entry: [
+                {
+                    changes: [
+                        {
+                            field: "messages",
+                            value: {
+                                metadata: { phone_number_id: phoneNumberId },
+                                statuses: [
+                                    {
+                                        id: "wamid.falhou",
+                                        status: "failed",
+                                        recipient_id: OTHER_PHONE,
+                                        errors: [{ code: 131026, title: "Titulo sigiloso", message: "Mensagem sigilosa" }],
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
+            ],
+        })
+
+        const forwarded = JSON.stringify(reportWebhookEvents.mock.calls)
+        const output = loggedOutput()
+        expect(reportWebhookEvents).toHaveBeenCalledOnce()
+        for (const secret of [OTHER_PHONE, "Titulo sigiloso", "Mensagem sigilosa"]) {
+            expect(forwarded).not.toContain(secret)
+            expect(output).not.toContain(secret)
+        }
     })
 })

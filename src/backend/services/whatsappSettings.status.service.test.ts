@@ -1,11 +1,19 @@
 import { describe, expect, it, vi } from "vitest"
 import { MockMetaGraphClient } from "../clients/metaGraphMock.client"
+import { AuditLogStubRepository } from "../repositories/mock/auditLogStub.repository"
+import { OutboundMessageStubRepository } from "../repositories/mock/outboundMessageStub.repository"
 import { MockWhatsAppSettingsRepository } from "../repositories/mock/whatsappSettingsMock.repository"
 import { WhatsAppSettingsRow } from "../types/whatsappSettings.types"
 import { decrypt, encrypt } from "../utils/crypto.utils"
 import { createWhatsAppSettingsService } from "./whatsappSettings.service"
 
 const NOW = new Date("2026-10-14T13:00:00.000Z")
+const DAY_MS = 24 * 60 * 60 * 1000
+const UNKNOWN_LIFETIME = { kind: "UNKNOWN", expiresAt: null } as const
+
+function expiringAt(ms: number) {
+    return { kind: "EXPIRING", expiresAt: new Date(ms).toISOString() } as const
+}
 const SAVED_TOKEN = "EAAG-token-salvo-ficticio-a91F"
 const SAVED_SECRET = "segredo-salvo-ficticio-9c2e"
 
@@ -25,8 +33,11 @@ function setup(row: Partial<WhatsAppSettingsRow> = savedRow(), notifiedPhones = 
     const settings = new MockWhatsAppSettingsRepository(row, () => NOW)
     const meta = new MockMetaGraphClient()
     const usage = { countNotifiedPhonesBetween: vi.fn(async () => notifiedPhones) }
+    const outbound = new OutboundMessageStubRepository()
     const service = createWhatsAppSettingsService({
         settings,
+        outbound,
+        audit: new AuditLogStubRepository(),
         meta,
         gateway: { notifyConfigChanged: vi.fn(async () => undefined) },
         usage,
@@ -36,7 +47,7 @@ function setup(row: Partial<WhatsAppSettingsRow> = savedRow(), notifiedPhones = 
         now: () => NOW,
         logger: { log: vi.fn() },
     })
-    return { meta, usage, service }
+    return { meta, usage, outbound, service }
 }
 
 describe("whatsappSettings.service: modelos e estado do número", () => {
@@ -118,6 +129,56 @@ describe("whatsappSettings.service: modelos e estado do número", () => {
         meta.respondToPhoneStatusWith({ ok: false, reason: "INVALID_TOKEN" })
 
         await expect(service[method]()).rejects.toMatchObject({ statusCode: 422, code: "INVALID_TOKEN" })
+    })
+
+    it.each([
+        { label: "exatamente 24h atrás não está parado", at: new Date(NOW.getTime() - DAY_MS), expected: { lastEventAt: new Date(NOW.getTime() - DAY_MS).toISOString(), stale: false } },
+        { label: "24h e 1 ms atrás está parado", at: new Date(NOW.getTime() - DAY_MS - 1), expected: { lastEventAt: new Date(NOW.getTime() - DAY_MS - 1).toISOString(), stale: true } },
+        { label: "sem nenhum evento está parado", at: null, expected: { lastEventAt: null, stale: true } },
+    ])("getView informa o último evento do webhook: $label", async ({ at, expected }) => {
+        const { service } = setup(savedRow({ lastWebhookEventAt: at }))
+
+        const view = await service.getView()
+
+        expect(view.webhook).toEqual(expected)
+    })
+
+    it.each([
+        { label: "nunca verificadas", valid: null, lifetime: UNKNOWN_LIFETIME, expected: "NOT_CHECKED" },
+        { label: "recusadas", valid: false, lifetime: UNKNOWN_LIFETIME, expected: "INVALID" },
+        { label: "token que vence agora", valid: true, lifetime: expiringAt(NOW.getTime()), expected: "EXPIRED" },
+        { label: "token que vence 1 ms depois", valid: true, lifetime: expiringAt(NOW.getTime() + 1), expected: "VALID" },
+        { label: "token permanente", valid: true, lifetime: { kind: "PERMANENT", expiresAt: null } as const, expected: "VALID" },
+        { label: "token de tipo desconhecido", valid: true, lifetime: UNKNOWN_LIFETIME, expected: "VALID" },
+    ])("getView informa o estado das credenciais: $label dá $expected", async ({ valid, lifetime, expected }) => {
+        const { service } = setup(savedRow({ credentialsValid: valid, accessTokenLifetime: lifetime }))
+
+        const view = await service.getView()
+
+        expect(view.credentialsStatus).toBe(expected)
+    })
+
+    it("getDeliveryFailures pede as 50 falhas mais recentes das últimas 24h e devolve as datas em ISO", async () => {
+        const { outbound, service } = setup()
+        outbound.failurePage = {
+            count: 2,
+            items: [
+                { id: "9", kind: "CANCELLATION", errorCode: null, failedAt: new Date("2026-10-14T12:00:00.000Z"), appointmentId: "41" },
+                { id: "8", kind: "REPLY", errorCode: "131047", failedAt: new Date("2026-10-14T11:00:00.000Z"), appointmentId: null },
+            ],
+        }
+
+        const result = await service.getDeliveryFailures()
+
+        expect(outbound.failureQueries).toEqual([{ since: new Date(NOW.getTime() - DAY_MS), limit: 50 }])
+        expect(result).toEqual({
+            since: "2026-10-13T13:00:00.000Z",
+            count: 2,
+            items: [
+                { id: "9", kind: "CANCELLATION", errorCode: null, failedAt: "2026-10-14T12:00:00.000Z", appointmentId: "41" },
+                { id: "8", kind: "REPLY", errorCode: "131047", failedAt: "2026-10-14T11:00:00.000Z", appointmentId: null },
+            ],
+        })
     })
 })
 

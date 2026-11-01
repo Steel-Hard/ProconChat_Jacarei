@@ -6,6 +6,15 @@ export interface IncomingMessage {
     optionId?: string
 }
 
+export type DeliveryStatusValue = "sent" | "delivered" | "read" | "failed"
+
+export interface DeliveryStatus {
+    providerMessageId: string
+    status: DeliveryStatusValue
+    timestamp: number | null
+    errorCode: string | null
+}
+
 export interface ListRow {
     id: string
     title: string
@@ -19,7 +28,7 @@ export interface ReplyButton {
 
 export type OutgoingMessage =
     | { type: "text"; text: string }
-    | { type: "list"; text: string; buttonText: string; rows: ListRow[] }
+    | { type: "list"; text: string; buttonText: string; rows: ListRow[]; footer?: string }
     | { type: "buttons"; text: string; buttons: ReplyButton[]; footer?: string }
 
 export interface OutgoingTemplate {

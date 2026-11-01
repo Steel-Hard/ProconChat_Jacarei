@@ -10,7 +10,7 @@ Conectar o painel ao número institucional na **WhatsApp Cloud API** (oficial da
 
 ## Estado da tela
 
-**Entregue em parte (issue #54).** Já funcionam: topo com número e situação, pausa, credenciais, "Configure no painel da Meta" e teste de conexão. Ainda não construídos na tela: **Modelos de mensagem** e a qualidade e o limite do **Estado do número** (API pronta na issue #67, tela na #127), o resto do **Estado do número** e o **Histórico de alterações** (issue #88).
+**Entregue em parte (issue #54).** Já funcionam: topo com número e situação, pausa, credenciais, "Configure no painel da Meta" e teste de conexão. Ainda não construídos na tela: **Modelos de mensagem** e a qualidade e o limite do **Estado do número** (API pronta na issue #67, tela na #127), o resto do **Estado do número** e o **Histórico de alterações** (API pronta na issue #88, tela na #129).
 
 ## O que a tela mostra
 
@@ -23,7 +23,7 @@ Conectar o painel ao número institucional na **WhatsApp Cloud API** (oficial da
 
 ### Estado do número
 
-**Ainda não construído na tela.** Hoje a tela mostra só a situação geral no topo. A **qualidade** e o **limite de envios** já têm API (issue #67, `GET /api/v1/whatsapp/settings/number-status`, só Admin) e a tela fica com a #127. As **credenciais** e o **último evento do webhook** ficam com a #88.
+**Ainda não construído na tela.** Hoje a tela mostra só a situação geral no topo. A **qualidade** e o **limite de envios** já têm API (issue #67, `GET /api/v1/whatsapp/settings/number-status`, só Admin) e a tela fica com a #127. As **credenciais** (`credentialsStatus`), o **último evento do webhook** (`webhook.lastEventAt` e `webhook.stale`, parado acima de 24h ou sem nenhum evento) e as **falhas de entrega das últimas 24h** (`GET /api/v1/whatsapp/settings/delivery-failures`) já têm API (issue #88); a tela fica com a #129.
 
 | Item | O que mostra |
 |---|---|
@@ -86,7 +86,7 @@ Mensagens enviadas fora da conversa precisam de modelo aprovado pela Meta ([deci
 
 ### Histórico de alterações
 
-**Ainda não construído (issue #88).** Hoje a tela mostra só "Última alteração por [nome] em [data]", que muda ao salvar credenciais e também ao pausar ou reativar as respostas.
+**Ainda não construído na tela.** A API está pronta (issue #88, `GET /api/v1/whatsapp/settings/history`, só Admin, as 50 alterações mais recentes) e a tela fica com a #129. Hoje a tela mostra só "Última alteração por [nome] em [data]", que muda ao salvar credenciais e também ao pausar ou reativar as respostas.
 
 Quem alterou o quê e quando. **Os valores do token e do App Secret não são registrados.**
 

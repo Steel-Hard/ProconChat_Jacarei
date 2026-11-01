@@ -143,6 +143,20 @@ describe("validateOutgoingMessage", () => {
         expect(validateOutgoingMessage(buttonsMessage({ footer: "   " }))).toEqual({ ok: false, reason: "invalid_footer" })
         expect(validateOutgoingMessage(buttonsMessage())).toEqual({ ok: true })
     })
+
+    test("aceita rodape da lista com 60 caracteres e recusa com 61 pelo motivo invalid_footer", () => {
+        const accepted = validateOutgoingMessage(list({ footer: "r".repeat(60) }))
+        const refused = validateOutgoingMessage(list({ footer: "r".repeat(61) }))
+
+        expect(accepted).toEqual({ ok: true })
+        expect(refused).toEqual({ ok: false, reason: "invalid_footer" })
+    })
+
+    test("recusa rodape da lista vazio ou so com espacos pelo motivo invalid_footer e aceita lista sem rodape", () => {
+        expect(validateOutgoingMessage(list({ footer: "" }))).toEqual({ ok: false, reason: "invalid_footer" })
+        expect(validateOutgoingMessage(list({ footer: "   " }))).toEqual({ ok: false, reason: "invalid_footer" })
+        expect(validateOutgoingMessage(list())).toEqual({ ok: true })
+    })
 })
 
 describe("validateOutgoingTemplate", () => {

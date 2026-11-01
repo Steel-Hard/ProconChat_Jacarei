@@ -85,6 +85,9 @@ function findProblem(message: OutgoingMessage): string | undefined {
             if (!isFilledWithin(message.buttonText, OUTGOING_LIMITS.listButtonText)) {
                 return "invalid_button_text"
             }
+            if (message.footer !== undefined && !isFilledWithin(message.footer, OUTGOING_LIMITS.footer)) {
+                return "invalid_footer"
+            }
             return validateRows(message.rows)
         case "buttons":
             if (!isFilledWithin(message.text, OUTGOING_LIMITS.buttonsBody)) {

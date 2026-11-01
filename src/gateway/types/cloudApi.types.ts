@@ -18,9 +18,19 @@ export interface CloudApiIncomingMessage {
     }
 }
 
+export interface CloudApiStatusError {
+    code?: number | string
+    title?: string
+    message?: string
+    error_data?: unknown
+}
+
 export interface CloudApiStatus {
     id?: string
     status?: string
+    timestamp?: string | number
+    recipient_id?: string
+    errors?: CloudApiStatusError[]
 }
 
 export interface CloudApiChangeValue {
@@ -61,6 +71,7 @@ export interface CloudApiListBody extends CloudApiOutgoingBase {
     interactive: {
         type: "list"
         body: { text: string }
+        footer?: { text: string }
         action: {
             button: string
             sections: { rows: { id: string; title: string; description?: string }[] }[]

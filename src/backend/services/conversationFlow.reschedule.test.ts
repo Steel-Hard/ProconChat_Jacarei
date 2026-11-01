@@ -18,7 +18,7 @@ import {
     formatarListaSlots,
     MENSAGEM_RASCUNHO_INCOMPLETO,
     MENU_RETORNO,
-    RODAPE_RETORNO,
+    RODAPE_ATENDIMENTO,
     SEM_HORARIOS_REMARCACAO,
 } from "./messageFormatter.service"
 import {
@@ -113,7 +113,7 @@ describe("conversationFlow.service: remarcação pelo cidadão (#59)", () => {
                 {
                     type: "buttons",
                     text: `Você tem atendimento marcado em ${QUANDO}.`,
-                    footer: RODAPE_RETORNO,
+                    footer: RODAPE_ATENDIMENTO,
                     buttons: criarBotoesRetorno(),
                 },
             ],

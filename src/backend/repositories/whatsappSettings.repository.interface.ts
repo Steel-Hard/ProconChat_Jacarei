@@ -7,4 +7,5 @@ export interface WhatsAppSettingsRepository {
     saveCredentials(input: SaveCredentialsInput): Promise<WhatsAppSettingsRow>
     recordCredentialsCheck(valid: boolean, verified?: VerifiedPhoneNumber, lifetime?: AccessTokenLifetime): Promise<void>
     setAutoReplyPaused(paused: boolean, updatedBy: number): Promise<WhatsAppSettingsRow>
+    touchLastWebhookEvent(at: Date): Promise<void>
 }

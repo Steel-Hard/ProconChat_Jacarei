@@ -169,4 +169,35 @@ describe("Backend client: configuracao do WhatsApp", () => {
 
         await expect(backendClient.getWhatsappConfig()).rejects.toThrow("Backend returned an invalid WhatsApp config")
     })
+
+    test("repassa os status de entrega ao endpoint interno de eventos com o token", async () => {
+        process.env.BACKEND_INTERNAL_URL = "http://backend:3000/"
+        process.env.GATEWAY_INTERNAL_TOKEN = "test-internal-token"
+        const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 204 })
+        vi.stubGlobal("fetch", fetchMock)
+        const statuses = [
+            { providerMessageId: "wamid.falhou", status: "failed" as const, timestamp: 1730000000, errorCode: "131047" },
+        ]
+
+        await backendClient.reportWebhookEvents({ statuses })
+
+        expect(fetchMock.mock.calls[0]?.[0]).toBe("http://backend:3000/api/v1/internal/whatsapp/events")
+        expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-Internal-Token": "test-internal-token",
+            },
+            body: JSON.stringify({ statuses }),
+        })
+        expect(fetchMock.mock.calls[0]?.[1].signal).toBeInstanceOf(AbortSignal)
+    })
+
+    test("rejeita o repasse de eventos quando o backend responde sem sucesso", async () => {
+        process.env.BACKEND_INTERNAL_URL = "http://backend:3000"
+        process.env.GATEWAY_INTERNAL_TOKEN = "test-internal-token"
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 500 }))
+
+        await expect(backendClient.reportWebhookEvents({ statuses: [] })).rejects.toThrow("Backend returned HTTP 500")
+    })
 })

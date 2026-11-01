@@ -1,4 +1,4 @@
-import { IncomingMessage, OutgoingMessage, OutgoingTemplate } from "../types/message.types"
+import { DeliveryStatus, IncomingMessage, OutgoingMessage, OutgoingTemplate } from "../types/message.types"
 
 export interface IgnoredIncoming {
     reason: string
@@ -7,7 +7,9 @@ export interface IgnoredIncoming {
 
 export interface ParsedIncoming {
     messages: IncomingMessage[]
+    statuses: DeliveryStatus[]
     ignored: IgnoredIncoming[]
+    eventReceived: boolean
 }
 
 export interface MessageProvider {

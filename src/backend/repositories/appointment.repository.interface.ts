@@ -85,6 +85,7 @@ export interface AppointmentRepository {
         kind: CitizenNotificationKind,
         actorUserId: number,
         now?: Date,
+        providerMessageId?: string | null,
     ): Promise<void>
 
     countNotifiedPhonesBetween(from: Date, to: Date): Promise<number>

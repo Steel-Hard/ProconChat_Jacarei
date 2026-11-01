@@ -11,5 +11,5 @@ export interface ReplyButton {
 
 export type OutgoingMessage =
     | { type: "text"; text: string }
-    | { type: "list"; text: string; buttonText: string; rows: ListRow[] }
+    | { type: "list"; text: string; buttonText: string; rows: ListRow[]; footer?: string }
     | { type: "buttons"; text: string; buttons: ReplyButton[]; footer?: string }
