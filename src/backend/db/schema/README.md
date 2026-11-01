@@ -4,8 +4,8 @@ Este diretório contém o `CREATE TABLE` consolidado de cada tabela do modelo de
 por tabela, com os seus tipos, constraints e índices, conforme descrito em
 [`.docs/database/database.md`](../../../../.docs/database/database.md).
 
-Os arquivos refletem o **estado atual** do schema, depois da migration `16_user_permissions.sql`
-(issue #62). Eles servem para leitura: o histórico executável está em `../migrations`, aplicado
+Os arquivos refletem o **estado atual** do schema, depois da migration `18_outbound_messages_audit_log.sql`
+(issue #88). Eles servem para leitura: o histórico executável está em `../migrations`, aplicado
 com node-pg-migrate. Toda mudança de schema entra como uma migration nova, e o arquivo da tabela
 aqui é atualizado junto. Consulte [o guia de migrations](../../../../.docs/database/migrations.md)
 para subir o PostgreSQL, aplicar as migrations e validar.
@@ -29,5 +29,8 @@ Ordem válida de execução num banco vazio, respeitando as foreign keys:
 15. `whatsapp_settings.sql` (FK `updated_by` → `users`)
 16. `permissions.sql`
 17. `user_permissions.sql` (FKs `user_id` e `granted_by` → `users`, `permission_key` → `permissions`)
+18. `schedule_changes.sql` (FK `updated_by` → `users`)
+19. `outbound_messages.sql` (tipos `outbound_kind`, `outbound_status`; FKs → `sessions`, `appointments`)
+20. `audit_log.sql` (FK `actor_user_id` → `users`)
 
 `Interactions` não existe mais: foi substituída por `ConversationEvents` na migration `11`.
