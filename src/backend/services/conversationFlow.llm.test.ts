@@ -130,4 +130,20 @@ describe("conversationFlow: complemento por IA (#66)", () => {
 
         expect(second.reply.step).toBe("AWAITING_RESOLVED")
     })
+
+    test("lê o relógio depois de gravar QUESTION_CHOSEN e antes de gravar SCHEDULE_OFFERED", async () => {
+        const nowSpy = vi.fn(() => FIXED_NOW)
+        chooseQuestion(perguntaPresencialComIa, respostaPresencial)
+
+        await createFlow({ now: nowSpy })({ phone: "5500000000123", text: "1" })
+
+        const orderOf = (type: string) => {
+            const index = recordEvent.mock.calls.findIndex(([, event]) => event.type === type)
+            return recordEvent.mock.invocationCallOrder[index] as number
+        }
+        expect(nowSpy).toHaveBeenCalledTimes(1)
+        const nowOrder = nowSpy.mock.invocationCallOrder[0] as number
+        expect(nowOrder).toBeGreaterThan(orderOf("QUESTION_CHOSEN"))
+        expect(nowOrder).toBeLessThan(orderOf("SCHEDULE_OFFERED"))
+    })
 })
