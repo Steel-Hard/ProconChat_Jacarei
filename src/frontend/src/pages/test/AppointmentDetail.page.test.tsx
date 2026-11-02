@@ -233,6 +233,14 @@ describe("AppointmentDetail.page: cabeçalho e dados", () => {
         ).toBeInTheDocument()
     })
 
+    it("mostra CPF removido no fato CPF do agendamento anonimizado", async () => {
+        await withDetail(buildAppointmentDetail({ name: "Titular removido", cpf_masked: null }))
+
+        await screen.findByRole("heading", { level: 1, name: "Titular removido" })
+
+        expect(factValue("CPF do titular")).toBe("CPF removido")
+    })
+
     it("não mostra nenhuma sequência de 11 dígitos na página", async () => {
         await withDetail(buildAppointmentDetail({ by_representative: true }))
 

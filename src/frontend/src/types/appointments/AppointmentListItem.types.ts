@@ -5,7 +5,7 @@ type AppointmentListItem = {
     protocol: string
     appointment_code: string
     name: string
-    cpf_masked: string
+    cpf_masked: string | null
     category_name: string
     question_title: string
     appointment_datetime: string
