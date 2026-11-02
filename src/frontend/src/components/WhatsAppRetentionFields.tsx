@@ -21,7 +21,8 @@ function WhatsAppRetentionFields({
     onToggle,
     onDaysChange
 }: WhatsAppRetentionFieldsProps) {
-    const trackClass = toggle.checked ? `${switchCss.track} ${switchCss.on}` : switchCss.track
+    const baseClass = `${switchCss.track} ${switchCss.compact}`
+    const trackClass = toggle.checked ? `${baseClass} ${switchCss.on}` : baseClass
 
     return (
         <div className={css.fields}>
