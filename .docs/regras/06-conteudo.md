@@ -93,6 +93,8 @@ Prévia no estilo WhatsApp:
 1. A **lista da categoria**, com a pergunta editada em negrito e "Ver mais opções ›" quando houver paginação.
 2. **O balão da resposta:** texto oficial, base legal, documentos úteis e, **no fim do mesmo balão, o aviso de caráter não vinculante**.
 3. **Quando o complemento por IA é permitido, um balão separado logo depois do balão da resposta**, com o exemplo do complemento e o rótulo "Gerado com auxílio de IA" no rodapé desse balão. O aviso não vinculante fica só no balão da resposta ([decisão 009](../decisoes/009-complemento-por-llm.md), item 6; implementação na #124).
+
+   **Proposta pendente de aceite da equipe** ([decisão 009](../decisoes/009-complemento-por-llm.md), "Proposta de mudança"): com a opção ligada, a prévia passa a mostrar **um balão único** no lugar dos itens 2 a 4: a explicação escrita pela IA (exemplo), a base legal, os documentos, "O que fazer agora", o aviso de caráter não vinculante, a pergunta do passo seguinte com os botões e o rótulo "Gerado com auxílio de IA" no rodapé. Com a opção desligada, os balões oficiais dos itens 2 e 4, como hoje. A tela é da #124.
 4. **Um balão separado** com o passo seguinte:
    - "A sua dúvida foi resolvida?" (Sim/Não), para perguntas comuns;
    - a oferta de agendamento (Agendar / Agora não), para as que exigem atendimento presencial;

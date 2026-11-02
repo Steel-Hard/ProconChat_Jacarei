@@ -1,8 +1,8 @@
 # 009 — Complemento por LLM
 
-- **Status:** Aceita (itens 1 a 5 em 27/09/2026; item 6 em 02/11/2026)
+- **Status:** Aceita (itens 1 a 5 em 27/09/2026; item 6 em 02/11/2026). **Proposta** de mudança dos itens 1, 4 e 6 em 02/11/2026, **aguardando o aceite da equipe** (ver "Proposta de mudança")
 - **Data:** 27/09/2026 · atualizada em 02/11/2026 (#66)
-- **Requisitos:** RF05, RNF02, RNF05, RP05
+- **Requisitos:** RF05, RNF02, RNF04, RNF05, RP05
 
 ## Contexto
 
@@ -22,6 +22,18 @@ O serviço de LLM (Ollama local, `llama3.2:3b`) foi implementado na Sprint 1 (#1
    - Para essas perguntas, o `ANSWER_SENT` é gravado **quando o envio termina**, com o horário da resposta oficial, para a linha do tempo ficar na ordem certa. O `llm` é `USED` quando o Gateway confirmou o envio. É `FAILED` quando o cidadão ficou só com o texto oficial: o LLM falhou ou esgotou o tempo, a mensagem passou do limite, ou o Gateway recusou ou não respondeu. `ok` do Gateway quer dizer que a Meta aceitou, não que entregou.
    - Custos aceitos: o passo "Resposta entregue" some da linha do tempo por até uns 35 s; se o Backend reiniciar no meio, aquele `ANSWER_SENT` se perde.
    - A prévia da tela de Conteúdo mostra o complemento num balão separado (#124).
+
+## Proposta de mudança (02/11/2026, #66): resposta escrita pela IA no lugar da oficial
+
+**Status: Proposta. Ainda não aceita pela equipe.** Enquanto não houver aceite registrado (um comentário com o aceite no PR ou na issue, com o link citado aqui), valem os itens acima. A branch `feat/66-ia-como-resposta-principal` implementa esta proposta e **não pode ser mergeada sem o aceite registrado**.
+
+Motivo: com o item 6, o cidadão recebe a resposta oficial, responde "A dúvida foi resolvida?" e só depois, uns 30 s mais tarde, lê o segundo texto, da IA. Ele lê duas respostas para a mesma pergunta e responde antes de ler a explicação.
+
+- **Item 1 (muda):** o LLM reescreve só a explicação da resposta oficial (campo `resposta`), a partir do texto já escolhido pelo Motor de Decisão. Ele nunca decide o fluxo. Quando a reescrita é usada, ela **substitui** a explicação oficial na mensagem ao cidadão; base legal, documentos, "O que fazer agora", o aviso de caráter não vinculante e a pergunta do passo seguinte continuam vindo do texto oficial, acrescentados pelo código. A reescrita só é usada se citar todos os números da resposta oficial e nenhum número novo. (RF05 diz que a resposta "poderá ser complementada": a equipe precisa aceitar que uma explicação reescrita e rotulada ainda é complemento, com a resposta oficial garantida no fallback.)
+- **Item 4 (muda o lugar do rótulo):** o rótulo "Gerado com auxílio de IA" vai no rodapé da mensagem interativa (`footer`), e não como última linha do corpo.
+- **Item 5 (mantém o sentido):** se a IA não puder ser usada, o cidadão recebe só o texto oficial, como hoje.
+- **Item 6 (substituído):** envio único, depois da IA ou do fallback, com indicador "digitando…" no WhatsApp. O cidadão espera a IA (31 a 38 s em CPU) quando o Ollama está no ar; quando não está, até 2 s (sondagem `GET /api/tags`). Uma geração por vez: quem chega com a IA ocupada recebe a oficial na hora. RNF02 passa a depender do tempo da IA: custo aceito explicitamente.
+- **Consequências da proposta:** `ANSWER_SENT` gravado na hora real do envio (some o risco de ordem por milissegundos aceito na #66); "Complemento por IA indisponível" vira "IA indisponível"; a prévia de Conteúdo mostra um balão só (#124). Detalhes do contrato em [`llm/contrato.md`](../llm/contrato.md).
 
 ## Consequências
 
