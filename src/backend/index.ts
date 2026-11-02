@@ -7,6 +7,7 @@ import {
 import { sweepPastAppointmentPhones } from "./services/appointmentRetention.service"
 import { sweepAbandonedSessions } from "./services/conversationFlow.service"
 import { startPeriodicSweep } from "./services/periodicSweep.service"
+import { RETENTION_SWEEP_INTERVAL_MS, sweepRetention } from "./services/retentionSweep.service"
 
 const port = process.env.PORT ? Number(process.env.PORT) : 3000
 
@@ -42,6 +43,13 @@ const stopPastAppointmentPhonesSweep = startPeriodicSweep({
     failureMessage: "Failed to erase phones of past appointments",
 })
 
+const stopRetentionSweep = startPeriodicSweep({
+    sweep: sweepRetention,
+    intervalMs: RETENTION_SWEEP_INTERVAL_MS,
+    logger: console,
+    failureMessage: "Failed to anonymize records by retention",
+})
+
 const SHUTDOWN_TIMEOUT_MS = 10_000
 let shuttingDown = false
 
@@ -52,6 +60,7 @@ function shutdown(signal: NodeJS.Signals): void {
     shuttingDown = true
     stopAbandonedSessionsSweep()
     stopPastAppointmentPhonesSweep()
+    stopRetentionSweep()
 
     console.log(`Recebido ${signal}, encerrando servidor...`)
 
