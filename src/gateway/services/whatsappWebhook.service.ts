@@ -5,7 +5,7 @@ import { OutgoingMessageValidationError } from "../gateways/outgoingMessage.vali
 import { IncomingMessage, OutgoingMessage } from "../types/message.types"
 import { WhatsappMessageResult, WhatsappWebhookResult } from "../types/whatsappWebhook.types"
 import { MemoryMessageDeduplicator, MessageDeduplicator } from "./messageDeduplicator"
-import { createPhoneQueue, PhoneQueue } from "./phoneQueue"
+import { PhoneQueue, whatsappPhoneQueue } from "./phoneQueue"
 import { messageRef } from "../utils/messageRef"
 
 const MESSAGE_MAX_AGE_MS = 300_000
@@ -131,5 +131,5 @@ export const processWhatsappWebhook = createWhatsappWebhookService({
     backend: backendClient,
     provider: cloudApiProvider,
     deduplicator: whatsappDeduplicator,
-    queue: createPhoneQueue(),
+    queue: whatsappPhoneQueue,
 })
