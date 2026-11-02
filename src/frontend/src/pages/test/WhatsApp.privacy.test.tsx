@@ -1,5 +1,5 @@
 import { Provider } from "react-redux"
-import { render, screen, within } from "@testing-library/react"
+import { act, render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type PrivacySettings from "@/types/privacy/PrivacySettings.types"
@@ -161,6 +161,39 @@ describe("WhatsAppPage, aba Privacidade", () => {
         )
         expect(screen.getByLabelText("Atendimento presencial (opcional)")).toHaveValue("")
         expect(screen.getByLabelText("Prazos de guarda")).toHaveValue("Sessões por 12 meses.")
+    })
+
+    it.each([
+        [
+            "Nome do controlador",
+            "Quem decide o que é feito com os dados pessoais dos cidadãos. Geralmente é o órgão, por exemplo PROCON Jacareí. Aparece na página pública de privacidade."
+        ],
+        [
+            "Nome do encarregado (DPO)",
+            "Pessoa indicada para atender os cidadãos e a ANPD sobre o tratamento de dados. A LGPD exige que o nome seja público. Aparece na página de privacidade."
+        ],
+        [
+            "E-mail de contato para pedidos do titular",
+            "E-mail onde o cidadão pede acesso, correção ou exclusão dos próprios dados. Aparece na página de privacidade e, junto com o nome do controlador, libera o link da política na saudação do bot."
+        ],
+        [
+            "Atendimento presencial (opcional)",
+            "Endereço ou telefone para quem prefere atendimento presencial. Se ficar em branco, essa linha não aparece na página."
+        ],
+        [
+            "Prazos de guarda",
+            "Texto livre explicando por quanto tempo cada tipo de dado é guardado (sessões, eventos e agendamentos). É só informativo: não apaga nada automaticamente."
+        ]
+    ])("o campo %s tem um tooltip acessível pelo teclado com a explicação", async (field, hint) => {
+        const { user } = await renderPage()
+        await openPrivacy(user)
+        const button = screen.getByRole("button", { name: `Sobre o campo ${field}` })
+
+        act(() => button.focus())
+
+        const tooltip = screen.getByRole("tooltip")
+        expect(tooltip).toHaveTextContent(hint)
+        expect(button).toHaveAttribute("aria-describedby", tooltip.id)
     })
 
     it("um e-mail sem formato válido mostra a mensagem e desabilita Salvar", async () => {

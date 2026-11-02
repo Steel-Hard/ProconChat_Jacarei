@@ -1,4 +1,5 @@
 import { useId } from "react"
+import InfoTooltip from "@/components/InfoTooltip"
 import type PrivacyField from "@/types/privacy/PrivacyField.types"
 import css from "@/styles/components/whatsappPrivacyForm.module.css"
 
@@ -23,9 +24,12 @@ function WhatsAppPrivacyField({ field, disabled, onChange }: WhatsAppPrivacyFiel
 
     return (
         <div className={css.field}>
-            <label htmlFor={inputId} className={css.label}>
-                {field.label}
-            </label>
+            <div className={css.labelRow}>
+                <label htmlFor={inputId} className={css.label}>
+                    {field.label}
+                </label>
+                <InfoTooltip text={field.hint} label={field.hintLabel} />
+            </div>
             {field.multiline ? (
                 <textarea {...common} rows={5} onChange={(event) => onChange(event.target.value)} />
             ) : (

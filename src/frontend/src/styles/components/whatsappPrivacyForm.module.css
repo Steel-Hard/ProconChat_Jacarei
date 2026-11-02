@@ -30,6 +30,12 @@
     gap: 6px;
 }
 
+.labelRow {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
 .label {
     font-size: 13px;
     font-weight: 600;

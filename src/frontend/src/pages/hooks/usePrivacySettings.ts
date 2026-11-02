@@ -64,6 +64,8 @@ function usePrivacySettings(active: boolean) {
     const fields: PrivacyField[] = FIELD_ORDER.map((key) => ({
         key,
         label: t(`privacy.fields.${key}`),
+        hint: t(`privacy.hints.${key}`),
+        hintLabel: t("privacy.hintLabel", { field: t(`privacy.fields.${key}`) }),
         value: valueOf(key),
         error: errorOf(key),
         changed: valueOf(key).trim() !== savedValue(key),

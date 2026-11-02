@@ -21,6 +21,14 @@
             "inPersonContact": "Atendimento presencial (opcional)",
             "retentionText": "Prazos de guarda"
         },
+        "hintLabel": "Sobre o campo {{field}}",
+        "hints": {
+            "controllerName": "Quem decide o que é feito com os dados pessoais dos cidadãos. Geralmente é o órgão, por exemplo PROCON Jacareí. Aparece na página pública de privacidade.",
+            "dpoName": "Pessoa indicada para atender os cidadãos e a ANPD sobre o tratamento de dados. A LGPD exige que o nome seja público. Aparece na página de privacidade.",
+            "contactEmail": "E-mail onde o cidadão pede acesso, correção ou exclusão dos próprios dados. Aparece na página de privacidade e, junto com o nome do controlador, libera o link da política na saudação do bot.",
+            "inPersonContact": "Endereço ou telefone para quem prefere atendimento presencial. Se ficar em branco, essa linha não aparece na página.",
+            "retentionText": "Texto livre explicando por quanto tempo cada tipo de dado é guardado (sessões, eventos e agendamentos). É só informativo: não apaga nada automaticamente."
+        },
         "invalidEmail": "Informe um e-mail válido.",
         "tooLong": "Use no máximo {{max}} caracteres.",
         "errors": {
