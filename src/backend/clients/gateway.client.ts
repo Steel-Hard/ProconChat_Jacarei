@@ -1,3 +1,5 @@
+import { OutgoingMessage } from "../types/message.types"
+
 export const GATEWAY_NOTIFY_TIMEOUT_MS = 3_000
 
 export const GATEWAY_SEND_TIMEOUT_MS = 15_000
@@ -27,10 +29,18 @@ export interface SendTextInput {
 
 export type SendTextResult = { ok: true } | { ok: false; reason: "NOT_CONFIGURED" | "REJECTED" | "UNREACHABLE" }
 
+export interface SendMessagesInput {
+    to: string
+    messages: OutgoingMessage[]
+}
+
+export type SendMessagesResult = { ok: true } | { ok: false; reason: "NOT_CONFIGURED" | "REJECTED" | "UNREACHABLE" }
+
 export interface GatewayClient {
     notifyConfigChanged(): Promise<void>
     sendTemplate(input: SendTemplateInput): Promise<SendTemplateResult>
     sendText(input: SendTextInput): Promise<SendTextResult>
+    sendMessages(input: SendMessagesInput): Promise<SendMessagesResult>
 }
 
 interface GatewayClientDependencies {
@@ -124,6 +134,30 @@ export function createGatewayClient({
             }
             if (!response.ok) {
                 logger.log(JSON.stringify({ event: "gateway_text_send_failed", status: response.status }))
+                return { ok: false, reason: "REJECTED" }
+            }
+            return { ok: true }
+        },
+
+        async sendMessages(input: SendMessagesInput): Promise<SendMessagesResult> {
+            const baseUrl = env.GATEWAY_INTERNAL_URL
+            if (!baseUrl) {
+                return { ok: false, reason: "NOT_CONFIGURED" }
+            }
+            let response: Awaited<ReturnType<GatewayFetchFn>>
+            try {
+                response = await fetchFn(`${baseUrl.replace(/\/$/, "")}/internal/whatsapp/messages`, {
+                    method: "POST",
+                    headers: { "X-Internal-Token": env.GATEWAY_INTERNAL_TOKEN ?? "", "Content-Type": "application/json" },
+                    body: JSON.stringify({ to: input.to, messages: input.messages }),
+                    signal: AbortSignal.timeout(GATEWAY_SEND_TIMEOUT_MS),
+                })
+            } catch {
+                logger.log(JSON.stringify({ event: "gateway_messages_send_failed" }))
+                return { ok: false, reason: "UNREACHABLE" }
+            }
+            if (!response.ok) {
+                logger.log(JSON.stringify({ event: "gateway_messages_send_failed", status: response.status }))
                 return { ok: false, reason: "REJECTED" }
             }
             return { ok: true }
