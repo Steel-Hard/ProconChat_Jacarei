@@ -6,15 +6,13 @@ import { scheduleRepository } from "../../repositories/schedule.repository"
 import { sessionRepository } from "../../repositories/session.repository"
 import { conversationEventService } from "../../services/conversationEvent.service"
 import { createConversationFlowService } from "../../services/conversationFlow.service"
-import { createLlmComplementService } from "../../services/llmComplement.service"
+import { createLlmAnswerService } from "../../services/llmAnswer.service"
 import { MotorDecisaoService } from "../../services/motorDecisao.service"
 import { createScheduleService } from "../../services/schedule.service"
 import { hashPhone } from "../../services/whatsappSession.service"
-import type { LlmComplementJob } from "../../types/llm.types"
 
 const sentinel = "Texto livre do cidadão de teste"
 const phone = "5500000000981"
-const CLOCK_OFFSET_MS = 50
 
 let categoryId = ""
 let questionId = ""
@@ -31,15 +29,7 @@ async function removeTestSessions(): Promise<void> {
     await getPool().query("DELETE FROM Sessions WHERE phone_hash = $1", [phoneHash(phone)])
 }
 
-function sleepUntil(instant: number): Promise<void> {
-    return vi.waitFor(() => {
-        if (Date.now() <= instant) {
-            throw new Error("o relógio ainda não passou do horário esperado")
-        }
-    })
-}
-
-describe("Complemento por IA com Postgres", () => {
+describe("Resposta escrita pela IA com Postgres", () => {
     beforeAll(async () => {
         await removeTestSessions()
         const pool = getPool()
@@ -50,8 +40,8 @@ describe("Complemento por IA com Postgres", () => {
         ).rows[0]?.id as string
         questionId = (
             await pool.query<{ id: string }>(
-                `INSERT INTO Questions (category_id, question, answer, short_title, out_of_scope, llm_allowed)
-                 VALUES ($1, 'Pergunta com IA de teste #66', 'Resposta de teste.', 'Teste 66', false, true) RETURNING id`,
+                `INSERT INTO Questions (category_id, question, answer, short_title, out_of_scope, requires_in_person, llm_allowed)
+                 VALUES ($1, 'Pergunta presencial com IA de teste #66', 'Resposta de teste.', 'Teste 66', false, true, true) RETURNING id`,
                 [categoryId],
             )
         ).rows[0]?.id as string
@@ -64,9 +54,16 @@ describe("Complemento por IA com Postgres", () => {
         await getPool().end()
     })
 
-    test("pergunta com IA permitida grava o ANSWER_SENT USED só quando o job termina, com o horário da resposta, entre QUESTION_CHOSEN e RESOLVED_ANSWERED", async () => {
-        const jobs: LlmComplementJob[] = []
-        let answeredAt = new Date(0)
+    test("pergunta presencial com IA permitida grava QUESTION_CHOSEN, ANSWER_SENT USED e SCHEDULE_OFFERED nessa ordem", async () => {
+        const sendMessages = vi.fn(async () => ({ ok: true as const }))
+        const deliver = createLlmAnswerService({
+            llm: { isAvailable: async () => true },
+            generate: async () => ({ explicacaoLlm: "Resposta de teste reescrita.", geradoPorLlm: true, status: "USED" }),
+            gateway: { sendMessages },
+            events: conversationEventService,
+            logger: { log: vi.fn() },
+        })
+        let delivery: Promise<void> = Promise.resolve()
         const flow = createConversationFlowService({
             sessions: sessionRepository,
             events: conversationEventService,
@@ -75,20 +72,11 @@ describe("Complemento por IA com Postgres", () => {
             hashPhone,
             logger: console,
             isAutoReplyPaused: async () => false,
-            scheduleComplement: (job) => {
-                jobs.push(job)
+            deliverAnswer: (job) => {
+                delivery = deliver(job)
+                return delivery
             },
-            now: () => {
-                answeredAt = new Date(Date.now() + CLOCK_OFFSET_MS)
-                return answeredAt
-            },
-        })
-        const gateway = { sendText: vi.fn(async () => ({ ok: true as const })) }
-        const deliver = createLlmComplementService({
-            generate: async () => ({ explicacaoLlm: "Complemento de teste", geradoPorLlm: true, status: "USED" }),
-            gateway,
-            events: conversationEventService,
-            logger: { log: vi.fn() },
+            answerLogger: { log: vi.fn() },
         })
 
         const first = await flow({ phone, text: sentinel })
@@ -96,46 +84,25 @@ describe("Complemento por IA com Postgres", () => {
         await flow({ phone, text: "1 " + sentinel })
         await flow({ phone, optionId: `cat_${categoryId}` })
         const chosen = await flow({ phone, text: "1" })
+        await delivery
         const sessionId = first.sessionId as string
 
-        expect(chosen.reply.step).toBe("AWAITING_RESOLVED")
-        expect(jobs).toHaveLength(1)
-        expect(jobs[0]).toMatchObject({
-            sessionId,
-            categoryId: Number(categoryId),
-            questionId: Number(questionId),
-            phone,
-            answeredAt,
-        })
-        expect((await conversationEventService.listBySession(sessionId)).map((event) => event.type)).toEqual([
-            "STARTED",
-            "CATEGORY_CHOSEN",
-            "QUESTION_CHOSEN",
-        ])
-
-        await sleepUntil(answeredAt.getTime() + CLOCK_OFFSET_MS)
-        const closing = await flow({ phone, text: "1" })
-        expect(closing.reply.step).toBe("FINISHED")
-        await deliver(jobs[0] as LlmComplementJob)
-
+        expect(chosen.reply).toEqual({ text: "", step: "AWAITING_SCHEDULE_OFFER", messages: [], typing: true })
+        expect(sendMessages).toHaveBeenCalledOnce()
         const events = await conversationEventService.listBySession(sessionId)
         expect(events.map((event) => event.type)).toEqual([
             "STARTED",
             "CATEGORY_CHOSEN",
             "QUESTION_CHOSEN",
             "ANSWER_SENT",
-            "RESOLVED_ANSWERED",
+            "SCHEDULE_OFFERED",
         ])
-        expect(events[3]).toEqual({
+        expect(events[3]).toMatchObject({
             type: "ANSWER_SENT",
             categoryId: Number(categoryId),
             questionId: Number(questionId),
             llm: "USED",
-            createdAt: answeredAt,
         })
-        expect(gateway.sendText).toHaveBeenCalledExactlyOnceWith({
-            to: phone,
-            text: "Complemento de teste\n\nGerado com auxílio de IA",
-        })
+        expect(events[4]).toMatchObject({ type: "SCHEDULE_OFFERED", reason: "REQUIRES_IN_PERSON" })
     })
 })

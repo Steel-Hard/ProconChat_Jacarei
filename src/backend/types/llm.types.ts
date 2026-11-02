@@ -7,11 +7,10 @@ export interface LlmExplicacaoResult {
     status: LlmStatus
 }
 
-export interface LlmComplementJob {
+export interface LlmAnswerJob {
     phone: string
     sessionId: string
     categoryId: number
     questionId: number
     resposta: RespostaFinalOutput
-    answeredAt: Date
 }

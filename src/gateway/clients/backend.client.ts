@@ -13,7 +13,7 @@ export interface WhatsappSessionResponse {
     sessionId: string | null
     newSession: boolean
     paused?: boolean
-    reply: { text: string; step: string | null; messages?: OutgoingMessage[] }
+    reply: { text: string; step: string | null; messages?: OutgoingMessage[]; typing?: boolean }
 }
 
 export interface WebhookEventsRequest {

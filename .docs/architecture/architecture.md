@@ -49,10 +49,10 @@ O LLM Service só recebe chamadas do Backend e não tem acesso ao banco nem à s
 
 | Componente | Papel | Container | Estado |
 |---|---|---|---|
-| **Gateway WhatsApp** | Recebe o webhook da Meta, valida a assinatura, deduplica, processa em fila por telefone e repassa ao Backend; envia as respostas do Backend (texto, lista, botões); lê a configuração do WhatsApp no Backend; envio de modelos e repasse dos status de entrega | `gateway` | ✅ Cloud API, respostas e configuração (#53, #83) · ✅ envio de modelos pela rota interna `POST /internal/whatsapp/messages/template` (#67) · ✅ status de entrega (#88): repassa `sent`/`delivered`/`read`/`failed` ao Backend, sem o telefone do destinatário · ✅ envio de texto livre pela rota interna `POST /internal/whatsapp/messages/text`, na fila por telefone (#66) |
+| **Gateway WhatsApp** | Recebe o webhook da Meta, valida a assinatura, deduplica, processa em fila por telefone e repassa ao Backend; envia as respostas do Backend (texto, lista, botões); lê a configuração do WhatsApp no Backend; envio de modelos e repasse dos status de entrega | `gateway` | ✅ Cloud API, respostas e configuração (#53, #83) · ✅ envio de modelos pela rota interna `POST /internal/whatsapp/messages/template` (#67) · ✅ status de entrega (#88): repassa `sent`/`delivered`/`read`/`failed` ao Backend, sem o telefone do destinatário · ✅ envio de uma resposta com até 3 mensagens pela rota interna `POST /internal/whatsapp/messages`, numa única tarefa da fila por telefone, e indicador "digitando…" quando o Backend devolve `typing: true` (#66, [decisão 009](../decisoes/009-complemento-por-llm.md)) |
 | **Backend API** | Orquestrador: conversa, Motor de Decisão, agenda, mensagens ao cidadão, registro de eventos, API do painel, autenticação e permissões | `backend` | ✅ parcial (ver módulos) · 🟠 demais módulos |
 | **Frontend (painel)** | Painel da equipe do PROCON (RF08), a partir do `template-react` | `frontend` (nginx) | ✅ estrutura, layout, login, "Minha conta", Agendamentos, Detalhe do agendamento e WhatsApp (#58, #81, #84, #85, #86, #54); `/` redireciona para Agendamentos enquanto não há Dashboard (PR #115) · 🟠 Dashboard, Relatórios, Conteúdo, Sessões, Horários, Documentos e Usuários (hoje "Em construção") |
-| **LLM Service** | Ollama com `llama3.2:3b`; gera só o texto complementar (RF05) | `ollama` + `llm-pull` | ✅ serviço pronto · ✅ ligado ao fluxo (#66) |
+| **LLM Service** | Ollama com `llama3.2:3b`; reescreve só a explicação da resposta oficial (RF05, [decisão 009](../decisoes/009-complemento-por-llm.md)) | `ollama` + `llm-pull` | ✅ serviço pronto · ✅ ligado ao fluxo (#66) |
 | **PostgreSQL** | Persistência única | `postgres` (+ `migrate`, `seed`) | ✅ schema da Sprint 2 (#52) e migrations até a `16` (permissões das contas, #62) |
 | **Proxy HTTPS** | Certificado e roteamento para painel, API e webhook; responde 404 nas rotas internas `/api/v1/whatsapp/sessions` e `/api/v1/internal*` | `caddy` | ✅ (`compose.prod.yaml`, `deploy/Caddyfile`) |
 | ~~Evolution API + Redis~~ | Integração não oficial usada na Sprint 1 | `evolution-api`, `redis` | Removidos na #82. Ver [decisão 003](../decisoes/003-migracao-whatsapp-cloud-api.md) |
@@ -70,7 +70,7 @@ Não são containers separados: são módulos de código, organizados no padrão
 | **Registro de eventos** | Grava cada passo da conversa e o desfecho da sessão | ✅ (#16) |
 | **API do painel** | Agendamentos, conteúdo, configuração, usuários, relatórios, configuração do WhatsApp | ✅ agendamentos: lista, detalhe, assumir, atendido e não compareceu (#60), usados pelas telas de Agendamentos e Detalhe (#85, #86); atribuir, corrigir registro, observações internas, lista de funcionários e calendário semanal (#87, telas na #126); configuração do WhatsApp (#83); contas e permissões: listar, criar, salvar em lote, redefinir senha e agendamentos futuros de uma conta (#62, tela na #123) · 🟠 demais |
 | **Autenticação e permissões** | Login, sessão, `requirePermission` com 8 permissões marcadas por conta; o Admin tem todas | ✅ login, sessão, troca de senha e `requirePermission` (#57, #84); permissões reais de cada conta, lidas a cada requisição, e regras contra escalada validadas na API (#62) |
-| **LLM** | Cliente do Ollama com fallback; envio do complemento com rótulo | ✅ cliente · ✅ ligado ao fluxo, em segundo plano, com o complemento como segunda mensagem (#66) |
+| **LLM** | Cliente do Ollama com sondagem e fallback; entrega da resposta escrita pela IA com rótulo no rodapé | ✅ cliente · ✅ ligado ao fluxo, em segundo plano: mensagem única da IA com o bloco oficial e os botões, ou as mensagens oficiais quando a IA não pode ser usada (#66, [decisão 009](../decisoes/009-complemento-por-llm.md)) |
 
 ## Fluxos principais
 
@@ -93,12 +93,15 @@ sequenceDiagram
     B-->>G: resposta (texto, lista ou botões)
     G->>M: envia
     M->>C: entrega
-    opt pergunta com IA permitida (#66), em segundo plano
-        B->>L: resposta oficial estruturada
-        L-->>B: texto complementar
-        B->>G: POST /internal/whatsapp/messages/text, complemento com "Gerado com auxílio de IA"
-        G->>M: envia na fila do telefone, depois da resposta oficial
-        B->>B: ANSWER_SENT (USED ou FAILED) com o horário da resposta
+    opt pergunta com IA permitida (#66, decisão 009)
+        B-->>G: reply vazia com typing: true
+        G->>M: marca como lida e mostra "digitando…"
+        B->>L: GET /api/tags (2 s) e, se no ar, resposta oficial estruturada
+        L-->>B: explicação reescrita
+        B->>B: normaliza, confere os números, monta a mensagem (≤ 1024)
+        B->>G: POST /internal/whatsapp/messages, mensagem única com botões e "Gerado com auxílio de IA" no rodapé, ou as mensagens oficiais
+        G->>M: envia na fila do telefone
+        B->>B: ANSWER_SENT (USED ou FAILED) na hora do envio
     end
     opt status de entrega (#88)
         M->>G: status (enviado / entregue / lido / falhou)
@@ -159,7 +162,7 @@ Ver [`../database/database.md`](../database/database.md): o schema atual e o pla
 | RF01, RP01 | Cloud API oficial pelo Gateway |
 | RF02, RF03 | Motor de Decisão e Conversa, com listas e botões tocáveis (a escolha chega como ID, não como texto interpretado) |
 | RF04, RNF04 | Resposta final montada no Backend com "O que fazer agora" e o aviso de texto único |
-| RF05, RNF05, RP05 | LLM local, chamado só pelo Backend, sem acesso ao banco; complemento sempre rotulado |
+| RF05, RNF05, RP05 | LLM local, chamado só pelo Backend, sem acesso ao banco; texto gerado sempre rotulado |
 | RF06 | Registro de eventos e desfechos; relatórios agregados |
 | RF07 | Módulos Agenda e Mensagens ao cidadão |
 | RF08 | Frontend + API do painel com permissões |

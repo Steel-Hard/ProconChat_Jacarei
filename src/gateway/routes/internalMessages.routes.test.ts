@@ -158,11 +158,21 @@ describe("POST /internal/whatsapp/messages/template", () => {
     })
 })
 
-describe("POST /internal/whatsapp/messages/text", () => {
-    const TEXT_PATH = "/internal/whatsapp/messages/text"
-    const textBody = { to: "5512999990000", text: "Explicação complementar\n\nGerado com auxílio de IA" }
+describe("POST /internal/whatsapp/messages", () => {
+    const MESSAGES_PATH = "/internal/whatsapp/messages"
+    const textItem = { type: "text", text: "Resposta oficial" }
+    const buttonsItem = {
+        type: "buttons",
+        text: "A dúvida foi resolvida?",
+        buttons: [
+            { id: "resolved_yes", title: "Sim" },
+            { id: "resolved_no", title: "Não" },
+        ],
+        footer: "Gerado com auxílio de IA",
+    }
+    const messagesBody = { to: "5512999990000", messages: [textItem, buttonsItem] }
 
-    function buildTextApp({
+    function buildMessagesApp({
         providerSend = vi.fn().mockResolvedValue(undefined),
         load = vi.fn().mockResolvedValue(config),
         queue = createPhoneQueue(),
@@ -183,8 +193,8 @@ describe("POST /internal/whatsapp/messages/text", () => {
         return { testApp, providerSend, load, logger }
     }
 
-    function sendText(testApp: express.Express, payload: unknown = textBody) {
-        return request(testApp).post(TEXT_PATH).set("X-Internal-Token", TOKEN).send(payload as object)
+    function sendMessages(testApp: express.Express, payload: unknown = messagesBody) {
+        return request(testApp).post(MESSAGES_PATH).set("X-Internal-Token", TOKEN).send(payload as object)
     }
 
     afterEach(() => {
@@ -195,10 +205,10 @@ describe("POST /internal/whatsapp/messages/text", () => {
         { label: "sem o token interno", token: undefined },
         { label: "com o token interno errado", token: "token-errado" },
     ])("recusa $label e não chama o provedor", async ({ token }) => {
-        const { testApp, providerSend } = buildTextApp()
-        const pending = request(testApp).post(TEXT_PATH)
+        const { testApp, providerSend } = buildMessagesApp()
+        const pending = request(testApp).post(MESSAGES_PATH)
 
-        const response = await (token === undefined ? pending : pending.set("X-Internal-Token", token)).send(textBody)
+        const response = await (token === undefined ? pending : pending.set("X-Internal-Token", token)).send(messagesBody)
 
         expect(response.status).toBe(401)
         expect(response.body).toEqual({ error: { code: "UNAUTHORIZED", message: "Invalid internal token" } })
@@ -206,42 +216,67 @@ describe("POST /internal/whatsapp/messages/text", () => {
     })
 
     test.each([
-        { label: "o destinatário é inválido", payload: { ...textBody, to: "+5512999990000" }, reason: "invalid_to" },
-        { label: "o texto só tem espaços", payload: { ...textBody, text: "   " }, reason: "invalid_text" },
-        { label: "o texto passa de 4096 caracteres", payload: { ...textBody, text: "a".repeat(4097) }, reason: "invalid_text" },
-    ])("responde 400 e não chama o provedor quando $label", async ({ payload, reason }) => {
-        const { testApp, providerSend } = buildTextApp()
+        { label: "o destinatário tem 7 dígitos", payload: { ...messagesBody, to: "1234567" }, reason: "invalid_to" },
+        { label: "o destinatário tem letra", payload: { ...messagesBody, to: "55129999900a0" }, reason: "invalid_to" },
+        { label: "messages está ausente", payload: { to: messagesBody.to }, reason: "invalid_messages" },
+        { label: "messages está vazia", payload: { ...messagesBody, messages: [] }, reason: "invalid_messages" },
+        {
+            label: "messages tem 4 itens",
+            payload: { ...messagesBody, messages: [textItem, textItem, textItem, textItem] },
+            reason: "invalid_messages",
+        },
+        {
+            label: "o segundo item tem botões com corpo de 1025 caracteres",
+            payload: { ...messagesBody, messages: [textItem, { ...buttonsItem, text: "a".repeat(1025) }] },
+            reason: "invalid_text",
+        },
+        {
+            label: "o rodapé tem 61 caracteres",
+            payload: { ...messagesBody, messages: [textItem, { ...buttonsItem, footer: "a".repeat(61) }] },
+            reason: "invalid_footer",
+        },
+        { label: "o item é null", payload: { ...messagesBody, messages: [null] }, reason: "unsupported_type" },
+        {
+            label: "o item de botões não tem a lista de botões",
+            payload: { ...messagesBody, messages: [{ type: "buttons", text: "x" }] },
+            reason: "invalid_button_count",
+        },
+    ])("responde 400 e não envia nenhum item quando $label", async ({ payload, reason }) => {
+        const { testApp, providerSend } = buildMessagesApp()
 
-        const response = await sendText(testApp, payload)
+        const response = await sendMessages(testApp, payload)
 
         expect(response.status).toBe(400)
-        expect(response.body).toEqual({ error: { code: "BAD_REQUEST", message: `Invalid text message: ${reason}` } })
+        expect(response.body).toEqual({ error: { code: "BAD_REQUEST", message: `Invalid outgoing messages: ${reason}` } })
         expect(providerSend).not.toHaveBeenCalled()
     })
 
-    test("carrega a configuração, envia o texto ao provedor e responde 200", async () => {
-        const { testApp, providerSend, load } = buildTextApp()
+    test("carrega a configuração, envia cada item ao provedor na ordem e responde 200 com a quantidade", async () => {
+        const { testApp, providerSend, load } = buildMessagesApp()
 
-        const response = await sendText(testApp)
+        const response = await sendMessages(testApp)
 
         expect(response.status).toBe(200)
-        expect(response.body).toEqual({ data: { sent: true } })
+        expect(response.body).toEqual({ data: { sent: 2 } })
         expect(load).toHaveBeenCalledOnce()
-        expect(providerSend).toHaveBeenCalledExactlyOnceWith(textBody.to, { type: "text", text: textBody.text })
+        expect(providerSend.mock.calls).toEqual([
+            [messagesBody.to, textItem],
+            [messagesBody.to, buttonsItem],
+        ])
         expect(load.mock.invocationCallOrder[0]).toBeLessThan(providerSend.mock.invocationCallOrder[0] as number)
     })
 
-    test("aceita texto com 4096 caracteres", async () => {
-        const text = "a".repeat(4096)
-        const { testApp, providerSend } = buildTextApp()
+    test("aceita rodapé com 60 caracteres", async () => {
+        const footerItem = { ...buttonsItem, footer: "a".repeat(60) }
+        const { testApp, providerSend } = buildMessagesApp()
 
-        const response = await sendText(testApp, { ...textBody, text })
+        const response = await sendMessages(testApp, { ...messagesBody, messages: [footerItem] })
 
         expect(response.status).toBe(200)
-        expect(providerSend).toHaveBeenCalledExactlyOnceWith(textBody.to, { type: "text", text })
+        expect(providerSend).toHaveBeenCalledExactlyOnceWith(messagesBody.to, footerItem)
     })
 
-    test("só envia depois que termina a tarefa em andamento na fila do mesmo telefone", async () => {
+    test("só envia o primeiro item depois que termina a tarefa em andamento na fila do mesmo telefone", async () => {
         const realQueue = createPhoneQueue()
         let entered!: () => void
         const routeEntered = new Promise<void>((resolve) => {
@@ -259,18 +294,18 @@ describe("POST /internal/whatsapp/messages/text", () => {
             size: () => realQueue.size(),
         }
         let releaseBlocker!: () => void
-        const blocker = queue.run(textBody.to, async () => {
+        const blocker = queue.run(messagesBody.to, async () => {
             await new Promise<void>((resolve) => {
                 releaseBlocker = resolve
             })
             calls.push("blocker:done")
         })
-        const providerSend = vi.fn(async () => {
-            calls.push("send")
+        const providerSend = vi.fn(async (_to: string, message: { type: string }) => {
+            calls.push(`send:${message.type}`)
         })
-        const { testApp } = buildTextApp({ providerSend, queue })
+        const { testApp } = buildMessagesApp({ providerSend, queue })
 
-        const responsePromise = sendText(testApp).then((response) => response)
+        const responsePromise = sendMessages(testApp).then((response) => response)
         await Promise.race([routeEntered, responsePromise])
         await new Promise((resolve) => setImmediate(resolve))
         const sentBeforeRelease = providerSend.mock.calls.length
@@ -280,7 +315,32 @@ describe("POST /internal/whatsapp/messages/text", () => {
 
         expect(sentBeforeRelease).toBe(0)
         expect(response.status).toBe(200)
-        expect(calls).toEqual([`run:${textBody.to}`, `run:${textBody.to}`, "blocker:done", "send"])
+        expect(calls).toEqual([
+            `run:${messagesBody.to}`,
+            `run:${messagesBody.to}`,
+            "blocker:done",
+            "send:text",
+            "send:buttons",
+        ])
+    })
+
+    test("para nos itens seguintes e responde 502 PROVIDER_ERROR sem registrar o telefone nem o texto quando o provedor falha", async () => {
+        const consoleLog = vi.spyOn(console, "log").mockImplementation(() => undefined)
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
+        const providerSend = vi.fn().mockRejectedValue(new Error(`falha para ${messagesBody.to}: ${textItem.text}`))
+        const { testApp, logger } = buildMessagesApp({ providerSend })
+
+        const response = await sendMessages(testApp)
+
+        expect(response.status).toBe(502)
+        expect(response.body).toEqual({
+            error: { code: "PROVIDER_ERROR", message: "WhatsApp provider did not accept the message" },
+        })
+        expect(providerSend).toHaveBeenCalledOnce()
+        expect(logger.log).toHaveBeenCalledOnce()
+        const logged = JSON.stringify([logger.log.mock.calls, consoleLog.mock.calls, consoleError.mock.calls])
+        expect(logged).not.toContain(messagesBody.to)
+        expect(logged).not.toContain(textItem.text)
     })
 
     test("na montagem padrão só envia depois da tarefa em andamento na fila compartilhada com o webhook", async () => {
@@ -310,7 +370,7 @@ describe("POST /internal/whatsapp/messages/text", () => {
         )
         testApp.use(errorHandler)
 
-        const responsePromise = sendText(testApp, { ...textBody, to }).then((response) => response)
+        const responsePromise = sendMessages(testApp, { to, messages: [textItem] }).then((response) => response)
         try {
             await vi.waitFor(() => expect(load).toHaveBeenCalled())
             for (let tick = 0; tick < 5; tick++) {
@@ -325,23 +385,5 @@ describe("POST /internal/whatsapp/messages/text", () => {
 
         expect(response.status).toBe(200)
         expect(events).toEqual(["blocker:done", "send"])
-    })
-
-    test("responde 502 PROVIDER_ERROR sem registrar o telefone nem o texto quando o provedor falha", async () => {
-        const consoleLog = vi.spyOn(console, "log").mockImplementation(() => undefined)
-        const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
-        const providerSend = vi.fn().mockRejectedValue(new Error(`falha para ${textBody.to}: ${textBody.text}`))
-        const { testApp, logger } = buildTextApp({ providerSend })
-
-        const response = await sendText(testApp)
-
-        expect(response.status).toBe(502)
-        expect(response.body).toEqual({
-            error: { code: "PROVIDER_ERROR", message: "WhatsApp provider did not accept the message" },
-        })
-        expect(logger.log).toHaveBeenCalledOnce()
-        const logged = JSON.stringify([logger.log.mock.calls, consoleLog.mock.calls, consoleError.mock.calls])
-        expect(logged).not.toContain(textBody.to)
-        expect(logged).not.toContain("Explicação complementar")
     })
 })

@@ -17,4 +17,5 @@ export interface MessageProvider {
     parseIncoming(payload: unknown): ParsedIncoming
     send(to: string, message: OutgoingMessage): Promise<void>
     sendTemplate(to: string, template: OutgoingTemplate): Promise<{ providerMessageId: string | null }>
+    showTyping(messageId: string): Promise<void>
 }

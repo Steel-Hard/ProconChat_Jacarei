@@ -46,7 +46,7 @@ function findIdProblem(ids: string[], max: number): string | undefined {
 }
 
 function validateRows(rows: ListRow[]): string | undefined {
-    if (rows.length < 1 || rows.length > OUTGOING_LIMITS.listRowsMax) {
+    if (!Array.isArray(rows) || rows.length < 1 || rows.length > OUTGOING_LIMITS.listRowsMax) {
         return "invalid_row_count"
     }
     if (rows.some((row) => !isFilledWithin(row.title, OUTGOING_LIMITS.rowTitle))) {
@@ -62,7 +62,7 @@ function validateRows(rows: ListRow[]): string | undefined {
 }
 
 function validateButtons(buttons: ReplyButton[]): string | undefined {
-    if (buttons.length < 1 || buttons.length > OUTGOING_LIMITS.buttonsMax) {
+    if (!Array.isArray(buttons) || buttons.length < 1 || buttons.length > OUTGOING_LIMITS.buttonsMax) {
         return "invalid_button_count"
     }
     if (buttons.some((button) => !isFilledWithin(button.title, OUTGOING_LIMITS.buttonTitle))) {
@@ -75,6 +75,9 @@ function validateButtons(buttons: ReplyButton[]): string | undefined {
 }
 
 function findProblem(message: OutgoingMessage): string | undefined {
+    if (typeof message !== "object" || message === null) {
+        return "unsupported_type"
+    }
     switch (message.type) {
         case "text":
             return isFilledWithin(message.text, OUTGOING_LIMITS.textBody) ? undefined : "invalid_text"
@@ -144,21 +147,25 @@ export function validateOutgoingTemplate(input: unknown): OutgoingTemplateValida
     }
 }
 
-export type OutgoingTextValidation =
-    | { ok: true; value: { to: string; message: OutgoingMessage } }
-    | { ok: false; reason: "invalid_to" | "invalid_text" }
+const OUTGOING_MESSAGES_MAX = 3
 
-export function validateOutgoingText(input: unknown): OutgoingTextValidation {
-    const { to, text } = (input ?? {}) as Record<string, unknown>
+export type OutgoingMessagesValidation =
+    | { ok: true; value: { to: string; messages: OutgoingMessage[] } }
+    | { ok: false; reason: string }
+
+export function validateOutgoingMessages(input: unknown): OutgoingMessagesValidation {
+    const { to, messages } = (input ?? {}) as Record<string, unknown>
     if (typeof to !== "string" || !TEMPLATE_TO_PATTERN.test(to)) {
         return { ok: false, reason: "invalid_to" }
     }
-    if (typeof text !== "string") {
-        return { ok: false, reason: "invalid_text" }
+    if (!Array.isArray(messages) || messages.length < 1 || messages.length > OUTGOING_MESSAGES_MAX) {
+        return { ok: false, reason: "invalid_messages" }
     }
-    const message: OutgoingMessage = { type: "text", text }
-    if (!validateOutgoingMessage(message).ok) {
-        return { ok: false, reason: "invalid_text" }
+    for (const message of messages as OutgoingMessage[]) {
+        const validation = validateOutgoingMessage(message)
+        if (!validation.ok) {
+            return validation
+        }
     }
-    return { ok: true, value: { to, message } }
+    return { ok: true, value: { to, messages: messages as OutgoingMessage[] } }
 }

@@ -114,6 +114,16 @@ processos filhos, e `db/connection.ts` não carrega o `.env` quando recebe essa 
 reutiliza uma sessão guardando somente o HMAC do telefone (nunca o número em texto puro). Com o
 atendimento automático pausado, responde o texto fixo sem tocar na sessão (seção "Pausa").
 
+Pergunta dentro do escopo com IA permitida: o backend muda o passo, dispara a entrega em segundo
+plano (`services/llmAnswer.service.ts`) sem esperar o Ollama e responde
+`reply: { text: "", step, messages: [], typing: true }`; o gateway mostra "digitando…". A entrega
+sonda o Ollama (`GET /api/tags`, 2 s), gera uma por vez, normaliza o texto, confere os números com a
+resposta oficial e envia uma única mensagem de botões com o rodapé "Gerado com auxílio de IA" pela rota
+interna `POST /internal/whatsapp/messages` do gateway; em qualquer falha envia as mensagens oficiais.
+Enquanto a entrega não termina (até `2000 + LLM_TIMEOUT_MS + 2 × 15000` ms), uma nova mensagem da
+sessão recebe só o `typing: true` de novo e não muda o passo. Os logs (`llm_answer_fallback`,
+`answer_delivery_failed`, `llm_answer_failed`, `answer_recovered`) levam só `sessionId` e `reason`.
+
 ## Autenticação do painel
 
 Contas e permissões seguem a decisão 004. A sessão viaja **só** em cookies `HttpOnly`: nenhuma
@@ -1472,7 +1482,8 @@ O par desfecho e evento tem que casar, senão lança `InternalServerError` sem c
 | Sessão criada | #16 (automático) | `findOrCreateActive` | `STARTED` | — |
 | Categoria escolhida | #55 | `record` | `CATEGORY_CHOSEN` | — |
 | Pergunta escolhida | #55 | `record` | `QUESTION_CHOSEN` | — |
-| Resposta entregue | #55 / #66 (`llm`) | `record`, ou `finish` se fora do escopo. Pergunta com IA permitida: gravado pelo job do complemento (`services/llmComplement.service.ts`) quando o envio termina, com `record(..., answeredAt)`, `USED` ou `FAILED` | `ANSWER_SENT` | `OUT_OF_SCOPE` |
+| Resposta entregue | #55 / #66 (`llm`) | `record`, ou `finish` se fora do escopo. Pergunta com IA permitida: gravado pela entrega em segundo plano (`services/llmAnswer.service.ts`) na hora real do envio, sem `occurredAt`: `USED` quando a mensagem escrita com auxílio de IA saiu, `FAILED` quando saíram as mensagens oficiais (IA indisponível, ocupada, falha, números diferentes, corpo acima de 1024 ou envio recusado). Se nem as oficiais saem, nada é gravado e a próxima mensagem da sessão recupera a resposta (`FAILED`, log `answer_recovered`) | `ANSWER_SENT` | `OUT_OF_SCOPE` |
+| Agendamento oferecido (presencial com IA) | #66 | `record` pela entrega, logo depois do `ANSWER_SENT` (ou pela recuperação) | `SCHEDULE_OFFERED` | — |
 | "A dúvida foi resolvida?" | #55 | `record` (Não) ou `finish` (Sim) | `RESOLVED_ANSWERED` | `RESOLVED` |
 | Agendamento oferecido | #55 | `record` | `SCHEDULE_OFFERED` | — |
 | Recusou agendar | #55 | `finish` | `SCHEDULE_DECLINED` | `DECLINED` |

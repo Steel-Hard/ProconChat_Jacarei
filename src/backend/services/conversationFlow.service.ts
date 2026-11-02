@@ -9,6 +9,7 @@ import { PgMotorDecisaoRepository } from "../repositories/motorDecisao.repositor
 import {
     Categoria,
     Pergunta,
+    RespostaFinalOutput,
 } from "../types/motorDecisao.types"
 import {
     criarBotoesAttendee,
@@ -25,6 +26,7 @@ import {
     formatarListaPerguntas,
     formatarRespostaFinal,
     MENSAGEM_ATENDIMENTO_PAUSADO,
+    mensagensRespostaOficial,
     OFERTA_AGENDAMENTO,
     paginarItens,
     PERGUNTA_RESOLVIDA,
@@ -40,13 +42,16 @@ import {
     ConversationEventService,
 } from "./conversationEvent.service"
 import type { SessionClosing } from "../types/conversationEvent.types"
-import type { LlmComplementJob } from "../types/llm.types"
-import { createBackgroundRunner, deliverLlmComplement } from "./llmComplement.service"
+import type { LlmAnswerJob } from "../types/llm.types"
+import { deliverLlmAnswer } from "./llmAnswer.service"
+import { GATEWAY_SEND_TIMEOUT_MS } from "../clients/gateway.client"
+import { LLM_PROBE_TIMEOUT_MS, llmTimeoutMs } from "../clients/ollamaLlm.client"
 import { whatsappSettingsService } from "./whatsappSettings.service"
 import { createPrivacyLinkProvider } from "./privacySettings.service"
 import { privacySettingsRepository } from "../repositories/privacySettings.repository"
 import type {
     ConversationFlowInput,
+    ConversationFlowReply,
     ConversationFlowResponse,
     ConversationFlowResult,
     MotorDecisao,
@@ -76,7 +81,9 @@ interface ConversationFlowDependencies {
     logger: ConversationEventLogger
     isAutoReplyPaused: () => Promise<boolean>
     privacyLink?: () => Promise<string | null>
-    scheduleComplement: (job: LlmComplementJob) => void
+    deliverAnswer: (job: LlmAnswerJob) => Promise<void>
+    answerLogger: Pick<Console, "log">
+    pendingAnswerMaxAgeMs?: number
     now?: () => Date
 }
 
@@ -90,6 +97,14 @@ function pausedReply(): PausedConversationFlowResult {
             step: null,
             messages: [{ type: "text", text: MENSAGEM_ATENDIMENTO_PAUSADO }],
         },
+    }
+}
+
+function officialAnswerReply(resposta: RespostaFinalOutput): ConversationFlowReply {
+    return {
+        text: `${formatarRespostaFinal(resposta)}\n\n${resposta.requer_presencial ? OFERTA_AGENDAMENTO : PERGUNTA_RESOLVIDA}`,
+        step: resposta.requer_presencial ? "AWAITING_SCHEDULE_OFFER" : "AWAITING_RESOLVED",
+        messages: mensagensRespostaOficial(resposta),
     }
 }
 
@@ -170,12 +185,15 @@ export function createConversationFlowService({
     logger,
     isAutoReplyPaused,
     privacyLink = async () => null,
-    scheduleComplement,
+    deliverAnswer,
+    answerLogger,
+    pendingAnswerMaxAgeMs = LLM_PROBE_TIMEOUT_MS + llmTimeoutMs() + 2 * GATEWAY_SEND_TIMEOUT_MS,
     now = () => new Date(),
 }: ConversationFlowDependencies): (
     input: ConversationFlowInput,
 ) => Promise<ConversationFlowResponse> {
     const withPhoneLock = createPhoneLock()
+    const pendingAnswers = new Map<string, { startedAt: number }>()
     const closer = createSessionCloser({ events, logger })
     const scheduling = createSchedulingFlow({
         sessions,
@@ -455,6 +473,64 @@ export function createConversationFlowService({
         }
     }
 
+    async function recoverMissingAnswer(session: ActiveSession): Promise<ConversationFlowResult | null> {
+        if (!session.currentQuestionId) {
+            return null
+        }
+        const recorded = await events.listBySession(session.id)
+        const lastChosen = recorded.map((event) => event.type).lastIndexOf("QUESTION_CHOSEN")
+        const chosen = recorded[lastChosen]
+        if (chosen?.type !== "QUESTION_CHOSEN") {
+            return null
+        }
+        if (recorded.slice(lastChosen + 1).some((event) => event.type === "ANSWER_SENT")) {
+            return null
+        }
+        const questionId = Number(session.currentQuestionId)
+        const resposta = await motor.processarPergunta(questionId)
+        await events.record(session.id, {
+            type: "ANSWER_SENT",
+            categoryId: chosen.categoryId,
+            questionId,
+            llm: "FAILED",
+        })
+        if (resposta.requer_presencial) {
+            await events.record(session.id, { type: "SCHEDULE_OFFERED", reason: "REQUIRES_IN_PERSON" })
+        }
+        answerLogger.log(JSON.stringify({ event: "answer_recovered", sessionId: session.id }))
+        return {
+            sessionId: session.id,
+            newSession: false,
+            reply: { ...officialAnswerReply(resposta), step: session.currentStep },
+        }
+    }
+
+    function hasPendingAnswer(sessionId: string): boolean {
+        const entry = pendingAnswers.get(sessionId)
+        if (entry === undefined) {
+            return false
+        }
+        if (now().getTime() - entry.startedAt > pendingAnswerMaxAgeMs) {
+            pendingAnswers.delete(sessionId)
+            return false
+        }
+        return true
+    }
+
+    function startAnswerDelivery(job: LlmAnswerJob): void {
+        const entry = { startedAt: now().getTime() }
+        pendingAnswers.set(job.sessionId, entry)
+        deliverAnswer(job)
+            .catch(() => {
+                answerLogger.log(JSON.stringify({ event: "llm_answer_failed", sessionId: job.sessionId }))
+            })
+            .finally(() => {
+                if (pendingAnswers.get(job.sessionId) === entry) {
+                    pendingAnswers.delete(job.sessionId)
+                }
+            })
+    }
+
     async function processSelectedQuestion(
         sessionId: string,
         pergunta: Pergunta,
@@ -465,7 +541,6 @@ export function createConversationFlowService({
             categoryId: Number(pergunta.category_id),
             questionId: Number(pergunta.id),
         })
-        const answeredAt = now()
 
         const resposta = await motor.processarPergunta(pergunta.id)
 
@@ -493,26 +568,31 @@ export function createConversationFlowService({
             }
         }
 
-        // Grava ANSWER_SENT para casos dentro do escopo
-        if (!pergunta.llm_allowed) {
-            await events.record(sessionId, {
-                type: "ANSWER_SENT",
+        const nextStep = resposta.requer_presencial ? "AWAITING_SCHEDULE_OFFER" : "AWAITING_RESOLVED"
+
+        if (pergunta.llm_allowed) {
+            await sessions.updateNavigationState(sessionId, {
+                currentStep: nextStep,
+                currentCategoryId: String(pergunta.category_id),
+                currentQuestionId: String(pergunta.id),
+            })
+            startAnswerDelivery({
+                phone,
+                sessionId,
                 categoryId: Number(pergunta.category_id),
                 questionId: Number(pergunta.id),
-                llm: "NOT_CALLED",
+                resposta,
             })
+            return { sessionId, newSession: false, reply: { text: "", step: nextStep, messages: [], typing: true } }
         }
 
-        const complement: LlmComplementJob | null = pergunta.llm_allowed
-            ? {
-                  phone,
-                  sessionId,
-                  categoryId: Number(pergunta.category_id),
-                  questionId: Number(pergunta.id),
-                  resposta,
-                  answeredAt,
-              }
-            : null
+        // Grava ANSWER_SENT para casos dentro do escopo
+        await events.record(sessionId, {
+            type: "ANSWER_SENT",
+            categoryId: Number(pergunta.category_id),
+            questionId: Number(pergunta.id),
+            llm: "NOT_CALLED",
+        })
 
         // Caso 2: Exige atendimento presencial (oferece agendamento direto)
         if (resposta.requer_presencial) {
@@ -526,26 +606,8 @@ export function createConversationFlowService({
                 currentCategoryId: String(pergunta.category_id),
                 currentQuestionId: String(pergunta.id),
             })
-            if (complement) {
-                scheduleComplement(complement)
-            }
 
-            return {
-                sessionId,
-                newSession: false,
-                reply: {
-                    text: `${formatarRespostaFinal(resposta)}\n\n${OFERTA_AGENDAMENTO}`,
-                    step: "AWAITING_SCHEDULE_OFFER",
-                    messages: [
-                        { type: "text", text: formatarRespostaFinal(resposta) },
-                        {
-                            type: "buttons",
-                            text: "Deseja agendar um atendimento presencial no PROCON Jacareí?",
-                            buttons: criarBotoesOfertaAgendamento(),
-                        },
-                    ],
-                },
-            }
+            return { sessionId, newSession: false, reply: officialAnswerReply(resposta) }
         }
 
         // Caso 3: Pergunta padrão -> Pergunta se a dúvida foi resolvida
@@ -554,26 +616,8 @@ export function createConversationFlowService({
             currentCategoryId: String(pergunta.category_id),
             currentQuestionId: String(pergunta.id),
         })
-        if (complement) {
-            scheduleComplement(complement)
-        }
 
-        return {
-            sessionId,
-            newSession: false,
-            reply: {
-                text: `${formatarRespostaFinal(resposta)}\n\n${PERGUNTA_RESOLVIDA}`,
-                step: "AWAITING_RESOLVED",
-                messages: [
-                    { type: "text", text: formatarRespostaFinal(resposta) },
-                    {
-                        type: "buttons",
-                        text: "A dúvida foi resolvida?",
-                        buttons: criarBotoesResolvida(),
-                    },
-                ],
-            },
-        }
+        return { sessionId, newSession: false, reply: officialAnswerReply(resposta) }
     }
 
     async function handleAwaitingResolved(
@@ -741,6 +785,14 @@ export function createConversationFlowService({
 
         await sessions.touch(session.id)
 
+        if (hasPendingAnswer(session.id)) {
+            return {
+                sessionId: session.id,
+                newSession: false,
+                reply: { text: "", step: session.currentStep, messages: [], typing: true },
+            }
+        }
+
         const page = session.listPage || 1
 
         if (session.currentStep === "AWAITING_CATEGORY") {
@@ -759,11 +811,11 @@ export function createConversationFlowService({
         }
 
         if (session.currentStep === "AWAITING_RESOLVED") {
-            return handleAwaitingResolved(session, text, optionId)
+            return (await recoverMissingAnswer(session)) ?? handleAwaitingResolved(session, text, optionId)
         }
 
         if (session.currentStep === "AWAITING_SCHEDULE_OFFER") {
-            return handleAwaitingScheduleOffer(session, text, optionId)
+            return (await recoverMissingAnswer(session)) ?? handleAwaitingScheduleOffer(session, text, optionId)
         }
 
         if (session.currentStep === "AWAITING_ATTENDEE") {
@@ -822,7 +874,8 @@ export const processIncomingMessage = createConversationFlowService({
         baseUrl: process.env.PUBLIC_BASE_URL,
         logger: console,
     }),
-    scheduleComplement: createBackgroundRunner(deliverLlmComplement, console),
+    deliverAnswer: deliverLlmAnswer,
+    answerLogger: console,
 })
 
 export async function sweepAbandonedSessions(): Promise<number> {

@@ -317,7 +317,9 @@ describe("AppointmentDetail.page: linha do tempo e histórico", () => {
         expect(within(steps[0]).queryByText("Gerado com auxílio de IA")).not.toBeInTheDocument()
         expect(within(steps[1]).getByText("Resposta entregue")).toBeInTheDocument()
         expect(
-            within(steps[1]).getByText("Texto complementar gerado para contextualizar a resposta.")
+            within(steps[1]).getByText(
+                "Resposta escrita com auxílio de IA a partir do texto oficial."
+            )
         ).toBeInTheDocument()
         expect(within(steps[1]).getByText("Gerado com auxílio de IA")).toBeInTheDocument()
         expect(within(steps[2]).getByText("Protocolo F10464F0")).toBeInTheDocument()

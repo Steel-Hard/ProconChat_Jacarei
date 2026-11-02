@@ -60,17 +60,19 @@ Na VM, tudo fica em `/opt/proconchat`, com a mesma estrutura do repositório:
 - Com cerca de US$ 19 por mês, o crédito dura até meados de março de 2027.
 - 2 GB bastam para a stack sem o Ollama. O swap de 2 GB evita que um pico de memória derrube um serviço.
 
-**Ollama desligado.** Em produção, `COMPOSE_PROFILES` fica vazio e o `ollama` e o `llm-pull` não sobem. O modelo precisa de 3 a 4 GB só para ele. Sem o Ollama, o complemento por IA da #66 não é enviado e o `ANSWER_SENT` fica `FAILED`; a resposta oficial sai normalmente.
+**Ollama desligado.** Em produção, `COMPOSE_PROFILES` fica vazio e o `ollama` e o `llm-pull` não sobem. O modelo precisa de 3 a 4 GB só para ele. Sem o Ollama, a sondagem `GET /api/tags` falha em até 2 s, o cidadão recebe as mensagens oficiais e o `ANSWER_SENT` fica `FAILED` ([decisão 009](../decisoes/009-complemento-por-llm.md)).
 
-**Três modos para o complemento por IA.** Quem escolhe é o `.env` da VM, e a mudança vale depois de rodar o deploy de novo:
+**Três modos para a resposta com IA.** Quem escolhe é o `.env` da VM, e a mudança vale depois de rodar o deploy de novo:
 
 | Modo | `COMPOSE_PROFILES` | `OLLAMA_URL` | Quando usar |
 |---|---|---|---|
-| Sem IA (padrão da VM atual) | vazio | vazia | VM pequena, sem custo extra. O endereço padrão não resolve sem o perfil `llm`, e o complemento fica `FAILED` |
+| Sem IA (padrão da VM atual) | vazio | vazia | VM pequena, sem custo extra. O endereço padrão não resolve sem o perfil `llm`: a sondagem falha em até 2 s, sai a resposta oficial e o `ANSWER_SENT` fica `FAILED` |
 | IA em outra máquina | vazio | URL do Ollama na outra máquina, pelo Tailscale | Poupar a VM; a máquina precisa estar ligada e alcançável (seção "IA em outra máquina") |
 | IA na própria VM | `llm` | vazia | VM com memória para o Ollama (numa VM maior ou na migração para a Oracle) |
 
 `OLLAMA_URL` vazia ou ausente usa `http://ollama:11434`, o container do perfil `llm`. Se a máquina remota estiver fora do ar, o resultado é o mesmo do modo sem IA.
+
+**Espera do cidadão com a IA no ar.** A resposta só sai depois da geração (31 a 38 s em CPU), com o indicador "digitando…" nos primeiros 25 s; uma geração por vez, e quem chega com a IA ocupada recebe a resposta oficial na hora. Recomendado na VM: `LLM_TIMEOUT_MS=45000`, para a geração em CPU não esgotar o tempo antes de terminar (com o padrão de 20 s, ela cai quase sempre na resposta oficial).
 
 **Dados fora do Brasil (LGPD).** A região é nos EUA. Isso foi aceito para o projeto acadêmico e fica registrado aqui. Na passagem para o PROCON (#70), a região e o provedor precisam ser revistos.
 
@@ -197,7 +199,7 @@ Uma política com `acls` substitui o "liberar tudo" padrão da tailnet: qualquer
 Passos:
 
 1. Com a política acima já aplicada, instale o Tailscale na VM e na máquina com o Ollama, na mesma tailnet, com a tag `tag:proconchat-vm` na VM e `tag:ollama` na máquina.
-2. Na máquina, faça `ollama pull` do mesmo modelo de `LLM_MODEL` (`ollama pull llama3.2:3b`). Sem o modelo, o Ollama responde 404 e o complemento fica `FAILED`.
+2. Na máquina, faça `ollama pull` do mesmo modelo de `LLM_MODEL` (`ollama pull llama3.2:3b`). Sem o modelo, o Ollama responde 404 na geração, sai a resposta oficial e o `ANSWER_SENT` fica `FAILED`.
 3. Na máquina, suba o Ollama com `OLLAMA_HOST=<ip-100.x>:11434`, sempre depois de o Tailscale estar conectado: sem o IP `100.x` na máquina, o bind falha com `cannot assign requested address`. No Windows, rode o Ollama no próprio Windows, e não dentro do WSL2 com NAT, porque o IP `100.x` fica no Windows.
 4. No `.env` da VM, preencha `OLLAMA_URL=http://<ip-100.x>:11434`, sem barra no fim (o backend monta `<OLLAMA_URL>/api/generate`), deixe `COMPOSE_PROFILES` vazio e rode o deploy de novo. Não use `COMPOSE_PROFILES=llm` junto com `OLLAMA_URL` preenchida: o container local sobe, gasta memória e não é usado.
 5. Na VM, como `deploy`, confira que o container do `backend` alcança a máquina. O comando precisa imprimir `200`:
@@ -208,9 +210,9 @@ export IMAGE_TAG="$(tail -n 1 releases.log | cut -d' ' -f2)"
 docker compose -f compose.prod.yaml exec backend node -e "fetch(process.env.OLLAMA_URL+'/api/tags').then(r=>console.log(r.status))"
 ```
 
-**Máquina desligada.** O cidadão recebe só a resposta oficial, que não espera o complemento, e o `ANSWER_SENT` fica `FAILED`. O complemento pode levar até `LLM_TIMEOUT_MS` para desistir.
+**Máquina desligada.** A sondagem `GET /api/tags` desiste em 2 s, o cidadão recebe a resposta oficial e o `ANSWER_SENT` fica `FAILED`. Se a máquina responde à sondagem mas trava na geração, o cidadão espera até `LLM_TIMEOUT_MS` antes de receber a oficial.
 
-**O que sai da VM.** Só o prompt montado com os campos de `RespostaFinalOutput`: categoria, pergunta do catálogo, base legal, resposta, documentos, próximos passos e os indicadores de atendimento presencial e de fora do escopo. Nenhum dado pessoal vai: o telefone e o texto do cidadão ficam na VM. O Ollama continua self-hosted pela equipe e não é uma API externa (RP05). Quem controla a máquina controla o texto do complemento, que continua rotulado "Gerado com auxílio de IA". A escolha está registrada na [decisão 009](../decisoes/009-complemento-por-llm.md).
+**O que sai da VM.** Só o prompt montado com os campos de `RespostaFinalOutput`: categoria, pergunta do catálogo, base legal, resposta, documentos, próximos passos e os indicadores de atendimento presencial e de fora do escopo. Nenhum dado pessoal vai: o telefone e o texto do cidadão ficam na VM. O Ollama continua self-hosted pela equipe e não é uma API externa (RP05). Quem controla a máquina controla o texto da explicação escrita pela IA (só a explicação; o bloco oficial, o aviso e os botões vêm do código, e números diferentes dos da resposta oficial fazem cair na oficial), que continua rotulado "Gerado com auxílio de IA". A escolha está registrada na [decisão 009](../decisoes/009-complemento-por-llm.md).
 
 ## Preparar a VM
 
@@ -293,7 +295,7 @@ O `.env` fica só em `/opt/proconchat/.env`, com dono `deploy` e permissão `600
 | `WHATSAPP_VERIFY_TOKEN` | Token de verificação do webhook, gerado para produção. Só para a primeira subida; depois, o valor vale o que está no banco e aparece na tela de WhatsApp |
 | `WHATSAPP_GRAPH_API_VERSION` | Versão da Graph API (`v26.0`), lida pelo backend |
 | `LLM_MODEL` | Modelo do Ollama (`llama3.2:3b`) |
-| `LLM_TIMEOUT_MS` | Tempo limite do LLM |
+| `LLM_TIMEOUT_MS` | Tempo limite do LLM (padrão 20000; recomendado `45000` na VM com a IA no ar) |
 | `BACKUP_RETENTION_DAYS` | Dias de retenção dos dumps (`7`) |
 
 `IMAGE_TAG` não precisa ficar no `.env`: o `deploy.sh` define a tag a cada deploy e a registra em `releases.log`. `FRONTEND_ORIGIN` e `PUBLIC_BASE_URL` também não: o `compose.prod.yaml` as deriva de `SITE_ADDRESS`. O gateway não recebe mais nenhum `WHATSAPP_*`: ele lê a configuração do backend (README do gateway, "Configuração do WhatsApp"). Se um dos quatro `WHATSAPP_*` principais estiver vazio, o `deploy.sh` só avisa, sem mostrar valores e sem abortar.

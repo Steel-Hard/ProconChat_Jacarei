@@ -22,6 +22,7 @@ export interface ConversationFlowReply {
     text: string
     step: SessionStep
     messages?: OutgoingMessage[]
+    typing?: true
 }
 
 export interface ConversationFlowResult {

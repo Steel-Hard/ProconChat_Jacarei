@@ -8,6 +8,7 @@ import {
     CloudApiOutgoingBody,
     CloudApiStatus,
     CloudApiTemplateBody,
+    CloudApiTypingBody,
     CloudApiWebhookPayload,
 } from "../types/cloudApi.types"
 import { whatsappConfigStore } from "../services/whatsappConfigStore"
@@ -202,7 +203,9 @@ export function createCloudApiProvider({
     getConfig,
     fetchFn = (url, init) => fetch(url, init),
 }: CloudApiProviderDependencies): MessageProvider {
-    async function postMessage(body: CloudApiOutgoingBody | CloudApiTemplateBody): Promise<Pick<Response, "json">> {
+    async function postMessage(
+        body: CloudApiOutgoingBody | CloudApiTemplateBody | CloudApiTypingBody,
+    ): Promise<Pick<Response, "json">> {
         const { phoneNumberId, accessToken, graphApiVersion } = getConfig()
         const response = await fetchFn(
             `https://graph.facebook.com/${encodeURIComponent(graphApiVersion)}/${encodeURIComponent(phoneNumberId)}/messages`,
@@ -303,6 +306,15 @@ export function createCloudApiProvider({
             }
 
             await postMessage(buildBody(to, message))
+        },
+
+        async showTyping(messageId: string): Promise<void> {
+            await postMessage({
+                messaging_product: "whatsapp",
+                status: "read",
+                message_id: messageId,
+                typing_indicator: { type: "text" },
+            })
         },
 
         async sendTemplate(to: string, template: OutgoingTemplate): Promise<{ providerMessageId: string | null }> {

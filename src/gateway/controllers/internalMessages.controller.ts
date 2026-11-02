@@ -5,7 +5,10 @@ import BadRequestError from "../errors/BadRequestError"
 import UnauthorizedError from "../errors/UnauthorizedError"
 import { cloudApiProvider } from "../gateways/cloudApi.gateway"
 import { MessageProvider } from "../gateways/messageProvider"
-import { validateOutgoingTemplate, validateOutgoingText } from "../gateways/outgoingMessage.validation"
+import {
+    validateOutgoingMessages,
+    validateOutgoingTemplate,
+} from "../gateways/outgoingMessage.validation"
 import { PhoneQueue, whatsappPhoneQueue } from "../services/phoneQueue"
 import { WhatsAppConfigStore, whatsappConfigStore } from "../services/whatsappConfigStore"
 import { isValidInternalToken } from "../utils/internalToken"
@@ -59,27 +62,31 @@ class InternalMessagesController {
         }
     }
 
-    public async sendText(req: Request, res: Response, next: NextFunction): Promise<void> {
+    public async sendMessages(req: Request, res: Response, next: NextFunction): Promise<void> {
         if (!isValidInternalToken(req.get("X-Internal-Token"))) {
             next(new UnauthorizedError("Invalid internal token"))
             return
         }
-        const validation = validateOutgoingText(req.body)
+        const validation = validateOutgoingMessages(req.body)
         if (!validation.ok) {
-            next(new BadRequestError(`Invalid text message: ${validation.reason}`))
+            next(new BadRequestError(`Invalid outgoing messages: ${validation.reason}`))
             return
         }
-        const { to, message } = validation.value
+        const { to, messages } = validation.value
         try {
             await this.config.load()
-            await this.queue.run(to, () => this.provider.send(to, message))
-            res.status(200).json({ data: { sent: true } })
+            await this.queue.run(to, async () => {
+                for (const message of messages) {
+                    await this.provider.send(to, message)
+                }
+            })
+            res.status(200).json({ data: { sent: messages.length } })
         } catch (error) {
             if (error instanceof AppError) {
                 next(error)
                 return
             }
-            this.logger.log(JSON.stringify({ event: "text_send_failed" }))
+            this.logger.log(JSON.stringify({ event: "messages_send_failed" }))
             next(new BadGatewayError("WhatsApp provider did not accept the message"))
         }
     }

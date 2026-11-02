@@ -1,5 +1,9 @@
 import { describe, expect, test } from "vitest"
-import { validateOutgoingMessage, validateOutgoingTemplate, validateOutgoingText } from "./outgoingMessage.validation"
+import {
+    validateOutgoingMessage,
+    validateOutgoingMessages,
+    validateOutgoingTemplate,
+} from "./outgoingMessage.validation"
 import { ListRow, OutgoingMessage, ReplyButton } from "../types/message.types"
 
 function rows(count: number): ListRow[] {
@@ -221,34 +225,25 @@ describe("validateOutgoingTemplate", () => {
     })
 })
 
-describe("validateOutgoingText", () => {
+describe("validateOutgoingMessages", () => {
     const to = "5512999990000"
 
-    test("aceita texto com 4096 caracteres", () => {
-        const text = "a".repeat(4096)
+    test("devolve o reason do primeiro item inválido", () => {
+        const messages = [
+            { type: "text", text: "Resposta" },
+            buttonsMessage({ footer: "a".repeat(61) }),
+            buttonsMessage({ text: "a".repeat(1025) }),
+        ]
 
-        expect(validateOutgoingText({ to, text })).toEqual({ ok: true, value: { to, message: { type: "text", text } } })
-    })
-
-    test("recusa texto com 4097 caracteres", () => {
-        expect(validateOutgoingText({ to, text: "a".repeat(4097) })).toEqual({ ok: false, reason: "invalid_text" })
-    })
-
-    test.each([
-        { label: "vazio", text: "" },
-        { label: "só com espaços", text: "   " },
-        { label: "que não é texto", text: 42 },
-        { label: "ausente", text: undefined },
-    ])("recusa texto $label", ({ text }) => {
-        expect(validateOutgoingText({ to, text })).toEqual({ ok: false, reason: "invalid_text" })
+        expect(validateOutgoingMessages({ to, messages })).toEqual({ ok: false, reason: "invalid_footer" })
     })
 
     test.each([
-        { label: "com 7 dígitos", value: "1234567" },
-        { label: "com 16 dígitos", value: "1234567890123456" },
-        { label: "com +", value: "+5512999990000" },
-        { label: "que não é texto", value: 5512999990000 },
-    ])("recusa o destinatário $label", ({ value }) => {
-        expect(validateOutgoingText({ to: value, text: "Olá" })).toEqual({ ok: false, reason: "invalid_to" })
+        { label: "null", message: null, reason: "unsupported_type" },
+        { label: "que não é objeto", message: "texto", reason: "unsupported_type" },
+        { label: "de botões sem a lista de botões", message: { type: "buttons", text: "x" }, reason: "invalid_button_count" },
+        { label: "de lista sem a lista de linhas", message: { type: "list", text: "x", buttonText: "Ver" }, reason: "invalid_row_count" },
+    ])("recusa sem lançar o item $label", ({ message, reason }) => {
+        expect(validateOutgoingMessages({ to, messages: [message] })).toEqual({ ok: false, reason })
     })
 })

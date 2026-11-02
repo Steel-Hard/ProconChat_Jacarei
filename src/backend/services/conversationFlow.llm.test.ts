@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, test, vi } from "vitest"
-import { FIXED_NOW } from "../repositories/mock/appointment.builders"
-import type { LlmExplicacaoResult } from "../types/llm.types"
-import { createBackgroundRunner, createLlmComplementService } from "./llmComplement.service"
+import {
+    criarBotoesOfertaAgendamento,
+    criarBotoesResolvida,
+    formatarRespostaFinal,
+    OFERTA_AGENDAMENTO,
+    PERGUNTA_RESOLVIDA,
+} from "./messageFormatter.service"
 import {
     buildActiveSession,
     perguntaComIa,
@@ -13,7 +17,7 @@ import {
 } from "./mock/conversationFlow.fixtures"
 import { createConversationFlowHarness } from "./mock/conversationFlowHarness"
 
-describe("conversationFlow: complemento por IA (#66)", () => {
+describe("conversationFlow: resposta escrita pela IA", () => {
     const harness = createConversationFlowHarness()
     const {
         findOrCreateActive,
@@ -21,7 +25,9 @@ describe("conversationFlow: complemento por IA (#66)", () => {
         processarPergunta,
         recordEvent,
         finishEvent,
-        scheduleComplement,
+        updateNavigationState,
+        deliverAnswer,
+        answerLogger,
         processIncomingMessage,
         createFlow,
     } = harness
@@ -36,14 +42,8 @@ describe("conversationFlow: complemento por IA (#66)", () => {
         processarPergunta.mockResolvedValueOnce(resposta)
     }
 
-    function flowWithPendingComplement() {
-        const deliver = createLlmComplementService({
-            generate: () => new Promise<LlmExplicacaoResult>(() => {}),
-            gateway: { sendText: vi.fn() },
-            events: { record: vi.fn() },
-            logger: { log: vi.fn() },
-        })
-        return createFlow({ scheduleComplement: createBackgroundRunner(deliver, { log: vi.fn() }) })
+    function flowWithPendingAnswer() {
+        return createFlow({ deliverAnswer: vi.fn(() => new Promise<void>(() => {})) })
     }
 
     function answerSentCalls() {
@@ -51,39 +51,55 @@ describe("conversationFlow: complemento por IA (#66)", () => {
     }
 
     test.each([
-        {
-            label: "resolvida?",
-            pergunta: perguntaComIa,
-            resposta: respostaPadrao,
-            otherEvents: [{ type: "QUESTION_CHOSEN", categoryId: 1, questionId: perguntaComIa.id }],
-        },
-        {
-            label: "presencial",
-            pergunta: perguntaPresencialComIa,
-            resposta: respostaPresencial,
-            otherEvents: [
-                { type: "QUESTION_CHOSEN", categoryId: 1, questionId: perguntaPresencialComIa.id },
-                { type: "SCHEDULE_OFFERED", reason: "REQUIRES_IN_PERSON" },
-            ],
-        },
-    ])("com IA permitida entrega um job com o telefone sem espaços e não grava ANSWER_SENT (caminho $label)", async ({ pergunta, resposta, otherEvents }) => {
+        { label: "resolvida?", pergunta: perguntaComIa, resposta: respostaPadrao, step: "AWAITING_RESOLVED" },
+        { label: "presencial", pergunta: perguntaPresencialComIa, resposta: respostaPresencial, step: "AWAITING_SCHEDULE_OFFER" },
+    ])("com a entrega que nunca termina, responde só com o indicador de digitação (caminho $label)", async ({ pergunta, resposta, step }) => {
         chooseQuestion(pergunta, resposta)
 
-        await processIncomingMessage({ phone: "  5500000000123  ", text: "1" })
+        const result = await flowWithPendingAnswer()({ phone: "5500000000123", text: "1" })
 
-        expect(scheduleComplement).toHaveBeenCalledExactlyOnceWith({
-            phone: "5500000000123",
+        expect(result.reply).toEqual({ text: "", step, messages: [], typing: true })
+    })
+
+    test.each([
+        { label: "resolvida?", pergunta: perguntaComIa, resposta: respostaPadrao, step: "AWAITING_RESOLVED" },
+        { label: "presencial", pergunta: perguntaPresencialComIa, resposta: respostaPresencial, step: "AWAITING_SCHEDULE_OFFER" },
+    ])("grava só QUESTION_CHOSEN, atualiza o passo e chama a entrega uma vez com o telefone sem espaços (caminho $label)", async ({ pergunta, resposta, step }) => {
+        const deliver = vi.fn(() => new Promise<void>(() => {}))
+        chooseQuestion(pergunta, resposta)
+
+        await createFlow({ deliverAnswer: deliver })({ phone: "  5512999990000 ", text: "1" })
+
+        expect(recordEvent.mock.calls).toEqual([["s1", { type: "QUESTION_CHOSEN", categoryId: 1, questionId: pergunta.id }]])
+        expect(updateNavigationState).toHaveBeenCalledExactlyOnceWith("s1", {
+            currentStep: step,
+            currentCategoryId: "1",
+            currentQuestionId: String(pergunta.id),
+        })
+        expect(deliver).toHaveBeenCalledExactlyOnceWith({
+            phone: "5512999990000",
             sessionId: "s1",
             categoryId: 1,
             questionId: pergunta.id,
             resposta,
-            answeredAt: FIXED_NOW,
         })
-        expect(answerSentCalls()).toEqual([])
-        expect(recordEvent.mock.calls).toEqual(otherEvents.map((event) => ["s1", event]))
     })
 
-    test("pergunta fora do escopo encerra com ANSWER_SENT NOT_CALLED e não entrega job", async () => {
+    test("registra llm_answer_failed sem o telefone quando a entrega rejeita e libera a sessão para a próxima mensagem", async () => {
+        const flow = createFlow({ deliverAnswer: vi.fn(async () => Promise.reject(new Error("falha 5500000000123"))) })
+        chooseQuestion(perguntaComIa, respostaPadrao)
+        await flow({ phone: "5500000000123", text: "1" })
+        await vi.waitFor(() => expect(answerLogger.log).toHaveBeenCalled())
+        findOrCreateActive.mockResolvedValueOnce(buildActiveSession({ currentStep: "AWAITING_RESOLVED", currentQuestionId: String(perguntaComIa.id) }))
+
+        const next = await flow({ phone: "5500000000123", optionId: "resolved_yes" })
+
+        expect(answerLogger.log.mock.calls).toEqual([[JSON.stringify({ event: "llm_answer_failed", sessionId: "s1" })]])
+        expect(JSON.stringify(answerLogger.log.mock.calls)).not.toContain("5500000000123")
+        expect(next.reply.step).toBe("FINISHED")
+    })
+
+    test("pergunta fora do escopo encerra com ANSWER_SENT NOT_CALLED e não chama a entrega", async () => {
         chooseQuestion(perguntas[1] as typeof perguntaComIa, respostaForaEscopo)
 
         const result = await processIncomingMessage({ phone: "5500000000123", text: "1" })
@@ -93,13 +109,13 @@ describe("conversationFlow: complemento por IA (#66)", () => {
             outcome: "OUT_OF_SCOPE",
             event: { type: "ANSWER_SENT", categoryId: 1, questionId: 11, llm: "NOT_CALLED" },
         })
-        expect(scheduleComplement).not.toHaveBeenCalled()
+        expect(deliverAnswer).not.toHaveBeenCalled()
     })
 
     test.each([
         { label: "resolvida?", pergunta: perguntas[0] as typeof perguntaComIa, resposta: respostaPadrao },
         { label: "presencial", pergunta: perguntas[2] as typeof perguntaComIa, resposta: respostaPresencial },
-    ])("com IA desligada grava ANSWER_SENT NOT_CALLED e não entrega job (caminho $label)", async ({ pergunta, resposta }) => {
+    ])("com IA desligada grava ANSWER_SENT NOT_CALLED e não chama a entrega (caminho $label)", async ({ pergunta, resposta }) => {
         chooseQuestion(pergunta, resposta)
 
         await processIncomingMessage({ phone: "5500000000123", text: "1" })
@@ -107,62 +123,45 @@ describe("conversationFlow: complemento por IA (#66)", () => {
         expect(answerSentCalls()).toEqual([
             ["s1", { type: "ANSWER_SENT", categoryId: 1, questionId: pergunta.id, llm: "NOT_CALLED" }],
         ])
-        expect(scheduleComplement).not.toHaveBeenCalled()
+        expect(deliverAnswer).not.toHaveBeenCalled()
     })
 
-    test("com o complemento que nunca termina, resolve com a mesma reply de hoje", async () => {
-        chooseQuestion({ ...perguntaComIa, llm_allowed: false }, respostaPadrao)
-        const today = await processIncomingMessage({ phone: "5500000000123", text: "1" })
-        chooseQuestion(perguntaComIa, respostaPadrao)
+    test.each([
+        {
+            label: "resolvida?",
+            pergunta: perguntas[0] as typeof perguntaComIa,
+            resposta: respostaPadrao,
+            reply: {
+                text: `${formatarRespostaFinal(respostaPadrao)}\n\n${PERGUNTA_RESOLVIDA}`,
+                step: "AWAITING_RESOLVED",
+                messages: [
+                    { type: "text", text: formatarRespostaFinal(respostaPadrao) },
+                    { type: "buttons", text: "A dúvida foi resolvida?", buttons: criarBotoesResolvida() },
+                ],
+            },
+        },
+        {
+            label: "presencial",
+            pergunta: perguntas[2] as typeof perguntaComIa,
+            resposta: respostaPresencial,
+            reply: {
+                text: `${formatarRespostaFinal(respostaPresencial)}\n\n${OFERTA_AGENDAMENTO}`,
+                step: "AWAITING_SCHEDULE_OFFER",
+                messages: [
+                    { type: "text", text: formatarRespostaFinal(respostaPresencial) },
+                    {
+                        type: "buttons",
+                        text: "Deseja agendar um atendimento presencial no PROCON Jacareí?",
+                        buttons: criarBotoesOfertaAgendamento(),
+                    },
+                ],
+            },
+        },
+    ])("com IA desligada devolve a mesma reply de hoje (caminho $label)", async ({ pergunta, resposta, reply }) => {
+        chooseQuestion(pergunta, resposta)
 
-        const result = await flowWithPendingComplement()({ phone: "5500000000123", text: "1" })
+        const result = await processIncomingMessage({ phone: "5500000000123", text: "1" })
 
-        expect(result.reply).toEqual(today.reply)
-    })
-
-    test("com o complemento pendente, uma segunda mensagem do mesmo telefone é processada", async () => {
-        const flow = flowWithPendingComplement()
-        chooseQuestion(perguntaComIa, respostaPadrao)
-        await flow({ phone: "5500000000123", text: "1" })
-        chooseQuestion(perguntaComIa, respostaPadrao)
-
-        const second = await flow({ phone: "5500000000123", text: "1" })
-
-        expect(second.reply.step).toBe("AWAITING_RESOLVED")
-    })
-
-    test("lê o relógio depois de gravar QUESTION_CHOSEN e antes de gravar SCHEDULE_OFFERED", async () => {
-        const nowSpy = vi.fn(() => FIXED_NOW)
-        chooseQuestion(perguntaPresencialComIa, respostaPresencial)
-
-        await createFlow({ now: nowSpy })({ phone: "5500000000123", text: "1" })
-
-        const orderOf = (type: string) => {
-            const index = recordEvent.mock.calls.findIndex(([, event]) => event.type === type)
-            return recordEvent.mock.invocationCallOrder[index] as number
-        }
-        expect(nowSpy).toHaveBeenCalledTimes(1)
-        const nowOrder = nowSpy.mock.invocationCallOrder[0] as number
-        expect(nowOrder).toBeGreaterThan(orderOf("QUESTION_CHOSEN"))
-        expect(nowOrder).toBeLessThan(orderOf("SCHEDULE_OFFERED"))
-    })
-
-    test("a mesma pergunta com IA escolhida duas vezes seguidas entrega dois jobs, cada um com o seu answeredAt", async () => {
-        const first = new Date("2026-03-10T12:00:00.000Z")
-        const second = new Date("2026-03-10T12:00:05.000Z")
-        const nowSpy = vi.fn<() => Date>().mockReturnValueOnce(first).mockReturnValueOnce(second)
-        const flow = createFlow({ now: nowSpy })
-        chooseQuestion(perguntaComIa, respostaPadrao)
-        await flow({ phone: "5500000000123", text: "1" })
-        chooseQuestion(perguntaComIa, respostaPadrao)
-
-        await flow({ phone: "5500000000123", text: "1" })
-
-        expect(scheduleComplement).toHaveBeenCalledTimes(2)
-        expect(scheduleComplement.mock.calls.map(([job]) => job)).toEqual([
-            expect.objectContaining({ questionId: perguntaComIa.id, answeredAt: first }),
-            expect.objectContaining({ questionId: perguntaComIa.id, answeredAt: second }),
-        ])
-        expect(scheduleComplement.mock.calls[0]?.[0]).not.toBe(scheduleComplement.mock.calls[1]?.[0])
+        expect(result.reply).toEqual(reply)
     })
 })
