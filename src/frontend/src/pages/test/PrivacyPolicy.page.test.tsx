@@ -164,4 +164,44 @@ describe("PrivacyPolicyPage", () => {
 
         await waitFor(() => expect(document.title).toBe("Política de privacidade - ProconChat"))
     })
+
+    it("com a anonimização desligada, não mostra as frases de prazo", async () => {
+        await renderPage({ status: 200, body: { data: FILLED } })
+
+        const retention = section("Por quanto tempo guardamos")
+        await within(retention).findByText("Sessões e eventos por 12 meses.")
+
+        expect(within(retention).queryByText(/deixam de ficar ligadas ao seu número/)).toBeNull()
+        expect(within(retention).queryByText(/O nome e o CPF do agendamento/)).toBeNull()
+        expect(
+            within(retention).queryByText(/sem identificação, continuam nos relatórios/)
+        ).toBeNull()
+    })
+
+    it("com a anonimização ligada, mostra as três frases de prazo entre o telefone e os backups", async () => {
+        await renderPage({ status: 200, body: { data: { ...FILLED, retentionEnabled: true } } })
+
+        const retention = section("Por quanto tempo guardamos")
+        const sessions = await within(retention).findByText(
+            "As conversas deixam de ficar ligadas ao seu número 90 dias depois de terminarem. A conversa que gerou um agendamento segue o prazo do agendamento."
+        )
+        const appointments = within(retention).getByText(
+            "O nome e o CPF do agendamento são removidos 365 dias depois da data do atendimento."
+        )
+        const anonymous = within(retention).getByText(
+            "As opções escolhidas nas conversas, sem identificação, continuam nos relatórios do PROCON."
+        )
+        const phone = within(retention).getByText(
+            "O telefone informado no agendamento é apagado quando chega o horário do atendimento."
+        )
+        const backups = within(retention).getByText(/As cópias de segurança do sistema/)
+
+        const order = [phone, sessions, appointments, anonymous, backups]
+        for (let index = 1; index < order.length; index += 1) {
+            expect(
+                order[index - 1].compareDocumentPosition(order[index]) &
+                    Node.DOCUMENT_POSITION_FOLLOWING
+            ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+        }
+    })
 })

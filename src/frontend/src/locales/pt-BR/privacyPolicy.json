@@ -37,6 +37,9 @@
     "retention": {
         "heading": "Por quanto tempo guardamos",
         "phone": "O telefone informado no agendamento é apagado quando chega o horário do atendimento.",
+        "sessions": "As conversas deixam de ficar ligadas ao seu número {{days}} dias depois de terminarem. A conversa que gerou um agendamento segue o prazo do agendamento.",
+        "appointments": "O nome e o CPF do agendamento são removidos {{days}} dias depois da data do atendimento.",
+        "anonymous": "As opções escolhidas nas conversas, sem identificação, continuam nos relatórios do PROCON.",
         "backups": "As cópias de segurança do sistema são guardadas por até 7 dias. Por isso, um dado apagado pode continuar numa cópia de segurança por menos de 7 dias.",
         "otherLabel": "Demais prazos"
     },

@@ -69,6 +69,21 @@ function PrivacyPolicyPage() {
                     <section className={css.section}>
                         <h2 className={css.sectionTitle}>{t("retention.heading")}</h2>
                         <p className={css.paragraph}>{t("retention.phone")}</p>
+                        {settings?.retentionEnabled ? (
+                            <>
+                                <p className={css.paragraph}>
+                                    {t("retention.sessions", {
+                                        days: settings.sessionRetentionDays
+                                    })}
+                                </p>
+                                <p className={css.paragraph}>
+                                    {t("retention.appointments", {
+                                        days: settings.appointmentRetentionDays
+                                    })}
+                                </p>
+                                <p className={css.paragraph}>{t("retention.anonymous")}</p>
+                            </>
+                        ) : null}
                         <p className={css.paragraph}>{t("retention.backups")}</p>
                         {settings ? (
                             <PrivacyPolicyValue
