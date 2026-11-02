@@ -91,8 +91,9 @@ Regras entre os campos:
 Prévia no estilo WhatsApp:
 
 1. A **lista da categoria**, com a pergunta editada em negrito e "Ver mais opções ›" quando houver paginação.
-2. **O balão da resposta:** texto oficial, base legal, documentos úteis, o exemplo do complemento por IA com o rótulo "Gerado com auxílio de IA" (quando permitido) e, **no fim do mesmo balão, o aviso de caráter não vinculante**.
-3. **Um balão separado** com o passo seguinte:
+2. **O balão da resposta:** texto oficial, base legal, documentos úteis e, **no fim do mesmo balão, o aviso de caráter não vinculante**.
+3. **Quando o complemento por IA é permitido, um balão separado logo depois do balão da resposta**, com o exemplo do complemento e o rótulo "Gerado com auxílio de IA" no rodapé desse balão. O aviso não vinculante fica só no balão da resposta ([decisão 009](../decisoes/009-complemento-por-llm.md), item 6; implementação na #124).
+4. **Um balão separado** com o passo seguinte:
    - "A sua dúvida foi resolvida?" (Sim/Não), para perguntas comuns;
    - a oferta de agendamento (Agendar / Agora não), para as que exigem atendimento presencial;
    - a orientação de encaminhamento, para as fora do escopo.

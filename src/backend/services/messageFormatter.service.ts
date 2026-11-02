@@ -22,6 +22,12 @@ export const ERRO_PREFIXO = "Não entendi. Digite o número de uma das opções 
 export const AVISO_NAO_VINCULANTE =
     "Esta é uma orientação automatizada de caráter informativo. Ela não é vinculante e não substitui o atendimento jurídico ou administrativo formal do PROCON Jacareí."
 
+export const ROTULO_IA = "Gerado com auxílio de IA"
+
+export function formatarComplementoIa(texto: string): string {
+    return `${texto.trim()}\n\n${ROTULO_IA}`
+}
+
 export const PERGUNTA_RESOLVIDA =
     "A dúvida foi resolvida?\n1. Sim\n2. Não"
 

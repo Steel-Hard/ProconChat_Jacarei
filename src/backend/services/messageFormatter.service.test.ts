@@ -36,6 +36,7 @@ import {
     ERRO_FALHA_ALTERACAO,
     TEXTO_BOTOES_RETORNO,
     SAUDACAO,
+    formatarComplementoIa,
 } from "./messageFormatter.service"
 import type { OutgoingMessage } from "../types/message.types"
 import type { AvailableSlot } from "../types/schedule.types"
@@ -55,6 +56,7 @@ const perguntas: Pergunta[] = [
         answer: "Sim.",
         requires_in_person: false,
         out_of_scope: false,
+        llm_allowed: false,
         active: true,
     },
     {
@@ -65,6 +67,7 @@ const perguntas: Pergunta[] = [
         answer: "Depende do contrato.",
         requires_in_person: false,
         out_of_scope: false,
+        llm_allowed: false,
         active: true,
     },
 ]
@@ -407,6 +410,7 @@ describe("messageFormatter.service", () => {
             answer: "Resposta.",
             requires_in_person: false,
             out_of_scope: false,
+            llm_allowed: false,
             active: true,
         }))
 
@@ -798,3 +802,12 @@ describe("Link da política de privacidade na saudação", () => {
     })
 })
 
+describe("Complemento gerado por IA (#66)", () => {
+    test("leva o texto sem espaços nas pontas, uma linha em branco e o rótulo no rodapé, sem o aviso não vinculante e sem itálico", () => {
+        const mensagem = formatarComplementoIa("  \n Explicação complementar.\n  ")
+
+        expect(mensagem).toBe("Explicação complementar.\n\nGerado com auxílio de IA")
+        expect(mensagem).not.toContain(AVISO_NAO_VINCULANTE)
+        expect(mensagem).not.toContain("_")
+    })
+})

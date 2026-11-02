@@ -143,3 +143,22 @@ export function validateOutgoingTemplate(input: unknown): OutgoingTemplateValida
         },
     }
 }
+
+export type OutgoingTextValidation =
+    | { ok: true; value: { to: string; message: OutgoingMessage } }
+    | { ok: false; reason: "invalid_to" | "invalid_text" }
+
+export function validateOutgoingText(input: unknown): OutgoingTextValidation {
+    const { to, text } = (input ?? {}) as Record<string, unknown>
+    if (typeof to !== "string" || !TEMPLATE_TO_PATTERN.test(to)) {
+        return { ok: false, reason: "invalid_to" }
+    }
+    if (typeof text !== "string") {
+        return { ok: false, reason: "invalid_text" }
+    }
+    const message: OutgoingMessage = { type: "text", text }
+    if (!validateOutgoingMessage(message).ok) {
+        return { ok: false, reason: "invalid_text" }
+    }
+    return { ok: true, value: { to, message } }
+}

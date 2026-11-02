@@ -168,3 +168,88 @@ describe("gateway client: sendTemplate", () => {
         expect(logged(logger)).not.toContain(input.to)
     })
 })
+
+describe("gateway client: sendText", () => {
+    const input = { to: "5512999990000", text: "Explicação complementar\n\nGerado com auxílio de IA" }
+
+    afterEach(() => {
+        vi.restoreAllMocks()
+    })
+
+    it.each([undefined, ""])("devolve NOT_CONFIGURED sem chamar o gateway quando GATEWAY_INTERNAL_URL é %s", async (url) => {
+        const fetchFn = vi.fn<GatewayFetchFn>()
+
+        const result = await createGatewayClient({ fetchFn, env: { ...env, GATEWAY_INTERNAL_URL: url }, logger: { log: vi.fn() } }).sendText(input)
+
+        expect(result).toEqual({ ok: false, reason: "NOT_CONFIGURED" })
+        expect(fetchFn).not.toHaveBeenCalled()
+    })
+
+    it.each(["http://gateway:3001/", "http://gateway:3001"])(
+        "envia o texto ao gateway com o token interno, JSON, o corpo do contrato e o tempo limite de envio (base %s)",
+        async (baseUrl) => {
+            const timeoutSpy = vi.spyOn(AbortSignal, "timeout")
+            const fetchFn = vi.fn<GatewayFetchFn>().mockResolvedValue({ ok: true, status: 200 })
+
+            await createGatewayClient({ fetchFn, env: { ...env, GATEWAY_INTERNAL_URL: baseUrl }, logger: { log: vi.fn() } }).sendText(input)
+
+            expect(fetchFn).toHaveBeenCalledTimes(1)
+            const [url, init] = fetchFn.mock.calls[0] ?? []
+            expect(url).toBe("http://gateway:3001/internal/whatsapp/messages/text")
+            expect(init?.method).toBe("POST")
+            expect(init?.headers).toEqual({ "X-Internal-Token": "token-interno-ficticio", "Content-Type": "application/json" })
+            expect(JSON.parse(String(init?.body))).toEqual({ to: input.to, text: input.text })
+            expect(timeoutSpy).toHaveBeenCalledWith(GATEWAY_SEND_TIMEOUT_MS)
+            expect(init?.signal).toBe(timeoutSpy.mock.results[0]?.value)
+        },
+    )
+
+    it.each([
+        { status: 200, ok: true, expected: { ok: true } },
+        { status: 400, ok: false, expected: { ok: false, reason: "REJECTED" } },
+        { status: 502, ok: false, expected: { ok: false, reason: "REJECTED" } },
+    ])("devolve $expected quando o gateway responde $status", async ({ status, ok, expected }) => {
+        const fetchFn = vi.fn<GatewayFetchFn>().mockResolvedValue({ ok, status })
+
+        const result = await createGatewayClient({ fetchFn, env, logger: { log: vi.fn() } }).sendText(input)
+
+        expect(result).toEqual(expected)
+    })
+
+    it("devolve UNREACHABLE quando a chamada lança", async () => {
+        const fetchFn = vi.fn<GatewayFetchFn>().mockRejectedValue(new Error("ECONNREFUSED"))
+
+        const result = await createGatewayClient({ fetchFn, env, logger: { log: vi.fn() } }).sendText(input)
+
+        expect(result).toEqual({ ok: false, reason: "UNREACHABLE" })
+    })
+
+    it("devolve UNREACHABLE quando o gateway não responde no tempo limite", async () => {
+        vi.spyOn(AbortSignal, "timeout").mockImplementation(() => AbortSignal.abort(new DOMException("timeout", "TimeoutError")))
+        const fetchFn = vi.fn<GatewayFetchFn>(
+            (_url, init) =>
+                new Promise((_resolve, reject) => {
+                    if (init.signal?.aborted) {
+                        reject(init.signal.reason)
+                    }
+                }),
+        )
+
+        const result = await createGatewayClient({ fetchFn, env, logger: { log: vi.fn() } }).sendText(input)
+
+        expect(result).toEqual({ ok: false, reason: "UNREACHABLE" })
+    })
+
+    it.each([
+        { label: "a chamada lança", fetchFn: () => vi.fn<GatewayFetchFn>().mockRejectedValue(new Error(`falhou para ${input.to}: ${input.text}`)) },
+        { label: "o gateway recusa", fetchFn: () => vi.fn<GatewayFetchFn>().mockResolvedValue({ ok: false, status: 502 }) },
+    ])("não registra o telefone nem o texto no log quando $label", async ({ fetchFn }) => {
+        const logger = { log: vi.fn() }
+
+        await createGatewayClient({ fetchFn: fetchFn(), env, logger }).sendText(input)
+
+        expect(logger.log).toHaveBeenCalledTimes(1)
+        expect(logged(logger)).not.toContain(input.to)
+        expect(logged(logger)).not.toContain("Explicação complementar")
+    })
+})

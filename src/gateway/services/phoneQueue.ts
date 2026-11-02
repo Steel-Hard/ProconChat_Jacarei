@@ -35,3 +35,5 @@ export function createPhoneQueue(): PhoneQueue {
         },
     }
 }
+
+export const whatsappPhoneQueue = createPhoneQueue()

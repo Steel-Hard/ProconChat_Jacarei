@@ -18,6 +18,7 @@ export class MockMotorDecisaoRepository implements IMotorDecisaoRepository {
             answer: "Sim, em compras online você tem até 7 dias corridos após o recebimento para desistir.",
             requires_in_person: false,
             out_of_scope: false,
+            llm_allowed: false,
             active: true,
         },
         {
@@ -28,6 +29,7 @@ export class MockMotorDecisaoRepository implements IMotorDecisaoRepository {
             answer: "",
             requires_in_person: false,
             out_of_scope: true,
+            llm_allowed: false,
             active: true,
         },
         {
@@ -38,6 +40,7 @@ export class MockMotorDecisaoRepository implements IMotorDecisaoRepository {
             answer: "Procure a assistência técnica autorizada. Se não resolverem em 30 dias, você pode exigir a troca.",
             requires_in_person: true,
             out_of_scope: false,
+            llm_allowed: false,
             active: true,
         },
         {
@@ -48,6 +51,7 @@ export class MockMotorDecisaoRepository implements IMotorDecisaoRepository {
             answer: "N/A",
             requires_in_person: false,
             out_of_scope: false,
+            llm_allowed: false,
             active: false,
         },
         {
@@ -58,6 +62,7 @@ export class MockMotorDecisaoRepository implements IMotorDecisaoRepository {
             answer: "N/A",
             requires_in_person: false,
             out_of_scope: false,
+            llm_allowed: false,
             active: true,
         },
         {
@@ -68,6 +73,7 @@ export class MockMotorDecisaoRepository implements IMotorDecisaoRepository {
             answer: "N/A",
             requires_in_person: false,
             out_of_scope: false,
+            llm_allowed: false,
             active: false,
         },
     ]
