@@ -172,6 +172,26 @@ describe("llmAnswer.service", () => {
         ])
     })
 
+    it("envia as duas mensagens oficiais e grava ANSWER_SENT FAILED antes de SCHEDULE_OFFERED quando a pergunta presencial passa do limite de 1024", async () => {
+        const respostaPresencial = { ...resposta, requer_presencial: true }
+        const presencial = { ...job, resposta: respostaPresencial }
+        const texto = textoComCorpoDe(1025)
+        const { deliver, sendMessages, record, logger } = setup({ generated: used(texto) })
+
+        await deliver(presencial)
+
+        expect(Array.from((montarMensagemIa(texto, respostaPresencial) as { text: string }).text).length).toBeGreaterThan(1024)
+        expect(sendMessages).toHaveBeenCalledExactlyOnceWith({ to: job.phone, messages: mensagensRespostaOficial(respostaPresencial) })
+        expect(sendMessages.mock.calls[0]?.[0].messages).toHaveLength(2)
+        expect(record.mock.calls).toEqual([
+            [job.sessionId, { type: "ANSWER_SENT", categoryId: job.categoryId, questionId: job.questionId, llm: "FAILED" }],
+            [job.sessionId, { type: "SCHEDULE_OFFERED", reason: "REQUIRES_IN_PERSON" }],
+        ])
+        expect(logger.log.mock.calls).toEqual([
+            [JSON.stringify({ event: "llm_answer_fallback", sessionId: job.sessionId, reason: "TOO_LONG" })],
+        ])
+    })
+
     it("não grava SCHEDULE_OFFERED quando a pergunta presencial não teve resposta entregue", async () => {
         const presencial = { ...job, resposta: { ...resposta, requer_presencial: true } }
         const { deliver, record } = setup({
