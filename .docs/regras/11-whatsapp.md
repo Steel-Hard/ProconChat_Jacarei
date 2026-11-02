@@ -110,6 +110,7 @@ Mensagens enviadas fora da conversa precisam de modelo aprovado pela Meta ([deci
 | Atendimento presencial (opcional) | até 300 caracteres | telefone ou endereço |
 | Prazos de guarda | até 2000 caracteres | texto livre, várias linhas |
 
+- Cada campo tem, ao lado do rótulo, um ícone de ajuda (tooltip) com um texto que explica para que serve o campo. O ícone tem o nome acessível **"Sobre o campo <rótulo>"** (por exemplo, "Sobre o campo Nome do controlador").
 - **Segue o padrão de salvar** ([regras gerais](00-regras-gerais.md#3-salvar-descartar-e-registrar-quem-alterou)): as alterações ficam pendentes até **Salvar**, **Descartar** volta aos valores salvos e o topo mostra "Última alteração por [nome] em [data]".
 - Todos os campos podem ficar vazios. Os espaços nas pontas são removidos ao salvar, e campo vazio é gravado como "não cadastrado".
 - Com um e-mail fora do formato, o campo mostra **"Informe um e-mail válido."**; com texto acima do limite, **"Use no máximo N caracteres."**, com N do campo. Nos dois casos, **Salvar** fica desabilitado.
