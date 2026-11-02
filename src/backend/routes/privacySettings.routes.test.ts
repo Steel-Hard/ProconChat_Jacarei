@@ -113,7 +113,7 @@ describe("rotas da configuracao de privacidade", () => {
         const response = await (origin === undefined ? call : call.set("Origin", origin)).send({ ...validBody, controllerName: "Outro nome" })
 
         expect(response.status).toBe(403)
-        expect(response.body.error.code).toBe("INVALID_ORIGIN")
+        expect(response.body).toEqual({ error: { code: "INVALID_ORIGIN", message: "Request origin is not allowed" } })
         expect(privacy.saveCalls).toHaveLength(0)
         expect(privacy.row).toEqual(before)
     })
