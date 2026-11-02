@@ -20,9 +20,17 @@ export type SendTemplateResult =
     | { ok: true; providerMessageId: string | null }
     | { ok: false; reason: "NOT_CONFIGURED" | "REJECTED" | "UNREACHABLE" }
 
+export interface SendTextInput {
+    to: string
+    text: string
+}
+
+export type SendTextResult = { ok: true } | { ok: false; reason: "NOT_CONFIGURED" | "REJECTED" | "UNREACHABLE" }
+
 export interface GatewayClient {
     notifyConfigChanged(): Promise<void>
     sendTemplate(input: SendTemplateInput): Promise<SendTemplateResult>
+    sendText(input: SendTextInput): Promise<SendTextResult>
 }
 
 interface GatewayClientDependencies {
@@ -95,6 +103,30 @@ export function createGatewayClient({
                 return { ok: false, reason: "REJECTED" }
             }
             return { ok: true, providerMessageId: await readProviderMessageId(response) }
+        },
+
+        async sendText(input: SendTextInput): Promise<SendTextResult> {
+            const baseUrl = env.GATEWAY_INTERNAL_URL
+            if (!baseUrl) {
+                return { ok: false, reason: "NOT_CONFIGURED" }
+            }
+            let response: Awaited<ReturnType<GatewayFetchFn>>
+            try {
+                response = await fetchFn(`${baseUrl.replace(/\/$/, "")}/internal/whatsapp/messages/text`, {
+                    method: "POST",
+                    headers: { "X-Internal-Token": env.GATEWAY_INTERNAL_TOKEN ?? "", "Content-Type": "application/json" },
+                    body: JSON.stringify({ to: input.to, text: input.text }),
+                    signal: AbortSignal.timeout(GATEWAY_SEND_TIMEOUT_MS),
+                })
+            } catch {
+                logger.log(JSON.stringify({ event: "gateway_text_send_failed" }))
+                return { ok: false, reason: "UNREACHABLE" }
+            }
+            if (!response.ok) {
+                logger.log(JSON.stringify({ event: "gateway_text_send_failed", status: response.status }))
+                return { ok: false, reason: "REJECTED" }
+            }
+            return { ok: true }
         },
     }
 }
