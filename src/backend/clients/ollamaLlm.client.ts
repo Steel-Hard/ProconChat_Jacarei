@@ -8,6 +8,10 @@ const NUM_PREDICT = 300
 
 export const LLM_PROBE_TIMEOUT_MS = 2000
 
+export function llmTimeoutMs(): number {
+    return Number(process.env.LLM_TIMEOUT_MS) || 20000
+}
+
 export class LlmTimeoutError extends Error {
     constructor(timeoutMs: number) {
         super(`Ollama não respondeu em ${timeoutMs}ms.`)
@@ -32,7 +36,7 @@ export class OllamaLlmClient implements ILlmClient {
     constructor() {
         this.ollamaUrl = process.env.OLLAMA_URL || "http://ollama:11434"
         this.model = process.env.LLM_MODEL || "llama3.2:3b"
-        this.timeoutMs = Number(process.env.LLM_TIMEOUT_MS) || 20000
+        this.timeoutMs = llmTimeoutMs()
     }
 
     async isAvailable(): Promise<boolean> {
