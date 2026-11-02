@@ -15,7 +15,6 @@ export class InternalMessagesRoutes {
             this.internalMessagesController.sendTemplate.bind(this.internalMessagesController),
         )
         this.router.post("/", this.internalMessagesController.sendMessages.bind(this.internalMessagesController))
-        this.router.post("/text", this.internalMessagesController.sendText.bind(this.internalMessagesController))
     }
 
     public getRouter(): Router {

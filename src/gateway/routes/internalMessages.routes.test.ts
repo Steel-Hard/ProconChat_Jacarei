@@ -158,194 +158,6 @@ describe("POST /internal/whatsapp/messages/template", () => {
     })
 })
 
-describe("POST /internal/whatsapp/messages/text", () => {
-    const TEXT_PATH = "/internal/whatsapp/messages/text"
-    const textBody = { to: "5512999990000", text: "Explicação complementar\n\nGerado com auxílio de IA" }
-
-    function buildTextApp({
-        providerSend = vi.fn().mockResolvedValue(undefined),
-        load = vi.fn().mockResolvedValue(config),
-        queue = createPhoneQueue(),
-    }: {
-        providerSend?: ReturnType<typeof vi.fn>
-        load?: ReturnType<typeof vi.fn>
-        queue?: PhoneQueue
-    } = {}) {
-        const provider = { sendTemplate: vi.fn(), send: providerSend }
-        const logger = { log: vi.fn() }
-        const testApp = express()
-        testApp.use(express.json())
-        testApp.use(
-            "/internal/whatsapp/messages",
-            new InternalMessagesRoutes({ config: { load }, provider, logger, queue }).getRouter(),
-        )
-        testApp.use(errorHandler)
-        return { testApp, providerSend, load, logger }
-    }
-
-    function sendText(testApp: express.Express, payload: unknown = textBody) {
-        return request(testApp).post(TEXT_PATH).set("X-Internal-Token", TOKEN).send(payload as object)
-    }
-
-    afterEach(() => {
-        vi.restoreAllMocks()
-    })
-
-    test.each([
-        { label: "sem o token interno", token: undefined },
-        { label: "com o token interno errado", token: "token-errado" },
-    ])("recusa $label e não chama o provedor", async ({ token }) => {
-        const { testApp, providerSend } = buildTextApp()
-        const pending = request(testApp).post(TEXT_PATH)
-
-        const response = await (token === undefined ? pending : pending.set("X-Internal-Token", token)).send(textBody)
-
-        expect(response.status).toBe(401)
-        expect(response.body).toEqual({ error: { code: "UNAUTHORIZED", message: "Invalid internal token" } })
-        expect(providerSend).not.toHaveBeenCalled()
-    })
-
-    test.each([
-        { label: "o destinatário é inválido", payload: { ...textBody, to: "+5512999990000" }, reason: "invalid_to" },
-        { label: "o texto só tem espaços", payload: { ...textBody, text: "   " }, reason: "invalid_text" },
-        { label: "o texto passa de 4096 caracteres", payload: { ...textBody, text: "a".repeat(4097) }, reason: "invalid_text" },
-    ])("responde 400 e não chama o provedor quando $label", async ({ payload, reason }) => {
-        const { testApp, providerSend } = buildTextApp()
-
-        const response = await sendText(testApp, payload)
-
-        expect(response.status).toBe(400)
-        expect(response.body).toEqual({ error: { code: "BAD_REQUEST", message: `Invalid text message: ${reason}` } })
-        expect(providerSend).not.toHaveBeenCalled()
-    })
-
-    test("carrega a configuração, envia o texto ao provedor e responde 200", async () => {
-        const { testApp, providerSend, load } = buildTextApp()
-
-        const response = await sendText(testApp)
-
-        expect(response.status).toBe(200)
-        expect(response.body).toEqual({ data: { sent: true } })
-        expect(load).toHaveBeenCalledOnce()
-        expect(providerSend).toHaveBeenCalledExactlyOnceWith(textBody.to, { type: "text", text: textBody.text })
-        expect(load.mock.invocationCallOrder[0]).toBeLessThan(providerSend.mock.invocationCallOrder[0] as number)
-    })
-
-    test("aceita texto com 4096 caracteres", async () => {
-        const text = "a".repeat(4096)
-        const { testApp, providerSend } = buildTextApp()
-
-        const response = await sendText(testApp, { ...textBody, text })
-
-        expect(response.status).toBe(200)
-        expect(providerSend).toHaveBeenCalledExactlyOnceWith(textBody.to, { type: "text", text })
-    })
-
-    test("só envia depois que termina a tarefa em andamento na fila do mesmo telefone", async () => {
-        const realQueue = createPhoneQueue()
-        let entered!: () => void
-        const routeEntered = new Promise<void>((resolve) => {
-            entered = resolve
-        })
-        const calls: string[] = []
-        const queue: PhoneQueue = {
-            run(phone, task) {
-                calls.push(`run:${phone}`)
-                if (calls.length === 2) {
-                    entered()
-                }
-                return realQueue.run(phone, task)
-            },
-            size: () => realQueue.size(),
-        }
-        let releaseBlocker!: () => void
-        const blocker = queue.run(textBody.to, async () => {
-            await new Promise<void>((resolve) => {
-                releaseBlocker = resolve
-            })
-            calls.push("blocker:done")
-        })
-        const providerSend = vi.fn(async () => {
-            calls.push("send")
-        })
-        const { testApp } = buildTextApp({ providerSend, queue })
-
-        const responsePromise = sendText(testApp).then((response) => response)
-        await Promise.race([routeEntered, responsePromise])
-        await new Promise((resolve) => setImmediate(resolve))
-        const sentBeforeRelease = providerSend.mock.calls.length
-        releaseBlocker()
-        await blocker
-        const response = await responsePromise
-
-        expect(sentBeforeRelease).toBe(0)
-        expect(response.status).toBe(200)
-        expect(calls).toEqual([`run:${textBody.to}`, `run:${textBody.to}`, "blocker:done", "send"])
-    })
-
-    test("na montagem padrão só envia depois da tarefa em andamento na fila compartilhada com o webhook", async () => {
-        const to = "5512999990077"
-        const events: string[] = []
-        let releaseBlocker!: () => void
-        const blocker = whatsappPhoneQueue.run(
-            to,
-            () =>
-                new Promise<void>((resolve) => {
-                    releaseBlocker = () => {
-                        events.push("blocker:done")
-                        resolve()
-                    }
-                }),
-        )
-        const providerSend = vi.fn(async () => {
-            events.push("send")
-        })
-        const load = vi.fn().mockResolvedValue(config)
-        const provider = { sendTemplate: vi.fn(), send: providerSend }
-        const testApp = express()
-        testApp.use(express.json())
-        testApp.use(
-            "/internal/whatsapp/messages",
-            new InternalMessagesRoutes({ config: { load }, provider, logger: { log: vi.fn() } }).getRouter(),
-        )
-        testApp.use(errorHandler)
-
-        const responsePromise = sendText(testApp, { ...textBody, to }).then((response) => response)
-        try {
-            await vi.waitFor(() => expect(load).toHaveBeenCalled())
-            for (let tick = 0; tick < 5; tick++) {
-                await new Promise((resolve) => setImmediate(resolve))
-            }
-            expect(providerSend).not.toHaveBeenCalled()
-        } finally {
-            releaseBlocker()
-        }
-        await blocker
-        const response = await responsePromise
-
-        expect(response.status).toBe(200)
-        expect(events).toEqual(["blocker:done", "send"])
-    })
-
-    test("responde 502 PROVIDER_ERROR sem registrar o telefone nem o texto quando o provedor falha", async () => {
-        const consoleLog = vi.spyOn(console, "log").mockImplementation(() => undefined)
-        const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
-        const providerSend = vi.fn().mockRejectedValue(new Error(`falha para ${textBody.to}: ${textBody.text}`))
-        const { testApp, logger } = buildTextApp({ providerSend })
-
-        const response = await sendText(testApp)
-
-        expect(response.status).toBe(502)
-        expect(response.body).toEqual({
-            error: { code: "PROVIDER_ERROR", message: "WhatsApp provider did not accept the message" },
-        })
-        expect(logger.log).toHaveBeenCalledOnce()
-        const logged = JSON.stringify([logger.log.mock.calls, consoleLog.mock.calls, consoleError.mock.calls])
-        expect(logged).not.toContain(textBody.to)
-        expect(logged).not.toContain("Explicação complementar")
-    })
-})
-
 describe("POST /internal/whatsapp/messages", () => {
     const MESSAGES_PATH = "/internal/whatsapp/messages"
     const textItem = { type: "text", text: "Resposta oficial" }
@@ -523,5 +335,49 @@ describe("POST /internal/whatsapp/messages", () => {
         const logged = JSON.stringify([logger.log.mock.calls, consoleLog.mock.calls, consoleError.mock.calls])
         expect(logged).not.toContain(messagesBody.to)
         expect(logged).not.toContain(textItem.text)
+    })
+
+    test("na montagem padrão só envia depois da tarefa em andamento na fila compartilhada com o webhook", async () => {
+        const to = "5512999990077"
+        const events: string[] = []
+        let releaseBlocker!: () => void
+        const blocker = whatsappPhoneQueue.run(
+            to,
+            () =>
+                new Promise<void>((resolve) => {
+                    releaseBlocker = () => {
+                        events.push("blocker:done")
+                        resolve()
+                    }
+                }),
+        )
+        const providerSend = vi.fn(async () => {
+            events.push("send")
+        })
+        const load = vi.fn().mockResolvedValue(config)
+        const provider = { sendTemplate: vi.fn(), send: providerSend }
+        const testApp = express()
+        testApp.use(express.json())
+        testApp.use(
+            "/internal/whatsapp/messages",
+            new InternalMessagesRoutes({ config: { load }, provider, logger: { log: vi.fn() } }).getRouter(),
+        )
+        testApp.use(errorHandler)
+
+        const responsePromise = sendMessages(testApp, { to, messages: [textItem] }).then((response) => response)
+        try {
+            await vi.waitFor(() => expect(load).toHaveBeenCalled())
+            for (let tick = 0; tick < 5; tick++) {
+                await new Promise((resolve) => setImmediate(resolve))
+            }
+            expect(providerSend).not.toHaveBeenCalled()
+        } finally {
+            releaseBlocker()
+        }
+        await blocker
+        const response = await responsePromise
+
+        expect(response.status).toBe(200)
+        expect(events).toEqual(["blocker:done", "send"])
     })
 })

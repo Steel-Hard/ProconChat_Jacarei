@@ -24,10 +24,6 @@ export const AVISO_NAO_VINCULANTE =
 
 export const ROTULO_IA = "Gerado com auxílio de IA"
 
-export function formatarComplementoIa(texto: string): string {
-    return `${texto.trim()}\n\n${ROTULO_IA}`
-}
-
 export const PERGUNTA_RESOLVIDA =
     "A dúvida foi resolvida?\n1. Sim\n2. Não"
 

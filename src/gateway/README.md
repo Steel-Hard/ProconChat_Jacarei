@@ -111,27 +111,6 @@ O Backend pede ao gateway o envio de um modelo aprovado pela Meta (hoje, o aviso
   parâmetros. O cadastro dos modelos está em
   [`.docs/whatsapp/modelos-de-mensagem.md`](../../.docs/whatsapp/modelos-de-mensagem.md).
 
-### Envio de texto livre (#66)
-
-O Backend pede ao gateway o envio de um texto livre ao cidadão (hoje, o complemento por IA) em
-`POST /internal/whatsapp/messages/text`, com `X-Internal-Token`:
-
-```json
-{ "to": "5512999990000", "text": "Texto complementar.\n\nGerado com auxílio de IA" }
-```
-
-- O gateway carrega a configuração e envia `{ type: "text", text }` **dentro da mesma fila por
-  telefone do webhook** (`whatsappPhoneQueue`, em `services/phoneQueue.ts`). Assim o texto nunca chega
-  antes de uma resposta que ainda está saindo para o mesmo número. Responde `200 { data: { sent: true } }`.
-- `401 UNAUTHORIZED` sem o token interno ou com um token errado; `400 BAD_REQUEST` com
-  `Invalid text message: invalid_to` quando `to` não tem de 8 a 15 dígitos, ou
-  `Invalid text message: invalid_text` quando `text` não é texto, está vazio, só tem espaços ou passa
-  de 4096 caracteres. Nesses casos a Meta não é chamada.
-- Sem configuração, `503 SERVICE_UNAVAILABLE`. A Meta recusar ou não responder dá `502 PROVIDER_ERROR`.
-- O log de falha (`text_send_failed`) não leva o telefone nem o texto.
-- A Meta só aceita texto livre dentro da janela de 24 h, que está aberta porque o cidadão acabou de
-  escrever.
-
 ### Envio de várias mensagens
 
 O Backend pede ao gateway o envio de uma resposta ao cidadão (a mensagem escrita com auxílio de IA ou

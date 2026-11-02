@@ -3,7 +3,6 @@ import {
     validateOutgoingMessage,
     validateOutgoingMessages,
     validateOutgoingTemplate,
-    validateOutgoingText,
 } from "./outgoingMessage.validation"
 import { ListRow, OutgoingMessage, ReplyButton } from "../types/message.types"
 
@@ -223,38 +222,6 @@ describe("validateOutgoingTemplate", () => {
 
     test("aceita o parâmetro com 4 espaços seguidos", () => {
         expect(validateOutgoingTemplate({ ...valid, bodyParameters: ["Maria    Silva"] }).ok).toBe(true)
-    })
-})
-
-describe("validateOutgoingText", () => {
-    const to = "5512999990000"
-
-    test("aceita texto com 4096 caracteres", () => {
-        const text = "a".repeat(4096)
-
-        expect(validateOutgoingText({ to, text })).toEqual({ ok: true, value: { to, message: { type: "text", text } } })
-    })
-
-    test("recusa texto com 4097 caracteres", () => {
-        expect(validateOutgoingText({ to, text: "a".repeat(4097) })).toEqual({ ok: false, reason: "invalid_text" })
-    })
-
-    test.each([
-        { label: "vazio", text: "" },
-        { label: "só com espaços", text: "   " },
-        { label: "que não é texto", text: 42 },
-        { label: "ausente", text: undefined },
-    ])("recusa texto $label", ({ text }) => {
-        expect(validateOutgoingText({ to, text })).toEqual({ ok: false, reason: "invalid_text" })
-    })
-
-    test.each([
-        { label: "com 7 dígitos", value: "1234567" },
-        { label: "com 16 dígitos", value: "1234567890123456" },
-        { label: "com +", value: "+5512999990000" },
-        { label: "que não é texto", value: 5512999990000 },
-    ])("recusa o destinatário $label", ({ value }) => {
-        expect(validateOutgoingText({ to: value, text: "Olá" })).toEqual({ ok: false, reason: "invalid_to" })
     })
 })
 
