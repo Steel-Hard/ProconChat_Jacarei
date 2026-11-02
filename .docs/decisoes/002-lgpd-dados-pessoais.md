@@ -84,5 +84,5 @@ Complementada em 02/11/2026 (#69, D3).
 ## Pedidos do titular
 
 - O titular pede **acesso** ou **exclusão** dos próprios dados pelo e-mail cadastrado na aba Privacidade. O atendimento é **manual**, sem ferramenta no painel, e segue o [procedimento de pedidos do titular](../lgpd/pedidos-do-titular.md).
-- A exclusão é feita por **anonimização**, com as mesmas colunas da anonimização por prazo (nome "Titular removido", CPF e telefone nulos, `anonymized_at`), por SQL revisado pela equipe técnica.
+- A exclusão é feita por **anonimização**, com as mesmas colunas da anonimização por prazo (nome "Titular removido", CPF e telefone nulos, `anonymized_at`), por SQL revisado pela equipe técnica. Agendamento futuro ainda ativo (Pendente ou Confirmado, antes do horário) nunca é anonimizado: a equipe o cancela antes pelo painel, e o SQL o deixa de fora.
 - **As mensagens passam pela Meta**: com a Cloud API, o conteúdo trocado com o bot trafega pelos servidores da Meta, e a política de privacidade informa isso.

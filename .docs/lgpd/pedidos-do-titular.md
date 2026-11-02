@@ -43,6 +43,7 @@ O texto digitado pelo cidadão **não existe no sistema** e não entra na respos
 O pedido de exclusão é atendido por **anonimização**, feita pela equipe técnica com SQL **revisado por uma segunda pessoa** antes de rodar:
 
 1. Encontre os ids dos agendamentos do titular pela busca por CPF no painel (ou pelo `cpf_hash`, calculado com o `CPF_HASH_SECRET`).
+   Se algum deles ainda vai acontecer (Pendente ou Confirmado, com horário futuro), **cancele-o antes pelo painel** (botão "Cancelar agendamento" no detalhe, motivo "A pedido do cidadão"). Assim o horário volta a ficar livre na agenda e o cidadão recebe o aviso do cancelamento. Um agendamento futuro ainda ativo não é anonimizado: se ele não for cancelado, o SQL abaixo o deixa de fora e ele continua com nome e CPF. Se o titular quiser ser atendido mesmo assim, deixe o agendamento acontecer e faça a anonimização depois do horário.
 2. Encontre os ids das conversas do titular pelo `phone_hash` (seção Acesso). Só entram conversas já terminadas (`status <> 'IN_PROGRESS'`).
 3. Rode, numa transação, só sobre esses ids. As colunas são as mesmas da anonimização automática e precisam passar nas regras do banco (`chk_appointments_anonymized` e `chk_sessions_anonymized`):
 
@@ -50,14 +51,15 @@ O pedido de exclusão é atendido por **anonimização**, feita pela equipe téc
 BEGIN;
 UPDATE Appointments
 SET name = 'Titular removido', cpf_hash = NULL, cpf_masked = NULL, phone_encrypted = NULL, anonymized_at = now()
-WHERE id = ANY($1::bigint[]) AND anonymized_at IS NULL;
+WHERE id = ANY($1::bigint[]) AND anonymized_at IS NULL
+  AND (status NOT IN ('PENDING', 'CONFIRMED') OR appointment_datetime <= now());
 UPDATE Sessions
 SET phone_hash = NULL, anonymized_at = now()
 WHERE id = ANY($2::bigint[]) AND anonymized_at IS NULL AND status <> 'IN_PROGRESS';
 COMMIT;
 ```
 
-4. Confira no painel que os agendamentos mostram "Titular removido" e "CPF removido".
+4. Confira no painel que os agendamentos mostram "Titular removido" e "CPF removido". Se o `UPDATE Appointments` alterou menos linhas que o número de ids, algum agendamento futuro ativo ficou de fora: cancele-o (passo 1) e rode de novo.
 
 Limites da anonimização (diga isso na resposta ao titular):
 
