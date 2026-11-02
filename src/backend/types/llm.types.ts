@@ -15,3 +15,11 @@ export interface LlmComplementJob {
     resposta: RespostaFinalOutput
     answeredAt: Date
 }
+
+export interface LlmAnswerJob {
+    phone: string
+    sessionId: string
+    categoryId: number
+    questionId: number
+    resposta: RespostaFinalOutput
+}
