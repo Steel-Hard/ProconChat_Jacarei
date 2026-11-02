@@ -249,6 +249,34 @@ describe("WhatsAppPage, anonimização automática na aba Privacidade", () => {
         )
     })
 
+    it("a prévia com zero conversas e 2 agendamentos usa o plural do zero", async () => {
+        const { user } = await openRetention(privacyView(), {
+            status: 200,
+            body: { data: { sessions: 0, appointments: 2 } }
+        })
+
+        await user.click(screen.getByRole("switch", { name: SWITCH }))
+        await clickSave(user)
+
+        expect(await screen.findByRole("dialog")).toHaveTextContent(
+            "Com estes prazos, 0 conversas e 2 agendamentos já passaram do prazo e serão anonimizados nas próximas horas. Isso não pode ser desfeito."
+        )
+    })
+
+    it("a prévia com 3 conversas e zero agendamentos usa o plural do zero nos agendamentos", async () => {
+        const { user } = await openRetention(privacyView(), {
+            status: 200,
+            body: { data: { sessions: 3, appointments: 0 } }
+        })
+
+        await user.click(screen.getByRole("switch", { name: SWITCH }))
+        await clickSave(user)
+
+        expect(await screen.findByRole("dialog")).toHaveTextContent(
+            "Com estes prazos, 3 conversas e 0 agendamentos já passaram do prazo e serão anonimizados nas próximas horas. Isso não pode ser desfeito."
+        )
+    })
+
     it("a prévia com zero registros também abre o diálogo com o texto de nenhum registro", async () => {
         const { user } = await openRetention(privacyView(), {
             status: 200,
@@ -313,6 +341,48 @@ describe("WhatsAppPage, anonimização automática na aba Privacidade", () => {
         await vi.waitFor(() => expect(puts()).toHaveLength(1))
         expect(previews()).toEqual([])
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    })
+
+    it("desligar o interruptor carregado ligado envia o PUT com retentionEnabled falso, sem prévia nem diálogo", async () => {
+        const { user, puts, previews } = await openRetention(
+            privacyView({ retentionEnabled: true })
+        )
+
+        await user.click(screen.getByRole("switch", { name: SWITCH }))
+        await clickSave(user)
+
+        await vi.waitFor(() => expect(puts()).toHaveLength(1))
+        expect(puts()[0]?.body).toMatchObject({
+            retentionEnabled: false,
+            sessionRetentionDays: 90,
+            appointmentRetentionDays: 365
+        })
+        expect(previews()).toEqual([])
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    })
+
+    it("com um prazo subindo e o outro descendo pede a prévia dos prazos novos e confirma a redução antes do PUT", async () => {
+        const { user, puts, previews } = await openRetention(
+            privacyView({ retentionEnabled: true })
+        )
+
+        await typeDays(user, SESSION_DAYS, "60")
+        await typeDays(user, APPOINTMENT_DAYS, "400")
+        await clickSave(user)
+
+        const dialog = await screen.findByRole("dialog", { name: "Reduzir o prazo de guarda?" })
+        expect(previews().map((call) => call.search)).toEqual([
+            "?sessionDays=60&appointmentDays=400"
+        ])
+        expect(puts()).toEqual([])
+        await user.click(within(dialog).getByRole("button", { name: "Anonimizar" }))
+
+        await vi.waitFor(() => expect(puts()).toHaveLength(1))
+        expect(puts()[0]?.body).toMatchObject({
+            retentionEnabled: true,
+            sessionRetentionDays: 60,
+            appointmentRetentionDays: 400
+        })
     })
 
     it("a prévia que falha mostra o alerta, sem diálogo nem PUT, e mantém a alteração", async () => {
