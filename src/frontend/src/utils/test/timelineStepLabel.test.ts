@@ -43,13 +43,13 @@ describe("timelineStepLabel", () => {
             "ANSWER_SENT",
             { llm: "USED" },
             "Resposta entregue",
-            "Texto complementar gerado para contextualizar a resposta."
+            "Resposta escrita com auxílio de IA a partir do texto oficial."
         ],
         [
             "ANSWER_SENT",
             { llm: "FAILED" },
             "Resposta entregue",
-            "Complemento por IA indisponível · enviado apenas o texto oficial."
+            "IA indisponível · enviada a resposta oficial."
         ],
         ["ANSWER_SENT", { llm: "NOT_CALLED" }, "Resposta entregue", null],
         [
