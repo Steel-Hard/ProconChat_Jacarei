@@ -132,6 +132,28 @@ O Backend pede ao gateway o envio de um texto livre ao cidadão (hoje, o complem
 - A Meta só aceita texto livre dentro da janela de 24 h, que está aberta porque o cidadão acabou de
   escrever.
 
+### Envio de várias mensagens
+
+O Backend pede ao gateway o envio de uma resposta ao cidadão (a mensagem escrita com auxílio de IA ou
+as mensagens oficiais) em `POST /internal/whatsapp/messages`, com `X-Internal-Token`:
+
+```json
+{ "to": "5512999990000", "messages": [{ "type": "text", "text": "Resposta oficial" }, { "type": "buttons", "text": "A dúvida foi resolvida?", "buttons": [{ "id": "resolved_yes", "title": "Sim" }, { "id": "resolved_no", "title": "Não" }], "footer": "Gerado com auxílio de IA" }] }
+```
+
+- `messages` aceita de 1 a 3 itens, com os mesmos tipos e limites de `reply.messages` (ver "Webhook").
+  Todos os itens são validados antes de enviar o primeiro.
+- O gateway carrega a configuração e envia os itens na ordem **dentro de uma única tarefa da fila por
+  telefone do webhook** (`whatsappPhoneQueue`). Responde `200 { data: { sent: <quantidade> } }`.
+- `401 UNAUTHORIZED` sem o token interno ou com um token errado; `400 BAD_REQUEST` com
+  `Invalid outgoing messages: invalid_to` quando `to` não tem de 8 a 15 dígitos,
+  `Invalid outgoing messages: invalid_messages` quando `messages` não é lista, está vazia ou tem mais
+  de 3 itens, ou `Invalid outgoing messages: <motivo>` com o motivo do primeiro item inválido
+  (`invalid_text`, `invalid_footer`, ...). Nesses casos a Meta não é chamada.
+- Sem configuração, `503 SERVICE_UNAVAILABLE`. A Meta recusar ou não responder um item dá
+  `502 PROVIDER_ERROR`, e os itens seguintes não são enviados.
+- O log de falha (`messages_send_failed`) não leva o telefone nem o texto.
+
 ## 2. Endereços locais
 
 - Backend: http://localhost:3000 (`GET /health`)

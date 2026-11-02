@@ -162,3 +162,26 @@ export function validateOutgoingText(input: unknown): OutgoingTextValidation {
     }
     return { ok: true, value: { to, message } }
 }
+
+const OUTGOING_MESSAGES_MAX = 3
+
+export type OutgoingMessagesValidation =
+    | { ok: true; value: { to: string; messages: OutgoingMessage[] } }
+    | { ok: false; reason: string }
+
+export function validateOutgoingMessages(input: unknown): OutgoingMessagesValidation {
+    const { to, messages } = (input ?? {}) as Record<string, unknown>
+    if (typeof to !== "string" || !TEMPLATE_TO_PATTERN.test(to)) {
+        return { ok: false, reason: "invalid_to" }
+    }
+    if (!Array.isArray(messages) || messages.length < 1 || messages.length > OUTGOING_MESSAGES_MAX) {
+        return { ok: false, reason: "invalid_messages" }
+    }
+    for (const message of messages as OutgoingMessage[]) {
+        const validation = validateOutgoingMessage(message)
+        if (!validation.ok) {
+            return validation
+        }
+    }
+    return { ok: true, value: { to, messages: messages as OutgoingMessage[] } }
+}

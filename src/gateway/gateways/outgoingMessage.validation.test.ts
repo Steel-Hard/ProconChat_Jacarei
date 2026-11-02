@@ -1,5 +1,10 @@
 import { describe, expect, test } from "vitest"
-import { validateOutgoingMessage, validateOutgoingTemplate, validateOutgoingText } from "./outgoingMessage.validation"
+import {
+    validateOutgoingMessage,
+    validateOutgoingMessages,
+    validateOutgoingTemplate,
+    validateOutgoingText,
+} from "./outgoingMessage.validation"
 import { ListRow, OutgoingMessage, ReplyButton } from "../types/message.types"
 
 function rows(count: number): ListRow[] {
@@ -250,5 +255,19 @@ describe("validateOutgoingText", () => {
         { label: "que não é texto", value: 5512999990000 },
     ])("recusa o destinatário $label", ({ value }) => {
         expect(validateOutgoingText({ to: value, text: "Olá" })).toEqual({ ok: false, reason: "invalid_to" })
+    })
+})
+
+describe("validateOutgoingMessages", () => {
+    const to = "5512999990000"
+
+    test("devolve o reason do primeiro item inválido", () => {
+        const messages = [
+            { type: "text", text: "Resposta" },
+            buttonsMessage({ footer: "a".repeat(61) }),
+            buttonsMessage({ text: "a".repeat(1025) }),
+        ]
+
+        expect(validateOutgoingMessages({ to, messages })).toEqual({ ok: false, reason: "invalid_footer" })
     })
 })
