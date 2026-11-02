@@ -11,7 +11,7 @@ Guia do ambiente de produção (issue #51). Ele cobre a criação da VM, o deplo
   - `/api/v1/internal*` responde 404 (configuração do WhatsApp que o gateway lê do backend);
   - `/api/*` para o `backend`;
   - o resto para o `frontend` (painel).
-- O Postgres, o Ollama e o `/health` dos serviços não são acessíveis de fora.
+- O Postgres, o Ollama e o `/health` dos serviços não são acessíveis de fora. No modo de IA em outra máquina, o Ollama fica fora da VM e só é alcançado pela rede privada do Tailscale (seção "IA em outra máquina").
 - O painel é gerado sem `VITE_API_URL` e chama a API no mesmo endereço (`/api/v1/...`). A mesma imagem serve para qualquer domínio.
 - Evolution e Redis saíram do projeto na #82.
 - A cada push na branch de deploy (`DEPLOY_BRANCH`, hoje `develop`) com CI verde, o workflow `deploy.yml` gera as imagens, publica no GHCR e roda `deploy/deploy.sh` na VM por SSH.
@@ -60,7 +60,17 @@ Na VM, tudo fica em `/opt/proconchat`, com a mesma estrutura do repositório:
 - Com cerca de US$ 19 por mês, o crédito dura até meados de março de 2027.
 - 2 GB bastam para a stack sem o Ollama. O swap de 2 GB evita que um pico de memória derrube um serviço.
 
-**Ollama desligado.** Em produção, `COMPOSE_PROFILES` fica vazio e o `ollama` e o `llm-pull` não sobem. O modelo precisa de 3 a 4 GB só para ele. O LLM ainda não está no fluxo; o impacto está comentado na #66. Ele volta numa VM maior ou na migração para a Oracle. Basta pôr `COMPOSE_PROFILES=llm` no `.env` e rodar o deploy de novo.
+**Ollama desligado.** Em produção, `COMPOSE_PROFILES` fica vazio e o `ollama` e o `llm-pull` não sobem. O modelo precisa de 3 a 4 GB só para ele. Sem o Ollama, o complemento por IA da #66 não é enviado e o `ANSWER_SENT` fica `FAILED`; a resposta oficial sai normalmente.
+
+**Três modos para o complemento por IA.** Quem escolhe é o `.env` da VM, e a mudança vale depois de rodar o deploy de novo:
+
+| Modo | `COMPOSE_PROFILES` | `OLLAMA_URL` | Quando usar |
+|---|---|---|---|
+| Sem IA (padrão da VM atual) | vazio | vazia | VM pequena, sem custo extra. O endereço padrão não resolve sem o perfil `llm`, e o complemento fica `FAILED` |
+| IA em outra máquina | vazio | URL do Ollama na outra máquina, pelo Tailscale | Poupar a VM; a máquina precisa estar ligada e alcançável (seção "IA em outra máquina") |
+| IA na própria VM | `llm` | vazia | VM com memória para o Ollama (numa VM maior ou na migração para a Oracle) |
+
+`OLLAMA_URL` vazia ou ausente usa `http://ollama:11434`, o container do perfil `llm`. Se a máquina remota estiver fora do ar, o resultado é o mesmo do modo sem IA.
 
 **Dados fora do Brasil (LGPD).** A região é nos EUA. Isso foi aceito para o projeto acadêmico e fica registrado aqui. Na passagem para o PROCON (#70), a região e o provedor precisam ser revistos.
 
@@ -158,6 +168,50 @@ Para conferir de fora da VM, só 22, 80 e 443 devem aparecer abertas:
 nmap -Pn <ip>
 ```
 
+## IA em outra máquina
+
+O backend pode usar o Ollama de uma máquina da equipe fora da VM (por exemplo, o PC de um desenvolvedor), pela rede privada do Tailscale. É o único caminho documentado. **Ainda não testado na VM:** o modo só está validado depois que o passo 5 abaixo imprimir `200` na VM.
+
+O Ollama não tem autenticação: quem alcança a porta `11434` usa o modelo e o hardware da máquina. Por isso:
+
+- na máquina com o Ollama, ele escuta só no IP do Tailscale (`OLLAMA_HOST=<ip-100.x>:11434`), **nunca** em `0.0.0.0`;
+- a porta `11434` nunca é aberta na internet, nem no security group `proconchat-prod` nem no `ufw` da VM. A VM só abre a conexão de saída;
+- a ACL do Tailscale só aceita tráfego da VM para a máquina do Ollama na porta `11434` (abaixo).
+
+Antes dos passos, aplique a política de ACL da tailnet. Ela declara as tags em `tagOwners`, que o Tailscale exige antes de aceitar uma tag num dispositivo, e só aceita tráfego da VM para a máquina do Ollama na porta `11434`:
+
+```json
+{
+  "tagOwners": {
+    "tag:proconchat-vm": ["autogroup:admin"],
+    "tag:ollama": ["autogroup:admin"]
+  },
+  "acls": [
+    { "action": "accept", "src": ["tag:proconchat-vm"], "dst": ["tag:ollama:11434"] }
+  ]
+}
+```
+
+Uma política com `acls` substitui o "liberar tudo" padrão da tailnet: qualquer outro acesso que o time use nela precisa entrar na mesma política. Confira a sintaxe na documentação do Tailscale ao aplicar.
+
+Passos:
+
+1. Com a política acima já aplicada, instale o Tailscale na VM e na máquina com o Ollama, na mesma tailnet, com a tag `tag:proconchat-vm` na VM e `tag:ollama` na máquina.
+2. Na máquina, faça `ollama pull` do mesmo modelo de `LLM_MODEL` (`ollama pull llama3.2:3b`). Sem o modelo, o Ollama responde 404 e o complemento fica `FAILED`.
+3. Na máquina, suba o Ollama com `OLLAMA_HOST=<ip-100.x>:11434`, sempre depois de o Tailscale estar conectado: sem o IP `100.x` na máquina, o bind falha com `cannot assign requested address`. No Windows, rode o Ollama no próprio Windows, e não dentro do WSL2 com NAT, porque o IP `100.x` fica no Windows.
+4. No `.env` da VM, preencha `OLLAMA_URL=http://<ip-100.x>:11434`, sem barra no fim (o backend monta `<OLLAMA_URL>/api/generate`), deixe `COMPOSE_PROFILES` vazio e rode o deploy de novo. Não use `COMPOSE_PROFILES=llm` junto com `OLLAMA_URL` preenchida: o container local sobe, gasta memória e não é usado.
+5. Na VM, como `deploy`, confira que o container do `backend` alcança a máquina. O comando precisa imprimir `200`:
+
+```bash
+cd /opt/proconchat
+export IMAGE_TAG="$(tail -n 1 releases.log | cut -d' ' -f2)"
+docker compose -f compose.prod.yaml exec backend node -e "fetch(process.env.OLLAMA_URL+'/api/tags').then(r=>console.log(r.status))"
+```
+
+**Máquina desligada.** O cidadão recebe só a resposta oficial, que não espera o complemento, e o `ANSWER_SENT` fica `FAILED`. O complemento pode levar até `LLM_TIMEOUT_MS` para desistir.
+
+**O que sai da VM.** Só o prompt montado com os campos de `RespostaFinalOutput`: categoria, pergunta do catálogo, base legal, resposta, documentos, próximos passos e os indicadores de atendimento presencial e de fora do escopo. Nenhum dado pessoal vai: o telefone e o texto do cidadão ficam na VM. O Ollama continua self-hosted pela equipe e não é uma API externa (RP05). Quem controla a máquina controla o texto do complemento, que continua rotulado "Gerado com auxílio de IA". A escolha está registrada na [decisão 009](../decisoes/009-complemento-por-llm.md).
+
 ## Preparar a VM
 
 ### Atualizar o sistema, endurecer o SSH e criar o swap
@@ -222,6 +276,7 @@ O `.env` fica só em `/opt/proconchat/.env`, com dono `deploy` e permissão `600
 | `SITE_ADDRESS` | Host público, sem esquema (`<ip>.sslip.io`). É também a URL pública prevista na decisão 003, reaproveitada pela #83 e pela #54. O backend usa `https://<SITE_ADDRESS>` como `FRONTEND_ORIGIN` (CORS e proteção CSRF do painel), então ele precisa ser **exatamente** o host que o navegador usa. Se for diferente, o login responde `403 INVALID_ORIGIN` |
 | `IMAGE_OWNER` | Dono das imagens no GHCR, em minúsculas (`steel-hard`) |
 | `COMPOSE_PROFILES` | Vazio na VM atual de 2 GB (sem Ollama). `llm` numa VM com memória para o Ollama |
+| `OLLAMA_URL` | Vazia por padrão, e então o backend usa `http://ollama:11434` (container do perfil `llm`). Preencha só para usar um Ollama em outra máquina, por exemplo `http://100.x.y.z:11434`, sem barra no fim (seção "IA em outra máquina") |
 | `POSTGRES_USER` | Usuário do banco (`proconchat`) |
 | `POSTGRES_PASSWORD` | Senha do banco. **Nunca muda depois do primeiro deploy**: ela só vale na criação do volume |
 | `PHONE_HASH_SECRET` | Segredo do HMAC do telefone. **Nunca muda depois do primeiro deploy**: trocar faz as sessões existentes deixarem de ser encontradas |
