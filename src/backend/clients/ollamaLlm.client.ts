@@ -52,37 +52,49 @@ export class OllamaLlmClient implements ILlmClient {
         }
     }
 
-    async gerarTextoExplicativo(resumo: RespostaFinalOutput): Promise<string> {
-        const prompt = montarPrompt(resumo)
-        const controller = new AbortController()
-        const timeout = setTimeout(() => controller.abort(), this.timeoutMs)
-
+    private async requestGeneration(prompt: string, signal: AbortSignal): Promise<OllamaGenerateResponse> {
         let response: Response
         try {
             response = await fetch(`${this.ollamaUrl}/api/generate`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ model: this.model, stream: false, prompt, options: { num_predict: NUM_PREDICT } }),
-                signal: controller.signal,
+                signal,
             })
         } catch (error) {
             if (error instanceof Error && error.name === "AbortError") {
                 throw new LlmTimeoutError(this.timeoutMs)
             }
             throw error
-        } finally {
-            clearTimeout(timeout)
         }
 
         if (!response.ok) {
             throw new Error(`Ollama respondeu com status ${response.status}.`)
         }
 
+        const aborted = new Promise<never>((_resolve, reject) => {
+            signal.addEventListener("abort", () => reject(new LlmTimeoutError(this.timeoutMs)), { once: true })
+        })
+        try {
+            return (await Promise.race([response.json(), aborted])) as OllamaGenerateResponse
+        } catch {
+            if (signal.aborted) {
+                throw new LlmTimeoutError(this.timeoutMs)
+            }
+            throw new Error("Resposta do Ollama não é um JSON válido.")
+        }
+    }
+
+    async gerarTextoExplicativo(resumo: RespostaFinalOutput): Promise<string> {
+        const prompt = montarPrompt(resumo)
+        const controller = new AbortController()
+        const timeout = setTimeout(() => controller.abort(), this.timeoutMs)
+
         let body: OllamaGenerateResponse
         try {
-            body = (await response.json()) as OllamaGenerateResponse
-        } catch {
-            throw new Error("Resposta do Ollama não é um JSON válido.")
+            body = await this.requestGeneration(prompt, controller.signal)
+        } finally {
+            clearTimeout(timeout)
         }
 
         if (typeof body.response !== "string" || body.response.trim().length === 0) {

@@ -1,9 +1,11 @@
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import { OllamaLlmClient } from "../clients/ollamaLlm.client"
 import type { SendMessagesInput, SendMessagesResult } from "../clients/gateway.client"
 import type { ConversationEvent } from "../types/conversationEvent.types"
 import type { LlmAnswerJob, LlmExplicacaoResult } from "../types/llm.types"
 import type { RespostaFinalOutput } from "../types/motorDecisao.types"
 import { createLlmAnswerService } from "./llmAnswer.service"
+import { createLlmExplicacaoService } from "./llmExplicacao.service"
 import { montarMensagemIa, mensagensRespostaOficial } from "./messageFormatter.service"
 
 const resposta: RespostaFinalOutput = {
@@ -235,5 +237,49 @@ describe("llmAnswer.service", () => {
         const registrado = JSON.stringify(logger.log.mock.calls)
         expect(registrado).not.toContain(job.phone)
         expect(registrado).not.toContain("Segredo gerado")
+    })
+
+    describe("com o cliente do Ollama", () => {
+        afterEach(() => {
+            vi.useRealTimers()
+            vi.unstubAllGlobals()
+            vi.unstubAllEnvs()
+            vi.restoreAllMocks()
+        })
+
+        it("libera a vaga de geração quando a leitura do corpo esgota LLM_TIMEOUT_MS e a entrega seguinte volta a sondar o Ollama", async () => {
+            vi.useFakeTimers()
+            vi.stubEnv("OLLAMA_URL", "http://ollama-test:11434")
+            vi.stubEnv("LLM_TIMEOUT_MS", "50")
+            vi.spyOn(console, "error").mockImplementation(() => undefined)
+            const fetchMock = vi.fn(async (url: string) =>
+                url.endsWith("/api/tags") ? { ok: true, status: 200 } : { ok: true, status: 200, json: () => new Promise(() => {}) },
+            )
+            vi.stubGlobal("fetch", fetchMock)
+            const client = new OllamaLlmClient()
+            const isAvailable = vi.spyOn(client, "isAvailable")
+            const sendMessages = vi.fn<(input: SendMessagesInput) => Promise<SendMessagesResult>>().mockResolvedValue({ ok: true })
+            const logger = { log: vi.fn() }
+            const deliver = createLlmAnswerService({
+                llm: client,
+                generate: createLlmExplicacaoService({ client }),
+                gateway: { sendMessages },
+                events: { record: vi.fn().mockResolvedValue(undefined) },
+                logger,
+            })
+
+            const primeira = deliver(job)
+            await vi.advanceTimersByTimeAsync(50)
+            await primeira
+            const segunda = deliver({ ...job, sessionId: "42" })
+            await vi.advanceTimersByTimeAsync(50)
+            await segunda
+
+            expect(isAvailable).toHaveBeenCalledTimes(2)
+            expect(logger.log.mock.calls).toEqual([
+                [JSON.stringify({ event: "llm_answer_fallback", sessionId: job.sessionId, reason: "LLM_FAILED" })],
+                [JSON.stringify({ event: "llm_answer_fallback", sessionId: "42", reason: "LLM_FAILED" })],
+            ])
+        })
     })
 })

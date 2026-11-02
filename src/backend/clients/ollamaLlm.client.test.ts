@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { RespostaFinalOutput } from "../types/motorDecisao.types"
-import { OllamaLlmClient } from "./ollamaLlm.client"
+import { LlmTimeoutError, OllamaLlmClient } from "./ollamaLlm.client"
 
 const resumo: RespostaFinalOutput = {
     categoria: "Vício/Defeito de Produto ou Serviço",
@@ -20,6 +20,7 @@ describe("OllamaLlmClient", () => {
     })
 
     afterEach(() => {
+        vi.useRealTimers()
         vi.unstubAllGlobals()
         delete process.env.OLLAMA_URL
         delete process.env.LLM_MODEL
@@ -159,7 +160,25 @@ describe("OllamaLlmClient", () => {
 
         expect(texto).toBe("Texto completo.")
     })
+
+    it("lança LlmTimeoutError em LLM_TIMEOUT_MS quando a leitura do corpo não termina", async () => {
+        vi.useFakeTimers()
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, status: 200, json: () => new Promise(() => {}) }))
+        let erro: unknown
+
+        const pendente = new OllamaLlmClient().gerarTextoExplicativo(resumo).catch((causa: unknown) => {
+            erro = causa
+        })
+        await vi.advanceTimersByTimeAsync(49)
+        const antesDoLimite = erro
+        await vi.advanceTimersByTimeAsync(1)
+        await pendente
+
+        expect(antesDoLimite).toBeUndefined()
+        expect(erro).toBeInstanceOf(LlmTimeoutError)
+    })
 })
+
 
 describe("OllamaLlmClient: isAvailable", () => {
     beforeEach(() => {
