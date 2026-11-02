@@ -4,8 +4,8 @@ import usePrivacyPolicy from "@/pages/hooks/usePrivacyPolicy"
 import css from "@/styles/pages/privacyPolicy.module.css"
 
 function PrivacyPolicyPage() {
-    const { t } = useTranslation("privacyPolicy")
-    const { settings, failed } = usePrivacyPolicy()
+    const { t } = useTranslation(["privacyPolicy", "common"])
+    const { settings, loading, failed } = usePrivacyPolicy()
 
     return (
         <>
@@ -22,6 +22,7 @@ function PrivacyPolicyPage() {
                     ) : null}
                     <section className={css.section}>
                         <h2 className={css.sectionTitle}>{t("controller.heading")}</h2>
+                        {loading ? <p className={css.paragraph}>{t("common:loading")}</p> : null}
                         {settings ? (
                             <>
                                 <PrivacyPolicyValue
@@ -91,6 +92,7 @@ function PrivacyPolicyPage() {
                     </section>
                     <section className={css.section}>
                         <h2 className={css.sectionTitle}>{t("contact.heading")}</h2>
+                        {loading ? <p className={css.paragraph}>{t("common:loading")}</p> : null}
                         {settings ? (
                             <>
                                 <PrivacyPolicyValue

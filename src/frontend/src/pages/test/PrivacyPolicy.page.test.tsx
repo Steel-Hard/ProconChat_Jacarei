@@ -44,6 +44,19 @@ async function renderPage(reply: { status: number; body?: unknown }) {
     return renderWithStore(<PrivacyPolicyPage />)
 }
 
+async function renderPending() {
+    vi.stubEnv("VITE_API_URL", "http://api.test")
+    vi.resetModules()
+    vi.stubGlobal(
+        "fetch",
+        vi.fn(() => new Promise<Response>(() => {}))
+    )
+    const { default: renderWithStore } = await import("@/testUtils/renderWithStore")
+    const { default: PrivacyPolicyPage } = await import("@/pages/PrivacyPolicy.page")
+
+    return renderWithStore(<PrivacyPolicyPage />)
+}
+
 function section(name: string): HTMLElement {
     const heading = screen.getByRole("heading", { level: 2, name })
     return heading.closest("section") as HTMLElement
@@ -75,6 +88,16 @@ describe("PrivacyPolicyPage", () => {
         expect(screen.queryByText("Atendimento presencial")).not.toBeInTheDocument()
     })
 
+    it("com a leitura pendente, mostra Carregando... em Quem trata os seus dados e em Contato", async () => {
+        await renderPending()
+
+        expect(
+            await within(section("Quem trata os seus dados")).findByText("Carregando...")
+        ).toBeInTheDocument()
+        expect(within(section("Contato")).getByText("Carregando...")).toBeInTheDocument()
+        expect(screen.getAllByText("Carregando...")).toHaveLength(2)
+    })
+
     it("quando a leitura falha, mostra o alerta e mantém as seções de texto fixo", async () => {
         await renderPage({ status: 500, body: { error: { code: "X", message: "x" } } })
 
@@ -84,6 +107,7 @@ describe("PrivacyPolicyPage", () => {
         expect(
             screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)
         ).toEqual(HEADINGS)
+        expect(screen.queryByText("Carregando...")).not.toBeInTheDocument()
     })
 
     it("mostra os oito títulos de nível 2 nesta ordem", async () => {
@@ -112,6 +136,7 @@ describe("PrivacyPolicyPage", () => {
         }
         expect(within(section("Contato")).getByText("Rua Exemplo, 100, Centro")).toBeInTheDocument()
         expect(screen.queryByText(NOT_REGISTERED)).not.toBeInTheDocument()
+        expect(screen.queryByText("Carregando...")).not.toBeInTheDocument()
     })
 
     it("cita a Meta nas mensagens e põe a frase fixa do telefone antes dos prazos cadastrados", async () => {
