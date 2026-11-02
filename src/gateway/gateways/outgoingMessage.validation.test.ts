@@ -237,4 +237,13 @@ describe("validateOutgoingMessages", () => {
 
         expect(validateOutgoingMessages({ to, messages })).toEqual({ ok: false, reason: "invalid_footer" })
     })
+
+    test.each([
+        { label: "null", message: null, reason: "unsupported_type" },
+        { label: "que não é objeto", message: "texto", reason: "unsupported_type" },
+        { label: "de botões sem a lista de botões", message: { type: "buttons", text: "x" }, reason: "invalid_button_count" },
+        { label: "de lista sem a lista de linhas", message: { type: "list", text: "x", buttonText: "Ver" }, reason: "invalid_row_count" },
+    ])("recusa sem lançar o item $label", ({ message, reason }) => {
+        expect(validateOutgoingMessages({ to, messages: [message] })).toEqual({ ok: false, reason })
+    })
 })

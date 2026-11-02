@@ -235,6 +235,12 @@ describe("POST /internal/whatsapp/messages", () => {
             payload: { ...messagesBody, messages: [textItem, { ...buttonsItem, footer: "a".repeat(61) }] },
             reason: "invalid_footer",
         },
+        { label: "o item é null", payload: { ...messagesBody, messages: [null] }, reason: "unsupported_type" },
+        {
+            label: "o item de botões não tem a lista de botões",
+            payload: { ...messagesBody, messages: [{ type: "buttons", text: "x" }] },
+            reason: "invalid_button_count",
+        },
     ])("responde 400 e não envia nenhum item quando $label", async ({ payload, reason }) => {
         const { testApp, providerSend } = buildMessagesApp()
 

@@ -46,7 +46,7 @@ function findIdProblem(ids: string[], max: number): string | undefined {
 }
 
 function validateRows(rows: ListRow[]): string | undefined {
-    if (rows.length < 1 || rows.length > OUTGOING_LIMITS.listRowsMax) {
+    if (!Array.isArray(rows) || rows.length < 1 || rows.length > OUTGOING_LIMITS.listRowsMax) {
         return "invalid_row_count"
     }
     if (rows.some((row) => !isFilledWithin(row.title, OUTGOING_LIMITS.rowTitle))) {
@@ -62,7 +62,7 @@ function validateRows(rows: ListRow[]): string | undefined {
 }
 
 function validateButtons(buttons: ReplyButton[]): string | undefined {
-    if (buttons.length < 1 || buttons.length > OUTGOING_LIMITS.buttonsMax) {
+    if (!Array.isArray(buttons) || buttons.length < 1 || buttons.length > OUTGOING_LIMITS.buttonsMax) {
         return "invalid_button_count"
     }
     if (buttons.some((button) => !isFilledWithin(button.title, OUTGOING_LIMITS.buttonTitle))) {
@@ -75,6 +75,9 @@ function validateButtons(buttons: ReplyButton[]): string | undefined {
 }
 
 function findProblem(message: OutgoingMessage): string | undefined {
+    if (typeof message !== "object" || message === null) {
+        return "unsupported_type"
+    }
     switch (message.type) {
         case "text":
             return isFilledWithin(message.text, OUTGOING_LIMITS.textBody) ? undefined : "invalid_text"
