@@ -146,4 +146,23 @@ describe("conversationFlow: complemento por IA (#66)", () => {
         expect(nowOrder).toBeGreaterThan(orderOf("QUESTION_CHOSEN"))
         expect(nowOrder).toBeLessThan(orderOf("SCHEDULE_OFFERED"))
     })
+
+    test("a mesma pergunta com IA escolhida duas vezes seguidas entrega dois jobs, cada um com o seu answeredAt", async () => {
+        const first = new Date("2026-03-10T12:00:00.000Z")
+        const second = new Date("2026-03-10T12:00:05.000Z")
+        const nowSpy = vi.fn<() => Date>().mockReturnValueOnce(first).mockReturnValueOnce(second)
+        const flow = createFlow({ now: nowSpy })
+        chooseQuestion(perguntaComIa, respostaPadrao)
+        await flow({ phone: "5500000000123", text: "1" })
+        chooseQuestion(perguntaComIa, respostaPadrao)
+
+        await flow({ phone: "5500000000123", text: "1" })
+
+        expect(scheduleComplement).toHaveBeenCalledTimes(2)
+        expect(scheduleComplement.mock.calls.map(([job]) => job)).toEqual([
+            expect.objectContaining({ questionId: perguntaComIa.id, answeredAt: first }),
+            expect.objectContaining({ questionId: perguntaComIa.id, answeredAt: second }),
+        ])
+        expect(scheduleComplement.mock.calls[0]?.[0]).not.toBe(scheduleComplement.mock.calls[1]?.[0])
+    })
 })
