@@ -101,4 +101,20 @@ describe("rotas da configuracao de privacidade", () => {
             },
         })
     })
+
+    test.each([
+        { label: "sem Origin", origin: undefined },
+        { label: "com Origin de outro site", origin: "https://evil.test" },
+    ])("PUT do Admin $label responde 403 INVALID_ORIGIN e nao grava", async ({ origin }) => {
+        privacy.row = { ...validBody, updatedBy: { id: 1, name: "Admin" }, updatedAt: new Date("2026-11-01T12:00:00.000Z") }
+        const before = { ...privacy.row }
+        const call = request(app).put("/api/v1/whatsapp/settings/privacy").set("Cookie", cookieFor(admin))
+
+        const response = await (origin === undefined ? call : call.set("Origin", origin)).send({ ...validBody, controllerName: "Outro nome" })
+
+        expect(response.status).toBe(403)
+        expect(response.body.error.code).toBe("INVALID_ORIGIN")
+        expect(privacy.saveCalls).toHaveLength(0)
+        expect(privacy.row).toEqual(before)
+    })
 })
