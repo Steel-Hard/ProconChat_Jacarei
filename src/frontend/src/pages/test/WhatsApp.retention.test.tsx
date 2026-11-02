@@ -305,6 +305,20 @@ describe("WhatsAppPage, anonimização automática na aba Privacidade", () => {
         ])
     })
 
+    it("com o interruptor ligado, reduzir só o prazo dos agendamentos pede confirmação de redução", async () => {
+        const { user, previews } = await openRetention(privacyView({ retentionEnabled: true }))
+
+        await typeDays(user, APPOINTMENT_DAYS, "200")
+        await clickSave(user)
+
+        expect(
+            await screen.findByRole("dialog", { name: "Reduzir o prazo de guarda?" })
+        ).toBeInTheDocument()
+        expect(previews().map((call) => call.search)).toEqual([
+            "?sessionDays=90&appointmentDays=200"
+        ])
+    })
+
     it("Cancelar no diálogo não envia o PUT e mantém a alteração pendente", async () => {
         const { user, puts } = await openRetention()
 
