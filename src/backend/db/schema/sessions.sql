@@ -30,7 +30,7 @@ CREATE TABLE Sessions (
     id BIGSERIAL PRIMARY KEY,
     session_code UUID NOT NULL DEFAULT gen_random_uuid(),
 
-    phone_hash VARCHAR(64) NOT NULL,
+    phone_hash VARCHAR(64),
 
     status session_status NOT NULL DEFAULT 'IN_PROGRESS',
 
@@ -46,6 +46,7 @@ CREATE TABLE Sessions (
     current_question_id BIGINT REFERENCES Questions(id) ON DELETE SET NULL,
     list_page INT NOT NULL DEFAULT 1,
     draft JSONB,
+    anonymized_at TIMESTAMPTZ,
 
     CONSTRAINT chk_sessions_outcome_in_progress CHECK ((status = 'IN_PROGRESS') = (outcome = 'IN_PROGRESS')),
     CONSTRAINT chk_sessions_outcome_abandoned CHECK ((status = 'ABANDONED') = (outcome = 'ABANDONED')),
@@ -65,13 +66,16 @@ CREATE TABLE Sessions (
             (draft ->> 'cpf_hash' IS NULL OR draft ->> 'cpf_hash' ~ '^[0-9a-f]{64}$')
             AND (draft ->> 'cpf_masked' IS NULL OR draft ->> 'cpf_masked' ~ '^\*{3}\.[0-9]{3}\.[0-9]{3}-\*{2}$')
         )
-    )
+    ),
+    CONSTRAINT chk_sessions_anonymized CHECK ((phone_hash IS NULL) = (anonymized_at IS NOT NULL)),
+    CONSTRAINT chk_sessions_anonymized_finished CHECK (anonymized_at IS NULL OR status <> 'IN_PROGRESS')
 );
 
 CREATE INDEX idx_sessions_phone_hash ON Sessions(phone_hash);
 CREATE INDEX idx_sessions_code ON Sessions(session_code);
 CREATE INDEX idx_sessions_last_interaction ON Sessions(last_interaction_at) WHERE status = 'IN_PROGRESS';
 CREATE INDEX idx_sessions_started_at ON Sessions(started_at);
+CREATE INDEX idx_sessions_retention ON Sessions ((COALESCE(ended_at, last_interaction_at))) WHERE anonymized_at IS NULL AND status <> 'IN_PROGRESS';
 
 CREATE UNIQUE INDEX uniq_sessions_phone_in_progress
 ON Sessions(phone_hash)
