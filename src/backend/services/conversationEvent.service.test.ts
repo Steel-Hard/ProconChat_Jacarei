@@ -26,6 +26,16 @@ describe("conversationEvent.service", () => {
         expect(logger.error).not.toHaveBeenCalled()
     })
 
+    it("record repassa ao repositório o horário informado do evento", async () => {
+        const { events, service } = setup()
+        const occurredAt = new Date("2026-11-02T13:00:00.000Z")
+        const event = { type: "ANSWER_SENT", categoryId: 3, questionId: 7, llm: "USED" } as const
+
+        await service.record("12", event, occurredAt)
+
+        expect(events.calls).toEqual([{ method: "record", args: ["12", event, occurredAt] }])
+    })
+
     it("record resolve e registra no log quando o repositório falha", async () => {
         const { events, logger, service } = setup()
         events.failWith(Object.assign(new Error("connection refused"), { code: "ECONNREFUSED" }))
