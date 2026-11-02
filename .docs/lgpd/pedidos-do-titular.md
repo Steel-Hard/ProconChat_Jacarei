@@ -43,25 +43,29 @@ O texto digitado pelo cidadão **não existe no sistema** e não entra na respos
 O pedido de exclusão é atendido por **anonimização**, feita pela equipe técnica com SQL **revisado por uma segunda pessoa** antes de rodar:
 
 1. Encontre os ids dos agendamentos do titular pela busca por CPF no painel (ou pelo `cpf_hash`, calculado com o `CPF_HASH_SECRET`).
-2. Rode, numa transação, só sobre esses ids:
+2. Encontre os ids das conversas do titular pelo `phone_hash` (seção Acesso). Só entram conversas já terminadas (`status <> 'IN_PROGRESS'`).
+3. Rode, numa transação, só sobre esses ids. As colunas são as mesmas da anonimização automática e precisam passar nas regras do banco (`chk_appointments_anonymized` e `chk_sessions_anonymized`):
 
 ```sql
 BEGIN;
 UPDATE Appointments
-SET name = 'Titular removido', phone_encrypted = NULL
-WHERE id = ANY($1::bigint[]);
+SET name = 'Titular removido', cpf_hash = NULL, cpf_masked = NULL, phone_encrypted = NULL, anonymized_at = now()
+WHERE id = ANY($1::bigint[]) AND anonymized_at IS NULL;
+UPDATE Sessions
+SET phone_hash = NULL, anonymized_at = now()
+WHERE id = ANY($2::bigint[]) AND anonymized_at IS NULL AND status <> 'IN_PROGRESS';
 COMMIT;
 ```
 
-3. Confira no painel que os agendamentos mostram "Titular removido".
+4. Confira no painel que os agendamentos mostram "Titular removido" e "CPF removido".
 
 Limites da anonimização (diga isso na resposta ao titular):
 
-- o **CPF** continua guardado só como hash e na versão mascarada (`***.456.789-**`), sem o número legível;
+- o **CPF** é removido (hash e versão mascarada) dos agendamentos anonimizados;
 - as **observações internas** dos agendamentos (`AppointmentNotes`) não podem ser alteradas nem apagadas, por regra do banco. Elas são escritas pela equipe e não devem conter dados do cidadão;
-- as **conversas** continuam ligadas só ao `phone_hash`, com os passos percorridos e sem texto digitado; elas alimentam os relatórios agregados;
+- as **conversas** anonimizadas perdem o `phone_hash` e ficam só com os passos percorridos, sem texto digitado; elas alimentam os relatórios agregados. Uma conversa em andamento não pode ser anonimizada: espere ela terminar;
 - as **cópias de segurança** guardam o estado anterior por até 7 dias ([deploy](../infra/deploy.md)), e depois são apagadas;
-- a exclusão ou anonimização automática por prazo ainda não existe (issue nova, ver a seção Retenção da decisão 002).
+- além do pedido do titular, a **anonimização automática por prazo** (quando ligada na aba Privacidade) faz o mesmo com conversas e agendamentos que passaram do prazo ([decisão 002](../decisoes/002-lgpd-dados-pessoais.md#anonimização-por-prazo)).
 
 ## Prazo de resposta
 

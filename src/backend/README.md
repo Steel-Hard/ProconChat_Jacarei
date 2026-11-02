@@ -248,7 +248,8 @@ em `POST`/`PUT` sem origem confiável e `400 BAD_REQUEST` `"Malformed JSON body"
 | `GET /delivery-failures` | — | `200 { data: { since, count, items: [{ id, kind, errorCode, failedAt, appointmentId }] } }` | — |
 | `GET /history` | — | `200 { data: { items: [{ id, action, fields, actor: { id, name } \| null, createdAt }] } }` | — |
 | `GET /privacy` | — | `200 { data: PrivacySettingsView }` (seção "Privacidade e retenção") | — |
-| `PUT /privacy` | `{ controllerName, dpoName, contactEmail, inPersonContact, retentionText }` | `200 { data: PrivacySettingsView }` | `400 BAD_REQUEST` com `details.issues` |
+| `PUT /privacy` | `{ controllerName, dpoName, contactEmail, inPersonContact, retentionText, retentionEnabled, sessionRetentionDays, appointmentRetentionDays }` | `200 { data: PrivacySettingsView }` | `400 BAD_REQUEST` com `details.issues` |
+| `GET /privacy/retention-preview?sessionDays=<n>&appointmentDays=<n>` | — | `200 { data: { sessions, appointments } }` | `400 BAD_REQUEST` com `details.issues` |
 
 **Estado do número, falhas e histórico (#88).** Não consultam a Meta.
 
@@ -435,8 +436,9 @@ dois).
 ## Privacidade e retenção (#69)
 
 A configuração de privacidade fica na linha única de `PrivacySettings` (migration `19`), editada
-pelo Admin na aba "Privacidade" da tela de WhatsApp. Sem linha no banco, a leitura devolve todos os
-campos `null`. O seed não cria essa linha.
+pelo Admin na aba "Privacidade" da tela de WhatsApp. Sem linha no banco, a leitura devolve os
+textos `null`, `retentionEnabled: false`, `sessionRetentionDays: 90` e `appointmentRetentionDays: 365`
+(colunas da migration `20`). O seed não cria essa linha.
 
 `PrivacySettingsView` (`GET`/`PUT /api/v1/whatsapp/settings/privacy`, só Admin):
 
@@ -447,17 +449,27 @@ campos `null`. O seed não cria essa linha.
     "contactEmail": "privacidade@exemplo.test",
     "inPersonContact": null,
     "retentionText": "Sessões por 12 meses.",
+    "retentionEnabled": false,
+    "sessionRetentionDays": 90,
+    "appointmentRetentionDays": 365,
     "updatedBy": { "id": 1, "name": "Admin" },
     "updatedAt": "2026-11-01T12:00:00.000Z"
 }
 ```
 
-- No `PUT`, as cinco chaves são obrigatórias e cada valor é texto ou `null`. O servidor apara os
-  espaços e grava texto vazio como `null`. Limites: `controllerName` e `dpoName` até 150,
+- No `PUT`, as oito chaves são obrigatórias. Os cinco textos são texto ou `null`: o servidor apara
+  os espaços e grava texto vazio como `null`. Limites: `controllerName` e `dpoName` até 150,
   `contactEmail` até 254 e no formato `nome@dominio.tld`, `inPersonContact` até 300 e
-  `retentionText` até 2000. O salvamento é um upsert no `id = 1`; vale o último.
-- `GET /api/v1/privacy` é **público** (sem sessão), com `Cache-Control: no-store`, e devolve só
-  os cinco textos, sem `updatedBy` nem `updatedAt`. A página `/privacidade` do painel lê essa rota.
+  `retentionText` até 2000. `retentionEnabled` é booleano, `sessionRetentionDays` é inteiro de 30
+  a 1825 e `appointmentRetentionDays` é inteiro de 90 a 1825. O salvamento é um upsert no
+  `id = 1`; vale o último.
+- `GET /api/v1/privacy` é **público** (sem sessão), com `Cache-Control: no-store`, e devolve as
+  oito chaves (os cinco textos e os três campos da anonimização), sem `updatedBy` nem `updatedAt`.
+  A página `/privacidade` do painel lê essa rota.
+- `GET /api/v1/whatsapp/settings/privacy/retention-preview` (só Admin, `no-store`) conta, com o
+  horário do servidor e os prazos da consulta, quantas conversas e quantos agendamentos seriam
+  anonimizados agora (`retentionRepository.countDue`). Não depende do interruptor e não altera nada.
+  Parâmetro ausente, não inteiro ou fora da faixa devolve `400 BAD_REQUEST` com `details.issues`.
 - A saudação do bot leva a linha `Saiba como tratamos seus dados: <PUBLIC_BASE_URL>/privacidade`
   só quando `PUBLIC_BASE_URL` existe e `controllerName` e `contactEmail` estão preenchidos. A
   configuração é lida a cada saudação, sem cache; se a leitura falhar, a saudação sai sem a linha e
@@ -467,6 +479,17 @@ campos `null`. O seed não cria essa linha.
   em qualquer status, sem evento em `AppointmentEvents`. A falha vai para o log como
   `"Failed to erase phones of past appointments"` com só `{ code }`, e a varredura tenta de novo no
   próximo intervalo.
+- Anonimização por prazo (#69, D3): a cada 1 hora, `index.ts` roda `sweepRetention`
+  (`services/retentionSweep.service.ts`). Com `retentionEnabled` desligado ou sem linha, não faz
+  nada. Ligada, chama `retentionRepository.anonymizeDue` com os prazos salvos e no máximo 500 linhas
+  por tabela: o agendamento vencido fica com `name = 'Titular removido'`, CPF e telefone nulos e
+  `anonymized_at`; a conversa terminada e vencida fica com `phone_hash = NULL` e `anonymized_at`,
+  salvo se gerou um agendamento ainda dentro do prazo. Quando anonimiza algo, o log leva só
+  `"Retention sweep anonymized records"` com `{ sessions, appointments }`; a falha vai como
+  `"Failed to anonymize records by retention"` com só `{ code }`. A regra completa está na
+  [decisão 002](../../.docs/decisoes/002-lgpd-dados-pessoais.md#anonimização-por-prazo).
+  O teste de integração (`tests/integration/retention.integration.test.ts`) usa datas de 1999 a
+  2001 e precisa de banco separado, sem linhas antigas de outra origem.
 
 ## Contas e permissões (/api/v1/users, #62)
 

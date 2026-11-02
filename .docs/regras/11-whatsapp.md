@@ -108,7 +108,10 @@ Mensagens enviadas fora da conversa precisam de modelo aprovado pela Meta ([deci
 | Nome do encarregado (DPO) | até 150 caracteres | |
 | E-mail de contato para pedidos do titular | até 254 caracteres | precisa ter o formato `nome@dominio.tld` |
 | Atendimento presencial (opcional) | até 300 caracteres | telefone ou endereço |
-| Prazos de guarda | até 2000 caracteres | texto livre, várias linhas |
+| Prazos de guarda | até 2000 caracteres | texto livre, várias linhas, para outros prazos que a página pública deve mostrar |
+| Anonimização automática | interruptor | **desligado por padrão** |
+| Prazo das conversas (dias) | inteiro de 30 a 1825 | padrão 90 |
+| Prazo dos agendamentos (dias) | inteiro de 90 a 1825 | padrão 365 |
 
 - Cada campo tem, ao lado do rótulo, um ícone de ajuda (tooltip) com um texto que explica para que serve o campo. O ícone tem o nome acessível **"Sobre o campo <rótulo>"** (por exemplo, "Sobre o campo Nome do controlador").
 - **Segue o padrão de salvar** ([regras gerais](00-regras-gerais.md#3-salvar-descartar-e-registrar-quem-alterou)): as alterações ficam pendentes até **Salvar**, **Descartar** volta aos valores salvos e o topo mostra "Última alteração por [nome] em [data]".
@@ -118,6 +121,26 @@ Mensagens enviadas fora da conversa precisam de modelo aprovado pela Meta ([deci
 - **Página pública:** esses dados aparecem na página `/privacidade` do painel, aberta sem login. Campo vazio aparece como **"Informação ainda não cadastrada"**; o atendimento presencial vazio não aparece.
 - **Saudação do bot:** a saudação ganha a linha **"Saiba como tratamos seus dados: <endereço público>/privacidade"** só quando o **nome do controlador e o e-mail de contato** estão preenchidos **e** o servidor tem o endereço público (`PUBLIC_BASE_URL`). A linha vai em toda mensagem que repete a saudação, inclusive na troca de página das categorias. Apagar o controlador ou o e-mail tira a linha já na próxima saudação.
 - O salvamento da privacidade não entra no "Histórico de alterações" (#129); a aba mostra só a última alteração.
+
+#### Anonimização automática
+
+Entregue em 02/11/2026 (#69, D3). A regra de cada prazo e as salvaguardas estão na [decisão 002](../decisoes/002-lgpd-dados-pessoais.md#anonimização-por-prazo).
+
+- Depois de "Prazos de guarda", a aba mostra o interruptor **"Anonimização automática"** (com "Ligada" ou "Desligada" ao lado) e os campos **"Prazo das conversas (dias)"** e **"Prazo dos agendamentos (dias)"**.
+- Os textos de ajuda (tooltips):
+  - Prazos de guarda: "Texto livre com outros prazos que a página pública deve mostrar. A anonimização automática é configurada nos campos abaixo."
+  - Anonimização automática: "Quando ligada, o sistema remove a cada hora a ligação das conversas com o número e o nome e o CPF dos agendamentos que passaram do prazo. Não pode ser desfeito."
+  - Prazo das conversas (dias): "Dias depois do fim da conversa. A conversa que gerou um agendamento espera o prazo do agendamento."
+  - Prazo dos agendamentos (dias): "Dias depois da data do atendimento, em qualquer status."
+- Um prazo vazio, não inteiro ou fora da faixa mostra **"Use um número inteiro de 30 a 1825."** (conversas) ou **"Use um número inteiro de 90 a 1825."** (agendamentos), e **Salvar** fica desabilitado.
+- O interruptor e os prazos seguem o mesmo padrão de salvar dos outros campos: contam na barra "N alterações não salvas", e **Descartar** volta aos valores carregados.
+- **Confirmação antes de salvar.** Quando o resultado deixa o interruptor ligado e ele estava desligado, ou algum prazo diminuiu, **Salvar** primeiro calcula quantos registros já passaram do prazo e abre o diálogo:
+  - título **"Ligar a anonimização automática?"**, ou **"Reduzir o prazo de guarda?"** quando o interruptor já estava ligado e só um prazo diminuiu;
+  - texto **"Com estes prazos, N conversas e M agendamentos já passaram do prazo e serão anonimizados nas próximas horas. Isso não pode ser desfeito."** (com "1 conversa" e "1 agendamento" no singular). Com os dois totais zero: **"Com estes prazos, nenhum registro passou do prazo agora. A partir de agora, o que passar do prazo será anonimizado a cada hora. Isso não pode ser desfeito."**;
+  - botões **"Anonimizar"** (vermelho) e **"Cancelar"**. Só "Anonimizar" salva. "Cancelar" fecha o diálogo e mantém as alterações pendentes.
+- Desligar o interruptor, ou aumentar um prazo com ele ligado, salva direto, sem diálogo. O que já foi anonimizado continua anonimizado.
+- Se o cálculo falhar, aparece **"Não foi possível calcular quantos registros seriam anonimizados. Tente de novo."**, sem diálogo, e as alterações continuam pendentes.
+- **Página pública:** com o interruptor ligado, a seção "Por quanto tempo guardamos" mostra os prazos salvos (ver a página `/privacidade`).
 
 ### Histórico de alterações
 
@@ -129,7 +152,8 @@ Quem alterou o quê e quando. **Os valores do token e do App Secret não são re
 
 | Ação | Regra |
 |---|---|
-| Editar os dados de privacidade | **Segue o padrão de salvar**. Não exige teste. Um e-mail fora do formato ou um texto acima do limite desabilitam o Salvar |
+| Editar os dados de privacidade | **Segue o padrão de salvar**. Não exige teste. Um e-mail fora do formato, um texto acima do limite ou um prazo fora da faixa desabilitam o Salvar |
+| Ligar a anonimização automática ou reduzir um prazo | **Segue o padrão de salvar**, com a prévia de quantos registros passaram do prazo e a confirmação "Anonimizar" antes de gravar |
 | Editar IDs, substituir segredos | **Segue o padrão de salvar** ([regras gerais](00-regras-gerais.md#3-salvar-descartar-e-registrar-quem-alterou)). Salvar credenciais novas exige teste bem-sucedido |
 | Testar conexão | Pode ser feito a qualquer momento |
 | Atualizar status dos modelos | Consulta a Meta de novo. API pronta (issue #67), **botão na tela com a #127** |

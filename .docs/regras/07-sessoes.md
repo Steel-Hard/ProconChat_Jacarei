@@ -55,7 +55,7 @@ Colunas: código e início, desfecho (e, para as sessões em andamento, a **etap
 | Parou em [etapa] | Em sessões abandonadas, com os mesmos nomes de etapa de Relatórios |
 | Aguardando o cidadão | Em sessões em andamento, com a etapa atual |
 
-**Outras conversas deste número:** lista das outras sessões do mesmo cidadão (código, data e desfecho), com link. A tela explica: "Identificadas pelo mesmo número de WhatsApp, que não é exibido nem armazenado de forma legível."
+**Outras conversas deste número:** lista das outras sessões do mesmo cidadão (código, data e desfecho), com link. A tela explica: "Identificadas pelo mesmo número de WhatsApp, que não é exibido nem armazenado de forma legível." Uma conversa **anonimizada** por prazo ([decisão 002](../decisoes/002-lgpd-dados-pessoais.md#anonimização-por-prazo)) não tem mais o número guardado: ela não aparece nas "outras conversas" de ninguém e, aberta, mostra o estado vazio desse bloco, sem erro.
 
 Os links para agendamentos só aparecem para quem tem **Ver agendamentos**.
 

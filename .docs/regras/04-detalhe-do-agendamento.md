@@ -23,7 +23,7 @@ Abaixo: nome do titular, data e hora por extenso, e "Criado pelo chatbot em [dat
 
 | Campo | Observação |
 |---|---|
-| Titular e CPF do titular | CPF sempre mascarado |
+| Titular e CPF do titular | CPF sempre mascarado. No agendamento anonimizado por prazo, "Titular removido" e "CPF removido" ([decisão 002](../decisoes/002-lgpd-dados-pessoais.md#anonimização-por-prazo)) |
 | Data e hora, status, responsável | "Sem responsável" quando pendente |
 | Comparecimento | "Titular comparece" ou "Comparece por representante" |
 | **Motivo do agendamento** | "A pergunta exige atendimento presencial" ou "O cidadão respondeu que a dúvida não foi resolvida". **Gravado quando o agendamento foi criado**: não muda se alguém editar a pergunta depois |
