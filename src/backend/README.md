@@ -1376,10 +1376,10 @@ Nenhum evento guarda texto digitado pelo cidadão (RNF03): só tipos, ids e valo
 
 | Função | Arquivo | Uso |
 | --- | --- | --- |
-| `conversationEventService.record(sessionId, event)` | `services/conversationEvent.service.ts` | Evento comum de um passo. Nunca lança (ver "Falhas de gravação") |
+| `conversationEventService.record(sessionId, event, occurredAt?)` | `services/conversationEvent.service.ts` | Evento comum de um passo. Nunca lança (ver "Falhas de gravação"). Com `occurredAt`, a linha fica com `created_at = occurredAt`; sem ele, vale o default do banco |
 | `conversationEventService.finish(sessionId, { outcome, event })` | `services/conversationEvent.service.ts` | Encerramento fora de transação. Abre a própria transação e lança se falhar |
 | `finishSessionWith(client, sessionId, { outcome, event })` | `repositories/session.repository.ts` | Encerramento dentro da transação de outro repositório (reserva da #56, remarcação e cancelamento da #59). Lança e não desfaz nada: quem abriu a transação faz o `ROLLBACK` |
-| `insertConversationEvent(client, sessionId, event)` | `repositories/conversationEvent.repository.ts` | Evento comum dentro de uma transação aberta (ex.: `PHONE_NOTICE_SHOWN` na reserva da #56) |
+| `insertConversationEvent(client, sessionId, event, occurredAt?)` | `repositories/conversationEvent.repository.ts` | Evento comum dentro de uma transação aberta (ex.: `PHONE_NOTICE_SHOWN` na reserva da #56). Sem `occurredAt`, o `INSERT` não manda `created_at` |
 | `conversationEventService.listBySession(sessionId)` | `services/conversationEvent.service.ts` | Leitura tipada, em ordem cronológica, com `createdAt`, para a linha do tempo (#60, #72, #86). Chaves desconhecidas vindas do banco são descartadas. Uma linha fora do contrato é descartada e registrada no log, sem derrubar a lista (ver "Leitura") |
 
 `insertConversationEvent` e `finishSessionWith` são o **único** caminho de escrita em
@@ -1472,7 +1472,7 @@ O par desfecho e evento tem que casar, senão lança `InternalServerError` sem c
 | Sessão criada | #16 (automático) | `findOrCreateActive` | `STARTED` | — |
 | Categoria escolhida | #55 | `record` | `CATEGORY_CHOSEN` | — |
 | Pergunta escolhida | #55 | `record` | `QUESTION_CHOSEN` | — |
-| Resposta entregue | #55 / #66 (`llm`) | `record`, ou `finish` se fora do escopo | `ANSWER_SENT` | `OUT_OF_SCOPE` |
+| Resposta entregue | #55 / #66 (`llm`) | `record`, ou `finish` se fora do escopo. Pergunta com IA permitida: gravado pelo job do complemento (`services/llmComplement.service.ts`) quando o envio termina, com `record(..., answeredAt)`, `USED` ou `FAILED` | `ANSWER_SENT` | `OUT_OF_SCOPE` |
 | "A dúvida foi resolvida?" | #55 | `record` (Não) ou `finish` (Sim) | `RESOLVED_ANSWERED` | `RESOLVED` |
 | Agendamento oferecido | #55 | `record` | `SCHEDULE_OFFERED` | — |
 | Recusou agendar | #55 | `finish` | `SCHEDULE_DECLINED` | `DECLINED` |
