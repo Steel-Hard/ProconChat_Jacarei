@@ -178,21 +178,7 @@ O Ollama não tem autenticação: quem alcança a porta `11434` usa o modelo e o
 - a porta `11434` nunca é aberta na internet, nem no security group `proconchat-prod` nem no `ufw` da VM. A VM só abre a conexão de saída;
 - a ACL do Tailscale só aceita tráfego da VM para a máquina do Ollama na porta `11434` (abaixo).
 
-Passos:
-
-1. Instale o Tailscale na VM e na máquina com o Ollama, na mesma tailnet, com a tag `tag:proconchat-vm` na VM e `tag:ollama` na máquina.
-2. Na máquina, faça `ollama pull` do mesmo modelo de `LLM_MODEL` (`ollama pull llama3.2:3b`). Sem o modelo, o Ollama responde 404 e o complemento fica `FAILED`.
-3. Na máquina, suba o Ollama com `OLLAMA_HOST=<ip-100.x>:11434`.
-4. No `.env` da VM, preencha `OLLAMA_URL=http://<ip-100.x>:11434`, sem barra no fim (o backend monta `<OLLAMA_URL>/api/generate`), deixe `COMPOSE_PROFILES` vazio e rode o deploy de novo. Não use `COMPOSE_PROFILES=llm` junto com `OLLAMA_URL` preenchida: o container local sobe, gasta memória e não é usado.
-5. Na VM, como `deploy`, confira que o container do `backend` alcança a máquina. O comando precisa imprimir `200`:
-
-```bash
-cd /opt/proconchat
-export IMAGE_TAG="$(tail -n 1 releases.log | cut -d' ' -f2)"
-docker compose -f compose.prod.yaml exec backend node -e "fetch(process.env.OLLAMA_URL+'/api/tags').then(r=>console.log(r.status))"
-```
-
-Política de ACL da tailnet, que só aceita tráfego da VM para a máquina do Ollama na porta `11434`:
+Antes dos passos, aplique a política de ACL da tailnet. Ela declara as tags em `tagOwners`, que o Tailscale exige antes de aceitar uma tag num dispositivo, e só aceita tráfego da VM para a máquina do Ollama na porta `11434`:
 
 ```json
 {
@@ -208,9 +194,23 @@ Política de ACL da tailnet, que só aceita tráfego da VM para a máquina do Ol
 
 Uma política com `acls` substitui o "liberar tudo" padrão da tailnet: qualquer outro acesso que o time use nela precisa entrar na mesma política. Confira a sintaxe na documentação do Tailscale ao aplicar.
 
+Passos:
+
+1. Com a política acima já aplicada, instale o Tailscale na VM e na máquina com o Ollama, na mesma tailnet, com a tag `tag:proconchat-vm` na VM e `tag:ollama` na máquina.
+2. Na máquina, faça `ollama pull` do mesmo modelo de `LLM_MODEL` (`ollama pull llama3.2:3b`). Sem o modelo, o Ollama responde 404 e o complemento fica `FAILED`.
+3. Na máquina, suba o Ollama com `OLLAMA_HOST=<ip-100.x>:11434`, sempre depois de o Tailscale estar conectado: sem o IP `100.x` na máquina, o bind falha com `cannot assign requested address`. No Windows, rode o Ollama no próprio Windows, e não dentro do WSL2 com NAT, porque o IP `100.x` fica no Windows.
+4. No `.env` da VM, preencha `OLLAMA_URL=http://<ip-100.x>:11434`, sem barra no fim (o backend monta `<OLLAMA_URL>/api/generate`), deixe `COMPOSE_PROFILES` vazio e rode o deploy de novo. Não use `COMPOSE_PROFILES=llm` junto com `OLLAMA_URL` preenchida: o container local sobe, gasta memória e não é usado.
+5. Na VM, como `deploy`, confira que o container do `backend` alcança a máquina. O comando precisa imprimir `200`:
+
+```bash
+cd /opt/proconchat
+export IMAGE_TAG="$(tail -n 1 releases.log | cut -d' ' -f2)"
+docker compose -f compose.prod.yaml exec backend node -e "fetch(process.env.OLLAMA_URL+'/api/tags').then(r=>console.log(r.status))"
+```
+
 **Máquina desligada.** O cidadão recebe só a resposta oficial, que não espera o complemento, e o `ANSWER_SENT` fica `FAILED`. O complemento pode levar até `LLM_TIMEOUT_MS` para desistir.
 
-**O que sai da VM.** Só o prompt montado a partir da resposta oficial estruturada (categoria, pergunta do catálogo, base legal, resposta, documentos e próximos passos). O telefone e o texto do cidadão não vão. O Ollama continua self-hosted pela equipe e não é uma API externa (RP05). Quem controla a máquina controla o texto do complemento, que continua rotulado "Gerado com auxílio de IA". A escolha está registrada na [decisão 009](../decisoes/009-complemento-por-llm.md).
+**O que sai da VM.** Só o prompt montado com os campos de `RespostaFinalOutput`: categoria, pergunta do catálogo, base legal, resposta, documentos, próximos passos e os indicadores de atendimento presencial e de fora do escopo. Nenhum dado pessoal vai: o telefone e o texto do cidadão ficam na VM. O Ollama continua self-hosted pela equipe e não é uma API externa (RP05). Quem controla a máquina controla o texto do complemento, que continua rotulado "Gerado com auxílio de IA". A escolha está registrada na [decisão 009](../decisoes/009-complemento-por-llm.md).
 
 ## Preparar a VM
 
