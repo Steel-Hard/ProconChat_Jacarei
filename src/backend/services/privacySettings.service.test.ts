@@ -45,4 +45,15 @@ describe("createPrivacyLinkProvider", () => {
         expect(logger.error.mock.calls).toEqual([["Failed to read privacy settings", { code: "Error" }]])
         expect(JSON.stringify(logger.error.mock.calls)).not.toContain("5500000000001")
     })
+
+    it("devolve null sem linha de configuracao mesmo com a URL base definida", async () => {
+        const settings = new PrivacySettingsStubRepository()
+        const logger = { error: vi.fn() }
+        const provider = createPrivacyLinkProvider({ settings, baseUrl: BASE_URL, logger })
+
+        const link = await provider()
+
+        expect(link).toBeNull()
+        expect(logger.error).not.toHaveBeenCalled()
+    })
 })
