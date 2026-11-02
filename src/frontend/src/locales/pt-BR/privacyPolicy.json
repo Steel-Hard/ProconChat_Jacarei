@@ -14,7 +14,7 @@
     },
     "collected": {
         "heading": "Quais dados coletamos",
-        "phone": "O número de telefone de quem conversa com o assistente. Nas conversas, ele é guardado só como um código que não permite recuperar o número.",
+        "phone": "O número de telefone de quem conversa com o assistente. Nas conversas, ele é guardado só como um código, sem o número legível.",
         "appointment": "Para agendar um atendimento presencial: o nome e o CPF do titular e o telefone para os avisos. O CPF é guardado só como código e na versão mascarada (***.456.789-**). O telefone é guardado criptografado.",
         "steps": "As opções escolhidas na conversa, para saber em que ponto do atendimento você parou."
     },

@@ -57,7 +57,7 @@ COMMIT;
 
 Limites da anonimização (diga isso na resposta ao titular):
 
-- o **CPF** continua guardado só como hash e na versão mascarada (`***.456.789-**`), que não permitem recuperar o número;
+- o **CPF** continua guardado só como hash e na versão mascarada (`***.456.789-**`), sem o número legível;
 - as **observações internas** dos agendamentos (`AppointmentNotes`) não podem ser alteradas nem apagadas, por regra do banco. Elas são escritas pela equipe e não devem conter dados do cidadão;
 - as **conversas** continuam ligadas só ao `phone_hash`, com os passos percorridos e sem texto digitado; elas alimentam os relatórios agregados;
 - as **cópias de segurança** guardam o estado anterior por até 7 dias ([deploy](../infra/deploy.md)), e depois são apagadas;
