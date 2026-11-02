@@ -13,7 +13,7 @@ O chatbot lida com telefone, nome e CPF de cidadãos. O desafio exige conformida
 | Dado | Como é guardado | Quem vê |
 |---|---|---|
 | **Texto digitado pelo cidadão** | **Não é guardado.** Só os passos percorridos | Ninguém |
-| **Telefone (sessão)** | `phone_hash` (HMAC com `PHONE_HASH_SECRET`) | Ninguém. Nunca é exibido nem enviado ao navegador |
+| **Telefone (sessão)** | `phone_hash` (HMAC com `PHONE_HASH_SECRET`). **Removido (`NULL`) quando a conversa é anonimizada** (ver Retenção) | Ninguém. Nunca é exibido nem enviado ao navegador |
 | **Telefone (agendamento)** | Criptografado (reversível), só para enviar avisos. **Apagado quando chega o horário do agendamento** (ver Retenção) | Ninguém. Usado só pelo backend para enviar mensagens |
 | **CPF** | `cpf_hash` + versão mascarada gravada na criação (`***.456.789-**`). **Removidos (`NULL`) quando o agendamento é anonimizado** (ver Retenção) | Painel mostra só a versão mascarada, ou "CPF removido" |
 | **Nome do titular** | Texto, porque a equipe precisa identificar a pessoa no balcão. **Vira "Titular removido" na anonimização** | Quem tem permissão de ver agendamentos |
