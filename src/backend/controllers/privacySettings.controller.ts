@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express"
 import UnauthorizedError from "../errors/UnauthorizedError"
+import { RetentionPreviewQuery } from "../schemas/retentionPreview.schema"
 import { PrivacySettingsService, privacySettingsService } from "../services/privacySettings.service"
 
 interface PrivacySettingsControllerDependencies {
@@ -32,6 +33,15 @@ class PrivacySettingsController {
     public async save(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             res.status(200).json({ data: await this.settings.save(req.body, this.userId(req)) })
+        } catch (error) {
+            next(error)
+        }
+    }
+
+    public async retentionPreview(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const query = req.query as unknown as RetentionPreviewQuery
+            res.status(200).json({ data: await this.settings.previewRetention(query) })
         } catch (error) {
             next(error)
         }

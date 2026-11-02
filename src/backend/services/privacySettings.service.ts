@@ -1,5 +1,6 @@
 import { privacySettingsRepository } from "../repositories/privacySettings.repository"
 import { PrivacySettingsRepository } from "../repositories/privacySettings.repository.interface"
+import { RetentionCounts, RetentionRepository, retentionRepository } from "../repositories/retention.repository"
 import {
     PrivacySettingsAdminView,
     PrivacySettingsFields,
@@ -10,13 +11,20 @@ import { privacyPolicyUrlFrom } from "../utils/privacyPolicyUrl"
 
 interface PrivacySettingsDependencies {
     repository: PrivacySettingsRepository
+    retention: Pick<RetentionRepository, "countDue">
     clock?: () => Date
+}
+
+export interface RetentionPreviewInput {
+    sessionDays: number
+    appointmentDays: number
 }
 
 export interface PrivacySettingsService {
     getAdminView(): Promise<PrivacySettingsAdminView>
     getPublicView(): Promise<PrivacySettingsPublicView>
     save(input: PrivacySettingsFields, userId: number): Promise<PrivacySettingsAdminView>
+    previewRetention(input: RetentionPreviewInput): Promise<RetentionCounts>
 }
 
 const EMPTY_FIELDS: PrivacySettingsFields = {
@@ -25,6 +33,9 @@ const EMPTY_FIELDS: PrivacySettingsFields = {
     contactEmail: null,
     inPersonContact: null,
     retentionText: null,
+    retentionEnabled: false,
+    sessionRetentionDays: 90,
+    appointmentRetentionDays: 365,
 }
 
 function fieldsOf(row: PrivacySettingsFields | null): PrivacySettingsFields {
@@ -37,6 +48,9 @@ function fieldsOf(row: PrivacySettingsFields | null): PrivacySettingsFields {
         contactEmail: row.contactEmail,
         inPersonContact: row.inPersonContact,
         retentionText: row.retentionText,
+        retentionEnabled: row.retentionEnabled,
+        sessionRetentionDays: row.sessionRetentionDays,
+        appointmentRetentionDays: row.appointmentRetentionDays,
     }
 }
 
@@ -90,13 +104,19 @@ export function createPrivacyLinkProvider({
 
 export function createPrivacySettingsService({
     repository,
+    retention,
     clock = () => new Date(),
 }: PrivacySettingsDependencies): PrivacySettingsService {
     return {
         getAdminView: async () => adminViewOf(await repository.find()),
         getPublicView: async () => fieldsOf(await repository.find()),
         save: async (input, userId) => adminViewOf(await repository.save(fieldsOf(input), userId, clock())),
+        previewRetention: ({ sessionDays, appointmentDays }) =>
+            retention.countDue({ now: clock(), sessionDays, appointmentDays }),
     }
 }
 
-export const privacySettingsService = createPrivacySettingsService({ repository: privacySettingsRepository })
+export const privacySettingsService = createPrivacySettingsService({
+    repository: privacySettingsRepository,
+    retention: retentionRepository,
+})

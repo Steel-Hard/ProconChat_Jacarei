@@ -56,6 +56,9 @@ describe("configuracao de privacidade com Postgres", () => {
             contactEmail: " privacidade@exemplo.test ",
             inPersonContact: "   ",
             retentionText: "Sessões por 12 meses.",
+            retentionEnabled: true,
+            sessionRetentionDays: 30,
+            appointmentRetentionDays: 1825,
         })
 
         expect(saved.status).toBe(200)
@@ -65,6 +68,9 @@ describe("configuracao de privacidade com Postgres", () => {
             contactEmail: "privacidade@exemplo.test",
             inPersonContact: null,
             retentionText: "Sessões por 12 meses.",
+            retentionEnabled: true,
+            sessionRetentionDays: 30,
+            appointmentRetentionDays: 1825,
             updatedBy: { id: admin.id, name: admin.name },
             updatedAt: expect.any(String),
         })
@@ -75,7 +81,16 @@ describe("configuracao de privacidade com Postgres", () => {
     })
 
     test("dois salvamentos seguidos deixam uma linha so, id 1, com os valores do ultimo", async () => {
-        const base = { controllerName: "Primeiro", dpoName: null, contactEmail: null, inPersonContact: null, retentionText: null }
+        const base = {
+            controllerName: "Primeiro",
+            dpoName: null,
+            contactEmail: null,
+            inPersonContact: null,
+            retentionText: null,
+            retentionEnabled: false,
+            sessionRetentionDays: 90,
+            appointmentRetentionDays: 365,
+        }
         await save(base)
 
         const second = await save({ ...base, controllerName: "Segundo", contactEmail: "segundo@exemplo.test" })
@@ -94,6 +109,9 @@ describe("configuracao de privacidade com Postgres", () => {
             contactEmail: "privacidade@exemplo.test",
             inPersonContact: "Rua Exemplo, 100",
             retentionText: "Sessões por 12 meses.",
+            retentionEnabled: true,
+            sessionRetentionDays: 120,
+            appointmentRetentionDays: 400,
         }
         await save(body)
 

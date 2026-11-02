@@ -8,6 +8,9 @@ interface PrivacyRow {
     contact_email: string | null
     in_person_contact: string | null
     retention_text: string | null
+    retention_enabled: boolean
+    session_retention_days: number
+    appointment_retention_days: number
     updated_by: string | null
     updated_by_name: string | null
     updated_at: Date
@@ -15,6 +18,7 @@ interface PrivacyRow {
 
 const SELECT_WITH_USER = `
     SELECT s.controller_name, s.dpo_name, s.contact_email, s.in_person_contact, s.retention_text,
+           s.retention_enabled, s.session_retention_days, s.appointment_retention_days,
            s.updated_by, u.name AS updated_by_name, s.updated_at
     FROM settings s
     LEFT JOIN Users u ON u.id = s.updated_by`
@@ -26,6 +30,9 @@ function toRow(row: PrivacyRow): PrivacySettingsRow {
         contactEmail: row.contact_email,
         inPersonContact: row.in_person_contact,
         retentionText: row.retention_text,
+        retentionEnabled: row.retention_enabled,
+        sessionRetentionDays: row.session_retention_days,
+        appointmentRetentionDays: row.appointment_retention_days,
         updatedBy: row.updated_by === null ? null : { id: Number(row.updated_by), name: row.updated_by_name ?? "" },
         updatedAt: row.updated_at,
     }
@@ -42,18 +49,35 @@ export const privacySettingsRepository: PrivacySettingsRepository = {
 
     async save(input, userId, now) {
         const row = await querySettings(
-            `INSERT INTO PrivacySettings (id, controller_name, dpo_name, contact_email, in_person_contact, retention_text, updated_by, updated_at)
-             VALUES (1, $1, $2, $3, $4, $5, $6, $7)
+            `INSERT INTO PrivacySettings (
+                id, controller_name, dpo_name, contact_email, in_person_contact, retention_text,
+                retention_enabled, session_retention_days, appointment_retention_days, updated_by, updated_at
+             )
+             VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
              ON CONFLICT (id) DO UPDATE SET
                 controller_name = EXCLUDED.controller_name,
                 dpo_name = EXCLUDED.dpo_name,
                 contact_email = EXCLUDED.contact_email,
                 in_person_contact = EXCLUDED.in_person_contact,
                 retention_text = EXCLUDED.retention_text,
+                retention_enabled = EXCLUDED.retention_enabled,
+                session_retention_days = EXCLUDED.session_retention_days,
+                appointment_retention_days = EXCLUDED.appointment_retention_days,
                 updated_by = EXCLUDED.updated_by,
                 updated_at = EXCLUDED.updated_at
              RETURNING *`,
-            [input.controllerName, input.dpoName, input.contactEmail, input.inPersonContact, input.retentionText, userId, now],
+            [
+                input.controllerName,
+                input.dpoName,
+                input.contactEmail,
+                input.inPersonContact,
+                input.retentionText,
+                input.retentionEnabled,
+                input.sessionRetentionDays,
+                input.appointmentRetentionDays,
+                userId,
+                now,
+            ],
         )
         if (!row) {
             throw new Error("PrivacySettings row not saved")

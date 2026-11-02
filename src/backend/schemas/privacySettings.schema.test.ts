@@ -10,6 +10,9 @@ function body(overrides: Record<string, unknown> = {}) {
         contactEmail: "privacidade@exemplo.test",
         inPersonContact: "Rua Exemplo, 100",
         retentionText: "Sessões por 12 meses.",
+        retentionEnabled: false,
+        sessionRetentionDays: 90,
+        appointmentRetentionDays: 365,
         ...overrides,
     }
 }
@@ -70,5 +73,30 @@ describe("privacySettingsBodySchema", () => {
         expect(validateSchema(privacySettingsBodySchema, body({ controllerName: "  Prefeitura  ", contactEmail: " a@b.co " }))).toEqual(
             body({ controllerName: "Prefeitura", contactEmail: "a@b.co" }),
         )
+    })
+
+    it.each([
+        { field: "sessionRetentionDays", value: 29 },
+        { field: "sessionRetentionDays", value: 1826 },
+        { field: "sessionRetentionDays", value: 30.5 },
+        { field: "appointmentRetentionDays", value: 89 },
+        { field: "retentionEnabled", value: "true" },
+    ])("recusa $field com $value apontando o campo", ({ field, value }) => {
+        expect(issuesOf(body({ [field]: value })).map((issue) => issue.path)).toEqual([field])
+    })
+
+    it.each(["retentionEnabled", "sessionRetentionDays", "appointmentRetentionDays"])("recusa o corpo sem %s", (field) => {
+        const withoutField: Record<string, unknown> = body()
+        delete withoutField[field]
+
+        expect(issuesOf(withoutField).map((issue) => issue.path)).toEqual([field])
+    })
+
+    it("aceita os prazos nas bordas de cada faixa", () => {
+        const lower = body({ retentionEnabled: true, sessionRetentionDays: 30, appointmentRetentionDays: 90 })
+        const upper = body({ sessionRetentionDays: 1825, appointmentRetentionDays: 1825 })
+
+        expect(validateSchema(privacySettingsBodySchema, lower)).toEqual(lower)
+        expect(validateSchema(privacySettingsBodySchema, upper)).toEqual(upper)
     })
 })

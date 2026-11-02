@@ -12,6 +12,9 @@ const filled: PrivacySettingsFields = {
     contactEmail: "privacidade@exemplo.test",
     inPersonContact: null,
     retentionText: null,
+    retentionEnabled: false,
+    sessionRetentionDays: 90,
+    appointmentRetentionDays: 365,
 }
 
 describe("greetingPrivacyLink", () => {

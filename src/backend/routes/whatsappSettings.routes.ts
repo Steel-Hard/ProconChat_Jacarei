@@ -4,6 +4,7 @@ import WhatsAppSettingsController from "../controllers/whatsappSettings.controll
 import { requireAuth, requirePermission } from "../middleware/auth.middleware"
 import { validateRequest } from "../middleware/validateRequest.middleware"
 import { privacySettingsBodySchema } from "../schemas/privacySettings.schema"
+import { retentionPreviewQuerySchema } from "../schemas/retentionPreview.schema"
 import { ADMIN_ONLY } from "../types/auth.types"
 
 class WhatsAppSettingsRoutes {
@@ -31,6 +32,12 @@ class WhatsAppSettingsRoutes {
         this.router.get("/delivery-failures", ...adminOnly, controller.deliveryFailures.bind(controller))
         this.router.get("/history", ...adminOnly, controller.history.bind(controller))
         this.router.get("/privacy", ...adminOnly, privacy.getAdmin.bind(privacy))
+        this.router.get(
+            "/privacy/retention-preview",
+            ...adminOnly,
+            validateRequest({ query: retentionPreviewQuerySchema }, { withIssues: true }),
+            privacy.retentionPreview.bind(privacy),
+        )
         this.router.put(
             "/privacy",
             ...adminOnly,

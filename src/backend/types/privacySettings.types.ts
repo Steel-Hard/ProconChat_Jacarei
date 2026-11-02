@@ -4,6 +4,9 @@ export interface PrivacySettingsFields {
     contactEmail: string | null
     inPersonContact: string | null
     retentionText: string | null
+    retentionEnabled: boolean
+    sessionRetentionDays: number
+    appointmentRetentionDays: number
 }
 
 export interface PrivacySettingsUpdatedBy {
