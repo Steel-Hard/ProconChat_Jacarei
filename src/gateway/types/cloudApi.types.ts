@@ -99,3 +99,10 @@ export interface CloudApiTemplateBody extends CloudApiOutgoingBase {
         components: { type: "body"; parameters: { type: "text"; text: string }[] }[]
     }
 }
+
+export interface CloudApiTypingBody {
+    messaging_product: "whatsapp"
+    status: "read"
+    message_id: string
+    typing_indicator: { type: "text" }
+}

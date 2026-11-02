@@ -249,6 +249,13 @@ configuração do painel (seção "Configuração do WhatsApp"), não variáveis
   maior é recusado com o motivo `invalid_footer`.
   Sem `reply.messages`, o Gateway envia `reply.text` como texto (corpo ≤ 4096). Mensagem fora dos limites
   não é enviada, dividida nem truncada: fica no log como `invalid_outgoing_message`.
+- Quando o Backend devolve `reply.typing: true` (a resposta está sendo preparada com auxílio de IA), o
+  gateway chama, dentro da mesma tarefa da fila, `POST /<versão>/<phoneNumberId>/messages` com
+  `{ messaging_product: "whatsapp", status: "read", message_id: <wamid>, typing_indicator: { type: "text" } }`:
+  a mensagem do cidadão fica como lida e aparece "digitando…" por até 25 s ou até a resposta chegar. A
+  resposta em si chega depois, pela rota interna `POST /internal/whatsapp/messages`. Se a Meta recusar, o
+  log `typing_failed` leva só o `messageRef` e a mensagem continua `processed`. O `wamid` nunca sai do
+  gateway.
 
 ### Status de entrega (#88)
 

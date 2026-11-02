@@ -67,6 +67,14 @@ async function sendReply(
     }
 }
 
+async function showTyping(provider: MessageProvider, messageId: string): Promise<void> {
+    try {
+        await provider.showTyping(messageId)
+    } catch {
+        log("typing_failed", messageId)
+    }
+}
+
 export function createWhatsappWebhookService({
     backend,
     provider,
@@ -93,6 +101,9 @@ export function createWhatsappWebhookService({
             } catch (error) {
                 deduplicator.forget?.(message.id)
                 throw error
+            }
+            if (session.reply?.typing === true) {
+                await showTyping(provider, message.id)
             }
             await sendReply(provider, message.from, toOutgoing(session.reply), message.id)
         })

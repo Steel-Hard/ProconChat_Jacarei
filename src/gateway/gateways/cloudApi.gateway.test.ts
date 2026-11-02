@@ -710,3 +710,34 @@ describe("Cloud API provider: sendTemplate", () => {
         expect(timeoutSpy).toHaveBeenCalledWith(10_000)
     })
 })
+
+describe("Cloud API provider: showTyping", () => {
+    test("marca a mensagem como lida e mostra digitando com o token e o corpo exato", async () => {
+        const fetchFn = vi.fn().mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve({ success: true }) })
+        const provider = createCloudApiProvider({ getConfig: () => config, fetchFn })
+
+        await provider.showTyping("wamid.recebida")
+
+        expect(fetchFn).toHaveBeenCalledOnce()
+        const [url, init] = fetchFn.mock.calls[0] as [string, RequestInit]
+        expect(url).toBe("https://graph.facebook.com/v26.0/100000000000001/messages")
+        expect(init.method).toBe("POST")
+        expect(init.headers).toEqual({
+            "Content-Type": "application/json",
+            Authorization: "Bearer test-only-access-token",
+        })
+        expect(JSON.parse(init.body as string)).toEqual({
+            messaging_product: "whatsapp",
+            status: "read",
+            message_id: "wamid.recebida",
+            typing_indicator: { type: "text" },
+        })
+    })
+
+    test("lança quando a Graph API responde 400", async () => {
+        const fetchFn = vi.fn().mockResolvedValue({ ok: false, status: 400, json: () => Promise.resolve({}) })
+        const provider = createCloudApiProvider({ getConfig: () => config, fetchFn })
+
+        await expect(provider.showTyping("wamid.recebida")).rejects.toThrow("Cloud API returned HTTP 400")
+    })
+})
