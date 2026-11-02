@@ -5,7 +5,7 @@ import app from "../app"
 import { backendClient } from "../clients/backend.client"
 import { createCloudApiProvider } from "../gateways/cloudApi.gateway"
 import errorHandler from "../middleware/errorHandler.middleware"
-import { createPhoneQueue, PhoneQueue } from "../services/phoneQueue"
+import { createPhoneQueue, PhoneQueue, whatsappPhoneQueue } from "../services/phoneQueue"
 import { createWhatsAppConfigStore } from "../services/whatsappConfigStore"
 import { InternalMessagesRoutes } from "./internalMessages.routes"
 
@@ -281,6 +281,50 @@ describe("POST /internal/whatsapp/messages/text", () => {
         expect(sentBeforeRelease).toBe(0)
         expect(response.status).toBe(200)
         expect(calls).toEqual([`run:${textBody.to}`, `run:${textBody.to}`, "blocker:done", "send"])
+    })
+
+    test("na montagem padrão só envia depois da tarefa em andamento na fila compartilhada com o webhook", async () => {
+        const to = "5512999990077"
+        const events: string[] = []
+        let releaseBlocker!: () => void
+        const blocker = whatsappPhoneQueue.run(
+            to,
+            () =>
+                new Promise<void>((resolve) => {
+                    releaseBlocker = () => {
+                        events.push("blocker:done")
+                        resolve()
+                    }
+                }),
+        )
+        const providerSend = vi.fn(async () => {
+            events.push("send")
+        })
+        const load = vi.fn().mockResolvedValue(config)
+        const provider = { sendTemplate: vi.fn(), send: providerSend }
+        const testApp = express()
+        testApp.use(express.json())
+        testApp.use(
+            "/internal/whatsapp/messages",
+            new InternalMessagesRoutes({ config: { load }, provider, logger: { log: vi.fn() } }).getRouter(),
+        )
+        testApp.use(errorHandler)
+
+        const responsePromise = sendText(testApp, { ...textBody, to }).then((response) => response)
+        try {
+            await vi.waitFor(() => expect(load).toHaveBeenCalled())
+            for (let tick = 0; tick < 5; tick++) {
+                await new Promise((resolve) => setImmediate(resolve))
+            }
+            expect(providerSend).not.toHaveBeenCalled()
+        } finally {
+            releaseBlocker()
+        }
+        await blocker
+        const response = await responsePromise
+
+        expect(response.status).toBe(200)
+        expect(events).toEqual(["blocker:done", "send"])
     })
 
     test("responde 502 PROVIDER_ERROR sem registrar o telefone nem o texto quando o provedor falha", async () => {
