@@ -72,7 +72,9 @@ WHERE id = ANY($2::bigint[]) AND anonymized_at IS NULL AND status <> 'IN_PROGRES
 COMMIT;
 ```
 
-4. Confira no painel que os agendamentos mostram "Titular removido" e "CPF removido". Se o `UPDATE Appointments` alterou menos linhas que o número de ids, algum agendamento futuro ativo ficou de fora: cancele-o (passo 1) e rode de novo. A conversa que criou um agendamento futuro ativo também fica de fora do `UPDATE Sessions` até o horário do atendimento passar (passo 2): rode de novo depois do horário, ou deixe para a anonimização automática por prazo.
+4. Confira no painel que os agendamentos mostram "Titular removido" e "CPF removido", e compare a contagem de linhas alteradas de cada `UPDATE` com o número de ids que você passou. Uma contagem menor tem dois motivos possíveis:
+   - o id já estava anonimizado (`anonymized_at IS NULL` o deixa de fora), e não há nada a fazer;
+   - no `UPDATE Appointments`, o agendamento ainda é futuro e ativo: cancele-o (passo 1) e rode de novo. No `UPDATE Sessions`, a conversa está em andamento ou criou um agendamento futuro ativo (passo 2): rode de novo depois que ela terminar ou que o horário do atendimento passar, ou deixe para a anonimização automática por prazo.
 
 Limites da anonimização (diga isso na resposta ao titular):
 
