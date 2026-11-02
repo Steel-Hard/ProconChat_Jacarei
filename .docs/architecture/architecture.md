@@ -127,7 +127,8 @@ As credenciais da Cloud API ficam no banco, **criptografadas com uma chave-mestr
 
 ## Segurança e dados pessoais
 
-- **Telefone:** nas sessões, só o hash (`phone_hash`); nos agendamentos, criptografado e apagado quando o agendamento termina. Nunca aparece no painel.
+- **Telefone:** nas sessões, só o hash (`phone_hash`); nos agendamentos, criptografado e apagado quando chega o horário do agendamento, por uma varredura do backend a cada 60 s (#69). Nunca aparece no painel.
+- **Política de privacidade:** página pública `/privacidade` do painel, que lê sem login `GET /api/v1/privacy` (os cinco textos da aba Privacidade, sem quem alterou). A saudação do bot leva o link quando o controlador e o e-mail estão cadastrados e `PUBLIC_BASE_URL` existe.
 - **CPF:** hash + versão mascarada. O CPF completo nunca é exibido.
 - **Texto digitado pelo cidadão:** não é gravado.
 - **Webhook:** só aceita eventos com assinatura válida da Meta.

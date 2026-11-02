@@ -49,7 +49,7 @@ Copie `.env.example` para `.env` e preencha:
 | `AUTH_TOKEN_SECRET` | Sim, com 32 ou mais caracteres | Segredo HS256 dos cookies de sessão do painel. O servidor encerra na inicialização sem ele ou com ele curto. Trocar derruba todas as sessões. |
 | `FRONTEND_ORIGIN` | Não (padrão `http://localhost:5173`) | Origem do painel (esquema, host e porta), usada no CORS e na proteção CSRF. Precisa ser uma URL `http` ou `https`, senão o servidor encerra na inicialização. É normalizada na leitura com `new URL(valor).origin`: barra no fim, caminho e maiúsculas no esquema ou no host são descartados. No Compose local é `http://localhost:8081`; em produção, `https://<SITE_ADDRESS>`. |
 | `ENCRYPTION_KEY` | Sim, exatamente 64 caracteres hexadecimais | Chave-mestra AES-256-GCM dos segredos guardados no banco (`utils/crypto.utils.ts`, formato `v1:<iv>:<tag>:<cifrado>`). Também cifra o telefone do agendamento (`Appointments.phone_encrypted`), gravado pela reserva do bot. Gere com `openssl rand -hex 32`. O servidor encerra na inicialização sem ela ou fora do formato, e o `seed` falha se precisar cifrar algo sem ela. Não tem valor padrão em nenhum Compose: sem ela no `.env`, o `docker compose` recusa subir. |
-| `PUBLIC_BASE_URL` | Não | URL pública do sistema (`http` ou `https`), usada para montar a URL do webhook mostrada na tela de WhatsApp (`<PUBLIC_BASE_URL>/webhooks/whatsapp`). Sem ela, a leitura devolve `webhookUrl: null`. Vazia conta como ausente. Em produção é `https://<SITE_ADDRESS>`; no desenvolvimento, a URL do túnel HTTPS (README do gateway). |
+| `PUBLIC_BASE_URL` | Não | URL pública do sistema (`http` ou `https`), usada para montar a URL do webhook mostrada na tela de WhatsApp (`<PUBLIC_BASE_URL>/webhooks/whatsapp`) e o link da política de privacidade na saudação do bot (`<PUBLIC_BASE_URL>/privacidade`). Sem ela, a leitura devolve `webhookUrl: null` e a saudação sai sem o link. Vazia conta como ausente. Em produção é `https://<SITE_ADDRESS>`; no desenvolvimento, a URL do túnel HTTPS (README do gateway). No desenvolvimento, o link da saudação só abre se o túnel ou a URL apontar para o painel: o gateway não serve `/privacidade`. |
 | `GATEWAY_INTERNAL_URL` | Não | Endereço interno do gateway (`http` ou `https`), avisado depois que o Admin salva a configuração do WhatsApp para recarregar sem reiniciar. Sem ela, o aviso não é enviado e o gateway recarrega pelo TTL de 60 s. No Compose é `http://gateway:3001`. |
 | `WHATSAPP_GRAPH_API_VERSION` | Não (padrão `v26.0`) | Versão da Graph API da Meta no formato `v26.0`, usada no teste de conexão e repassada ao gateway pelo endpoint interno. Fora do formato, o servidor encerra na inicialização. |
 | `ROOT_EMAIL` | Só no `seed`, enquanto não existe a conta Admin | E-mail da conta Admin criada pelo seed. |
@@ -247,6 +247,9 @@ em `POST`/`PUT` sem origem confiável e `400 BAD_REQUEST` `"Malformed JSON body"
 | `GET /number-status` | — | `200 { data: { checkedAt, qualityRating, messagingLimit: { tier, dailyLimit, usedLast24h } } }` | `409 WHATSAPP_NOT_CONFIGURED` (sem ID do número, token ou App Secret); `422 { error: { code: <reason> } }` |
 | `GET /delivery-failures` | — | `200 { data: { since, count, items: [{ id, kind, errorCode, failedAt, appointmentId }] } }` | — |
 | `GET /history` | — | `200 { data: { items: [{ id, action, fields, actor: { id, name } \| null, createdAt }] } }` | — |
+| `GET /privacy` | — | `200 { data: PrivacySettingsView }` (seção "Privacidade e retenção") | — |
+| `PUT /privacy` | `{ controllerName, dpoName, contactEmail, inPersonContact, retentionText, retentionEnabled, sessionRetentionDays, appointmentRetentionDays }` | `200 { data: PrivacySettingsView }` | `400 BAD_REQUEST` com `details.issues` |
+| `GET /privacy/retention-preview?sessionDays=<n>&appointmentDays=<n>` | — | `200 { data: { sessions, appointments } }` | `400 BAD_REQUEST` com `details.issues` |
 
 **Estado do número, falhas e histórico (#88).** Não consultam a Meta.
 
@@ -429,6 +432,64 @@ mostra `configured: true` com `last4: null`, o endpoint interno responde `500` e
 a última configuração carregada até reiniciar. Depois de trocar a chave e recriar o `backend`, salve de
 novo o token e o App Secret pela tela de WhatsApp (ou `PUT /api/v1/whatsapp/settings`, enviando os
 dois).
+
+## Privacidade e retenção (#69)
+
+A configuração de privacidade fica na linha única de `PrivacySettings` (migration `19`), editada
+pelo Admin na aba "Privacidade" da tela de WhatsApp. Sem linha no banco, a leitura devolve os
+textos `null`, `retentionEnabled: false`, `sessionRetentionDays: 90` e `appointmentRetentionDays: 365`
+(colunas da migration `20`). O seed não cria essa linha.
+
+`PrivacySettingsView` (`GET`/`PUT /api/v1/whatsapp/settings/privacy`, só Admin):
+
+```json
+{
+    "controllerName": "Prefeitura de Jacareí",
+    "dpoName": "Maria Encarregada",
+    "contactEmail": "privacidade@exemplo.test",
+    "inPersonContact": null,
+    "retentionText": "Sessões por 12 meses.",
+    "retentionEnabled": false,
+    "sessionRetentionDays": 90,
+    "appointmentRetentionDays": 365,
+    "updatedBy": { "id": 1, "name": "Admin" },
+    "updatedAt": "2026-11-01T12:00:00.000Z"
+}
+```
+
+- No `PUT`, as oito chaves são obrigatórias. Os cinco textos são texto ou `null`: o servidor apara
+  os espaços e grava texto vazio como `null`. Limites: `controllerName` e `dpoName` até 150,
+  `contactEmail` até 254 e no formato `nome@dominio.tld`, `inPersonContact` até 300 e
+  `retentionText` até 2000. `retentionEnabled` é booleano, `sessionRetentionDays` é inteiro de 30
+  a 1825 e `appointmentRetentionDays` é inteiro de 90 a 1825. O salvamento é um upsert no
+  `id = 1`; vale o último.
+- `GET /api/v1/privacy` é **público** (sem sessão), com `Cache-Control: no-store`, e devolve as
+  oito chaves (os cinco textos e os três campos da anonimização), sem `updatedBy` nem `updatedAt`.
+  A página `/privacidade` do painel lê essa rota.
+- `GET /api/v1/whatsapp/settings/privacy/retention-preview` (só Admin, `no-store`) conta, com o
+  horário do servidor e os prazos da consulta, quantas conversas e quantos agendamentos seriam
+  anonimizados agora (`retentionRepository.countDue`). Não depende do interruptor e não altera nada.
+  Parâmetro ausente, não inteiro ou fora da faixa devolve `400 BAD_REQUEST` com `details.issues`.
+- A saudação do bot leva a linha `Saiba como tratamos seus dados: <PUBLIC_BASE_URL>/privacidade`
+  só quando `PUBLIC_BASE_URL` existe e `controllerName` e `contactEmail` estão preenchidos. A
+  configuração é lida a cada saudação, sem cache; se a leitura falhar, a saudação sai sem a linha e
+  o log leva só o `code` do erro.
+- Retenção do telefone: a cada 60 s, `index.ts` roda `sweepPastAppointmentPhones`, que grava
+  `phone_encrypted = NULL` nos agendamentos cujo horário chegou (`appointment_datetime <= agora`),
+  em qualquer status, sem evento em `AppointmentEvents`. A falha vai para o log como
+  `"Failed to erase phones of past appointments"` com só `{ code }`, e a varredura tenta de novo no
+  próximo intervalo.
+- Anonimização por prazo (#69, D3): a cada 1 hora, `index.ts` roda `sweepRetention`
+  (`services/retentionSweep.service.ts`). Com `retentionEnabled` desligado ou sem linha, não faz
+  nada. Ligada, chama `retentionRepository.anonymizeDue` com os prazos salvos e no máximo 500 linhas
+  por tabela: o agendamento vencido fica com `name = 'Titular removido'`, CPF e telefone nulos e
+  `anonymized_at`; a conversa terminada e vencida fica com `phone_hash = NULL` e `anonymized_at`,
+  salvo se gerou um agendamento ainda dentro do prazo. Quando anonimiza algo, o log leva só
+  `"Retention sweep anonymized records"` com `{ sessions, appointments }`; a falha vai como
+  `"Failed to anonymize records by retention"` com só `{ code }`. A regra completa está na
+  [decisão 002](../../.docs/decisoes/002-lgpd-dados-pessoais.md#anonimização-por-prazo).
+  O teste de integração (`tests/integration/retention.integration.test.ts`) usa datas de 1999 a
+  2001 e precisa de banco separado, sem linhas antigas de outra origem.
 
 ## Contas e permissões (/api/v1/users, #62)
 

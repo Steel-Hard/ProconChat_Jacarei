@@ -35,7 +35,8 @@ function AppointmentsPage() {
             offGrid: t("row.offGrid"),
             byRepresentative: t("row.byRepresentative"),
             claim: t("row.claim"),
-            separator: t("row.separator")
+            separator: t("row.separator"),
+            cpfRemoved: t("row.cpfRemoved")
         }
     }
 

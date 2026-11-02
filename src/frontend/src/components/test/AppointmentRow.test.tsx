@@ -113,4 +113,12 @@ describe("AppointmentRow", () => {
 
         expect(screen.getByRole("button", { name: "Assumir" })).toBeDisabled()
     })
+
+    it("mostra CPF removido no lugar do CPF do agendamento anonimizado", () => {
+        renderRow(buildAppointmentRowView({ name: "Titular removido", cpfMasked: null }))
+
+        const row = screen.getByRole("row")
+        expect(within(row).getByText("CPF removido")).toBeInTheDocument()
+        expect(within(row).queryByText(/\*\*\*/)).not.toBeInTheDocument()
+    })
 })

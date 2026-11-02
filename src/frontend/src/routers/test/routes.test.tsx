@@ -139,7 +139,8 @@ describe("routes", () => {
             () => import("@/pages/Appointments.page"),
             () => import("@/pages/AppointmentDetail.page"),
             () => import("@/pages/Users.page"),
-            () => import("@/pages/Schedule.page")
+            () => import("@/pages/Schedule.page"),
+            () => import("@/pages/PrivacyPolicy.page")
         ])
     })
 
@@ -157,6 +158,16 @@ describe("routes", () => {
         renderRoutes([ROUTES.login])
 
         expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument()
+    })
+
+    it("renderiza a política de privacidade sem sessão, sem desviar para o login nem mostrar o menu", async () => {
+        const { router } = renderRoutes([ROUTES.privacyPolicy], withoutSession)
+
+        expect(
+            await screen.findByRole("heading", { level: 1, name: "Política de privacidade" })
+        ).toBeInTheDocument()
+        expect(router.state.location.pathname).toBe("/privacidade")
+        expect(screen.queryByRole("link", { name: "Agendamentos" })).not.toBeInTheDocument()
     })
 
     it.each(underConstructionRoutes)("renderiza %s com sessão", async (path, title) => {

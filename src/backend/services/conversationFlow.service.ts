@@ -41,6 +41,8 @@ import {
 } from "./conversationEvent.service"
 import type { SessionClosing } from "../types/conversationEvent.types"
 import { whatsappSettingsService } from "./whatsappSettings.service"
+import { createPrivacyLinkProvider } from "./privacySettings.service"
+import { privacySettingsRepository } from "../repositories/privacySettings.repository"
 import type {
     ConversationFlowInput,
     ConversationFlowResponse,
@@ -71,6 +73,7 @@ interface ConversationFlowDependencies {
     hashPhone: (phone: string) => string
     logger: ConversationEventLogger
     isAutoReplyPaused: () => Promise<boolean>
+    privacyLink?: () => Promise<string | null>
 }
 
 function pausedReply(): PausedConversationFlowResult {
@@ -162,6 +165,7 @@ export function createConversationFlowService({
     hashPhone: hashPhoneOf,
     logger,
     isAutoReplyPaused,
+    privacyLink = async () => null,
 }: ConversationFlowDependencies): (
     input: ConversationFlowInput,
 ) => Promise<ConversationFlowResponse> {
@@ -190,18 +194,38 @@ export function createConversationFlowService({
             draft: null,
         })
 
+        const link = await privacyLink()
+
         return {
             sessionId,
             newSession,
             reply: {
-                text: formatarListaCategorias(categorias, 1),
+                text: formatarListaCategorias(categorias, 1, link),
                 step: "AWAITING_CATEGORY",
-                messages: criarMensagensCategorias(categorias, 1),
+                messages: criarMensagensCategorias(categorias, 1, link),
             },
         }
     }
 
     const returnFlow = createReturnFlow({ sessions, events, schedule, logger, startOver })
+
+    async function categoryPageReply(
+        sessionId: string,
+        categorias: Categoria[],
+        page: number,
+    ): Promise<ConversationFlowResult> {
+        const link = await privacyLink()
+
+        return {
+            sessionId,
+            newSession: false,
+            reply: {
+                text: formatarListaCategorias(categorias, page, link),
+                step: "AWAITING_CATEGORY",
+                messages: criarMensagensCategorias(categorias, page, link),
+            },
+        }
+    }
 
     async function handleAwaitingCategory(
         sessionId: string,
@@ -222,15 +246,7 @@ export function createConversationFlowService({
                         currentCategoryId: null,
                         listPage: targetPage,
                     })
-                    return {
-                        sessionId,
-                        newSession: false,
-                        reply: {
-                            text: formatarListaCategorias(categorias, targetPage),
-                            step: "AWAITING_CATEGORY",
-                            messages: criarMensagensCategorias(categorias, targetPage),
-                        },
-                    }
+                    return categoryPageReply(sessionId, categorias, targetPage)
                 }
             }
 
@@ -255,15 +271,7 @@ export function createConversationFlowService({
                     currentCategoryId: null,
                     listPage: targetPage,
                 })
-                return {
-                    sessionId,
-                    newSession: false,
-                    reply: {
-                        text: formatarListaCategorias(categorias, targetPage),
-                        step: "AWAITING_CATEGORY",
-                        messages: criarMensagensCategorias(categorias, targetPage),
-                    },
-                }
+                return categoryPageReply(sessionId, categorias, targetPage)
             }
 
             // Se clicou em "Ver mais opções"
@@ -274,15 +282,7 @@ export function createConversationFlowService({
                     currentCategoryId: null,
                     listPage: targetPage,
                 })
-                return {
-                    sessionId,
-                    newSession: false,
-                    reply: {
-                        text: formatarListaCategorias(categorias, targetPage),
-                        step: "AWAITING_CATEGORY",
-                        messages: criarMensagensCategorias(categorias, targetPage),
-                    },
-                }
+                return categoryPageReply(sessionId, categorias, targetPage)
             }
 
             // Se escolheu um item da página
@@ -300,7 +300,7 @@ export function createConversationFlowService({
             reply: {
                 text: formatarErroCategoria(categorias, paginacao.paginaAtual),
                 step: "AWAITING_CATEGORY",
-                messages: criarMensagensCategorias(categorias, paginacao.paginaAtual),
+                messages: criarMensagensCategorias(categorias, paginacao.paginaAtual, await privacyLink()),
             },
         }
     }
@@ -789,6 +789,11 @@ export const processIncomingMessage = createConversationFlowService({
     hashPhone,
     logger: console,
     isAutoReplyPaused: () => whatsappSettingsService.isAutoReplyPaused(),
+    privacyLink: createPrivacyLinkProvider({
+        settings: privacySettingsRepository,
+        baseUrl: process.env.PUBLIC_BASE_URL,
+        logger: console,
+    }),
 })
 
 export async function sweepAbandonedSessions(): Promise<number> {

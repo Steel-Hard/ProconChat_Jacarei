@@ -35,7 +35,7 @@ Revisão feita em 27/09/2026, no início da Sprint 2 (15/09 a 19/10/2026), e col
 |---|---|---|
 | **RNF01** Usabilidade | ⚠️ Desenho cuidadoso (títulos curtos, listas tocáveis, prévias das mensagens) | Nenhum teste com usuários. Sugestão: teste rápido com a equipe do PROCON e 3 a 5 cidadãos na Sprint 3 |
 | **RNF02** Disponibilidade e tempo de resposta | ⚠️ | Envio assíncrono do LLM; `restart` e healthchecks em todos os containers. A Cloud API, que substituiu a Evolution (removida na #82), melhora a disponibilidade |
-| **RNF03** LGPD | ⚠️ Bem encaminhado ([002](../decisoes/002-lgpd-dados-pessoais.md)) | Aviso de privacidade na saudação do bot; política de retenção (RNF09); procedimento para pedidos do titular |
+| **RNF03** LGPD | ✅ Implementado (#69): telefone do agendamento apagado no horário, anonimização automática de conversas e agendamentos por prazo (ligada e configurada na aba Privacidade, com prévia e confirmação), página pública `/privacidade` com os dados e os prazos cadastrados, link na saudação e [procedimento para pedidos do titular](../lgpd/pedidos-do-titular.md) ([002](../decisoes/002-lgpd-dados-pessoais.md)) | Conferir as citações legais dos prazos (marcadas "a conferir" na decisão 002) |
 | **RNF04** Caráter orientativo | ✅ Implementado (PR #43), texto único em todo o sistema | — |
 | **RNF05** Identificar o que é gerado por IA | ⚠️ Desenhado | Implementar junto com o RF05 |
 | **RNF06** Docker | ✅ | — (front no container `frontend`; Evolution e Redis removidos na #82) |

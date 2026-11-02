@@ -4,7 +4,7 @@ type AppointmentRowView = {
     id: string
     protocol: string
     name: string
-    cpfMasked: string
+    cpfMasked: string | null
     category: string
     question: string
     dayLabel: string
