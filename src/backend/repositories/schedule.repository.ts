@@ -495,6 +495,7 @@ async function selectFutureActiveAppointments(
          FROM Appointments a
          WHERE a.status IN ('PENDING', 'CONFIRMED')
            AND a.appointment_datetime > $1
+           AND a.anonymized_at IS NULL
          ORDER BY a.id${lockRows ? " FOR UPDATE" : ""}`,
         [now],
     )
