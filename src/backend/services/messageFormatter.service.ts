@@ -369,6 +369,25 @@ export function formatarConfirmacaoAgendamento(input: ConfirmacaoAgendamentoInpu
     return linhas.join("\n")
 }
 
+const LINHA_ATENDIMENTO_PRESENCIAL =
+    "Esta situação pode exigir atendimento presencial no PROCON Jacareí para andamento formal."
+
+function textoProximosPassos(resposta: RespostaFinalOutput): string {
+    if (resposta.proximos_passos) {
+        return resposta.proximos_passos
+    }
+    if (resposta.fora_de_escopo) {
+        return "Como esta demanda não compete ao PROCON, dirija-se ao órgão indicado na orientação acima portando seus documentos e comprovantes para atendimento especializado."
+    }
+    if (resposta.requer_presencial) {
+        return "Como este caso requer análise documental aprofundada, organize os documentos necessários indicados e agende um atendimento presencial no PROCON Jacareí."
+    }
+    if (resposta.documentos_necessarios.length > 0) {
+        return "Separe os documentos necessários citados e faça contato formal com o fornecedor solicitando a solução amigável e anotando os protocolos. Caso não haja acordo, busque o PROCON."
+    }
+    return "Guarde os comprovantes da relação de consumo e informe ao fornecedor os seus direitos com base na legislação citada acima."
+}
+
 export function formatarRespostaFinal(resposta: RespostaFinalOutput): string {
     const linhas = [
         `Categoria: ${resposta.categoria}`,
@@ -385,29 +404,10 @@ export function formatarRespostaFinal(resposta: RespostaFinalOutput): string {
         linhas.push(`Documentos necessários: ${resposta.documentos_necessarios.join(", ")}`)
     }
 
-    let proximosPassos = resposta.proximos_passos
-    if (!proximosPassos) {
-        if (resposta.fora_de_escopo) {
-            proximosPassos =
-                "Como esta demanda não compete ao PROCON, dirija-se ao órgão indicado na orientação acima portando seus documentos e comprovantes para atendimento especializado."
-        } else if (resposta.requer_presencial) {
-            proximosPassos =
-                "Como este caso requer análise documental aprofundada, organize os documentos necessários indicados e agende um atendimento presencial no PROCON Jacareí."
-        } else if (resposta.documentos_necessarios.length > 0) {
-            proximosPassos =
-                "Separe os documentos necessários citados e faça contato formal com o fornecedor solicitando a solução amigável e anotando os protocolos. Caso não haja acordo, busque o PROCON."
-        } else {
-            proximosPassos =
-                "Guarde os comprovantes da relação de consumo e informe ao fornecedor os seus direitos com base na legislação citada acima."
-        }
-    }
-
-    linhas.push(`\nO que fazer agora:\n${proximosPassos}`)
+    linhas.push(`\nO que fazer agora:\n${textoProximosPassos(resposta)}`)
 
     if (resposta.requer_presencial) {
-        linhas.push(
-            "\nEsta situação pode exigir atendimento presencial no PROCON Jacareí para andamento formal.",
-        )
+        linhas.push(`\n${LINHA_ATENDIMENTO_PRESENCIAL}`)
     }
 
     return `${linhas.join("\n")}\n\n${AVISO_NAO_VINCULANTE}`
@@ -613,4 +613,100 @@ export function criarBotoesConfirmaCancelamento(): ReplyButton[] {
         { id: "cancel_yes", title: "Sim, cancelar" },
         { id: "cancel_no", title: "Não, manter" },
     ]
+}
+
+const PERGUNTA_RESOLVIDA_BOTOES = "A dúvida foi resolvida?"
+
+const PERGUNTA_OFERTA_AGENDAMENTO_BOTOES = "Deseja agendar um atendimento presencial no PROCON Jacareí?"
+
+export function mensagensRespostaOficial(resposta: RespostaFinalOutput): OutgoingMessage[] {
+    const pergunta: OutgoingMessage = resposta.requer_presencial
+        ? { type: "buttons", text: PERGUNTA_OFERTA_AGENDAMENTO_BOTOES, buttons: criarBotoesOfertaAgendamento() }
+        : { type: "buttons", text: PERGUNTA_RESOLVIDA_BOTOES, buttons: criarBotoesResolvida() }
+    return [{ type: "text", text: formatarRespostaFinal(resposta) }, pergunta]
+}
+
+function blocoOficialIa(resposta: RespostaFinalOutput): string {
+    const linhas: string[] = []
+    if (resposta.base_legal) {
+        linhas.push(`Base legal: ${resposta.base_legal}`)
+    }
+    if (resposta.documentos_necessarios.length > 0) {
+        linhas.push(`Documentos necessários: ${resposta.documentos_necessarios.join(", ")}`)
+    }
+    if (linhas.length > 0) {
+        linhas.push("")
+    }
+    linhas.push("O que fazer agora:", textoProximosPassos(resposta))
+    if (resposta.requer_presencial) {
+        linhas.push("", LINHA_ATENDIMENTO_PRESENCIAL)
+    }
+    return linhas.join("\n")
+}
+
+export function montarMensagemIa(texto: string, resposta: RespostaFinalOutput): OutgoingMessage {
+    const perguntaFinal = resposta.requer_presencial ? PERGUNTA_OFERTA_AGENDAMENTO_BOTOES : PERGUNTA_RESOLVIDA_BOTOES
+    const buttons = resposta.requer_presencial ? criarBotoesOfertaAgendamento() : criarBotoesResolvida()
+    return {
+        type: "buttons",
+        text: [texto, blocoOficialIa(resposta), AVISO_NAO_VINCULANTE, perguntaFinal].join("\n\n"),
+        buttons,
+        footer: ROTULO_IA,
+    }
+}
+
+const LINHAS_REMOVIDAS_DO_TEXTO_IA = new Set([ROTULO_IA, AVISO_NAO_VINCULANTE])
+
+const FIM_DE_FRASE = /(?<=[.!?]) (?=\p{Lu})/u
+
+const FRASES_POR_PARAGRAFO = 2
+
+function separarEmParagrafos(texto: string): string {
+    if (texto.includes("\n")) {
+        return texto
+    }
+    const frases = texto.split(FIM_DE_FRASE)
+    if (frases.length <= FRASES_POR_PARAGRAFO) {
+        return texto
+    }
+    const paragrafos: string[] = []
+    for (let inicio = 0; inicio < frases.length; inicio += FRASES_POR_PARAGRAFO) {
+        paragrafos.push(frases.slice(inicio, inicio + FRASES_POR_PARAGRAFO).join(" "))
+    }
+    return paragrafos.join("\n\n")
+}
+
+export function normalizarTextoIa(texto: string): string {
+    const normalizado = texto
+        .replace(/\r\n/g, "\n")
+        .replace(/[ \t]+$/gm, "")
+        .replace(/^[ \t]*#+[ \t]*/gm, "")
+        .replace(/\*\*(.+?)\*\*/g, "*$1*")
+        .replace(/^[ \t]*(?:[-*•]|\d+[.)])[ \t]+/gm, "• ")
+        .split("\n")
+        .filter((linha) => !LINHAS_REMOVIDAS_DO_TEXTO_IA.has(linha.trim()))
+        .join("\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim()
+    return separarEmParagrafos(normalizado)
+}
+
+function numerosDe(texto: string): Set<string> {
+    return new Set(texto.replace(/^\s*\d+[.)]\s+/gm, "").match(/\d+/g) ?? [])
+}
+
+export function conferirNumerosIa(texto: string, resposta: RespostaFinalOutput): boolean {
+    const doTexto = numerosDe(texto)
+    const obrigatorios = numerosDe(resposta.resposta)
+    const permitidos = numerosDe(
+        [
+            resposta.categoria,
+            resposta.pergunta,
+            resposta.base_legal,
+            resposta.resposta,
+            resposta.proximos_passos ?? "",
+            ...resposta.documentos_necessarios,
+        ].join("\n"),
+    )
+    return [...obrigatorios].every((numero) => doTexto.has(numero)) && [...doTexto].every((numero) => permitidos.has(numero))
 }
