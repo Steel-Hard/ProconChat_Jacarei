@@ -108,7 +108,7 @@ describe("Eventos da conversa com Postgres", () => {
             const inserted = await pool.query<{ id: string }>(
                 `INSERT INTO Questions (category_id, question, answer, short_title, out_of_scope, llm_allowed)
                  VALUES ($1, $2, 'Resposta de teste.', 'Teste 16', $3, $4) RETURNING id`,
-                [categoryId, question, outOfScope, !outOfScope],
+                [categoryId, question, outOfScope, false],
             )
             questionIds.push(inserted.rows[0]?.id as string)
         }

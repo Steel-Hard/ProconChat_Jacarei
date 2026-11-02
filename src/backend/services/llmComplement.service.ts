@@ -50,6 +50,17 @@ export function createLlmComplementService({
     }
 }
 
+export function createBackgroundRunner(
+    deliver: (job: LlmComplementJob) => Promise<void>,
+    logger: Pick<Console, "log">,
+): (job: LlmComplementJob) => void {
+    return (job: LlmComplementJob): void => {
+        deliver(job).catch(() => {
+            logger.log(JSON.stringify({ event: "llm_complement_failed", sessionId: job.sessionId }))
+        })
+    }
+}
+
 export const deliverLlmComplement = createLlmComplementService({
     generate: gerarExplicacaoLlm,
     gateway: gatewayClient,

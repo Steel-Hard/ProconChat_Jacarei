@@ -17,6 +17,7 @@ export interface Pergunta {
     requires_in_person: boolean
     in_person_note?: string | null
     out_of_scope: boolean
+    llm_allowed: boolean
     active: boolean
 }
 

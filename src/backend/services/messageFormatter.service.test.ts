@@ -56,6 +56,7 @@ const perguntas: Pergunta[] = [
         answer: "Sim.",
         requires_in_person: false,
         out_of_scope: false,
+        llm_allowed: false,
         active: true,
     },
     {
@@ -66,6 +67,7 @@ const perguntas: Pergunta[] = [
         answer: "Depende do contrato.",
         requires_in_person: false,
         out_of_scope: false,
+        llm_allowed: false,
         active: true,
     },
 ]
@@ -408,6 +410,7 @@ describe("messageFormatter.service", () => {
             answer: "Resposta.",
             requires_in_person: false,
             out_of_scope: false,
+            llm_allowed: false,
             active: true,
         }))
 

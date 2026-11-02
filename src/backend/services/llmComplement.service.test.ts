@@ -3,7 +3,7 @@ import type { SendTextInput, SendTextResult } from "../clients/gateway.client"
 import type { ConversationEvent } from "../types/conversationEvent.types"
 import type { LlmComplementJob, LlmExplicacaoResult } from "../types/llm.types"
 import type { RespostaFinalOutput } from "../types/motorDecisao.types"
-import { createLlmComplementService } from "./llmComplement.service"
+import { createBackgroundRunner, createLlmComplementService } from "./llmComplement.service"
 import { formatarComplementoIa, ROTULO_IA } from "./messageFormatter.service"
 
 const resposta: RespostaFinalOutput = {
@@ -149,5 +149,27 @@ describe("llmComplement.service", () => {
         await deliver(job)
 
         expect(logger.log).not.toHaveBeenCalled()
+    })
+})
+
+describe("createBackgroundRunner", () => {
+    it("não lança quando o job rejeita e registra no log a falha sem o telefone", async () => {
+        let rejectJob!: (error: Error) => void
+        const deliver = vi.fn<(input: LlmComplementJob) => Promise<void>>(
+            () =>
+                new Promise<void>((_resolve, reject) => {
+                    rejectJob = reject
+                }),
+        )
+        const logger = { log: vi.fn() }
+        const run = createBackgroundRunner(deliver, logger)
+
+        expect(run(job)).toBeUndefined()
+        rejectJob(new Error(`falha para ${job.phone}`))
+        await vi.waitFor(() => expect(logger.log).toHaveBeenCalledOnce())
+
+        expect(deliver).toHaveBeenCalledExactlyOnceWith(job)
+        expect(JSON.parse(String(logger.log.mock.calls[0]?.[0]))).toEqual({ event: "llm_complement_failed", sessionId: job.sessionId })
+        expect(JSON.stringify(logger.log.mock.calls)).not.toContain(job.phone)
     })
 })

@@ -1,5 +1,7 @@
 import { vi } from "vitest"
+import { FIXED_NOW } from "../../repositories/mock/appointment.builders"
 import type { SessionRepository } from "../../repositories/session.repository"
+import type { LlmComplementJob } from "../../types/llm.types"
 import type { ConversationEventService } from "../conversationEvent.service"
 import { createConversationFlowService, MotorDecisao, ScheduleProvider } from "../conversationFlow.service"
 
@@ -50,6 +52,8 @@ export function createConversationFlowHarness() {
 
     const hashPhone = vi.fn((phone: string) => `hash-${phone}`)
     const isAutoReplyPaused = vi.fn<() => Promise<boolean>>(async () => false)
+    const scheduleComplement = vi.fn<(job: LlmComplementJob) => void>()
+    const now = () => FIXED_NOW
 
     function createFlow(overrides: Partial<ConversationFlowDependencies> = {}) {
         return createConversationFlowService({
@@ -60,6 +64,8 @@ export function createConversationFlowHarness() {
             hashPhone,
             logger,
             isAutoReplyPaused,
+            scheduleComplement,
+            now,
             ...overrides,
         })
     }
@@ -88,6 +94,8 @@ export function createConversationFlowHarness() {
         schedule,
         hashPhone,
         isAutoReplyPaused,
+        scheduleComplement,
+        now,
         createFlow,
         processIncomingMessage: createFlow(),
     }

@@ -40,6 +40,8 @@ import {
     ConversationEventService,
 } from "./conversationEvent.service"
 import type { SessionClosing } from "../types/conversationEvent.types"
+import type { LlmComplementJob } from "../types/llm.types"
+import { createBackgroundRunner, deliverLlmComplement } from "./llmComplement.service"
 import { whatsappSettingsService } from "./whatsappSettings.service"
 import { createPrivacyLinkProvider } from "./privacySettings.service"
 import { privacySettingsRepository } from "../repositories/privacySettings.repository"
@@ -74,6 +76,8 @@ interface ConversationFlowDependencies {
     logger: ConversationEventLogger
     isAutoReplyPaused: () => Promise<boolean>
     privacyLink?: () => Promise<string | null>
+    scheduleComplement: (job: LlmComplementJob) => void
+    now?: () => Date
 }
 
 function pausedReply(): PausedConversationFlowResult {
@@ -166,6 +170,8 @@ export function createConversationFlowService({
     logger,
     isAutoReplyPaused,
     privacyLink = async () => null,
+    scheduleComplement,
+    now = () => new Date(),
 }: ConversationFlowDependencies): (
     input: ConversationFlowInput,
 ) => Promise<ConversationFlowResponse> {
@@ -350,6 +356,7 @@ export function createConversationFlowService({
         currentPage: number,
         text: string | undefined,
         optionId: string | undefined,
+        phone: string,
     ): Promise<ConversationFlowResult> {
         if (!currentCategoryId) {
             return startOver(sessionId, false)
@@ -384,7 +391,7 @@ export function createConversationFlowService({
                 const qId = Number(optionId.replace("q_", ""))
                 const pergunta = perguntas.find((p) => Number(p.id) === qId)
                 if (pergunta) {
-                    return processSelectedQuestion(sessionId, pergunta)
+                    return processSelectedQuestion(sessionId, pergunta, phone)
                 }
             }
         }
@@ -432,7 +439,7 @@ export function createConversationFlowService({
             if (escolha >= 1 && escolha <= paginacao.itensPagina.length) {
                 const pergunta = paginacao.itensPagina[escolha - 1]
                 if (pergunta) {
-                    return processSelectedQuestion(sessionId, pergunta)
+                    return processSelectedQuestion(sessionId, pergunta, phone)
                 }
             }
         }
@@ -451,12 +458,14 @@ export function createConversationFlowService({
     async function processSelectedQuestion(
         sessionId: string,
         pergunta: Pergunta,
+        phone: string,
     ): Promise<ConversationFlowResult> {
         await events.record(sessionId, {
             type: "QUESTION_CHOSEN",
             categoryId: Number(pergunta.category_id),
             questionId: Number(pergunta.id),
         })
+        const answeredAt = now()
 
         const resposta = await motor.processarPergunta(pergunta.id)
 
@@ -485,12 +494,25 @@ export function createConversationFlowService({
         }
 
         // Grava ANSWER_SENT para casos dentro do escopo
-        await events.record(sessionId, {
-            type: "ANSWER_SENT",
-            categoryId: Number(pergunta.category_id),
-            questionId: Number(pergunta.id),
-            llm: "NOT_CALLED",
-        })
+        if (!pergunta.llm_allowed) {
+            await events.record(sessionId, {
+                type: "ANSWER_SENT",
+                categoryId: Number(pergunta.category_id),
+                questionId: Number(pergunta.id),
+                llm: "NOT_CALLED",
+            })
+        }
+
+        const complement: LlmComplementJob | null = pergunta.llm_allowed
+            ? {
+                  phone,
+                  sessionId,
+                  categoryId: Number(pergunta.category_id),
+                  questionId: Number(pergunta.id),
+                  resposta,
+                  answeredAt,
+              }
+            : null
 
         // Caso 2: Exige atendimento presencial (oferece agendamento direto)
         if (resposta.requer_presencial) {
@@ -504,6 +526,9 @@ export function createConversationFlowService({
                 currentCategoryId: String(pergunta.category_id),
                 currentQuestionId: String(pergunta.id),
             })
+            if (complement) {
+                scheduleComplement(complement)
+            }
 
             return {
                 sessionId,
@@ -529,6 +554,9 @@ export function createConversationFlowService({
             currentCategoryId: String(pergunta.category_id),
             currentQuestionId: String(pergunta.id),
         })
+        if (complement) {
+            scheduleComplement(complement)
+        }
 
         return {
             sessionId,
@@ -695,11 +723,10 @@ export function createConversationFlowService({
         }
     }
 
-    async function processMessage({
-        phone,
-        text,
-        optionId,
-    }: ConversationFlowInput): Promise<ConversationFlowResponse> {
+    async function processMessage(
+        { phone, text, optionId }: ConversationFlowInput,
+        trimmedPhone: string,
+    ): Promise<ConversationFlowResponse> {
         if (await isAutoReplyPaused()) {
             return pausedReply()
         }
@@ -727,6 +754,7 @@ export function createConversationFlowService({
                 page,
                 text,
                 optionId,
+                trimmedPhone,
             )
         }
 
@@ -777,7 +805,7 @@ export function createConversationFlowService({
             throw new Error("Phone is required")
         }
 
-        return withPhoneLock(phone, () => processMessage(input))
+        return withPhoneLock(phone, () => processMessage(input, phone))
     }
 }
 
@@ -794,6 +822,7 @@ export const processIncomingMessage = createConversationFlowService({
         baseUrl: process.env.PUBLIC_BASE_URL,
         logger: console,
     }),
+    scheduleComplement: createBackgroundRunner(deliverLlmComplement, console),
 })
 
 export async function sweepAbandonedSessions(): Promise<number> {
