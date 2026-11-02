@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import WhatsAppPrivacyField from "@/components/WhatsAppPrivacyField"
 import type PrivacyField from "@/types/privacy/PrivacyField.types"
 import type PrivacyFieldKey from "@/types/privacy/PrivacyFieldKey.types"
@@ -9,6 +10,7 @@ type WhatsAppPrivacyFormProps = {
     fields: PrivacyField[]
     disabled: boolean
     onChange: (key: PrivacyFieldKey, value: string) => void
+    children?: ReactNode
 }
 
 function WhatsAppPrivacyForm({
@@ -16,7 +18,8 @@ function WhatsAppPrivacyForm({
     description,
     fields,
     disabled,
-    onChange
+    onChange,
+    children
 }: WhatsAppPrivacyFormProps) {
     return (
         <section className={css.card}>
@@ -32,6 +35,7 @@ function WhatsAppPrivacyForm({
                     />
                 ))}
             </div>
+            {children}
         </section>
     )
 }

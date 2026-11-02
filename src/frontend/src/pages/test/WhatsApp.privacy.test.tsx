@@ -35,6 +35,9 @@ function privacyView(overrides: Partial<PrivacySettings> = {}): PrivacySettings 
         contactEmail: "privacidade@exemplo.test",
         inPersonContact: null,
         retentionText: "Sessões por 12 meses.",
+        retentionEnabled: false,
+        sessionRetentionDays: 90,
+        appointmentRetentionDays: 365,
         updatedBy: { id: 2, name: "Bruno Lima" },
         updatedAt: "2026-10-20T15:00:00.000Z",
         ...overrides
@@ -182,8 +185,17 @@ describe("WhatsAppPage, aba Privacidade", () => {
         ],
         [
             "Prazos de guarda",
-            "Texto livre explicando por quanto tempo cada tipo de dado é guardado (sessões, eventos e agendamentos). É só informativo: não apaga nada automaticamente."
-        ]
+            "Texto livre com outros prazos que a página pública deve mostrar. A anonimização automática é configurada nos campos abaixo."
+        ],
+        [
+            "Anonimização automática",
+            "Quando ligada, o sistema remove a cada hora a ligação das conversas com o número e o nome e o CPF dos agendamentos que passaram do prazo. Não pode ser desfeito."
+        ],
+        [
+            "Prazo das conversas (dias)",
+            "Dias depois do fim da conversa. A conversa que gerou um agendamento espera o prazo do agendamento."
+        ],
+        ["Prazo dos agendamentos (dias)", "Dias depois da data do atendimento, em qualquer status."]
     ])("o campo %s tem um tooltip acessível pelo teclado com a explicação", async (field, hint) => {
         const { user } = await renderPage()
         await openPrivacy(user)
@@ -234,7 +246,7 @@ describe("WhatsAppPage, aba Privacidade", () => {
         expect(screen.queryByText("1 alteração não salva")).not.toBeInTheDocument()
     })
 
-    it("Salvar envia o PUT com as cinco chaves e o vazio como null, e a nota passa aos dados da resposta", async () => {
+    it("Salvar envia o PUT com as oito chaves e o vazio como null, e a nota passa aos dados da resposta", async () => {
         const saved = privacyView({
             dpoName: null,
             updatedBy: { id: 3, name: "Carla Souza" },
@@ -264,7 +276,10 @@ describe("WhatsAppPage, aba Privacidade", () => {
                         dpoName: null,
                         contactEmail: "privacidade@exemplo.test",
                         inPersonContact: null,
-                        retentionText: "Sessões por 12 meses."
+                        retentionText: "Sessões por 12 meses.",
+                        retentionEnabled: false,
+                        sessionRetentionDays: 90,
+                        appointmentRetentionDays: 365
                     }
                 }
             ]

@@ -1,9 +1,12 @@
 import api from "@/store/api"
 import type PrivacySettings from "@/types/privacy/PrivacySettings.types"
 import type PublicPrivacySettings from "@/types/privacy/PublicPrivacySettings.types"
+import type RetentionPreview from "@/types/privacy/RetentionPreview.types"
 
 type PrivacyEnvelope = { data: PrivacySettings }
 type PublicPrivacyEnvelope = { data: PublicPrivacySettings }
+type RetentionPreviewEnvelope = { data: RetentionPreview }
+type RetentionPreviewArgs = { sessionDays: number; appointmentDays: number }
 
 const PRIVACY_PATH = "/api/v1/whatsapp/settings/privacy"
 
@@ -20,6 +23,14 @@ const privacySettingsApi = api.injectEndpoints({
         getPrivacySettings: build.query<PrivacySettings, void>({
             query: () => PRIVACY_PATH,
             transformResponse: unwrap
+        }),
+        getRetentionPreview: build.query<RetentionPreview, RetentionPreviewArgs>({
+            query: ({ sessionDays, appointmentDays }) => ({
+                url: `${PRIVACY_PATH}/retention-preview`,
+                params: { sessionDays, appointmentDays }
+            }),
+            transformResponse: (response: RetentionPreviewEnvelope) => response.data,
+            keepUnusedDataFor: 0
         }),
         savePrivacySettings: build.mutation<PrivacySettings, PublicPrivacySettings>({
             query: (body) => ({ url: PRIVACY_PATH, method: "PUT", body }),

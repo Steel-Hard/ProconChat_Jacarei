@@ -7,7 +7,10 @@ const EMPTY: PublicPrivacySettings = {
     dpoName: null,
     contactEmail: null,
     inPersonContact: null,
-    retentionText: null
+    retentionText: null,
+    retentionEnabled: false,
+    sessionRetentionDays: 90,
+    appointmentRetentionDays: 365
 }
 
 const FILLED: PublicPrivacySettings = {
@@ -15,7 +18,10 @@ const FILLED: PublicPrivacySettings = {
     dpoName: "Maria Encarregada",
     contactEmail: "privacidade@exemplo.test",
     inPersonContact: "Rua Exemplo, 100, Centro",
-    retentionText: "Sessões e eventos por 12 meses."
+    retentionText: "Sessões e eventos por 12 meses.",
+    retentionEnabled: false,
+    sessionRetentionDays: 90,
+    appointmentRetentionDays: 365
 }
 
 const HEADINGS = [

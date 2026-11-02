@@ -5,7 +5,10 @@ const FIELDS = {
     dpoName: "Maria Encarregada",
     contactEmail: "privacidade@exemplo.test",
     inPersonContact: null,
-    retentionText: "Sessões por 12 meses."
+    retentionText: "Sessões por 12 meses.",
+    retentionEnabled: false,
+    sessionRetentionDays: 90,
+    appointmentRetentionDays: 365
 }
 const VIEW = {
     ...FIELDS,
@@ -57,7 +60,7 @@ describe("privacySettingsApi", () => {
         )
     })
 
-    it("salva com PUT /api/v1/whatsapp/settings/privacy enviando as cinco chaves", async () => {
+    it("salva com PUT /api/v1/whatsapp/settings/privacy enviando as oito chaves", async () => {
         const { privacySettingsApi, store, fetchMock } = await setup()
 
         const result = await store.dispatch(
@@ -70,5 +73,25 @@ describe("privacySettingsApi", () => {
             "https://api.example.com/api/v1/whatsapp/settings/privacy"
         )
         expect(await requestAt(fetchMock, 0).json()).toEqual(FIELDS)
+    })
+
+    it("pede a prévia com GET em retention-preview e os prazos na consulta", async () => {
+        const { privacySettingsApi, store, fetchMock } = await setup()
+        fetchMock.mockImplementationOnce(async () =>
+            jsonResponse({ data: { sessions: 4, appointments: 2 } })
+        )
+
+        const result = await store.dispatch(
+            privacySettingsApi.endpoints.getRetentionPreview.initiate({
+                sessionDays: 90,
+                appointmentDays: 365
+            })
+        )
+
+        expect(result.data).toEqual({ sessions: 4, appointments: 2 })
+        expect(requestAt(fetchMock, 0).method).toBe("GET")
+        expect(requestAt(fetchMock, 0).url).toBe(
+            "https://api.example.com/api/v1/whatsapp/settings/privacy/retention-preview?sessionDays=90&appointmentDays=365"
+        )
     })
 })

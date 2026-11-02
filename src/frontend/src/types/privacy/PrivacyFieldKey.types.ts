@@ -1,5 +1,4 @@
-import type PublicPrivacySettings from "@/types/privacy/PublicPrivacySettings.types"
-
-type PrivacyFieldKey = keyof PublicPrivacySettings
+type PrivacyFieldKey =
+    "controllerName" | "dpoName" | "contactEmail" | "inPersonContact" | "retentionText"
 
 export default PrivacyFieldKey

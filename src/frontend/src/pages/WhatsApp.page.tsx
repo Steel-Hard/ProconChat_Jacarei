@@ -8,6 +8,7 @@ import WhatsAppMessageBubble from "@/components/WhatsAppMessageBubble"
 import WhatsAppMetaSetup from "@/components/WhatsAppMetaSetup"
 import WhatsAppPauseSwitch from "@/components/WhatsAppPauseSwitch"
 import WhatsAppPrivacyForm from "@/components/WhatsAppPrivacyForm"
+import WhatsAppRetentionFields from "@/components/WhatsAppRetentionFields"
 import WhatsAppSecretField from "@/components/WhatsAppSecretField"
 import WhatsAppTabs from "@/components/WhatsAppTabs"
 import usePrivacySettings from "@/pages/hooks/usePrivacySettings"
@@ -273,12 +274,31 @@ function WhatsAppPage() {
                                     fields={privacy.fields}
                                     disabled={privacy.saving}
                                     onChange={privacy.setField}
-                                />
+                                >
+                                    <WhatsAppRetentionFields
+                                        toggle={privacy.retentionToggle}
+                                        days={privacy.retentionDays}
+                                        disabled={privacy.saving}
+                                        onToggle={privacy.toggleRetention}
+                                        onDaysChange={privacy.setRetentionDays}
+                                    />
+                                </WhatsAppPrivacyForm>
                             ) : null}
                         </>
                     )}
                 </WhatsAppTabs>
             </section>
+            <ConfirmDialog
+                open={privacy.confirm.open}
+                title={privacy.confirm.title}
+                description={privacy.confirm.description}
+                confirmLabel={privacy.confirm.confirmLabel}
+                cancelLabel={privacy.confirm.cancelLabel}
+                tone="danger"
+                busy={privacy.saving}
+                onConfirm={privacy.confirmSave}
+                onCancel={privacy.cancelConfirm}
+            />
             <ConfirmDialog
                 open={page.pauseDialogOpen}
                 title={t("pauseDialog.title")}
