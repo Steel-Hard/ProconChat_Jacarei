@@ -91,11 +91,9 @@ Regras entre os campos:
 Prévia no estilo WhatsApp:
 
 1. A **lista da categoria**, com a pergunta editada em negrito e "Ver mais opções ›" quando houver paginação.
-2. **O balão da resposta:** texto oficial, base legal, documentos úteis e, **no fim do mesmo balão, o aviso de caráter não vinculante**.
-3. **Quando o complemento por IA é permitido, um balão separado logo depois do balão da resposta**, com o exemplo do complemento e o rótulo "Gerado com auxílio de IA" no rodapé desse balão. O aviso não vinculante fica só no balão da resposta ([decisão 009](../decisoes/009-complemento-por-llm.md), item 6; implementação na #124).
-
-   **Proposta pendente de aceite da equipe** ([decisão 009](../decisoes/009-complemento-por-llm.md), "Proposta de mudança"): com a opção ligada, a prévia passa a mostrar **um balão único** no lugar dos itens 2 a 4: a explicação escrita pela IA (exemplo), a base legal, os documentos, "O que fazer agora", o aviso de caráter não vinculante, a pergunta do passo seguinte com os botões e o rótulo "Gerado com auxílio de IA" no rodapé. Com a opção desligada, os balões oficiais dos itens 2 e 4, como hoje. A tela é da #124.
-4. **Um balão separado** com o passo seguinte:
+2. **Com "Permitir complemento por IA" ligada, um balão único** com a explicação escrita pela IA (exemplo), a base legal, os documentos, "O que fazer agora", o aviso de caráter não vinculante, a pergunta do passo seguinte com os botões e o rótulo "Gerado com auxílio de IA" no rodapé desse balão ([decisão 009](../decisoes/009-complemento-por-llm.md), item 6; implementação na #124). Nesse caso os itens 3 e 4 não aparecem.
+3. **Com a opção desligada (e nas perguntas fora do escopo), o balão da resposta oficial:** texto oficial, base legal, documentos úteis e, **no fim do mesmo balão, o aviso de caráter não vinculante**. É também o que o cidadão recebe quando a IA não pode ser usada.
+4. **Depois do balão oficial, um balão separado** com o passo seguinte:
    - "A sua dúvida foi resolvida?" (Sim/Não), para perguntas comuns;
    - a oferta de agendamento (Agendar / Agora não), para as que exigem atendimento presencial;
    - a orientação de encaminhamento, para as fora do escopo.

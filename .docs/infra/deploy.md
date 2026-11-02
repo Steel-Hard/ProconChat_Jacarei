@@ -60,7 +60,7 @@ Na VM, tudo fica em `/opt/proconchat`, com a mesma estrutura do repositório:
 - Com cerca de US$ 19 por mês, o crédito dura até meados de março de 2027.
 - 2 GB bastam para a stack sem o Ollama. O swap de 2 GB evita que um pico de memória derrube um serviço.
 
-**Ollama desligado.** Em produção, `COMPOSE_PROFILES` fica vazio e o `ollama` e o `llm-pull` não sobem. O modelo precisa de 3 a 4 GB só para ele. Sem o Ollama, a sondagem `GET /api/tags` falha em até 2 s, o cidadão recebe as mensagens oficiais e o `ANSWER_SENT` fica `FAILED` (comportamento da proposta da [decisão 009](../decisoes/009-complemento-por-llm.md), pendente de aceite da equipe).
+**Ollama desligado.** Em produção, `COMPOSE_PROFILES` fica vazio e o `ollama` e o `llm-pull` não sobem. O modelo precisa de 3 a 4 GB só para ele. Sem o Ollama, a sondagem `GET /api/tags` falha em até 2 s, o cidadão recebe as mensagens oficiais e o `ANSWER_SENT` fica `FAILED` ([decisão 009](../decisoes/009-complemento-por-llm.md)).
 
 **Três modos para a resposta com IA.** Quem escolhe é o `.env` da VM, e a mudança vale depois de rodar o deploy de novo:
 

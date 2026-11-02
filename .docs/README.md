@@ -29,7 +29,7 @@ Chatbot de orientação ao consumidor via WhatsApp, desenvolvido para o PROCON d
 
 ## Regras que valem em todo o sistema
 
-- **O LLM nunca decide o fluxo.** Ele só escreve um texto complementar à resposta oficial (RF05, RP05). Proposta pendente de aceite da equipe ([009](decisoes/009-complemento-por-llm.md), "Proposta de mudança"): a IA reescreve só a explicação da resposta oficial, numa mensagem única com o bloco oficial, o aviso e os botões, e a oficial sai inteira quando a IA não pode ser usada.
+- **O LLM nunca decide o fluxo.** Ele só reescreve a explicação da resposta oficial, numa mensagem única com o bloco oficial, o aviso e os botões; quando a IA não pode ser usada, a resposta oficial sai inteira (RF05, RP05, [009](decisoes/009-complemento-por-llm.md)).
 - **Toda resposta final avisa que a orientação não é vinculante** (RNF04), com um texto único:
   > "Esta é uma orientação automatizada de caráter informativo. Ela não é vinculante e não substitui o atendimento jurídico ou administrativo formal do PROCON Jacareí."
 - **Todo texto gerado por IA é identificado** como "Gerado com auxílio de IA" (RNF05).

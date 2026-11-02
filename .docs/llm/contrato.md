@@ -1,6 +1,6 @@
 # Contrato de entrada/saída do serviço LLM
 
-Este documento descreve como o Backend conversa com o serviço `ollama` do `compose.yaml`. O cliente HTTP é `src/backend/clients/ollamaLlm.client.ts`, usado pelo serviço `src/backend/services/llmExplicacao.service.ts`. O fluxo da conversa o chama em segundo plano, pela entrega de `src/backend/services/llmAnswer.service.ts`, que usa a resposta escrita pela IA no lugar da explicação oficial ([decisão 009](../decisoes/009-complemento-por-llm.md), "Proposta de mudança", **ainda pendente de aceite da equipe**; ver "Uso no fluxo da conversa").
+Este documento descreve como o Backend conversa com o serviço `ollama` do `compose.yaml`. O cliente HTTP é `src/backend/clients/ollamaLlm.client.ts`, usado pelo serviço `src/backend/services/llmExplicacao.service.ts`. O fluxo da conversa o chama em segundo plano, pela entrega de `src/backend/services/llmAnswer.service.ts`, que usa a resposta escrita pela IA no lugar da explicação oficial ([decisão 009](../decisoes/009-complemento-por-llm.md); ver "Uso no fluxo da conversa").
 
 ## Entrada
 
@@ -65,8 +65,6 @@ Quem monta a mensagem ao cidadão é o Backend (`messageFormatter.service.ts`):
 **A ausência de resposta do LLM não pode travar o fluxo do chatbot.** O cliente aborta a chamada depois de `LLM_TIMEOUT_MS` (padrão 20000 ms, `LlmTimeoutError`) e lança erro em HTTP de erro, JSON inválido ou `response` vazio; não há nova tentativa. `isAvailable()` sonda o Ollama com `GET <OLLAMA_URL>/api/tags` e tempo limite fixo de 2000 ms, e devolve `false` sem lançar em erro de rede, tempo esgotado ou resposta que não é 2xx. O serviço `llmExplicacao.service.ts` captura qualquer falha e devolve `status: "FAILED"` sem texto, para o Backend usar só a resposta oficial (`RespostaFinalOutput.resposta`). Pergunta fora do escopo não chama o cliente (`status: "NOT_CALLED"`); resposta gerada vem com `status: "USED"`. Esse `status` é o valor de `llm` no evento `ANSWER_SENT`.
 
 ## Uso no fluxo da conversa
-
-Comportamento implementado na branch `feat/66-ia-como-resposta-principal`, proposto na decisão 009 e **pendente de aceite da equipe**.
 
 1. O cidadão escolhe uma pergunta dentro do escopo com `llm_allowed = true`. O fluxo grava `QUESTION_CHOSEN`, muda o passo (`AWAITING_RESOLVED` ou, se presencial, `AWAITING_SCHEDULE_OFFER`), marca a sessão como **resposta pendente** (em memória), dispara a entrega em segundo plano sem esperar e devolve `reply = { text: "", step, messages: [], typing: true }`. O Gateway mostra "digitando…" na conversa.
 2. A entrega (`llmAnswer.service.ts`), fora da trava por telefone: se já houver uma geração em andamento no processo, manda a oficial na hora (`LLM_BUSY`); senão sonda o Ollama (`LLM_UNAVAILABLE`), gera (`LLM_FAILED` se falhar ou o texto normalizado ficar vazio), confere os números (`FACTS_MISMATCH`), monta a mensagem (`TOO_LONG` acima de 1024) e pede o envio ao Gateway em `POST /internal/whatsapp/messages`. Envio da IA recusado: manda a oficial (`NOT_CONFIGURED`, `REJECTED` ou `UNREACHABLE`).
