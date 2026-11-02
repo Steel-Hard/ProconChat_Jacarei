@@ -49,7 +49,7 @@ O pedido de exclusão é atendido por **anonimização**, feita pela equipe téc
    - reenviar o aviso: `POST /api/v1/appointments/:id/cancellation-notice/retry`, sem corpo.
 
    Depois que a #127 entrar, o mesmo é feito pelo botão "Cancelar agendamento" no detalhe do agendamento. Antes do passo 3, confira no histórico do agendamento (`GET /api/v1/appointments/:id`, ou a tela de detalhe) que aparece "Cidadão avisado pelo WhatsApp". Se aparecer "Falha ao avisar o cidadão pelo WhatsApp", ou se o cancelamento não deixou nenhum evento de aviso, reenvie o aviso primeiro: o reenvio vale nos dois casos, e `available_actions.retry_cancellation_notice` no detalhe diz se ele é permitido. Depois da anonimização não há mais telefone para reenviar. Um agendamento futuro ainda ativo não é anonimizado: se ele não for cancelado, o SQL abaixo o deixa de fora e ele continua com nome e CPF. Se o titular quiser ser atendido mesmo assim, deixe o agendamento acontecer e faça a anonimização depois do horário.
-2. Encontre os ids das conversas do titular pelo `phone_hash` (seção Acesso). Só entram conversas já terminadas (`status <> 'IN_PROGRESS'`).
+2. Encontre os ids das conversas do titular pelo `phone_hash` (seção Acesso). Só entram conversas já terminadas (`status <> 'IN_PROGRESS'`). A conversa que criou um agendamento futuro ainda ativo também fica de fora: sem o `phone_hash`, o cidadão não acharia mais o agendamento no bot e não conseguiria remarcar nem cancelar. Ela entra numa rodada posterior deste procedimento, depois que o horário do atendimento passar (ou pela anonimização automática por prazo).
 3. Rode, numa transação, só sobre esses ids. As colunas são as mesmas da anonimização automática e precisam passar nas regras do banco (`chk_appointments_anonymized` e `chk_sessions_anonymized`):
 
 ```sql
@@ -60,11 +60,19 @@ WHERE id = ANY($1::bigint[]) AND anonymized_at IS NULL
   AND (status NOT IN ('PENDING', 'CONFIRMED') OR appointment_datetime <= now());
 UPDATE Sessions
 SET phone_hash = NULL, anonymized_at = now()
-WHERE id = ANY($2::bigint[]) AND anonymized_at IS NULL AND status <> 'IN_PROGRESS';
+WHERE id = ANY($2::bigint[]) AND anonymized_at IS NULL AND status <> 'IN_PROGRESS'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM Appointments a
+    WHERE a.session_id = Sessions.id
+      AND a.anonymized_at IS NULL
+      AND a.status IN ('PENDING', 'CONFIRMED')
+      AND a.appointment_datetime > now()
+  );
 COMMIT;
 ```
 
-4. Confira no painel que os agendamentos mostram "Titular removido" e "CPF removido". Se o `UPDATE Appointments` alterou menos linhas que o número de ids, algum agendamento futuro ativo ficou de fora: cancele-o (passo 1) e rode de novo.
+4. Confira no painel que os agendamentos mostram "Titular removido" e "CPF removido". Se o `UPDATE Appointments` alterou menos linhas que o número de ids, algum agendamento futuro ativo ficou de fora: cancele-o (passo 1) e rode de novo. A conversa que criou um agendamento futuro ativo também fica de fora do `UPDATE Sessions` até o horário do atendimento passar (passo 2): rode de novo depois do horário, ou deixe para a anonimização automática por prazo.
 
 Limites da anonimização (diga isso na resposta ao titular):
 
