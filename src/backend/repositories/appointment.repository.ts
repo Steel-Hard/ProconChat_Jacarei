@@ -21,6 +21,10 @@ import {
     AppointmentNote,
     AppointmentStatus,
     CalendarFilters,
+    CancellationNoticeTarget,
+    CancellationReason,
+    CitizenNotificationKind,
+    CitizenNotificationOutcome,
     ConversationTimelineStep,
     CorrectionHistoryEvent,
     CorrectionResult,
@@ -29,6 +33,7 @@ import {
     WeekAppointmentRecord,
 } from "../types/appointment.types"
 import { cleanCpf, hashCpf } from "../utils/cpf.utils"
+import { hashProviderMessageId } from "../utils/providerMessageHash"
 import {
     getThisWeekBounds,
     getTodayBounds,
@@ -250,7 +255,7 @@ async function ensureActorCanTake(
         return
     }
     const appointmentDatetime = new Date(appointment.appointment_datetime)
-    const slotMinutes = await readSlotMinutes(client)
+    const slotMinutes = await readSlotMinutes(client, appointmentDatetime)
     const conflict = findResponsibleConflict({
         candidate: actor,
         appointmentId: String(appointment.id),
@@ -760,7 +765,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                     throw invalid
                 }
                 const appointmentDatetime = new Date(current.appointment_datetime)
-                const slotMinutes = await readSlotMinutes(client)
+                const slotMinutes = await readSlotMinutes(client, appointmentDatetime)
                 const conflict = findResponsibleConflict({
                     candidate: target,
                     appointmentId: String(current.id),
@@ -810,7 +815,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                 let warning: CorrectionWarning | null = null
 
                 if (target.status === "CONFIRMED" && !isDatetimePast(appointmentDatetime, now)) {
-                    const slotMinutes = await readSlotMinutes(client)
+                    const slotMinutes = await readSlotMinutes(client, appointmentDatetime)
                     const conflict: ResponsibleConflict | null = responsible
                         ? findResponsibleConflict({
                               candidate: responsible,
@@ -864,6 +869,132 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                     throw new NotFoundError("Agendamento não encontrado")
                 }
             })
+        },
+
+        cancel(
+            id: string,
+            actorUserId: number,
+            reason: CancellationReason,
+            note: string | undefined,
+            now: Date = new Date(),
+        ): Promise<void> {
+            return inTransaction(pool, async (client) => {
+                await lockAccounts(client, [actorUserId])
+                await lockAndDecide(client, "cancel", id, now)
+                await client.query("UPDATE Appointments SET status = 'CANCELED' WHERE id = $1", [id])
+                await client.query(
+                    `INSERT INTO AppointmentEvents (appointment_id, type, actor_user_id, data, created_at)
+                     VALUES ($1, 'CANCELED_BY_STAFF', $2, $3::jsonb, $4)`,
+                    [id, actorUserId, JSON.stringify({ reason }), now],
+                )
+                if (note !== undefined) {
+                    await client.query(
+                        `INSERT INTO AppointmentNotes (appointment_id, author_user_id, text, created_at)
+                         VALUES ($1, $2, $3, $4)`,
+                        [id, actorUserId, note, now],
+                    )
+                }
+            })
+        },
+
+        async findCancellationNoticeTarget(id: string): Promise<CancellationNoticeTarget | null> {
+            if (!isValidAppointmentId(id)) {
+                return null
+            }
+            const result = await pool.query<{
+                status: AppointmentStatus
+                appointment_datetime: Date
+                name: string
+                protocol: string
+                phone_encrypted: string | null
+                last_staff_cancel_reason: CancellationReason | null
+                last_notice_type: "CITIZEN_NOTIFIED" | "CITIZEN_NOTIFICATION_FAILED" | null
+            }>(
+                `SELECT a.status, a.appointment_datetime, a.name, ${PROTOCOL_SQL} AS protocol, a.phone_encrypted,
+                        (SELECT e.data->>'reason' FROM AppointmentEvents e
+                         WHERE e.appointment_id = a.id AND e.type = 'CANCELED_BY_STAFF'
+                         ORDER BY e.created_at DESC, e.id DESC LIMIT 1) AS last_staff_cancel_reason,
+                        (SELECT e.type::text FROM AppointmentEvents e
+                         WHERE e.appointment_id = a.id
+                           AND e.type IN ('CITIZEN_NOTIFIED', 'CITIZEN_NOTIFICATION_FAILED')
+                           AND e.data->>'kind' = 'CANCELLATION'
+                         ORDER BY e.created_at DESC, e.id DESC LIMIT 1) AS last_notice_type
+                 FROM Appointments a
+                 WHERE a.id = $1`,
+                [id],
+            )
+            const row = result.rows[0]
+            if (!row) {
+                return null
+            }
+            return {
+                status: row.status,
+                appointmentDatetime: new Date(row.appointment_datetime),
+                name: row.name,
+                protocol: row.protocol,
+                phoneEncrypted: row.phone_encrypted,
+                lastStaffCancelReason: row.last_staff_cancel_reason,
+                lastCancellationNotice:
+                    row.last_notice_type === null ? null : row.last_notice_type === "CITIZEN_NOTIFIED" ? "NOTIFIED" : "FAILED",
+            }
+        },
+
+        async recordCitizenNotification(
+            id: string,
+            outcome: CitizenNotificationOutcome,
+            kind: CitizenNotificationKind,
+            actorUserId: number,
+            now: Date = new Date(),
+            providerMessageId: string | null = null,
+        ): Promise<void> {
+            await inTransaction(pool, async (client) => {
+                await client.query(
+                    `INSERT INTO AppointmentEvents (appointment_id, type, actor_user_id, data, created_at)
+                     VALUES ($1, $2::appointment_event_type, $3, $4::jsonb, $5)`,
+                    [id, outcome === "NOTIFIED" ? "CITIZEN_NOTIFIED" : "CITIZEN_NOTIFICATION_FAILED", actorUserId, JSON.stringify({ kind }), now],
+                )
+                if (outcome === "FAILED") {
+                    await client.query(
+                        `INSERT INTO OutboundMessages (kind, appointment_id, status, status_at)
+                         VALUES ($1::outbound_kind, $2, 'FAILED', $3)`,
+                        [kind, id, now],
+                    )
+                    return
+                }
+                if (providerMessageId === null) {
+                    return
+                }
+                const sent = await client.query<{ status: string }>(
+                    `INSERT INTO OutboundMessages (provider_message_hash, kind, appointment_id, status, status_at)
+                     VALUES ($1, $2::outbound_kind, $3, 'SENT', $4)
+                     ON CONFLICT (provider_message_hash) DO UPDATE
+                     SET kind = EXCLUDED.kind, appointment_id = EXCLUDED.appointment_id
+                     RETURNING status`,
+                    [hashProviderMessageId(providerMessageId), kind, id, now],
+                )
+                if (sent.rows[0]?.status === "FAILED") {
+                    await client.query(
+                        `INSERT INTO AppointmentEvents (appointment_id, type, actor_user_id, data, created_at)
+                         VALUES ($1, 'CITIZEN_NOTIFICATION_FAILED', NULL, $2::jsonb, $3)`,
+                        [id, JSON.stringify({ kind }), new Date(now.getTime() + 1)],
+                    )
+                }
+            })
+        },
+
+        async countNotifiedPhonesBetween(from: Date, to: Date): Promise<number> {
+            const result = await pool.query<{ count: number }>(
+                `SELECT COUNT(DISTINCT s.phone_hash)::int AS count
+                 FROM AppointmentEvents e
+                 JOIN Appointments a ON a.id = e.appointment_id
+                 JOIN Sessions s ON s.id = a.session_id
+                 WHERE e.type = 'CITIZEN_NOTIFIED'
+                   AND e.data->>'kind' IN ('CANCELLATION', 'REMINDER')
+                   AND e.created_at >= $1
+                   AND e.created_at <= $2`,
+                [from, to],
+            )
+            return result.rows[0]?.count ?? 0
         },
 
         async markAttended(

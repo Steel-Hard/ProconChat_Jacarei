@@ -98,6 +98,7 @@ export interface BlockedDateItem {
 }
 
 export interface ScheduleConfigView {
+    effectiveFrom?: string | null
     slotMinutes: SlotMinutes
     seatsPerSlot: number
     windowDays: number
@@ -111,6 +112,11 @@ export interface ScheduleConfigView {
     blockedDates: BlockedDateItem[]
     updatedBy: ScheduleUpdatedBy | null
     updatedAt: string | null
+}
+
+export interface ScheduleVersion {
+    effectiveFrom: string | null
+    config: ScheduleConfigView
 }
 
 export interface ScheduleRangeInputItem {
@@ -153,6 +159,43 @@ export interface NormalizedScheduleConfig {
     reminderHours: ReminderHours
     ranges: ScheduleRangeItem[]
     blockedDates: BlockedDateItem[]
+}
+
+export interface ReturningAppointment {
+    id: string
+    appointmentDatetime: Date
+    status: "PENDING" | "CONFIRMED"
+}
+
+export interface CitizenCancelInput {
+    sessionId: string
+    appointmentId: number | string
+    phoneHash: string
+    now?: Date
+}
+
+export interface CitizenCancelResult {
+    protocol: string
+}
+
+export interface CitizenRescheduleInput {
+    sessionId: string
+    appointmentId: number | string
+    phoneHash: string
+    appointmentDatetime: Date
+    now?: Date
+}
+
+export interface CitizenRescheduleResult {
+    protocol: string
+    from: Date
+    appointmentDatetime: Date
+    unitAddress: string
+    unitAddressComplement: string | null
+    documentsSent: DocumentsSent
+    byRepresentative: boolean
+    reminderEnabled: boolean
+    reminderHours: number
 }
 
 export interface FutureActiveAppointment {

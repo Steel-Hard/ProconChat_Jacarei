@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { CANCELLATION_REASONS } from "../types/appointment.types"
 
 const MAX_BIGINT = 9223372036854775807n
 
@@ -67,14 +68,14 @@ export const appointmentIdParamSchema = z.object({
 
 export type AppointmentIdParam = z.infer<typeof appointmentIdParamSchema>
 
-const ACTION_MESSAGE = "Ação inválida. Valores aceitos: claim, attended, no_show, assign, correct_record"
+const ACTION_MESSAGE = "Ação inválida. Valores aceitos: claim, attended, no_show, assign, correct_record, cancel"
 
 const userIdSchema = z
     .union([z.number(), z.string().trim().regex(/^\d+$/)])
     .transform((value) => Number(value))
     .pipe(z.number().int().positive().max(Number.MAX_SAFE_INTEGER))
 
-export const updateStatusBodySchema = z.discriminatedUnion(
+const updateStatusBodyUnion = z.discriminatedUnion(
     "action",
     [
         z.object({ action: z.literal("claim") }),
@@ -82,9 +83,28 @@ export const updateStatusBodySchema = z.discriminatedUnion(
         z.object({ action: z.literal("no_show") }),
         z.object({ action: z.literal("assign"), assigneeUserId: userIdSchema }),
         z.object({ action: z.literal("correct_record") }),
+        z.object({
+            action: z.literal("cancel"),
+            reason: z.enum(CANCELLATION_REASONS, {
+                error: `Motivo inválido. Valores aceitos: ${CANCELLATION_REASONS.join(", ")}`,
+            }),
+            note: z
+                .string()
+                .trim()
+                .max(2000, { message: "A observação pode ter no máximo 2000 caracteres" })
+                .optional(),
+        }),
     ],
     { error: ACTION_MESSAGE },
 )
+
+export const updateStatusBodySchema = updateStatusBodyUnion.transform((body): z.infer<typeof updateStatusBodyUnion> => {
+    if (body.action !== "cancel" || body.note) {
+        return body
+    }
+    const { note: _note, ...withoutNote } = body
+    return withoutNote
+})
 
 export type UpdateStatusBody = z.infer<typeof updateStatusBodySchema>
 

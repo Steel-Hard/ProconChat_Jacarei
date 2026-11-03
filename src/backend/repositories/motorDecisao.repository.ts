@@ -7,7 +7,7 @@ export class PgMotorDecisaoRepository implements IMotorDecisaoRepository {
 
     async getCategoriasAtivas(): Promise<Categoria[]> {
         const result = await this.pool.query<Categoria>(
-            `SELECT c.id, c.title, c.active
+            `SELECT c.id, c.title, c.short_title, c.active
              FROM Categories c
              WHERE c.active = true
                AND EXISTS (
@@ -39,7 +39,7 @@ export class PgMotorDecisaoRepository implements IMotorDecisaoRepository {
 
     async getCategoriaById(categoriaId: number): Promise<Categoria | null> {
         const result = await this.pool.query<Categoria>(
-            "SELECT id, title, active FROM Categories WHERE id = $1",
+            "SELECT id, title, short_title, active FROM Categories WHERE id = $1",
             [categoriaId]
         )
         return result.rows[0] || null

@@ -49,7 +49,7 @@ Copie `.env.example` para `.env` e preencha:
 | `AUTH_TOKEN_SECRET` | Sim, com 32 ou mais caracteres | Segredo HS256 dos cookies de sessão do painel. O servidor encerra na inicialização sem ele ou com ele curto. Trocar derruba todas as sessões. |
 | `FRONTEND_ORIGIN` | Não (padrão `http://localhost:5173`) | Origem do painel (esquema, host e porta), usada no CORS e na proteção CSRF. Precisa ser uma URL `http` ou `https`, senão o servidor encerra na inicialização. É normalizada na leitura com `new URL(valor).origin`: barra no fim, caminho e maiúsculas no esquema ou no host são descartados. No Compose local é `http://localhost:8081`; em produção, `https://<SITE_ADDRESS>`. |
 | `ENCRYPTION_KEY` | Sim, exatamente 64 caracteres hexadecimais | Chave-mestra AES-256-GCM dos segredos guardados no banco (`utils/crypto.utils.ts`, formato `v1:<iv>:<tag>:<cifrado>`). Também cifra o telefone do agendamento (`Appointments.phone_encrypted`), gravado pela reserva do bot. Gere com `openssl rand -hex 32`. O servidor encerra na inicialização sem ela ou fora do formato, e o `seed` falha se precisar cifrar algo sem ela. Não tem valor padrão em nenhum Compose: sem ela no `.env`, o `docker compose` recusa subir. |
-| `PUBLIC_BASE_URL` | Não | URL pública do sistema (`http` ou `https`), usada para montar a URL do webhook mostrada na tela de WhatsApp (`<PUBLIC_BASE_URL>/webhooks/whatsapp`). Sem ela, a leitura devolve `webhookUrl: null`. Vazia conta como ausente. Em produção é `https://<SITE_ADDRESS>`; no desenvolvimento, a URL do túnel HTTPS (README do gateway). |
+| `PUBLIC_BASE_URL` | Não | URL pública do sistema (`http` ou `https`), usada para montar a URL do webhook mostrada na tela de WhatsApp (`<PUBLIC_BASE_URL>/webhooks/whatsapp`) e o link da política de privacidade na saudação do bot (`<PUBLIC_BASE_URL>/privacidade`). Sem ela, a leitura devolve `webhookUrl: null` e a saudação sai sem o link. Vazia conta como ausente. Em produção é `https://<SITE_ADDRESS>`; no desenvolvimento, a URL do túnel HTTPS (README do gateway). No desenvolvimento, o link da saudação só abre se o túnel ou a URL apontar para o painel: o gateway não serve `/privacidade`. |
 | `GATEWAY_INTERNAL_URL` | Não | Endereço interno do gateway (`http` ou `https`), avisado depois que o Admin salva a configuração do WhatsApp para recarregar sem reiniciar. Sem ela, o aviso não é enviado e o gateway recarrega pelo TTL de 60 s. No Compose é `http://gateway:3001`. |
 | `WHATSAPP_GRAPH_API_VERSION` | Não (padrão `v26.0`) | Versão da Graph API da Meta no formato `v26.0`, usada no teste de conexão e repassada ao gateway pelo endpoint interno. Fora do formato, o servidor encerra na inicialização. |
 | `ROOT_EMAIL` | Só no `seed`, enquanto não existe a conta Admin | E-mail da conta Admin criada pelo seed. |
@@ -99,12 +99,30 @@ criam (categorias, perguntas, sessões com os seus eventos, agendamentos e usuá
 usa o Admin que já existe ou cria um "Admin Teste" e o apaga no fim. Se a execução for interrompida, a configuração da agenda
 pode ficar trocada: rode num banco descartável, como acima.
 
+`npm run test:db` (`db/verify-migrations.cjs`) cria bancos temporários a partir de `DB_TEST_URL` (o
+usuário precisa de `CREATEDB`) e roda as migrations e o seed em processos filhos. Para provar que o
+seed falha sem `ROOT_EMAIL`/`ROOT_PASSWORD`, o verificador tira essas variáveis do ambiente do filho.
+Como `db/connection.ts` chama `dotenv.config()`, um `src/backend/.env` local devolveria as credenciais
+apagadas e a checagem passaria ou falharia errado. Por isso o verificador passa `SKIP_DOTENV=true` aos
+processos filhos, e `db/connection.ts` não carrega o `.env` quando recebe essa flag. Ela é só do
+`test:db`: não entra no `validateEnv`, nos `.env.example` nem no `compose.yaml`.
+
 `GET /health` responde `200` com `{ "data": { "status": "ok" } }` e não depende do banco de dados — serve como healthcheck de infraestrutura (Docker, load balancer) e como exemplo do padrão de código para copiar em novos recursos.
 
 `POST /api/v1/whatsapp/sessions` recebe `{ phone, text?, optionId? }` do Gateway WhatsApp (`text` para mensagem digitada, `optionId` para toque numa lista ou botão)
 (`src/gateway/`), autenticado pelo header `X-Internal-Token` (comparado em tempo constante), e cria ou
 reutiliza uma sessão guardando somente o HMAC do telefone (nunca o número em texto puro). Com o
 atendimento automático pausado, responde o texto fixo sem tocar na sessão (seção "Pausa").
+
+Pergunta dentro do escopo com IA permitida: o backend muda o passo, dispara a entrega em segundo
+plano (`services/llmAnswer.service.ts`) sem esperar o Ollama e responde
+`reply: { text: "", step, messages: [], typing: true }`; o gateway mostra "digitando…". A entrega
+sonda o Ollama (`GET /api/tags`, 2 s), gera uma por vez, normaliza o texto, confere os números com a
+resposta oficial e envia uma única mensagem de botões com o rodapé "Gerado com auxílio de IA" pela rota
+interna `POST /internal/whatsapp/messages` do gateway; em qualquer falha envia as mensagens oficiais.
+Enquanto a entrega não termina (até `2000 + LLM_TIMEOUT_MS + 2 × 15000` ms), uma nova mensagem da
+sessão recebe só o `typing: true` de novo e não muda o passo. Os logs (`llm_answer_fallback`,
+`answer_delivery_failed`, `llm_answer_failed`, `answer_recovered`) levam só `sessionId` e `reason`.
 
 ## Autenticação do painel
 
@@ -235,6 +253,46 @@ em `POST`/`PUT` sem origem confiável e `400 BAD_REQUEST` `"Malformed JSON body"
 | `PUT /` | igual ao teste | `200 { data: WhatsAppSettingsView }` | `400`; `422 { error: { code: <reason>, message: "WhatsApp connection test failed" } }` |
 | `POST /pause` | — | `200 { data: WhatsAppSettingsView }` com `autoReplyPaused: true` | — |
 | `POST /resume` | — | `200 { data: WhatsAppSettingsView }` com `autoReplyPaused: false` | — |
+| `GET /templates` | — | `200 { data: { checkedAt, templates: [{ kind: "CANCELLATION" \| "REMINDER", name, languageCode, status, metaStatus }] } }` | `409 WHATSAPP_NOT_CONFIGURED` (sem ID da conta, token ou App Secret); `422 { error: { code: <reason> } }` |
+| `GET /number-status` | — | `200 { data: { checkedAt, qualityRating, messagingLimit: { tier, dailyLimit, usedLast24h } } }` | `409 WHATSAPP_NOT_CONFIGURED` (sem ID do número, token ou App Secret); `422 { error: { code: <reason> } }` |
+| `GET /delivery-failures` | — | `200 { data: { since, count, items: [{ id, kind, errorCode, failedAt, appointmentId }] } }` | — |
+| `GET /history` | — | `200 { data: { items: [{ id, action, fields, actor: { id, name } \| null, createdAt }] } }` | — |
+| `GET /privacy` | — | `200 { data: PrivacySettingsView }` (seção "Privacidade e retenção") | — |
+| `PUT /privacy` | `{ controllerName, dpoName, contactEmail, inPersonContact, retentionText, retentionEnabled, sessionRetentionDays, appointmentRetentionDays }` | `200 { data: PrivacySettingsView }` | `400 BAD_REQUEST` com `details.issues` |
+| `GET /privacy/retention-preview?sessionDays=<n>&appointmentDays=<n>` | — | `200 { data: { sessions, appointments } }` | `400 BAD_REQUEST` com `details.issues` |
+
+**Estado do número, falhas e histórico (#88).** Não consultam a Meta.
+
+- A `WhatsAppSettingsView` traz `credentialsStatus` (`NOT_CHECKED` sem verificação; `INVALID`;
+  `EXPIRED` quando o token `EXPIRING` já venceu; `VALID`) e `webhook: { lastEventAt, stale }`, com
+  `stale` verdadeiro quando o último evento tem mais de 24h, ou quando nunca houve evento.
+- `GET /delivery-failures` lê `OutboundMessages` com `status = 'FAILED'` e `status_at` nas últimas
+  24h (exclusivo), da mais recente para a mais antiga, no máximo 50. `count` é o total da janela.
+  `kind`: `REPLY` (resposta comum; o Gateway não informa o id das respostas, então toda falha de id
+  desconhecido entra assim), `CANCELLATION` (aviso de cancelamento, com o agendamento), e
+  `CONFIRMATION`, `PAUSED` e `REMINDER`, reservados. Sem telefone, texto nem id da mensagem na Meta.
+- `GET /history` lê `AuditLog` da área `whatsapp`, da alteração mais recente para a mais antiga
+  (desempate pelo `id`), no máximo 50. `action`: `credentials_saved` (com `fields`, o subconjunto de
+  `phoneNumberId` e `businessAccountId` quando mudaram, e de `accessToken` e `appSecret` quando foram
+  substituídos), `auto_reply_paused` e `auto_reply_resumed` (com `fields: []`). Os valores nunca são
+  registrados. A linha é gravada na mesma instrução SQL que altera `WhatsAppSettings`.
+
+**Modelos e estado do número (#67).** As duas rotas consultam a Meta a cada chamada, sem cache, com o
+`appsecret_proof`, e usam os motivos do teste de conexão no `422`.
+
+- `GET /templates` faz uma consulta por modelo (`GET /<versão>/<businessAccountId>/message_templates?fields=name,status,language&name=<nome>`)
+  e só aceita o nome e o idioma exatos de `MODELO_AVISO_CANCELAMENTO` e `MODELO_LEMBRETE_ATENDIMENTO`.
+  `status`: `APPROVED`; `PENDING` (também `IN_APPEAL`); `REJECTED`; `NOT_FOUND` (a Meta não devolveu o
+  modelo); `OTHER` (`PAUSED`, `DISABLED`, `PENDING_DELETION`, `DELETED`, `LIMIT_EXCEEDED`, `ARCHIVED`).
+  `metaStatus` traz o valor bruto da Meta, ou `null`.
+- `GET /number-status` lê `quality_rating` e `whatsapp_business_manager_messaging_limit` (o
+  `messaging_limit_tier` está obsoleto na Meta). `qualityRating`: `GREEN` → `HIGH`, `YELLOW` →
+  `MEDIUM`, `RED` → `LOW`, qualquer outro (inclusive `NA`) → `UNKNOWN`. `tier` é o valor bruto da Meta,
+  e `dailyLimit` só é preenchido para `TIER_250`. `usedLast24h` conta no banco os telefones distintos
+  (`Sessions.phone_hash`) com `CITIZEN_NOTIFIED` de `kind` `CANCELLATION` ou `REMINDER` em
+  `[agora - 24h, agora]`.
+
+O cadastro dos modelos na Meta está em [`.docs/whatsapp/modelos-de-mensagem.md`](../../.docs/whatsapp/modelos-de-mensagem.md).
 
 `WhatsAppSettingsView`:
 
@@ -354,6 +412,26 @@ comparado em tempo constante (`utils/internalToken.ts`) e `Cache-Control: no-sto
 - segredo que não decifra, ou linha de `WhatsAppSettings` ausente: `500` genérico. O endpoint só lê:
   nunca cria a linha.
 
+`POST /api/v1/internal/whatsapp/events` (#88), também antes de `requireTrustedOrigin`, com o mesmo
+`X-Internal-Token` e `Cache-Control: no-store`. O Gateway chama uma vez por webhook aceito:
+
+- corpo `{ statuses: [{ providerMessageId, status, timestamp, errorCode }] }`, com `status` em
+  `sent`/`delivered`/`read`/`failed`, `providerMessageId` de 1 a 128 caracteres, `timestamp` inteiro
+  em segundos Unix, de 0 a 253402300799, ou `null`, e `errorCode` em texto de até 40 caracteres ou
+  `null`. Um `timestamp` fora desse intervalo ou um `errorCode` acima de 40 caracteres dá `400`. A lista
+  pode vir vazia;
+- sem token válido: `401 UNAUTHORIZED`; corpo fora do formato: `400 BAD_REQUEST`, sem gravar nada;
+- `204` sem corpo. Grava `WhatsAppSettings.last_webhook_event_at` (sem mudar `updated_by`/`updated_at`
+  e sem criar a linha) e aplica os status em `OutboundMessages`. `FAILED` vence qualquer status, entre
+  `SENT < DELIVERED < READ` o status só avança, e depois de `FAILED` nada muda. Um `failed` de id
+  desconhecido vira uma linha `REPLY`; os demais status de id desconhecido são ignorados. Quando uma
+  linha `CANCELLATION` passa a `FAILED`, entra `CITIZEN_NOTIFICATION_FAILED` no histórico do agendamento,
+  o que libera o "Tentar novamente".
+
+O aviso de cancelamento grava a própria linha: `CANCELLATION`/`SENT` com o id que o Gateway devolveu,
+ou `CANCELLATION`/`FAILED` sem id quando o envio é recusado na hora (essa falha também conta em
+`GET /delivery-failures`).
+
 Em produção o Caddy responde `404` para `/api/v1/internal*` e o `deploy.sh` confere isso. O gateway
 alcança o backend só pela rede interna do Docker.
 
@@ -364,6 +442,64 @@ mostra `configured: true` com `last4: null`, o endpoint interno responde `500` e
 a última configuração carregada até reiniciar. Depois de trocar a chave e recriar o `backend`, salve de
 novo o token e o App Secret pela tela de WhatsApp (ou `PUT /api/v1/whatsapp/settings`, enviando os
 dois).
+
+## Privacidade e retenção (#69)
+
+A configuração de privacidade fica na linha única de `PrivacySettings` (migration `19`), editada
+pelo Admin na aba "Privacidade" da tela de WhatsApp. Sem linha no banco, a leitura devolve os
+textos `null`, `retentionEnabled: false`, `sessionRetentionDays: 90` e `appointmentRetentionDays: 365`
+(colunas da migration `20`). O seed não cria essa linha.
+
+`PrivacySettingsView` (`GET`/`PUT /api/v1/whatsapp/settings/privacy`, só Admin):
+
+```json
+{
+    "controllerName": "Prefeitura de Jacareí",
+    "dpoName": "Maria Encarregada",
+    "contactEmail": "privacidade@exemplo.test",
+    "inPersonContact": null,
+    "retentionText": "Sessões por 12 meses.",
+    "retentionEnabled": false,
+    "sessionRetentionDays": 90,
+    "appointmentRetentionDays": 365,
+    "updatedBy": { "id": 1, "name": "Admin" },
+    "updatedAt": "2026-11-01T12:00:00.000Z"
+}
+```
+
+- No `PUT`, as oito chaves são obrigatórias. Os cinco textos são texto ou `null`: o servidor apara
+  os espaços e grava texto vazio como `null`. Limites: `controllerName` e `dpoName` até 150,
+  `contactEmail` até 254 e no formato `nome@dominio.tld`, `inPersonContact` até 300 e
+  `retentionText` até 2000. `retentionEnabled` é booleano, `sessionRetentionDays` é inteiro de 30
+  a 1825 e `appointmentRetentionDays` é inteiro de 90 a 1825. O salvamento é um upsert no
+  `id = 1`; vale o último.
+- `GET /api/v1/privacy` é **público** (sem sessão), com `Cache-Control: no-store`, e devolve as
+  oito chaves (os cinco textos e os três campos da anonimização), sem `updatedBy` nem `updatedAt`.
+  A página `/privacidade` do painel lê essa rota.
+- `GET /api/v1/whatsapp/settings/privacy/retention-preview` (só Admin, `no-store`) conta, com o
+  horário do servidor e os prazos da consulta, quantas conversas e quantos agendamentos seriam
+  anonimizados agora (`retentionRepository.countDue`). Não depende do interruptor e não altera nada.
+  Parâmetro ausente, não inteiro ou fora da faixa devolve `400 BAD_REQUEST` com `details.issues`.
+- A saudação do bot leva a linha `Saiba como tratamos seus dados: <PUBLIC_BASE_URL>/privacidade`
+  só quando `PUBLIC_BASE_URL` existe e `controllerName` e `contactEmail` estão preenchidos. A
+  configuração é lida a cada saudação, sem cache; se a leitura falhar, a saudação sai sem a linha e
+  o log leva só o `code` do erro.
+- Retenção do telefone: a cada 60 s, `index.ts` roda `sweepPastAppointmentPhones`, que grava
+  `phone_encrypted = NULL` nos agendamentos cujo horário chegou (`appointment_datetime <= agora`),
+  em qualquer status, sem evento em `AppointmentEvents`. A falha vai para o log como
+  `"Failed to erase phones of past appointments"` com só `{ code }`, e a varredura tenta de novo no
+  próximo intervalo.
+- Anonimização por prazo (#69, D3): a cada 1 hora, `index.ts` roda `sweepRetention`
+  (`services/retentionSweep.service.ts`). Com `retentionEnabled` desligado ou sem linha, não faz
+  nada. Ligada, chama `retentionRepository.anonymizeDue` com os prazos salvos e no máximo 500 linhas
+  por tabela: o agendamento vencido fica com `name = 'Titular removido'`, CPF e telefone nulos e
+  `anonymized_at`; a conversa terminada e vencida fica com `phone_hash = NULL` e `anonymized_at`,
+  salvo se gerou um agendamento ainda dentro do prazo. Quando anonimiza algo, o log leva só
+  `"Retention sweep anonymized records"` com `{ sessions, appointments }`; a falha vai como
+  `"Failed to anonymize records by retention"` com só `{ code }`. A regra completa está na
+  [decisão 002](../../.docs/decisoes/002-lgpd-dados-pessoais.md#anonimização-por-prazo).
+  O teste de integração (`tests/integration/retention.integration.test.ts`) usa datas de 1999 a
+  2001 e precisa de banco separado, sem linhas antigas de outra origem.
 
 ## Contas e permissões (/api/v1/users, #62)
 
@@ -462,8 +598,12 @@ lote, não. Senão, `409 INVALID_REASSIGNMENT_TARGET`.
 
 **Uma pessoa não atende dois agendamentos ao mesmo tempo** (`services/responsibleAvailability.ts`,
 `findResponsibleConflict` e `countFreeStaff`). Dois `CONFIRMED` da mesma conta não podem ter
-intervalos `[início, início + duração)` sobrepostos. A duração é o `ScheduleSettings.slot_minutes`
-vigente, porque o agendamento não guarda a sua; sem configuração, só o mesmo início conflita. Com 30
+intervalos `[início, início + duração)` sobrepostos. A duração é a da versão da agenda que vale hoje
+(`readSlotMinutes(client, now)` em `repositories/responsibleQueries.ts`: a última mudança de
+`ScheduleChanges` com início até a data ou, sem mudança, `ScheduleSettings.slot_minutes`), porque o
+agendamento não guarda a sua; sem configuração, só o mesmo início conflita. O lote ainda usa essa
+duração para todos os agendamentos dele, mesmo os que caem depois de uma mudança agendada com outra
+duração. Com 30
 minutos, quem tem 13:00 não pode receber 13:00 nem 13:20, mas pode receber 13:30. Cada agendamento
 redistribuído é conferido contra os `CONFIRMED` do destino e contra os que o mesmo lote já levou para
 ele; com sobreposição, `409 REASSIGNMENT_TARGET_BUSY` e nada do lote é gravado. Se a duração mudar
@@ -516,7 +656,9 @@ repositório dentro da transação, pelo mock e pelo detalhe.
 | `GET /api/v1/appointments/calendar` | `appointments.view` | Calendário semanal (seção abaixo). Query: `date` (`AAAA-MM-DD`, padrão hoje em São Paulo), `status` e `responsible` com os mesmos valores da lista | `200 { data: Calendar }` | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN` |
 | `GET /api/v1/appointments` | `appointments.view` | Lista com busca, filtros, ordenação, paginação e contagem dos chips (query abaixo) | `200 { data: { items, total, page, limit, totalPages, chipCounts } }` | `400 BAD_REQUEST`, `401`, `403` |
 | `GET /api/v1/appointments/:id` | `appointments.view` | Detalhe com histórico (`events`), linha do tempo da conversa de origem (`timeline`) e ações disponíveis (`available_actions`) | `200 { data: AppointmentDetail }` | `400 BAD_REQUEST` (id que não é inteiro positivo ou passa do limite do `bigint`), `401`, `403`, `404 NOT_FOUND` |
-| `PATCH /api/v1/appointments/:id/status` | `appointments.manage` | Executa uma ação. Corpo: `{ "action": "claim" \| "attended" \| "no_show" \| "correct_record" }` ou `{ "action": "assign", "assigneeUserId": <id> }` (número ou texto numérico) | `200 { data: AppointmentDetail }`, o mesmo objeto que um `GET /:id` feito em seguida. `correct_record` pode trazer também `warning` (abaixo) | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN`, `403 INVALID_ORIGIN`, `404 NOT_FOUND`, `409` (codes na tabela de ações) |
+| `PATCH /api/v1/appointments/:id/status` | `appointments.manage` | Executa uma ação. Corpo: `{ "action": "claim" \| "attended" \| "no_show" \| "correct_record" }`, `{ "action": "assign", "assigneeUserId": <id> }` (número ou texto numérico) ou `{ "action": "cancel", "reason": "UNIT_CLOSED" \| "CITIZEN_REQUEST" \| "DUPLICATE" \| "OTHER", "note"?: "..." }` (seção "Cancelamento pela equipe") | `200 { data: AppointmentDetail }`, o mesmo objeto que um `GET /:id` feito em seguida. `correct_record` pode trazer também `warning` (abaixo) | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN`, `403 INVALID_ORIGIN`, `404 NOT_FOUND`, `409` (codes na tabela de ações) |
+| `GET /api/v1/appointments/:id/cancellation-preview` | `appointments.manage` | A mensagem exata que o cidadão recebe para cada motivo, na ordem `UNIT_CLOSED`, `CITIZEN_REQUEST`, `DUPLICATE`, `OTHER` | `200 { data: { previews: [{ reason, message }] } }` | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN`, `404 NOT_FOUND` |
+| `POST /api/v1/appointments/:id/cancellation-notice/retry` | `appointments.manage` | Reenvia o aviso de cancelamento que falhou | `200 { data: AppointmentDetail }` | `401`, `403 FORBIDDEN`, `403 INVALID_ORIGIN`, `404 NOT_FOUND`, `409 NOTIFICATION_NOT_RETRYABLE`, `409 CITIZEN_PHONE_UNAVAILABLE`, `409 NOTIFICATION_AFTER_START`, `409 NOTIFICATION_IN_PROGRESS` |
 | `POST /api/v1/appointments/:id/notes` | `appointments.manage` | Grava uma observação interna. Corpo: `{ "text": "..." }`, de 1 a 2000 caracteres depois de aparar. Não há rota de edição nem de exclusão, e o trigger `trg_appointment_notes_immutable` recusa `UPDATE` e `DELETE` | `201 { data: AppointmentDetail }` | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN`, `403 INVALID_ORIGIN`, `404 NOT_FOUND` |
 
 Erros sempre no envelope `{ "error": { "code": "...", "message": "..." } }`. O painel traduz pelo
@@ -810,10 +952,38 @@ transação. Todas as recusas são `409`:
 | `no_show` | assume automaticamente e vira `NO_SHOW` | vira `NO_SHOW` | `409 ALREADY_ATTENDED` | `409 ALREADY_NO_SHOW` | `409 APPOINTMENT_CANCELED` |
 | `assign` | vira `CONFIRMED` com o destino (`ASSIGNED { assignee_user_id }`) | troca o responsável (`ASSIGNED`) | `409 ALREADY_ATTENDED` | `409 ALREADY_NO_SHOW` | `409 APPOINTMENT_CANCELED` |
 | `correct_record` | `409 RECORD_NOT_CORRECTABLE` | `409 RECORD_NOT_CORRECTABLE` | volta ao estado anterior (`RECORD_CORRECTED`) | volta ao estado anterior (`RECORD_CORRECTED`) | `409 RECORD_NOT_CORRECTABLE` |
+| `cancel` | vira `CANCELED` (`CANCELED_BY_STAFF { reason }`) | vira `CANCELED`, mantendo o responsável | `409 ALREADY_ATTENDED` | `409 ALREADY_NO_SHOW` | `409 APPOINTMENT_CANCELED` |
 
 Regra de data, conferida depois do status: `attended` só a partir do dia do atendimento em
 `America/Sao_Paulo` (antes disso, `409 ATTENDANCE_NOT_YET_AVAILABLE`), e `no_show` só depois do
-horário marcado (antes disso, `409 NO_SHOW_NOT_YET_AVAILABLE`).
+horário marcado (antes disso, `409 NO_SHOW_NOT_YET_AVAILABLE`). `cancel` só antes do horário
+marcado (no horário ou depois, `409 CANCEL_AFTER_START`).
+
+### Cancelamento pela equipe (#67)
+
+- `PATCH /:id/status` com `action: "cancel"` trava a conta de quem age e o agendamento, grava
+  `CANCELED`, o evento `CANCELED_BY_STAFF { reason }` e, se vier `note` não vazia depois de aparar (até
+  2000 caracteres), uma observação interna em `AppointmentNotes`, tudo na mesma transação. Cancelar
+  libera a vaga, porque a contagem de vagas só considera `PENDING` e `CONFIRMED`.
+- **Depois do `COMMIT`**, `services/citizenNotification.service.ts` decifra `phone_encrypted` e pede ao
+  gateway o envio do modelo `aviso_cancelamento` (`gatewayClient.sendTemplate`, tempo limite de 15 s,
+  maior que os 10 s do gateway). Os parâmetros vêm de `parametrosAvisoCancelamento` (nome, protocolo,
+  data e hora em Brasília e a frase do motivo), os mesmos da prévia. A observação interna nunca vai ao
+  cidadão.
+- O resultado vira `CITIZEN_NOTIFIED` ou `CITIZEN_NOTIFICATION_FAILED`, com `data: { kind:
+  "CANCELLATION" }` e quem agiu. Falha do gateway, gateway não configurado ou telefone ausente ou
+  ilegível gravam a falha, e o cancelamento continua respondendo `200`. A pausa das respostas
+  automáticas não bloqueia o aviso.
+- Se o próprio aviso lança depois do `COMMIT` (por exemplo, a gravação do resultado falha), o
+  cancelamento responde `200` com o detalhe `CANCELED` e o log registra só o id do agendamento e o
+  código do erro, sem telefone. Se a leitura do detalhe também falhar, a resposta é `500`, mas o
+  cancelamento continua gravado.
+- `available_actions.retry_cancellation_notice` só fica `allowed` quando o agendamento foi cancelado
+  pela equipe, o último aviso de `kind` `CANCELLATION` (por `created_at, id`) falhou ou não existe, há
+  telefone e o horário ainda não passou. O reenvio tem uma trava em memória por agendamento
+  (`409 NOTIFICATION_IN_PROGRESS`), suficiente porque o backend roda numa instância só. Dentro da trava
+  o alvo é relido, e um aviso que já saiu (`CITIZEN_NOTIFIED`) recusa o reenvio com
+  `409 NOTIFICATION_NOT_RETRYABLE`.
 
 Se duas ações chegam juntas (por exemplo, Atendido e Não compareceu), a segunda espera a trava, lê o
 status já alterado e recebe o `409` coerente com a ação que ganhou (`ALREADY_ATTENDED` ou
@@ -826,8 +996,9 @@ horário: um Confirmado já passado também pode ser atribuído.
 
 **Uma pessoa não atende dois agendamentos ao mesmo tempo** (`findResponsibleConflict`, a mesma regra do
 lote de contas). Vale em `assign`, em `claim` e no auto-claim de `attended`/`no_show` sobre um
-`PENDING`: se a pessoa já tem outro `CONFIRMED` com intervalo sobreposto (duração =
-`ScheduleSettings.slot_minutes` vigente), a resposta é `409 ASSIGNEE_BUSY` com
+`PENDING`: se a pessoa já tem outro `CONFIRMED` com intervalo sobreposto (duração = a da versão da
+agenda que vale na data do agendamento, por `readSlotMinutes(client, appointmentDatetime)`, a mesma
+usada na correção de registro), a resposta é `409 ASSIGNEE_BUSY` com
 `details: { assigneeUserId, conflictingAppointmentId, conflictingProtocol }`, e nada é gravado. O
 auto-claim de um agendamento cuja data e hora já passaram não confere o horário (registra o que já
 aconteceu); `claim` confere sempre. Se a conta de quem clica, já travada, não pode mais ser
@@ -852,7 +1023,13 @@ regra: depois da trava consultiva exclusiva `schedule_config`, `saveConfig` trav
 travar os agendamentos futuros. Sem isso, salvar a grade enquanto outra pessoa atribui um agendamento
 futuro a quem salva fechava um ciclo (o salvamento com o agendamento esperando a conta, a atribuição
 com a conta esperando o agendamento). A prova fica em
-`tests/integration/scheduleConfig.lockOrder.integration.test.ts`.
+`tests/integration/scheduleConfig.lockOrder.integration.test.ts`. Salvar uma mudança agendada
+(`PUT /api/v1/schedule/versions/:effectiveFrom`) segue a mesma ordem, e ela e o cancelamento
+(`DELETE`) pegam a mesma trava exclusiva `schedule_config` que a reserva pega compartilhada. A prova
+fica em `tests/integration/scheduleChanges.race.integration.test.ts`: o salvamento que tira um horário
+espera a reserva em andamento e responde `409`, a reserva e o salvamento nunca passam juntos, e a
+atribuição a quem salva não fecha ciclo. Os critérios da mudança agendada contra o Postgres ficam em
+`tests/integration/scheduleChanges.integration.test.ts`.
 
 **Corrigir registro (`correct_record`).** Volta ao estado anterior ao `ATTENDED`/`NO_SHOW` mais recente:
 `PENDING` sem responsável quando esse terminal veio junto de um `CLAIMED { auto_claimed: true }` no
@@ -926,6 +1103,7 @@ conferir nada. Duas correções simultâneas: uma grava, a outra recebe `409 REC
 ## Horários de atendimento (/api/v1/schedule, #64)
 
 Configuração da agenda presencial e prévia mensal de vagas ([decisão 007](../../.docs/decisoes/007-agenda-configuravel.md),
+[decisão 012](../../.docs/decisoes/012-horarios-agendados.md) para as mudanças agendadas,
 [regras da tela](../../.docs/regras/08-horarios-de-atendimento.md)). Todas as rotas passam pela
 proteção CSRF (`403 INVALID_ORIGIN` nos métodos que enviam corpo), por `requireAuth` e por
 `requirePermission("schedule.configure")`, e respondem com `Cache-Control: no-store`. Camadas:
@@ -937,12 +1115,34 @@ proteção CSRF (`403 INVALID_ORIGIN` nos métodos que enviam corpo), por `requi
 
 | Rota | Entrada | Sucesso | Erros |
 | --- | --- | --- | --- |
-| `GET /api/v1/schedule` | — | `200 { data: ScheduleConfigView }` | `401 UNAUTHORIZED`, `403 FORBIDDEN`, `500 SCHEDULE_NOT_CONFIGURED` |
+| `GET /api/v1/schedule` | — | `200 { data: ScheduleConfigView }` (a versão que vale hoje; `effectiveFrom` é `null` na configuração-base e a data de início quando é uma mudança que já começou) | `401 UNAUTHORIZED`, `403 FORBIDDEN`, `500 SCHEDULE_NOT_CONFIGURED` |
 | `PUT /api/v1/schedule` | `ScheduleConfigInput` | `200 { data: ScheduleConfigView }` | `400 BAD_REQUEST`, `401`, `403`, `409 SCHEDULE_CONFLICTS` com `details.conflicts` |
+| `GET /api/v1/schedule/effective?date=YYYY-MM-DD` | `date` obrigatório | `200 { data: ScheduleConfigView }` (a versão que vale na data, com `effectiveFrom`) | `400 BAD_REQUEST`, `401`, `403`, `500 SCHEDULE_NOT_CONFIGURED` |
+| `GET /api/v1/schedule/versions` | — | `200 { data: ScheduleVersion[] }` (as mudanças com início depois de hoje, em ordem de data; `[]` se não houver) | `401`, `403` |
+| `PUT /api/v1/schedule/versions/:effectiveFrom` | `ScheduleConfigInput`; `effectiveFrom` `YYYY-MM-DD` depois de hoje | `200 { data: ScheduleConfigView }` (cria ou substitui a mudança, com novo autor e horário) | `400 BAD_REQUEST` (data inválida, hoje ou passada, ou bloqueio fora da vigência), `401`, `403`, `409 SCHEDULE_CONFLICTS` com `details.conflicts` |
+| `DELETE /api/v1/schedule/versions/:effectiveFrom` | `effectiveFrom` `YYYY-MM-DD` depois de hoje | `204` sem corpo | `400 BAD_REQUEST` (data inválida, hoje ou passada), `401`, `403`, `404 NOT_FOUND`, `409 SCHEDULE_CONFLICTS` com `details.conflicts` |
 | `GET /api/v1/schedule/preview?month=YYYY-MM` | `month` opcional (padrão: mês atual em `America/Sao_Paulo`) | `200 { data: MonthlyPreviewResult }` | `400 BAD_REQUEST`, `401`, `403` |
-| `POST /api/v1/schedule/preview` | `{ month?: "YYYY-MM", config?: ScheduleConfigInput }` | `200 { data: MonthlyPreviewResult }` (calcula sobre o rascunho `config` sem gravar no banco, ou sobre a configuração salva se `config` for omitido) | `400 BAD_REQUEST`, `401`, `403` |
+| `POST /api/v1/schedule/preview` | `{ month?: "YYYY-MM", config?: ScheduleConfigInput, effectiveFrom?: "YYYY-MM-DD" }` | `200 { data: MonthlyPreviewResult }` (calcula sobre o rascunho `config` sem gravar no banco, ou sobre a configuração salva se `config` for omitido; com `effectiveFrom`, o rascunho vale a partir dessa data e os dias anteriores seguem a versão salva) | `400 BAD_REQUEST`, `401`, `403` |
 | `GET /api/v1/schedule/booked-days` | — | `200 { data: { days: BookedDay[] } }` | `401`, `403` |
 
+- **Mudanças agendadas (#134):** cada mudança é uma cópia integral da configuração em
+  `ScheduleChanges` (`effective_from`, `config` JSONB, autor e horário). Para uma data vale a cópia com
+  a maior `effective_from` menor ou igual a ela; sem cópia, vale a configuração-base de
+  `ScheduleSettings`, `ScheduleRanges` e `BlockedDates`. A grade, a duração, as vagas, os bloqueios e o
+  endereço vêm da versão de cada dia; a janela, a antecedência e o alerta de espera vêm da versão que
+  vale hoje, e os dias úteis da antecedência contam com a grade de cada dia
+  (`computeVersionedWindowBounds`). Os conflitos de uma versão são conferidos só na vigência dela, da
+  data de início até a véspera da próxima mudança (`appointmentsInScheduleInterval` em
+  `services/scheduleRules.ts`), tanto ao salvar (`PUT`) quanto ao cancelar (`DELETE`, contra a versão
+  anterior) e na prévia salva. Salvar a configuração de hoje quando ela é uma mudança que já começou
+  grava uma mudança nova com início hoje, sem tocar na anterior. Um bloqueio novo com data de hoje em
+  diante fora da vigência da versão salva é recusado com `400` e `details.issues`
+  (`blockedDates.N.date`, com o índice do corpo enviado); bloqueios que já estavam na cópia de
+  referência continuam aceitos. A regra fica no service (`blocksInVigencyCheck`), que a entrega ao
+  repositório em `validateAgainstVersions`; o repositório a roda dentro da transação, depois da trava
+  `schedule_config`, com todas as versões de hoje em diante. Assim, uma mudança gravada por outro
+  salvamento enquanto este esperava a trava já conta na checagem
+  (`scheduleChanges.race.integration.test.ts`).
 - **Consistência entre bot e prévia:** o cálculo de vagas disponíveis do bot (`getAvailableSlots`) e
   o cálculo da prévia mensal (`getMonthlyPreview`) compartilham as mesmas funções puras de
   `services/scheduleRules.ts` (`slotsForWeekday`, `freeSlotStartsOfDay`, `isBusinessDay`,
@@ -1026,11 +1226,12 @@ proteção CSRF (`403 INVALID_ORIGIN` nos métodos que enviam corpo), por `requi
   pertence à #75.
 
 - **Conflitos na prévia (#125):** `MonthlyPreviewResult` traz também `conflicts`, no `GET` e no
-  `POST /api/v1/schedule/preview`. O service lê os agendamentos futuros ativos **sem trava**
+  `POST /api/v1/schedule/preview`. O service lê os agendamentos futuros ativos **uma vez e sem trava**
   (`listFutureActiveAppointments(now)` no repositório, o mesmo `SELECT` do `saveConfig` sem
-  `FOR UPDATE`) e a duração salva, e chama `detectScheduleConflicts(configuraçãoDaPrévia, agendamentos,
-  duraçãoSalva)`, a mesma função do `PUT`. No `GET` a configuração da prévia é a salva (normalmente sem
-  conflitos); no `POST`, o rascunho. Os conflitos não dependem do `month`: cobrem todos os agendamentos
+  `FOR UPDATE`) e chama `detectScheduleConflicts(configuração, agendamentos, duraçãoAtual)`, a mesma
+  função do `PUT`. No `GET`, cada versão salva é conferida com os agendamentos da própria vigência, com
+  a própria duração como a atual (normalmente sem conflitos); no `POST`, o rascunho é conferido com os
+  agendamentos da vigência dele, com a duração da versão anterior como a atual. Os conflitos não dependem do `month`: cobrem todos os agendamentos
   futuros. Cada item é recortado para protocolo, data, hora, status, código e motivo, sem nome, CPF,
   telefone, id do agendamento ou do responsável. A ordem é a do `409`. A leitura sem trava é só aviso:
   a garantia continua no `409` do `PUT`.
@@ -1087,9 +1288,13 @@ passam por `services/conversationClosing.service.ts` (`finishOrLog`), e os tipos
 | `AWAITING_HOLDER_NAME` | nome do titular (regra abaixo) | `AWAITING_HOLDER_CPF` |
 | `AWAITING_HOLDER_CPF` | CPF válido, com ou sem pontuação. Vai para o rascunho só como hash e máscara | `AWAITING_SLOT` (ou encerra com `NO_SLOT` se não houver horário) |
 | `AWAITING_SLOT` | linha `slot_<ISO 8601 UTC>` da lista ou `page_<n>` para paginar | `FINISHED` com desfecho `SCHEDULED` |
+| `AWAITING_SLOT` com `draft.target_appointment_id` (remarcação, #59) | linha `slot_<ISO 8601 UTC>` da lista sem o horário atual do agendamento, ou `page_<n>` | `FINISHED` com desfecho `MANAGED_APPOINTMENT` |
+| `AWAITING_RETURN_CHOICE` (#59) | botão `return_reschedule`, `return_cancel` ou `return_other`, ou o texto `1`, `2` ou `3` | `AWAITING_SLOT`, `AWAITING_CANCEL_CONFIRMATION` ou `AWAITING_CATEGORY` |
+| `AWAITING_CANCEL_CONFIRMATION` (#59) | botão `cancel_yes` ou `cancel_no`, ou o texto exato `1`/`sim` ou `2`/`não`/`nao` | `FINISHED` com desfecho `MANAGED_APPOINTMENT`, ou volta a `AWAITING_RETURN_CHOICE` |
 
 O rascunho fica em `Sessions.draft`, com as chaves `by_representative`, `holder_name`, `cpf_hash` e
-`cpf_masked` (`target_appointment_id` é da #59). O `chk_sessions_draft_keys` recusa qualquer outra.
+`cpf_masked` na reserva, e só `target_appointment_id` no retorno de quem já tem agendamento (#59, seção
+abaixo). O `chk_sessions_draft_keys` recusa qualquer outra.
 O motivo do agendamento (`REQUIRES_IN_PERSON` ou `NOT_RESOLVED`) é o do último `SCHEDULE_OFFERED`
 da sessão registrado depois da última pergunta escolhida (`QUESTION_CHOSEN`), lido na reserva por
 `services/scheduleOfferReason.ts`. Assim o agendamento guarda o motivo que o bot mostrou na oferta,
@@ -1129,6 +1334,48 @@ checagem de duplicidade por CPF e horário, documentos, `INSERT` do agendamento 
 `insertConversationEvent(client, ...)` e encerramento por `finishSessionWith(client, ...)` com
 `APPOINTMENT_CREATED`/`SCHEDULED`. Qualquer falha desfaz tudo.
 
+
+## Retorno de quem já tem agendamento (#59)
+
+Quando uma mensagem abre uma sessão nova, `services/returnFlow.service.ts` (`createReturnFlow`) procura
+um agendamento `PENDING` ou `CONFIRMED` com horário futuro cuja sessão de origem tem o mesmo `phone_hash`
+(`scheduleRepository.findReturningAppointment`, só pelo HMAC, sem ler `phone_encrypted`). Se achar,
+grava `APPOINTMENT_CONSULTED`, guarda o id em `draft.target_appointment_id` e responde com o menu
+**Remarcar / Cancelar / Tenho outra dúvida**, em botões com o rodapé curto
+`Orientação informativa · Dados tratados conforme a LGPD` (`RODAPE_ATENDIMENTO`, enviado pelo Gateway em
+`interactive.footer.text`). O mesmo rodapé vai na lista de categorias (#88), e a saudação não traz mais o
+parágrafo de privacidade. Sem agendamento, ou se a consulta falhar (log
+`Failed to read returning appointment`), a sessão segue para a lista de categorias como antes. Sessões
+que já estavam em andamento não consultam.
+
+- **Tenho outra dúvida**: lista de categorias, com o rascunho zerado.
+- **Cancelar**: pede confirmação por botão (`cancel_yes`/`cancel_no`; a confirmação não usa a heurística
+  de "agendar"). "Não, manter" volta ao menu. "Sim, cancelar" chama `scheduleRepository.cancelByCitizen`.
+- **Remarcar**: oferece `getAvailableSlots()` sem o horário atual do agendamento. Sem outro horário,
+  responde `SEM_HORARIOS_REMARCACAO` e volta ao menu, sem desfecho. Na escolha, chama
+  `scheduleRepository.rescheduleByCitizen` e responde a confirmação com o título "Agendamento remarcado",
+  o mesmo protocolo, os documentos guardados no agendamento e o endereço e o lembrete da agenda do novo
+  dia.
+
+A cada clique o agendamento é conferido de novo pelo `phone_hash`. Se não for mais o mesmo (cancelado
+pela equipe, já passou, rascunho inválido) ou a transação recusar com `AppointmentNotChangeableError`
+(409, `APPOINTMENT_NOT_CHANGEABLE`), o bot responde "Este agendamento não pode mais ser alterado pelo
+chatbot..." e mostra a lista de categorias. Falha inesperada fica no log como
+`Failed to change appointment` (só `{ type, sessionId, code }`), o cidadão recebe a mensagem de
+instabilidade e a etapa não muda.
+
+As duas alterações rodam numa transação que também encerra a sessão (`finishSessionWith`, desfecho
+`MANAGED_APPOINTMENT`). Se qualquer passo falhar, tudo volta.
+
+| Alteração | Passos na transação |
+| --- | --- |
+| Cancelar | `SELECT ... FOR UPDATE OF a` do agendamento com `JOIN Sessions`, conferindo `phone_hash`, status ativo e horário futuro → `status = 'CANCELED'` (o responsável fica) → `CANCELED_BY_CITIZEN` com `actor_user_id NULL` e `{}` → `APPOINTMENT_CANCELED` |
+| Remarcar | `pg_advisory_xact_lock_shared` da agenda → trava consultiva do novo horário → `SELECT ... FOR UPDATE OF a` do agendamento (mesma conferência) → horário na grade do novo dia e com vaga (`SlotFullError`) → mesmo CPF já ativo no novo horário (`DuplicateAppointmentError`) → `appointment_datetime` novo e `rescheduled_from = COALESCE(rescheduled_from, antigo)` → `RESCHEDULED` `{ from, to }` → se estava `CONFIRMED`, `BACK_TO_PENDING` `{ "reason": "RESCHEDULED" }` sem responsável → `APPOINTMENT_RESCHEDULED` `{ appointmentId, from, to }` |
+
+A ordem das travas da remarcação é a mesma da reserva (agenda compartilhada → horário → linha), então
+não cruza com o salvamento da grade nem com o cancelamento da equipe (que trava a conta e depois a linha).
+Os eventos do agendamento não guardam nome, CPF, telefone nem texto do cidadão.
+
 ## Eventos da conversa
 
 Os passos da conversa ficam em `ConversationEvents` (RF06, decisão 010) e o desfecho fica em
@@ -1139,10 +1386,10 @@ Nenhum evento guarda texto digitado pelo cidadão (RNF03): só tipos, ids e valo
 
 | Função | Arquivo | Uso |
 | --- | --- | --- |
-| `conversationEventService.record(sessionId, event)` | `services/conversationEvent.service.ts` | Evento comum de um passo. Nunca lança (ver "Falhas de gravação") |
+| `conversationEventService.record(sessionId, event, occurredAt?)` | `services/conversationEvent.service.ts` | Evento comum de um passo. Nunca lança (ver "Falhas de gravação"). Com `occurredAt`, a linha fica com `created_at = occurredAt`; sem ele, vale o default do banco |
 | `conversationEventService.finish(sessionId, { outcome, event })` | `services/conversationEvent.service.ts` | Encerramento fora de transação. Abre a própria transação e lança se falhar |
 | `finishSessionWith(client, sessionId, { outcome, event })` | `repositories/session.repository.ts` | Encerramento dentro da transação de outro repositório (reserva da #56, remarcação e cancelamento da #59). Lança e não desfaz nada: quem abriu a transação faz o `ROLLBACK` |
-| `insertConversationEvent(client, sessionId, event)` | `repositories/conversationEvent.repository.ts` | Evento comum dentro de uma transação aberta (ex.: `PHONE_NOTICE_SHOWN` na reserva da #56) |
+| `insertConversationEvent(client, sessionId, event, occurredAt?)` | `repositories/conversationEvent.repository.ts` | Evento comum dentro de uma transação aberta (ex.: `PHONE_NOTICE_SHOWN` na reserva da #56). Sem `occurredAt`, o `INSERT` não manda `created_at` |
 | `conversationEventService.listBySession(sessionId)` | `services/conversationEvent.service.ts` | Leitura tipada, em ordem cronológica, com `createdAt`, para a linha do tempo (#60, #72, #86). Chaves desconhecidas vindas do banco são descartadas. Uma linha fora do contrato é descartada e registrada no log, sem derrubar a lista (ver "Leitura") |
 
 `insertConversationEvent` e `finishSessionWith` são o **único** caminho de escrita em
@@ -1235,7 +1482,8 @@ O par desfecho e evento tem que casar, senão lança `InternalServerError` sem c
 | Sessão criada | #16 (automático) | `findOrCreateActive` | `STARTED` | — |
 | Categoria escolhida | #55 | `record` | `CATEGORY_CHOSEN` | — |
 | Pergunta escolhida | #55 | `record` | `QUESTION_CHOSEN` | — |
-| Resposta entregue | #55 / #66 (`llm`) | `record`, ou `finish` se fora do escopo | `ANSWER_SENT` | `OUT_OF_SCOPE` |
+| Resposta entregue | #55 / #66 (`llm`) | `record`, ou `finish` se fora do escopo. Pergunta com IA permitida: gravado pela entrega em segundo plano (`services/llmAnswer.service.ts`) na hora real do envio, sem `occurredAt`: `USED` quando a mensagem escrita com auxílio de IA saiu, `FAILED` quando saíram as mensagens oficiais (IA indisponível, ocupada, falha, números diferentes, corpo acima de 1024 ou envio recusado). Se nem as oficiais saem, nada é gravado e a próxima mensagem da sessão recupera a resposta (`FAILED`, log `answer_recovered`) | `ANSWER_SENT` | `OUT_OF_SCOPE` |
+| Agendamento oferecido (presencial com IA) | #66 | `record` pela entrega, logo depois do `ANSWER_SENT` (ou pela recuperação) | `SCHEDULE_OFFERED` | — |
 | "A dúvida foi resolvida?" | #55 | `record` (Não) ou `finish` (Sim) | `RESOLVED_ANSWERED` | `RESOLVED` |
 | Agendamento oferecido | #55 | `record` | `SCHEDULE_OFFERED` | — |
 | Recusou agendar | #55 | `finish` | `SCHEDULE_DECLINED` | `DECLINED` |

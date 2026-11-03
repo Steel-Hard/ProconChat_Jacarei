@@ -97,7 +97,7 @@ describe("scheduleApi", () => {
         expect(requestAt(fetchMock, 0).credentials).toBe("include")
     })
 
-    it("salva com PUT /api/v1/schedule e atualiza a configuração em cache sem novo GET", async () => {
+    it("salva com PUT /api/v1/schedule e atualiza a configuração em cache", async () => {
         const saved = { ...VIEW, seatsPerSlot: 3 }
         const { scheduleApi, store, fetchMock } = await setup((request) =>
             request.method === "PUT"
@@ -107,7 +107,9 @@ describe("scheduleApi", () => {
         const subscription = store.dispatch(scheduleApi.endpoints.getSchedule.initiate())
         await subscription
 
-        const result = await store.dispatch(scheduleApi.endpoints.saveSchedule.initiate(INPUT))
+        const result = await store.dispatch(
+            scheduleApi.endpoints.saveSchedule.initiate({ config: INPUT })
+        )
 
         expect(result.data).toEqual(saved)
         expect(requestAt(fetchMock, 1).method).toBe("PUT")
@@ -127,11 +129,34 @@ describe("scheduleApi", () => {
         const subscription = store.dispatch(scheduleApi.endpoints.getSchedule.initiate())
         await subscription
 
-        const result = await store.dispatch(scheduleApi.endpoints.saveSchedule.initiate(INPUT))
+        const result = await store.dispatch(
+            scheduleApi.endpoints.saveSchedule.initiate({ config: INPUT })
+        )
 
         expect(result.error).toBeDefined()
         expect(scheduleApi.endpoints.getSchedule.select()(store.getState()).data).toEqual(VIEW)
         subscription.unsubscribe()
+    })
+
+    it("salva mudança futura em PUT /api/v1/schedule/versions/:effectiveFrom", async () => {
+        const { scheduleApi, store, fetchMock } = await setup(() => ({
+            status: 200,
+            body: { data: { ...VIEW, effectiveFrom: "2026-11-10" } }
+        }))
+
+        const result = await store.dispatch(
+            scheduleApi.endpoints.saveSchedule.initiate({
+                config: INPUT,
+                effectiveFrom: "2026-11-10"
+            })
+        )
+
+        expect(result.data).toMatchObject({ effectiveFrom: "2026-11-10" })
+        expect(requestAt(fetchMock, 0).method).toBe("PUT")
+        expect(requestAt(fetchMock, 0).url).toBe(
+            "https://api.example.com/api/v1/schedule/versions/2026-11-10"
+        )
+        expect(await bodyAt(fetchMock, 0)).toEqual(INPUT)
     })
 
     it("pede a prévia salva sem mês e com o mês informado", async () => {
@@ -159,13 +184,21 @@ describe("scheduleApi", () => {
         }))
 
         const result = await store.dispatch(
-            scheduleApi.endpoints.previewScheduleDraft.initiate({ month: "2026-11", config: INPUT })
+            scheduleApi.endpoints.previewScheduleDraft.initiate({
+                month: "2026-11",
+                config: INPUT,
+                effectiveFrom: "2026-11-10"
+            })
         )
 
         expect(result.data).toEqual(PREVIEW)
         expect(requestAt(fetchMock, 0).method).toBe("POST")
         expect(requestAt(fetchMock, 0).url).toBe("https://api.example.com/api/v1/schedule/preview")
-        expect(await bodyAt(fetchMock, 0)).toEqual({ month: "2026-11", config: INPUT })
+        expect(await bodyAt(fetchMock, 0)).toEqual({
+            month: "2026-11",
+            config: INPUT,
+            effectiveFrom: "2026-11-10"
+        })
     })
 
     it("pede de novo a prévia salva depois de salvar", async () => {
@@ -179,7 +212,7 @@ describe("scheduleApi", () => {
         )
         await subscription
 
-        await store.dispatch(scheduleApi.endpoints.saveSchedule.initiate(INPUT))
+        await store.dispatch(scheduleApi.endpoints.saveSchedule.initiate({ config: INPUT }))
 
         await vi.waitFor(() =>
             expect(

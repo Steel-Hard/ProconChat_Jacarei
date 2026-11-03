@@ -16,6 +16,7 @@ const Appointments = lazy(() => import("@/pages/Appointments.page"))
 const AppointmentDetail = lazy(() => import("@/pages/AppointmentDetail.page"))
 const Users = lazy(() => import("@/pages/Users.page"))
 const Schedule = lazy(() => import("@/pages/Schedule.page"))
+const PrivacyPolicy = lazy(() => import("@/pages/PrivacyPolicy.page"))
 
 function previewRoutes(): RouteObject[] {
     if (!import.meta.env.DEV) {
@@ -48,6 +49,7 @@ const routes: RouteObject[] = [
         errorElement: <ErrorPage />,
         children: [
             { path: ROUTES.login, element: <Login /> },
+            { path: ROUTES.privacyPolicy, element: <PrivacyPolicy /> },
             {
                 element: <RequireAuth />,
                 children: [

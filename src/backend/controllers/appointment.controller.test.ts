@@ -143,6 +143,22 @@ describe("appointment.controller", () => {
         expect(repository.actionCalls).toEqual([{ action: "claim", id: "1", actorUserId: 10, now: FIXED_NOW }])
     })
 
+    it("updateAppointmentStatus com uma ação sem ramo recusa com 400 BAD_REQUEST e não corrige o registro", async () => {
+        const req = {
+            params: { id: "1" },
+            body: { action: "acao_nova" },
+            authUser: mockStaffUser,
+        } as unknown as Request
+        const res = mockResponse()
+        const next = vi.fn()
+
+        await controller.updateAppointmentStatus(req, res, next)
+
+        expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 400, code: "BAD_REQUEST", message: "Ação inválida" }))
+        expect(res.status).not.toHaveBeenCalled()
+        expect(repository.actionCalls).toEqual([])
+    })
+
     it("propaga erro para o middleware next se o serviço lançar", async () => {
         const req = { params: { id: "9999" }, authUser: mockAdminUser } as unknown as Request
         const res = mockResponse()

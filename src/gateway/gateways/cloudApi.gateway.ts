@@ -1,31 +1,43 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
 import { IgnoredIncoming, MessageProvider, ParsedIncoming } from "./messageProvider"
 import { OutgoingMessageValidationError, validateOutgoingMessage } from "./outgoingMessage.validation"
-import { IncomingMessage, OutgoingMessage } from "../types/message.types"
+import { DeliveryStatus, DeliveryStatusValue, IncomingMessage, OutgoingMessage, OutgoingTemplate } from "../types/message.types"
 import {
     CloudApiConfig,
     CloudApiIncomingMessage,
     CloudApiOutgoingBody,
+    CloudApiStatus,
+    CloudApiTemplateBody,
+    CloudApiTypingBody,
     CloudApiWebhookPayload,
 } from "../types/cloudApi.types"
 import { whatsappConfigStore } from "../services/whatsappConfigStore"
 
 const SIGNATURE_PATTERN = /^sha256=([0-9a-f]{64})$/i
 const SEND_TIMEOUT_MS = 10_000
+const PROVIDER_MESSAGE_ID_MAX = 128
+const ERROR_CODE_MAX = 40
+const STATUS_TIMESTAMP_MAX = 253402300799
+const DELIVERY_STATUSES: readonly string[] = ["sent", "delivered", "read", "failed"]
 
-type FetchFn = (url: string, init: RequestInit) => Promise<Pick<Response, "ok" | "status">>
+type FetchFn = (url: string, init: RequestInit) => Promise<Pick<Response, "ok" | "status" | "json">>
 
 interface CloudApiProviderDependencies {
     getConfig: () => CloudApiConfig
     fetchFn?: FetchFn
 }
 
-function parseTimestampMs(raw: string | number | undefined): number | undefined {
+function parseTimestampSeconds(raw: string | number | undefined): number | null {
     if (raw === undefined || raw === null || raw === "") {
-        return undefined
+        return null
     }
     const seconds = Number(raw)
-    return Number.isFinite(seconds) ? seconds * 1000 : undefined
+    return Number.isFinite(seconds) ? seconds : null
+}
+
+function parseTimestampMs(raw: string | number | undefined): number | undefined {
+    const seconds = parseTimestampSeconds(raw)
+    return seconds === null ? undefined : seconds * 1000
 }
 
 function readOptionId(message: CloudApiIncomingMessage): string | undefined {
@@ -77,7 +89,37 @@ function toIncoming(message: CloudApiIncomingMessage): IncomingMessage | Ignored
     return incoming
 }
 
-function isIgnored(value: IncomingMessage | IgnoredIncoming): value is IgnoredIncoming {
+function readStatusTimestamp(raw: string | number | undefined): number | null {
+    const seconds = parseTimestampSeconds(raw)
+    return seconds !== null && Number.isInteger(seconds) && seconds >= 0 && seconds <= STATUS_TIMESTAMP_MAX ? seconds : null
+}
+
+function readErrorCode(status: CloudApiStatus): string | null {
+    const code = Array.isArray(status.errors) ? status.errors[0]?.code : undefined
+    if (code === undefined || code === null) {
+        return null
+    }
+    const text = String(code)
+    return text.length <= ERROR_CODE_MAX ? text : null
+}
+
+function toDeliveryStatus(status: CloudApiStatus): DeliveryStatus | IgnoredIncoming {
+    const id = status.id
+    if (!id || id.length > PROVIDER_MESSAGE_ID_MAX) {
+        return { reason: "unsupported_status" }
+    }
+    if (status.status === undefined || !DELIVERY_STATUSES.includes(status.status)) {
+        return { reason: "unsupported_status", messageId: id }
+    }
+    return {
+        providerMessageId: id,
+        status: status.status as DeliveryStatusValue,
+        timestamp: readStatusTimestamp(status.timestamp),
+        errorCode: readErrorCode(status),
+    }
+}
+
+function isIgnored<T extends object>(value: T | IgnoredIncoming): value is IgnoredIncoming {
     return "reason" in value
 }
 
@@ -94,6 +136,7 @@ function buildBody(to: string, message: OutgoingMessage): CloudApiOutgoingBody {
                 interactive: {
                     type: "list",
                     body: { text: message.text },
+                    ...(message.footer === undefined ? {} : { footer: { text: message.footer } }),
                     action: {
                         button: message.buttonText,
                         sections: [
@@ -115,6 +158,7 @@ function buildBody(to: string, message: OutgoingMessage): CloudApiOutgoingBody {
                 interactive: {
                     type: "button",
                     body: { text: message.text },
+                    ...(message.footer === undefined ? {} : { footer: { text: message.footer } }),
                     action: {
                         buttons: message.buttons.map((button) => ({
                             type: "reply",
@@ -126,10 +170,62 @@ function buildBody(to: string, message: OutgoingMessage): CloudApiOutgoingBody {
     }
 }
 
+async function readProviderMessageId(response: Pick<Response, "json">): Promise<string | null> {
+    try {
+        const payload = (await response.json()) as { messages?: { id?: unknown }[] }
+        const id = payload?.messages?.[0]?.id
+        return typeof id === "string" && id !== "" ? id : null
+    } catch {
+        return null
+    }
+}
+
+function buildTemplateBody(to: string, template: OutgoingTemplate): CloudApiTemplateBody {
+    return {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to,
+        type: "template",
+        template: {
+            name: template.name,
+            language: { code: template.languageCode },
+            components: [
+                {
+                    type: "body",
+                    parameters: template.bodyParameters.map((text) => ({ type: "text", text })),
+                },
+            ],
+        },
+    }
+}
+
 export function createCloudApiProvider({
     getConfig,
     fetchFn = (url, init) => fetch(url, init),
 }: CloudApiProviderDependencies): MessageProvider {
+    async function postMessage(
+        body: CloudApiOutgoingBody | CloudApiTemplateBody | CloudApiTypingBody,
+    ): Promise<Pick<Response, "json">> {
+        const { phoneNumberId, accessToken, graphApiVersion } = getConfig()
+        const response = await fetchFn(
+            `https://graph.facebook.com/${encodeURIComponent(graphApiVersion)}/${encodeURIComponent(phoneNumberId)}/messages`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify(body),
+                signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
+            },
+        )
+
+        if (!response.ok) {
+            throw new Error(`Cloud API returned HTTP ${response.status}`)
+        }
+        return response
+    }
+
     return {
         verifySignature(rawBody: Buffer, signatureHeader: string | undefined): boolean {
             const match = signatureHeader ? SIGNATURE_PATTERN.exec(signatureHeader) : null
@@ -151,7 +247,7 @@ export function createCloudApiProvider({
         },
 
         parseIncoming(payload: unknown): ParsedIncoming {
-            const result: ParsedIncoming = { messages: [], ignored: [] }
+            const result: ParsedIncoming = { messages: [], statuses: [], ignored: [], eventReceived: false }
             const webhook = (payload ?? {}) as CloudApiWebhookPayload
 
             if (webhook.object !== "whatsapp_business_account") {
@@ -176,13 +272,16 @@ export function createCloudApiProvider({
                         continue
                     }
 
+                    result.eventReceived = true
+
                     const statuses = Array.isArray(value.statuses) ? value.statuses : []
                     for (const status of statuses) {
-                        result.ignored.push(
-                            status?.id
-                                ? { reason: "status_update", messageId: status.id }
-                                : { reason: "status_update" },
-                        )
+                        const parsed = toDeliveryStatus(status ?? {})
+                        if (isIgnored(parsed)) {
+                            result.ignored.push(parsed)
+                        } else {
+                            result.statuses.push(parsed)
+                        }
                     }
 
                     const messages = Array.isArray(value.messages) ? value.messages : []
@@ -206,23 +305,21 @@ export function createCloudApiProvider({
                 throw new OutgoingMessageValidationError(validation.reason)
             }
 
-            const { phoneNumberId, accessToken, graphApiVersion } = getConfig()
-            const response = await fetchFn(
-                `https://graph.facebook.com/${encodeURIComponent(graphApiVersion)}/${encodeURIComponent(phoneNumberId)}/messages`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${accessToken}`,
-                    },
-                    body: JSON.stringify(buildBody(to, message)),
-                    signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
-                },
-            )
+            await postMessage(buildBody(to, message))
+        },
 
-            if (!response.ok) {
-                throw new Error(`Cloud API returned HTTP ${response.status}`)
-            }
+        async showTyping(messageId: string): Promise<void> {
+            await postMessage({
+                messaging_product: "whatsapp",
+                status: "read",
+                message_id: messageId,
+                typing_indicator: { type: "text" },
+            })
+        },
+
+        async sendTemplate(to: string, template: OutgoingTemplate): Promise<{ providerMessageId: string | null }> {
+            const response = await postMessage(buildTemplateBody(to, template))
+            return { providerMessageId: await readProviderMessageId(response) }
         },
     }
 }

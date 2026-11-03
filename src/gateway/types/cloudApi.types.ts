@@ -18,9 +18,19 @@ export interface CloudApiIncomingMessage {
     }
 }
 
+export interface CloudApiStatusError {
+    code?: number | string
+    title?: string
+    message?: string
+    error_data?: unknown
+}
+
 export interface CloudApiStatus {
     id?: string
     status?: string
+    timestamp?: string | number
+    recipient_id?: string
+    errors?: CloudApiStatusError[]
 }
 
 export interface CloudApiChangeValue {
@@ -61,6 +71,7 @@ export interface CloudApiListBody extends CloudApiOutgoingBase {
     interactive: {
         type: "list"
         body: { text: string }
+        footer?: { text: string }
         action: {
             button: string
             sections: { rows: { id: string; title: string; description?: string }[] }[]
@@ -73,8 +84,25 @@ export interface CloudApiButtonsBody extends CloudApiOutgoingBase {
     interactive: {
         type: "button"
         body: { text: string }
+        footer?: { text: string }
         action: { buttons: { type: "reply"; reply: { id: string; title: string } }[] }
     }
 }
 
 export type CloudApiOutgoingBody = CloudApiTextBody | CloudApiListBody | CloudApiButtonsBody
+
+export interface CloudApiTemplateBody extends CloudApiOutgoingBase {
+    type: "template"
+    template: {
+        name: string
+        language: { code: string }
+        components: { type: "body"; parameters: { type: "text"; text: string }[] }[]
+    }
+}
+
+export interface CloudApiTypingBody {
+    messaging_product: "whatsapp"
+    status: "read"
+    message_id: string
+    typing_indicator: { type: "text" }
+}

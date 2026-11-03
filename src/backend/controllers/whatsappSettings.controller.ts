@@ -53,6 +53,38 @@ class WhatsAppSettingsController {
         }
     }
 
+    public async templates(_req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            res.status(200).json({ data: await this.settings.getTemplatesStatus() })
+        } catch (error) {
+            next(error)
+        }
+    }
+
+    public async numberStatus(_req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            res.status(200).json({ data: await this.settings.getNumberStatus() })
+        } catch (error) {
+            next(error)
+        }
+    }
+
+    public async deliveryFailures(_req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            res.status(200).json({ data: await this.settings.getDeliveryFailures() })
+        } catch (error) {
+            next(error)
+        }
+    }
+
+    public async history(_req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            res.status(200).json({ data: await this.settings.getHistory() })
+        } catch (error) {
+            next(error)
+        }
+    }
+
     private userId(req: Request): number {
         if (!req.authUser) {
             throw new UnauthorizedError("Authentication required")

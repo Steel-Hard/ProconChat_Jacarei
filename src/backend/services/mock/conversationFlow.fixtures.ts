@@ -1,6 +1,6 @@
 import { ActiveSession, SessionDraft } from "../../repositories/session.repository"
 import { Categoria, Pergunta, RespostaFinalOutput } from "../../types/motorDecisao.types"
-import { AvailableSlot, BookAppointmentResult } from "../../types/schedule.types"
+import { AvailableSlot, BookAppointmentResult, ReturningAppointment } from "../../types/schedule.types"
 
 export const categorias: Categoria[] = [
     { id: 1, title: "Contrato", short_title: "Contrato", active: true },
@@ -18,6 +18,7 @@ export const perguntas: Pergunta[] = [
         answer: "Sim.",
         requires_in_person: false,
         out_of_scope: false,
+        llm_allowed: false,
         active: true,
     },
     {
@@ -30,6 +31,7 @@ export const perguntas: Pergunta[] = [
         answer: "Procure a delegacia.",
         requires_in_person: false,
         out_of_scope: true,
+        llm_allowed: false,
         active: true,
     },
     {
@@ -42,9 +44,38 @@ export const perguntas: Pergunta[] = [
         answer: "Compareça ao PROCON.",
         requires_in_person: true,
         out_of_scope: false,
+        llm_allowed: false,
         active: true,
     },
 ]
+
+export const perguntaComIa: Pergunta = {
+    id: 13,
+    category_id: 1,
+    question: "Posso trocar um produto sem defeito?",
+    short_title: "Troca sem defeito",
+    short_description: "Troca por arrependimento na loja",
+    legal_basis: null,
+    answer: "Depende da política da loja.",
+    requires_in_person: false,
+    out_of_scope: false,
+    llm_allowed: true,
+    active: true,
+}
+
+export const perguntaPresencialComIa: Pergunta = {
+    id: 14,
+    category_id: 1,
+    question: "Como abrir reclamação formal?",
+    short_title: "Reclamação formal",
+    short_description: "Abertura presencial da reclamação",
+    legal_basis: null,
+    answer: "Compareça ao PROCON.",
+    requires_in_person: true,
+    out_of_scope: false,
+    llm_allowed: true,
+    active: true,
+}
 
 export const respostaPadrao: RespostaFinalOutput = {
     categoria: "Contrato",
@@ -132,4 +163,13 @@ export function buildBookingDraft(overrides: Partial<SessionDraft> = {}): Sessio
 
 export function slotOptionId(slot: AvailableSlot): string {
     return `slot_${slot.datetime.toISOString()}`
+}
+
+export function buildReturningAppointment(overrides: Partial<ReturningAppointment> = {}): ReturningAppointment {
+    return {
+        id: "7",
+        appointmentDatetime: new Date("2026-11-10T13:00:00Z"),
+        status: "PENDING",
+        ...overrides,
+    }
 }

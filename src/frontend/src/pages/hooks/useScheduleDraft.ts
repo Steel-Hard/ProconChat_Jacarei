@@ -31,7 +31,7 @@ function useScheduleDraft(view: ScheduleConfigView | undefined, bookedDays: Book
     const [newBlock, setNewBlock] = useState(EMPTY_BLOCK)
     const [newBlockProblem, setNewBlockProblem] = useState<BlockedDateProblem | null>(null)
 
-    const current = draft ?? (view ? toScheduleDraft(view) : null)
+    const current = view ? (draft ?? toScheduleDraft(view)) : null
     const errors = current ? validateScheduleDraft(current) : null
     const changes = current && view ? scheduleChanges(current, view) : []
     const built = current ? toScheduleInput(current) : null

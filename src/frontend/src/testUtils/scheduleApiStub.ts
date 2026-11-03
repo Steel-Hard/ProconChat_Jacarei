@@ -43,6 +43,11 @@ function scheduleApiStub({ handlers = {}, bookedDays = [] }: StubOptions = {}) {
     const calls: ScheduleCall[] = []
     const replies: Record<string, ScheduleHandler> = {
         "GET /api/v1/schedule": () => ({ status: 200, body: { data: buildScheduleConfig() } }),
+        "GET /api/v1/schedule/effective": () => ({
+            status: 200,
+            body: { data: buildScheduleConfig() }
+        }),
+        "GET /api/v1/schedule/versions": () => ({ status: 200, body: { data: [] } }),
         "GET /api/v1/schedule/preview": ({ url }) => ({
             status: 200,
             body: { data: buildMonthlyPreview(url.searchParams.get("month") ?? "2026-11") }

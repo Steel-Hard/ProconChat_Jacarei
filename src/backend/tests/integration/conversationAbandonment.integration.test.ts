@@ -6,6 +6,8 @@ import { sessionRepository } from "../../repositories/session.repository"
 const phones = {
     concurrent: "5500000000981",
     categoryStep: "5500000000982",
+    returnChoice: "5500000000983",
+    cancelConfirmation: "5500000000984",
 }
 
 function phoneHash(phone: string): string {
@@ -109,4 +111,46 @@ describe("Abandono da sessão com Postgres", () => {
         expect(session.rows[0]).toEqual({ status: "ABANDONED", abandoned_at_step: "AWAITING_CATEGORY" })
         expect(events.rows).toEqual([{ data: { step: "AWAITING_CATEGORY" } }])
     })
+
+    test.each([
+        ["no menu de retorno", "returnChoice", "AWAITING_RETURN_CHOICE"],
+        ["na confirmação do cancelamento", "cancelConfirmation", "AWAITING_CANCEL_CONFIRMATION"],
+    ] as const)(
+        "sessão parada %s com o alvo no rascunho é abandonada com a etapa, sem rascunho, e a nova nasce limpa",
+        async (_caso, phoneKey, step) => {
+            const hash = phoneHash(phones[phoneKey])
+            const stale = await sessionRepository.findOrCreateActive(hash)
+            await getPool().query(
+                `UPDATE Sessions
+                 SET current_step = $2,
+                     draft = '{"target_appointment_id": 7}'::jsonb,
+                     last_interaction_at = now() - interval '31 minutes'
+                 WHERE id = $1`,
+                [stale.id, step],
+            )
+
+            const next = await sessionRepository.findOrCreateActive(hash)
+
+            expect(next.created).toBe(true)
+            expect(next.id).not.toBe(stale.id)
+            expect(next.draft ?? null).toBeNull()
+            const session = await getPool().query<{
+                status: string
+                outcome: string
+                abandoned_at_step: string
+                draft: unknown
+            }>("SELECT status, outcome, abandoned_at_step, draft FROM Sessions WHERE id = $1", [stale.id])
+            const events = await getPool().query<{ data: unknown }>(
+                "SELECT data FROM ConversationEvents WHERE session_id = $1 AND type = 'ABANDONED'",
+                [stale.id],
+            )
+            expect(session.rows[0]).toEqual({
+                status: "ABANDONED",
+                outcome: "ABANDONED",
+                abandoned_at_step: step,
+                draft: null,
+            })
+            expect(events.rows).toEqual([{ data: { step } }])
+        },
+    )
 })

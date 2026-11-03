@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import ConflictError from "../../errors/ConflictError"
+import NotFoundError from "../../errors/NotFoundError"
 import ScheduleNotConfiguredError from "../../errors/ScheduleNotConfiguredError"
 import { normalizeAndValidateScheduleConfig } from "../../services/scheduleRules"
 import {
@@ -138,5 +139,74 @@ describe("scheduleStub.repository", () => {
             },
         ])
         expect(repo.listFutureCalls).toEqual([now])
+    })
+
+    describe("mudanças agendadas: devolve o resultado configurado e guarda os argumentos", () => {
+        const now = new Date("2026-10-05T09:00:00-03:00")
+        const changed = buildDefaultScheduleConfigView({ seatsPerSlot: 4 })
+        const pastStart = {
+            id: "11",
+            protocol: "CONFLITO",
+            name: "Agendamento na Vigência",
+            cpfMasked: "***.444.444-**",
+            appointmentDatetime: new Date("2026-10-13T08:00:00-03:00"),
+            requestDatetime: new Date("2026-10-01T10:00:00-03:00"),
+            status: "CONFIRMED" as const,
+        }
+
+        it("salva a mudança sem conferir conflitos e guarda os argumentos", async () => {
+            const repo = createScheduleStubRepository({ appointments: [pastStart] })
+            const config = normalizeAndValidateScheduleConfig({ ...changed, ranges: [] })
+
+            const saved = await repo.saveScheduledConfig({ config, actorUserId: 2, now, effectiveFrom: "2026-10-12" })
+
+            expect(saved).toMatchObject({
+                effectiveFrom: "2026-10-12",
+                seatsPerSlot: 4,
+                ranges: [],
+                updatedBy: { id: 2, name: "Patrícia Lima" },
+                updatedAt: now.toISOString(),
+            })
+            expect(repo.scheduledSaveCalls).toEqual([
+                { config, actorUserId: 2, now, effectiveFrom: "2026-10-12", validateAgainstVersions: undefined },
+            ])
+        })
+
+        it("lança o erro configurado ao salvar e ao cancelar, guardando os argumentos", async () => {
+            const conflict = new ConflictError("Esta alteração afeta agendamentos futuros", "SCHEDULE_CONFLICTS", { conflicts: [] })
+            const missing = new NotFoundError("Mudança de horário não encontrada")
+            const repo = createScheduleStubRepository()
+            repo.setScheduledSaveError(conflict)
+            repo.setScheduledDeleteError(missing)
+            const config = normalizeAndValidateScheduleConfig(changed)
+
+            await expect(repo.saveScheduledConfig({ config, actorUserId: 2, now, effectiveFrom: "2026-10-12" })).rejects.toBe(conflict)
+            await expect(repo.deleteScheduledConfig("2026-10-12", now)).rejects.toBe(missing)
+            expect(repo.scheduledSaveCalls.map((call) => call.effectiveFrom)).toEqual(["2026-10-12"])
+            expect(repo.scheduledDeleteCalls).toEqual([{ effectiveFrom: "2026-10-12", now }])
+        })
+
+        it("cancela sem conferir se a mudança existe e guarda os argumentos", async () => {
+            const repo = createScheduleStubRepository()
+
+            await repo.deleteScheduledConfig("2026-10-12", now)
+
+            expect(repo.scheduledDeleteCalls).toEqual([{ effectiveFrom: "2026-10-12", now }])
+        })
+
+        it("devolve a configuração-base configurada para qualquer data, sem escolher entre as mudanças, e guarda a data", async () => {
+            const base = buildDefaultScheduleConfigView()
+            const repo = createScheduleStubRepository({
+                config: base,
+                scheduledConfigs: [{ effectiveFrom: "2026-10-01", config: changed }],
+            })
+
+            const version = await repo.getConfigForDate("2026-10-20")
+            const current = await repo.getConfig()
+
+            expect(version).toEqual({ effectiveFrom: null, config: base })
+            expect(current).toEqual(base)
+            expect(repo.configForDateCalls).toEqual(["2026-10-20"])
+        })
     })
 })

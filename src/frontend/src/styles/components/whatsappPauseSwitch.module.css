@@ -56,3 +56,17 @@
 .on .knob {
     left: 20px;
 }
+
+.compact {
+    width: 34px;
+    height: 20px;
+}
+
+.compact .knob {
+    width: 16px;
+    height: 16px;
+}
+
+.compact.on .knob {
+    left: 16px;
+}

@@ -4,6 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from "vitest"
 import app from "../../app"
 import getPool from "../../db/connection"
 import { seedWhatsAppSettings } from "../../db/seeds/whatsappSettings.seed"
+import { auditLogRepository } from "../../repositories/auditLog.repository"
 import { whatsappSettingsRepository } from "../../repositories/whatsappSettings.repository"
 import { decrypt, encrypt } from "../../utils/crypto.utils"
 
@@ -25,6 +26,26 @@ let userId = 0
 
 async function clearRow(): Promise<void> {
     await getPool().query("DELETE FROM WhatsAppSettings")
+}
+
+async function clearAudit(): Promise<void> {
+    await getPool().query("DELETE FROM AuditLog WHERE actor_user_id = $1 OR action LIKE 'it88_%'", [userId])
+}
+
+async function insertAudit(area: string, action: string, actor: number | null, createdAt: Date, data: object = {}): Promise<string> {
+    const result = await getPool().query<{ id: string }>(
+        "INSERT INTO AuditLog (area, action, actor_user_id, data, created_at) VALUES ($1, $2, $3, $4::jsonb, $5) RETURNING id",
+        [area, action, actor, JSON.stringify(data), createdAt],
+    )
+    return String(result.rows[0]?.id)
+}
+
+async function auditRows() {
+    const result = await getPool().query<{ area: string; action: string; actor_user_id: string | null; data: unknown }>(
+        "SELECT area, action, actor_user_id, data FROM AuditLog WHERE actor_user_id = $1 ORDER BY id",
+        [userId],
+    )
+    return result.rows
 }
 
 async function restoreRow(): Promise<void> {
@@ -56,12 +77,16 @@ describe("Repositorio da configuracao do WhatsApp com Postgres", () => {
         userId = Number(user.rows[0]?.id)
     })
 
-    beforeEach(clearRow)
+    beforeEach(async () => {
+        await clearRow()
+        await clearAudit()
+    })
 
     afterAll(async () => {
         try {
             await removePauseTestSessions()
             await restoreRow()
+            await clearAudit()
             await getPool().query("DELETE FROM Users WHERE id = $1", [userId])
         } finally {
             await getPool().end()
@@ -112,6 +137,7 @@ describe("Repositorio da configuracao do WhatsApp com Postgres", () => {
             verifiedName: "PROCON Jacareí",
             accessTokenLifetime: { kind: "PERMANENT", expiresAt: null },
             updatedBy: userId,
+            auditFields: [],
         })
 
         expect(row).toMatchObject({
@@ -138,6 +164,7 @@ describe("Repositorio da configuracao do WhatsApp com Postgres", () => {
             displayPhoneNumber: "+55 12 3955-9000",
             verifiedName: "PROCON Jacareí",
             updatedBy: userId,
+            auditFields: [],
         }
 
         const expiring = await whatsappSettingsRepository.saveCredentials({
@@ -155,6 +182,55 @@ describe("Repositorio da configuracao do WhatsApp com Postgres", () => {
         expect(cleared.accessTokenLifetime).toEqual({ kind: "UNKNOWN", expiresAt: null })
     })
 
+    test("saveCredentials grava no historico a acao credentials_saved com o autor e so os nomes dos campos", async () => {
+        await whatsappSettingsRepository.ensureRow(VERIFY_TOKEN)
+
+        await whatsappSettingsRepository.saveCredentials({
+            phoneNumberId: "100000000000001",
+            businessAccountId: "200000000000009",
+            accessTokenEncrypted: encrypt("EAAtokenSecreto123456"),
+            appSecretEncrypted: encrypt("appsecret987654"),
+            displayPhoneNumber: "+55 12 3955-9000",
+            verifiedName: "PROCON Jacareí",
+            accessTokenLifetime: null,
+            updatedBy: userId,
+            auditFields: ["businessAccountId", "accessToken"],
+        })
+
+        expect(await auditRows()).toEqual([
+            {
+                area: "whatsapp",
+                action: "credentials_saved",
+                actor_user_id: String(userId),
+                data: { fields: ["businessAccountId", "accessToken"] },
+            },
+        ])
+    })
+
+    test("o historico lido do banco nao contem o token nem o App Secret em claro, cifrados ou pelos 4 ultimos caracteres", async () => {
+        await whatsappSettingsRepository.ensureRow(VERIFY_TOKEN)
+        await whatsappSettingsRepository.saveCredentials({
+            phoneNumberId: "100000000000001",
+            businessAccountId: null,
+            accessTokenEncrypted: encrypt("EAAtokenSecreto123456"),
+            appSecretEncrypted: encrypt("appsecret987654"),
+            displayPhoneNumber: "+55 12 3955-9000",
+            verifiedName: "PROCON Jacareí",
+            accessTokenLifetime: null,
+            updatedBy: userId,
+            auditFields: ["accessToken", "appSecret"],
+        })
+
+        const serializedHistory = JSON.stringify(await auditLogRepository.listByArea("whatsapp", 50))
+        const storedData = JSON.stringify(await auditRows())
+
+        expect(serializedHistory).toContain("credentials_saved")
+        for (const secret of ["EAAtokenSecreto123456", "appsecret987654", "v1:", "3456", "7654"]) {
+            expect(serializedHistory).not.toContain(secret)
+            expect(storedData).not.toContain(secret)
+        }
+    })
+
     test("o banco recusa segredo em claro com 23514", async () => {
         await whatsappSettingsRepository.ensureRow(VERIFY_TOKEN)
 
@@ -168,6 +244,7 @@ describe("Repositorio da configuracao do WhatsApp com Postgres", () => {
                 verifiedName: "PROCON Jacareí",
                 accessTokenLifetime: null,
                 updatedBy: userId,
+                auditFields: [],
             }),
         ).rejects.toMatchObject({ code: "23514" })
     })
@@ -184,6 +261,52 @@ describe("Repositorio da configuracao do WhatsApp com Postgres", () => {
         expect(pausedRead).toBe(true)
         expect(resumed.autoReplyPaused).toBe(false)
         expect(await whatsappSettingsRepository.isAutoReplyPaused()).toBe(false)
+    })
+
+    test("setAutoReplyPaused grava no historico auto_reply_paused e auto_reply_resumed sem dados", async () => {
+        await whatsappSettingsRepository.ensureRow(VERIFY_TOKEN)
+
+        await whatsappSettingsRepository.setAutoReplyPaused(true, userId)
+        await whatsappSettingsRepository.setAutoReplyPaused(false, userId)
+
+        expect(await auditRows()).toEqual([
+            { area: "whatsapp", action: "auto_reply_paused", actor_user_id: String(userId), data: {} },
+            { area: "whatsapp", action: "auto_reply_resumed", actor_user_id: String(userId), data: {} },
+        ])
+    })
+
+    test("listByArea traz da alteracao mais recente para a mais antiga, desempata pelo id, limita e mostra o autor", async () => {
+        const base = Date.UTC(2099, 5, 1)
+        for (let second = 1; second <= 49; second += 1) {
+            await insertAudit("whatsapp", `it88_old_${second}`, userId, new Date(base + second * 1000))
+        }
+        const withoutActor = await insertAudit("whatsapp", "it88_without_actor", null, new Date(base + 50_000))
+        const tieFirst = await insertAudit("whatsapp", "it88_tie_first", userId, new Date(base + 100_000), { fields: ["accessToken"] })
+        const tieSecond = await insertAudit("whatsapp", "it88_tie_second", userId, new Date(base + 100_000), { fields: [] })
+        await insertAudit("schedule", "it88_other_area", userId, new Date(base + 200_000))
+
+        const items = await auditLogRepository.listByArea("whatsapp", 50)
+
+        expect(items).toHaveLength(50)
+        expect(items.slice(0, 3)).toEqual([
+            {
+                id: tieSecond,
+                action: "it88_tie_second",
+                fields: [],
+                actor: { id: userId, name: "Admin Integracao WhatsApp" },
+                createdAt: new Date(base + 100_000),
+            },
+            {
+                id: tieFirst,
+                action: "it88_tie_first",
+                fields: ["accessToken"],
+                actor: { id: userId, name: "Admin Integracao WhatsApp" },
+                createdAt: new Date(base + 100_000),
+            },
+            { id: withoutActor, action: "it88_without_actor", fields: [], actor: null, createdAt: new Date(base + 50_000) },
+        ])
+        expect(items.at(-1)?.action).toBe("it88_old_3")
+        expect(items.map((item) => item.action)).not.toContain("it88_other_area")
     })
 
     test("recordCredentialsCheck grava o resultado sem mudar updated_at nem updated_by", async () => {

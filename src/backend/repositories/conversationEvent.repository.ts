@@ -11,7 +11,7 @@ import { conversationEventFailureLog, ConversationEventLogger } from "../utils/c
 export type Queryable = Pick<PoolClient, "query">
 
 export interface ConversationEventRepository {
-    record(sessionId: string, event: ConversationEvent): Promise<void>
+    record(sessionId: string, event: ConversationEvent, occurredAt?: Date): Promise<void>
     listBySession(sessionId: string): Promise<RecordedConversationEvent[]>
 }
 
@@ -23,21 +23,33 @@ export async function insertConversationEvent(
     db: Queryable,
     sessionId: string,
     event: ConversationEvent,
+    occurredAt?: Date,
 ): Promise<void> {
     const row = buildConversationEventRow(sessionId, event)
+    const values = [
+        row.sessionId,
+        row.type,
+        row.categoryId,
+        row.questionId,
+        row.appointmentId,
+        JSON.stringify(row.data),
+    ]
+
+    if (occurredAt === undefined) {
+        await db.query(
+            `INSERT INTO ConversationEvents
+                (session_id, type, category_id, question_id, appointment_id, data)
+             VALUES ($1, $2, $3, $4, $5, $6::jsonb)`,
+            values,
+        )
+        return
+    }
 
     await db.query(
         `INSERT INTO ConversationEvents
-            (session_id, type, category_id, question_id, appointment_id, data)
-         VALUES ($1, $2, $3, $4, $5, $6::jsonb)`,
-        [
-            row.sessionId,
-            row.type,
-            row.categoryId,
-            row.questionId,
-            row.appointmentId,
-            JSON.stringify(row.data),
-        ],
+            (session_id, type, category_id, question_id, appointment_id, data, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7)`,
+        [...values, occurredAt],
     )
 }
 
@@ -45,8 +57,8 @@ export function createConversationEventRepository({
     logger,
 }: ConversationEventRepositoryDependencies): ConversationEventRepository {
     return {
-        async record(sessionId, event): Promise<void> {
-            await insertConversationEvent(getPool(), sessionId, event)
+        async record(sessionId, event, occurredAt): Promise<void> {
+            await insertConversationEvent(getPool(), sessionId, event, occurredAt)
         },
 
         async listBySession(sessionId): Promise<RecordedConversationEvent[]> {

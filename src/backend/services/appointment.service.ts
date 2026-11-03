@@ -1,3 +1,4 @@
+import { gatewayClient } from "../clients/gateway.client"
 import NotFoundError from "../errors/NotFoundError"
 import { AppointmentRepository } from "../repositories/appointment.repository.interface"
 import { appointmentRepository as defaultAppointmentRepository } from "../repositories/appointment.repository"
@@ -6,17 +7,29 @@ import {
     AppointmentDetailRecord,
     AppointmentListFilters,
     AppointmentListResponse,
+    CANCELLATION_REASONS,
+    CancellationNoticeTarget,
+    CancellationPreview,
+    CancellationReason,
     ConversationTimelineStep,
     CorrectionWarning,
     StaffMember,
 } from "../types/appointment.types"
 import { errorCodeOf } from "../utils/conversationEventLog"
-import { ActionAccess, availableActions } from "./appointmentTransitions"
+import {
+    ActionAccess,
+    availableActions,
+    CancellationNoticeState,
+    decideRetryCancellationNotice,
+} from "./appointmentTransitions"
 import {
     conversationEventService as defaultConversationEventService,
     ConversationEventService,
 } from "./conversationEvent.service"
 import type { RecordedConversationEvent } from "../types/conversationEvent.types"
+import { decrypt } from "../utils/crypto.utils"
+import { CitizenNotificationService, createCitizenNotificationService } from "./citizenNotification.service"
+import { CORPO_AVISO_CANCELAMENTO, parametrosAvisoCancelamento, renderizarModelo } from "./messageFormatter.service"
 
 export interface CorrectedAppointment {
     detail: AppointmentDetail
@@ -82,6 +95,24 @@ export interface AppointmentService {
         access: ActionAccess,
         now?: Date,
     ): Promise<AppointmentDetail>
+
+    cancelAppointment(
+        idOrCode: number | string,
+        actorUserId: number,
+        reason: CancellationReason,
+        note: string | undefined,
+        access: ActionAccess,
+        now?: Date,
+    ): Promise<AppointmentDetail>
+
+    retryCancellationNotice(
+        idOrCode: number | string,
+        actorUserId: number,
+        access: ActionAccess,
+        now?: Date,
+    ): Promise<AppointmentDetail>
+
+    getCancellationPreview(idOrCode: number | string): Promise<CancellationPreview>
 }
 
 type TimelineTitles = { categories: Record<number, string>; questions: Record<number, string> }
@@ -144,6 +175,16 @@ function buildTimeline(
     })
 }
 
+function noticeStateOf(target: CancellationNoticeTarget): CancellationNoticeState {
+    return {
+        status: target.status,
+        hasStaffCancellation: target.lastStaffCancelReason !== null,
+        lastCancellationNotice: target.lastCancellationNotice,
+        hasPhone: target.phoneEncrypted !== null,
+        appointmentDatetime: target.appointmentDatetime,
+    }
+}
+
 export interface AppointmentTimelineFailureLog {
     appointmentId: string
     code: string
@@ -157,10 +198,13 @@ export function createAppointmentService(deps?: {
     repository?: AppointmentRepository
     conversationEvents?: ConversationEventService
     logger?: AppointmentServiceLogger
+    notifications?: CitizenNotificationService
 }): AppointmentService {
     const repository = deps?.repository ?? defaultAppointmentRepository
     const conversationEvents = deps?.conversationEvents ?? defaultConversationEventService
     const logger = deps?.logger ?? console
+    const notifications =
+        deps?.notifications ?? createCitizenNotificationService({ appointments: repository, gateway: gatewayClient, decrypt })
 
     async function getAppointmentDetail(
         idOrCode: number | string,
@@ -199,6 +243,8 @@ export function createAppointmentService(deps?: {
             }
         }
 
+        const notice = await repository.findCancellationNoticeTarget(appointment.id)
+
         return {
             ...appointment,
             available_actions: availableActions(
@@ -208,6 +254,7 @@ export function createAppointmentService(deps?: {
                 },
                 now,
                 access,
+                notice ? noticeStateOf(notice) : undefined,
             ),
         }
     }
@@ -309,6 +356,65 @@ export function createAppointmentService(deps?: {
         ): Promise<AppointmentDetail> {
             await repository.markNoShow(String(idOrCode), actorUserId, now)
             return getAppointmentDetail(idOrCode, access, now)
+        },
+
+        async cancelAppointment(
+            idOrCode: number | string,
+            actorUserId: number,
+            reason: CancellationReason,
+            note: string | undefined,
+            access: ActionAccess,
+            now: Date = new Date(),
+        ): Promise<AppointmentDetail> {
+            await repository.cancel(String(idOrCode), actorUserId, reason, note, now)
+            try {
+                await notifications.notifyCancellation(String(idOrCode), actorUserId, now)
+            } catch (error) {
+                logger.error("Erro no aviso de cancelamento ao cidadão depois do cancelamento", {
+                    appointmentId: String(idOrCode),
+                    code: errorCodeOf(error),
+                })
+            }
+            return getAppointmentDetail(idOrCode, access, now)
+        },
+
+        async retryCancellationNotice(
+            idOrCode: number | string,
+            actorUserId: number,
+            access: ActionAccess,
+            now: Date = new Date(),
+        ): Promise<AppointmentDetail> {
+            const target = await repository.findCancellationNoticeTarget(String(idOrCode))
+            if (!target) {
+                throw new NotFoundError("Agendamento não encontrado")
+            }
+            const decision = decideRetryCancellationNotice(noticeStateOf(target), now)
+            if (!decision.allowed) {
+                throw decision.error
+            }
+            await notifications.notifyCancellation(String(idOrCode), actorUserId, now)
+            return getAppointmentDetail(idOrCode, access, now)
+        },
+
+        async getCancellationPreview(idOrCode: number | string): Promise<CancellationPreview> {
+            const target = await repository.findCancellationNoticeTarget(String(idOrCode))
+            if (!target) {
+                throw new NotFoundError("Agendamento não encontrado")
+            }
+            return {
+                previews: CANCELLATION_REASONS.map((reason) => ({
+                    reason,
+                    message: renderizarModelo(
+                        CORPO_AVISO_CANCELAMENTO,
+                        parametrosAvisoCancelamento({
+                            name: target.name,
+                            protocol: target.protocol,
+                            appointmentDatetime: target.appointmentDatetime,
+                            reason,
+                        }),
+                    ),
+                })),
+            }
         },
     }
 }

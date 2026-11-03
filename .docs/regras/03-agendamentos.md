@@ -47,6 +47,7 @@ Colunas: protocolo, titular (com CPF mascarado), categoria e pergunta de origem,
 
 - **20 por página**, com "Anterior" e "Próxima".
 - **Agendamentos mantidos fora da grade** após uma mudança de horários mostram o selo "Fora da grade atual".
+- **Agendamento anonimizado** por prazo ([decisão 002](../decisoes/002-lgpd-dados-pessoais.md#anonimização-por-prazo)): o titular aparece como **"Titular removido"** e, no lugar do CPF mascarado, **"CPF removido"**, nas tabelas completa e compacta. A busca por CPF não o encontra; a busca pelo nome "titular" o encontra.
 
 **Ordenação:**
 

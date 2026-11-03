@@ -16,7 +16,7 @@ Revisão feita em 27/09/2026, no início da Sprint 2 (15/09 a 19/10/2026), e col
 | **RF02** Opções com base na tabela de decisões | 7 categorias e 47 itens do FAQ real | Conteúdo gerenciável, títulos curtos, paginação ([001](../decisoes/001-fluxo-guiado-por-categorias.md)) | ⚠️ Nota 1 |
 | **RF03** Fluxos decisórios sequenciais | Categoria → pergunta → "resolveu?" → quem comparece → nome e CPF → horário (#55, #56) | Retorno de quem já tem agendamento ([008](../decisoes/008-fluxo-da-conversa-e-desfechos.md)) | ⚠️ Nota 1 |
 | **RF04** Resposta que resume o caso e indica próximos passos | Resposta com base legal, documentos e o trecho "O que fazer agora"; oferta de agendamento | — | ✅ Nota 2 |
-| **RF05** Complemento por LLM | Cliente e serviço prontos, sem chamador no fluxo | Opção por pergunta, rótulo, fallback ([009](../decisoes/009-complemento-por-llm.md)) | ⚠️ Nota 3 |
+| **RF05** Complemento por LLM | Ligado ao fluxo (#66): a IA reescreve só a explicação da resposta oficial numa mensagem única com o bloco oficial, o aviso e os botões; a oficial sai inteira quando a IA não pode ser usada | Opção por pergunta, rótulo, fallback ([009](../decisoes/009-complemento-por-llm.md)) | ⚠️ Nota 3 |
 | **RF06** Registrar interações e analisar fluxos | Eventos tipados e desfechos gravados (#16, #55) | Sessões, Relatórios ([010](../decisoes/010-registro-de-interacoes-e-relatorios.md)) | ⚠️ Falta a análise |
 | **RF07** Agendamento quando a resposta não resolve | Agendamento pelo bot, com horários da agenda e controle de vagas (#56) | Remarcar e cancelar pelo bot, agenda configurável pelo painel ([006](../decisoes/006-ciclo-de-vida-do-agendamento.md), [007](../decisoes/007-agenda-configuravel.md), [008](../decisoes/008-fluxo-da-conversa-e-desfechos.md)) | ⚠️ Parcial |
 | **RF08** Interface web de gerenciamento dos agendamentos | Painel com login, "Minha conta", Agendamentos (lista com busca, filtros e "Assumir", #85), Detalhe do agendamento (assumir, atendido, não compareceu, #86) e WhatsApp (#54), sobre a API de agendamentos (#60) | Demais telas do protótipo (10 aprovadas) | ⚠️ Nota 4 |
@@ -25,7 +25,7 @@ Revisão feita em 27/09/2026, no início da Sprint 2 (15/09 a 19/10/2026), e col
 
 **Nota 2: próximos passos explícitos.** Resolvida: a resposta final traz o trecho rotulado "O que fazer agora", que é o texto literal do RF04.
 
-**Nota 3: tempo de resposta do LLM.** Em CPU, de 23 a 38 s por resposta. **Ação:** decidir o envio assíncrono proposto em [009](../decisoes/009-complemento-por-llm.md) antes de ligar o LLM ao fluxo.
+**Nota 3: tempo de resposta do LLM.** Em CPU, de 23 a 38 s por resposta. Decidido em [009](../decisoes/009-complemento-por-llm.md) (item 6, 02/11/2026): mensagem única depois da IA, com "digitando…", sondagem de 2 s e uma geração por vez. O cidadão espera a IA quando o Ollama está no ar; custo aceito no RNF02.
 
 **Nota 4: painel em construção.** O stack foi decidido (React 19 + Vite, a partir do `template-react`). Estão prontos o login, "Minha conta", Agendamentos, Detalhe do agendamento e WhatsApp; enquanto não há Dashboard, a tela inicial (`/`) leva a Agendamentos (PR #115). Dashboard, Relatórios, Conteúdo, Sessões, Horários, Documentos e Usuários continuam "Em construção". O cancelamento pela equipe e as observações internas do agendamento ainda não existem na API.
 
@@ -34,10 +34,10 @@ Revisão feita em 27/09/2026, no início da Sprint 2 (15/09 a 19/10/2026), e col
 | Req. | Situação | O que falta |
 |---|---|---|
 | **RNF01** Usabilidade | ⚠️ Desenho cuidadoso (títulos curtos, listas tocáveis, prévias das mensagens) | Nenhum teste com usuários. Sugestão: teste rápido com a equipe do PROCON e 3 a 5 cidadãos na Sprint 3 |
-| **RNF02** Disponibilidade e tempo de resposta | ⚠️ | Envio assíncrono do LLM; `restart` e healthchecks em todos os containers. A Cloud API, que substituiu a Evolution (removida na #82), melhora a disponibilidade |
-| **RNF03** LGPD | ⚠️ Bem encaminhado ([002](../decisoes/002-lgpd-dados-pessoais.md)) | Aviso de privacidade na saudação do bot; política de retenção (RNF09); procedimento para pedidos do titular |
+| **RNF02** Disponibilidade e tempo de resposta | ⚠️ | Espera da IA com "digitando…", sondagem de 2 s e uma geração por vez, com a resposta oficial como alternativa ([009](../decisoes/009-complemento-por-llm.md)); `restart` e healthchecks em todos os containers. A Cloud API, que substituiu a Evolution (removida na #82), melhora a disponibilidade |
+| **RNF03** LGPD | ✅ Implementado (#69): telefone do agendamento apagado no horário, anonimização automática de conversas e agendamentos por prazo (ligada e configurada na aba Privacidade, com prévia e confirmação), página pública `/privacidade` com os dados e os prazos cadastrados, link na saudação e [procedimento para pedidos do titular](../lgpd/pedidos-do-titular.md) ([002](../decisoes/002-lgpd-dados-pessoais.md)) | Conferir as citações legais dos prazos (marcadas "a conferir" na decisão 002) |
 | **RNF04** Caráter orientativo | ✅ Implementado (PR #43), texto único em todo o sistema | — |
-| **RNF05** Identificar o que é gerado por IA | ⚠️ Desenhado | Implementar junto com o RF05 |
+| **RNF05** Identificar o que é gerado por IA | ✅ | Rótulo "Gerado com auxílio de IA" na mensagem (no rodapé da mensagem interativa, [009](../decisoes/009-complemento-por-llm.md)) e na linha do tempo do painel |
 | **RNF06** Docker | ✅ | — (front no container `frontend`; Evolution e Redis removidos na #82) |
 | **RNF07** Instalação e requisitos de hardware/software | ✅ Para o estado atual | Atualizar após a migração: chave-mestra, `.env` reduzido, front-end. Escrever o **guia de passagem para o PROCON** (conta Meta, número próprio, token permanente, modelos de mensagem, tela de WhatsApp), já que durante as sprints o sistema roda com o número de testes do time ([003](../decisoes/003-migracao-whatsapp-cloud-api.md)) |
 | **RNF08** Práticas modernas (ágil, CI/CD, testes, docs) | ✅ CI em todo PR e push (`ci.yml`) e deploy contínuo na VM (`deploy.yml`, #51) | Teste end-to-end do fluxo mínimo (#18) |

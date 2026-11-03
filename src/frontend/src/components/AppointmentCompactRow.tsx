@@ -37,7 +37,7 @@ function AppointmentCompactRow({
             <td>
                 <div className={css.stack}>
                     <span className={css.name}>{row.name}</span>
-                    <span className={css.cpf}>{row.cpfMasked}</span>
+                    <span className={css.cpf}>{row.cpfMasked ?? texts.cpfRemoved}</span>
                     {row.offGrid ? <Seal label={texts.offGrid} tone="warning" /> : null}
                     {row.representative ? <Seal label={texts.byRepresentative} /> : null}
                 </div>

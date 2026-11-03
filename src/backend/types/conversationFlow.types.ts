@@ -1,7 +1,16 @@
 import type { SessionStep } from "../repositories/session.repository"
 import type { OutgoingMessage } from "./message.types"
 import type { Categoria, Pergunta, RespostaFinalOutput } from "./motorDecisao.types"
-import type { AvailableSlot, BookAppointmentInput, BookAppointmentResult } from "./schedule.types"
+import type {
+    AvailableSlot,
+    BookAppointmentInput,
+    BookAppointmentResult,
+    CitizenCancelInput,
+    CitizenCancelResult,
+    CitizenRescheduleInput,
+    CitizenRescheduleResult,
+    ReturningAppointment,
+} from "./schedule.types"
 
 export interface ConversationFlowInput {
     phone: string
@@ -13,6 +22,7 @@ export interface ConversationFlowReply {
     text: string
     step: SessionStep
     messages?: OutgoingMessage[]
+    typing?: true
 }
 
 export interface ConversationFlowResult {
@@ -45,4 +55,7 @@ export interface MotorDecisao {
 export interface ScheduleProvider {
     getAvailableSlots(now?: Date): Promise<AvailableSlot[]>
     bookSlot(input: BookAppointmentInput): Promise<BookAppointmentResult>
+    findReturningAppointment(phoneHash: string, now?: Date): Promise<ReturningAppointment | null>
+    cancelByCitizen(input: CitizenCancelInput): Promise<CitizenCancelResult>
+    rescheduleByCitizen(input: CitizenRescheduleInput): Promise<CitizenRescheduleResult>
 }

@@ -1,0 +1,29 @@
+.value {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+.label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-strong);
+}
+
+.text {
+    white-space: pre-line;
+    color: var(--text-body);
+}
+
+.missing {
+    font-style: italic;
+    color: var(--text-muted);
+}
+
+.link {
+    color: var(--text-link);
+    font-weight: 600;
+    word-break: break-all;
+}

@@ -269,6 +269,25 @@ export const previewScheduleBodySchema = z.object({
         .refine(isValidMonthString, { message: "Mês inválido (use YYYY-MM)" })
         .optional(),
     config: scheduleConfigBodySchema.optional(),
+    effectiveFrom: z
+        .string()
+        .trim()
+        .refine(isValidCalendarDate, { message: "Data inválida (use YYYY-MM-DD)" })
+        .optional(),
 })
 
 export type PreviewScheduleBody = z.infer<typeof previewScheduleBodySchema>
+
+export const scheduleEffectiveDateSchema = z.object({
+    effectiveFrom: z
+        .string()
+        .trim()
+        .refine(isValidCalendarDate, { message: "Data inválida (use YYYY-MM-DD)" }),
+})
+
+export const scheduleDateQuerySchema = z.object({
+    date: z
+        .string()
+        .trim()
+        .refine(isValidCalendarDate, { message: "Data inválida (use YYYY-MM-DD)" }),
+})
