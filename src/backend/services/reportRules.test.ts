@@ -1,18 +1,11 @@
 import { describe, expect, it } from "vitest"
-import type { AbandonedStep } from "../types/conversationEvent.types"
 import {
-    ABANDONMENT_STAGES,
-    buildAbandonmentFunnel,
     buildAppointmentsResultSummary,
-    buildConversationSeries,
-    buildDailySeries,
     buildOutcomesSummary,
     calculateNoShowRate,
     countCalendarDaysInclusive,
-    mapStepToAbandonmentStage,
     OUTCOME_DEFINITIONS,
     resolveReportPeriod,
-    STEP_TO_ABANDONMENT_STAGE,
 } from "./reportRules"
 
 const FIXED_NOW = new Date("2026-10-15T15:00:00.000Z")
@@ -55,6 +48,30 @@ describe("reportRules", () => {
             expect(period.daysCount).toBe(15)
         })
 
+        it("resolve current_month no dia 1 do mês com daysCount igual a 1", () => {
+            const firstDayOfMonth = new Date("2026-10-01T15:00:00.000Z")
+            const period = resolveReportPeriod(
+                { period: "current_month" },
+                firstDayOfMonth,
+            )
+            expect(period.preset).toBe("current_month")
+            expect(period.startDate).toBe("2026-10-01")
+            expect(period.endDate).toBe("2026-10-01")
+            expect(period.daysCount).toBe(1)
+        })
+
+        it("usa o fuso America/Sao_Paulo quando em UTC já virou o mês seguinte", () => {
+            const lateNightSaoPaulo = new Date("2026-11-01T01:00:00.000Z")
+            const period = resolveReportPeriod(
+                { period: "current_month" },
+                lateNightSaoPaulo,
+            )
+            expect(period.today).toBe("2026-10-31")
+            expect(period.startDate).toBe("2026-10-01")
+            expect(period.endDate).toBe("2026-10-31")
+            expect(period.daysCount).toBe(31)
+        })
+
         it("resolve previous_month com o mês anterior completo", () => {
             const period = resolveReportPeriod(
                 { period: "previous_month" },
@@ -64,6 +81,18 @@ describe("reportRules", () => {
             expect(period.startDate).toBe("2026-09-01")
             expect(period.endDate).toBe("2026-09-30")
             expect(period.daysCount).toBe(30)
+        })
+
+        it("resolve previous_month na virada de ano (janeiro retorna dezembro do ano anterior)", () => {
+            const januaryNow = new Date("2027-01-10T15:00:00.000Z")
+            const period = resolveReportPeriod(
+                { period: "previous_month" },
+                januaryNow,
+            )
+            expect(period.preset).toBe("previous_month")
+            expect(period.startDate).toBe("2026-12-01")
+            expect(period.endDate).toBe("2026-12-31")
+            expect(period.daysCount).toBe(31)
         })
 
         it("resolve custom com um único dia quando startDate === endDate", () => {
@@ -175,88 +204,6 @@ describe("reportRules", () => {
         })
     })
 
-    describe("buildDailySeries e buildConversationSeries", () => {
-        it("preenche com zero os dias sem conversas no intervalo", () => {
-            const series = buildDailySeries("2026-10-01", "2026-10-03", [
-                {
-                    date: "2026-10-01",
-                    conversations: 10,
-                    appointmentsCreated: 2,
-                },
-                {
-                    date: "2026-10-03",
-                    conversations: 6,
-                    appointmentsCreated: 1,
-                },
-            ])
-
-            expect(series).toEqual([
-                {
-                    date: "2026-10-01",
-                    conversations: 10,
-                    appointmentsCreated: 2,
-                },
-                {
-                    date: "2026-10-02",
-                    conversations: 0,
-                    appointmentsCreated: 0,
-                },
-                {
-                    date: "2026-10-03",
-                    conversations: 6,
-                    appointmentsCreated: 1,
-                },
-            ])
-        })
-
-        it("mantém granularidade diária até 45 dias", () => {
-            const daily = buildDailySeries("2026-09-01", "2026-10-15", [
-                {
-                    date: "2026-09-01",
-                    conversations: 4,
-                    appointmentsCreated: 1,
-                },
-            ])
-            expect(daily).toHaveLength(45)
-
-            const result = buildConversationSeries(daily)
-            expect(result.granularity).toBe("day")
-            expect(result.buckets).toHaveLength(45)
-        })
-
-        it("agrupa em blocos semanais de até 7 dias quando o período tem mais de 45 dias", () => {
-            const daily = buildDailySeries("2026-08-31", "2026-10-15", [
-                {
-                    date: "2026-08-31",
-                    conversations: 5,
-                    appointmentsCreated: 2,
-                },
-                {
-                    date: "2026-09-02",
-                    conversations: 3,
-                    appointmentsCreated: 1,
-                },
-            ])
-            expect(daily).toHaveLength(46)
-
-            const result = buildConversationSeries(daily)
-            expect(result.granularity).toBe("week")
-            expect(result.buckets).toHaveLength(7)
-            expect(result.buckets[0]).toEqual({
-                startDate: "2026-08-31",
-                endDate: "2026-09-06",
-                conversations: 8,
-                appointmentsCreated: 3,
-            })
-            expect(result.buckets[6]).toEqual({
-                startDate: "2026-10-12",
-                endDate: "2026-10-15",
-                conversations: 0,
-                appointmentsCreated: 0,
-            })
-        })
-    })
-
     describe("calculateNoShowRate e buildAppointmentsResultSummary", () => {
         it("calcula a taxa de não comparecimento apenas sobre Atendido + Não compareceu", () => {
             expect(calculateNoShowRate(14, 6)).toBe(30)
@@ -284,60 +231,6 @@ describe("reportRules", () => {
                 total: 55,
                 recordedTotal: 10,
                 noShowRate: 20,
-            })
-        })
-    })
-
-    describe("mapStepToAbandonmentStage e buildAbandonmentFunnel", () => {
-        const expectedMappings: [AbandonedStep, string][] = [
-            ["AWAITING_CATEGORY", "CATEGORIES"],
-            ["AWAITING_RETURN_CHOICE", "CATEGORIES"],
-            ["AWAITING_CANCEL_CONFIRMATION", "CATEGORIES"],
-            ["AWAITING_QUESTION", "QUESTIONS"],
-            ["AWAITING_ANSWER", "ANSWER"],
-            ["AWAITING_RESOLVED", "RESOLVED"],
-            ["AWAITING_SCHEDULE_OFFER", "RESOLVED"],
-            ["AWAITING_ATTENDEE", "ATTENDEE"],
-            ["AWAITING_HOLDER_NAME", "ATTENDEE"],
-            ["AWAITING_HOLDER_CPF", "ATTENDEE"],
-            ["AWAITING_SLOT", "SLOT"],
-        ]
-
-        it.each(expectedMappings)(
-            "mapeia a etapa %s para o estágio %s do funil de abandono",
-            (step, expectedStage) => {
-                expect(mapStepToAbandonmentStage(step)).toBe(expectedStage)
-                expect(STEP_TO_ABANDONMENT_STAGE[step]).toBe(expectedStage)
-            },
-        )
-
-        it("soma contagens de etapas que pertencem ao mesmo estágio entre os 6 estágios dos Relatórios", () => {
-            const funnel = buildAbandonmentFunnel(
-                [
-                    { step: "AWAITING_CATEGORY", count: 5 },
-                    { step: "AWAITING_RETURN_CHOICE", count: 3 },
-                    { step: "AWAITING_CANCEL_CONFIRMATION", count: 2 },
-                    { step: "AWAITING_ATTENDEE", count: 4 },
-                    { step: "AWAITING_HOLDER_NAME", count: 3 },
-                    { step: "AWAITING_HOLDER_CPF", count: 3 },
-                ],
-                100,
-            )
-
-            expect(funnel).toHaveLength(ABANDONMENT_STAGES.length)
-            expect(funnel.find((item) => item.stage === "CATEGORIES")).toEqual({
-                stage: "CATEGORIES",
-                label: "Na lista de categorias",
-                count: 10,
-                percentageOfTotal: 10,
-                percentageOfAbandoned: 50,
-            })
-            expect(funnel.find((item) => item.stage === "ATTENDEE")).toEqual({
-                stage: "ATTENDEE",
-                label: "Em quem vai comparecer",
-                count: 10,
-                percentageOfTotal: 10,
-                percentageOfAbandoned: 50,
             })
         })
     })

@@ -13,9 +13,10 @@ function expectFieldIssue(
     input: unknown,
     expectedPath: string,
     expectedMessage: string,
+    targetSchema = schema,
 ): void {
     try {
-        validateSchema(schema, input, { withIssues: true })
+        validateSchema(targetSchema, input, { withIssues: true })
         expect.fail("Deveria ter lançado BadRequestError")
     } catch (error) {
         expect(error).toBeInstanceOf(BadRequestError)
@@ -150,6 +151,39 @@ describe("report.schema", () => {
             },
             "endDate",
             "A data final não pode ser futura",
+        )
+    })
+
+    it("valida a data máxima pelo dia em America/Sao_Paulo quando em UTC já é o dia seguinte", () => {
+        const lateNightSaoPauloSchema = createReportQuerySchema(
+            () => new Date("2026-11-01T01:00:00.000Z"),
+        )
+
+        expect(
+            validateSchema(
+                lateNightSaoPauloSchema,
+                {
+                    period: "custom",
+                    startDate: "2026-10-01",
+                    endDate: "2026-10-31",
+                },
+                { withIssues: true },
+            ),
+        ).toEqual({
+            period: "custom",
+            startDate: "2026-10-01",
+            endDate: "2026-10-31",
+        })
+
+        expectFieldIssue(
+            {
+                period: "custom",
+                startDate: "2026-10-01",
+                endDate: "2026-11-01",
+            },
+            "endDate",
+            "A data final não pode ser futura",
+            lateNightSaoPauloSchema,
         )
     })
 })

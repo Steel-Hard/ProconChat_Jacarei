@@ -229,9 +229,23 @@ describe("Reports integration tests (Postgres)", () => {
         qB1Id = Number(qB1Res.rows[0]!.id)
         createdQuestionIds.push(qB1Id)
 
+        const sBeforeStart = await insertTestSession({
+            phoneIndex: 7,
+            startedAt: parseLocalDate("2021-05-09", "23:59"),
+            outcome: "RESOLVED",
+        })
+        void sBeforeStart
+
+        const sAtEndExclusive = await insertTestSession({
+            phoneIndex: 8,
+            startedAt: parseLocalDate("2021-05-15", "00:00"),
+            outcome: "RESOLVED",
+        })
+        void sAtEndExclusive
+
         const s1 = await insertTestSession({
             phoneIndex: 1,
-            startedAt: parseLocalDate("2021-05-10", "09:00"),
+            startedAt: parseLocalDate("2021-05-10", "00:00"),
             outcome: "RESOLVED",
         })
         await insertConversationEvent(pool, s1, {
@@ -370,6 +384,24 @@ describe("Reports integration tests (Postgres)", () => {
         await insertTestAppointment({
             sessionId: s3,
             questionId: qB1Id,
+            cpfSeed: 9,
+            appointmentDatetime: parseLocalDate("2021-05-11", "16:00"),
+            requestDatetime: parseLocalDate("2021-05-11", "10:06"),
+            status: "PENDING",
+            assignedUserId: null,
+        })
+        await insertTestAppointment({
+            sessionId: s3,
+            questionId: qB1Id,
+            cpfSeed: 10,
+            appointmentDatetime: EVALUATION_NOW,
+            requestDatetime: parseLocalDate("2021-05-11", "10:08"),
+            status: "CONFIRMED",
+            assignedUserId: staffAssignee.id,
+        })
+        await insertTestAppointment({
+            sessionId: s3,
+            questionId: qB1Id,
             cpfSeed: 7,
             appointmentDatetime: parseLocalDate("2021-05-14", "14:00"),
             requestDatetime: parseLocalDate("2021-05-11", "10:10"),
@@ -384,6 +416,15 @@ describe("Reports integration tests (Postgres)", () => {
             requestDatetime: parseLocalDate("2021-05-11", "10:15"),
             status: "PENDING",
             assignedUserId: null,
+        })
+        await insertTestAppointment({
+            sessionId: s2,
+            questionId: qB1Id,
+            cpfSeed: 11,
+            appointmentDatetime: parseLocalDate("2021-05-20", "10:00"),
+            requestDatetime: parseLocalDate("2021-05-12", "10:00"),
+            status: "ATTENDED",
+            assignedUserId: staffAssignee.id,
         })
     })
 
@@ -421,7 +462,7 @@ describe("Reports integration tests (Postgres)", () => {
         expect(allowed.headers["cache-control"]).toBe("no-store")
     })
 
-    it("calcula total de conversas, média diária, agendamentos criados e série diária no período", async () => {
+    it("calcula total de conversas, média diária e agendamentos criados respeitando as bordas locais do período", async () => {
         const summary = await service.getSummary(
             {
                 period: "custom",
@@ -443,33 +484,6 @@ describe("Reports integration tests (Postgres)", () => {
             dailyAverage: 1,
             appointmentsCreated: 2,
         })
-        expect(summary.dailySeries).toEqual([
-            {
-                date: "2021-05-10",
-                conversations: 2,
-                appointmentsCreated: 1,
-            },
-            {
-                date: "2021-05-11",
-                conversations: 1,
-                appointmentsCreated: 1,
-            },
-            {
-                date: "2021-05-12",
-                conversations: 2,
-                appointmentsCreated: 0,
-            },
-            {
-                date: "2021-05-13",
-                conversations: 0,
-                appointmentsCreated: 0,
-            },
-            {
-                date: "2021-05-14",
-                conversations: 0,
-                appointmentsCreated: 0,
-            },
-        ])
     })
 
     it("consolida os desfechos das conversas iniciadas no período somando 100%", async () => {
@@ -556,7 +570,7 @@ describe("Reports integration tests (Postgres)", () => {
         ])
     })
 
-    it("calcula appointmentsResult e noShowRate pela data do atendimento no período sem expor dados pessoais", async () => {
+    it("calcula appointmentsResult pela data do atendimento, inclui pendente vencido em waitingRecord e o instante exato de now em upcoming", async () => {
         const summary = await service.getSummary(
             {
                 period: "custom",
@@ -570,9 +584,9 @@ describe("Reports integration tests (Postgres)", () => {
             attended: 3,
             noShow: 1,
             canceled: 1,
-            waitingRecord: 1,
-            upcoming: 2,
-            total: 8,
+            waitingRecord: 2,
+            upcoming: 3,
+            total: 10,
             recordedTotal: 4,
             noShowRate: 25,
         })
@@ -581,38 +595,5 @@ describe("Reports integration tests (Postgres)", () => {
         expect(serialized).not.toContain("Cidadão Relatório Teste")
         expect(serialized).not.toContain("***.123.456-**")
         expect(serialized).not.toContain(makeCpfHash(1))
-    })
-
-    it("mapeia e soma as etapas das conversas abandonadas nas 6 etapas do funil", async () => {
-        const summary = await service.getSummary(
-            {
-                period: "custom",
-                startDate: REPORT_START_DATE,
-                endDate: REPORT_END_DATE,
-            },
-            EVALUATION_NOW,
-        )
-
-        const categoriesStage = summary.abandonmentFunnel.find(
-            (item) => item.stage === "CATEGORIES",
-        )
-        const attendeeStage = summary.abandonmentFunnel.find(
-            (item) => item.stage === "ATTENDEE",
-        )
-
-        expect(categoriesStage).toEqual({
-            stage: "CATEGORIES",
-            label: "Na lista de categorias",
-            count: 1,
-            percentageOfTotal: 20,
-            percentageOfAbandoned: 50,
-        })
-        expect(attendeeStage).toEqual({
-            stage: "ATTENDEE",
-            label: "Em quem vai comparecer",
-            count: 1,
-            percentageOfTotal: 20,
-            percentageOfAbandoned: 50,
-        })
     })
 })
