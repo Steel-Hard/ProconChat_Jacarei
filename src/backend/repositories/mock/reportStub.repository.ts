@@ -1,8 +1,6 @@
 import type {
-    AbandonedStepCountRow,
     AppointmentsResultCounts,
     CategoryUsageItem,
-    DailyConversationRow,
     OutcomeCountRow,
     QuestionUsageItem,
 } from "../../types/report.types"
@@ -10,11 +8,26 @@ import { IReportRepository } from "../report.repository.interface"
 
 export interface ReportStubOptions {
     outcomes?: OutcomeCountRow[]
-    dailyConversations?: DailyConversationRow[]
+    appointmentsCreated?: number
     topCategories?: CategoryUsageItem[]
     topQuestions?: QuestionUsageItem[]
     appointmentsResult?: AppointmentsResultCounts
-    abandonedByStep?: AbandonedStepCountRow[]
+}
+
+export interface ReportStubCalls {
+    getOutcomesCount: Array<{ start: Date; endExclusive: Date }>
+    getAppointmentsCreatedCount: Array<{ start: Date; endExclusive: Date }>
+    getTopCategories: Array<{ start: Date; endExclusive: Date }>
+    getTopQuestions: Array<{
+        start: Date
+        endExclusive: Date
+        limit?: number
+    }>
+    getAppointmentsResultCounts: Array<{
+        start: Date
+        endExclusive: Date
+        now?: Date
+    }>
 }
 
 const DEFAULT_APPOINTMENTS_RESULT: AppointmentsResultCounts = {
@@ -28,44 +41,68 @@ const DEFAULT_APPOINTMENTS_RESULT: AppointmentsResultCounts = {
 export function createReportStubRepository(
     options: ReportStubOptions = {},
 ): IReportRepository & {
+    calls: ReportStubCalls
     setOptions(next: ReportStubOptions): void
 } {
     let state: ReportStubOptions = { ...options }
+    const calls: ReportStubCalls = {
+        getOutcomesCount: [],
+        getAppointmentsCreatedCount: [],
+        getTopCategories: [],
+        getTopQuestions: [],
+        getAppointmentsResultCounts: [],
+    }
 
     return {
+        calls,
+
         setOptions(next: ReportStubOptions): void {
             state = { ...next }
         },
 
-        async getOutcomesCount(): Promise<OutcomeCountRow[]> {
+        async getOutcomesCount(
+            start: Date,
+            endExclusive: Date,
+        ): Promise<OutcomeCountRow[]> {
+            calls.getOutcomesCount.push({ start, endExclusive })
             return [...(state.outcomes ?? [])]
         },
 
-        async getDailyConversations(): Promise<DailyConversationRow[]> {
-            return [...(state.dailyConversations ?? [])]
+        async getAppointmentsCreatedCount(
+            start: Date,
+            endExclusive: Date,
+        ): Promise<number> {
+            calls.getAppointmentsCreatedCount.push({ start, endExclusive })
+            return state.appointmentsCreated ?? 0
         },
 
-        async getTopCategories(): Promise<CategoryUsageItem[]> {
+        async getTopCategories(
+            start: Date,
+            endExclusive: Date,
+        ): Promise<CategoryUsageItem[]> {
+            calls.getTopCategories.push({ start, endExclusive })
             return [...(state.topCategories ?? [])]
         },
 
         async getTopQuestions(
-            _start: Date,
-            _endExclusive: Date,
-            limit = 10,
+            start: Date,
+            endExclusive: Date,
+            limit?: number,
         ): Promise<QuestionUsageItem[]> {
-            return (state.topQuestions ?? []).slice(0, limit)
+            calls.getTopQuestions.push({ start, endExclusive, limit })
+            return [...(state.topQuestions ?? [])]
         },
 
-        async getAppointmentsResultCounts(): Promise<AppointmentsResultCounts> {
+        async getAppointmentsResultCounts(
+            start: Date,
+            endExclusive: Date,
+            now?: Date,
+        ): Promise<AppointmentsResultCounts> {
+            calls.getAppointmentsResultCounts.push({ start, endExclusive, now })
             return {
                 ...DEFAULT_APPOINTMENTS_RESULT,
                 ...(state.appointmentsResult ?? {}),
             }
-        },
-
-        async getAbandonedByStep(): Promise<AbandonedStepCountRow[]> {
-            return [...(state.abandonedByStep ?? [])]
         },
     }
 }

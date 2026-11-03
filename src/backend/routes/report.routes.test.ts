@@ -11,6 +11,7 @@ import { ReportRoutes } from "./report.routes"
 const ADMIN_ID = 1
 const REPORT_VIEWER_ID = 2
 const OTHER_USER_ID = 3
+const FIXED_NOW = new Date("2026-10-15T15:00:00.000Z")
 
 const authUsers = new MockAuthRepository([
     {
@@ -50,13 +51,7 @@ describe("report.routes (HTTP)", () => {
                 { outcome: "RESOLVED", count: 8 },
                 { outcome: "SCHEDULED", count: 2 },
             ],
-            dailyConversations: [
-                {
-                    date: "2026-10-01",
-                    conversations: 10,
-                    appointmentsCreated: 2,
-                },
-            ],
+            appointmentsCreated: 2,
             topCategories: [
                 {
                     categoryId: "1",
@@ -91,7 +86,11 @@ describe("report.routes (HTTP)", () => {
         app.use(express.json())
         app.use(
             "/api/v1/reports",
-            new ReportRoutes({ repository, authMiddleware }).getRouter(),
+            new ReportRoutes({
+                repository,
+                authMiddleware,
+                now: () => FIXED_NOW,
+            }).getRouter(),
         )
         app.use(errorHandler)
     })
@@ -121,9 +120,93 @@ describe("report.routes (HTTP)", () => {
 
         expect(response.status).toBe(200)
         expect(response.headers["cache-control"]).toBe("no-store")
-        expect(response.body.data.period.preset).toBe("7d")
-        expect(response.body.data.conversations.total).toBe(10)
-        expect(response.body.data.appointmentsResult.noShowRate).toBe(25)
+        expect(response.body).toEqual({
+            data: {
+                period: {
+                    preset: "7d",
+                    startDate: "2026-10-08",
+                    endDate: "2026-10-14",
+                    daysCount: 7,
+                    today: "2026-10-15",
+                },
+                conversations: {
+                    total: 10,
+                    dailyAverage: 1.4,
+                    appointmentsCreated: 2,
+                },
+                outcomes: [
+                    {
+                        outcome: "RESOLVED",
+                        label: "Resolvida sem agendamento",
+                        count: 8,
+                        percentage: 80,
+                    },
+                    {
+                        outcome: "SCHEDULED",
+                        label: "Terminou em agendamento",
+                        count: 2,
+                        percentage: 20,
+                    },
+                    {
+                        outcome: "OUT_OF_SCOPE",
+                        label: "Fora do escopo do PROCON",
+                        count: 0,
+                        percentage: 0,
+                    },
+                    {
+                        outcome: "NO_SLOT",
+                        label: "Sem horário disponível na janela",
+                        count: 0,
+                        percentage: 0,
+                    },
+                    {
+                        outcome: "DECLINED",
+                        label: "Não quis agendar",
+                        count: 0,
+                        percentage: 0,
+                    },
+                    {
+                        outcome: "MANAGED_APPOINTMENT",
+                        label: "Remarcou ou cancelou agendamento existente",
+                        count: 0,
+                        percentage: 0,
+                    },
+                    {
+                        outcome: "ABANDONED",
+                        label: "Abandonada",
+                        count: 0,
+                        percentage: 0,
+                    },
+                ],
+                topCategories: [
+                    {
+                        categoryId: "1",
+                        title: "Compras",
+                        conversationsCount: 7,
+                    },
+                ],
+                topQuestions: [
+                    {
+                        questionId: "3",
+                        question: "Prazo de troca",
+                        shortTitle: "Troca",
+                        categoryId: "1",
+                        categoryTitle: "Compras",
+                        conversationsCount: 5,
+                    },
+                ],
+                appointmentsResult: {
+                    attended: 3,
+                    noShow: 1,
+                    canceled: 1,
+                    waitingRecord: 0,
+                    upcoming: 1,
+                    total: 6,
+                    recordedTotal: 4,
+                    noShowRate: 25,
+                },
+            },
+        })
     })
 
     it("permite acesso para conta Admin", async () => {

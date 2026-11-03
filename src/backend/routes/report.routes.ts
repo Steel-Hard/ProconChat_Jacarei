@@ -4,13 +4,17 @@ import { requireAuth, requirePermission } from "../middleware/auth.middleware"
 import { validateRequest } from "../middleware/validateRequest.middleware"
 import { reportRepository as defaultReportRepository } from "../repositories/report.repository"
 import { IReportRepository } from "../repositories/report.repository.interface"
-import { reportQuerySchema } from "../schemas/report.schema"
+import {
+    createReportQuerySchema,
+    reportQuerySchema,
+} from "../schemas/report.schema"
 import { createReportService, IReportService } from "../services/report.service"
 
 interface ReportRoutesDependencies {
     repository?: IReportRepository
     service?: IReportService
     authMiddleware?: RequestHandler
+    now?: () => Date
 }
 
 export class ReportRoutes {
@@ -21,10 +25,15 @@ export class ReportRoutes {
         repository = defaultReportRepository,
         service,
         authMiddleware = requireAuth,
+        now,
     }: ReportRoutesDependencies = {}) {
         const resolvedService = service ?? createReportService(repository)
-        this.reportController = new ReportController({ service: resolvedService })
+        this.reportController = new ReportController({
+            service: resolvedService,
+            now,
+        })
         const controller = this.reportController
+        const querySchema = now ? createReportQuerySchema(now) : reportQuerySchema
 
         this.router.use((_req: Request, res: Response, next: NextFunction) => {
             res.set("Cache-Control", "no-store")
@@ -36,7 +45,7 @@ export class ReportRoutes {
 
         this.router.get(
             "/",
-            validateRequest({ query: reportQuerySchema }, { withIssues: true }),
+            validateRequest({ query: querySchema }, { withIssues: true }),
             controller.getSummary.bind(controller),
         )
     }

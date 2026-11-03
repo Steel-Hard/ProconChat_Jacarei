@@ -4,13 +4,19 @@ import type { ReportPeriodPreset, ReportQueryInput } from "../types/report.types
 
 interface ReportControllerDependencies {
     service?: IReportService
+    now?: () => Date
 }
 
 class ReportController {
     private service: IReportService
+    private now?: () => Date
 
-    constructor({ service = reportService }: ReportControllerDependencies = {}) {
+    constructor({
+        service = reportService,
+        now,
+    }: ReportControllerDependencies = {}) {
         this.service = service
+        this.now = now
     }
 
     public async getSummary(
@@ -33,7 +39,9 @@ class ReportController {
                         ? req.query.endDate
                         : undefined,
             }
-            const summary = await this.service.getSummary(query)
+            const summary = this.now
+                ? await this.service.getSummary(query, this.now())
+                : await this.service.getSummary(query)
             res.status(200).json({ data: summary })
         } catch (error) {
             next(error)
