@@ -161,11 +161,15 @@ export function buildQuestionPreview(
     }
 
     const firstPage = paginarItens(allActiveRows, 1)
-    const rows = [...firstPage.itensPagina]
-
-    if (!rows.some((r: PreviewCategoryListRow) => r.isCurrent) && rows.length > 0) {
-        rows[rows.length - 1] = currentRow
+    let targetPage = firstPage
+    for (let page = 1; page <= firstPage.totalPaginas; page++) {
+        const pageResult = page === 1 ? firstPage : paginarItens(allActiveRows, page)
+        if (pageResult.itensPagina.some((r: PreviewCategoryListRow) => r.isCurrent)) {
+            targetPage = pageResult
+            break
+        }
     }
+    const rows = [...targetPage.itensPagina]
 
     const formattedAnswerText = formatarRespostaFinal({
         categoria: category.title,
@@ -211,7 +215,7 @@ export function buildQuestionPreview(
             categoryTitle: category.title,
             categoryShortTitle: category.shortTitle,
             rows,
-            hasMoreOptions: firstPage.temProxima,
+            hasMoreOptions: targetPage.temProxima,
             totalActiveQuestions: allActiveRows.length,
         },
         answerBubble: {

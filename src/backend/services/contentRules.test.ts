@@ -249,5 +249,35 @@ describe("contentRules", () => {
             expect(preview.answerBubble.aiSampleLabel).toBeNull()
             expect(preview.nextStepBubble).toBeNull()
         })
+
+        it("displays the WhatsApp page where the edited question actually falls when category has > 10 questions", () => {
+            const manyQuestions = Array.from({ length: 11 }, (_, idx) =>
+                makeQuestion({ id: 100 + idx, shortTitle: `Pergunta ${idx + 1}` }),
+            )
+            const preview = buildQuestionPreview(category, manyQuestions, {
+                questionId: 109,
+                categoryId: 1,
+                shortTitle: "Décima pergunta",
+                shortDescription: null,
+                question: "Pergunta na página 2?",
+                answer: "Resposta na página 2.",
+                legalBasis: null,
+                requiredDocuments: [],
+                requiresInPerson: false,
+                inPersonNote: null,
+                outOfScope: false,
+                llmAllowed: false,
+            })
+
+            expect(preview.categoryList.rows).toHaveLength(2)
+            expect(preview.categoryList.rows[0]).toEqual({
+                id: 109,
+                shortTitle: "Décima pergunta",
+                shortDescription: null,
+                isCurrent: true,
+            })
+            expect(preview.categoryList.hasMoreOptions).toBe(false)
+            expect(preview.categoryList.totalActiveQuestions).toBe(11)
+        })
     })
 })

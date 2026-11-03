@@ -1,5 +1,6 @@
 import { PoolClient } from "pg"
 import getPool from "../db/connection"
+import ConflictError from "../errors/ConflictError"
 import { IContentRepository } from "./content.repository.interface"
 import {
     CategoryCreateInput,
@@ -275,6 +276,27 @@ export class ContentRepository implements IContentRepository {
         actorUserId: number,
     ): Promise<CategoryRecord> {
         return withTransaction(async (client: PoolClient) => {
+            await client.query(
+                "SELECT pg_advisory_xact_lock(hashtext('content_category_title'))",
+            )
+            const normalized = normalizeComparisonText(input.title)
+            const duplicateRes = await client.query<{ exists: boolean }>(
+                `
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM Categories c
+                    WHERE ${sqlAccentInsensitive("c.title")} = $1
+                ) AS exists
+                `,
+                [normalized],
+            )
+            if (duplicateRes.rows[0]?.exists) {
+                throw new ConflictError(
+                    "Já existe uma categoria com este título.",
+                    "CATEGORY_TITLE_CONFLICT",
+                )
+            }
+
             const posRes = await client.query<{ next_pos: number }>(
                 "SELECT COALESCE(MAX(position) + 1, 0)::int AS next_pos FROM Categories",
             )
@@ -301,6 +323,28 @@ export class ContentRepository implements IContentRepository {
         actorUserId: number,
     ): Promise<CategoryRecord | null> {
         return withTransaction(async (client: PoolClient) => {
+            await client.query(
+                "SELECT pg_advisory_xact_lock(hashtext('content_category_title'))",
+            )
+            const normalized = normalizeComparisonText(input.title)
+            const duplicateRes = await client.query<{ exists: boolean }>(
+                `
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM Categories c
+                    WHERE ${sqlAccentInsensitive("c.title")} = $1
+                      AND c.id <> $2
+                ) AS exists
+                `,
+                [normalized, id],
+            )
+            if (duplicateRes.rows[0]?.exists) {
+                throw new ConflictError(
+                    "Já existe uma categoria com este título.",
+                    "CATEGORY_TITLE_CONFLICT",
+                )
+            }
+
             const updated = await client.query<{ id: number }>(
                 `
                 UPDATE Categories
