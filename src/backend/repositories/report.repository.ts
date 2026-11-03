@@ -150,12 +150,12 @@ export function createReportRepository(
                      COUNT(*) FILTER (WHERE a.status = 'NO_SHOW')::text AS no_show,
                      COUNT(*) FILTER (WHERE a.status = 'CANCELED')::text AS canceled,
                      COUNT(*) FILTER (
-                         WHERE a.status = 'CONFIRMED'
-                           AND a.appointment_datetime <= $3
+                         WHERE a.status IN ('PENDING', 'CONFIRMED')
+                           AND a.appointment_datetime < $3
                      )::text AS waiting_record,
                      COUNT(*) FILTER (
-                         WHERE a.status = 'PENDING'
-                            OR (a.status = 'CONFIRMED' AND a.appointment_datetime > $3)
+                         WHERE a.status IN ('PENDING', 'CONFIRMED')
+                           AND a.appointment_datetime >= $3
                      )::text AS upcoming
                  FROM Appointments a
                  WHERE a.appointment_datetime >= $1

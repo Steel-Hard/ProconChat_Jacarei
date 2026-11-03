@@ -92,7 +92,7 @@ function statusCondition(status: AppointmentListFilters["status"], now: Date, pa
     }
     if (status === "waiting_record") {
         params.push(now)
-        return `a.status = 'CONFIRMED' AND a.appointment_datetime < $${params.length}`
+        return `a.status IN ('PENDING', 'CONFIRMED') AND a.appointment_datetime < $${params.length}`
     }
     params.push(status)
     return `a.status = $${params.length}`
@@ -530,7 +530,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                      COUNT(*) FILTER (WHERE ${chipPeriod} AND a.status = 'ATTENDED')::text as attended,
                      COUNT(*) FILTER (WHERE ${chipPeriod} AND a.status = 'NO_SHOW')::text as no_show,
                      COUNT(*) FILTER (WHERE ${chipPeriod} AND a.status = 'CANCELED')::text as canceled,
-                     COUNT(*) FILTER (WHERE a.status = 'CONFIRMED' AND a.appointment_datetime < ${waitingRecordParam})::text as waiting_record
+                     COUNT(*) FILTER (WHERE a.status IN ('PENDING', 'CONFIRMED') AND a.appointment_datetime < ${waitingRecordParam})::text as waiting_record
                  FROM Appointments a
                  ${chipResponsible ? `WHERE ${chipResponsible}` : ""}`,
                 chipParams,
@@ -706,7 +706,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                 status: r.status,
                 off_grid: r.off_grid,
                 waiting_record:
-                    r.status === "CONFIRMED" &&
+                    (r.status === "PENDING" || r.status === "CONFIRMED") &&
                     isDatetimePast(new Date(r.appointment_datetime), now),
             }))
 

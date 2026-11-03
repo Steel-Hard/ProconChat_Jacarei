@@ -797,39 +797,54 @@ describe("Agendamentos com Postgres (integração)", () => {
         expect(confirmed).toEqual([String(idConfirmed)])
     })
 
-    it("filtra a lista por Aguardando registro: só confirmados com horário já passado", async () => {
+    it("filtra a lista por Aguardando registro: pendentes e confirmados com horário já passado", async () => {
         const day = 86400000
+        const past = new Date(Date.now() - day)
+        const future = new Date(Date.now() + day)
         const idConfirmedPast = await createAppointment({
             name: "Aguardando Confirmado Passado",
             status: "CONFIRMED",
-            appointmentDatetime: new Date(Date.now() - day),
+            appointmentDatetime: past,
             cpf: "31231231206",
         })
         const idConfirmedFuture = await createAppointment({
             name: "Aguardando Confirmado Futuro",
             status: "CONFIRMED",
-            appointmentDatetime: new Date(Date.now() + day),
+            appointmentDatetime: future,
             cpf: "31231231207",
         })
         const idPendingPast = await createAppointment({
             name: "Aguardando Pendente Passado",
             status: "PENDING",
-            appointmentDatetime: new Date(Date.now() - day),
+            appointmentDatetime: past,
             cpf: "31231231208",
+        })
+        const idPendingFuture = await createAppointment({
+            name: "Aguardando Pendente Futuro",
+            status: "PENDING",
+            appointmentDatetime: future,
+            cpf: "31231231209",
         })
 
         const found = await listOrderAcrossPages("status=waiting_record&period=all", [
             idConfirmedPast,
             idConfirmedFuture,
             idPendingPast,
+            idPendingFuture,
         ])
-        const items = await listItemsAcrossPages("period=all", [idConfirmedPast, idConfirmedFuture, idPendingPast])
+        const items = await listItemsAcrossPages("period=all", [
+            idConfirmedPast,
+            idConfirmedFuture,
+            idPendingPast,
+            idPendingFuture,
+        ])
 
-        expect(found).toEqual([String(idConfirmedPast)])
-        expect(items.size).toBe(3)
+        expect(found).toEqual([String(idConfirmedPast), String(idPendingPast)])
+        expect(items.size).toBe(4)
         expect(items.get(String(idConfirmedPast))?.waiting_record).toBe(true)
         expect(items.get(String(idConfirmedFuture))?.waiting_record).toBe(false)
-        expect(items.get(String(idPendingPast))?.waiting_record).toBe(false)
+        expect(items.get(String(idPendingPast))?.waiting_record).toBe(true)
+        expect(items.get(String(idPendingFuture))?.waiting_record).toBe(false)
     })
 
     it("filtra os itens da lista pelo período: próximos por padrão, passados e todos", async () => {
