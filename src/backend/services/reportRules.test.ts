@@ -103,19 +103,50 @@ describe("reportRules", () => {
             )
 
             expect(summary).toHaveLength(7)
-            expect(summary.map((s) => s.outcome)).not.toContain("IN_PROGRESS")
-            expect(summary.find((s) => s.outcome === "RESOLVED")).toEqual({
-                outcome: "RESOLVED",
-                label: "Resolvida sem agendamento",
-                count: 50,
-                percentage: 50,
-            })
-            expect(summary.find((s) => s.outcome === "SCHEDULED")?.percentage).toBe(
-                25,
-            )
-            expect(summary.find((s) => s.outcome === "OUT_OF_SCOPE")?.count).toBe(
-                0,
-            )
+            expect(summary).toEqual([
+                {
+                    outcome: "RESOLVED",
+                    label: "Resolvida sem agendamento",
+                    count: 50,
+                    percentage: 50,
+                },
+                {
+                    outcome: "SCHEDULED",
+                    label: "Terminou em agendamento",
+                    count: 25,
+                    percentage: 25,
+                },
+                {
+                    outcome: "OUT_OF_SCOPE",
+                    label: "Fora do escopo do PROCON",
+                    count: 0,
+                    percentage: 0,
+                },
+                {
+                    outcome: "NO_SLOT",
+                    label: "Sem horário disponível na janela",
+                    count: 0,
+                    percentage: 0,
+                },
+                {
+                    outcome: "DECLINED",
+                    label: "Não quis agendar",
+                    count: 0,
+                    percentage: 0,
+                },
+                {
+                    outcome: "MANAGED_APPOINTMENT",
+                    label: "Remarcou ou cancelou agendamento existente",
+                    count: 0,
+                    percentage: 0,
+                },
+                {
+                    outcome: "ABANDONED",
+                    label: "Abandonada",
+                    count: 25,
+                    percentage: 25,
+                },
+            ])
         })
 
         it("inclui IN_PROGRESS quando há conversas em andamento no período", () => {

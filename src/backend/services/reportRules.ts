@@ -34,15 +34,15 @@ export const OUTCOME_DEFINITIONS: readonly {
     { outcome: "OUT_OF_SCOPE", label: "Fora do escopo do PROCON" },
     {
         outcome: "NO_SLOT",
-        label: "Não resolvida, sem agendamento — sem horário disponível na janela",
+        label: "Sem horário disponível na janela",
     },
     {
         outcome: "DECLINED",
-        label: "Não resolvida, sem agendamento — cidadão não quis agendar",
+        label: "Não quis agendar",
     },
     {
         outcome: "MANAGED_APPOINTMENT",
-        label: "Remarcou ou cancelou um agendamento existente",
+        label: "Remarcou ou cancelou agendamento existente",
     },
     { outcome: "ABANDONED", label: "Abandonada" },
     { outcome: "IN_PROGRESS", label: "Em andamento" },
