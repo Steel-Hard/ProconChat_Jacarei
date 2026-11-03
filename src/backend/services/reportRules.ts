@@ -1,14 +1,7 @@
 import { createReportQuerySchema } from "../schemas/report.schema"
-import type { AbandonedStep } from "../types/conversationEvent.types"
 import type {
-    AbandonedStepCountRow,
-    AbandonmentStageItem,
-    AbandonmentStageKey,
     AppointmentsResultCounts,
     AppointmentsResultSummary,
-    ConversationSeriesBucket,
-    DailyConversationPoint,
-    DailyConversationRow,
     OutcomeCountRow,
     OutcomeSummaryItem,
     ReportPeriodPreset,
@@ -22,8 +15,6 @@ import {
     toLocalDateString,
 } from "../utils/date.utils"
 import { validateSchema } from "../utils/validateSchema"
-
-export const WEEKLY_SERIES_THRESHOLD_DAYS = 45
 
 export const OUTCOME_DEFINITIONS: readonly {
     outcome: SessionOutcome
@@ -47,41 +38,6 @@ export const OUTCOME_DEFINITIONS: readonly {
     { outcome: "ABANDONED", label: "Abandonada" },
     { outcome: "IN_PROGRESS", label: "Em andamento" },
 ]
-
-export const ABANDONMENT_STAGES: readonly {
-    stage: AbandonmentStageKey
-    label: string
-}[] = [
-    { stage: "CATEGORIES", label: "Na lista de categorias" },
-    { stage: "QUESTIONS", label: "Na lista de perguntas" },
-    { stage: "ANSWER", label: "Aguardando a resposta" },
-    { stage: "RESOLVED", label: "Na pergunta 'A dúvida foi resolvida?'" },
-    { stage: "ATTENDEE", label: "Em quem vai comparecer" },
-    { stage: "SLOT", label: "Na escolha do horário" },
-]
-
-export const STEP_TO_ABANDONMENT_STAGE: Record<
-    AbandonedStep,
-    AbandonmentStageKey
-> = {
-    AWAITING_CATEGORY: "CATEGORIES",
-    AWAITING_RETURN_CHOICE: "CATEGORIES",
-    AWAITING_CANCEL_CONFIRMATION: "CATEGORIES",
-    AWAITING_QUESTION: "QUESTIONS",
-    AWAITING_ANSWER: "ANSWER",
-    AWAITING_RESOLVED: "RESOLVED",
-    AWAITING_SCHEDULE_OFFER: "RESOLVED",
-    AWAITING_ATTENDEE: "ATTENDEE",
-    AWAITING_HOLDER_NAME: "ATTENDEE",
-    AWAITING_HOLDER_CPF: "ATTENDEE",
-    AWAITING_SLOT: "SLOT",
-}
-
-export function mapStepToAbandonmentStage(
-    step: AbandonedStep,
-): AbandonmentStageKey {
-    return STEP_TO_ABANDONMENT_STAGE[step]
-}
 
 export function roundOneDecimal(value: number): number {
     return Math.round(value * 10) / 10
@@ -190,70 +146,6 @@ export function buildOutcomesSummary(
     })
 }
 
-export function buildDailySeries(
-    startDate: string,
-    endDate: string,
-    rows: DailyConversationRow[],
-): DailyConversationPoint[] {
-    const rowMap = new Map<string, DailyConversationRow>()
-    for (const row of rows) {
-        rowMap.set(row.date, row)
-    }
-
-    const series: DailyConversationPoint[] = []
-    let current = startDate
-    while (current <= endDate) {
-        const row = rowMap.get(current)
-        series.push({
-            date: current,
-            conversations: row?.conversations ?? 0,
-            appointmentsCreated: row?.appointmentsCreated ?? 0,
-        })
-        current = addDaysToDateString(current, 1)
-    }
-    return series
-}
-
-export function buildConversationSeries(
-    dailySeries: DailyConversationPoint[],
-): {
-    granularity: "day" | "week"
-    buckets: ConversationSeriesBucket[]
-} {
-    if (dailySeries.length <= WEEKLY_SERIES_THRESHOLD_DAYS) {
-        return {
-            granularity: "day",
-            buckets: dailySeries.map((day) => ({
-                startDate: day.date,
-                endDate: day.date,
-                conversations: day.conversations,
-                appointmentsCreated: day.appointmentsCreated,
-            })),
-        }
-    }
-
-    const buckets: ConversationSeriesBucket[] = []
-    for (let i = 0; i < dailySeries.length; i += 7) {
-        const chunk = dailySeries.slice(i, i + 7)
-        const first = chunk[0]!
-        const last = chunk[chunk.length - 1]!
-        buckets.push({
-            startDate: first.date,
-            endDate: last.date,
-            conversations: chunk.reduce((sum, d) => sum + d.conversations, 0),
-            appointmentsCreated: chunk.reduce(
-                (sum, d) => sum + d.appointmentsCreated,
-                0,
-            ),
-        })
-    }
-
-    return {
-        granularity: "week",
-        buckets,
-    }
-}
-
 export function calculateNoShowRate(attended: number, noShow: number): number {
     return calculatePercentage(noShow, attended + noShow)
 }
@@ -279,29 +171,4 @@ export function buildAppointmentsResultSummary(
         recordedTotal,
         noShowRate: calculateNoShowRate(counts.attended, counts.noShow),
     }
-}
-
-export function buildAbandonmentFunnel(
-    rows: AbandonedStepCountRow[],
-    totalConversations: number,
-): AbandonmentStageItem[] {
-    const countByStage = new Map<AbandonmentStageKey, number>()
-    let totalAbandoned = 0
-
-    for (const row of rows) {
-        const stage = mapStepToAbandonmentStage(row.step)
-        countByStage.set(stage, (countByStage.get(stage) ?? 0) + row.count)
-        totalAbandoned += row.count
-    }
-
-    return ABANDONMENT_STAGES.map((def) => {
-        const count = countByStage.get(def.stage) ?? 0
-        return {
-            stage: def.stage,
-            label: def.label,
-            count,
-            percentageOfTotal: calculatePercentage(count, totalConversations),
-            percentageOfAbandoned: calculatePercentage(count, totalAbandoned),
-        }
-    })
 }

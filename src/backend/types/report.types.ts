@@ -1,4 +1,4 @@
-import type { AbandonedStep, FinishedOutcome } from "./conversationEvent.types"
+import type { FinishedOutcome } from "./conversationEvent.types"
 
 export type ReportPeriodPreset =
     | "7d"
@@ -9,14 +9,6 @@ export type ReportPeriodPreset =
     | "custom"
 
 export type SessionOutcome = FinishedOutcome | "ABANDONED" | "IN_PROGRESS"
-
-export type AbandonmentStageKey =
-    | "CATEGORIES"
-    | "QUESTIONS"
-    | "ANSWER"
-    | "RESOLVED"
-    | "ATTENDEE"
-    | "SLOT"
 
 export interface ReportQueryInput {
     period?: ReportPeriodPreset
@@ -60,25 +52,6 @@ export interface OutcomeSummaryItem {
     percentage: number
 }
 
-export interface DailyConversationRow {
-    date: string
-    conversations: number
-    appointmentsCreated: number
-}
-
-export interface DailyConversationPoint {
-    date: string
-    conversations: number
-    appointmentsCreated: number
-}
-
-export interface ConversationSeriesBucket {
-    startDate: string
-    endDate: string
-    conversations: number
-    appointmentsCreated: number
-}
-
 export interface CategoryUsageItem {
     categoryId: string
     title: string
@@ -108,28 +81,11 @@ export interface AppointmentsResultSummary extends AppointmentsResultCounts {
     noShowRate: number
 }
 
-export interface AbandonedStepCountRow {
-    step: AbandonedStep
-    count: number
-}
-
-export interface AbandonmentStageItem {
-    stage: AbandonmentStageKey
-    label: string
-    count: number
-    percentageOfTotal: number
-    percentageOfAbandoned: number
-}
-
 export interface ReportsSummaryView {
     period: ReportPeriodView
     conversations: ConversationsSummary
     outcomes: OutcomeSummaryItem[]
-    dailySeries: DailyConversationPoint[]
-    seriesGranularity: "day" | "week"
-    series: ConversationSeriesBucket[]
     topCategories: CategoryUsageItem[]
     topQuestions: QuestionUsageItem[]
     appointmentsResult: AppointmentsResultSummary
-    abandonmentFunnel: AbandonmentStageItem[]
 }

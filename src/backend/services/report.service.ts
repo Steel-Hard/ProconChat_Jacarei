@@ -5,10 +5,7 @@ import type {
     ReportsSummaryView,
 } from "../types/report.types"
 import {
-    buildAbandonmentFunnel,
     buildAppointmentsResultSummary,
-    buildConversationSeries,
-    buildDailySeries,
     buildOutcomesSummary,
     resolveReportPeriod,
     roundOneDecimal,
@@ -32,14 +29,16 @@ export function createReportService(
 
         const [
             outcomeRows,
-            dailyRows,
+            appointmentsCreated,
             topCategories,
             topQuestions,
             appointmentCounts,
-            abandonedStepRows,
         ] = await Promise.all([
             repository.getOutcomesCount(period.start, period.endExclusive),
-            repository.getDailyConversations(period.start, period.endExclusive),
+            repository.getAppointmentsCreatedCount(
+                period.start,
+                period.endExclusive,
+            ),
             repository.getTopCategories(period.start, period.endExclusive),
             repository.getTopQuestions(period.start, period.endExclusive),
             repository.getAppointmentsResultCounts(
@@ -47,20 +46,10 @@ export function createReportService(
                 period.endExclusive,
                 now,
             ),
-            repository.getAbandonedByStep(period.start, period.endExclusive),
         ])
 
         const totalConversations = outcomeRows.reduce(
             (sum, row) => sum + row.count,
-            0,
-        )
-        const dailySeries = buildDailySeries(
-            period.startDate,
-            period.endDate,
-            dailyRows,
-        )
-        const appointmentsCreated = dailySeries.reduce(
-            (sum, day) => sum + day.appointmentsCreated,
             0,
         )
         const dailyAverage =
@@ -69,14 +58,8 @@ export function createReportService(
                 : 0
 
         const outcomes = buildOutcomesSummary(outcomeRows, totalConversations)
-        const { granularity: seriesGranularity, buckets: series } =
-            buildConversationSeries(dailySeries)
         const appointmentsResult =
             buildAppointmentsResultSummary(appointmentCounts)
-        const abandonmentFunnel = buildAbandonmentFunnel(
-            abandonedStepRows,
-            totalConversations,
-        )
 
         return {
             period: {
@@ -92,13 +75,9 @@ export function createReportService(
                 appointmentsCreated,
             },
             outcomes,
-            dailySeries,
-            seriesGranularity,
-            series,
             topCategories,
             topQuestions,
             appointmentsResult,
-            abandonmentFunnel,
         }
     }
 

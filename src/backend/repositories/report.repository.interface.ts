@@ -1,18 +1,16 @@
 import type {
-    AbandonedStepCountRow,
     AppointmentsResultCounts,
     CategoryUsageItem,
-    DailyConversationRow,
     OutcomeCountRow,
     QuestionUsageItem,
 } from "../types/report.types"
 
 export interface IReportRepository {
     getOutcomesCount(start: Date, endExclusive: Date): Promise<OutcomeCountRow[]>
-    getDailyConversations(
+    getAppointmentsCreatedCount(
         start: Date,
         endExclusive: Date,
-    ): Promise<DailyConversationRow[]>
+    ): Promise<number>
     getTopCategories(
         start: Date,
         endExclusive: Date,
@@ -27,8 +25,4 @@ export interface IReportRepository {
         endExclusive: Date,
         now?: Date,
     ): Promise<AppointmentsResultCounts>
-    getAbandonedByStep(
-        start: Date,
-        endExclusive: Date,
-    ): Promise<AbandonedStepCountRow[]>
 }

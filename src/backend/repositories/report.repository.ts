@@ -1,11 +1,8 @@
 import { Pool } from "pg"
 import getPool from "../db/connection"
-import type { AbandonedStep } from "../types/conversationEvent.types"
 import type {
-    AbandonedStepCountRow,
     AppointmentsResultCounts,
     CategoryUsageItem,
-    DailyConversationRow,
     OutcomeCountRow,
     QuestionUsageItem,
     SessionOutcome,
@@ -42,18 +39,14 @@ export function createReportRepository(
             }))
         },
 
-        async getDailyConversations(
+        async getAppointmentsCreatedCount(
             start: Date,
             endExclusive: Date,
-        ): Promise<DailyConversationRow[]> {
+        ): Promise<number> {
             const result = await pool.query<{
-                date: string
-                conversations: string
                 appointments_created: string
             }>(
                 `SELECT
-                     to_char(s.started_at AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM-DD') AS date,
-                     COUNT(*)::text AS conversations,
                      COUNT(*) FILTER (
                          WHERE s.outcome = 'SCHEDULED'
                             OR EXISTS (
@@ -62,16 +55,10 @@ export function createReportRepository(
                      )::text AS appointments_created
                  FROM Sessions s
                  WHERE s.started_at >= $1
-                   AND s.started_at < $2
-                 GROUP BY 1
-                 ORDER BY 1 ASC`,
+                   AND s.started_at < $2`,
                 [start, endExclusive],
             )
-            return result.rows.map((row) => ({
-                date: row.date,
-                conversations: Number(row.conversations),
-                appointmentsCreated: Number(row.appointments_created),
-            }))
+            return Number(result.rows[0]?.appointments_created ?? 0)
         },
 
         async getTopCategories(
@@ -183,32 +170,6 @@ export function createReportRepository(
                 waitingRecord: Number(row?.waiting_record ?? 0),
                 upcoming: Number(row?.upcoming ?? 0),
             }
-        },
-
-        async getAbandonedByStep(
-            start: Date,
-            endExclusive: Date,
-        ): Promise<AbandonedStepCountRow[]> {
-            const result = await pool.query<{
-                step: AbandonedStep
-                count: string
-            }>(
-                `SELECT
-                     s.abandoned_at_step AS step,
-                     COUNT(*)::text AS count
-                 FROM Sessions s
-                 WHERE s.started_at >= $1
-                   AND s.started_at < $2
-                   AND s.outcome = 'ABANDONED'
-                   AND s.abandoned_at_step IS NOT NULL
-                 GROUP BY s.abandoned_at_step
-                 ORDER BY s.abandoned_at_step ASC`,
-                [start, endExclusive],
-            )
-            return result.rows.map((row) => ({
-                step: row.step,
-                count: Number(row.count),
-            }))
         },
     }
 }
