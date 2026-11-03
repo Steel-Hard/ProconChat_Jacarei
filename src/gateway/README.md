@@ -89,6 +89,50 @@ WhatsApp do painel (só Admin, API `/api/v1/whatsapp/settings` descrita no
 
 Nenhum desses valores aparece em log nem em arquivo versionado.
 
+### Envio de modelo (#67)
+
+O Backend pede ao gateway o envio de um modelo aprovado pela Meta (hoje, o aviso de cancelamento) em
+`POST /internal/whatsapp/messages/template`, com `X-Internal-Token`:
+
+```json
+{ "to": "5512999990000", "name": "aviso_cancelamento", "languageCode": "pt_BR", "bodyParameters": ["Maria", "1A2B3C4D", "05/11", "14:00", "a unidade estará fechada nesta data"] }
+```
+
+- O gateway envia `type: "template"` para `POST /<versão>/<phoneNumberId>/messages`, com os parâmetros
+  do corpo na ordem, e responde `200 { data: { providerMessageId } }` (o `messages[0].id` da Meta, ou
+  `null`).
+- `401 UNAUTHORIZED` sem o token interno ou com um token errado; `400 BAD_REQUEST` quando `to` não tem
+  de 8 a 15 dígitos, `name` foge de `^[a-z0-9_]{1,512}$`, `languageCode` foge de
+  `^[a-z]{2}(_[A-Z]{2})?$` ou algum parâmetro está vazio, tem quebra de linha, tabulação ou mais de 4
+  espaços seguidos. Nesses casos a Meta não é chamada.
+- Com o cache frio, o gateway carrega a configuração antes de enviar. Sem configuração, responde
+  `503 SERVICE_UNAVAILABLE`. A Meta recusar ou não responder em 10 s dá `502 PROVIDER_ERROR`.
+- O log de falha (`template_send_failed`) registra só o nome do modelo, nunca o telefone nem os
+  parâmetros. O cadastro dos modelos está em
+  [`.docs/whatsapp/modelos-de-mensagem.md`](../../.docs/whatsapp/modelos-de-mensagem.md).
+
+### Envio de várias mensagens
+
+O Backend pede ao gateway o envio de uma resposta ao cidadão (a mensagem escrita com auxílio de IA ou
+as mensagens oficiais) em `POST /internal/whatsapp/messages`, com `X-Internal-Token`:
+
+```json
+{ "to": "5512999990000", "messages": [{ "type": "text", "text": "Resposta oficial" }, { "type": "buttons", "text": "A dúvida foi resolvida?", "buttons": [{ "id": "resolved_yes", "title": "Sim" }, { "id": "resolved_no", "title": "Não" }], "footer": "Gerado com auxílio de IA" }] }
+```
+
+- `messages` aceita de 1 a 3 itens, com os mesmos tipos e limites de `reply.messages` (ver "Webhook").
+  Todos os itens são validados antes de enviar o primeiro.
+- O gateway carrega a configuração e envia os itens na ordem **dentro de uma única tarefa da fila por
+  telefone do webhook** (`whatsappPhoneQueue`). Responde `200 { data: { sent: <quantidade> } }`.
+- `401 UNAUTHORIZED` sem o token interno ou com um token errado; `400 BAD_REQUEST` com
+  `Invalid outgoing messages: invalid_to` quando `to` não tem de 8 a 15 dígitos,
+  `Invalid outgoing messages: invalid_messages` quando `messages` não é lista, está vazia ou tem mais
+  de 3 itens, ou `Invalid outgoing messages: <motivo>` com o motivo do primeiro item inválido
+  (`invalid_text`, `invalid_footer`, ...). Nesses casos a Meta não é chamada.
+- Sem configuração, `503 SERVICE_UNAVAILABLE`. A Meta recusar ou não responder um item dá
+  `502 PROVIDER_ERROR`, e os itens seguintes não são enviados.
+- O log de falha (`messages_send_failed`) não leva o telefone nem o texto.
+
 ## 2. Endereços locais
 
 - Backend: http://localhost:3000 (`GET /health`)
@@ -168,9 +212,9 @@ configuração do painel (seção "Configuração do WhatsApp"), não variáveis
   assinatura errada: `401 UNAUTHORIZED`, nada é processado. Corpo assinado que não é JSON:
   `400 BAD_REQUEST`. Sem a configuração: `503 SERVICE_UNAVAILABLE`.
 - Mensagens de texto vão ao Backend como `{ phone, text }`; toques em lista ou botão vão como
-  `{ phone, optionId }`. Eventos de status, outros números, outros campos, mensagens repetidas (mesmo
-  `wamid`), mensagens com mais de 5 minutos e tipos sem texto (áudio, imagem etc.) são ignorados com um
-  log JSON que tem só `reason` e `messageRef`, nunca telefone, texto ou token.
+  `{ phone, optionId }`. Outros números, outros campos, mensagens repetidas (mesmo `wamid`), mensagens
+  com mais de 5 minutos e tipos sem texto (áudio, imagem etc.) são ignorados com um log JSON que tem só
+  `reason` e `messageRef`, nunca telefone, texto ou token.
 - O `wamid` da Meta carrega o telefone em base64, por isso nunca aparece em log. Os logs da Cloud API
   usam `messageRef`: os 16 primeiros caracteres hex do SHA-256 do `wamid`, estável para a mesma mensagem
   e só serve para correlacionar eventos. Para achar a linha de uma mensagem conhecida:
@@ -179,9 +223,36 @@ configuração do painel (seção "Configuração do WhatsApp"), não variáveis
 - As mensagens do mesmo telefone são processadas em fila: a resposta inteira de uma mensagem é enviada
   antes de a próxima ser repassada ao Backend.
 - O Backend pode devolver `reply.messages` com itens `text`, `list` (até 10 linhas, título ≤ 24,
-  descrição ≤ 72, `buttonText` ≤ 20, corpo ≤ 4096) ou `buttons` (até 3, título ≤ 20, corpo ≤ 1024).
+  descrição ≤ 72, `buttonText` ≤ 20, corpo ≤ 4096) ou `buttons` (até 3, título ≤ 20, corpo ≤ 1024). Os dois
+  aceitam `footer` opcional de até 60 caracteres, enviado em `interactive.footer.text`; rodapé vazio ou
+  maior é recusado com o motivo `invalid_footer`.
   Sem `reply.messages`, o Gateway envia `reply.text` como texto (corpo ≤ 4096). Mensagem fora dos limites
   não é enviada, dividida nem truncada: fica no log como `invalid_outgoing_message`.
+- Quando o Backend devolve `reply.typing: true` (a resposta está sendo preparada com auxílio de IA), o
+  gateway chama, dentro da mesma tarefa da fila, `POST /<versão>/<phoneNumberId>/messages` com
+  `{ messaging_product: "whatsapp", status: "read", message_id: <wamid>, typing_indicator: { type: "text" } }`:
+  a mensagem do cidadão fica como lida e aparece "digitando…" por até 25 s ou até a resposta chegar. A
+  resposta em si chega depois, pela rota interna `POST /internal/whatsapp/messages`. Se a Meta recusar, o
+  log `typing_failed` leva só o `messageRef` e a mensagem continua `processed`. O `wamid` nunca sai do
+  gateway.
+
+### Status de entrega (#88)
+
+- Quando o webhook tem ao menos uma `change` aceita (campo `messages` e o ID do número configurado), o
+  gateway chama `POST /api/v1/internal/whatsapp/events` no Backend, com `X-Internal-Token` e timeout de
+  10 s, uma vez e antes de repassar as mensagens do mesmo webhook. O corpo é
+  `{ statuses: [{ providerMessageId, status, timestamp, errorCode }] }`, com a lista vazia quando o
+  webhook só traz mensagens: o Backend usa a chamada para marcar o último evento recebido.
+- `status` é `sent`, `delivered`, `read` ou `failed`; `timestamp` vem em segundos Unix, inteiro de 0 a
+  253402300799, ou `null` quando ausente, não numérico ou fora desse intervalo; `errorCode` é
+  `String(errors[0].code)`, ou `null` quando ausente ou com mais de 40 caracteres. Nesses casos o item
+  continua no lote, só com o campo em `null`.
+- Item sem `id`, com outro status ou com `id` acima de 128 caracteres é descartado com o log
+  `unsupported_status`.
+- O `recipient_id` (o telefone) e os textos do erro (`title`, `message`, `error_data`) nunca são
+  repassados nem registrados.
+- Se a chamada falhar, o log registra `events_forward_failed`, as mensagens seguem normalmente e a
+  resposta à Meta continua `200`. Os status daquele webhook se perdem.
 
 ### Túnel HTTPS para o teste
 
@@ -247,8 +318,10 @@ tiver a verificação de empresa (erro `141010`), toda entrega para número bras
 Por isso, a validação manual usa um número real registrado na conta do WhatsApp Business (status
 `CONNECTED`), com o ID dele salvo na configuração do painel.
 
-O gateway ainda descarta os eventos de status (`status_update` no log, sem o código de erro); o registro
-de `sent`/`delivered`/`read`/`failed` vem na issue #88. Até lá, quando a resposta não chega ao celular:
+Desde a issue #88, o gateway repassa os status `sent`/`delivered`/`read`/`failed` ao backend
+(`POST /api/v1/internal/whatsapp/events`, ver "Status de entrega") e as falhas aparecem em
+`GET /api/v1/whatsapp/settings/delivery-failures`, com o código de erro da Meta. Quando a resposta não
+chega ao celular:
 
 1. Conferir a saúde do número. `GRAPH_API_VERSION` é a versão mostrada na tela (`graphApiVersion`),
    `PHONE_NUMBER_ID` é o ID do número da tela e `ACCESS_TOKEN` é o token de acesso salvo, preenchido à mão

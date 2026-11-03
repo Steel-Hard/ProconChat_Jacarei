@@ -1,5 +1,9 @@
 import { describe, expect, test } from "vitest"
-import { validateOutgoingMessage } from "./outgoingMessage.validation"
+import {
+    validateOutgoingMessage,
+    validateOutgoingMessages,
+    validateOutgoingTemplate,
+} from "./outgoingMessage.validation"
 import { ListRow, OutgoingMessage, ReplyButton } from "../types/message.types"
 
 function rows(count: number): ListRow[] {
@@ -128,5 +132,118 @@ describe("validateOutgoingMessage", () => {
         expect(
             validateOutgoingMessage(buttonsMessage({ buttons: [{ id: "i".repeat(257), title: "Sim" }] })).ok,
         ).toBe(false)
+    })
+
+    test("aceita rodape dos botoes com 60 caracteres e recusa com 61 pelo motivo invalid_footer", () => {
+        const accepted = validateOutgoingMessage(buttonsMessage({ footer: "r".repeat(60) }))
+        const refused = validateOutgoingMessage(buttonsMessage({ footer: "r".repeat(61) }))
+
+        expect(accepted).toEqual({ ok: true })
+        expect(refused).toEqual({ ok: false, reason: "invalid_footer" })
+    })
+
+    test("recusa rodape vazio ou so com espacos pelo motivo invalid_footer e aceita botoes sem rodape", () => {
+        expect(validateOutgoingMessage(buttonsMessage({ footer: "" }))).toEqual({ ok: false, reason: "invalid_footer" })
+        expect(validateOutgoingMessage(buttonsMessage({ footer: "   " }))).toEqual({ ok: false, reason: "invalid_footer" })
+        expect(validateOutgoingMessage(buttonsMessage())).toEqual({ ok: true })
+    })
+
+    test("aceita rodape da lista com 60 caracteres e recusa com 61 pelo motivo invalid_footer", () => {
+        const accepted = validateOutgoingMessage(list({ footer: "r".repeat(60) }))
+        const refused = validateOutgoingMessage(list({ footer: "r".repeat(61) }))
+
+        expect(accepted).toEqual({ ok: true })
+        expect(refused).toEqual({ ok: false, reason: "invalid_footer" })
+    })
+
+    test("recusa rodape da lista vazio ou so com espacos pelo motivo invalid_footer e aceita lista sem rodape", () => {
+        expect(validateOutgoingMessage(list({ footer: "" }))).toEqual({ ok: false, reason: "invalid_footer" })
+        expect(validateOutgoingMessage(list({ footer: "   " }))).toEqual({ ok: false, reason: "invalid_footer" })
+        expect(validateOutgoingMessage(list())).toEqual({ ok: true })
+    })
+})
+
+describe("validateOutgoingTemplate", () => {
+    const valid = {
+        to: "5512999990000",
+        name: "aviso_cancelamento",
+        languageCode: "pt_BR",
+        bodyParameters: ["Maria", "1A2B3C4D", "05/11", "14:00", "a unidade estará fechada nesta data"],
+    }
+
+    test.each([
+        { label: "com 7 dígitos", to: "1234567" },
+        { label: "com 16 dígitos", to: "1234567890123456" },
+    ])("recusa o destinatário $label", ({ to }) => {
+        expect(validateOutgoingTemplate({ ...valid, to })).toEqual({ ok: false, reason: "invalid_to" })
+    })
+
+    test.each(["12345678", "123456789012345"])("aceita o destinatário %s", (to) => {
+        expect(validateOutgoingTemplate({ ...valid, to })).toEqual({
+            ok: true,
+            value: {
+                to,
+                template: { name: valid.name, languageCode: valid.languageCode, bodyParameters: valid.bodyParameters },
+            },
+        })
+    })
+
+    test.each([
+        { label: "com maiúscula", name: "Aviso_cancelamento" },
+        { label: "vazio", name: "" },
+        { label: "com hífen", name: "aviso-cancelamento" },
+    ])("recusa o nome do modelo $label", ({ name }) => {
+        expect(validateOutgoingTemplate({ ...valid, name })).toEqual({ ok: false, reason: "invalid_template_name" })
+    })
+
+    test.each(["pt-BR", "ptBR", "PT_BR", "pt_br"])("recusa o idioma %s", (languageCode) => {
+        expect(validateOutgoingTemplate({ ...valid, languageCode })).toEqual({ ok: false, reason: "invalid_language_code" })
+    })
+
+    test.each([
+        { label: "vazio", parameter: "" },
+        { label: "só com espaços", parameter: "   " },
+        { label: "com quebra de linha", parameter: "Maria\nSilva" },
+        { label: "com tabulação", parameter: "Maria\tSilva" },
+        { label: "com 5 espaços seguidos", parameter: "Maria     Silva" },
+    ])("recusa o parâmetro $label", ({ parameter }) => {
+        expect(validateOutgoingTemplate({ ...valid, bodyParameters: ["Maria", parameter] })).toEqual({
+            ok: false,
+            reason: "invalid_parameter",
+        })
+    })
+
+    test.each([
+        { label: "sem lista", bodyParameters: undefined },
+        { label: "com item que não é texto", bodyParameters: ["Maria", 5] },
+    ])("recusa os parâmetros $label", ({ bodyParameters }) => {
+        expect(validateOutgoingTemplate({ ...valid, bodyParameters })).toEqual({ ok: false, reason: "invalid_parameter" })
+    })
+
+    test("aceita o parâmetro com 4 espaços seguidos", () => {
+        expect(validateOutgoingTemplate({ ...valid, bodyParameters: ["Maria    Silva"] }).ok).toBe(true)
+    })
+})
+
+describe("validateOutgoingMessages", () => {
+    const to = "5512999990000"
+
+    test("devolve o reason do primeiro item inválido", () => {
+        const messages = [
+            { type: "text", text: "Resposta" },
+            buttonsMessage({ footer: "a".repeat(61) }),
+            buttonsMessage({ text: "a".repeat(1025) }),
+        ]
+
+        expect(validateOutgoingMessages({ to, messages })).toEqual({ ok: false, reason: "invalid_footer" })
+    })
+
+    test.each([
+        { label: "null", message: null, reason: "unsupported_type" },
+        { label: "que não é objeto", message: "texto", reason: "unsupported_type" },
+        { label: "de botões sem a lista de botões", message: { type: "buttons", text: "x" }, reason: "invalid_button_count" },
+        { label: "de lista sem a lista de linhas", message: { type: "list", text: "x", buttonText: "Ver" }, reason: "invalid_row_count" },
+    ])("recusa sem lançar o item $label", ({ message, reason }) => {
+        expect(validateOutgoingMessages({ to, messages: [message] })).toEqual({ ok: false, reason })
     })
 })

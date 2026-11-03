@@ -147,6 +147,62 @@ describe("appointment.schema", () => {
         ])("rejeita assign $label", ({ body }) => {
             expect(() => validateSchema(updateStatusBodySchema, body)).toThrow("Dados inválidos")
         })
+
+        describe("cancel", () => {
+            it("recusa cancel sem o motivo", () => {
+                expect(() => validateSchema(updateStatusBodySchema, { action: "cancel" })).toThrow(
+                    "Dados inválidos: reason: Motivo inválido. Valores aceitos: UNIT_CLOSED, CITIZEN_REQUEST, DUPLICATE, OTHER",
+                )
+            })
+
+            it("recusa um motivo fora da lista", () => {
+                expect(() => validateSchema(updateStatusBodySchema, { action: "cancel", reason: "OUTRO" })).toThrow(
+                    "Dados inválidos: reason: Motivo inválido. Valores aceitos: UNIT_CLOSED, CITIZEN_REQUEST, DUPLICATE, OTHER",
+                )
+            })
+
+            it.each(["UNIT_CLOSED", "CITIZEN_REQUEST", "DUPLICATE", "OTHER"])("aceita o motivo %s", (reason) => {
+                expect(validateSchema(updateStatusBodySchema, { action: "cancel", reason })).toEqual({
+                    action: "cancel",
+                    reason,
+                })
+            })
+
+            it("recusa a observação com 2001 caracteres", () => {
+                expect(() =>
+                    validateSchema(updateStatusBodySchema, { action: "cancel", reason: "OTHER", note: "a".repeat(2001) }),
+                ).toThrow("Dados inválidos: note: A observação pode ter no máximo 2000 caracteres")
+            })
+
+            it("aceita a observação com 2000 caracteres", () => {
+                const note = "a".repeat(2000)
+
+                expect(validateSchema(updateStatusBodySchema, { action: "cancel", reason: "OTHER", note })).toEqual({
+                    action: "cancel",
+                    reason: "OTHER",
+                    note,
+                })
+            })
+
+            it("descarta a observação que fica vazia depois do trim", () => {
+                const parsed = validateSchema(updateStatusBodySchema, { action: "cancel", reason: "DUPLICATE", note: "   " })
+
+                expect(parsed).toEqual({ action: "cancel", reason: "DUPLICATE" })
+                expect("note" in parsed).toBe(false)
+            })
+
+            it("apara a observação", () => {
+                expect(
+                    validateSchema(updateStatusBodySchema, { action: "cancel", reason: "UNIT_CLOSED", note: "  texto  " }),
+                ).toEqual({ action: "cancel", reason: "UNIT_CLOSED", note: "texto" })
+            })
+
+            it("lista cancel na mensagem de ação inválida", () => {
+                expect(() => validateSchema(updateStatusBodySchema, { action: "excluir" })).toThrow(
+                    "Dados inválidos: action: Ação inválida. Valores aceitos: claim, attended, no_show, assign, correct_record, cancel",
+                )
+            })
+        })
     })
 
     describe("addNoteBodySchema", () => {

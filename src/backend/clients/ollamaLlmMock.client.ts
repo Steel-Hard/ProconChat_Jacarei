@@ -4,6 +4,10 @@ import { ILlmClient } from "./llm.client.interface"
 export class MockLlmClient implements ILlmClient {
     private nextResult: { texto: string } | { erro: Error } = { texto: "Texto explicativo de exemplo." }
 
+    async isAvailable(): Promise<boolean> {
+        return true
+    }
+
     resolverProximaChamadaCom(texto: string): void {
         this.nextResult = { texto }
     }

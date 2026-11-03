@@ -16,6 +16,9 @@ const phones = {
     transaction: "5500000000994",
     invalidRow: "5500000000995",
     finishFails: "5500000000996",
+    occurredAt: "5500000000997",
+    lateAnswer: "5500000000998",
+    finishedLateAnswer: "5500000000999",
 }
 
 let categoryId = ""
@@ -105,7 +108,7 @@ describe("Eventos da conversa com Postgres", () => {
             const inserted = await pool.query<{ id: string }>(
                 `INSERT INTO Questions (category_id, question, answer, short_title, out_of_scope, llm_allowed)
                  VALUES ($1, $2, 'Resposta de teste.', 'Teste 16', $3, $4) RETURNING id`,
-                [categoryId, question, outOfScope, !outOfScope],
+                [categoryId, question, outOfScope, false],
             )
             questionIds.push(inserted.rows[0]?.id as string)
         }
@@ -350,5 +353,65 @@ describe("Eventos da conversa com Postgres", () => {
             finish.mockRestore()
             error.mockRestore()
         }
+    })
+
+    test("record com horário informado grava created_at igual a ele", async () => {
+        const { sessionId } = await send(phones.occurredAt, sentinel)
+        const occurredAt = new Date("2026-01-15T10:00:00.123Z")
+
+        await conversationEventRepository.record(
+            sessionId,
+            { type: "ANSWER_SENT", categoryId: Number(categoryId), questionId: Number(questionIds[0]), llm: "USED" },
+            occurredAt,
+        )
+
+        const stored = await getPool().query<{ created_at: Date }>(
+            "SELECT created_at FROM ConversationEvents WHERE session_id = $1 AND type = 'ANSWER_SENT'",
+            [sessionId],
+        )
+        expect(stored.rows.map((row) => row.created_at.getTime())).toEqual([occurredAt.getTime()])
+    })
+
+    test("listBySession devolve antes o ANSWER_SENT gravado depois com horário anterior ao RESOLVED_ANSWERED", async () => {
+        const { sessionId } = await send(phones.lateAnswer, sentinel)
+        await conversationEventRepository.record(sessionId, { type: "RESOLVED_ANSWERED", resolved: true })
+        const resolvedAt = (
+            await getPool().query<{ created_at: Date }>(
+                "SELECT created_at FROM ConversationEvents WHERE session_id = $1 AND type = 'RESOLVED_ANSWERED'",
+                [sessionId],
+            )
+        ).rows[0]?.created_at as Date
+
+        await conversationEventRepository.record(
+            sessionId,
+            { type: "ANSWER_SENT", categoryId: Number(categoryId), questionId: Number(questionIds[0]), llm: "USED" },
+            new Date(resolvedAt.getTime() - 5000),
+        )
+
+        const types = (await conversationEventRepository.listBySession(sessionId))
+            .map((event) => event.type)
+            .filter((type) => type === "ANSWER_SENT" || type === "RESOLVED_ANSWERED")
+        expect(types).toEqual(["ANSWER_SENT", "RESOLVED_ANSWERED"])
+    })
+
+    test("record com horário informado numa sessão encerrada grava sem erro", async () => {
+        const { sessionId } = await send(phones.finishedLateAnswer, sentinel)
+        await sessionRepository.finish(sessionId, {
+            outcome: "RESOLVED",
+            event: { type: "RESOLVED_ANSWERED", resolved: true },
+        })
+        expect((await sessionOf(sessionId))?.status).toBe("FINISHED")
+        const answer = {
+            type: "ANSWER_SENT",
+            categoryId: Number(categoryId),
+            questionId: Number(questionIds[0]),
+            llm: "FAILED",
+        } as const
+
+        await expect(conversationEventRepository.record(sessionId, answer, new Date())).resolves.toBeUndefined()
+
+        expect(
+            (await conversationEventRepository.listBySession(sessionId)).filter((event) => event.type === "ANSWER_SENT"),
+        ).toEqual([{ ...answer, createdAt: expect.any(Date) }])
     })
 })

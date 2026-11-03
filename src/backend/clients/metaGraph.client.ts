@@ -1,5 +1,15 @@
 import { createHmac } from "node:crypto"
-import { AccessTokenLifetime, ConnectionCheckInput, ConnectionCheckResult, ConnectionTestReason } from "../types/whatsappSettings.types"
+import {
+    AccessTokenLifetime,
+    ConnectionCheckInput,
+    ConnectionCheckResult,
+    ConnectionTestReason,
+    MessageTemplateRef,
+    MessageTemplateStatus,
+    MessageTemplateStatusCode,
+    MetaAuthInput,
+    QualityRating,
+} from "../types/whatsappSettings.types"
 import { MetaGraphClient } from "./metaGraph.client.interface"
 
 export const META_TIMEOUT_MS = 10_000
@@ -73,6 +83,42 @@ function lifetimeFrom(body: unknown): AccessTokenLifetime | null {
     return { kind: "EXPIRING", expiresAt: date.toISOString() }
 }
 
+const QUALITY_RATINGS: Record<string, QualityRating> = { GREEN: "HIGH", YELLOW: "MEDIUM", RED: "LOW" }
+
+const DAILY_LIMIT_BY_TIER: Record<string, number> = { TIER_250: 250 }
+
+function qualityRatingOf(value: unknown): QualityRating {
+    return typeof value === "string" ? (QUALITY_RATINGS[value] ?? "UNKNOWN") : "UNKNOWN"
+}
+
+function templateStatusOf(metaStatus: string): MessageTemplateStatusCode {
+    if (metaStatus === "APPROVED") {
+        return "APPROVED"
+    }
+    if (metaStatus === "PENDING" || metaStatus === "IN_APPEAL") {
+        return "PENDING"
+    }
+    if (metaStatus === "REJECTED") {
+        return "REJECTED"
+    }
+    return "OTHER"
+}
+
+function findTemplateStatus(body: unknown, template: MessageTemplateRef): MessageTemplateStatus {
+    const items = isRecord(body) && Array.isArray(body.data) ? body.data : []
+    const found = items.find(
+        (item: unknown) =>
+            isRecord(item) &&
+            item.name === template.name &&
+            item.language === template.languageCode &&
+            typeof item.status === "string",
+    )
+    if (!isRecord(found) || typeof found.status !== "string") {
+        return { ...template, status: "NOT_FOUND", metaStatus: null }
+    }
+    return { ...template, status: templateStatusOf(found.status), metaStatus: found.status }
+}
+
 async function readJson(response: Pick<Response, "json">): Promise<unknown> {
     try {
         return await response.json()
@@ -111,7 +157,7 @@ export function createMetaGraphClient({
         return lifetimeFrom(body) ?? unknownLifetime({ status: response.status })
     }
 
-    async function call(path: string, query: Record<string, string>, input: ConnectionCheckInput, kind: CallKind): Promise<CallOutcome> {
+    async function call(path: string, query: Record<string, string>, input: MetaAuthInput, kind: CallKind): Promise<CallOutcome> {
         const proof = createHmac("sha256", input.appSecret).update(input.accessToken).digest("hex")
         const params = new URLSearchParams({ ...query, appsecret_proof: proof })
         const url = `${GRAPH_BASE_URL}/${encodeURIComponent(input.graphApiVersion)}/${path}?${params.toString()}`
@@ -147,6 +193,14 @@ export function createMetaGraphClient({
         logger.log(
             JSON.stringify({ event: "meta_connection_test", reason: outcome.reason, status: outcome.status, code: outcome.code }),
         )
+        return { ok: false, reason: outcome.reason }
+    }
+
+    function logFailure(
+        event: string,
+        outcome: { reason: ConnectionTestReason; status?: number; code?: number },
+    ): { ok: false; reason: ConnectionTestReason } {
+        logger.log(JSON.stringify({ event, reason: outcome.reason, status: outcome.status, code: outcome.code }))
         return { ok: false, reason: outcome.reason }
     }
 
@@ -186,6 +240,43 @@ export function createMetaGraphClient({
             }
 
             return { ok: true, displayPhoneNumber, verifiedName }
+        },
+
+        async listMessageTemplates(input, templates) {
+            const statuses: MessageTemplateStatus[] = []
+            for (const template of templates) {
+                const outcome = await call(
+                    `${encodeURIComponent(input.businessAccountId)}/message_templates`,
+                    { fields: "name,status,language", name: template.name },
+                    input,
+                    "account",
+                )
+                if (!outcome.ok) {
+                    return logFailure("meta_templates_status", outcome)
+                }
+                statuses.push(findTemplateStatus(outcome.body, template))
+            }
+            return { ok: true, templates: statuses }
+        },
+
+        async getPhoneNumberStatus(input) {
+            const outcome = await call(
+                encodeURIComponent(input.phoneNumberId),
+                { fields: "quality_rating,whatsapp_business_manager_messaging_limit" },
+                input,
+                "phone",
+            )
+            if (!outcome.ok) {
+                return logFailure("meta_number_status", outcome)
+            }
+            const body = isRecord(outcome.body) ? outcome.body : {}
+            const tier = typeof body.whatsapp_business_manager_messaging_limit === "string" ? body.whatsapp_business_manager_messaging_limit : null
+            return {
+                ok: true,
+                qualityRating: qualityRatingOf(body.quality_rating),
+                tier,
+                dailyLimit: tier === null ? null : (DAILY_LIMIT_BY_TIER[tier] ?? null),
+            }
         },
 
         async inspectAccessToken(input) {

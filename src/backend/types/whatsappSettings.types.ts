@@ -1,3 +1,5 @@
+import { OutboundKind } from "./outboundMessage.types"
+
 export type AccessTokenLifetime =
     | { kind: "PERMANENT"; expiresAt: null }
     | { kind: "EXPIRING"; expiresAt: string }
@@ -20,6 +22,7 @@ export interface WhatsAppSettingsRow {
     displayPhoneNumber: string | null
     verifiedName: string | null
     accessTokenLifetime: AccessTokenLifetime
+    lastWebhookEventAt: Date | null
     updatedBy: WhatsAppSettingsUpdatedBy | null
     updatedAt: Date
 }
@@ -38,7 +41,22 @@ export interface SaveCredentialsInput {
     verifiedName: string
     accessTokenLifetime: AccessTokenLifetime | null
     updatedBy: number
+    auditFields: WhatsAppAuditField[]
 }
+
+export interface WhatsAppHistoryItemView {
+    id: string
+    action: string
+    fields: string[]
+    actor: WhatsAppSettingsUpdatedBy | null
+    createdAt: string
+}
+
+export interface WhatsAppHistoryView {
+    items: WhatsAppHistoryItemView[]
+}
+
+export type WhatsAppAuditField = "phoneNumberId" | "businessAccountId" | "accessToken" | "appSecret"
 
 export interface SecretView {
     configured: boolean
@@ -62,6 +80,29 @@ export interface WhatsAppSettingsView {
     displayPhoneNumber: string | null
     verifiedName: string | null
     accessTokenLifetime: AccessTokenLifetime
+    credentialsStatus: CredentialsStatus
+    webhook: WebhookStatusView
+}
+
+export interface DeliveryFailureView {
+    id: string
+    kind: OutboundKind
+    errorCode: string | null
+    failedAt: string
+    appointmentId: string | null
+}
+
+export interface DeliveryFailuresView {
+    since: string
+    count: number
+    items: DeliveryFailureView[]
+}
+
+export type CredentialsStatus = "NOT_CHECKED" | "INVALID" | "EXPIRED" | "VALID"
+
+export interface WebhookStatusView {
+    lastEventAt: string | null
+    stale: boolean
 }
 
 export interface WhatsAppSettingsInput {
@@ -104,3 +145,42 @@ export interface WhatsAppInternalConfig {
     verifyToken: string
     graphApiVersion: string
 }
+
+export type MetaAuthInput = Pick<ConnectionCheckInput, "accessToken" | "appSecret" | "graphApiVersion">
+
+export type MessageTemplateKind = "CANCELLATION" | "REMINDER"
+
+export type MessageTemplateStatusCode = "APPROVED" | "PENDING" | "REJECTED" | "NOT_FOUND" | "OTHER"
+
+export interface MessageTemplateRef {
+    kind: MessageTemplateKind
+    name: string
+    languageCode: string
+}
+
+export interface MessageTemplateStatus extends MessageTemplateRef {
+    status: MessageTemplateStatusCode
+    metaStatus: string | null
+}
+
+export type TemplatesStatusResult =
+    | { ok: true; templates: MessageTemplateStatus[] }
+    | { ok: false; reason: ConnectionTestReason }
+
+export interface TemplatesStatusView {
+    checkedAt: string
+    templates: MessageTemplateStatus[]
+}
+
+export type QualityRating = "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN"
+
+export type PhoneNumberStatusResult =
+    | { ok: true; qualityRating: QualityRating; tier: string | null; dailyLimit: number | null }
+    | { ok: false; reason: ConnectionTestReason }
+
+export interface NumberStatusView {
+    checkedAt: string
+    qualityRating: QualityRating
+    messagingLimit: { tier: string | null; dailyLimit: number | null; usedLast24h: number }
+}
+

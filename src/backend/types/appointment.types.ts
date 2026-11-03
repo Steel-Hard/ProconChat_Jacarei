@@ -31,7 +31,7 @@ export interface AssignedEventData {
 }
 
 export interface BackToPendingEventData {
-    reason: AppointmentReassignmentReason
+    reason: AppointmentReassignmentReason | "RESCHEDULED"
 }
 
 export type AppointmentFilterStatus =
@@ -58,16 +58,38 @@ export type AppointmentSortBy =
 
 export type AppointmentSortOrder = "asc" | "desc"
 
-export type AppointmentActionType = "claim" | "attended" | "no_show" | "assign" | "correct_record"
+export const CANCELLATION_REASONS = ["UNIT_CLOSED", "CITIZEN_REQUEST", "DUPLICATE", "OTHER"] as const
 
-export type AppointmentAvailableActionKey = AppointmentActionType | "add_note"
+export type CancellationReason = (typeof CANCELLATION_REASONS)[number]
+
+export type CitizenNotificationKind = "CANCELLATION"
+
+export type CitizenNotificationOutcome = "NOTIFIED" | "FAILED"
+
+export interface CancellationPreview {
+    previews: { reason: CancellationReason; message: string }[]
+}
+
+export interface CancellationNoticeTarget {
+    status: AppointmentStatus
+    appointmentDatetime: Date
+    name: string
+    protocol: string
+    phoneEncrypted: string | null
+    lastStaffCancelReason: CancellationReason | null
+    lastCancellationNotice: CitizenNotificationOutcome | null
+}
+
+export type AppointmentActionType = "claim" | "attended" | "no_show" | "assign" | "correct_record" | "cancel"
+
+export type AppointmentAvailableActionKey = AppointmentActionType | "add_note" | "retry_cancellation_notice"
 
 export interface AppointmentListItem {
     id: string
     protocol: string
     appointment_code: string
     name: string
-    cpf_masked: string
+    cpf_masked: string | null
     category_name: string
     question_title: string
     appointment_datetime: string
@@ -135,6 +157,10 @@ export type TransitionErrorCode =
     | "INVALID_ASSIGNEE"
     | "ASSIGNEE_BUSY"
     | "PERMISSION_REQUIRED"
+    | "CANCEL_AFTER_START"
+    | "NOTIFICATION_NOT_RETRYABLE"
+    | "CITIZEN_PHONE_UNAVAILABLE"
+    | "NOTIFICATION_AFTER_START"
 
 export interface AppointmentActionAvailability {
     allowed: boolean
@@ -161,7 +187,7 @@ export interface AppointmentDetail {
     session_id: string
     status: AppointmentStatus
     name: string
-    cpf_masked: string
+    cpf_masked: string | null
     by_representative: boolean
     reason: AppointmentReason
     appointment_datetime: string

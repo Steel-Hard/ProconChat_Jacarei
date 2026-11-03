@@ -48,7 +48,11 @@ function useAppointmentDetailView(detail: AppointmentDetail | undefined) {
 
         const facts: AppointmentFactView[] = [
             { label: t("facts.holder"), value: detail.name },
-            { label: t("facts.cpf"), value: detail.cpf_masked, mono: true },
+            {
+                label: t("facts.cpf"),
+                value: detail.cpf_masked ?? t("facts.cpfRemoved"),
+                mono: true
+            },
             { label: t("facts.datetime"), value: t("facts.datetimeValue", when) },
             { label: t("facts.status"), value: "", status: detail.status },
             {

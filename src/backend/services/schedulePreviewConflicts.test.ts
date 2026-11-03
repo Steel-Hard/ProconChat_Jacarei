@@ -149,6 +149,40 @@ describe("ScheduleService.getMonthlyPreview com conflitos", () => {
         expect(preview.conflicts).toEqual([])
     })
 
+    it("confere na prévia salva cada agendamento com a versão vigente no dia dele", async () => {
+        const base = buildDefaultScheduleConfigView()
+        const withoutTuesday = buildDefaultScheduleConfigView({
+            ranges: base.ranges.filter((range) => range.weekday !== 2),
+        })
+        const repository = createScheduleStubRepository({
+            config: base,
+            scheduledConfigs: [{ effectiveFrom: "2026-10-12", config: withoutTuesday }],
+            appointments: [
+                buildFutureAppointment({ protocol: "ANTES001", appointmentDatetime: new Date("2026-10-06T09:00:00-03:00") }),
+                buildFutureAppointment({ protocol: "DEPOIS01", appointmentDatetime: new Date("2026-10-13T09:00:00-03:00") }),
+            ],
+        })
+
+        const preview = await createScheduleService(repository).getMonthlyPreview({ month: "2026-10", now: FIXED_NOW })
+
+        expect(preview.conflicts.map((conflict) => [conflict.protocol, conflict.date, conflict.code])).toEqual([
+            ["DEPOIS01", "2026-10-13", "DAY_WITHOUT_SERVICE"],
+        ])
+    })
+
+    it("lê os agendamentos futuros uma única vez na prévia de um rascunho com data de início", async () => {
+        const { repository, service } = serviceWith([])
+
+        await service.getMonthlyPreview({
+            month: "2026-10",
+            draftConfig: buildScheduleConfigInput(),
+            draftEffectiveFrom: "2026-10-12",
+            now: FIXED_NOW,
+        })
+
+        expect(repository.listFutureCalls).toEqual([FIXED_NOW])
+    })
+
     it("lê os agendamentos futuros a partir do instante da prévia", async () => {
         const { repository, service } = serviceWith([])
 

@@ -23,7 +23,7 @@ Abaixo: nome do titular, data e hora por extenso, e "Criado pelo chatbot em [dat
 
 | Campo | Observação |
 |---|---|
-| Titular e CPF do titular | CPF sempre mascarado |
+| Titular e CPF do titular | CPF sempre mascarado. No agendamento anonimizado por prazo, "Titular removido" e "CPF removido" ([decisão 002](../decisoes/002-lgpd-dados-pessoais.md#anonimização-por-prazo)) |
 | Data e hora, status, responsável | "Sem responsável" quando pendente |
 | Comparecimento | "Titular comparece" ou "Comparece por representante" |
 | **Motivo do agendamento** | "A pergunta exige atendimento presencial" ou "O cidadão respondeu que a dúvida não foi resolvida". **Gravado quando o agendamento foi criado**: não muda se alguém editar a pergunta depois |
@@ -105,6 +105,6 @@ As ações aparecem conforme o status e o momento:
 
 - **Construído pela #86:** cabeçalho com selos, dados do agendamento, documentos enviados pelo chatbot, linha do tempo da conversa de origem, histórico e as ações "Assumir para mim", "Marcar como atendido" e "Marcar como não compareceu", cada uma com confirmação. Antes do horário, "Marcar como não compareceu" também mostra "disponível depois do horário do atendimento". O erro de uma ação aparece na caixa "Ações" até a próxima ação.
 - **Atribuir a outro funcionário, observações internas e corrigir registro:** a API está pronta (#87), com a permissão por ação (`PERMISSION_REQUIRED` em `available_actions`) e a regra de horário por pessoa (`ASSIGNEE_BUSY` também em "Assumir para mim" e no assumir automático). As telas ficam com a #126.
-- **Cancelar agendamento** (com o modal e a prévia) e o **"Tentar novamente"** da falha ao avisar o cidadão: ficam com a #67. Hoje a falha aparece em destaque, sem o botão.
+- **Cancelar agendamento** (com o modal e a prévia) e o **"Tentar novamente"** da falha ao avisar o cidadão: a API está pronta (#67), com `PATCH /:id/status` e `action: "cancel"`, a prévia em `GET /:id/cancellation-preview`, o reenvio em `POST /:id/cancellation-notice/retry` e as chaves `cancel` e `retry_cancellation_notice` em `available_actions`. O botão "Tentar novamente" segue `available_actions.retry_cancellation_notice`, e não a existência de um evento de falha no histórico: o reenvio também é permitido quando o cancelamento não deixou evento de aviso (#67). As telas ficam com a #127. Hoje a falha aparece em destaque, sem o botão.
 - **Código da sessão com link para Sessões:** fica com a #72. A API ainda não devolve o código `S-XXXXXX`, então a tela não mostra a sessão.
 - A linha do tempo vazia e a falha ao lê-la aparecem com o mesmo texto ("Os passos desta conversa não estão disponíveis."), porque a API responde igual nos dois casos.

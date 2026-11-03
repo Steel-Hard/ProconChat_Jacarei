@@ -83,6 +83,22 @@ describe("Leitura sem trava dos agendamentos futuros ativos (Postgres)", () => {
         expect(rows.every((row) => row.appointmentDatetime > inDays(6, "07:00"))).toBe(true)
     })
 
+    it("deixa de fora o agendamento futuro ativo já anonimizado e mantém o ativo normal", async () => {
+        const active = await appointment("CONFIRMED", inDays(8, "09:00"))
+        const anonymized = await appointment("PENDING", inDays(8, "10:00"))
+        await getPool().query(
+            `UPDATE Appointments
+             SET name = 'Titular removido', cpf_hash = NULL, cpf_masked = NULL,
+                 phone_encrypted = NULL, anonymized_at = now()
+             WHERE id = $1`,
+            [anonymized],
+        )
+
+        const rows = ownRows(await scheduleRepository.listFutureActiveAppointments(inDays(8, "08:00")))
+
+        expect(rows.map((row) => row.id)).toEqual([active])
+    })
+
     it("lê mesmo com a linha do agendamento travada por outra transação", async () => {
         const id = await appointment("PENDING", inDays(7, "09:00"))
         const blocker = await getPool().connect()

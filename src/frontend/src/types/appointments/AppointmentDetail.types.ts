@@ -11,7 +11,7 @@ type AppointmentDetail = {
     session_id: string
     status: AppointmentStatus
     name: string
-    cpf_masked: string
+    cpf_masked: string | null
     by_representative: boolean
     reason: AppointmentReason
     appointment_datetime: string

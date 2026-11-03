@@ -42,8 +42,8 @@ Colunas: código e início, desfecho (e, para as sessões em andamento, a **etap
 |---|---|
 | Início da conversa | O cidadão recebeu a saudação com a menção ao caráter orientativo |
 | Categoria escolhida, Pergunta escolhida | — |
-| Resposta entregue | Com o rótulo **"Gerado com auxílio de IA"** quando houve complemento |
-| Complemento por IA indisponível | Quando a IA falhou: o cidadão recebeu só o texto oficial (sem rótulo de IA) |
+| Resposta entregue | Com o rótulo **"Gerado com auxílio de IA"** quando a resposta foi escrita com auxílio de IA ([decisão 009](../decisoes/009-complemento-por-llm.md)) |
+| IA indisponível | Quando a IA não pôde ser usada: o cidadão recebeu a resposta oficial (sem rótulo de IA). A tela é da #72 |
 | A pergunta exige atendimento presencial | Nesse caso o chatbot não pergunta se a dúvida foi resolvida |
 | A dúvida foi resolvida? | Com a resposta do cidadão: Sim ou Não |
 | Agendamento oferecido | Com o motivo |
@@ -55,7 +55,7 @@ Colunas: código e início, desfecho (e, para as sessões em andamento, a **etap
 | Parou em [etapa] | Em sessões abandonadas, com os mesmos nomes de etapa de Relatórios |
 | Aguardando o cidadão | Em sessões em andamento, com a etapa atual |
 
-**Outras conversas deste número:** lista das outras sessões do mesmo cidadão (código, data e desfecho), com link. A tela explica: "Identificadas pelo mesmo número de WhatsApp, que não é exibido nem armazenado de forma legível."
+**Outras conversas deste número:** lista das outras sessões do mesmo cidadão (código, data e desfecho), com link. A tela explica: "Identificadas pelo mesmo número de WhatsApp, que não é exibido nem armazenado de forma legível." Uma conversa **anonimizada** por prazo ([decisão 002](../decisoes/002-lgpd-dados-pessoais.md#anonimização-por-prazo)) não tem mais o número guardado: ela não aparece nas "outras conversas" de ninguém e, aberta, mostra o estado vazio desse bloco, sem erro.
 
 Os links para agendamentos só aparecem para quem tem **Ver agendamentos**.
 

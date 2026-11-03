@@ -49,6 +49,7 @@ Nas telas de operação (Agendamentos, Detalhe, Conteúdo), cada ação é aplic
 - **Contas** são **desativadas**, não excluídas.
 - **Observações** dos agendamentos não podem ser editadas nem apagadas.
 - **Agendamentos** são cancelados, não apagados.
+- **Anonimizar não é excluir.** Com a anonimização automática ligada (aba Privacidade da tela de WhatsApp), conversas e agendamentos que passaram do prazo perdem o dado pessoal (número, nome e CPF), mas a linha, os eventos, o histórico e as observações continuam ([decisão 002](../decisoes/002-lgpd-dados-pessoais.md#anonimização-por-prazo)).
 
 Isso preserva o histórico, os relatórios e a autoria de cada registro.
 

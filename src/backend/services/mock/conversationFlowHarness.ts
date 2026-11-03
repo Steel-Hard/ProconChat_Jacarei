@@ -1,5 +1,7 @@
 import { vi } from "vitest"
+import { FIXED_NOW } from "../../repositories/mock/appointment.builders"
 import type { SessionRepository } from "../../repositories/session.repository"
+import type { LlmAnswerJob } from "../../types/llm.types"
 import type { ConversationEventService } from "../conversationEvent.service"
 import { createConversationFlowService, MotorDecisao, ScheduleProvider } from "../conversationFlow.service"
 
@@ -37,10 +39,22 @@ export function createConversationFlowHarness() {
 
     const getAvailableSlots = vi.fn()
     const bookSlot = vi.fn()
-    const schedule: ScheduleProvider = { getAvailableSlots, bookSlot }
+    const findReturningAppointment = vi.fn<ScheduleProvider["findReturningAppointment"]>(async () => null)
+    const cancelByCitizen = vi.fn<ScheduleProvider["cancelByCitizen"]>()
+    const rescheduleByCitizen = vi.fn<ScheduleProvider["rescheduleByCitizen"]>()
+    const schedule: ScheduleProvider = {
+        getAvailableSlots,
+        bookSlot,
+        findReturningAppointment,
+        cancelByCitizen,
+        rescheduleByCitizen,
+    }
 
     const hashPhone = vi.fn((phone: string) => `hash-${phone}`)
     const isAutoReplyPaused = vi.fn<() => Promise<boolean>>(async () => false)
+    const deliverAnswer = vi.fn<(job: LlmAnswerJob) => Promise<void>>(async () => undefined)
+    const answerLogger = { log: vi.fn() }
+    const now = () => FIXED_NOW
 
     function createFlow(overrides: Partial<ConversationFlowDependencies> = {}) {
         return createConversationFlowService({
@@ -51,6 +65,9 @@ export function createConversationFlowHarness() {
             hashPhone,
             logger,
             isAutoReplyPaused,
+            deliverAnswer,
+            answerLogger,
+            now,
             ...overrides,
         })
     }
@@ -73,9 +90,15 @@ export function createConversationFlowHarness() {
         motor,
         getAvailableSlots,
         bookSlot,
+        findReturningAppointment,
+        cancelByCitizen,
+        rescheduleByCitizen,
         schedule,
         hashPhone,
         isAutoReplyPaused,
+        deliverAnswer,
+        answerLogger,
+        now,
         createFlow,
         processIncomingMessage: createFlow(),
     }

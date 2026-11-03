@@ -3,7 +3,7 @@
 > Persistência única em PostgreSQL, compartilhada entre o chatbot e o painel ([`../architecture/architecture.md`](../architecture/architecture.md)).
 >
 > Este documento tem duas partes:
-> 1. **[Schema atual](#parte-1--schema-atual-implementado)**: o que existe depois das migrations `01` a `09`, `010`, `11`, `12`, `13`, `14`, `15` e `16` (a `11_sprint2_schema.sql` é o schema da Sprint 2, issue #52; a `12_short_text_checks.sql` ajusta o limite dos títulos curtos, issue #61; a `13_conversation_events_data_checks.sql` limita as chaves e os valores de `ConversationEvents.data` e amarra `current_step = 'FINISHED'` às sessões encerradas, issue #16; a `14_whatsapp_settings_display_number.sql` guarda o número e o nome verificados do WhatsApp, issue #54; a `15_whatsapp_settings_access_token_lifetime.sql` guarda se o token de acesso do WhatsApp expira, issue #54; a `16_user_permissions.sql` cria as permissões granulares das contas e o e-mail único sem diferenciar maiúsculas, issue #62).
+> 1. **[Schema atual](#parte-1--schema-atual-implementado)**: o que existe depois das migrations `01` a `09`, `010`, `11`, `12`, `13`, `14`, `15`, `16` e `17` (a `11_sprint2_schema.sql` é o schema da Sprint 2, issue #52; a `12_short_text_checks.sql` ajusta o limite dos títulos curtos, issue #61; a `13_conversation_events_data_checks.sql` limita as chaves e os valores de `ConversationEvents.data` e amarra `current_step = 'FINISHED'` às sessões encerradas, issue #16; a `14_whatsapp_settings_display_number.sql` guarda o número e o nome verificados do WhatsApp, issue #54; a `15_whatsapp_settings_access_token_lifetime.sql` guarda se o token de acesso do WhatsApp expira, issue #54; a `16_user_permissions.sql` cria as permissões granulares das contas e o e-mail único sem diferenciar maiúsculas, issue #62; a `17_schedule_changes.sql` guarda snapshots de agenda com data efetiva, issue #134).
 > 2. **[Schema planejado](#parte-2--schema-planejado-sprint-3)**: o que ainda falta criar, com a issue de cada parte.
 >
 > Antes de mexer no banco, leia também o SQL em `src/backend/db/schema/` e as convenções em [`migrations.md`](migrations.md): **toda mudança é uma migration nova**, nunca edição de migration antiga.
@@ -28,6 +28,10 @@
 | `14` | Número e nome verificados do WhatsApp (#54): adiciona `display_phone_number VARCHAR(40)` e `verified_name VARCHAR(255)`, ambos opcionais, em `WhatsAppSettings`. A linha existente fica com os dois `NULL` até o próximo teste ou salvar bem-sucedido. O `Down` remove as duas colunas |
 | `15` | Tipo do token de acesso do WhatsApp (#54): adiciona `access_token_permanent BOOLEAN` e `access_token_expires_at TIMESTAMPTZ`, ambos opcionais, em `WhatsAppSettings`, com `chk_whatsapp_settings_access_token_lifetime` (as duas nulas, `TRUE` sem data ou `FALSE` com data). A linha existente fica com as duas `NULL` (tipo desconhecido) até o próximo teste dos valores salvos ou salvar bem-sucedido. O `Down` remove a constraint e as duas colunas |
 | `16` | Permissões granulares das contas (#62): cria `Permissions` com as 8 permissões (nome e descrição do protótipo) e `UserPermissions`, adiciona `permissions_updated_by` e `permissions_updated_at` em `Users` com `chk_users_permissions_updated` (as duas preenchidas ou as duas nulas) e cria `uniq_users_email_lower` (e-mail único sem diferenciar maiúsculas). Antes do índice, aborta com mensagem clara se houver e-mails repetidos ignorando maiúsculas. As contas existentes ficam sem permissões. O `Down` remove o índice, a constraint, as duas colunas e as duas tabelas |
+| `17` | Agenda com data efetiva (#134): cria `ScheduleChanges`, que armazena snapshots completos da configuração, data local de início, autor e última alteração. O `Down` remove os snapshots |
+| `18` | Mensagens enviadas e histórico de alterações (#88): cria os tipos `outbound_kind` e `outbound_status`, a tabela `OutboundMessages` (com o HMAC do wamid em `provider_message_hash` e `chk_outbound_messages_provider_message_hash`, o índice parcial das falhas e os índices das FKs) e a tabela `AuditLog` (com `chk_audit_log_data_object`). O `Down` remove as duas tabelas e os dois tipos |
+| `19` | Configuração de privacidade (#69): cria a tabela de linha única `PrivacySettings` (controlador, encarregado, e-mail de contato, atendimento presencial e prazos de guarda), com `CHECK` de linha única, de tamanho, de espaço nas pontas e do formato do e-mail. Não insere linha. O `Down` remove a tabela |
+| `20` | Anonimização por prazo (#69, D3): `Sessions.phone_hash`, `Appointments.cpf_hash` e `Appointments.cpf_masked` passam a aceitar `NULL`; `anonymized_at` em `Sessions` e `Appointments`, com `chk_sessions_anonymized`, `chk_sessions_anonymized_finished` e `chk_appointments_anonymized`; os índices parciais `idx_sessions_retention` e `idx_appointments_retention`; e `retention_enabled` (`FALSE`), `session_retention_days` (90, de 30 a 1825) e `appointment_retention_days` (365, de 90 a 1825) em `PrivacySettings`. O `Down` **aborta com mensagem clara se houver conversa ou agendamento anonimizado** (o dado removido não volta); sem linha anonimizada, remove as colunas, os `CHECK` e os índices e volta o `NOT NULL` |
 
 ### Diagrama
 
@@ -50,9 +54,12 @@ erDiagram
     Users |o--o{ AppointmentEvents : "ator"
     Users ||--o{ UserPermissions : has
     Permissions ||--o{ UserPermissions : "concedida em"
+    Appointments |o--o{ OutboundMessages : "aviso enviado"
+    Sessions |o--o{ OutboundMessages : "resposta enviada"
+    Users |o--o{ AuditLog : "autor"
 ```
 
-Tabelas de configuração, sem relação com as demais além de `updated_by` → `Users`: `ScheduleSettings`, `ScheduleRanges`, `BlockedDates`, `AttendanceDocuments` e `WhatsAppSettings`. `Categories` e `Questions` também têm `updated_by` → `Users`.
+Tabelas de configuração, sem relação com as demais além de `updated_by` → `Users`: `ScheduleSettings`, `ScheduleRanges`, `BlockedDates`, `ScheduleChanges`, `AttendanceDocuments`, `WhatsAppSettings` e `PrivacySettings`. `Categories` e `Questions` também têm `updated_by` → `Users`.
 
 A extensão `unaccent` é criada na migration `11`, para a busca de agendamentos pelo nome sem diferenciar acentos (#60).
 
@@ -247,7 +254,7 @@ CREATE TABLE Sessions (
     id BIGSERIAL PRIMARY KEY,
     session_code UUID NOT NULL DEFAULT gen_random_uuid(),
 
-    phone_hash VARCHAR(64) NOT NULL,
+    phone_hash VARCHAR(64),
 
     status session_status NOT NULL DEFAULT 'IN_PROGRESS',
 
@@ -263,6 +270,7 @@ CREATE TABLE Sessions (
     current_question_id BIGINT REFERENCES Questions(id) ON DELETE SET NULL,
     list_page INT NOT NULL DEFAULT 1,
     draft JSONB,
+    anonymized_at TIMESTAMPTZ,
 
     CONSTRAINT chk_sessions_outcome_in_progress CHECK ((status = 'IN_PROGRESS') = (outcome = 'IN_PROGRESS')),
     CONSTRAINT chk_sessions_outcome_abandoned CHECK ((status = 'ABANDONED') = (outcome = 'ABANDONED')),
@@ -282,13 +290,16 @@ CREATE TABLE Sessions (
             (draft ->> 'cpf_hash' IS NULL OR draft ->> 'cpf_hash' ~ '^[0-9a-f]{64}$')
             AND (draft ->> 'cpf_masked' IS NULL OR draft ->> 'cpf_masked' ~ '^\*{3}\.[0-9]{3}\.[0-9]{3}-\*{2}$')
         )
-    )
+    ),
+    CONSTRAINT chk_sessions_anonymized CHECK ((phone_hash IS NULL) = (anonymized_at IS NOT NULL)),
+    CONSTRAINT chk_sessions_anonymized_finished CHECK (anonymized_at IS NULL OR status <> 'IN_PROGRESS')
 );
 
 CREATE INDEX idx_sessions_phone_hash ON Sessions(phone_hash);
 CREATE INDEX idx_sessions_code ON Sessions(session_code);
 CREATE INDEX idx_sessions_last_interaction ON Sessions(last_interaction_at) WHERE status = 'IN_PROGRESS';
 CREATE INDEX idx_sessions_started_at ON Sessions(started_at);
+CREATE INDEX idx_sessions_retention ON Sessions ((COALESCE(ended_at, last_interaction_at))) WHERE anonymized_at IS NULL AND status <> 'IN_PROGRESS';
 
 CREATE UNIQUE INDEX uniq_sessions_phone_in_progress
 ON Sessions(phone_hash)
@@ -308,8 +319,8 @@ WHERE status = 'IN_PROGRESS';
 | `AWAITING_HOLDER_NAME` | Nome completo do titular |
 | `AWAITING_HOLDER_CPF` | CPF do titular |
 | `AWAITING_SLOT` | Escolha do horário. Também usada na remarcação (#59), com `draft.target_appointment_id` indicando o agendamento |
-| `AWAITING_RETURN_CHOICE` | Remarcar / Cancelar / Tenho outra dúvida (#59, Sprint 3) |
-| `AWAITING_CANCEL_CONFIRMATION` | Confirmação do cancelamento por botão (#59, Sprint 3) |
+| `AWAITING_RETURN_CHOICE` | Remarcar / Cancelar / Tenho outra dúvida (#59). Primeira etapa da sessão nova de quem tem agendamento futuro, com `draft.target_appointment_id` |
+| `AWAITING_CANCEL_CONFIRMATION` | Confirmação do cancelamento por botão (#59) |
 | `FINISHED` | Conversa encerrada |
 
 A correspondência entre etapa e os 6 nomes de abandono dos Relatórios é da aplicação e fica com a #68. A #16 só grava a etapa em `abandoned_at_step` e no evento `ABANDONED`.
@@ -475,8 +486,8 @@ CREATE TABLE Appointments (
     reason appointment_reason NOT NULL,
 
     name VARCHAR(150) NOT NULL,
-    cpf_hash VARCHAR(64) NOT NULL,
-    cpf_masked VARCHAR(14) NOT NULL,
+    cpf_hash VARCHAR(64),
+    cpf_masked VARCHAR(14),
     phone_encrypted TEXT,
     by_representative BOOLEAN NOT NULL DEFAULT FALSE,
     documents_sent JSONB NOT NULL,
@@ -489,6 +500,7 @@ CREATE TABLE Appointments (
     assigned_user_id BIGINT REFERENCES Users(id),
 
     request_datetime TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    anonymized_at TIMESTAMPTZ,
 
     CONSTRAINT uniq_appointments_code UNIQUE (appointment_code),
     CONSTRAINT chk_appointments_cpf_hash CHECK (cpf_hash ~ '^[0-9a-f]{64}$'),
@@ -500,7 +512,11 @@ CREATE TABLE Appointments (
         AND jsonb_typeof(documents_sent -> 'question') IS NOT DISTINCT FROM 'array'
     ),
     CONSTRAINT chk_appointments_pending_unassigned CHECK (status <> 'PENDING' OR assigned_user_id IS NULL),
-    CONSTRAINT chk_appointments_confirmed_assigned CHECK (status NOT IN ('CONFIRMED', 'ATTENDED', 'NO_SHOW') OR assigned_user_id IS NOT NULL)
+    CONSTRAINT chk_appointments_confirmed_assigned CHECK (status NOT IN ('CONFIRMED', 'ATTENDED', 'NO_SHOW') OR assigned_user_id IS NOT NULL),
+    CONSTRAINT chk_appointments_anonymized CHECK (
+        (anonymized_at IS NULL AND cpf_hash IS NOT NULL AND cpf_masked IS NOT NULL)
+        OR (anonymized_at IS NOT NULL AND cpf_hash IS NULL AND cpf_masked IS NULL AND phone_encrypted IS NULL AND name = 'Titular removido')
+    )
 );
 
 CREATE INDEX idx_appointments_cpf_hash ON Appointments(cpf_hash);
@@ -509,6 +525,7 @@ CREATE INDEX idx_appointments_datetime_active ON Appointments(appointment_dateti
 CREATE INDEX idx_appointments_assigned ON Appointments(assigned_user_id);
 CREATE INDEX idx_appointments_session ON Appointments(session_id);
 CREATE INDEX idx_appointments_question ON Appointments(question_id);
+CREATE INDEX idx_appointments_retention ON Appointments(appointment_datetime) WHERE anonymized_at IS NULL;
 
 CREATE UNIQUE INDEX uniq_appointments_active
     ON Appointments(cpf_hash, appointment_datetime)
@@ -523,7 +540,8 @@ CREATE UNIQUE INDEX uniq_appointments_active
 - **Vagas por horário:** como pode haver mais de uma vaga (`seats_per_slot`), não há índice único por horário. A #56 conta as vagas numa transação com `pg_advisory_xact_lock` pela data e hora, usando o índice parcial `idx_appointments_datetime_active`. O mesmo CPF não pode ter dois agendamentos `PENDING`/`CONFIRMED` no mesmo horário (`uniq_appointments_active`).
 - `session_id` não é `UNIQUE`: não está decidido se o cidadão pode cancelar e agendar de novo na mesma conversa.
 - **Busca por telefone** (retorno de quem já tem agendamento, #59): `phone_encrypted` não é pesquisável, então a busca é por `Sessions.phone_hash` via `session_id`.
-- O apagamento de `phone_encrypted` quando o agendamento termina é regra de aplicação/retenção (#69), não `CHECK`: o aviso de cancelamento pela equipe é enviado depois de mudar o status e pode ser reenviado.
+- O apagamento de `phone_encrypted` é regra de aplicação (#69), não `CHECK`: quando chega o horário do agendamento (`appointment_datetime <= agora`), em qualquer status, uma varredura do backend a cada 60 s grava `phone_encrypted = NULL` sem mudar mais nada e sem evento. Antes do horário o telefone ainda serve para o reenvio do aviso de cancelamento e para o lembrete.
+- **Anonimização por prazo** (#69, D3, migration `20`): com `PrivacySettings.retention_enabled`, uma varredura do backend a cada 1 hora (`repositories/retention.repository.ts`) grava, no agendamento cuja data passou do prazo (`appointment_datetime <= agora - appointment_retention_days`), `name = 'Titular removido'`, `cpf_hash`, `cpf_masked` e `phone_encrypted` nulos e `anonymized_at`, e, na conversa terminada cujo fim (`COALESCE(ended_at, last_interaction_at)`) passou do prazo, `phone_hash = NULL` e `anonymized_at`. A conversa que gerou um agendamento ainda dentro do prazo não é anonimizada. No máximo 500 linhas por tabela por execução, do mais antigo para o mais novo, com `FOR UPDATE SKIP LOCKED`, sem evento nem `AuditLog`. `chk_appointments_anonymized` e `chk_sessions_anonymized` garantem que uma linha está inteira ou inteiramente anonimizada.
 
 ### AppointmentNotes e AppointmentEvents
 
@@ -553,7 +571,7 @@ CREATE TRIGGER trg_appointment_notes_immutable
     FOR EACH ROW EXECUTE FUNCTION reject_appointment_note_change();
 ```
 
-- **Observações são imutáveis, garantido pelo banco:** o trigger recusa `UPDATE` e `DELETE` (`regras/04`: "não podem ser editadas nem apagadas"). Se a #69 precisar apagar observações por retenção, ela ajusta isso numa migration própria.
+- **Observações são imutáveis, garantido pelo banco:** o trigger recusa `UPDATE` e `DELETE` (`regras/04`: "não podem ser editadas nem apagadas"). A anonimização por prazo (#69, D3) não muda as observações: elas são escritas pela equipe e não devem conter dado do cidadão.
 
 ```sql
 CREATE TYPE appointment_event_type AS ENUM (
@@ -592,7 +610,7 @@ CREATE INDEX idx_appointment_events_appointment ON AppointmentEvents(appointment
 | `CLAIMED` | — ("Assumir para mim"). Marcar um pendente como atendido ou não compareceu assume automaticamente: grava `CLAIMED` com `{ "auto_claimed": true }` + `ATTENDED`/`NO_SHOW`, no mesmo instante |
 | `ASSIGNED` | `{ "assignee_user_id": ... }` ("Atribuir a outro funcionário", #87, sem `reason`). Na redistribuição da tela de Usuários (#62) leva também `"reason": "USER_DEACTIVATED" \| "MANAGE_PERMISSION_REMOVED"` |
 | `RESCHEDULED` | `{ "from": ..., "to": ... }` |
-| `BACK_TO_PENDING` | `{ "reason": "RESCHEDULED" \| "USER_DEACTIVATED" \| "MANAGE_PERMISSION_REMOVED" \| ... }`. A redistribuição da tela de Usuários (#62) grava `USER_DEACTIVATED` ou `MANAGE_PERMISSION_REMOVED` |
+| `BACK_TO_PENDING` | `{ "reason": "RESCHEDULED" \| "USER_DEACTIVATED" \| "MANAGE_PERMISSION_REMOVED" \| ... }`. A remarcação pelo cidadão (#59) grava `RESCHEDULED`, com `actor_user_id NULL`, quando o agendamento estava Confirmado. A redistribuição da tela de Usuários (#62) grava `USER_DEACTIVATED` ou `MANAGE_PERMISSION_REMOVED` |
 | `ATTENDED`, `NO_SHOW` | — |
 | `RECORD_CORRECTED` | `{ "previous_status": ..., "previous_assigned_user_id": ... }` ("Corrigir registro", #87): o status (`ATTENDED` ou `NO_SHOW`) e o responsável de **antes** da correção. O agendamento volta a `PENDING` sem responsável quando o registro corrigido veio de um auto-claim, ou quando, num agendamento futuro, o responsável não pode mais atender ou já tem outro confirmado no horário; senão, volta a `CONFIRMED` com o mesmo responsável |
 | `CANCELED_BY_CITIZEN` | — |
@@ -602,7 +620,7 @@ CREATE INDEX idx_appointment_events_appointment ON AppointmentEvents(appointment
 
 `actor_user_id` `NULL` = foi o cidadão ou o sistema.
 
-### Agenda e unidade — [decisão 007](../decisoes/007-agenda-configuravel.md)
+### Agenda e unidade — [decisões 007](../decisoes/007-agenda-configuravel.md) e [012](../decisoes/012-horarios-agendados.md)
 
 ```sql
 CREATE TABLE ScheduleSettings (
@@ -662,9 +680,20 @@ CREATE INDEX idx_blocked_dates_date ON BlockedDates(date);
 
 - **`ScheduleSettings` tem linha única** (`id = 1`), criada pelo seed da #61 **uma única vez**, com os valores de `db/seeds/data/configuracao-inicial.data.ts` (junto com a grade de `ScheduleRanges` e as listas de `AttendanceDocuments`); a migration não a insere. Se a linha já existe, o seed não toca em nenhuma das três tabelas, e o que o PROCON alterar sobrevive a todo deploy. O seed não insere nada em `BlockedDates` (feriados ficam para a tela de Horários, #64). Sem ela, a #56 trata a agenda como "não configurada" (sem horários). Os `CHECK` limitam cada campo aos valores da tela (duração de 20, 30, 40 ou 60 minutos; 1 a 20 vagas; janela de 1 a 180 dias; antecedência de 0, 1, 2, 3 ou 5 dias; alerta de espera de 1 a 60 dias; lembrete 2, 6, 12, 24 ou 48 horas antes).
 - `updated_by`/`updated_at` de `ScheduleSettings` servem ao "Última alteração por … em …" da tela inteira de Horários: grade e bloqueios são salvos juntos.
+- `ScheduleSettings`, `ScheduleRanges` e `BlockedDates` formam a configuração-base. Conforme a [decisão 012](../decisoes/012-horarios-agendados.md), mudanças futuras são snapshots integrais em `ScheduleChanges`; para cada atendimento vale o snapshot mais recente com `effective_from` menor ou igual à data local marcada. Conflitos só são verificados no intervalo dessa versão, até a véspera da próxima mudança. Agendamentos anteriores à data de início não são afetados.
 - **Grade semanal:** `weekday` 0 = domingo … 6 = sábado. `slot_index` 1..3 com `UNIQUE (weekday, slot_index)` garante **até 3 faixas por dia**. Dia "desligado" = dia sem faixas. O fim da faixa tem que ser depois do início.
 - **Bloqueio:** período com os dois horários preenchidos (fim depois do início) ou dia inteiro com os dois `NULL`.
 - Ficam na aplicação: sobreposição de faixas, "a faixa comporta ao menos um atendimento" e o cálculo de dias úteis da antecedência (dias com faixa e não bloqueados).
+
+```sql
+CREATE TABLE ScheduleChanges (
+    effective_from DATE PRIMARY KEY,
+    config JSONB NOT NULL,
+    updated_by BIGINT NOT NULL REFERENCES Users(id),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_schedule_changes_config_object CHECK (jsonb_typeof(config) = 'object')
+);
+```
 
 ### AttendanceDocuments
 
@@ -724,24 +753,107 @@ CREATE TABLE WhatsAppSettings (
 - `auto_reply_paused` + `updated_by`/`updated_at` = pausa das respostas automáticas e última alteração.
 - `credentials_valid`: `NULL` enquanto nunca testadas; `TRUE` depois de salvar (o salvar refaz o teste com a Meta e só grava com sucesso) ou de um teste bem-sucedido dos valores salvos; `FALSE` quando um teste dos valores salvos falha por motivo definitivo (token, App Secret, IDs ou permissão). Falha de rede ou da Meta não grava. Teste de valores novos não grava nada. `credentials_checked_at` acompanha cada gravação de `credentials_valid`, sem mudar `updated_by`/`updated_at`.
 - `display_phone_number` e `verified_name` (#54): o número institucional e o nome verificado que a Meta devolveu no último salvar ou teste bem-sucedido dos valores salvos. `NULL` até o primeiro sucesso. Teste de valores novos ou que falha não muda os dois, e gravá-los não muda `updated_by`/`updated_at` quando vêm do teste.
-- `access_token_permanent` e `access_token_expires_at` (#54, migration `15`): o tipo do token de acesso salvo, descoberto pelo `debug_token` da Meta. `TRUE` sem data = não expira; `FALSE` com a data = expira nessa data; as duas `NULL` = não se sabe (nunca verificado ou a Meta não respondeu). O `CHECK` usa `IS TRUE`/`IS FALSE` porque, com `= TRUE`, uma data sem `access_token_permanent` daria `NULL` no `CHECK` e passaria. Um teste dos valores salvos só grava o tipo quando a Meta o informa; o salvar que troca o token sempre grava o tipo do token novo (inclusive desconhecido). Gravar pelo teste não muda `updated_by`/`updated_at`. A validade fica velha se o token for revogado direto na Meta; acompanhar isso é da #88.
-- `last_webhook_event_at` continua sem ser gravado até a #88 (estado do número).
+- `access_token_permanent` e `access_token_expires_at` (#54, migration `15`): o tipo do token de acesso salvo, descoberto pelo `debug_token` da Meta. `TRUE` sem data = não expira; `FALSE` com a data = expira nessa data; as duas `NULL` = não se sabe (nunca verificado ou a Meta não respondeu). O `CHECK` usa `IS TRUE`/`IS FALSE` porque, com `= TRUE`, uma data sem `access_token_permanent` daria `NULL` no `CHECK` e passaria. Um teste dos valores salvos só grava o tipo quando a Meta o informa; o salvar que troca o token sempre grava o tipo do token novo (inclusive desconhecido). Gravar pelo teste não muda `updated_by`/`updated_at`. A validade fica velha se o token for revogado direto na Meta. A #88 não detecta isso (a decisão ficou fora do escopo, Q5 da spec): a tela segue com o "Testar conexão", e o estado `EXPIRED` cobre o token com validade vencida.
+- `last_webhook_event_at` (#88): a data do último POST do webhook com ao menos uma `change` aceita, gravada pela rota interna `POST /api/v1/internal/whatsapp/events` a cada chamada, sem mudar `updated_by`/`updated_at` e sem criar a linha. A leitura do painel marca o webhook como parado acima de 24h sem evento, ou quando nunca houve evento.
+
+### PrivacySettings — #69, [decisão 002](../decisoes/002-lgpd-dados-pessoais.md)
+
+```sql
+CREATE TABLE PrivacySettings (
+    id SMALLINT PRIMARY KEY DEFAULT 1,
+    controller_name VARCHAR(150),
+    dpo_name VARCHAR(150),
+    contact_email VARCHAR(254),
+    in_person_contact VARCHAR(300),
+    retention_text TEXT,
+    retention_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    session_retention_days SMALLINT NOT NULL DEFAULT 90,
+    appointment_retention_days SMALLINT NOT NULL DEFAULT 365,
+    updated_by BIGINT REFERENCES Users(id),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_privacy_settings_singleton CHECK (id = 1),
+    CONSTRAINT chk_privacy_settings_controller_name CHECK (controller_name IS NULL OR (char_length(controller_name) BETWEEN 1 AND 150 AND controller_name = btrim(controller_name))),
+    CONSTRAINT chk_privacy_settings_dpo_name CHECK (dpo_name IS NULL OR (char_length(dpo_name) BETWEEN 1 AND 150 AND dpo_name = btrim(dpo_name))),
+    CONSTRAINT chk_privacy_settings_contact_email CHECK (contact_email IS NULL OR (contact_email ~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' AND contact_email = btrim(contact_email))),
+    CONSTRAINT chk_privacy_settings_in_person_contact CHECK (in_person_contact IS NULL OR (char_length(in_person_contact) BETWEEN 1 AND 300 AND in_person_contact = btrim(in_person_contact))),
+    CONSTRAINT chk_privacy_settings_retention_text CHECK (retention_text IS NULL OR (char_length(retention_text) BETWEEN 1 AND 2000 AND retention_text = btrim(retention_text))),
+    CONSTRAINT chk_privacy_settings_session_retention_days CHECK (session_retention_days BETWEEN 30 AND 1825),
+    CONSTRAINT chk_privacy_settings_appointment_retention_days CHECK (appointment_retention_days BETWEEN 90 AND 1825)
+);
+```
+
+- Linha única (`id = 1`), editada pelo Admin na aba Privacidade da tela de WhatsApp (`PUT /api/v1/whatsapp/settings/privacy`, upsert no `id = 1`; vale o último). Sem linha, a leitura devolve os textos `NULL`, `retentionEnabled: false`, 90 e 365. O seed não cria a linha.
+- `retention_enabled`, `session_retention_days` e `appointment_retention_days` (migration `20`) ligam e configuram a anonimização por prazo. Também são públicos (`GET /api/v1/privacy`), porque a página `/privacidade` mostra os prazos quando a anonimização está ligada.
+- Os cinco textos são públicos por natureza (dados da organização, não do cidadão) e são lidos sem login pela página `/privacidade` (`GET /api/v1/privacy`), sem `updated_by` nem `updated_at`.
+- A aplicação apara os espaços e grava texto vazio como `NULL`; o `CHECK` recusa espaço nas pontas e texto vazio gravado por fora.
+- `updated_by`/`updated_at` = "Última alteração por [nome] em [data]" da aba. O salvamento não grava em `AuditLog`.
+
+### OutboundMessages — #88, [decisão 005](../decisoes/005-mensagens-ao-cidadao.md)
+
+```sql
+CREATE TYPE outbound_kind AS ENUM ('REPLY', 'CONFIRMATION', 'PAUSED', 'CANCELLATION', 'REMINDER');
+CREATE TYPE outbound_status AS ENUM ('SENT', 'DELIVERED', 'READ', 'FAILED');
+
+CREATE TABLE OutboundMessages (
+    id BIGSERIAL PRIMARY KEY,
+    provider_message_hash CHAR(64) UNIQUE,
+    kind outbound_kind NOT NULL,
+    session_id BIGINT REFERENCES Sessions(id),
+    appointment_id BIGINT REFERENCES Appointments(id),
+    status outbound_status NOT NULL DEFAULT 'SENT',
+    error_code VARCHAR(40),
+    sent_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    status_at TIMESTAMPTZ,
+    CONSTRAINT chk_outbound_messages_provider_message_hash CHECK (provider_message_hash ~ '^[0-9a-f]{64}$')
+);
+
+CREATE INDEX idx_outbound_messages_failed ON OutboundMessages(status, status_at) WHERE status = 'FAILED';
+CREATE INDEX idx_outbound_messages_appointment ON OutboundMessages(appointment_id);
+CREATE INDEX idx_outbound_messages_session ON OutboundMessages(session_id);
+```
+
+- Base de "Falhas de entrega (24h)". **Não guarda o texto nem o telefone.** Guarda o tipo, o status, o código de erro da Meta e um HMAC do id da mensagem na Meta (`provider_message_hash`, HMAC-SHA256 com `PHONE_HASH_SECRET`), porque o wamid carrega o telefone em base64.
+- Os status vêm do Gateway pela rota interna `POST /api/v1/internal/whatsapp/events`. Regra de transição: `FAILED` vence qualquer status; entre `SENT < DELIVERED < READ` (a ordem do enum) o status só avança; depois de `FAILED` nada muda. `status_at` é a data da Meta, ou a hora do backend quando a Meta não a manda.
+- Id desconhecido: `failed` insere uma linha `REPLY`/`FAILED` sem sessão nem agendamento. O Gateway não informa o id das respostas comuns, então elas não têm linha até falhar, e toda falha de id desconhecido entra como `REPLY`. Os outros status de id desconhecido são ignorados, para a tabela não crescer três linhas por resposta.
+- Aviso de cancelamento: aceito com id grava `CANCELLATION`/`SENT` com o agendamento; recusado na hora grava `CANCELLATION`/`FAILED` sem id, com `status_at` = agora (conta nas falhas de 24h). Quando uma linha `CANCELLATION` passa a `FAILED`, o mesmo comando grava `CITIZEN_NOTIFICATION_FAILED` (ator nulo) em `AppointmentEvents`. Se o `failed` chega antes da gravação do envio, a gravação do envio corrige `kind` e `appointment_id`, mantém o `FAILED` e grava `CITIZEN_NOTIFIED` e, 1 ms depois, `CITIZEN_NOTIFICATION_FAILED`, na mesma transação.
+- `CONFIRMATION`, `PAUSED` e `REMINDER` estão reservados (o lembrete é da #74).
+- "Falhas de entrega (24h)": `status = 'FAILED'` e `status_at` maior que agora menos 24h, da mais recente para a mais antiga (desempate pelo `id`), no máximo 50 itens, com a contagem total da janela.
+
+### AuditLog — #88
+
+```sql
+CREATE TABLE AuditLog (
+    id BIGSERIAL PRIMARY KEY,
+    area VARCHAR(40) NOT NULL,
+    action VARCHAR(80) NOT NULL,
+    actor_user_id BIGINT REFERENCES Users(id),
+    data JSONB NOT NULL DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_audit_log_data_object CHECK (jsonb_typeof(data) = 'object')
+);
+
+CREATE INDEX idx_audit_log_area ON AuditLog(area, created_at DESC, id DESC);
+```
+
+- Nasce genérica, mas hoje só a área `whatsapp` é gravada, na mesma instrução SQL (CTE) que altera `WhatsAppSettings`. Ações: `credentials_saved` com `data = { "fields": [...] }` (o subconjunto, nesta ordem, de `phoneNumberId` e `businessAccountId` quando mudaram, e de `accessToken` e `appSecret` quando foram substituídos; pode ser `[]`), `auto_reply_paused` e `auto_reply_resumed` com `data = {}`.
+- **`data` nunca contém valores**: nem segredos (claro, cifrado ou os 4 últimos caracteres) nem os IDs.
+- Alimenta o "Histórico de alterações" da tela de WhatsApp (as 50 alterações mais recentes). Outras áreas (`schedule`, `documents`, `content`, `users`) podem passar a gravar aqui quando as telas delas precisarem.
 
 ### Dados pessoais e segredos (RNF03)
 
 | Dado | Coluna | Forma | Garantia no banco |
 |---|---|---|---|
-| Telefone (sessão) | `Sessions.phone_hash` | HMAC-SHA256 hex | — |
-| Telefone (agendamento) | `Appointments.phone_encrypted` | Cifrado, anulável (apagado quando o agendamento termina, #69) | `CHECK` de formato `v1:...` |
-| CPF | `Appointments.cpf_hash` + `cpf_masked` | HMAC-SHA256 com `CPF_HASH_SECRET`, em hex de 64 + `***.456.789-**` | `CHECK` de formato nas duas |
-| Nome do titular | `Appointments.name` | Texto (decisão 002: a equipe precisa identificar a pessoa) | — |
+| Telefone (sessão) | `Sessions.phone_hash` | HMAC-SHA256 hex. `NULL` depois da anonimização por prazo | `chk_sessions_anonymized` |
+| Telefone (agendamento) | `Appointments.phone_encrypted` | Cifrado, anulável (apagado quando chega o horário do agendamento, #69) | `CHECK` de formato `v1:...` |
+| CPF | `Appointments.cpf_hash` + `cpf_masked` | HMAC-SHA256 com `CPF_HASH_SECRET`, em hex de 64 + `***.456.789-**`. Os dois `NULL` depois da anonimização por prazo | `CHECK` de formato nas duas e `chk_appointments_anonymized` |
+| Nome do titular | `Appointments.name` | Texto (decisão 002: a equipe precisa identificar a pessoa). "Titular removido" depois da anonimização | `chk_appointments_anonymized` |
 | Segredos da Cloud API | `WhatsAppSettings.*_encrypted` | Cifrado | `CHECK` de formato `v1:...` |
 | Texto livre do cidadão | — | **Não existe coluna** | Eventos só com `data` estruturado |
 | Dados em trânsito do agendamento | `Sessions.draft` | Temporário: quem comparece, nome, `cpf_hash`, `cpf_masked`. **Nunca o CPF completo** | `CHECK` de chaves e formato; só existe com a sessão em andamento |
 
 **Formato cifrado:** `v1:<iv>:<authTag>:<ciphertext>`, cada parte em base64, AES-256-GCM. O `CHECK` por regex impede que um valor em claro (um telefone `5512...`, um token `EAA...`) seja gravado por engano. O prefixo `v1` permite trocar de algoritmo ou de chave no futuro. O utilitário de criptografia é único e compartilhado entre a #56 e a #83 (`src/backend/utils/crypto.utils.ts`, `encrypt`/`decrypt`), e a chave-mestra vem do `.env` (decisões 002 e 003): `ENCRYPTION_KEY`, obrigatória, com exatamente 64 caracteres hexadecimais (`openssl rand -hex 32`), usada direto como chave AES de 256 bits, sem derivação nem valor alternativo. IV aleatório de 12 bytes e tag de 16 bytes. Um valor adulterado ou cifrado com outra chave é recusado.
 
-A política de retenção (por quanto tempo sessões, eventos e agendamentos ficam guardados) é da #69.
+A política de retenção está na [decisão 002](../decisoes/002-lgpd-dados-pessoais.md#retenção) (#69): o telefone do agendamento é apagado no horário, e conversas e agendamentos são anonimizados por prazo quando `PrivacySettings.retention_enabled` está ligado (migration `20`, seção [Anonimização por prazo](../decisoes/002-lgpd-dados-pessoais.md#anonimização-por-prazo)).
 
 ### Nomes que mudaram em relação à proposta da Sprint 2
 
@@ -758,44 +870,4 @@ A proposta de referência que ficava na Parte 2 deste documento foi implementada
 
 ## Parte 2 — Schema planejado (Sprint 3)
 
-O que as decisões ainda exigem e não entrou nas migrations `11` a `16`. Cada parte vira uma migration própria na issue indicada. Nomes e tipos podem ser ajustados na implementação, mas as regras não.
-
-### Mensagens enviadas e falhas de entrega — #88, [decisão 005](../decisoes/005-mensagens-ao-cidadao.md)
-
-```sql
-CREATE TYPE outbound_kind AS ENUM ('REPLY', 'CONFIRMATION', 'PAUSED', 'CANCELLATION', 'REMINDER');
-CREATE TYPE outbound_status AS ENUM ('SENT', 'DELIVERED', 'READ', 'FAILED');
-
-CREATE TABLE OutboundMessages (
-    id BIGSERIAL PRIMARY KEY,
-    provider_message_id VARCHAR(128) UNIQUE,
-    kind outbound_kind NOT NULL,
-    session_id BIGINT REFERENCES Sessions(id),
-    appointment_id BIGINT REFERENCES Appointments(id),
-    status outbound_status NOT NULL DEFAULT 'SENT',
-    error_code VARCHAR(40),
-    sent_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    status_at TIMESTAMPTZ
-);
-CREATE INDEX idx_outbound_failed ON OutboundMessages(status, sent_at) WHERE status = 'FAILED';
-```
-
-- Base de "Falhas de entrega" e do reenvio. **Não guarda o texto nem o telefone**, só o tipo e o status.
-- Qualidade do número, limite de envios e status dos modelos são consultados na API da Meta e não precisam de tabela.
-
-### Auditoria das configurações — #88
-
-```sql
-CREATE TABLE AuditLog (
-    id BIGSERIAL PRIMARY KEY,
-    area VARCHAR(40) NOT NULL,
-    action VARCHAR(80) NOT NULL,
-    actor_user_id BIGINT REFERENCES Users(id),
-    data JSONB NOT NULL DEFAULT '{}',
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-CREATE INDEX idx_audit_log_area ON AuditLog(area, created_at);
-```
-
-- `area`: `whatsapp`, `schedule`, `documents`, `content`, `users`. `action`: por exemplo `credentials_replaced`, `paused`, `ranges_changed`. `data` nunca contém segredos.
-- Alimenta o "Histórico de alterações" da tela de WhatsApp e o "Última alteração por … em …" das telas de configuração que não têm `updated_by` próprio (como Documentos, #65).
+Nada planejado no momento. `OutboundMessages` e `AuditLog`, que estavam aqui, foram criadas na migration `18` (#88) e estão descritas na Parte 1.

@@ -1,16 +1,28 @@
 import { OutgoingMessage, ListRow, ReplyButton } from "../types/message.types"
 import { Categoria, Pergunta, RespostaFinalOutput } from "../types/motorDecisao.types"
 import { AvailableSlot } from "../types/schedule.types"
+import { CancellationReason } from "../types/appointment.types"
+import { getLocalParts } from "../utils/date.utils"
 
 export const SAUDACAO =
-    "Olá! Sou o assistente virtual do PROCON Jacareí. As orientações a seguir têm caráter informativo e não substituem o atendimento formal.\n\n" +
-    "🔒 Privacidade (LGPD): utilizamos o identificador do seu telefone de forma anonimizada e as opções selecionadas exclusivamente para prestar este atendimento e orientar sua dúvida. Não armazenamos mensagens de texto abertas.\n\n" +
-    "Escolha uma das opções abaixo digitando o número correspondente:"
+    "Olá! Sou o assistente virtual do PROCON Jacareí. As orientações a seguir têm caráter informativo e não substituem o atendimento formal."
+
+const INSTRUCAO_DIGITAR_NUMERO = "Escolha uma das opções abaixo digitando o número correspondente:"
+
+export const RODAPE_ATENDIMENTO = "Orientação informativa · Dados tratados conforme a LGPD"
+
+export const PREFIXO_POLITICA_PRIVACIDADE = "Saiba como tratamos seus dados:"
+
+function saudacaoCom(linkPolitica: string | null): string {
+    return linkPolitica === null ? SAUDACAO : `${SAUDACAO}\n\n${PREFIXO_POLITICA_PRIVACIDADE} ${linkPolitica}`
+}
 
 export const ERRO_PREFIXO = "Não entendi. Digite o número de uma das opções abaixo:"
 
 export const AVISO_NAO_VINCULANTE =
     "Esta é uma orientação automatizada de caráter informativo. Ela não é vinculante e não substitui o atendimento jurídico ou administrativo formal do PROCON Jacareí."
+
+export const ROTULO_IA = "Gerado com auxílio de IA"
 
 export const PERGUNTA_RESOLVIDA =
     "A dúvida foi resolvida?\n1. Sim\n2. Não"
@@ -79,10 +91,49 @@ export interface ConfirmacaoAgendamentoInput {
     questionDocuments: string[]
     reminderEnabled: boolean
     reminderHours: number
+    titulo?: string
 }
 
 export const MENSAGEM_ATENDIMENTO_PAUSADO =
     "O atendimento automático do PROCON Jacareí está temporariamente indisponível. Tente novamente mais tarde."
+
+export const CORPO_AVISO_CANCELAMENTO =
+    "Olá, {{1}}. Seu agendamento {{2}} no PROCON Jacareí, marcado para {{3}} às {{4}}, foi cancelado. Motivo: {{5}}. Para agendar novamente, envie uma mensagem para este número."
+
+export const MODELO_AVISO_CANCELAMENTO = { name: "aviso_cancelamento", languageCode: "pt_BR" } as const
+
+export const MODELO_LEMBRETE_ATENDIMENTO = { name: "lembrete_atendimento", languageCode: "pt_BR" } as const
+
+export const FRASES_MOTIVO_CANCELAMENTO: Record<CancellationReason, string> = {
+    UNIT_CLOSED: "a unidade estará fechada nesta data",
+    CITIZEN_REQUEST: "cancelamento solicitado por você",
+    DUPLICATE: "foi identificado outro agendamento em seu nome",
+    OTHER: "não será possível realizar o atendimento neste horário",
+}
+
+export interface AvisoCancelamentoInput {
+    name: string
+    protocol: string
+    appointmentDatetime: Date
+    reason: CancellationReason
+}
+
+export function parametrosAvisoCancelamento(input: AvisoCancelamentoInput): string[] {
+    const primeiroNome = input.name.trim().split(/\s+/)[0] ?? ""
+    const { dateStr, timeStr } = getLocalParts(input.appointmentDatetime)
+    const [, mes, dia] = dateStr.split("-")
+    return [primeiroNome, input.protocol, `${dia}/${mes}`, timeStr, FRASES_MOTIVO_CANCELAMENTO[input.reason]]
+}
+
+export function formatarQuando(data: Date): string {
+    const { dateStr, timeStr } = getLocalParts(data)
+    const [, mes, dia] = dateStr.split("-")
+    return `${dia}/${mes} às ${timeStr}`
+}
+
+export function renderizarModelo(corpo: string, parametros: string[]): string {
+    return corpo.replace(/\{\{(\d+)\}\}/g, (marcador, posicao: string) => parametros[Number(posicao) - 1] ?? marcador)
+}
 
 export interface PaginatedResult<T> {
     itensPagina: T[]
@@ -189,6 +240,7 @@ function formatarListaPaginada(
 export function formatarListaCategorias(
     categorias: Categoria[],
     pagina: number = 1,
+    linkPolitica: string | null = null,
 ): string {
     if (categorias.length === 0) {
         return "Olá! Sou o assistente virtual do PROCON Jacareí. Nosso catálogo de orientações está em atualização no momento. Por favor, tente novamente em instantes."
@@ -198,7 +250,7 @@ export function formatarListaCategorias(
     const paginacao = paginarItens(titulos, pagina)
     const listaFormatada = formatarListaPaginada(paginacao)
 
-    return `${SAUDACAO}\n${listaFormatada}`
+    return `${saudacaoCom(linkPolitica)}\n\n${INSTRUCAO_DIGITAR_NUMERO}\n${listaFormatada}\n\n${RODAPE_ATENDIMENTO}`
 }
 
 export function formatarErroCategoria(
@@ -274,7 +326,7 @@ export function formatarErroSlot(
 
 export function formatarConfirmacaoAgendamento(input: ConfirmacaoAgendamentoInput): string {
     const linhas: string[] = [
-        "Agendamento realizado",
+        input.titulo ?? "Agendamento realizado",
         `Protocolo: ${input.protocol}`,
         `Data e hora: ${input.quando}`,
     ]
@@ -313,6 +365,25 @@ export function formatarConfirmacaoAgendamento(input: ConfirmacaoAgendamentoInpu
     return linhas.join("\n")
 }
 
+const LINHA_ATENDIMENTO_PRESENCIAL =
+    "Esta situação pode exigir atendimento presencial no PROCON Jacareí para andamento formal."
+
+function textoProximosPassos(resposta: RespostaFinalOutput): string {
+    if (resposta.proximos_passos) {
+        return resposta.proximos_passos
+    }
+    if (resposta.fora_de_escopo) {
+        return "Como esta demanda não compete ao PROCON, dirija-se ao órgão indicado na orientação acima portando seus documentos e comprovantes para atendimento especializado."
+    }
+    if (resposta.requer_presencial) {
+        return "Como este caso requer análise documental aprofundada, organize os documentos necessários indicados e agende um atendimento presencial no PROCON Jacareí."
+    }
+    if (resposta.documentos_necessarios.length > 0) {
+        return "Separe os documentos necessários citados e faça contato formal com o fornecedor solicitando a solução amigável e anotando os protocolos. Caso não haja acordo, busque o PROCON."
+    }
+    return "Guarde os comprovantes da relação de consumo e informe ao fornecedor os seus direitos com base na legislação citada acima."
+}
+
 export function formatarRespostaFinal(resposta: RespostaFinalOutput): string {
     const linhas = [
         `Categoria: ${resposta.categoria}`,
@@ -329,29 +400,10 @@ export function formatarRespostaFinal(resposta: RespostaFinalOutput): string {
         linhas.push(`Documentos necessários: ${resposta.documentos_necessarios.join(", ")}`)
     }
 
-    let proximosPassos = resposta.proximos_passos
-    if (!proximosPassos) {
-        if (resposta.fora_de_escopo) {
-            proximosPassos =
-                "Como esta demanda não compete ao PROCON, dirija-se ao órgão indicado na orientação acima portando seus documentos e comprovantes para atendimento especializado."
-        } else if (resposta.requer_presencial) {
-            proximosPassos =
-                "Como este caso requer análise documental aprofundada, organize os documentos necessários indicados e agende um atendimento presencial no PROCON Jacareí."
-        } else if (resposta.documentos_necessarios.length > 0) {
-            proximosPassos =
-                "Separe os documentos necessários citados e faça contato formal com o fornecedor solicitando a solução amigável e anotando os protocolos. Caso não haja acordo, busque o PROCON."
-        } else {
-            proximosPassos =
-                "Guarde os comprovantes da relação de consumo e informe ao fornecedor os seus direitos com base na legislação citada acima."
-        }
-    }
-
-    linhas.push(`\nO que fazer agora:\n${proximosPassos}`)
+    linhas.push(`\nO que fazer agora:\n${textoProximosPassos(resposta)}`)
 
     if (resposta.requer_presencial) {
-        linhas.push(
-            "\nEsta situação pode exigir atendimento presencial no PROCON Jacareí para andamento formal.",
-        )
+        linhas.push(`\n${LINHA_ATENDIMENTO_PRESENCIAL}`)
     }
 
     return `${linhas.join("\n")}\n\n${AVISO_NAO_VINCULANTE}`
@@ -392,6 +444,7 @@ function linhasDeNavegacao<T>(
 export function criarMensagensCategorias(
     categorias: Categoria[],
     pagina: number = 1,
+    linkPolitica: string | null = null,
 ): OutgoingMessage[] {
     if (categorias.length === 0) {
         return [{ type: "text", text: formatarListaCategorias(categorias, pagina) }]
@@ -407,12 +460,13 @@ export function criarMensagensCategorias(
     rows.push(...linhasDeNavegacao(paginacao, "Ver categorias anteriores", "Exibir mais categorias"))
 
     return [
-        { type: "text", text: SAUDACAO },
+        { type: "text", text: saudacaoCom(linkPolitica) },
         {
             type: "list",
             text: "Selecione a categoria correspondente à sua dúvida:",
             buttonText: "Ver categorias",
             rows,
+            footer: RODAPE_ATENDIMENTO,
         },
     ]
 }
@@ -510,3 +564,145 @@ export function criarMensagensSlots(
     ]
 }
 
+export const ERRO_MENU_RETORNO =
+    "Não entendi. Por favor, escolha uma das opções:\n1. Remarcar\n2. Cancelar\n3. Tenho outra dúvida"
+
+export const ERRO_CONFIRMA_CANCELAMENTO =
+    "Não entendi. Por favor, confirme se deseja cancelar o atendimento:\n1. Sim, cancelar\n2. Não, manter"
+
+export const AGENDAMENTO_NAO_ALTERAVEL =
+    "Este agendamento não pode mais ser alterado pelo chatbot. Se precisar de orientação, escolha uma das opções abaixo."
+
+export const ERRO_FALHA_ALTERACAO =
+    "Não foi possível concluir a alteração no momento devido a uma instabilidade. Seu agendamento não foi alterado. Por favor, tente novamente mais tarde."
+
+export function TEXTO_BOTOES_RETORNO(quando: string): string {
+    return `Você tem atendimento marcado em ${quando}.`
+}
+
+export function MENU_RETORNO(quando: string): string {
+    return `${TEXTO_BOTOES_RETORNO(quando)}\n1. Remarcar\n2. Cancelar\n3. Tenho outra dúvida`
+}
+
+export function CONFIRMA_CANCELAMENTO(quando: string): string {
+    return `Deseja mesmo cancelar o atendimento marcado em ${quando}? O cancelamento não pode ser desfeito.\n1. Sim, cancelar\n2. Não, manter`
+}
+
+export function RESPOSTA_CANCELADO(protocolo: string): string {
+    return `Seu agendamento ${protocolo} foi cancelado e o horário foi liberado. Para agendar novamente, envie uma mensagem para este número.`
+}
+
+export function SEM_HORARIOS_REMARCACAO(quando: string): string {
+    return `No momento não há outros horários disponíveis para remarcar. Seu atendimento continua marcado em ${quando}.`
+}
+
+export function criarBotoesRetorno(): ReplyButton[] {
+    return [
+        { id: "return_reschedule", title: "Remarcar" },
+        { id: "return_cancel", title: "Cancelar" },
+        { id: "return_other", title: "Tenho outra dúvida" },
+    ]
+}
+
+export function criarBotoesConfirmaCancelamento(): ReplyButton[] {
+    return [
+        { id: "cancel_yes", title: "Sim, cancelar" },
+        { id: "cancel_no", title: "Não, manter" },
+    ]
+}
+
+const PERGUNTA_RESOLVIDA_BOTOES = "A dúvida foi resolvida?"
+
+const PERGUNTA_OFERTA_AGENDAMENTO_BOTOES = "Deseja agendar um atendimento presencial no PROCON Jacareí?"
+
+export function mensagensRespostaOficial(resposta: RespostaFinalOutput): OutgoingMessage[] {
+    const pergunta: OutgoingMessage = resposta.requer_presencial
+        ? { type: "buttons", text: PERGUNTA_OFERTA_AGENDAMENTO_BOTOES, buttons: criarBotoesOfertaAgendamento() }
+        : { type: "buttons", text: PERGUNTA_RESOLVIDA_BOTOES, buttons: criarBotoesResolvida() }
+    return [{ type: "text", text: formatarRespostaFinal(resposta) }, pergunta]
+}
+
+function blocoOficialIa(resposta: RespostaFinalOutput): string {
+    const linhas: string[] = []
+    if (resposta.base_legal) {
+        linhas.push(`Base legal: ${resposta.base_legal}`)
+    }
+    if (resposta.documentos_necessarios.length > 0) {
+        linhas.push(`Documentos necessários: ${resposta.documentos_necessarios.join(", ")}`)
+    }
+    if (linhas.length > 0) {
+        linhas.push("")
+    }
+    linhas.push("O que fazer agora:", textoProximosPassos(resposta))
+    if (resposta.requer_presencial) {
+        linhas.push("", LINHA_ATENDIMENTO_PRESENCIAL)
+    }
+    return linhas.join("\n")
+}
+
+export function montarMensagemIa(texto: string, resposta: RespostaFinalOutput): OutgoingMessage {
+    const perguntaFinal = resposta.requer_presencial ? PERGUNTA_OFERTA_AGENDAMENTO_BOTOES : PERGUNTA_RESOLVIDA_BOTOES
+    const buttons = resposta.requer_presencial ? criarBotoesOfertaAgendamento() : criarBotoesResolvida()
+    return {
+        type: "buttons",
+        text: [texto, blocoOficialIa(resposta), AVISO_NAO_VINCULANTE, perguntaFinal].join("\n\n"),
+        buttons,
+        footer: ROTULO_IA,
+    }
+}
+
+const LINHAS_REMOVIDAS_DO_TEXTO_IA = new Set([ROTULO_IA, AVISO_NAO_VINCULANTE])
+
+const FIM_DE_FRASE = /(?<=[.!?]) (?=\p{Lu})/u
+
+const FRASES_POR_PARAGRAFO = 2
+
+function separarEmParagrafos(texto: string): string {
+    if (texto.includes("\n")) {
+        return texto
+    }
+    const frases = texto.split(FIM_DE_FRASE)
+    if (frases.length <= FRASES_POR_PARAGRAFO) {
+        return texto
+    }
+    const paragrafos: string[] = []
+    for (let inicio = 0; inicio < frases.length; inicio += FRASES_POR_PARAGRAFO) {
+        paragrafos.push(frases.slice(inicio, inicio + FRASES_POR_PARAGRAFO).join(" "))
+    }
+    return paragrafos.join("\n\n")
+}
+
+export function normalizarTextoIa(texto: string): string {
+    const normalizado = texto
+        .replace(/\r\n/g, "\n")
+        .replace(/[ \t]+$/gm, "")
+        .replace(/^[ \t]*#+[ \t]*/gm, "")
+        .replace(/\*\*(.+?)\*\*/g, "*$1*")
+        .replace(/^[ \t]*(?:[-*•]|\d+[.)])[ \t]+/gm, "• ")
+        .split("\n")
+        .filter((linha) => !LINHAS_REMOVIDAS_DO_TEXTO_IA.has(linha.trim()))
+        .join("\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim()
+    return separarEmParagrafos(normalizado)
+}
+
+function numerosDe(texto: string): Set<string> {
+    return new Set(texto.replace(/^\s*\d+[.)]\s+/gm, "").match(/\d+/g) ?? [])
+}
+
+export function conferirNumerosIa(texto: string, resposta: RespostaFinalOutput): boolean {
+    const doTexto = numerosDe(texto)
+    const obrigatorios = numerosDe(resposta.resposta)
+    const permitidos = numerosDe(
+        [
+            resposta.categoria,
+            resposta.pergunta,
+            resposta.base_legal,
+            resposta.resposta,
+            resposta.proximos_passos ?? "",
+            ...resposta.documentos_necessarios,
+        ].join("\n"),
+    )
+    return [...obrigatorios].every((numero) => doTexto.has(numero)) && [...doTexto].every((numero) => permitidos.has(numero))
+}

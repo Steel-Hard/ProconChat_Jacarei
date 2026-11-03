@@ -10,7 +10,7 @@ Definir **quando o PROCON atende presencialmente**. É daqui que o chatbot tira 
 
 ## Estado da tela
 
-**Pronta (backend na issue #64, tela na issue #125).** O chatbot oferece os horários da configuração salva aqui. Ainda faltam: o envio do lembrete (issue #74; até lá a tela esconde a seção "Lembrete ao cidadão", e o salvamento mantém o liga/desliga e as horas como estão gravados), a janela de manter ou cancelar os agendamentos afetados (issue #75) e a criação de bloqueio de parte do dia (issue #77; a tela cria só bloqueio de dia inteiro, mas mostra e deixa remover os bloqueios parciais que já existirem).
+**Pronta (backend na issue #64, tela na issue #125, mudanças agendadas na issue #134).** O chatbot oferece os horários da configuração salva aqui, seguindo em cada data a versão que vale nela (seção "Mudanças agendadas"). Ainda faltam: o envio do lembrete (issue #74; até lá a tela esconde a seção "Lembrete ao cidadão", e o salvamento mantém o liga/desliga e as horas como estão gravados), a janela de manter ou cancelar os agendamentos afetados (issue #75) e a criação de bloqueio de parte do dia (issue #77; a tela cria só bloqueio de dia inteiro, mas mostra e deixa remover os bloqueios parciais que já existirem).
 
 ## Regras gerais da tela
 
@@ -71,9 +71,24 @@ Definir **quando o PROCON atende presencialmente**. É daqui que o chatbot tira 
 - Clicar num dia mostra os horários e as vagas livres de cada um.
 - Mostra também os horários por dia da semana e o total de vagas na janela.
 
+### Mudanças agendadas
+
+A configuração pode mudar a partir de uma data, sem afetar os agendamentos de antes dela ([decisão 012](../decisoes/012-horarios-agendados.md)).
+
+- **Qual configuração está em edição:** o topo da tela diz "Editando a configuração que vale hoje" ou "Editando a configuração a partir de dd/mm/aaaa". Se a configuração de hoje é uma mudança que já começou, aparece também "Valendo desde dd/mm/aaaa".
+- **Criar:** em "Valer a partir de", a equipe escolhe uma data a partir de amanhã. A tela carrega a configuração que valeria nessa data, a equipe altera e salva. Data de hoje ou anterior mostra no campo "Escolha uma data a partir de amanhã.", não carrega nada e não deixa salvar.
+- **Lista "Mudanças agendadas":** mostra cada mudança futura pela data de início, com "Editar" e "Cancelar mudança" (os botões são lidos como "Editar a mudança de dd/mm/aaaa" e "Cancelar a mudança de dd/mm/aaaa"). Se a lista não carregar, aparece "Não foi possível carregar as mudanças agendadas.".
+- **Editar:** só antes da data de início. Salvar substitui a cópia da mudança e registra quem alterou e quando.
+- **Cancelar:** só antes da data de início, depois de confirmar no diálogo "Cancelar a mudança de horários a partir de dd/mm/aaaa?". A mudança some da lista e as datas dela voltam a seguir a configuração anterior.
+- **Trocar de versão com alterações não salvas** (Editar, outra data ou "Voltar à configuração de hoje") pede confirmação: "Descartar as alterações não salvas?". "Voltar" mantém o rascunho.
+- **Vigência:** uma mudança vale da data de início até a véspera da próxima mudança. A configuração de hoje vale de hoje até a véspera da primeira mudança futura. Em cada data, a grade, a duração, as vagas, as datas bloqueadas e o endereço são os da versão que vale nela. A janela, a antecedência mínima e o alerta de espera são os da versão que vale hoje; os dias úteis da antecedência contam com a grade de cada dia.
+- **Cópia própria:** cada mudança guarda a sua cópia dos horários, das datas bloqueadas e do endereço, e a tela avisa isso quando há mudanças agendadas. Por isso, um bloqueio novo só é aceito numa data da vigência da versão em edição. Fora dela, o servidor recusa com o erro no próprio bloqueio: "Esta data segue a mudança de dd/mm. Bloqueie lá." ou, antes do início da mudança em edição, "Esta data vem antes do início desta mudança (dd/mm). Bloqueie na configuração que vale nessa data.".
+- **Travas do formulário:** desligar o dia, remover a faixa e bloquear a data só ficam travados pelos agendamentos da vigência da versão em edição. A prévia continua marcando todos os dias com agendamento.
+- **Editar a configuração de hoje quando ela é uma mudança que já começou** grava uma mudança nova a partir de hoje; a que começou antes fica como estava.
+
 ## Quando a mudança afeta agendamentos existentes
 
-Ao salvar, o sistema verifica se algum agendamento **Pendente ou Confirmado futuro** deixou de caber na configuração nova:
+Ao salvar, o sistema verifica se algum agendamento **Pendente ou Confirmado futuro** da vigência da versão salva deixou de caber na configuração nova. Agendamentos antes da data de início de uma mudança, ou a partir da mudança seguinte, não contam:
 
 | Situação | Motivo mostrado |
 |---|---|
@@ -84,6 +99,7 @@ Ao salvar, o sistema verifica se algum agendamento **Pendente ou Confirmado futu
 | A faixa foi removida ou alterada | "Faixa de horário removida ou alterada" |
 | As vagas foram reduzidas abaixo do que já está ocupado | Os **agendados por último** num horário lotado são os afetados |
 | A duração aumentou e dois agendamentos **Confirmados** do mesmo responsável passaram a se sobrepor | "Responsável com outro agendamento sobreposto com atendimentos de N minutos (protocolo XXXXXXXX)" |
+| Cancelar uma mudança agendada deixaria agendamentos da vigência dela fora da configuração anterior | O mesmo motivo da linha correspondente, conferido contra a configuração anterior. O cancelamento é recusado e a lista "Esta alteração afeta N agendamentos" aparece abaixo das mudanças agendadas |
 
 **Comportamento atual, até a issue #75:** a tela não deixa salvar uma mudança que afete agendamentos. O funcionário cancela ou remarca o agendamento na tela de Agendamentos antes. Para isso:
 

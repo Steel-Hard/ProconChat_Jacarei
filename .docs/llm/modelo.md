@@ -24,7 +24,7 @@ Se você rodar em CPU: o modelo roda na RAM. A resposta será aceitável (8 a 15
 
 3. **Capacidade de RAG (Retrieval-Augmented Generation)**: por ter 3 bilhões de parâmetros, é rápido o suficiente para analisar textos injetados em tempo real. É possível conectar uma base de dados ao prompt e o modelo responde estritamente com base nas informações fornecidas. Essa capacidade não foi implementada no projeto (ficou fora do escopo da #7), mas é um motivo relevante da escolha.
 
-4. **Custo zero e privacidade total**: ao rodar em Docker localmente ou no servidor próprio, não é necessário pagar por token utilizado (como na API da OpenAI) e os dados dos usuários nunca saem da infraestrutura própria, atendendo RP05/RNF03 (LGPD).
+4. **Custo zero e privacidade total**: ao rodar em Docker localmente, no servidor do projeto ou numa máquina da equipe, não é necessário pagar por token utilizado (como na API da OpenAI). O Ollama roda sempre na infraestrutura do projeto, nunca numa API externa, e nenhum dado pessoal vai ao modelo: o prompt leva só o texto oficial da resposta, atendendo RP05/RNF03 (LGPD). Os modos em produção estão na [decisão 009](../decisoes/009-complemento-por-llm.md).
 
 ## Endpoints do servidor Ollama (referência geral)
 

@@ -4,6 +4,8 @@ import app from "../app"
 import { authRepository } from "../repositories/auth.repository"
 import { whatsappSettingsRepository } from "../repositories/whatsappSettings.repository"
 import { MockWhatsAppSettingsRepository } from "../repositories/mock/whatsappSettingsMock.repository"
+import { AuditLogStubRepository } from "../repositories/mock/auditLogStub.repository"
+import { auditLogRepository } from "../repositories/auditLog.repository"
 import { metaGraphClient } from "../clients/metaGraph.client"
 import { MockMetaGraphClient } from "../clients/metaGraphMock.client"
 import { gatewayClient } from "../clients/gateway.client"
@@ -18,6 +20,11 @@ vi.mock("../repositories/auth.repository", () => ({
 vi.mock("../repositories/whatsappSettings.repository", async () => {
     const { MockWhatsAppSettingsRepository: Repository } = await import("../repositories/mock/whatsappSettingsMock.repository")
     return { whatsappSettingsRepository: new Repository(null) }
+})
+
+vi.mock("../repositories/auditLog.repository", async () => {
+    const { AuditLogStubRepository: Repository } = await import("../repositories/mock/auditLogStub.repository")
+    return { auditLogRepository: new Repository() }
 })
 
 vi.mock("../clients/metaGraph.client", async (importOriginal) => {
@@ -44,6 +51,7 @@ const staff = { id: 2, name: "Equipe", email: "equipe@exemplo.test", isAdmin: fa
 
 const settings = whatsappSettingsRepository as unknown as MockWhatsAppSettingsRepository
 const meta = metaGraphClient as unknown as MockMetaGraphClient
+const audit = auditLogRepository as unknown as AuditLogStubRepository
 
 const routes = [
     { method: "get", path: "/api/v1/whatsapp/settings" },
@@ -51,6 +59,7 @@ const routes = [
     { method: "put", path: "/api/v1/whatsapp/settings" },
     { method: "post", path: "/api/v1/whatsapp/settings/pause" },
     { method: "post", path: "/api/v1/whatsapp/settings/resume" },
+    { method: "get", path: "/api/v1/whatsapp/settings/history" },
 ] as const
 
 const stateChangingRoutes = routes.filter((route) => route.method !== "get")
@@ -81,6 +90,8 @@ function savedView(overrides: Record<string, unknown> = {}) {
         displayPhoneNumber: null,
         verifiedName: null,
         accessTokenLifetime: { kind: "UNKNOWN", expiresAt: null },
+        credentialsStatus: "NOT_CHECKED",
+        webhook: { lastEventAt: null, stale: true },
         ...overrides,
     }
 }
@@ -102,6 +113,7 @@ describe("/api/v1/whatsapp/settings", () => {
             displayPhoneNumber: null,
             verifiedName: null,
             accessTokenLifetime: { kind: "UNKNOWN", expiresAt: null },
+            lastWebhookEventAt: null,
             updatedBy: null,
             updatedAt: NOW,
         }
@@ -150,6 +162,19 @@ describe("/api/v1/whatsapp/settings", () => {
         expect(response.text).not.toContain(SAVED_TOKEN)
         expect(response.text).not.toContain(SAVED_SECRET)
         expect(response.text).not.toContain("v1:")
+    })
+
+    test("GET devolve ao Admin o estado das credenciais e o ultimo evento do webhook", async () => {
+        if (settings.row) {
+            settings.row.credentialsValid = false
+            settings.row.lastWebhookEventAt = new Date(NOW.getTime() - 60 * 60 * 1000)
+        }
+
+        const response = await call("get", "/api/v1/whatsapp/settings")
+
+        expect(response.status).toBe(200)
+        expect(response.body.data.credentialsStatus).toBe("INVALID")
+        expect(response.body.data.webhook).toEqual({ lastEventAt: "2026-10-14T12:00:00.000Z", stale: false })
     })
 
     test("GET devolve o tipo do token guardado sem consultar a Meta", async () => {
@@ -224,6 +249,7 @@ describe("/api/v1/whatsapp/settings", () => {
             data: savedView({
                 accessToken: { configured: true, last4: "77Zz" },
                 credentialsValid: true,
+                credentialsStatus: "VALID",
                 credentialsCheckedAt: NOW.toISOString(),
                 updatedBy: { id: 1, name: "Admin" },
                 displayPhoneNumber: "+55 12 99999-0000",
@@ -284,5 +310,44 @@ describe("/api/v1/whatsapp/settings", () => {
         expect(response.status).toBe(200)
         expect(response.body).toEqual({ data: savedView({ autoReplyPaused: false, updatedBy: { id: 1, name: "Admin" } }) })
         expect(settings.row?.autoReplyPaused).toBe(false)
+    })
+
+    test("GET /history devolve ao Admin as alterações com no-store, sem token nem App Secret em nenhuma forma", async () => {
+        if (settings.row) {
+            settings.row.accessTokenEncrypted = encrypt("EAAtokenSecreto123456")
+            settings.row.appSecretEncrypted = encrypt("appsecret987654")
+        }
+        audit.entries = [
+            {
+                id: "12",
+                action: "credentials_saved",
+                fields: ["businessAccountId", "accessToken"],
+                actor: { id: 1, name: "Admin" },
+                createdAt: new Date("2026-10-14T12:59:00.000Z"),
+            },
+            { id: "11", action: "auto_reply_resumed", fields: [], actor: null, createdAt: new Date("2026-10-14T12:00:00.000Z") },
+        ]
+
+        const response = await call("get", "/api/v1/whatsapp/settings/history")
+
+        expect(response.status).toBe(200)
+        expect(response.headers["cache-control"]).toBe("no-store")
+        expect(response.body).toEqual({
+            data: {
+                items: [
+                    {
+                        id: "12",
+                        action: "credentials_saved",
+                        fields: ["businessAccountId", "accessToken"],
+                        actor: { id: 1, name: "Admin" },
+                        createdAt: "2026-10-14T12:59:00.000Z",
+                    },
+                    { id: "11", action: "auto_reply_resumed", fields: [], actor: null, createdAt: "2026-10-14T12:00:00.000Z" },
+                ],
+            },
+        })
+        for (const secret of ["EAAtokenSecreto123456", "appsecret987654", "v1:", "3456", "7654"]) {
+            expect(response.text).not.toContain(secret)
+        }
     })
 })

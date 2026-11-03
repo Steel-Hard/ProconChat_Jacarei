@@ -5,6 +5,66 @@
     "heading": "WhatsApp",
     "subtitle": "Conexão do número institucional com a WhatsApp Cloud API, oficial da Meta. Acesso exclusivo da conta admin.",
     "loadFailed": "Não foi possível carregar a configuração do WhatsApp agora. Tente de novo.",
+    "tabs": {
+        "label": "Seções da tela de WhatsApp",
+        "connection": "Conexão",
+        "privacy": "Privacidade"
+    },
+    "privacy": {
+        "heading": "Privacidade",
+        "description": "Dados de quem responde pelo tratamento dos dados pessoais. Eles aparecem na página pública de privacidade, e o link dela entra na saudação do bot quando o nome do controlador e o e-mail de contato estão preenchidos.",
+        "loadFailed": "Não foi possível carregar a configuração de privacidade.",
+        "fields": {
+            "controllerName": "Nome do controlador",
+            "dpoName": "Nome do encarregado (DPO)",
+            "contactEmail": "E-mail de contato para pedidos do titular",
+            "inPersonContact": "Atendimento presencial (opcional)",
+            "retentionText": "Prazos de guarda"
+        },
+        "hintLabel": "Sobre o campo {{field}}",
+        "hints": {
+            "controllerName": "Quem decide o que é feito com os dados pessoais dos cidadãos. Geralmente é o órgão, por exemplo PROCON Jacareí. Aparece na página pública de privacidade.",
+            "dpoName": "Pessoa indicada para atender os cidadãos e a ANPD sobre o tratamento de dados. A LGPD exige que o nome seja público. Aparece na página de privacidade.",
+            "contactEmail": "E-mail onde o cidadão pede acesso, correção ou exclusão dos próprios dados. Aparece na página de privacidade e, junto com o nome do controlador, libera o link da política na saudação do bot.",
+            "inPersonContact": "Endereço ou telefone para quem prefere atendimento presencial. Se ficar em branco, essa linha não aparece na página.",
+            "retentionText": "Texto livre com outros prazos que a página pública deve mostrar. A anonimização automática é configurada nos campos abaixo."
+        },
+        "invalidEmail": "Informe um e-mail válido.",
+        "tooLong": "Use no máximo {{max}} caracteres.",
+        "errors": {
+            "save": "Não foi possível salvar a configuração de privacidade agora. Tente de novo.",
+            "preview": "Não foi possível calcular quantos registros seriam anonimizados. Tente de novo."
+        },
+        "retention": {
+            "enabled": "Anonimização automática",
+            "enabledHint": "Quando ligada, o sistema remove a cada hora a ligação das conversas com o número e o nome e o CPF dos agendamentos que passaram do prazo. Não pode ser desfeito.",
+            "stateOn": "Ligada",
+            "stateOff": "Desligada",
+            "fields": {
+                "sessionRetentionDays": "Prazo das conversas (dias)",
+                "appointmentRetentionDays": "Prazo dos agendamentos (dias)"
+            },
+            "hints": {
+                "sessionRetentionDays": "Dias depois do fim da conversa. A conversa que gerou um agendamento espera o prazo do agendamento.",
+                "appointmentRetentionDays": "Dias depois da data do atendimento, em qualquer status."
+            },
+            "daysError": "Use um número inteiro de {{min}} a {{max}}.",
+            "confirm": {
+                "enableTitle": "Ligar a anonimização automática?",
+                "reduceTitle": "Reduzir o prazo de guarda?",
+                "description": "Com estes prazos, {{sessions}} e {{appointments}} já passaram do prazo e serão anonimizados nas próximas horas. Isso não pode ser desfeito.",
+                "none": "Com estes prazos, nenhum registro passou do prazo agora. A partir de agora, o que passar do prazo será anonimizado a cada hora. Isso não pode ser desfeito.",
+                "sessions_zero": "0 conversas",
+                "sessions_one": "{{count}} conversa",
+                "sessions_other": "{{count}} conversas",
+                "appointments_zero": "0 agendamentos",
+                "appointments_one": "{{count}} agendamento",
+                "appointments_other": "{{count}} agendamentos",
+                "action": "Anonimizar",
+                "cancel": "Cancelar"
+            }
+        }
+    },
     "pausedBanner": {
         "text": "As respostas automáticas estão pausadas. O chatbot não está respondendo aos cidadãos.",
         "resume": "Reativar respostas"

@@ -86,4 +86,12 @@ describe("AppointmentCompactRow", () => {
         expect(router.state.location.pathname).toBe("/agendamentos/11")
         expect(onOpen).not.toHaveBeenCalled()
     })
+
+    it("mostra CPF removido no lugar do CPF do agendamento anonimizado", () => {
+        renderRow(buildAppointmentRowView({ name: "Titular removido", cpfMasked: null }))
+
+        const row = screen.getByRole("row")
+        expect(within(row).getByText("CPF removido")).toBeInTheDocument()
+        expect(within(row).queryByText(/\*\*\*/)).not.toBeInTheDocument()
+    })
 })

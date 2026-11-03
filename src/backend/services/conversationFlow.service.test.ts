@@ -11,6 +11,8 @@ import {
     RESPOSTA_INICIO_AGENDAMENTO,
     RESPOSTA_RECUSA_AGENDAMENTO,
     RESPOSTA_RESOLVIDA_SIM,
+    RODAPE_ATENDIMENTO,
+    SAUDACAO,
 } from "./messageFormatter.service"
 import {
     buildActiveSession,
@@ -40,7 +42,7 @@ describe("conversationFlow.service", () => {
         vi.clearAllMocks()
     })
 
-    test("sessão nova inicia com saudação, aviso LGPD e lista de categorias", async () => {
+    test("sessão nova inicia com a saudação sem o parágrafo de privacidade e a lista de categorias com o rodapé de LGPD", async () => {
         findOrCreateActive.mockResolvedValueOnce(buildActiveSession({ created: true }))
         iniciarSessao.mockResolvedValueOnce(categorias)
 
@@ -56,10 +58,46 @@ describe("conversationFlow.service", () => {
             draft: null,
         })
         expect(recordEvent).not.toHaveBeenCalled()
-        expect(result.reply.text).toContain("LGPD")
-        expect(result.reply.text).toContain("caráter informativo")
+        expect(result.reply.text.startsWith(SAUDACAO)).toBe(true)
+        expect(result.reply.text.endsWith(`\n\n${RODAPE_ATENDIMENTO}`)).toBe(true)
         expect(result.reply.step).toBe("AWAITING_CATEGORY")
-        expect(result.reply.messages).toBeDefined()
+        expect(result.reply.messages?.[0]).toEqual({ type: "text", text: SAUDACAO })
+        expect(result.reply.messages?.[1]).toMatchObject({ type: "list", footer: RODAPE_ATENDIMENTO })
+    })
+
+    test("sessão nova com o provedor de link devolvendo a URL leva a linha da política na saudação", async () => {
+        findOrCreateActive.mockResolvedValueOnce(buildActiveSession({ created: true }))
+        iniciarSessao.mockResolvedValueOnce(categorias)
+        const privacyLink = vi.fn(async () => "https://exemplo.sslip.io/privacidade")
+
+        const result = await createFlow({ privacyLink })({ phone: "5511999999999", text: "Olá" })
+
+        const linha = "\n\nSaiba como tratamos seus dados: https://exemplo.sslip.io/privacidade"
+        const primeira = result.reply.messages?.[0]
+        expect(primeira?.type === "text" ? primeira.text.endsWith(linha) : false).toBe(true)
+        expect(result.reply.text.startsWith(`${SAUDACAO}${linha}\n\n`)).toBe(true)
+    })
+
+    test("sessão nova com o provedor de link devolvendo null responde como hoje", async () => {
+        findOrCreateActive.mockResolvedValueOnce(buildActiveSession({ created: true }))
+        iniciarSessao.mockResolvedValueOnce(categorias).mockResolvedValueOnce(categorias)
+        const semProvedor = await processIncomingMessage({ phone: "5511999999999", text: "Olá" })
+        findOrCreateActive.mockResolvedValueOnce(buildActiveSession({ created: true }))
+
+        const result = await createFlow({ privacyLink: async () => null })({ phone: "5511999999999", text: "Olá" })
+
+        expect(result).toEqual(semProvedor)
+        expect(result.reply.messages?.[0]).toEqual({ type: "text", text: SAUDACAO })
+    })
+
+    test("AWAITING_CATEGORY: escolha inválida reenvia a lista de categorias com o rodapé de LGPD", async () => {
+        findOrCreateActive.mockResolvedValueOnce(buildActiveSession())
+        iniciarSessao.mockResolvedValueOnce(categorias)
+
+        const result = await processIncomingMessage({ phone: "5511999999999", text: "99" })
+
+        expect(result.reply.step).toBe("AWAITING_CATEGORY")
+        expect(result.reply.messages?.[1]).toMatchObject({ type: "list", footer: RODAPE_ATENDIMENTO })
     })
 
     test("AWAITING_CATEGORY avança para AWAITING_QUESTION ao selecionar categoria válida", async () => {
@@ -102,6 +140,41 @@ describe("conversationFlow.service", () => {
         })
         expect(result.reply.step).toBe("AWAITING_CATEGORY")
         expect(result.reply.text).toContain("Categoria 10")
+    })
+
+    test("AWAITING_CATEGORY: a troca de página repete a saudação com a linha da política", async () => {
+        const muitasCategorias: Categoria[] = Array.from({ length: 15 }, (_, i) => ({
+            id: i + 1,
+            title: `Categoria ${i + 1}`,
+            active: true,
+        }))
+        findOrCreateActive.mockResolvedValueOnce(buildActiveSession())
+        iniciarSessao.mockResolvedValueOnce(muitasCategorias)
+
+        const result = await createFlow({ privacyLink: async () => "https://exemplo.sslip.io/privacidade" })({
+            phone: "5511999999999",
+            optionId: "page_2",
+        })
+
+        expect(result.reply.messages?.[0]).toEqual({
+            type: "text",
+            text: `${SAUDACAO}\n\nSaiba como tratamos seus dados: https://exemplo.sslip.io/privacidade`,
+        })
+    })
+
+    test("AWAITING_CATEGORY: a escolha inválida repete a saudação com a linha da política", async () => {
+        findOrCreateActive.mockResolvedValueOnce(buildActiveSession())
+        iniciarSessao.mockResolvedValueOnce(categorias)
+
+        const result = await createFlow({ privacyLink: async () => "https://exemplo.sslip.io/privacidade" })({
+            phone: "5511999999999",
+            text: "99",
+        })
+
+        expect(result.reply.messages?.[0]).toEqual({
+            type: "text",
+            text: `${SAUDACAO}\n\nSaiba como tratamos seus dados: https://exemplo.sslip.io/privacidade`,
+        })
     })
 
     test("AWAITING_QUESTION: pergunta padrão grava QUESTION_CHOSEN e ANSWER_SENT e avança para AWAITING_RESOLVED", async () => {
@@ -310,6 +383,26 @@ describe("conversationFlow.service", () => {
 
         expect(result.reply.step).toBe("AWAITING_SCHEDULE_OFFER")
         expect(result.reply.text).toBe(ERRO_OFERTA_AGENDAMENTO)
+    })
+
+    test("os botões de resolvida, de oferta de agendamento e de quem comparece saem sem rodapé", async () => {
+        const cenarios = [
+            { currentStep: "AWAITING_RESOLVED" as const, text: "invalido" },
+            { currentStep: "AWAITING_SCHEDULE_OFFER" as const, text: "99" },
+            { currentStep: "AWAITING_SCHEDULE_OFFER" as const, text: "1" },
+        ]
+
+        for (const { currentStep, text } of cenarios) {
+            findOrCreateActive.mockResolvedValueOnce(
+                buildActiveSession({ currentStep, currentCategoryId: "1", currentQuestionId: "10" }),
+            )
+
+            const result = await processIncomingMessage({ phone: "5511999999999", text })
+
+            const botoes = result.reply.messages?.filter((mensagem) => mensagem.type === "buttons") ?? []
+            expect(botoes).toHaveLength(1)
+            expect(botoes[0]).not.toHaveProperty("footer")
+        }
     })
 
     test("suporta cliques interativos via optionId nos botões", async () => {

@@ -1,12 +1,14 @@
 import express from "express"
 import request from "supertest"
-import { beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import ConflictError from "../errors/ConflictError"
 import { createRequireAuth } from "../middleware/auth.middleware"
 import errorHandler from "../middleware/errorHandler.middleware"
 import { MockAuthRepository } from "../repositories/mock/authMock.repository"
 import {
     buildDefaultScheduleConfigView,
     createScheduleStubRepository,
+    DEFAULT_STUB_NOW,
 } from "../repositories/mock/scheduleStub.repository"
 import { sessionTokens } from "../utils/sessionToken"
 import { ScheduleRoutes } from "./schedule.routes"
@@ -48,6 +50,8 @@ describe("schedule.routes (HTTP)", () => {
     let app: express.Express
 
     beforeEach(() => {
+        vi.useFakeTimers({ toFake: ["Date"] })
+        vi.setSystemTime(DEFAULT_STUB_NOW)
         repository = createScheduleStubRepository()
         const authMiddleware = createRequireAuth({
             users: authUsers,
@@ -62,9 +66,17 @@ describe("schedule.routes (HTTP)", () => {
         app.use(errorHandler)
     })
 
+    afterEach(() => {
+        vi.useRealTimers()
+    })
+
     const routes = [
         ["get", "/api/v1/schedule"],
+        ["get", "/api/v1/schedule/effective?date=2027-11-01"],
+        ["get", "/api/v1/schedule/versions"],
         ["put", "/api/v1/schedule"],
+        ["put", "/api/v1/schedule/versions/2027-11-01"],
+        ["delete", "/api/v1/schedule/versions/2027-11-01"],
         ["get", "/api/v1/schedule/preview"],
         ["post", "/api/v1/schedule/preview"],
         ["get", "/api/v1/schedule/booked-days"],
@@ -158,6 +170,103 @@ describe("schedule.routes (HTTP)", () => {
             ],
             updatedBy: { id: CONFIGURER_ID, name: "Patrícia Lima" },
         })
+    })
+
+    it("consulta configuração efetiva e lista as mudanças futuras", async () => {
+        const effective = await request(app)
+            .get("/api/v1/schedule/effective?date=2027-11-01")
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+        const versions = await request(app)
+            .get("/api/v1/schedule/versions")
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+
+        expect(effective.status).toBe(200)
+        expect(effective.body.data.slotMinutes).toBe(30)
+        expect(versions.status).toBe(200)
+        expect(versions.body.data).toEqual([])
+    })
+
+    it("responde 500 SCHEDULE_NOT_CONFIGURED em GET /effective sem configuração-base nem mudança", async () => {
+        repository.setConfig(null)
+
+        const response = await request(app)
+            .get("/api/v1/schedule/effective?date=2027-11-01")
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+
+        expect(response.status).toBe(500)
+        expect(response.body.error.code).toBe("SCHEDULE_NOT_CONFIGURED")
+    })
+
+    it("salva e cancela uma mudança futura pela data efetiva", async () => {
+        const base = buildDefaultScheduleConfigView()
+        const date = "2027-11-01"
+        const saved = await request(app)
+            .put(`/api/v1/schedule/versions/${date}`)
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+            .send({ ...base, ranges: [] })
+        const canceled = await request(app)
+            .delete(`/api/v1/schedule/versions/${date}`)
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+
+        expect(saved.status).toBe(200)
+        expect(saved.body.data.effectiveFrom).toBe(date)
+        expect(canceled.status).toBe(204)
+    })
+
+    it("responde 409 SCHEDULE_CONFLICTS em PUT /versions com os conflitos que o repositório devolve e repassa a mudança", async () => {
+        const conflict = {
+            id: "43",
+            protocol: "ABCD4321",
+            name: "Ana Beatriz",
+            cpfMasked: "***.123.456-**",
+            appointmentDatetime: "2027-11-03T11:00:00.000Z",
+            date: "2027-11-03",
+            time: "08:00",
+            status: "CONFIRMED",
+            code: "DATE_BLOCKED",
+            reason: "Data bloqueada: Recesso",
+        }
+        repository.setScheduledSaveError(
+            new ConflictError("Esta alteração afeta agendamentos futuros", "SCHEDULE_CONFLICTS", { conflicts: [conflict] }),
+        )
+        const base = buildDefaultScheduleConfigView()
+        const recess = { date: "2027-11-03", startTime: null, endTime: null, description: "Recesso" }
+
+        const response = await request(app)
+            .put("/api/v1/schedule/versions/2027-11-01")
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+            .send({ ...base, blockedDates: [recess] })
+
+        expect(response.status).toBe(409)
+        expect(response.body).toEqual({
+            error: {
+                code: "SCHEDULE_CONFLICTS",
+                message: "Esta alteração afeta agendamentos futuros",
+                details: { conflicts: [conflict] },
+            },
+        })
+        expect(repository.scheduledSaveCalls).toEqual([
+            expect.objectContaining({
+                effectiveFrom: "2027-11-01",
+                actorUserId: CONFIGURER_ID,
+                now: DEFAULT_STUB_NOW,
+                config: expect.objectContaining({ blockedDates: [recess] }),
+            }),
+        ])
+    })
+
+    it("responde 409 SCHEDULE_CONFLICTS em DELETE /versions com os conflitos que o repositório devolve", async () => {
+        repository.setScheduledDeleteError(
+            new ConflictError("O cancelamento afeta agendamentos futuros", "SCHEDULE_CONFLICTS", { conflicts: [] }),
+        )
+
+        const response = await request(app)
+            .delete("/api/v1/schedule/versions/2027-11-01")
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+
+        expect(response.status).toBe(409)
+        expect(response.body.error.code).toBe("SCHEDULE_CONFLICTS")
+        expect(repository.scheduledDeleteCalls).toEqual([{ effectiveFrom: "2027-11-01", now: DEFAULT_STUB_NOW }])
     })
 
     it("aceita PUT /api/v1/schedule sem nenhuma faixa quando não há agendamentos futuros", async () => {
@@ -300,6 +409,7 @@ describe("schedule.routes (HTTP)", () => {
             .set("Cookie", cookieOf(CONFIGURER_ID))
             .send({
                 month: "2026-10",
+                effectiveFrom: "2026-10-01",
                 config: {
                     slotMinutes: 60,
                     seatsPerSlot: 1,

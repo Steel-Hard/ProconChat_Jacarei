@@ -13,6 +13,7 @@ type SaveOutcome = {
 type SaveRequest = {
     built: ScheduleInputWithOrigins
     revision: number
+    effectiveFrom?: string
     onSaved: () => void
     onConflicts: () => void
 }
@@ -23,7 +24,7 @@ function useScheduleSave(currentRevision: number) {
     const [outcome, setOutcome] = useState<SaveOutcome | null>(null)
     const inFlight = useRef(false)
 
-    async function save({ built, revision, onSaved, onConflicts }: SaveRequest) {
+    async function save({ built, revision, effectiveFrom, onSaved, onConflicts }: SaveRequest) {
         if (inFlight.current) {
             return
         }
@@ -33,7 +34,7 @@ function useScheduleSave(currentRevision: number) {
         setOutcome(null)
 
         try {
-            await saveSchedule(built.input).unwrap()
+            await saveSchedule({ config: built.input, effectiveFrom }).unwrap()
             onSaved()
         } catch (caught) {
             const error = scheduleSaveErrorOf(caught)

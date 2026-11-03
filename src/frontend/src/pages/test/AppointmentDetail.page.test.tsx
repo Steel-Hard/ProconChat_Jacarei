@@ -233,6 +233,14 @@ describe("AppointmentDetail.page: cabeçalho e dados", () => {
         ).toBeInTheDocument()
     })
 
+    it("mostra CPF removido no fato CPF do agendamento anonimizado", async () => {
+        await withDetail(buildAppointmentDetail({ name: "Titular removido", cpf_masked: null }))
+
+        await screen.findByRole("heading", { level: 1, name: "Titular removido" })
+
+        expect(factValue("CPF do titular")).toBe("CPF removido")
+    })
+
     it("não mostra nenhuma sequência de 11 dígitos na página", async () => {
         await withDetail(buildAppointmentDetail({ by_representative: true }))
 
@@ -309,7 +317,9 @@ describe("AppointmentDetail.page: linha do tempo e histórico", () => {
         expect(within(steps[0]).queryByText("Gerado com auxílio de IA")).not.toBeInTheDocument()
         expect(within(steps[1]).getByText("Resposta entregue")).toBeInTheDocument()
         expect(
-            within(steps[1]).getByText("Texto complementar gerado para contextualizar a resposta.")
+            within(steps[1]).getByText(
+                "Resposta escrita com auxílio de IA a partir do texto oficial."
+            )
         ).toBeInTheDocument()
         expect(within(steps[1]).getByText("Gerado com auxílio de IA")).toBeInTheDocument()
         expect(within(steps[2]).getByText("Protocolo F10464F0")).toBeInTheDocument()
