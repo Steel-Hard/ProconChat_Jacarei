@@ -1563,7 +1563,7 @@ Rotas do painel para gerenciamento de categorias e perguntas do chatbot (#63, `.
 | `/api/v1/content/questions` | `GET` | Lista perguntas da categoria (`?categoryId=<id>`, com `whatsappPage` e `pageBreak`) ou busca em todas as categorias (`?search=<termo>`, sem diferenciar maiúsculas nem acentos em `question`, `answer` e `short_title`) |
 | `/api/v1/content/categories/:id/questions` | `GET` | Atalho para listar as perguntas da categoria `:id` |
 | `/api/v1/content/questions` | `POST` | Cria pergunta no fim da categoria (`201 Created`), sincronizando `RequiredDocuments` em transação e calculando `answerLengthWarning` (`answer.length >= 1000`) |
-| `/api/v1/content/questions/:id` | `PUT` | Edita pergunta e sincroniza `RequiredDocuments` em transação (recusa mudança de `categoryId`) |
+| `/api/v1/content/questions/:id` | `PUT` | Edita pergunta e sincroniza `RequiredDocuments` em transação (recusa mudança de `categoryId`; campos opcionais omitidos voltam ao padrão: `llmAllowed = true`, `legalBasis = null`, `requiredDocuments = []`) |
 | `/api/v1/content/questions/:id/active` | `PATCH` | Ativa ou desativa a pergunta (`{ active: boolean }`) |
 | `/api/v1/content/categories/:id/questions/reorder` | `PUT` | Reordena todas as perguntas da categoria `:id` (`{ questionIds: number[] }`) |
 | `/api/v1/content/preview` e `/api/v1/content/questions/preview` | `POST` | Gera a prévia "Ver como o cidadão recebe" usando `AVISO_NAO_VINCULANTE`, `PERGUNTA_RESOLVIDA`, `OFERTA_AGENDAMENTO`, `formatarRespostaFinal` e `paginarItens` de `services/messageFormatter.service.ts` |
