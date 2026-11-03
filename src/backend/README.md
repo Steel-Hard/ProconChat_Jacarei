@@ -704,7 +704,7 @@ Valor fora da lista devolve `400 BAD_REQUEST` com `Dados inválidos: <campo>: <m
   primeiro os futuros (crescente) e depois os passados (decrescente). Em `sortBy=responsible`, "Sem
   responsável" vem primeiro no `asc`.
 - **Chips (`chipCounts`).** Contam respeitando o `period` e o `responsible` da requisição;
-  `waiting_record` (confirmados com horário já passado) respeita só o `responsible`. A busca e o
+  `waiting_record` (pendentes e confirmados com horário já passado) respeita só o `responsible`. A busca e o
   `status` não mudam os chips.
 - **"Um funcionário específico".** A rota aceita `responsible=<id>`, e `GET /api/v1/appointments/staff`
   (#87) lista os funcionários para esse filtro e para o seletor de "Atribuir" com `appointments.view`
@@ -751,8 +751,8 @@ Item da lista (`GET /api/v1/appointments`, resposta real do smoke, dados fictíc
 ```
 
 `protocol` são os 8 primeiros caracteres do `appointment_code` em maiúsculas, iguais aos que o bot
-envia ao cidadão. `off_grid` marca o agendamento fora da grade atual, e `waiting_record`, o confirmado
-cujo horário já passou.
+envia ao cidadão. `off_grid` marca o agendamento fora da grade atual, e `waiting_record`, o pendente
+ou confirmado cujo horário já passou.
 
 ### Detalhe e resposta do `PATCH`
 
@@ -1546,7 +1546,7 @@ A migration `13` garante no banco que `current_step = 'FINISHED'` só existe em 
 Esta regra roda quando o mesmo número volta a escrever. A **varredura periódica**
 (`services/abandonedSessionsSweep.service.ts`, iniciada em `index.ts`) cuida das sessões de quem nunca
 volta e aplica exatamente a mesma regra. A correspondência entre
-etapa e os 6 nomes de abandono dos Relatórios fica em `STEP_TO_ABANDONMENT_STAGE` (`services/reportRules.ts`, #68).
+etapa e os 6 nomes de abandono dos Relatórios fica na aplicação (#73).
 
 ## Relatórios mínimos (#68)
 
@@ -1559,9 +1559,6 @@ etapa e os 6 nomes de abandono dos Relatórios fica em `STEP_TO_ABANDONMENT_STAG
   - `period`: `{ preset, startDate, endDate, daysCount, today }`.
   - `conversations`: `{ total, dailyAverage, appointmentsCreated }` — conversas iniciadas (`Sessions.started_at`) no período, média por dia arredondada a 1 casa decimal e agendamentos criados.
   - `outcomes`: lista de `{ outcome, label, count, percentage }` na ordem dos desfechos da decisão 008 (`RESOLVED`, `SCHEDULED`, `OUT_OF_SCOPE`, `NO_SLOT`, `DECLINED`, `MANAGED_APPOINTMENT`, `ABANDONED`, e `IN_PROGRESS` apenas quando `count > 0`).
-  - `dailySeries`: um ponto `{ date, conversations, appointmentsCreated }` para cada dia de `startDate` a `endDate` (preenchendo dias sem movimento com `0`).
-  - `seriesGranularity` (`"day"` até 45 dias; `"week"` acima de 45 dias) e `series` (`{ startDate, endDate, conversations, appointmentsCreated }`).
   - `topCategories`: `{ categoryId, title, conversationsCount }[]` — quantidade de **conversas distintas** (`COUNT(DISTINCT ce.session_id)`) iniciadas no período que registraram `CATEGORY_CHOSEN`.
   - `topQuestions`: `{ questionId, question, shortTitle, categoryId, categoryTitle, conversationsCount }[]` — ranking (até 10 itens) por **conversas distintas** que registraram `QUESTION_CHOSEN`.
-  - `appointmentsResult`: `{ attended, noShow, canceled, waitingRecord, upcoming, total, recordedTotal, noShowRate }` — agendamentos cuja **data do atendimento** (`Appointments.appointment_datetime`) está no período, independentemente de quando foram criados (`request_datetime`). `waitingRecord` conta confirmados com `appointment_datetime <= agora`; `upcoming` conta pendentes e confirmados futuros (`appointment_datetime > agora`). `noShowRate` é `noShow / (attended + noShow)` em percentual com 1 casa decimal (`0` quando `recordedTotal === 0`).
-  - `abandonmentFunnel`: os 6 estágios de abandono dos Relatórios (`CATEGORIES`, `QUESTIONS`, `ANSWER`, `RESOLVED`, `ATTENDEE`, `SLOT`), mapeados a partir de `Sessions.abandoned_at_step` por `mapStepToAbandonmentStage` (`services/reportRules.ts`).
+  - `appointmentsResult`: `{ attended, noShow, canceled, waitingRecord, upcoming, total, recordedTotal, noShowRate }` — agendamentos cuja **data do atendimento** (`Appointments.appointment_datetime`) está no período, independentemente de quando foram criados (`request_datetime`). `waitingRecord` conta pendentes e confirmados com `appointment_datetime < agora`; `upcoming` conta pendentes e confirmados futuros (`appointment_datetime >= agora`). `noShowRate` é `noShow / (attended + noShow)` em percentual com 1 casa decimal (`0` quando `recordedTotal === 0`).

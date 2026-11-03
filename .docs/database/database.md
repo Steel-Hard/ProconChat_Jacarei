@@ -323,7 +323,7 @@ WHERE status = 'IN_PROGRESS';
 | `AWAITING_CANCEL_CONFIRMATION` | Confirmação do cancelamento por botão (#59) |
 | `FINISHED` | Conversa encerrada |
 
-A correspondência entre etapa e os 6 nomes de abandono dos Relatórios é da aplicação (`STEP_TO_ABANDONMENT_STAGE` em `src/backend/services/reportRules.ts`, #68). A #16 só grava a etapa em `abandoned_at_step` e no evento `ABANDONED`.
+A correspondência entre etapa e os 6 nomes de abandono dos Relatórios é da aplicação (#73). A #16 só grava a etapa em `abandoned_at_step` e no evento `ABANDONED`.
 
 **`session_outcome`** (desfecho, 8 valores, `NOT NULL DEFAULT 'IN_PROGRESS'`):
 
