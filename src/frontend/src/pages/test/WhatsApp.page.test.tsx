@@ -525,7 +525,7 @@ describe("WhatsAppPage", () => {
             "role",
             "alert"
         )
-        expect(screen.getByText("1 falha")).toBeInTheDocument()
+        expect(await screen.findByText("1 falha")).toBeInTheDocument()
         expect(screen.getByText("Lembrete")).toBeInTheDocument()
         expect(screen.getByText("Código de erro: 131047")).toBeInTheDocument()
         expect(screen.getByText("Agendamento #42")).toBeInTheDocument()
