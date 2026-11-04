@@ -10,6 +10,7 @@ import WhatsAppPauseSwitch from "@/components/WhatsAppPauseSwitch"
 import WhatsAppPrivacyForm from "@/components/WhatsAppPrivacyForm"
 import WhatsAppRetentionFields from "@/components/WhatsAppRetentionFields"
 import WhatsAppSecretField from "@/components/WhatsAppSecretField"
+import WhatsAppStatusAndHistory from "@/components/WhatsAppStatusAndHistory"
 import WhatsAppTabs from "@/components/WhatsAppTabs"
 import usePrivacySettings from "@/pages/hooks/usePrivacySettings"
 import useWhatsAppSettings from "@/pages/hooks/useWhatsAppSettings"
@@ -157,6 +158,7 @@ function WhatsAppPage() {
                                     </div>
                                 </section>
                             ) : null}
+                            {view ? <WhatsAppStatusAndHistory settings={view} /> : null}
                             {view ? (
                                 <section className={css.card}>
                                     <h2 className={css.sectionTitle}>{t("credentials.heading")}</h2>

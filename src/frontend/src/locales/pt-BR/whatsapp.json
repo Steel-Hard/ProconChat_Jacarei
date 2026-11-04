@@ -79,6 +79,60 @@
         "pauseOn": "Pausadas",
         "pausedMessageLabel": "Mensagem fixa enviada ao cidadão enquanto estiver pausado"
     },
+    "numberStatus": {
+        "heading": "Estado do número",
+        "credentials": {
+            "label": "Credenciais",
+            "NOT_CHECKED": "Ainda não verificadas",
+            "INVALID": "Token inválido ou expirado",
+            "EXPIRED": "Token inválido ou expirado",
+            "VALID": "Válidas",
+            "checkedAt": "verificadas em {{date}}",
+            "replace": "Gere um token permanente, use \"Substituir\", teste a conexão e salve as credenciais."
+        },
+        "webhook": {
+            "label": "Último evento recebido pelo webhook",
+            "none": "Nenhum evento recebido",
+            "stale": "Não há eventos do webhook há mais de 24 horas. Confira se o webhook está verificado e se o campo \"messages\" está assinado no painel da Meta."
+        }
+    },
+    "deliveryFailures": {
+        "heading": "Falhas de entrega nas últimas 24 horas",
+        "count_zero": "Nenhuma falha",
+        "count_one": "{{count}} falha",
+        "count_other": "{{count}} falhas",
+        "empty": "Nenhuma falha de entrega nas últimas 24 horas.",
+        "loadFailed": "Não foi possível carregar as falhas de entrega.",
+        "errorCode": "Código de erro: {{code}}",
+        "appointment": "Agendamento #{{id}}",
+        "kind": {
+            "REPLY": "Resposta ao cidadão",
+            "CONFIRMATION": "Confirmação",
+            "PAUSED": "Aviso de pausa",
+            "CANCELLATION": "Aviso de cancelamento",
+            "REMINDER": "Lembrete"
+        }
+    },
+    "history": {
+        "heading": "Histórico de alterações",
+        "empty": "Nenhuma alteração registrada.",
+        "loadFailed": "Não foi possível carregar o histórico de alterações.",
+        "unknownActor": "Usuário não identificado",
+        "fields": "Campos alterados: {{fields}}",
+        "action": {
+            "credentials_saved": "Credenciais atualizadas",
+            "auto_reply_paused": "Respostas automáticas pausadas",
+            "auto_reply_resumed": "Respostas automáticas reativadas",
+            "other": "Configuração atualizada"
+        },
+        "field": {
+            "phoneNumberId": "ID do número de telefone",
+            "businessAccountId": "ID da conta WhatsApp Business",
+            "accessToken": "Token de acesso substituído",
+            "appSecret": "App Secret substituído"
+        }
+    },
+    "unknownDate": "Data indisponível",
     "credentials": {
         "heading": "Credenciais",
         "fields": {

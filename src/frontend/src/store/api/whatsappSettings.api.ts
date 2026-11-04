@@ -1,7 +1,13 @@
 import api from "@/store/api"
 import type WhatsAppSettings from "@/types/whatsapp/WhatsAppSettings.types"
+import type {
+    WhatsAppDeliveryFailures,
+    WhatsAppHistory
+} from "@/types/whatsapp/WhatsAppSettings.types"
 
 type SettingsEnvelope = { data: WhatsAppSettings }
+type DeliveryFailuresEnvelope = { data: WhatsAppDeliveryFailures }
+type HistoryEnvelope = { data: WhatsAppHistory }
 
 const SETTINGS_PATH = "/api/v1/whatsapp/settings"
 
@@ -22,6 +28,14 @@ const whatsappSettingsApi = api.injectEndpoints({
         getWhatsAppSettings: build.query<WhatsAppSettings, void>({
             query: () => SETTINGS_PATH,
             transformResponse: unwrap
+        }),
+        getWhatsAppDeliveryFailures: build.query<WhatsAppDeliveryFailures, void>({
+            query: () => `${SETTINGS_PATH}/delivery-failures`,
+            transformResponse: (response: DeliveryFailuresEnvelope) => response.data
+        }),
+        getWhatsAppHistory: build.query<WhatsAppHistory, void>({
+            query: () => `${SETTINGS_PATH}/history`,
+            transformResponse: (response: HistoryEnvelope) => response.data
         }),
         pauseWhatsAppReplies: build.mutation<WhatsAppSettings, void>({
             query: () => ({ url: `${SETTINGS_PATH}/pause`, method: "POST" }),

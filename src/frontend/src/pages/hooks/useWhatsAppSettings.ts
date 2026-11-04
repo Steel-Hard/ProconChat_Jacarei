@@ -278,6 +278,15 @@ function useWhatsAppSettings() {
         setActionError(null)
     }
 
+    function refreshHistory() {
+        void dispatch(
+            whatsappSettingsApi.endpoints.getWhatsAppHistory.initiate(undefined, {
+                forceRefetch: true,
+                subscribe: false
+            })
+        )
+    }
+
     async function save() {
         if (changes.length === 0 || !testOk || saveInFlight.current || testInFlight.current) {
             return
@@ -294,6 +303,7 @@ function useWhatsAppSettings() {
                     { endpointName: "getWhatsAppSettings", arg: undefined, value: saved }
                 ])
             )
+            refreshHistory()
             setDraft(EMPTY_DRAFT)
             setStored(null)
             refreshClock()
@@ -328,6 +338,7 @@ function useWhatsAppSettings() {
 
         try {
             await (paused ? pauseReplies() : resumeReplies()).unwrap()
+            refreshHistory()
             showToast(t(paused ? "toasts.paused" : "toasts.resumed"))
         } catch (caught) {
             const httpStatus = (caught as { status?: unknown }).status

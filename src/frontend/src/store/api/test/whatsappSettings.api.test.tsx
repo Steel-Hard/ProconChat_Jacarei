@@ -30,6 +30,16 @@ async function setup() {
     vi.stubEnv("VITE_API_URL", "https://api.example.com")
     vi.resetModules()
     const fetchMock = vi.fn(async (input: Request) => {
+        if (input.url.endsWith("/delivery-failures")) {
+            return jsonResponse({
+                data: { since: "2026-10-14T13:00:00.000Z", count: 0, items: [] }
+            })
+        }
+
+        if (input.url.endsWith("/history")) {
+            return jsonResponse({ data: { items: [] } })
+        }
+
         if (input.url.endsWith("/pause")) {
             return jsonResponse({ data: { ...VIEW, autoReplyPaused: true } })
         }
@@ -69,6 +79,38 @@ describe("whatsappSettingsApi", () => {
         expect(result.data).toEqual(VIEW)
         expect(requestAt(fetchMock, 0).method).toBe("GET")
         expect(requestAt(fetchMock, 0).url).toBe("https://api.example.com/api/v1/whatsapp/settings")
+        expect(requestAt(fetchMock, 0).credentials).toBe("include")
+    })
+
+    it("lê as falhas de entrega das últimas 24 horas", async () => {
+        const { whatsappSettingsApi, store, fetchMock } = await setup()
+
+        const result = await store.dispatch(
+            whatsappSettingsApi.endpoints.getWhatsAppDeliveryFailures.initiate()
+        )
+
+        expect(result.data).toEqual({
+            since: "2026-10-14T13:00:00.000Z",
+            count: 0,
+            items: []
+        })
+        expect(requestAt(fetchMock, 0).url).toBe(
+            "https://api.example.com/api/v1/whatsapp/settings/delivery-failures"
+        )
+        expect(requestAt(fetchMock, 0).credentials).toBe("include")
+    })
+
+    it("lê as alterações recentes da configuração do WhatsApp", async () => {
+        const { whatsappSettingsApi, store, fetchMock } = await setup()
+
+        const result = await store.dispatch(
+            whatsappSettingsApi.endpoints.getWhatsAppHistory.initiate()
+        )
+
+        expect(result.data).toEqual({ items: [] })
+        expect(requestAt(fetchMock, 0).url).toBe(
+            "https://api.example.com/api/v1/whatsapp/settings/history"
+        )
         expect(requestAt(fetchMock, 0).credentials).toBe("include")
     })
 

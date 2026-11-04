@@ -10,6 +10,8 @@ type WhatsAppSettings = {
     graphApiVersion: string
     credentialsValid: boolean | null
     credentialsCheckedAt: string | null
+    credentialsStatus: "NOT_CHECKED" | "INVALID" | "EXPIRED" | "VALID"
+    webhook: { lastEventAt: string | null; stale: boolean }
     autoReplyPaused: boolean
     pausedMessage: string
     updatedBy: { id: number; name: string } | null
@@ -18,5 +20,29 @@ type WhatsAppSettings = {
     verifiedName: string | null
     accessTokenLifetime: WhatsAppAccessTokenLifetime
 }
+
+export type WhatsAppDeliveryFailure = {
+    id: string
+    kind: "REPLY" | "CONFIRMATION" | "PAUSED" | "CANCELLATION" | "REMINDER"
+    errorCode: string | null
+    failedAt: string
+    appointmentId: string | null
+}
+
+export type WhatsAppDeliveryFailures = {
+    since: string
+    count: number
+    items: WhatsAppDeliveryFailure[]
+}
+
+export type WhatsAppHistoryItem = {
+    id: string
+    action: string
+    fields: string[]
+    actor: { id: number; name: string } | null
+    createdAt: string
+}
+
+export type WhatsAppHistory = { items: WhatsAppHistoryItem[] }
 
 export default WhatsAppSettings
