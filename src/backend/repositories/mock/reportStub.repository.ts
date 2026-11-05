@@ -14,22 +14,6 @@ export interface ReportStubOptions {
     appointmentsResult?: AppointmentsResultCounts
 }
 
-export interface ReportStubCalls {
-    getOutcomesCount: Array<{ start: Date; endExclusive: Date }>
-    getAppointmentsCreatedCount: Array<{ start: Date; endExclusive: Date }>
-    getTopCategories: Array<{ start: Date; endExclusive: Date }>
-    getTopQuestions: Array<{
-        start: Date
-        endExclusive: Date
-        limit?: number
-    }>
-    getAppointmentsResultCounts: Array<{
-        start: Date
-        endExclusive: Date
-        now?: Date
-    }>
-}
-
 const DEFAULT_APPOINTMENTS_RESULT: AppointmentsResultCounts = {
     attended: 0,
     noShow: 0,
@@ -41,68 +25,32 @@ const DEFAULT_APPOINTMENTS_RESULT: AppointmentsResultCounts = {
 export function createReportStubRepository(
     options: ReportStubOptions = {},
 ): IReportRepository & {
-    calls: ReportStubCalls
-    setOptions(next: ReportStubOptions): void
+    lastCall?: { start: Date; endExclusive: Date; now?: Date }
 } {
-    let state: ReportStubOptions = { ...options }
-    const calls: ReportStubCalls = {
-        getOutcomesCount: [],
-        getAppointmentsCreatedCount: [],
-        getTopCategories: [],
-        getTopQuestions: [],
-        getAppointmentsResultCounts: [],
-    }
-
-    return {
-        calls,
-
-        setOptions(next: ReportStubOptions): void {
-            state = { ...next }
+    const stub: IReportRepository & {
+        lastCall?: { start: Date; endExclusive: Date; now?: Date }
+    } = {
+        async getOutcomesCount(start: Date, endExclusive: Date) {
+            stub.lastCall = { start, endExclusive }
+            return options.outcomes ?? []
         },
-
-        async getOutcomesCount(
-            start: Date,
-            endExclusive: Date,
-        ): Promise<OutcomeCountRow[]> {
-            calls.getOutcomesCount.push({ start, endExclusive })
-            return [...(state.outcomes ?? [])]
+        async getAppointmentsCreatedCount() {
+            return options.appointmentsCreated ?? 0
         },
-
-        async getAppointmentsCreatedCount(
-            start: Date,
-            endExclusive: Date,
-        ): Promise<number> {
-            calls.getAppointmentsCreatedCount.push({ start, endExclusive })
-            return state.appointmentsCreated ?? 0
+        async getTopCategories() {
+            return options.topCategories ?? []
         },
-
-        async getTopCategories(
-            start: Date,
-            endExclusive: Date,
-        ): Promise<CategoryUsageItem[]> {
-            calls.getTopCategories.push({ start, endExclusive })
-            return [...(state.topCategories ?? [])]
+        async getTopQuestions() {
+            return options.topQuestions ?? []
         },
-
-        async getTopQuestions(
-            start: Date,
-            endExclusive: Date,
-            limit?: number,
-        ): Promise<QuestionUsageItem[]> {
-            calls.getTopQuestions.push({ start, endExclusive, limit })
-            return [...(state.topQuestions ?? [])]
-        },
-
         async getAppointmentsResultCounts(
             start: Date,
             endExclusive: Date,
             now?: Date,
-        ): Promise<AppointmentsResultCounts> {
-            calls.getAppointmentsResultCounts.push({ start, endExclusive, now })
-            return {
-                ...DEFAULT_APPOINTMENTS_RESULT,
-                ...(state.appointmentsResult ?? {}),
-            }
+        ) {
+            stub.lastCall = { start, endExclusive, now }
+            return options.appointmentsResult ?? DEFAULT_APPOINTMENTS_RESULT
         },
     }
+    return stub
 }

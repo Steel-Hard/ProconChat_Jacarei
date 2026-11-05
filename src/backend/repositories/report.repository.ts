@@ -9,8 +9,6 @@ import type {
 } from "../types/report.types"
 import { IReportRepository } from "./report.repository.interface"
 
-const DEFAULT_TOP_QUESTIONS_LIMIT = 10
-
 export function createReportRepository(
     pool: Pool = getPool(),
 ): IReportRepository {
@@ -47,15 +45,10 @@ export function createReportRepository(
                 appointments_created: string
             }>(
                 `SELECT
-                     COUNT(*) FILTER (
-                         WHERE s.outcome = 'SCHEDULED'
-                            OR EXISTS (
-                                SELECT 1 FROM Appointments a WHERE a.session_id = s.id
-                            )
-                     )::text AS appointments_created
-                 FROM Sessions s
-                 WHERE s.started_at >= $1
-                   AND s.started_at < $2`,
+                     COUNT(*)::text AS appointments_created
+                 FROM Appointments a
+                 WHERE a.request_datetime >= $1
+                   AND a.request_datetime < $2`,
                 [start, endExclusive],
             )
             return Number(result.rows[0]?.appointments_created ?? 0)
@@ -94,7 +87,6 @@ export function createReportRepository(
         async getTopQuestions(
             start: Date,
             endExclusive: Date,
-            limit: number = DEFAULT_TOP_QUESTIONS_LIMIT,
         ): Promise<QuestionUsageItem[]> {
             const result = await pool.query<{
                 question_id: string
@@ -119,9 +111,8 @@ export function createReportRepository(
                    AND s.started_at >= $1
                    AND s.started_at < $2
                  GROUP BY q.id, q.question, q.short_title, q.position, c.id, c.title, c.position
-                 ORDER BY COUNT(DISTINCT ce.session_id) DESC, c.position ASC, q.position ASC, q.id ASC
-                 LIMIT $3`,
-                [start, endExclusive, limit],
+                 ORDER BY COUNT(DISTINCT ce.session_id) DESC, c.position ASC, q.position ASC, q.id ASC`,
+                [start, endExclusive],
             )
             return result.rows.map((row) => ({
                 questionId: String(row.question_id),

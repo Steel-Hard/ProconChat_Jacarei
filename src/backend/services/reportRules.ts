@@ -1,4 +1,3 @@
-import { createReportQuerySchema } from "../schemas/report.schema"
 import type {
     AppointmentsResultCounts,
     AppointmentsResultSummary,
@@ -14,7 +13,6 @@ import {
     parseLocalDate,
     toLocalDateString,
 } from "../utils/date.utils"
-import { validateSchema } from "../utils/validateSchema"
 
 export const OUTCOME_DEFINITIONS: readonly {
     outcome: SessionOutcome
@@ -90,20 +88,15 @@ export function resolveReportPeriod(
     input: ReportQueryInput = {},
     now: Date = new Date(),
 ): ResolvedReportPeriod {
-    const parsed = validateSchema(
-        createReportQuerySchema(() => now),
-        input,
-        { withIssues: true },
-    )
     const today = toLocalDateString(now)
     const hasCustomDates =
-        parsed.startDate !== undefined || parsed.endDate !== undefined
+        input.startDate !== undefined || input.endDate !== undefined
     const preset: ReportPeriodPreset =
-        parsed.period ?? (hasCustomDates ? "custom" : "30d")
+        input.period ?? (hasCustomDates ? "custom" : "30d")
 
     const { startDate, endDate } =
         preset === "custom"
-            ? { startDate: parsed.startDate!, endDate: parsed.endDate! }
+            ? { startDate: input.startDate!, endDate: input.endDate! }
             : resolveDatesForPreset(preset, today)
 
     const daysCount = countCalendarDaysInclusive(startDate, endDate)
@@ -130,20 +123,61 @@ export function buildOutcomesSummary(
         countMap.set(row.outcome, (countMap.get(row.outcome) ?? 0) + row.count)
     }
 
-    return OUTCOME_DEFINITIONS.filter((def) => {
+    const visibleDefs = OUTCOME_DEFINITIONS.filter((def) => {
         if (def.outcome === "IN_PROGRESS") {
             return (countMap.get("IN_PROGRESS") ?? 0) > 0
         }
         return true
-    }).map((def) => {
-        const count = countMap.get(def.outcome) ?? 0
-        return {
+    })
+
+    if (totalConversations <= 0) {
+        return visibleDefs.map((def) => ({
             outcome: def.outcome,
             label: def.label,
+            count: 0,
+            percentage: 0,
+        }))
+    }
+
+    const entries = visibleDefs.map((def, index) => {
+        const count = countMap.get(def.outcome) ?? 0
+        const exactTenths = (count * 1000) / totalConversations
+        const floorTenths = Math.floor(exactTenths)
+        return {
+            def,
+            index,
             count,
-            percentage: calculatePercentage(count, totalConversations),
+            tenths: floorTenths,
+            remainder: exactTenths - floorTenths,
         }
     })
+
+    let remainingTenths =
+        1000 - entries.reduce((sum, entry) => sum + entry.tenths, 0)
+
+    const sortedByRemainder = [...entries]
+        .filter((entry) => entry.count > 0)
+        .sort((a, b) => {
+            if (b.remainder !== a.remainder) {
+                return b.remainder - a.remainder
+            }
+            if (b.count !== a.count) {
+                return b.count - a.count
+            }
+            return a.index - b.index
+        })
+
+    for (let i = 0; i < sortedByRemainder.length && remainingTenths > 0; i++) {
+        sortedByRemainder[i]!.tenths += 1
+        remainingTenths -= 1
+    }
+
+    return entries.map((entry) => ({
+        outcome: entry.def.outcome,
+        label: entry.def.label,
+        count: entry.count,
+        percentage: entry.tenths / 10,
+    }))
 }
 
 export function calculateNoShowRate(attended: number, noShow: number): number {

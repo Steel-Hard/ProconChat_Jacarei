@@ -18,7 +18,6 @@ export interface IReportRepository {
     getTopQuestions(
         start: Date,
         endExclusive: Date,
-        limit?: number,
     ): Promise<QuestionUsageItem[]>
     getAppointmentsResultCounts(
         start: Date,

@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express"
 import { IReportService, reportService } from "../services/report.service"
-import type { ReportPeriodPreset, ReportQueryInput } from "../types/report.types"
+import type { ReportQueryInput } from "../types/report.types"
 
 interface ReportControllerDependencies {
     service?: IReportService
@@ -25,20 +25,7 @@ class ReportController {
         next: NextFunction,
     ): Promise<void> {
         try {
-            const query: ReportQueryInput = {
-                period:
-                    typeof req.query.period === "string"
-                        ? (req.query.period as ReportPeriodPreset)
-                        : undefined,
-                startDate:
-                    typeof req.query.startDate === "string"
-                        ? req.query.startDate
-                        : undefined,
-                endDate:
-                    typeof req.query.endDate === "string"
-                        ? req.query.endDate
-                        : undefined,
-            }
+            const query = req.query as unknown as ReportQueryInput
             const summary = this.now
                 ? await this.service.getSummary(query, this.now())
                 : await this.service.getSummary(query)
