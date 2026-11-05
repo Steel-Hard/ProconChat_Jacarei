@@ -10,7 +10,7 @@ Definir **quais documentos o cidadão deve levar** ao atendimento presencial. O 
 
 ## Estado da tela
 
-**Ainda não construída (issue #65).** Hoje o chatbot usa a lista inicial do sistema.
+**Construída (issue #65).** Permite a edição das listas de documentos do titular e do representante, refletindo nos próximos agendamentos.
 
 ## Como funciona
 
