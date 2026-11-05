@@ -33,11 +33,13 @@ const whatsappSettingsApi = api.injectEndpoints({
         }),
         getWhatsAppHistory: build.query<WhatsAppHistory, void>({
             query: () => `${SETTINGS_PATH}/history`,
-            transformResponse: (response: HistoryEnvelope) => response.data
+            transformResponse: (response: HistoryEnvelope) => response.data,
+            providesTags: ["WhatsAppHistory"]
         }),
         pauseWhatsAppReplies: build.mutation<WhatsAppSettings, void>({
             query: () => ({ url: `${SETTINGS_PATH}/pause`, method: "POST" }),
             transformResponse: unwrap,
+            invalidatesTags: (result) => (result ? ["WhatsAppHistory"] : []),
             async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
                 const view = await settledView(queryFulfilled)
 
@@ -53,6 +55,7 @@ const whatsappSettingsApi = api.injectEndpoints({
         resumeWhatsAppReplies: build.mutation<WhatsAppSettings, void>({
             query: () => ({ url: `${SETTINGS_PATH}/resume`, method: "POST" }),
             transformResponse: unwrap,
+            invalidatesTags: (result) => (result ? ["WhatsAppHistory"] : []),
             async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
                 const view = await settledView(queryFulfilled)
 
