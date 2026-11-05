@@ -1,6 +1,7 @@
 import ptBRAppointmentDetail from "@/locales/pt-BR/appointmentDetail.json"
 import ptBRAppointments from "@/locales/pt-BR/appointments.json"
 import ptBRCommon from "@/locales/pt-BR/common.json"
+import ptBRDocuments from "@/locales/pt-BR/documents.json"
 import ptBRError from "@/locales/pt-BR/error.json"
 import ptBRLogin from "@/locales/pt-BR/login.json"
 import ptBRNoAccess from "@/locales/pt-BR/noAccess.json"
@@ -15,6 +16,7 @@ const ptBR = {
     appointmentDetail: ptBRAppointmentDetail,
     appointments: ptBRAppointments,
     common: ptBRCommon,
+    documents: ptBRDocuments,
     error: ptBRError,
     login: ptBRLogin,
     noAccess: ptBRNoAccess,

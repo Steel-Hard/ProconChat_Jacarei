@@ -1,0 +1,53 @@
+{
+    "meta": {
+        "title": "Documentos para atendimento presencial · PROCON Jacareí"
+    },
+    "heading": "Documentos para atendimento presencial",
+    "subtitle": "Defina os documentos pedidos ao cidadão no agendamento presencial.",
+    "notice": "As alterações valem só para os próximos agendamentos. Os já criados mantêm a lista que foi enviada ao cidadão na época.",
+    "loadFailed": "Não foi possível carregar os documentos para atendimento presencial.",
+    "saveToast": "Documentos atualizados com sucesso.",
+    "saveFailed": "Não foi possível salvar os documentos. Tente novamente.",
+    "groups": {
+        "holder": {
+            "title": "Quando o próprio titular comparece",
+            "description": "Documentos pedidos quando o próprio consumidor comparece ao atendimento.",
+            "emptyAlert": "Nenhum documento será pedido quando o titular comparecer. O cidadão pode chegar sem o necessário para o atendimento."
+        },
+        "representative": {
+            "title": "Quando um representante comparece em nome do titular",
+            "description": "Documentos pedidos quando outra pessoa comparece em nome do consumidor.",
+            "emptyAlert": "Nenhum documento será pedido quando um representante comparecer. O cidadão pode chegar sem o necessário para o atendimento."
+        }
+    },
+    "items": {
+        "addPlaceholder": "Digite um documento e pressione Enter...",
+        "addButton": "Adicionar",
+        "editButton": "Editar",
+        "saveEditButton": "Salvar",
+        "cancelEditButton": "Cancelar",
+        "removeButton": "Remover",
+        "moveUp": "Mover para cima",
+        "moveDown": "Mover para baixo",
+        "editItemAria": "Editar {{item}}",
+        "removeItemAria": "Remover {{item}}",
+        "moveUpAria": "Mover {{item}} para cima",
+        "moveDownAria": "Mover {{item}} para baixo"
+    },
+    "preview": {
+        "title": "Prévia da mensagem de confirmação",
+        "subtitle": "Mensagem recebida pelo cidadão logo depois de escolher o horário.",
+        "attendeeLabel": "Quem comparece",
+        "attendeeHolder": "O próprio titular",
+        "attendeeRepresentative": "Um representante",
+        "questionLabel": "Pergunta de exemplo",
+        "unsavedNotice": "Mostrando alterações ainda não salvas",
+        "noQuestionDocsNotice": "A pergunta escolhida não tem documentos úteis cadastrados",
+        "duplicateTooltip": "Este item também está nos documentos da pergunta",
+        "duplicateBadge": "Repetido na pergunta"
+    },
+    "changes": {
+        "holderGroup": "Documentos do titular alterados",
+        "representativeGroup": "Documentos do representante alterados"
+    }
+}

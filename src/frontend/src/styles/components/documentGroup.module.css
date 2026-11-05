@@ -1,0 +1,88 @@
+.groupCard {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+}
+
+.header {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.title {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.description {
+    font-size: 13.5px;
+    color: var(--text-muted);
+}
+
+.emptyAlert {
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: var(--warn-bg, #fffbeb);
+    border: 1px solid var(--warn-border, #fde68a);
+    color: var(--warn-text, #92400e);
+    font-size: 13.5px;
+    line-height: 1.4;
+}
+
+.list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.addForm {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.addInput {
+    flex: 1 1 auto;
+    padding: 8px 12px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+.addInput:focus {
+    border-color: var(--color-primary);
+}
+
+.addButton {
+    padding: 8px 16px;
+    border: 1px solid var(--color-primary);
+    border-radius: 8px;
+    background: var(--color-primary);
+    color: #fff;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.15s ease;
+}
+
+.addButton:hover:not(:disabled) {
+    opacity: 0.9;
+}
+
+.addButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

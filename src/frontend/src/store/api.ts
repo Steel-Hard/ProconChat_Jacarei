@@ -11,7 +11,9 @@ const api = createApi({
         "UserList",
         "SchedulePreview",
         "ScheduleEffective",
-        "ScheduleVersions"
+        "ScheduleVersions",
+        "Documents",
+        "DocumentsPreview"
     ],
     endpoints: () => ({})
 })
