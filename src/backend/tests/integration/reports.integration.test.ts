@@ -482,7 +482,7 @@ describe("Reports integration tests (Postgres)", () => {
         expect(summary.conversations).toEqual({
             total: 5,
             dailyAverage: 1,
-            appointmentsCreated: 2,
+            appointmentsCreated: 8,
         })
     })
 

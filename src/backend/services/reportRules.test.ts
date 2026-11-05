@@ -202,6 +202,32 @@ describe("reportRules", () => {
                 true,
             )
         })
+
+        it("distribui o maior resto em décimos de ponto percentual para somar 100%", () => {
+            const summary = buildOutcomesSummary(
+                [
+                    { outcome: "RESOLVED", count: 1 },
+                    { outcome: "SCHEDULED", count: 1 },
+                    { outcome: "ABANDONED", count: 1 },
+                ],
+                3,
+            )
+
+            expect(summary.find((s) => s.outcome === "RESOLVED")?.percentage).toBe(
+                33.4,
+            )
+            expect(summary.find((s) => s.outcome === "SCHEDULED")?.percentage).toBe(
+                33.3,
+            )
+            expect(summary.find((s) => s.outcome === "ABANDONED")?.percentage).toBe(
+                33.3,
+            )
+            const totalTenths = summary.reduce(
+                (sum, item) => sum + Math.round(item.percentage * 10),
+                0,
+            )
+            expect(totalTenths).toBe(1000)
+        })
     })
 
     describe("calculateNoShowRate e buildAppointmentsResultSummary", () => {

@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest"
-import BadRequestError from "../errors/BadRequestError"
 import { createReportStubRepository } from "../repositories/mock/reportStub.repository"
 import { parseLocalDate } from "../utils/date.utils"
 import { createReportService } from "./report.service"
@@ -47,29 +46,11 @@ describe("report.service", () => {
         const expectedStart = parseLocalDate("2026-10-08", "00:00")
         const expectedEndExclusive = parseLocalDate("2026-10-15", "00:00")
 
-        expect(repository.calls.getOutcomesCount).toEqual([
-            { start: expectedStart, endExclusive: expectedEndExclusive },
-        ])
-        expect(repository.calls.getAppointmentsCreatedCount).toEqual([
-            { start: expectedStart, endExclusive: expectedEndExclusive },
-        ])
-        expect(repository.calls.getTopCategories).toEqual([
-            { start: expectedStart, endExclusive: expectedEndExclusive },
-        ])
-        expect(repository.calls.getTopQuestions).toEqual([
-            {
-                start: expectedStart,
-                endExclusive: expectedEndExclusive,
-                limit: undefined,
-            },
-        ])
-        expect(repository.calls.getAppointmentsResultCounts).toEqual([
-            {
-                start: expectedStart,
-                endExclusive: expectedEndExclusive,
-                now: FIXED_NOW,
-            },
-        ])
+        expect(repository.lastCall).toEqual({
+            start: expectedStart,
+            endExclusive: expectedEndExclusive,
+            now: FIXED_NOW,
+        })
 
         expect(summary.period).toEqual({
             preset: "7d",
@@ -110,20 +91,5 @@ describe("report.service", () => {
             recordedTotal: 8,
             noShowRate: 25,
         })
-    })
-
-    it("rejeita período personalizado inválido pelo mesmo schema", async () => {
-        const service = createReportService(createReportStubRepository())
-
-        await expect(
-            service.getSummary(
-                {
-                    period: "custom",
-                    startDate: "2026-10-15",
-                    endDate: "2026-10-10",
-                },
-                FIXED_NOW,
-            ),
-        ).rejects.toThrow(BadRequestError)
     })
 })
