@@ -37,7 +37,7 @@ A busca procura **em todos os períodos, status e responsáveis**, ignorando os 
 
 ### Filtros
 
-- **Status**, em chips com contagem: Todos, Pendentes, Confirmados, Atendidos, Não compareceu, Cancelados, e o chip **Aguardando registro** (pendentes e confirmados cujo horário já passou sem registro), em destaque.
+- **Status**, em chips com contagem: Todos, Pendentes, Confirmados, Atendidos, Não compareceu, Cancelados, e o chip **Aguardando registro** (confirmados cujo horário já passou sem registro), em destaque.
 - **Período** (só na lista): Todos, Hoje, Esta semana, **Próximos (padrão)** e Anteriores a hoje.
 - **Responsável:** Todos, Sem responsável, Atribuídos a mim, ou um funcionário específico.
 

@@ -704,7 +704,7 @@ Valor fora da lista devolve `400 BAD_REQUEST` com `Dados inválidos: <campo>: <m
   primeiro os futuros (crescente) e depois os passados (decrescente). Em `sortBy=responsible`, "Sem
   responsável" vem primeiro no `asc`.
 - **Chips (`chipCounts`).** Contam respeitando o `period` e o `responsible` da requisição;
-  `waiting_record` (pendentes e confirmados com horário já passado) respeita só o `responsible`. A busca e o
+  `waiting_record` (confirmados com horário já passado) respeita só o `responsible`. A busca e o
   `status` não mudam os chips.
 - **"Um funcionário específico".** A rota aceita `responsible=<id>`, e `GET /api/v1/appointments/staff`
   (#87) lista os funcionários para esse filtro e para o seletor de "Atribuir" com `appointments.view`
@@ -751,8 +751,8 @@ Item da lista (`GET /api/v1/appointments`, resposta real do smoke, dados fictíc
 ```
 
 `protocol` são os 8 primeiros caracteres do `appointment_code` em maiúsculas, iguais aos que o bot
-envia ao cidadão. `off_grid` marca o agendamento fora da grade atual, e `waiting_record`, o pendente
-ou confirmado cujo horário já passou.
+envia ao cidadão. `off_grid` marca o agendamento fora da grade atual, e `waiting_record`, o confirmado
+cujo horário já passou.
 
 ### Detalhe e resposta do `PATCH`
 
