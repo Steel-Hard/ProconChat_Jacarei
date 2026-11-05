@@ -1,9 +1,7 @@
 import api from "@/store/api"
 import type WhatsAppSettings from "@/types/whatsapp/WhatsAppSettings.types"
-import type {
-    WhatsAppDeliveryFailures,
-    WhatsAppHistory
-} from "@/types/whatsapp/WhatsAppSettings.types"
+import type WhatsAppDeliveryFailures from "@/types/whatsapp/WhatsAppDeliveryFailures.types"
+import type WhatsAppHistory from "@/types/whatsapp/WhatsAppHistory.types"
 
 type SettingsEnvelope = { data: WhatsAppSettings }
 type DeliveryFailuresEnvelope = { data: WhatsAppDeliveryFailures }
