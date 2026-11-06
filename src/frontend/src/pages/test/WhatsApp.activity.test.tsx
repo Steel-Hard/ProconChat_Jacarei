@@ -239,6 +239,40 @@ describe("WhatsAppPage, estado do número, falhas e histórico", () => {
         expect(within(region(STATUS_REGION)).getByText(REPLACE_HINT)).toBeInTheDocument()
     })
 
+    it("mostra a bolinha decorativa ao lado de Válidas", async () => {
+        await renderPage(
+            {},
+            settingsView({ credentialsStatus: "VALID", credentialsCheckedAt: null })
+        )
+        await loaded()
+
+        expect(
+            within(region(STATUS_REGION)).getByText("Válidas").querySelector('[aria-hidden="true"]')
+        ).not.toBeNull()
+    })
+
+    it("mostra a bolinha decorativa ao lado de Token inválido ou expirado", async () => {
+        await renderPage({}, settingsView({ credentialsStatus: "EXPIRED" }))
+        await loaded()
+
+        expect(
+            within(region(STATUS_REGION))
+                .getByText("Token inválido ou expirado")
+                .querySelector('[aria-hidden="true"]')
+        ).not.toBeNull()
+    })
+
+    it("não mostra bolinha ao lado de Ainda não verificadas", async () => {
+        await renderPage({}, settingsView({ credentialsStatus: "NOT_CHECKED" }))
+        await loaded()
+
+        expect(
+            within(region(STATUS_REGION))
+                .getByText("Ainda não verificadas")
+                .querySelector('[aria-hidden="true"]')
+        ).toBeNull()
+    })
+
     it("mostra Nenhum evento recebido quando a data do último evento do webhook não é data", async () => {
         await renderPage({}, settingsView({ webhook: { lastEventAt: "nao-e-data", stale: false } }))
         await loaded()

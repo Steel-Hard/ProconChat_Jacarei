@@ -25,35 +25,81 @@
     font-size: 13.5px;
 }
 
-.statusList {
+.statusCard {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    margin: 0;
+    gap: 16px;
+    padding: 22px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg-surface);
 }
 
-.statusRow {
+.statusGrid {
     display: grid;
-    grid-template-columns: minmax(180px, 0.4fr) minmax(0, 1fr);
-    gap: 12px;
-    font-size: 13.5px;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 14px;
 }
 
-.statusRow dt {
+.statusBlock {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px;
+    border: 1px solid var(--divider);
+    border-radius: 10px;
+}
+
+.statusLabel {
+    font-size: 12.5px;
     color: var(--text-muted);
 }
 
-.statusRow dd {
-    margin: 0;
-    color: var(--text-strong);
+.statusValue {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.valueValid {
+    color: var(--success-text);
+}
+
+.valueInvalid {
+    color: var(--error-text);
+}
+
+.dot {
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.dotValid {
+    background: var(--success-dot);
+}
+
+.dotInvalid {
+    background: var(--error-dot);
+}
+
+.statusHintInvalid {
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--error-text);
 }
 
 .warning {
-    padding: 10px 12px;
-    border-left: 3px solid var(--warn-border);
-    background: var(--warn-bg);
-    color: var(--warn-text-strong);
-    font-size: 13px;
+    padding: 9px 11px;
+    border: 1px solid var(--error-border);
+    border-radius: 8px;
+    background: var(--error-soft-bg);
+    color: var(--error-text);
+    font-size: 12.5px;
+    font-weight: 600;
     line-height: 1.5;
 }
 
@@ -99,11 +145,6 @@
 }
 
 @media (max-width: 540px) {
-    .statusRow {
-        grid-template-columns: 1fr;
-        gap: 3px;
-    }
-
     .activityItem time {
         white-space: normal;
     }
