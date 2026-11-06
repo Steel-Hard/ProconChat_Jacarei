@@ -262,6 +262,17 @@ describe("WhatsAppPage, estado do número, falhas e histórico", () => {
         ).not.toBeNull()
     })
 
+    it("mostra a bolinha decorativa ao lado de Token inválido ou expirado quando as credenciais são inválidas", async () => {
+        await renderPage({}, settingsView({ credentialsStatus: "INVALID" }))
+        await loaded()
+
+        expect(
+            within(region(STATUS_REGION))
+                .getByText("Token inválido ou expirado")
+                .querySelector('[aria-hidden="true"]')
+        ).not.toBeNull()
+    })
+
     it("não mostra bolinha ao lado de Ainda não verificadas", async () => {
         await renderPage({}, settingsView({ credentialsStatus: "NOT_CHECKED" }))
         await loaded()
@@ -392,6 +403,30 @@ describe("WhatsAppPage, estado do número, falhas e histórico", () => {
     it("avisa no histórico que os valores do token e do App Secret não são registrados", async () => {
         await renderPage({ [`GET ${HISTORY_PATH}`]: pending })
         await loaded()
+
+        expect(
+            within(region(HISTORY_REGION)).getByText(
+                "Os valores do token e do App Secret não são registrados."
+            )
+        ).toBeInTheDocument()
+    })
+
+    it("avisa no histórico que os valores não são registrados quando a leitura falha", async () => {
+        await renderPage({ [`GET ${HISTORY_PATH}`]: () => SERVER_ERROR })
+        await loaded()
+        await within(region(HISTORY_REGION)).findByRole("alert")
+
+        expect(
+            within(region(HISTORY_REGION)).getByText(
+                "Os valores do token e do App Secret não são registrados."
+            )
+        ).toBeInTheDocument()
+    })
+
+    it("avisa no histórico que os valores não são registrados quando não há alterações", async () => {
+        await renderPage({ [`GET ${HISTORY_PATH}`]: historyReply([]) })
+        await loaded()
+        await within(region(HISTORY_REGION)).findByText("Nenhuma alteração registrada.")
 
         expect(
             within(region(HISTORY_REGION)).getByText(
