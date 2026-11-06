@@ -59,6 +59,10 @@ async function setup(active: boolean, replies: Record<string, Reply> = {}) {
     return { ...rendered, paths }
 }
 
+function settle(): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, 0))
+}
+
 afterEach(() => {
     vi.unstubAllGlobals()
     vi.unstubAllEnvs()
@@ -69,7 +73,9 @@ describe("useWhatsAppActivity", () => {
     it("fica parado e não pede falhas nem histórico quando não está ativo", async () => {
         const { result, paths } = await setup(false)
 
-        await act(async () => {})
+        await act(async () => {
+            await settle()
+        })
 
         expect(result.current.failures.status).toBe("idle")
         expect(result.current.history.status).toBe("idle")
