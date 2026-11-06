@@ -169,10 +169,6 @@ function WhatsAppPage() {
                                         status={activity.failures.status}
                                         failures={activity.failures.data}
                                     />
-                                    <WhatsAppSettingsHistory
-                                        status={activity.history.status}
-                                        history={activity.history.data}
-                                    />
                                 </>
                             ) : null}
                             {view ? (
@@ -268,6 +264,12 @@ function WhatsAppPage() {
                                         onTest={() => void page.runTest()}
                                     />
                                 </section>
+                            ) : null}
+                            {view ? (
+                                <WhatsAppSettingsHistory
+                                    status={activity.history.status}
+                                    history={activity.history.data}
+                                />
                             ) : null}
                         </>
                     ) : (

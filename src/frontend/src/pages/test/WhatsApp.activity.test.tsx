@@ -282,6 +282,21 @@ describe("WhatsAppPage, estado do número, falhas e histórico", () => {
         ).toBeInTheDocument()
     })
 
+    it("mostra o estado do número antes das credenciais e o histórico depois delas", async () => {
+        await renderPage()
+        await loaded()
+        const credentials = screen.getByRole("heading", { name: "Credenciais" })
+
+        expect(
+            region(STATUS_REGION).compareDocumentPosition(credentials) &
+                Node.DOCUMENT_POSITION_FOLLOWING
+        ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+        expect(
+            credentials.compareDocumentPosition(region(HISTORY_REGION)) &
+                Node.DOCUMENT_POSITION_FOLLOWING
+        ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    })
+
     it("mostra Carregando nas falhas enquanto a leitura não responde", async () => {
         await renderPage({ [`GET ${FAILURES_PATH}`]: pending })
         await loaded()
