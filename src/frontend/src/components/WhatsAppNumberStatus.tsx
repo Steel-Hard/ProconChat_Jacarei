@@ -59,8 +59,8 @@ function WhatsAppNumberStatus({ settings, children }: Props) {
                     <dt className={css.statusLabel}>{t("numberStatus.webhook.label")}</dt>
                     <dd className={css.statusValue}>{lastEvent}</dd>
                     {settings.webhook.stale ? (
-                        <dd className={css.warning} role="alert">
-                            {t("numberStatus.webhook.stale")}
+                        <dd className={css.warning}>
+                            <span role="alert">{t("numberStatus.webhook.stale")}</span>
                         </dd>
                     ) : null}
                 </dl>
