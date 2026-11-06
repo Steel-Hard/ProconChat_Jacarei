@@ -254,6 +254,7 @@ function WhatsAppPage() {
                                                 t("metaSetup.steps.verify"),
                                                 t("metaSetup.steps.ids")
                                             ]}
+                                            highlightedStep={0}
                                             onCopy={(value) => void page.copy(value)}
                                         />
                                     </div>
