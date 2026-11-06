@@ -87,7 +87,7 @@
             "INVALID": "Token inválido ou expirado",
             "EXPIRED": "Token inválido ou expirado",
             "VALID": "Válidas",
-            "checkedAt": "verificadas em {{date}}",
+            "checkedAt": "{{status}} · verificadas em {{date}}",
             "replace": "Gere um token permanente, use \"Substituir\", teste a conexão e salve as credenciais."
         },
         "webhook": {
@@ -133,6 +133,7 @@
         }
     },
     "unknownDate": "Data indisponível",
+    "dateTime": "{{date}} às {{time}}",
     "credentials": {
         "heading": "Credenciais",
         "fields": {
