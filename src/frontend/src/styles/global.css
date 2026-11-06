@@ -94,8 +94,10 @@
     --success-bg: #eaf6ef;
     --success-border: #bfe3cc;
     --success-text: #1b6138;
+    --success-dot: #2e8b57;
     --error-border: #ebc7c2;
     --error-soft-bg: #fdf1ef;
+    --error-dot: #c0392b;
     --bg-panel: #f7f6fc;
     --bg-accent-soft: #f3f1fb;
     --border-accent: #c9c2e6;

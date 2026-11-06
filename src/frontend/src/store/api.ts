@@ -11,7 +11,8 @@ const api = createApi({
         "UserList",
         "SchedulePreview",
         "ScheduleEffective",
-        "ScheduleVersions"
+        "ScheduleVersions",
+        "WhatsAppHistory"
     ],
     endpoints: () => ({})
 })

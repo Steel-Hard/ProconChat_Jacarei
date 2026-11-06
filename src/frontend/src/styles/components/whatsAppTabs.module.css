@@ -36,3 +36,9 @@
     outline-offset: 2px;
     border-radius: 6px 6px 0 0;
 }
+
+.panel {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}

@@ -1,17 +1,22 @@
+import { useId } from "react"
 import { useTranslation } from "react-i18next"
 import ConfirmDialog from "@/components/ConfirmDialog"
 import LastChangeNote from "@/components/LastChangeNote"
 import StatusBadge from "@/components/StatusBadge"
 import UnsavedChangesBar from "@/components/UnsavedChangesBar"
 import WhatsAppConnectionTest from "@/components/WhatsAppConnectionTest"
+import WhatsAppDeliveryFailures from "@/components/WhatsAppDeliveryFailures"
 import WhatsAppMessageBubble from "@/components/WhatsAppMessageBubble"
 import WhatsAppMetaSetup from "@/components/WhatsAppMetaSetup"
+import WhatsAppNumberStatus from "@/components/WhatsAppNumberStatus"
 import WhatsAppPauseSwitch from "@/components/WhatsAppPauseSwitch"
 import WhatsAppPrivacyForm from "@/components/WhatsAppPrivacyForm"
 import WhatsAppRetentionFields from "@/components/WhatsAppRetentionFields"
 import WhatsAppSecretField from "@/components/WhatsAppSecretField"
+import WhatsAppSettingsHistory from "@/components/WhatsAppSettingsHistory"
 import WhatsAppTabs from "@/components/WhatsAppTabs"
 import usePrivacySettings from "@/pages/hooks/usePrivacySettings"
+import useWhatsAppActivity from "@/pages/hooks/useWhatsAppActivity"
 import useWhatsAppSettings from "@/pages/hooks/useWhatsAppSettings"
 import useWhatsAppTab from "@/pages/hooks/useWhatsAppTab"
 import css from "@/styles/pages/whatsapp.module.css"
@@ -22,6 +27,8 @@ function WhatsAppPage() {
     const { tab, selectTab } = useWhatsAppTab()
     const privacy = usePrivacySettings(tab === "privacy")
     const view = page.view
+    const testHintId = useId()
+    const activity = useWhatsAppActivity(tab === "connection" && Boolean(view))
     const changed = (key: (typeof page.changedKeys)[number]) =>
         page.changedKeys.includes(key) ? `${css.input} ${css.inputChanged}` : css.input
     const secretTexts = {
@@ -50,7 +57,7 @@ function WhatsAppPage() {
                             changes={page.changes}
                             saving={page.saving}
                             saveDisabled={page.saveDisabled}
-                            saveHint={page.needTest ? t("test.needTest") : undefined}
+                            saveDescriptionId={page.needTest ? testHintId : undefined}
                             onDiscard={page.discard}
                             onSave={() => void page.save()}
                         />
@@ -158,6 +165,14 @@ function WhatsAppPage() {
                                 </section>
                             ) : null}
                             {view ? (
+                                <WhatsAppNumberStatus settings={view}>
+                                    <WhatsAppDeliveryFailures
+                                        status={activity.failures.status}
+                                        failures={activity.failures.data}
+                                    />
+                                </WhatsAppNumberStatus>
+                            ) : null}
+                            {view ? (
                                 <section className={css.card}>
                                     <h2 className={css.sectionTitle}>{t("credentials.heading")}</h2>
                                     <div className={css.grid}>
@@ -238,6 +253,7 @@ function WhatsAppPage() {
                                                 t("metaSetup.steps.verify"),
                                                 t("metaSetup.steps.ids")
                                             ]}
+                                            highlightedStep={0}
                                             onCopy={(value) => void page.copy(value)}
                                         />
                                     </div>
@@ -247,9 +263,17 @@ function WhatsAppPage() {
                                         testing={page.testing}
                                         disabled={page.saving}
                                         message={page.testMessage}
+                                        hint={page.needTest ? t("test.needTest") : undefined}
+                                        hintId={testHintId}
                                         onTest={() => void page.runTest()}
                                     />
                                 </section>
+                            ) : null}
+                            {view ? (
+                                <WhatsAppSettingsHistory
+                                    status={activity.history.status}
+                                    history={activity.history.data}
+                                />
                             ) : null}
                         </>
                     ) : (
@@ -304,6 +328,7 @@ function WhatsAppPage() {
                 title={t("pauseDialog.title")}
                 description={t("pauseDialog.description")}
                 confirmLabel={t("pauseDialog.confirm")}
+                tone="warning"
                 busy={page.switching}
                 onConfirm={() => void page.confirmPause()}
                 onCancel={page.closePauseDialog}

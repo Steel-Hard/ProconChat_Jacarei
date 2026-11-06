@@ -23,6 +23,8 @@ const SETTINGS: WhatsAppSettings = {
     graphApiVersion: "v26.0",
     credentialsValid: true,
     credentialsCheckedAt: "2026-10-14T13:00:00.000Z",
+    credentialsStatus: "VALID",
+    webhook: { lastEventAt: "2026-10-14T13:00:00.000Z", stale: false },
     autoReplyPaused: false,
     pausedMessage: "Mensagem fixa",
     updatedBy: { id: 1, name: "Ana Paula" },
