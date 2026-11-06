@@ -164,4 +164,31 @@ describe("UnsavedChangesBar", () => {
             screen.getByRole("button", { name: "Salvar alterações" })
         ).not.toHaveAccessibleDescription()
     })
+    it("com saveDescriptionId liga o elemento indicado como descrição acessível de Salvar", () => {
+        render(
+            <>
+                <span id="dica-externa">
+                    Teste a conexão com as credenciais novas antes de salvar.
+                </span>
+                <UnsavedChangesBar
+                    changes={["Token de acesso"]}
+                    onDiscard={vi.fn()}
+                    onSave={vi.fn()}
+                    saveDisabled
+                    saveDescriptionId="dica-externa"
+                />
+            </>
+        )
+
+        expect(
+            screen.getByRole("button", { name: "Salvar alterações" })
+        ).toHaveAccessibleDescription("Teste a conexão com as credenciais novas antes de salvar.")
+    })
+    it("sem saveDescriptionId e sem saveHint Salvar fica sem descrição acessível", () => {
+        renderBar(["Token de acesso"])
+
+        expect(
+            screen.getByRole("button", { name: "Salvar alterações" })
+        ).toHaveAccessibleDescription("")
+    })
 })

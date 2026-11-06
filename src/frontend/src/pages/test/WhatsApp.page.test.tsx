@@ -279,6 +279,45 @@ describe("WhatsAppPage", () => {
         expect(screen.queryByText("Conexão testada com sucesso.")).not.toBeInTheDocument()
     })
 
+    it("mostra a dica de testar uma vez, ao lado de Testar conexão e fora da barra do topo", async () => {
+        const { user } = await renderPage()
+        await loaded()
+
+        await user.type(screen.getByLabelText("ID do número de telefone"), "9")
+
+        expect(screen.getAllByText(NEED_TEST)).toHaveLength(1)
+        expect(
+            screen.getByRole("button", { name: "Testar conexão" }).parentElement
+        ).toContainElement(screen.getByText(NEED_TEST))
+        expect(
+            screen.getByRole("button", { name: "Descartar" }).parentElement
+        ).not.toContainElement(screen.getByText(NEED_TEST))
+    })
+
+    it("descreve o Salvar com a dica enquanto falta testar as credenciais novas", async () => {
+        const { user } = await renderPage()
+        await loaded()
+
+        await user.type(screen.getByLabelText("ID do número de telefone"), "9")
+
+        expect(
+            screen.getByRole("button", { name: "Salvar alterações" })
+        ).toHaveAccessibleDescription(NEED_TEST)
+    })
+
+    it("tira a descrição do Salvar depois do teste bem-sucedido com os valores atuais", async () => {
+        const { user } = await renderPage({ "POST /api/v1/whatsapp/settings/test": OK_TEST })
+        await loaded()
+
+        await user.type(screen.getByLabelText("ID do número de telefone"), "9")
+        await user.click(screen.getByRole("button", { name: "Testar conexão" }))
+        await screen.findByText("Conexão testada com sucesso.")
+
+        expect(
+            screen.getByRole("button", { name: "Salvar alterações" })
+        ).toHaveAccessibleDescription("")
+    })
+
     it("mostra Testando e desabilita o botão enquanto o teste está em andamento", async () => {
         let release: (reply: Reply) => void = noRelease
         const { user } = await renderPage({

@@ -1,3 +1,4 @@
+import { useId } from "react"
 import { useTranslation } from "react-i18next"
 import ConfirmDialog from "@/components/ConfirmDialog"
 import LastChangeNote from "@/components/LastChangeNote"
@@ -26,6 +27,7 @@ function WhatsAppPage() {
     const { tab, selectTab } = useWhatsAppTab()
     const privacy = usePrivacySettings(tab === "privacy")
     const view = page.view
+    const testHintId = useId()
     const activity = useWhatsAppActivity(tab === "connection" && Boolean(view))
     const changed = (key: (typeof page.changedKeys)[number]) =>
         page.changedKeys.includes(key) ? `${css.input} ${css.inputChanged}` : css.input
@@ -55,7 +57,7 @@ function WhatsAppPage() {
                             changes={page.changes}
                             saving={page.saving}
                             saveDisabled={page.saveDisabled}
-                            saveHint={page.needTest ? t("test.needTest") : undefined}
+                            saveDescriptionId={page.needTest ? testHintId : undefined}
                             onDiscard={page.discard}
                             onSave={() => void page.save()}
                         />
@@ -261,6 +263,8 @@ function WhatsAppPage() {
                                         testing={page.testing}
                                         disabled={page.saving}
                                         message={page.testMessage}
+                                        hint={page.needTest ? t("test.needTest") : undefined}
+                                        hintId={testHintId}
                                         onTest={() => void page.runTest()}
                                     />
                                 </section>
