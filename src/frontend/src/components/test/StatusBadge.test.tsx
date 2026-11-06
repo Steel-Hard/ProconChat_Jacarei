@@ -44,4 +44,36 @@ describe("StatusBadge", () => {
 
         expect(screen.getByText(label)).toHaveStyle({ backgroundColor: bg, color: fg })
     })
+    it.each<[WhatsAppStatus, string]>([
+        ["OPERATING", "Operando"],
+        ["PAUSED", "Respostas pausadas"],
+        ["INVALID_CREDENTIALS", "Credenciais inválidas"]
+    ])("mostra a bolinha decorativa na situação do WhatsApp %s", (status, label) => {
+        render(<StatusBadge kind="whatsapp" status={status} />)
+
+        expect(screen.getByText(label).querySelector('[aria-hidden="true"]')).not.toBeNull()
+    })
+    it("não mostra bolinha nos selos de agendamento e de desfecho", () => {
+        render(
+            <>
+                <StatusBadge kind="appointment" status="CONFIRMED" />
+                <StatusBadge kind="outcome" status="RESOLVED" />
+            </>
+        )
+
+        expect(screen.getByText("Confirmado").querySelector('[aria-hidden="true"]')).toBeNull()
+        expect(
+            screen.getByText("Resolvida sem agendamento").querySelector('[aria-hidden="true"]')
+        ).toBeNull()
+    })
+    it.each<[WhatsAppStatus, string]>([
+        ["NOT_VERIFIED", "Não verificado"],
+        ["NOT_CONFIGURED", "Não configurado"]
+    ])("mostra a bolinha cinza na situação do WhatsApp %s", (status, label) => {
+        render(<StatusBadge kind="whatsapp" status={status} />)
+
+        expect(screen.getByText(label).querySelector('[aria-hidden="true"]')).toHaveStyle({
+            backgroundColor: "#8A869C"
+        })
+    })
 })
