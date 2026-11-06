@@ -84,6 +84,15 @@
     background: #861e15;
 }
 
+.warning {
+    background: var(--warn-text);
+}
+
+.warning:hover {
+    background: var(--warn-text);
+    filter: brightness(0.92);
+}
+
 .confirm:disabled {
     opacity: 0.5;
     cursor: not-allowed;

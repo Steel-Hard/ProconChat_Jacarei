@@ -329,6 +329,7 @@ function WhatsAppPage() {
                 title={t("pauseDialog.title")}
                 description={t("pauseDialog.description")}
                 confirmLabel={t("pauseDialog.confirm")}
+                tone="warning"
                 busy={page.switching}
                 onConfirm={() => void page.confirmPause()}
                 onCancel={page.closePauseDialog}
