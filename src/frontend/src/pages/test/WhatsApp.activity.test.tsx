@@ -297,6 +297,13 @@ describe("WhatsAppPage, estado do número, falhas e histórico", () => {
         ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     })
 
+    it("mostra as falhas de entrega dentro do estado do número", async () => {
+        await renderPage()
+        await loaded()
+
+        expect(region(STATUS_REGION)).toContainElement(region(FAILURES_REGION))
+    })
+
     it("mostra Carregando nas falhas enquanto a leitura não responde", async () => {
         await renderPage({ [`GET ${FAILURES_PATH}`]: pending })
         await loaded()

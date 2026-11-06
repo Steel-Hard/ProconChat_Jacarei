@@ -1,9 +1,10 @@
+import type { ReactNode } from "react"
 import { useTranslation } from "react-i18next"
 import type WhatsAppSettings from "@/types/whatsapp/WhatsAppSettings.types"
 import dateTimePartsOf from "@/utils/dateTimePartsOf"
 import css from "@/styles/components/whatsappActivity.module.css"
 
-type Props = { settings: WhatsAppSettings }
+type Props = { settings: WhatsAppSettings; children?: ReactNode }
 
 type CredentialsStatus = WhatsAppSettings["credentialsStatus"]
 
@@ -21,7 +22,7 @@ function toneOf(status: CredentialsStatus): { value: string; dot: string } | nul
     return null
 }
 
-function WhatsAppNumberStatus({ settings }: Props) {
+function WhatsAppNumberStatus({ settings, children }: Props) {
     const { t } = useTranslation(["whatsapp", "common"])
     const status = t(`numberStatus.credentials.${settings.credentialsStatus}`)
     const checkedParts = dateTimePartsOf(settings.credentialsCheckedAt)
@@ -39,8 +40,8 @@ function WhatsAppNumberStatus({ settings }: Props) {
             <h2 className={css.sectionTitle} id="whatsapp-number-status">
                 {t("numberStatus.heading")}
             </h2>
-            <dl className={css.statusGrid}>
-                <div className={css.statusBlock}>
+            <div className={css.statusGrid}>
+                <dl className={css.statusBlock}>
                     <dt className={css.statusLabel}>{t("numberStatus.credentials.label")}</dt>
                     <dd className={tone ? `${css.statusValue} ${tone.value}` : css.statusValue}>
                         {tone ? (
@@ -53,8 +54,8 @@ function WhatsAppNumberStatus({ settings }: Props) {
                             {t("numberStatus.credentials.replace")}
                         </dd>
                     ) : null}
-                </div>
-                <div className={css.statusBlock}>
+                </dl>
+                <dl className={css.statusBlock}>
                     <dt className={css.statusLabel}>{t("numberStatus.webhook.label")}</dt>
                     <dd className={css.statusValue}>{lastEvent}</dd>
                     {settings.webhook.stale ? (
@@ -62,8 +63,9 @@ function WhatsAppNumberStatus({ settings }: Props) {
                             {t("numberStatus.webhook.stale")}
                         </dd>
                     ) : null}
-                </div>
-            </dl>
+                </dl>
+                {children}
+            </div>
         </section>
     )
 }

@@ -45,6 +45,18 @@
     color: var(--text-muted);
 }
 
+.failureBlock {
+    min-width: 0;
+}
+
+.failureTitle {
+    font-weight: 400;
+}
+
+.failureBlock .activityItem {
+    font-size: 12.5px;
+}
+
 .statusValue {
     display: flex;
     align-items: center;

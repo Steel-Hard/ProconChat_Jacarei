@@ -165,13 +165,12 @@ function WhatsAppPage() {
                                 </section>
                             ) : null}
                             {view ? (
-                                <>
-                                    <WhatsAppNumberStatus settings={view} />
+                                <WhatsAppNumberStatus settings={view}>
                                     <WhatsAppDeliveryFailures
                                         status={activity.failures.status}
                                         failures={activity.failures.data}
                                     />
-                                </>
+                                </WhatsAppNumberStatus>
                             ) : null}
                             {view ? (
                                 <section className={css.card}>

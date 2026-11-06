@@ -47,10 +47,16 @@ function WhatsAppDeliveryFailures({ status, failures }: Props) {
     const { t } = useTranslation(["whatsapp", "common"])
 
     return (
-        <section className={css.listCard} aria-labelledby="whatsapp-delivery-failures">
-            <h2 className={css.sectionTitle} id="whatsapp-delivery-failures">
+        <section
+            className={`${css.statusBlock} ${css.failureBlock}`}
+            aria-labelledby="whatsapp-delivery-failures"
+        >
+            <h3
+                className={`${css.statusLabel} ${css.failureTitle}`}
+                id="whatsapp-delivery-failures"
+            >
                 {t("deliveryFailures.heading")}
-            </h2>
+            </h3>
             <FailuresContent status={status} failures={failures} />
         </section>
     )
