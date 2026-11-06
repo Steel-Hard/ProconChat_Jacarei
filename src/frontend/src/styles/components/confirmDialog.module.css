@@ -88,7 +88,7 @@
     background: var(--warn-text);
 }
 
-.warning:hover {
+.warning:hover:not(:disabled) {
     background: var(--warn-text);
     filter: brightness(0.92);
 }
