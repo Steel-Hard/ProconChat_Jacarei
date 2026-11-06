@@ -26,7 +26,7 @@ function HistoryContent({ status, history }: Props) {
     }
 
     if (history.items.length === 0) {
-        return <p>{t("history.empty")}</p>
+        return <p className={css.empty}>{t("history.empty")}</p>
     }
 
     return (
@@ -42,10 +42,11 @@ function WhatsAppSettingsHistory({ status, history }: Props) {
     const { t } = useTranslation(["whatsapp", "common"])
 
     return (
-        <section className={css.card} aria-labelledby="whatsapp-settings-history">
+        <section className={css.listCard} aria-labelledby="whatsapp-settings-history">
             <h2 className={css.sectionTitle} id="whatsapp-settings-history">
                 {t("history.heading")}
             </h2>
+            <p className={css.note}>{t("history.note")}</p>
             <HistoryContent status={status} history={history} />
         </section>
     )

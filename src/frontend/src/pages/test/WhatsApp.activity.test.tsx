@@ -367,6 +367,17 @@ describe("WhatsAppPage, estado do número, falhas e histórico", () => {
         )
     })
 
+    it("avisa no histórico que os valores do token e do App Secret não são registrados", async () => {
+        await renderPage({ [`GET ${HISTORY_PATH}`]: pending })
+        await loaded()
+
+        expect(
+            within(region(HISTORY_REGION)).getByText(
+                "Os valores do token e do App Secret não são registrados."
+            )
+        ).toBeInTheDocument()
+    })
+
     it("mostra Nenhuma alteração registrada quando o histórico está vazio", async () => {
         await renderPage({ [`GET ${HISTORY_PATH}`]: historyReply([]) })
         await loaded()

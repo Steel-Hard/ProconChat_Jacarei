@@ -27,11 +27,11 @@ function FailuresContent({ status, failures }: Props) {
 
     return (
         <>
-            <p className={css.sectionDescription}>
+            <p className={css.countValue}>
                 {t("deliveryFailures.count", { count: failures.count })}
             </p>
             {failures.items.length === 0 ? (
-                <p>{t("deliveryFailures.empty")}</p>
+                <p className={css.empty}>{t("deliveryFailures.empty")}</p>
             ) : (
                 <ul className={css.activityList}>
                     {failures.items.map((item) => (
@@ -47,7 +47,7 @@ function WhatsAppDeliveryFailures({ status, failures }: Props) {
     const { t } = useTranslation(["whatsapp", "common"])
 
     return (
-        <section className={css.card} aria-labelledby="whatsapp-delivery-failures">
+        <section className={css.listCard} aria-labelledby="whatsapp-delivery-failures">
             <h2 className={css.sectionTitle} id="whatsapp-delivery-failures">
                 {t("deliveryFailures.heading")}
             </h2>

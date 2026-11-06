@@ -11,8 +11,8 @@ function WhatsAppDeliveryFailureItem({ failure }: Props) {
 
     return (
         <li className={css.activityItem}>
-            <div>
-                <strong>{t(`deliveryFailures.kind.${failure.kind}`)}</strong>
+            <div className={css.activityMain}>
+                <span>{t(`deliveryFailures.kind.${failure.kind}`)}</span>
                 {failure.errorCode ? (
                     <span className={css.activityDetail}>
                         {t("deliveryFailures.errorCode", { code: failure.errorCode })}
@@ -24,9 +24,11 @@ function WhatsAppDeliveryFailureItem({ failure }: Props) {
                     </span>
                 ) : null}
             </div>
-            <time dateTime={failure.failedAt}>
-                {parts ? t("dateTime", parts) : t("unknownDate")}
-            </time>
+            <span className={css.activityMeta}>
+                <time dateTime={failure.failedAt}>
+                    {parts ? t("dateTime", parts) : t("unknownDate")}
+                </time>
+            </span>
         </li>
     )
 }

@@ -1,13 +1,3 @@
-.card {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-    padding: 22px;
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    background: var(--bg-surface);
-}
-
 .sectionTitle {
     font: 700 16px var(--font-heading);
 }
@@ -103,17 +93,34 @@
     line-height: 1.5;
 }
 
-.sectionDescription {
+.listCard {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 22px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg-surface);
+}
+
+.note {
+    font-size: 12.5px;
     color: var(--text-muted);
-    font-size: 13px;
+}
+
+.countValue {
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.empty {
+    font-size: 13.5px;
+    color: var(--text-muted);
 }
 
 .activityList {
     display: flex;
     flex-direction: column;
-    gap: 0;
-    margin: 0;
-    padding: 0;
     list-style: none;
 }
 
@@ -121,31 +128,41 @@
     display: flex;
     flex-wrap: wrap;
     justify-content: space-between;
-    gap: 8px 20px;
-    padding: 12px 0;
+    gap: 4px 12px;
+    padding: 9px 0;
     border-top: 1px solid var(--divider);
-    font-size: 13px;
+    font-size: 13.5px;
 }
 
-.activityItem > div {
+.activityMain {
     display: flex;
-    flex: 1 1 260px;
+    flex: 1 1 300px;
     flex-direction: column;
-    gap: 3px;
+    gap: 2px;
     min-width: 0;
 }
 
-.activityItem time {
+.activityDetail {
+    font-size: 12.5px;
+    color: var(--text-muted);
+}
+
+.activityMeta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 6px;
+    font-size: 12.5px;
     color: var(--text-muted);
     white-space: nowrap;
 }
 
-.activityDetail {
-    color: var(--text-muted);
+.activityMeta > * + *::before {
+    content: "·" / "";
+    margin-right: 6px;
 }
 
 @media (max-width: 540px) {
-    .activityItem time {
+    .activityMeta {
         white-space: normal;
     }
 }

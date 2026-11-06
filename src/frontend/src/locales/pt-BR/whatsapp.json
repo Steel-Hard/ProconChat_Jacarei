@@ -115,6 +115,7 @@
     },
     "history": {
         "heading": "Histórico de alterações",
+        "note": "Os valores do token e do App Secret não são registrados.",
         "empty": "Nenhuma alteração registrada.",
         "loadFailed": "Não foi possível carregar o histórico de alterações.",
         "unknownActor": "Usuário não identificado",

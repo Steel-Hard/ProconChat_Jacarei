@@ -15,22 +15,22 @@ function WhatsAppHistoryEntry({ entry }: Props) {
 
     return (
         <li className={css.activityItem}>
-            <div>
-                <strong>
+            <div className={css.activityMain}>
+                <span>
                     {t(`history.action.${entry.action}`, {
                         defaultValue: t("history.action.other")
                     })}
-                </strong>
-                <span className={css.activityDetail}>
-                    {entry.actor?.name ?? t("history.unknownActor")}
                 </span>
                 {entry.fields.length > 0 ? (
                     <span className={css.activityDetail}>{t("history.fields", { fields })}</span>
                 ) : null}
             </div>
-            <time dateTime={entry.createdAt}>
-                {parts ? t("dateTime", parts) : t("unknownDate")}
-            </time>
+            <span className={css.activityMeta}>
+                <span>{entry.actor?.name ?? t("history.unknownActor")}</span>
+                <time dateTime={entry.createdAt}>
+                    {parts ? t("dateTime", parts) : t("unknownDate")}
+                </time>
+            </span>
         </li>
     )
 }
