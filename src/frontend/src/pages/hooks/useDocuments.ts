@@ -30,16 +30,10 @@ export default function useDocuments() {
     }, [view?.sampleQuestions])
 
     const [previewGroup, setPreviewGroup] = useState<AttendeeGroup>("holder")
-    const [previewQuestionId, setPreviewQuestionId] = useState<string>(
-        sampleQuestions[0]?.id ?? ""
-    )
+    const [previewQuestionId, setPreviewQuestionId] = useState<string>(sampleQuestions[0]?.id ?? "")
 
     const selectedQuestion = useMemo(() => {
-        return (
-            sampleQuestions.find((q) => q.id === previewQuestionId) ??
-            sampleQuestions[0] ??
-            null
-        )
+        return sampleQuestions.find((q) => q.id === previewQuestionId) ?? sampleQuestions[0] ?? null
     }, [sampleQuestions, previewQuestionId])
 
     const activeGroupDocs = previewGroup === "holder" ? draft.holder : draft.representative

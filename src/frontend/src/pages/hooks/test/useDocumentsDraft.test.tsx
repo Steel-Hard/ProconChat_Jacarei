@@ -79,10 +79,9 @@ describe("useDocumentsDraft", () => {
     })
 
     it("descarta o rascunho quando a configuração do servidor muda", () => {
-        const { result, rerender } = renderHook(
-            ({ config }) => useDocumentsDraft(config),
-            { initialProps: { config: initialConfig } }
-        )
+        const { result, rerender } = renderHook(({ config }) => useDocumentsDraft(config), {
+            initialProps: { config: initialConfig }
+        })
 
         act(() => {
             result.current.actions.addItem("holder", "Documento local")

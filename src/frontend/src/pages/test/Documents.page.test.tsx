@@ -49,15 +49,13 @@ function stubDocumentsFetch(
         "fetch",
         vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
             const request = input instanceof Request ? input : null
-            const url = request
-                ? request.url
-                : typeof input === "string"
-                  ? input
-                  : input.toString()
+            const url = request ? request.url : typeof input === "string" ? input : input.toString()
             const method = request?.method ?? init?.method ?? "GET"
             const rawBody = request ? await request.text() : init?.body
             const body =
-                typeof rawBody === "string" ? (JSON.parse(rawBody) as Record<string, unknown>) : null
+                typeof rawBody === "string"
+                    ? (JSON.parse(rawBody) as Record<string, unknown>)
+                    : null
 
             if (url.endsWith("/api/v1/documents") && method === "GET") {
                 if (response.status && response.status >= 400) {
@@ -139,7 +137,10 @@ afterEach(() => {
 
 describe("DocumentsPage", () => {
     it("exibe mensagem de carregando inicialmente", async () => {
-        vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => {})))
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(() => new Promise<Response>(() => {}))
+        )
         await renderDocumentsPage()
 
         expect(screen.getByText("Carregando...")).toBeInTheDocument()
@@ -150,7 +151,9 @@ describe("DocumentsPage", () => {
         await renderDocumentsPage()
 
         expect(
-            await screen.findByText("Não foi possível carregar os documentos para atendimento presencial.")
+            await screen.findByText(
+                "Não foi possível carregar os documentos para atendimento presencial."
+            )
         ).toBeInTheDocument()
     })
 

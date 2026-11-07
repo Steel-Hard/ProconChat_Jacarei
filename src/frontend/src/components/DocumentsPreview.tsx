@@ -84,9 +84,7 @@ export default function DocumentsPreview({
 
             <div className={css.notices}>
                 {isUnsaved ? (
-                    <output className={css.unsavedNotice}>
-                        {t("preview.unsavedNotice")}
-                    </output>
+                    <output className={css.unsavedNotice}>{t("preview.unsavedNotice")}</output>
                 ) : null}
 
                 {isQuestionEmpty ? (
@@ -113,7 +111,7 @@ export default function DocumentsPreview({
                             if (isDuplicate) {
                                 return (
                                     <span key={idx}>
-                                        {"• "}
+                                        {t("preview.bullet")}
                                         <mark
                                             className={css.repeatedItem}
                                             title={t("preview.duplicateTooltip")}

@@ -14,20 +14,12 @@ const DEFAULT_SAMPLE_QUESTIONS: SampleQuestion[] = [
     {
         id: "2",
         title: "Empréstimo já quitado com desconto em folha",
-        documents: [
-            "RG com CPF",
-            "Descontos na folha de pagamento",
-            "Comprovantes de pagamento"
-        ]
+        documents: ["RG com CPF", "Descontos na folha de pagamento", "Comprovantes de pagamento"]
     },
     {
         id: "3",
         title: "Contrato não cumprido pelo fornecedor",
-        documents: [
-            "Cópia do contrato",
-            "Comprovante de pagamento",
-            "Protocolos de atendimento"
-        ]
+        documents: ["Cópia do contrato", "Comprovante de pagamento", "Protocolos de atendimento"]
     },
     {
         id: "4",

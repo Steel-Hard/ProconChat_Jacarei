@@ -1,10 +1,4 @@
-import {
-    useState,
-    useRef,
-    useEffect,
-    type FormEvent,
-    type KeyboardEvent
-} from "react"
+import { useState, useRef, useEffect, type FormEvent, type KeyboardEvent } from "react"
 import { useTranslation } from "react-i18next"
 import css from "@/styles/components/documentItem.module.css"
 
@@ -96,11 +90,7 @@ export default function DocumentItem({
     return (
         <li className={css.item}>
             <div className={css.textWrapper}>
-                <button
-                    type="button"
-                    className={css.textButton}
-                    onClick={handleStartEdit}
-                >
+                <button type="button" className={css.textButton} onClick={handleStartEdit}>
                     {description}
                 </button>
             </div>
@@ -113,7 +103,7 @@ export default function DocumentItem({
                     aria-label={t("items.moveUpAria", { item: description })}
                     title={t("items.moveUp")}
                 >
-                    {"↑"}
+                    {t("items.moveUpIcon")}
                 </button>
                 <button
                     type="button"
@@ -123,7 +113,7 @@ export default function DocumentItem({
                     aria-label={t("items.moveDownAria", { item: description })}
                     title={t("items.moveDown")}
                 >
-                    {"↓"}
+                    {t("items.moveDownIcon")}
                 </button>
                 <button
                     type="button"

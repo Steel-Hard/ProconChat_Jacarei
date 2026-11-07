@@ -78,11 +78,7 @@ export default function DocumentGroup({
                     onChange={(e) => setNewText(e.target.value)}
                     aria-label={`${t("items.addPlaceholder")} (${title})`}
                 />
-                <button
-                    type="submit"
-                    className={css.addButton}
-                    disabled={!newText.trim()}
-                >
+                <button type="submit" className={css.addButton} disabled={!newText.trim()}>
                     {t("items.addButton")}
                 </button>
             </form>

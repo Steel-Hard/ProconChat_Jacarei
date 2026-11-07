@@ -72,9 +72,7 @@ export default function DocumentsPage() {
                                 description={t("groups.representative.description")}
                                 items={draft.representative}
                                 emptyAlert={t("groups.representative.emptyAlert")}
-                                onAddItem={(desc) =>
-                                    draft.actions.addItem("representative", desc)
-                                }
+                                onAddItem={(desc) => draft.actions.addItem("representative", desc)}
                                 onEditItem={(index, desc) =>
                                     draft.actions.editItem("representative", index, desc)
                                 }
