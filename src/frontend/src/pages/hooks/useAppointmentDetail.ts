@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next"
 import { useLocation, useNavigate, useParams } from "react-router-dom"
 import hasPermission from "@/navigation/hasPermission"
 import useAppointmentActions from "@/pages/hooks/useAppointmentActions"
+import useAppointmentCancellation from "@/pages/hooks/useAppointmentCancellation"
 import useAppointmentDetailView from "@/pages/hooks/useAppointmentDetailView"
 import ROUTES from "@/routers/paths"
 import appointmentsApi from "@/store/api/appointments.api"
@@ -51,6 +52,7 @@ function useAppointmentDetail() {
     const loading = detail === undefined && !notFound && !failed
     const view = useAppointmentDetailView(detail)
     const actions = useAppointmentActions({ detail, canManage })
+    const cancellation = useAppointmentCancellation({ detail, canManage })
 
     return {
         title: view?.title ?? t("meta.fallbackTitle"),
@@ -59,6 +61,7 @@ function useAppointmentDetail() {
         failed,
         view,
         actions,
+        cancellation,
         retry: () => void query.refetch(),
         back: () => void navigate(returnPathOf(location.state))
     }

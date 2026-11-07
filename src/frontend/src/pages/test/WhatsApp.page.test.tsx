@@ -100,6 +100,40 @@ async function renderPage(handlers: Record<string, Handler> = {}, view = setting
             status: 200,
             body: { data: { items: [] } }
         }),
+        "GET /api/v1/whatsapp/settings/templates": () => ({
+            status: 200,
+            body: {
+                data: {
+                    checkedAt: "2026-11-04T14:00:00.000Z",
+                    templates: [
+                        {
+                            kind: "CANCELLATION",
+                            name: "aviso_cancelamento",
+                            languageCode: "pt_BR",
+                            status: "APPROVED",
+                            metaStatus: "APPROVED"
+                        },
+                        {
+                            kind: "REMINDER",
+                            name: "lembrete_atendimento",
+                            languageCode: "pt_BR",
+                            status: "APPROVED",
+                            metaStatus: "APPROVED"
+                        }
+                    ]
+                }
+            }
+        }),
+        "GET /api/v1/whatsapp/settings/number-status": () => ({
+            status: 200,
+            body: {
+                data: {
+                    checkedAt: "2026-11-04T14:00:00.000Z",
+                    qualityRating: "HIGH",
+                    messagingLimit: { tier: "TIER_250", dailyLimit: 250, usedLast24h: 50 }
+                }
+            }
+        }),
         ...handlers
     })
     const { default: createStore } = await import("@/store/createStore")
@@ -132,7 +166,11 @@ function group(name: string): HTMLElement {
 }
 
 function firstStep(): string | null {
-    return within(screen.getByRole("list")).getAllByRole("listitem")[0].textContent
+    const heading = screen.getByRole("heading", { name: "Configure no painel da Meta" })
+    const section = heading.closest("section")
+    return section === null
+        ? null
+        : (within(section).getAllByRole("listitem")[0]?.textContent ?? null)
 }
 
 afterEach(() => {
@@ -454,7 +492,9 @@ describe("WhatsAppPage", () => {
         await renderPage()
         await loaded()
 
-        const steps = within(screen.getByRole("list")).getAllByRole("listitem")
+        const heading = screen.getByRole("heading", { name: "Configure no painel da Meta" })
+        const setupSection = heading.closest("section") as HTMLElement
+        const steps = within(setupSection).getAllByRole("listitem")
 
         expect(steps.map((step) => step.textContent)).toEqual([
             "Use um token permanente de usuário do sistema (Gerenciador de Negócios › Usuários do sistema › Gerar token). O token temporário do painel de desenvolvedor expira em 24 horas e o chatbot para de funcionar.",
@@ -718,15 +758,130 @@ describe("WhatsAppPage", () => {
         ).toHaveAttribute("aria-checked", "false")
     })
 
-    it("mostra os blocos deste issue sem antecipar qualidade, limite ou modelos", async () => {
+    it("mostra modelos, qualidade, limite e permite atualizar os estados da Meta", async () => {
+        const { user, calls } = await renderPage()
+        await loaded()
+
+        expect(await screen.findByText("Modelos de mensagem")).toBeInTheDocument()
+        expect(screen.getByText("Aviso de cancelamento")).toBeInTheDocument()
+        expect(screen.getAllByText("Aprovado")).toHaveLength(2)
+        expect(screen.getByText("Qualidade do número na Meta")).toBeInTheDocument()
+        expect(screen.getByText("Alta")).toBeInTheDocument()
+        expect(
+            screen.getByText("Limite diário: 250 conversas iniciadas pela empresa (TIER_250).")
+        ).toBeInTheDocument()
+        expect(
+            screen.getByText("50 conversas iniciadas pela empresa usadas nas últimas 24 horas.")
+        ).toBeInTheDocument()
+
+        await user.click(screen.getByRole("button", { name: "Atualizar status da Meta" }))
+        await waitFor(() => {
+            expect(callsTo(calls, "GET", "/api/v1/whatsapp/settings/templates")).toHaveLength(2)
+            expect(callsTo(calls, "GET", "/api/v1/whatsapp/settings/number-status")).toHaveLength(2)
+        })
+    })
+
+    it("alerta quando um modelo não está aprovado e o número está perto do limite", async () => {
+        await renderPage({
+            "GET /api/v1/whatsapp/settings/templates": () => ({
+                status: 200,
+                body: {
+                    data: {
+                        checkedAt: "2026-11-04T14:00:00.000Z",
+                        templates: [
+                            {
+                                kind: "CANCELLATION",
+                                name: "aviso_cancelamento",
+                                languageCode: "pt_BR",
+                                status: "REJECTED",
+                                metaStatus: "REJECTED"
+                            }
+                        ]
+                    }
+                }
+            }),
+            "GET /api/v1/whatsapp/settings/number-status": () => ({
+                status: 200,
+                body: {
+                    data: {
+                        checkedAt: "2026-11-04T14:00:00.000Z",
+                        qualityRating: "LOW",
+                        messagingLimit: { tier: "TIER_250", dailyLimit: 100, usedLast24h: 85 }
+                    }
+                }
+            })
+        })
+        await loaded()
+
+        expect(
+            await screen.findByText(
+                "Enquanto este modelo não for aprovado, os avisos de cancelamento não serão enviados."
+            )
+        ).toHaveAttribute("role", "alert")
+        expect(
+            screen.getByText(
+                "Perto do limite diário da Meta. Lembretes e avisos podem deixar de ser enviados."
+            )
+        ).toHaveAttribute("role", "alert")
+        expect(screen.getByText("A Meta pode limitar os envios deste número.")).toBeInTheDocument()
+    })
+
+    it("não mostra o alerta de limite antes de ultrapassar 80%", async () => {
+        await renderPage({
+            "GET /api/v1/whatsapp/settings/number-status": () => ({
+                status: 200,
+                body: {
+                    data: {
+                        checkedAt: "2026-11-04T14:00:00.000Z",
+                        qualityRating: "MEDIUM",
+                        messagingLimit: { tier: "TIER_250", dailyLimit: 100, usedLast24h: 80 }
+                    }
+                }
+            })
+        })
+        await loaded()
+
+        expect(
+            await screen.findByRole("progressbar", { name: "Uso do limite diário de envios" })
+        ).toHaveValue(80)
+        expect(
+            screen.queryByText(
+                "Perto do limite diário da Meta. Lembretes e avisos podem deixar de ser enviados."
+            )
+        ).not.toBeInTheDocument()
+    })
+
+    it("mostra alertas e motivo quando a Meta não pode ser consultada", async () => {
+        await renderPage({
+            "GET /api/v1/whatsapp/settings/templates": () => ({
+                status: 422,
+                body: { error: { code: "INVALID_TOKEN", message: "x" } }
+            }),
+            "GET /api/v1/whatsapp/settings/number-status": () => ({
+                status: 422,
+                body: { error: { code: "META_UNAVAILABLE", message: "x" } }
+            })
+        })
+        await loaded()
+
+        expect(
+            await screen.findByText("Token inválido ou expirado", { selector: '[role="alert"]' })
+        ).toBeInTheDocument()
+        expect(
+            screen.getByText("Não foi possível falar com a Meta. Tente de novo em instantes", {
+                selector: '[role="alert"]'
+            })
+        ).toBeInTheDocument()
+    })
+
+    it("continua mostrando a conexão e o histórico junto com os dados da Meta", async () => {
         await renderPage()
         await loaded()
 
         expect(screen.getByText("Estado do número")).toBeInTheDocument()
         expect(screen.getByText("Histórico de alterações")).toBeInTheDocument()
-        expect(screen.queryByText("Qualidade do número na Meta")).not.toBeInTheDocument()
-        expect(screen.queryByText("Limite de envios da Meta")).not.toBeInTheDocument()
-        expect(screen.queryByText("Modelos de mensagem")).not.toBeInTheDocument()
+        expect(await screen.findByText("Qualidade do número na Meta")).toBeInTheDocument()
+        expect(screen.getByText("Modelos de mensagem")).toBeInTheDocument()
         expect(screen.queryByText("Controles do protótipo")).not.toBeInTheDocument()
     })
 

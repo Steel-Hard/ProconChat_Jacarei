@@ -19,7 +19,11 @@ const ACTION_CODES: readonly string[] = [
     "INVALID_ASSIGNEE",
     "ASSIGNEE_BUSY",
     "RECORD_NOT_CORRECTABLE",
-    "PERMISSION_REQUIRED"
+    "PERMISSION_REQUIRED",
+    "CANCEL_AFTER_START",
+    "NOTIFICATION_NOT_RETRYABLE",
+    "CITIZEN_PHONE_UNAVAILABLE",
+    "NOTIFICATION_AFTER_START"
 ] satisfies AppointmentActionCode[]
 
 function errorCodeOf(data: unknown): string | null {

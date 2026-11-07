@@ -96,6 +96,55 @@
             "stale": "Não há eventos do webhook há mais de 24 horas. Confira se o webhook está verificado e se o campo \"messages\" está assinado no painel da Meta."
         }
     },
+    "metaStatus": {
+        "refresh": "Atualizar status da Meta",
+        "checkedAt": "Consultado em {{date}} às {{time}}",
+        "loadFailed": "Não foi possível consultar a Meta. Confira as credenciais e tente novamente.",
+        "templates": {
+            "heading": "Modelos de mensagem",
+            "empty": "A Meta não retornou modelos configurados.",
+            "metaStatus": "Status informado pela Meta: {{status}}",
+            "kind": {
+                "CANCELLATION": "Aviso de cancelamento",
+                "REMINDER": "Lembrete do atendimento"
+            },
+            "status": {
+                "APPROVED": "Aprovado",
+                "PENDING": "Em análise",
+                "REJECTED": "Rejeitado",
+                "NOT_FOUND": "Não encontrado",
+                "OTHER": "Outro status"
+            },
+            "notApproved": {
+                "CANCELLATION": "Enquanto este modelo não for aprovado, os avisos de cancelamento não serão enviados.",
+                "REMINDER": "Enquanto este modelo não for aprovado, os lembretes não serão enviados."
+            }
+        },
+        "number": {
+            "heading": "Qualidade e limite de envios da Meta",
+            "qualityLabel": "Qualidade do número na Meta",
+            "quality": {
+                "HIGH": "Alta",
+                "MEDIUM": "Média",
+                "LOW": "Baixa",
+                "UNKNOWN": "Desconhecida"
+            },
+            "qualityDescription": {
+                "HIGH": "A qualidade está alta e não há indicação atual de restrição.",
+                "MEDIUM": "Acompanhe a qualidade: avaliações negativas podem reduzir a capacidade de envio.",
+                "LOW": "A Meta pode limitar os envios deste número.",
+                "UNKNOWN": "A Meta não informou a qualidade atual do número."
+            },
+            "limitLabel": "Limite de envios da Meta",
+            "limitUnknown": "Limite diário não informado pela Meta.",
+            "tierUnknown": "categoria não informada",
+            "dailyLimit": "Limite diário: {{count}} conversas iniciadas pela empresa ({{tier}}).",
+            "used_one": "{{count}} conversa iniciada pela empresa usada nas últimas 24 horas.",
+            "used_other": "{{count}} conversas iniciadas pela empresa usadas nas últimas 24 horas.",
+            "usageProgress": "Uso do limite diário de envios",
+            "nearLimit": "Perto do limite diário da Meta. Lembretes e avisos podem deixar de ser enviados."
+        }
+    },
     "deliveryFailures": {
         "heading": "Falhas de entrega nas últimas 24 horas",
         "count_zero": "Nenhuma falha",

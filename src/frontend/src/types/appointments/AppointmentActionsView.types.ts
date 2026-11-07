@@ -4,6 +4,7 @@ type AppointmentActionsView = {
     items: AppointmentActionItemView[]
     finalText: string | null
     readOnlyText: string | null
+    cancelUnavailableText: string | null
     error: string | null
 }
 

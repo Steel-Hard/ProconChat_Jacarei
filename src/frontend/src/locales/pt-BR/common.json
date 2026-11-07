@@ -164,6 +164,10 @@
             "ASSIGNEE_BUSY": "O funcionário já tem outro agendamento neste horário ({{protocol}}).",
             "RECORD_NOT_CORRECTABLE": "Este registro não pode mais ser corrigido.",
             "PERMISSION_REQUIRED": "Sua conta não tem permissão para esta ação.",
+            "CANCEL_AFTER_START": "Não é possível cancelar depois do horário do atendimento. Registre como não compareceu.",
+            "NOTIFICATION_NOT_RETRYABLE": "Não há aviso de cancelamento com falha para reenviar.",
+            "CITIZEN_PHONE_UNAVAILABLE": "O agendamento não tem telefone para enviar o aviso.",
+            "NOTIFICATION_AFTER_START": "O horário do atendimento já passou e o aviso não pode mais ser enviado.",
             "forbidden": "Sua conta não tem permissão para esta ação.",
             "notFound": "Agendamento não encontrado.",
             "failed": "Não foi possível concluir a ação. Tente de novo."
@@ -173,7 +177,9 @@
             "attended": "{{protocol}} marcado como atendido.",
             "no_show": "{{protocol}} marcado como não compareceu.",
             "assign": "Agendamento {{protocol}} atribuído a {{name}}.",
-            "correct_record": "Registro do agendamento {{protocol}} corrigido."
+            "correct_record": "Registro do agendamento {{protocol}} corrigido.",
+            "cancel": "Agendamento {{protocol}} cancelado e aviso enviado ao cidadão.",
+            "retryCancellationNotice": "Aviso de cancelamento enviado ao cidadão."
         }
     }
 }

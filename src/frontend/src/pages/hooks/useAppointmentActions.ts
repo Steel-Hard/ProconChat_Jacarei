@@ -260,10 +260,24 @@ function useAppointmentActions({ detail, canManage }: Options) {
             : []
         const finalKey = FINAL_KEYS[detail.status]
 
+        if (canManage && detail.available_actions.cancel.allowed) {
+            items.push({
+                kind: "button",
+                action: "cancel",
+                label: t("actions.buttons.cancel")
+            })
+        }
+
         view = {
             items,
             finalText: finalKey ? t(finalKey) : null,
             readOnlyText: !canManage && active ? t("actions.readOnly") : null,
+            cancelUnavailableText:
+                canManage &&
+                detail.available_actions.cancel.allowed === false &&
+                detail.available_actions.cancel.code === "CANCEL_AFTER_START"
+                    ? t("actions.cancel.afterStart")
+                    : null,
             error: errorKey ? t(`common:${errorKey}`) : null
         }
     }
