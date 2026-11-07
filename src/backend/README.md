@@ -269,8 +269,9 @@ em `POST`/`PUT` sem origem confiável e `400 BAD_REQUEST` `"Malformed JSON body"
 - `GET /delivery-failures` lê `OutboundMessages` com `status = 'FAILED'` e `status_at` nas últimas
   24h (exclusivo), da mais recente para a mais antiga, no máximo 50. `count` é o total da janela.
   `kind`: `REPLY` (resposta comum; o Gateway não informa o id das respostas, então toda falha de id
-  desconhecido entra assim), `CANCELLATION` (aviso de cancelamento, com o agendamento), e
-  `CONFIRMATION`, `PAUSED` e `REMINDER`, reservados. Sem telefone, texto nem id da mensagem na Meta.
+  desconhecido entra assim), `CANCELLATION` (aviso de cancelamento, com o agendamento), `REMINDER`
+  (lembrete antes do atendimento, com o agendamento) e `CONFIRMATION` e `PAUSED`, reservados. Sem
+  telefone, texto nem id da mensagem na Meta.
 - `GET /history` lê `AuditLog` da área `whatsapp`, da alteração mais recente para a mais antiga
   (desempate pelo `id`), no máximo 50. `action`: `credentials_saved` (com `fields`, o subconjunto de
   `phoneNumberId` e `businessAccountId` quando mudaram, e de `accessToken` e `appSecret` quando foram
@@ -289,8 +290,8 @@ em `POST`/`PUT` sem origem confiável e `400 BAD_REQUEST` `"Malformed JSON body"
   `messaging_limit_tier` está obsoleto na Meta). `qualityRating`: `GREEN` → `HIGH`, `YELLOW` →
   `MEDIUM`, `RED` → `LOW`, qualquer outro (inclusive `NA`) → `UNKNOWN`. `tier` é o valor bruto da Meta,
   e `dailyLimit` só é preenchido para `TIER_250`. `usedLast24h` conta no banco os telefones distintos
-  (`Sessions.phone_hash`) com `CITIZEN_NOTIFIED` de `kind` `CANCELLATION` ou `REMINDER` em
-  `[agora - 24h, agora]`.
+  (`Sessions.phone_hash`) com `CITIZEN_NOTIFIED` de `kind` `CANCELLATION` ou `REMINDER`, ou
+  `REMINDER_SENT`, em `[agora - 24h, agora]`.
 
 O cadastro dos modelos na Meta está em [`.docs/whatsapp/modelos-de-mensagem.md`](../../.docs/whatsapp/modelos-de-mensagem.md).
 
@@ -425,12 +426,12 @@ comparado em tempo constante (`utils/internalToken.ts`) e `Cache-Control: no-sto
   e sem criar a linha) e aplica os status em `OutboundMessages`. `FAILED` vence qualquer status, entre
   `SENT < DELIVERED < READ` o status só avança, e depois de `FAILED` nada muda. Um `failed` de id
   desconhecido vira uma linha `REPLY`; os demais status de id desconhecido são ignorados. Quando uma
-  linha `CANCELLATION` passa a `FAILED`, entra `CITIZEN_NOTIFICATION_FAILED` no histórico do agendamento,
-  o que libera o "Tentar novamente".
+  linha `CANCELLATION` ou `REMINDER` passa a `FAILED`, entra `CITIZEN_NOTIFICATION_FAILED` no histórico
+  do agendamento (no cancelamento, isso libera o "Tentar novamente").
 
-O aviso de cancelamento grava a própria linha: `CANCELLATION`/`SENT` com o id que o Gateway devolveu,
-ou `CANCELLATION`/`FAILED` sem id quando o envio é recusado na hora (essa falha também conta em
-`GET /delivery-failures`).
+O aviso de cancelamento e o lembrete gravam a própria linha: `CANCELLATION`/`SENT` ou `REMINDER`/`SENT`
+com o id que o Gateway devolveu, ou `CANCELLATION`/`FAILED` ou `REMINDER`/`FAILED` sem id quando o envio
+é recusado na hora (essa falha também conta em `GET /delivery-failures`).
 
 Em produção o Caddy responde `404` para `/api/v1/internal*` e o `deploy.sh` confere isso. O gateway
 alcança o backend só pela rede interna do Docker.
@@ -984,6 +985,31 @@ marcado (no horário ou depois, `409 CANCEL_AFTER_START`).
   (`409 NOTIFICATION_IN_PROGRESS`), suficiente porque o backend roda numa instância só. Dentro da trava
   o alvo é relido, e um aviso que já saiu (`CITIZEN_NOTIFIED`) recusa o reenvio com
   `409 NOTIFICATION_NOT_RETRYABLE`.
+
+### Lembrete antes do atendimento (#74)
+
+- A cada 60 s (`startPeriodicSweep` em `index.ts`), `sweepAppointmentReminders`
+  (`services/appointmentReminder.service.ts`) busca os agendamentos elegíveis em
+  `appointmentReminderRepository.findDueTargets(now)`:
+  - `status IN ('PENDING', 'CONFIRMED')`, `anonymized_at IS NULL` e `appointment_datetime > now`;
+  - versão efetiva da agenda na data local do atendimento (`ScheduleChanges` com a maior
+    `effective_from <= data local`, ou `ScheduleSettings` sem mudança agendada) com
+    `reminder_enabled = true` e `appointment_datetime <= now + reminder_hours`;
+  - sem nenhum evento anterior de lembrete (`REMINDER_SENT`, ou `CITIZEN_NOTIFIED` /
+    `CITIZEN_NOTIFICATION_FAILED` com `data->>'kind' = 'REMINDER'`).
+- Para cada alvo, decifra `phone_encrypted`, monta os 7 parâmetros de `MODELO_LEMBRETE_ATENDIMENTO`
+  (`lembrete_atendimento`, `pt_BR`) por `parametrosLembreteAtendimento` (usando os documentos gravados
+  no agendamento em `Appointments.documents_sent`, nunca a configuração atual de `AttendanceDocuments`,
+  e o endereço da versão efetiva na data do atendimento) e chama `gatewayClient.sendTemplate`.
+- `recordReminderOutcome` trava a linha do agendamento (`FOR UPDATE`), confere de novo que continua
+  `PENDING` ou `CONFIRMED` e sem evento de lembrete, e grava:
+  - no sucesso (`SENT`): `REMINDER_SENT` em `AppointmentEvents` (com `actor_user_id NULL`) e
+    `REMINDER`/`SENT` em `OutboundMessages` com o hash do `providerMessageId` (se o webhook `FAILED`
+    chegou antes da gravação, preserva `FAILED` e acrescenta `CITIZEN_NOTIFICATION_FAILED` 1 ms depois);
+  - na falha síncrona (`FAILED`, inclusive telefone ausente ou ilegível, ou Gateway não configurado):
+    `CITIZEN_NOTIFICATION_FAILED` (`{ kind: "REMINDER" }`) em `AppointmentEvents` e
+    `REMINDER`/`FAILED` sem hash em `OutboundMessages`. Cada agendamento tem uma única tentativa de
+    envio (não há reenvio automático nem botão de reenvio para lembretes).
 
 Se duas ações chegam juntas (por exemplo, Atendido e Não compareceu), a segunda espera a trava, lê o
 status já alterado e recebe o `409` coerente com a ação que ganhou (`ALREADY_ATTENDED` ou

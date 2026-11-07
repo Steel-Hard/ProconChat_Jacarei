@@ -66,7 +66,7 @@ Não são containers separados: são módulos de código, organizados no padrão
 | **Conversa** | Máquina de estados do bot: saudação, listas, "resolveu?", agendamento, retorno, timeout de 30 minutos, pausa | ✅ saudação, listas, "resolveu?", agendamento, timeout com varredura periódica e pausa (#55, #56, #83) · ✅ retorno de quem já tem agendamento (#59) |
 | **Motor de Decisão** | Lê categorias e perguntas do banco e monta as opções e a resposta final. Não guarda estado | ✅ com paginação e categoria oculta |
 | **Agenda** | Calcula horários livres a partir da configuração; cria, remarca e cancela agendamentos; controla vagas com concorrência | ✅ horários livres e reserva com trava por horário (#56) · ✅ remarcar e cancelar pelo cidadão (#59) |
-| **Mensagens ao cidadão** | Monta os textos fixos (confirmação, pausa) e os modelos (cancelamento, lembrete); registra falhas de envio | ✅ textos fixos de confirmação e de pausa · ✅ modelo do aviso de cancelamento, com a falha síncrona de envio no histórico e o reenvio (#67) · ✅ falhas de entrega assíncronas (#88), com a do aviso de cancelamento no histórico do agendamento · 🟠 lembrete (#74) |
+| **Mensagens ao cidadão** | Monta os textos fixos (confirmação, pausa) e os modelos (cancelamento, lembrete); registra falhas de envio | ✅ textos fixos de confirmação e de pausa · ✅ modelo do aviso de cancelamento, com a falha síncrona de envio no histórico e o reenvio (#67) · ✅ falhas de entrega assíncronas (#88), com a do aviso de cancelamento e a do lembrete no histórico do agendamento · ✅ lembrete antes do atendimento na varredura periódica (#74) |
 | **Registro de eventos** | Grava cada passo da conversa e o desfecho da sessão | ✅ (#16) |
 | **API do painel** | Agendamentos, conteúdo, configuração, usuários, relatórios, configuração do WhatsApp | ✅ agendamentos: lista, detalhe, assumir, atendido e não compareceu (#60), usados pelas telas de Agendamentos e Detalhe (#85, #86); atribuir, corrigir registro, observações internas, lista de funcionários e calendário semanal (#87, telas na #126); configuração do WhatsApp (#83); contas e permissões: listar, criar, salvar em lote, redefinir senha e agendamentos futuros de uma conta (#62, tela na #123) · 🟠 demais |
 | **Autenticação e permissões** | Login, sessão, `requirePermission` com 8 permissões marcadas por conta; o Admin tem todas | ✅ login, sessão, troca de senha e `requirePermission` (#57, #84); permissões reais de cada conta, lidas a cada requisição, e regras contra escalada validadas na API (#62) |
@@ -113,7 +113,7 @@ O Gateway repassa os status de entrega uma vez por webhook aceito, antes das men
 
 ### Mensagem iniciada pelo sistema
 
-Aviso de cancelamento pela equipe (✅ #67) e lembrete (🟠 #74). O Backend decifra o telefone guardado no agendamento e pede ao Gateway o envio de um **modelo aprovado pela Meta**, porque fora da janela de 24h não se pode enviar texto livre. Ver [decisão 005](../decisoes/005-mensagens-ao-cidadao.md).
+Aviso de cancelamento pela equipe (✅ #67) e lembrete antes do atendimento (✅ #74). O Backend decifra o telefone guardado no agendamento e pede ao Gateway o envio de um **modelo aprovado pela Meta**, porque fora da janela de 24h não se pode enviar texto livre. Ver [decisão 005](../decisoes/005-mensagens-ao-cidadao.md).
 
 ### Configuração do WhatsApp
 
