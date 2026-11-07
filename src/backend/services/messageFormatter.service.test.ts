@@ -18,9 +18,11 @@ import {
     formatarErroSlot,
     ERRO_NOME,
     CORPO_AVISO_CANCELAMENTO,
+    CORPO_LEMBRETE_ATENDIMENTO,
     MODELO_AVISO_CANCELAMENTO,
     MODELO_LEMBRETE_ATENDIMENTO,
     parametrosAvisoCancelamento,
+    parametrosLembreteAtendimento,
     renderizarModelo,
     formatarQuando,
     MENU_RETORNO,
@@ -655,6 +657,78 @@ describe("messageFormatter.service", () => {
             expect(CORPO_AVISO_CANCELAMENTO).toBe(
                 "Olá, {{1}}. Seu agendamento {{2}} no PROCON Jacareí, marcado para {{3}} às {{4}}, foi cancelado. Motivo: {{5}}. Para agendar novamente, envie uma mensagem para este número.",
             )
+            expect(CORPO_LEMBRETE_ATENDIMENTO).toBe(
+                "Olá, {{1}}. Lembrete do seu atendimento no PROCON Jacareí: {{2}}, {{3}}, às {{4}} (protocolo {{5}}). Endereço: {{6}}. Traga: {{7}}. Se não puder comparecer, remarque ou cancele respondendo a esta mensagem.",
+            )
+        })
+    })
+
+    describe("Lembrete do atendimento (#74)", () => {
+        const lembrete = {
+            name: "  Maria  da Silva",
+            protocol: "1A2B3C4D",
+            appointmentDatetime: new Date("2026-11-05T17:00:00.000Z"),
+            unitAddress: "Rua do Procon, 100",
+            unitAddressComplement: "Sala 1",
+            documentsSent: {
+                group: ["RG ou CNH"],
+                question: ["comprovante de residência"],
+            },
+        }
+
+        test("monta os 7 parâmetros na ordem e renderiza exatamente como a prévia da spec", () => {
+            const parametros = parametrosLembreteAtendimento(lembrete)
+
+            expect(parametros).toEqual([
+                "Maria",
+                "quinta-feira",
+                "05/11",
+                "14:00",
+                "1A2B3C4D",
+                "Rua do Procon, 100 (Sala 1)",
+                "RG ou CNH; comprovante de residência",
+            ])
+            expect(renderizarModelo(CORPO_LEMBRETE_ATENDIMENTO, parametros)).toBe(
+                "Olá, Maria. Lembrete do seu atendimento no PROCON Jacareí: quinta-feira, 05/11, às 14:00 (protocolo 1A2B3C4D). Endereço: Rua do Procon, 100 (Sala 1). Traga: RG ou CNH; comprovante de residência. Se não puder comparecer, remarque ou cancele respondendo a esta mensagem.",
+            )
+        })
+
+        test("usa o dia da semana, a data e a hora de Brasília perto da virada de dia em UTC", () => {
+            const parametros = parametrosLembreteAtendimento({
+                ...lembrete,
+                appointmentDatetime: new Date("2026-11-01T01:30:00.000Z"),
+            })
+
+            expect(parametros.slice(1, 4)).toEqual(["sábado", "31/10", "22:30"])
+        })
+
+        test("omite os parênteses em {{6}} quando o complemento é nulo ou só espaços", () => {
+            expect(parametrosLembreteAtendimento({ ...lembrete, unitAddressComplement: null })[5]).toBe("Rua do Procon, 100")
+            expect(parametrosLembreteAtendimento({ ...lembrete, unitAddressComplement: "   " })[5]).toBe("Rua do Procon, 100")
+        })
+
+        test("junta documentos do grupo e da pergunta numa linha só, removendo quebras de linha, tabs e espaços múltiplos", () => {
+            const parametros = parametrosLembreteAtendimento({
+                ...lembrete,
+                unitAddress: "Rua do Procon,\n100     Centro",
+                unitAddressComplement: "2º andar\tSala 1",
+                documentsSent: {
+                    group: ["RG\nou CNH", "  CPF   do titular  "],
+                    question: ["Nota\tfiscal", "   "],
+                },
+            })
+
+            expect(parametros[5]).toBe("Rua do Procon, 100 Centro (2º andar Sala 1)")
+            expect(parametros[6]).toBe("RG ou CNH; CPF do titular; Nota fiscal")
+        })
+
+        test("usa documento oficial com foto quando a lista de documentos do agendamento está vazia", () => {
+            const parametros = parametrosLembreteAtendimento({
+                ...lembrete,
+                documentsSent: { group: [], question: [] },
+            })
+
+            expect(parametros[6]).toBe("documento oficial com foto")
         })
     })
 
