@@ -170,7 +170,8 @@
         "buttons": {
             "claim": "Assumir para mim",
             "attended": "Marcar como atendido",
-            "noShow": "Marcar como não compareceu"
+            "noShow": "Marcar como não compareceu",
+            "correctRecord": "Corrigir registro"
         },
         "waiting": {
             "attended": "Marcar como atendido: disponível a partir do dia do atendimento.",
@@ -199,7 +200,36 @@
                 "description": "O agendamento {{protocol}} passa a Não compareceu.",
                 "confirm": "Marcar como não compareceu"
             },
+            "correctRecord": {
+                "title": "Corrigir registro do agendamento?",
+                "description": "O registro será restaurado ao estado anterior ao atendimento.",
+                "confirm": "Corrigir registro"
+            },
             "alsoClaim": "{{description}} Ele também será assumido por você."
+        },
+        "correctRecord": {
+            "warning": {
+                "busy": "Registro corrigido, mas o responsável está ocupado em outro agendamento ({{protocol}}).",
+                "unavailable": "Registro corrigido, mas o responsável anterior está indisponível. {{count}} funcionário(s) estão livres nesse horário.",
+                "noStaff": "Registro corrigido, mas ninguém está livre para atender nesse horário."
+            }
         }
+    },
+    "assignment": {
+        "title": "Atribuir a outro funcionário",
+        "chooseStaff": "Selecione um funcionário",
+        "assign": "Atribuir agendamento",
+        "staffError": "Não foi possível carregar a lista de funcionários."
+    },
+    "notes": {
+        "title": "Observações internas",
+        "visibility": "Visíveis apenas para a equipe do PROCON e nunca enviadas ao cidadão.",
+        "placeholder": "Escreva uma observação interna",
+        "add": "Adicionar observação",
+        "success": "Observação adicionada.",
+        "error": "Não foi possível adicionar a observação. Tente novamente.",
+        "empty": "Nenhuma observação interna.",
+        "author": "Autor",
+        "date": "Data"
     }
 }

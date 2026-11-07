@@ -36,6 +36,7 @@ function buildAppointmentDetail(overrides: Partial<AppointmentDetail> = {}): App
                 created_at: "2026-10-18T13:46:05.141Z"
             }
         ],
+        notes: [],
         timeline: [
             {
                 id: "1",
@@ -62,7 +63,12 @@ function buildAppointmentDetail(overrides: Partial<AppointmentDetail> = {}): App
         available_actions: {
             claim: { allowed: true, code: null },
             attended: { allowed: false, code: "ATTENDANCE_NOT_YET_AVAILABLE" },
-            no_show: { allowed: false, code: "NO_SHOW_NOT_YET_AVAILABLE" }
+            no_show: { allowed: false, code: "NO_SHOW_NOT_YET_AVAILABLE" },
+            assign: { allowed: false, code: "PERMISSION_REQUIRED" },
+            correct_record: { allowed: false, code: "RECORD_NOT_CORRECTABLE" },
+            cancel: { allowed: false, code: null },
+            retry_cancellation_notice: { allowed: false, code: null },
+            add_note: { allowed: false, code: "PERMISSION_REQUIRED" }
         },
         ...overrides
     }

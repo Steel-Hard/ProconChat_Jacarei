@@ -14,7 +14,12 @@ const DUE = buildAppointmentDetail({
     available_actions: {
         claim: { allowed: true, code: null },
         attended: { allowed: true, code: null },
-        no_show: { allowed: true, code: null }
+        no_show: { allowed: true, code: null },
+        assign: { allowed: false, code: "PERMISSION_REQUIRED" },
+        correct_record: { allowed: false, code: "RECORD_NOT_CORRECTABLE" },
+        cancel: { allowed: false, code: null },
+        retry_cancellation_notice: { allowed: false, code: null },
+        add_note: { allowed: false, code: "PERMISSION_REQUIRED" }
     }
 })
 

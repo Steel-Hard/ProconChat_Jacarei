@@ -160,6 +160,10 @@
             "APPOINTMENT_CANCELED": "Este agendamento foi cancelado.",
             "ATTENDANCE_NOT_YET_AVAILABLE": "Marcar como atendido só fica disponível a partir do dia do atendimento.",
             "NO_SHOW_NOT_YET_AVAILABLE": "Marcar como não compareceu só fica disponível depois do horário do atendimento.",
+            "INVALID_ASSIGNEE": "O funcionário selecionado não está mais disponível para receber agendamentos.",
+            "ASSIGNEE_BUSY": "O funcionário já tem outro agendamento neste horário ({{protocol}}).",
+            "RECORD_NOT_CORRECTABLE": "Este registro não pode mais ser corrigido.",
+            "PERMISSION_REQUIRED": "Sua conta não tem permissão para esta ação.",
             "forbidden": "Sua conta não tem permissão para esta ação.",
             "notFound": "Agendamento não encontrado.",
             "failed": "Não foi possível concluir a ação. Tente de novo."
@@ -167,7 +171,9 @@
         "success": {
             "claim": "Agendamento {{protocol}} assumido por você.",
             "attended": "{{protocol}} marcado como atendido.",
-            "no_show": "{{protocol}} marcado como não compareceu."
+            "no_show": "{{protocol}} marcado como não compareceu.",
+            "assign": "Agendamento {{protocol}} atribuído a {{name}}.",
+            "correct_record": "Registro do agendamento {{protocol}} corrigido."
         }
     }
 }

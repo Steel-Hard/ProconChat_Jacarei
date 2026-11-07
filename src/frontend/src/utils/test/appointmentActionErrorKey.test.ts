@@ -8,7 +8,11 @@ const CODES: AppointmentActionCode[] = [
     "ALREADY_NO_SHOW",
     "APPOINTMENT_CANCELED",
     "ATTENDANCE_NOT_YET_AVAILABLE",
-    "NO_SHOW_NOT_YET_AVAILABLE"
+    "NO_SHOW_NOT_YET_AVAILABLE",
+    "INVALID_ASSIGNEE",
+    "ASSIGNEE_BUSY",
+    "RECORD_NOT_CORRECTABLE",
+    "PERMISSION_REQUIRED"
 ]
 
 function apiError(status: number, code: string) {
