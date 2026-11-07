@@ -509,7 +509,7 @@ describe("Appointments.page: paginação e URL", () => {
         expect(
             screen.getByRole("heading", { name: "Segunda-feira · 19/10/2026" })
         ).toBeInTheDocument()
-        expect(screen.getByText("2 vaga(s) livre(s)")).toBeInTheDocument()
+        expect(screen.getByText(/2 vaga\(s\) livre\(s\)/)).toBeInTheDocument()
         expect(screen.getByText("Feriado municipal")).toBeInTheDocument()
         expect(screen.getByText("Bloqueado 08:00–09:00: Manutenção")).toBeInTheDocument()
         expect(screen.getByText("AG-0011")).toBeInTheDocument()

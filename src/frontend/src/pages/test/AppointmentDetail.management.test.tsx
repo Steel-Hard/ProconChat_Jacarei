@@ -49,7 +49,7 @@ describe("AppointmentDetail.page: atribuição, correção e observações", () 
             }
         })
 
-        await screen.findByRole("heading", { name: "Maria Fictícia" })
+        await screen.findByRole("option", { name: "Bruno Lima" })
         await page.user.selectOptions(
             screen.getByRole("combobox", { name: "Selecione um funcionário" }),
             "2"

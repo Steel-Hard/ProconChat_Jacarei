@@ -95,10 +95,10 @@ const appointmentsApi = api.injectEndpoints({
                 response: Envelope<AppointmentDetail> & {
                     warning?: AppointmentDetail["correction_warning"]
                 }
-            ) => ({
-                ...response.data,
-                correction_warning: response.warning ?? null
-            }),
+            ) =>
+                response.warning
+                    ? { ...response.data, correction_warning: response.warning }
+                    : response.data,
             invalidatesTags: ["AppointmentList", "AppointmentPendingCount"],
             async onQueryStarted({ id }, { dispatch, queryFulfilled }) {
                 const result = await queryFulfilled.catch(() => null)
