@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { screen, waitFor } from "@testing-library/react"
+import { screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import renderDocumentsPage from "@/testUtils/renderDocumentsPage"
 import type DocumentsConfigView from "@/types/documents/DocumentsConfigView.types"
@@ -45,86 +45,91 @@ function stubDocumentsFetch(
 ) {
     let capturedPutBody: unknown = null
 
-    vi.stubGlobal(
-        "fetch",
-        vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-            const request = input instanceof Request ? input : null
-            const url = request ? request.url : typeof input === "string" ? input : input.toString()
-            const method = request?.method ?? init?.method ?? "GET"
-            const rawBody = request ? await request.text() : init?.body
-            const body =
-                typeof rawBody === "string"
-                    ? (JSON.parse(rawBody) as Record<string, unknown>)
-                    : null
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const request =
+            typeof input === "object" &&
+            input !== null &&
+            "url" in input &&
+            "method" in input &&
+            "clone" in input
+                ? (input as Request)
+                : null
+        const url = request ? request.url : typeof input === "string" ? input : input.toString()
+        const method = request?.method ?? init?.method ?? "GET"
+        const rawBody = request ? await request.clone().text() : init?.body
+        const body =
+            typeof rawBody === "string" && rawBody.length > 0
+                ? (JSON.parse(rawBody) as Record<string, unknown>)
+                : null
 
-            if (url.endsWith("/api/v1/documents") && method === "GET") {
-                if (response.status && response.status >= 400) {
-                    return Promise.resolve(
-                        new Response(JSON.stringify(response.error ?? { error: "Failed" }), {
-                            status: response.status,
-                            headers: { "Content-Type": "application/json" }
-                        })
-                    )
-                }
+        if (url.endsWith("/api/v1/documents") && method === "GET") {
+            if (response.status && response.status >= 400) {
                 return Promise.resolve(
-                    new Response(JSON.stringify({ data: response.data }), {
-                        status: 200,
+                    new Response(JSON.stringify(response.error ?? { error: "Failed" }), {
+                        status: response.status,
                         headers: { "Content-Type": "application/json" }
                     })
                 )
             }
-
-            if (url.endsWith("/api/v1/documents") && method === "PUT") {
-                capturedPutBody = body
-                const updatedData = {
-                    ...initialDocuments,
-                    ...(capturedPutBody as object),
-                    updatedAt: new Date().toISOString()
-                }
-                return Promise.resolve(
-                    new Response(JSON.stringify({ data: updatedData }), {
-                        status: 200,
-                        headers: { "Content-Type": "application/json" }
-                    })
-                )
-            }
-
-            if (url.endsWith("/api/v1/documents/preview") && method === "POST") {
-                const byRepresentative = body?.byRepresentative === true
-                const groupDocuments = body?.groupDocuments as string[]
-                const question = initialDocuments.sampleQuestions?.find(
-                    (item) => item.id === body?.questionId
-                )
-                const lines = [
-                    "Agendamento realizado",
-                    "Protocolo: ABC12345",
-                    "Data e hora: Seg, 09/11 às 10:00",
-                    "Endereço: Avenida Central, 100 (Térreo)",
-                    "",
-                    byRepresentative
-                        ? "A pessoa que comparecer em seu nome deve levar:"
-                        : "Leve ao atendimento:",
-                    ...groupDocuments.map((document) => `• ${document}`)
-                ]
-                if (question?.documents.length) {
-                    lines.push("", "Documentos úteis para esta dúvida:")
-                    lines.push(...question.documents.map((document) => `• ${document}`))
-                }
-                lines.push(
-                    "",
-                    "Você receberá neste número avisos sobre este agendamento, como um lembrete 24 horas antes do atendimento e o aviso em caso de cancelamento."
-                )
-                return new Response(JSON.stringify({ data: { text: lines.join("\n") } }), {
+            return Promise.resolve(
+                new Response(JSON.stringify({ data: response.data }), {
                     status: 200,
                     headers: { "Content-Type": "application/json" }
                 })
-            }
+            )
+        }
 
-            return Promise.resolve(new Response(null, { status: 404 }))
-        })
-    )
+        if (url.endsWith("/api/v1/documents") && method === "PUT") {
+            capturedPutBody = body
+            const updatedData = {
+                ...initialDocuments,
+                ...(capturedPutBody as object),
+                updatedAt: new Date().toISOString()
+            }
+            return Promise.resolve(
+                new Response(JSON.stringify({ data: updatedData }), {
+                    status: 200,
+                    headers: { "Content-Type": "application/json" }
+                })
+            )
+        }
+
+        if (url.endsWith("/api/v1/documents/preview") && method === "POST") {
+            const byRepresentative = body?.byRepresentative === true
+            const groupDocuments = body?.groupDocuments as string[]
+            const question = initialDocuments.sampleQuestions?.find(
+                (item) => item.id === body?.questionId
+            )
+            const lines = [
+                "Agendamento realizado",
+                "Protocolo: ABC12345",
+                "Data e hora: Seg, 09/11 às 10:00",
+                "Endereço: Avenida Central, 100 (Térreo)",
+                "",
+                byRepresentative
+                    ? "A pessoa que comparecer em seu nome deve levar:"
+                    : "Leve ao atendimento:",
+                ...groupDocuments.map((document) => `• ${document}`)
+            ]
+            if (question?.documents.length) {
+                lines.push("", "Documentos úteis para esta dúvida:")
+                lines.push(...question.documents.map((document) => `• ${document}`))
+            }
+            lines.push(
+                "",
+                "Você receberá neste número avisos sobre este agendamento, como um lembrete 24 horas antes do atendimento e o aviso em caso de cancelamento."
+            )
+            return new Response(JSON.stringify({ data: { text: lines.join("\n") } }), {
+                status: 200,
+                headers: { "Content-Type": "application/json" }
+            })
+        }
+
+        return Promise.resolve(new Response(null, { status: 404 }))
+    })
 
     return {
+        fetchMock,
         getCapturedPutBody: () => capturedPutBody
     }
 }
@@ -137,18 +142,17 @@ afterEach(() => {
 
 describe("DocumentsPage", () => {
     it("exibe mensagem de carregando inicialmente", async () => {
-        vi.stubGlobal(
-            "fetch",
-            vi.fn(() => new Promise<Response>(() => {}))
-        )
-        await renderDocumentsPage()
+        await renderDocumentsPage(vi.fn(() => new Promise<Response>(() => {})))
 
         expect(screen.getByText("Carregando...")).toBeInTheDocument()
     })
 
     it("exibe alerta de erro se a requisição falhar", async () => {
-        stubDocumentsFetch({ status: 500, error: { message: "Erro interno" } })
-        await renderDocumentsPage()
+        const { fetchMock } = stubDocumentsFetch({
+            status: 500,
+            error: { message: "Erro interno" }
+        })
+        await renderDocumentsPage(fetchMock)
 
         expect(
             await screen.findByText(
@@ -158,8 +162,8 @@ describe("DocumentsPage", () => {
     })
 
     it("carrega e renderiza o cabeçalho, aviso de próximos agendamentos e última alteração", async () => {
-        stubDocumentsFetch()
-        await renderDocumentsPage()
+        const { fetchMock } = stubDocumentsFetch()
+        await renderDocumentsPage(fetchMock)
 
         expect(
             await screen.findByRole("heading", { name: "Documentos para atendimento presencial" })
@@ -170,13 +174,13 @@ describe("DocumentsPage", () => {
             )
         ).toBeInTheDocument()
         expect(
-            screen.getByText("Última alteração por Mariana Couto em 15/10/2026")
+            await screen.findByText("Última alteração por Mariana Couto em 15/10/2026")
         ).toBeInTheDocument()
     })
 
     it("renderiza os dois grupos e seus itens", async () => {
-        stubDocumentsFetch()
-        await renderDocumentsPage()
+        const { fetchMock } = stubDocumentsFetch()
+        await renderDocumentsPage(fetchMock)
 
         expect(
             await screen.findByRole("heading", { name: "Quando o próprio titular comparece" })
@@ -195,8 +199,8 @@ describe("DocumentsPage", () => {
 
     it("adiciona um documento e exibe alterações não salvas", async () => {
         const user = userEvent.setup()
-        stubDocumentsFetch()
-        await renderDocumentsPage()
+        const { fetchMock } = stubDocumentsFetch()
+        await renderDocumentsPage(fetchMock)
 
         await screen.findByRole("heading", { name: "Quando o próprio titular comparece" })
 
@@ -213,10 +217,15 @@ describe("DocumentsPage", () => {
 
     it("edita um item inline", async () => {
         const user = userEvent.setup()
-        stubDocumentsFetch()
-        await renderDocumentsPage()
+        const { fetchMock } = stubDocumentsFetch()
+        await renderDocumentsPage(fetchMock)
 
-        const itemButton = await screen.findByRole("button", { name: "Comprovante da reclamação" })
+        const holderList = await screen.findByRole("list", {
+            name: "Quando o próprio titular comparece"
+        })
+        const itemButton = within(holderList).getByRole("button", {
+            name: "Comprovante da reclamação"
+        })
         await user.click(itemButton)
 
         const input = screen.getByRole("textbox", { name: "Editar Comprovante da reclamação" })
@@ -229,8 +238,8 @@ describe("DocumentsPage", () => {
 
     it("reordena itens com botões de seta", async () => {
         const user = userEvent.setup()
-        stubDocumentsFetch()
-        await renderDocumentsPage()
+        const { fetchMock } = stubDocumentsFetch()
+        await renderDocumentsPage(fetchMock)
 
         await screen.findByRole("heading", { name: "Quando o próprio titular comparece" })
 
@@ -242,8 +251,8 @@ describe("DocumentsPage", () => {
 
     it("exibe alerta de grupo vazio mas permite salvar", async () => {
         const user = userEvent.setup()
-        const { getCapturedPutBody } = stubDocumentsFetch()
-        await renderDocumentsPage()
+        const { fetchMock, getCapturedPutBody } = stubDocumentsFetch()
+        await renderDocumentsPage(fetchMock)
 
         await screen.findByRole("heading", { name: "Quando o próprio titular comparece" })
 
@@ -271,8 +280,8 @@ describe("DocumentsPage", () => {
 
     it("descartar desfaz todas as alterações pendentes", async () => {
         const user = userEvent.setup()
-        stubDocumentsFetch()
-        await renderDocumentsPage()
+        const { fetchMock } = stubDocumentsFetch()
+        await renderDocumentsPage(fetchMock)
 
         await screen.findByRole("heading", { name: "Quando o próprio titular comparece" })
 
@@ -292,8 +301,8 @@ describe("DocumentsPage", () => {
 
     it("prévia mostra a mensagem com destaque de itens repetidos e atualiza com os seletores", async () => {
         const user = userEvent.setup()
-        stubDocumentsFetch()
-        await renderDocumentsPage()
+        const { fetchMock } = stubDocumentsFetch()
+        await renderDocumentsPage(fetchMock)
 
         await screen.findByRole("heading", { name: "Prévia da mensagem de confirmação" })
         await screen.findByText("Agendamento realizado")

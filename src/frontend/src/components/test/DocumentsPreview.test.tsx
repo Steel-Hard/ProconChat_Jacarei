@@ -109,7 +109,8 @@ describe("DocumentsPreview", () => {
         const markedItem = screen.getByTitle("Este item também está nos documentos da pergunta")
         expect(markedItem).toHaveTextContent("CPF")
         expect(markedItem.tagName).toBe("MARK")
-        expect(screen.getAllByText("CPF")).toHaveLength(2)
+        const previewText = screen.getByTestId("preview-bubble").textContent ?? ""
+        expect(previewText.match(/CPF/g)).toHaveLength(2)
         expect(screen.getAllByText("Repetido na pergunta")).toHaveLength(1)
     })
 
