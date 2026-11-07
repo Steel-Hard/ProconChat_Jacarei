@@ -6,7 +6,7 @@ import UnsavedChangesBar from "@/components/UnsavedChangesBar"
 import useDocuments from "@/pages/hooks/useDocuments"
 import css from "@/styles/pages/documents.module.css"
 
-export function DocumentsPage() {
+export default function DocumentsPage() {
     const { t } = useTranslation(["documents", "common"])
     const page = useDocuments()
     const { draft, preview } = page
@@ -96,6 +96,7 @@ export function DocumentsPage() {
                                 selectedQuestionId={preview.previewQuestionId}
                                 onChangeQuestionId={preview.setPreviewQuestionId}
                                 confirmationText={preview.confirmationText}
+                                hasPreviewError={preview.confirmationError}
                                 duplicateDocs={preview.duplicateDocs}
                                 isUnsaved={preview.isPreviewUnsaved}
                                 isQuestionEmpty={preview.isQuestionEmpty}
@@ -107,5 +108,3 @@ export function DocumentsPage() {
         </>
     )
 }
-
-export default DocumentsPage

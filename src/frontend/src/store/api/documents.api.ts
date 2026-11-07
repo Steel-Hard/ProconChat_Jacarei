@@ -3,8 +3,14 @@ import type DocumentsConfig from "@/types/documents/DocumentsConfig.types"
 import type DocumentsConfigView from "@/types/documents/DocumentsConfigView.types"
 
 type Envelope<T> = { data: T }
+type DocumentsPreviewArgs = {
+    byRepresentative: boolean
+    groupDocuments: string[]
+    questionId?: string
+}
 
 const DOCUMENTS_PATH = "/api/v1/documents"
+const DOCUMENTS_PREVIEW_PATH = `${DOCUMENTS_PATH}/preview`
 
 function unwrap<T>(response: Envelope<T>): T {
     return response.data
@@ -36,6 +42,16 @@ const documentsApi = api.injectEndpoints({
                     )
                 }
             }
+        }),
+        previewDocuments: build.query<{ text: string }, DocumentsPreviewArgs>({
+            query: (body) => ({
+                url: DOCUMENTS_PREVIEW_PATH,
+                method: "POST",
+                body
+            }),
+            transformResponse: unwrap<{ text: string }>,
+            providesTags: ["DocumentsPreview"],
+            keepUnusedDataFor: 0
         })
     })
 })

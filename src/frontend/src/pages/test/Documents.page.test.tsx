@@ -47,9 +47,17 @@ function stubDocumentsFetch(
 
     vi.stubGlobal(
         "fetch",
-        vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
-            const url = typeof input === "string" ? input : input instanceof Request ? input.url : input.toString()
-            const method = init?.method ?? "GET"
+        vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+            const request = input instanceof Request ? input : null
+            const url = request
+                ? request.url
+                : typeof input === "string"
+                  ? input
+                  : input.toString()
+            const method = request?.method ?? init?.method ?? "GET"
+            const rawBody = request ? await request.text() : init?.body
+            const body =
+                typeof rawBody === "string" ? (JSON.parse(rawBody) as Record<string, unknown>) : null
 
             if (url.endsWith("/api/v1/documents") && method === "GET") {
                 if (response.status && response.status >= 400) {
@@ -69,7 +77,7 @@ function stubDocumentsFetch(
             }
 
             if (url.endsWith("/api/v1/documents") && method === "PUT") {
-                capturedPutBody = init?.body ? JSON.parse(String(init.body)) : null
+                capturedPutBody = body
                 const updatedData = {
                     ...initialDocuments,
                     ...(capturedPutBody as object),
@@ -83,6 +91,37 @@ function stubDocumentsFetch(
                 )
             }
 
+            if (url.endsWith("/api/v1/documents/preview") && method === "POST") {
+                const byRepresentative = body?.byRepresentative === true
+                const groupDocuments = body?.groupDocuments as string[]
+                const question = initialDocuments.sampleQuestions.find(
+                    (item) => item.id === body?.questionId
+                )
+                const lines = [
+                    "Agendamento realizado",
+                    "Protocolo: ABC12345",
+                    "Data e hora: Seg, 09/11 às 10:00",
+                    "Endereço: Avenida Central, 100 (Térreo)",
+                    "",
+                    byRepresentative
+                        ? "A pessoa que comparecer em seu nome deve levar:"
+                        : "Leve ao atendimento:",
+                    ...groupDocuments.map((document) => `• ${document}`)
+                ]
+                if (question?.documents.length) {
+                    lines.push("", "Documentos úteis para esta dúvida:")
+                    lines.push(...question.documents.map((document) => `• ${document}`))
+                }
+                lines.push(
+                    "",
+                    "Você receberá neste número avisos sobre este agendamento, como um lembrete 24 horas antes do atendimento e o aviso em caso de cancelamento."
+                )
+                return new Response(JSON.stringify({ data: { text: lines.join("\n") } }), {
+                    status: 200,
+                    headers: { "Content-Type": "application/json" }
+                })
+            }
+
             return Promise.resolve(new Response(null, { status: 404 }))
         })
     )
@@ -94,19 +133,21 @@ function stubDocumentsFetch(
 
 afterEach(() => {
     vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
+    vi.resetModules()
 })
 
 describe("DocumentsPage", () => {
-    it("exibe mensagem de carregando inicialmente", () => {
+    it("exibe mensagem de carregando inicialmente", async () => {
         vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => {})))
-        renderDocumentsPage()
+        await renderDocumentsPage()
 
         expect(screen.getByText("Carregando...")).toBeInTheDocument()
     })
 
     it("exibe alerta de erro se a requisição falhar", async () => {
         stubDocumentsFetch({ status: 500, error: { message: "Erro interno" } })
-        renderDocumentsPage()
+        await renderDocumentsPage()
 
         expect(
             await screen.findByText("Não foi possível carregar os documentos para atendimento presencial.")
@@ -115,7 +156,7 @@ describe("DocumentsPage", () => {
 
     it("carrega e renderiza o cabeçalho, aviso de próximos agendamentos e última alteração", async () => {
         stubDocumentsFetch()
-        renderDocumentsPage()
+        await renderDocumentsPage()
 
         expect(
             await screen.findByRole("heading", { name: "Documentos para atendimento presencial" })
@@ -132,7 +173,7 @@ describe("DocumentsPage", () => {
 
     it("renderiza os dois grupos e seus itens", async () => {
         stubDocumentsFetch()
-        renderDocumentsPage()
+        await renderDocumentsPage()
 
         expect(
             await screen.findByRole("heading", { name: "Quando o próprio titular comparece" })
@@ -152,7 +193,7 @@ describe("DocumentsPage", () => {
     it("adiciona um documento e exibe alterações não salvas", async () => {
         const user = userEvent.setup()
         stubDocumentsFetch()
-        renderDocumentsPage()
+        await renderDocumentsPage()
 
         await screen.findByRole("heading", { name: "Quando o próprio titular comparece" })
 
@@ -170,7 +211,7 @@ describe("DocumentsPage", () => {
     it("edita um item inline", async () => {
         const user = userEvent.setup()
         stubDocumentsFetch()
-        renderDocumentsPage()
+        await renderDocumentsPage()
 
         const itemButton = await screen.findByRole("button", { name: "Comprovante da reclamação" })
         await user.click(itemButton)
@@ -186,7 +227,7 @@ describe("DocumentsPage", () => {
     it("reordena itens com botões de seta", async () => {
         const user = userEvent.setup()
         stubDocumentsFetch()
-        renderDocumentsPage()
+        await renderDocumentsPage()
 
         await screen.findByRole("heading", { name: "Quando o próprio titular comparece" })
 
@@ -199,7 +240,7 @@ describe("DocumentsPage", () => {
     it("exibe alerta de grupo vazio mas permite salvar", async () => {
         const user = userEvent.setup()
         const { getCapturedPutBody } = stubDocumentsFetch()
-        renderDocumentsPage()
+        await renderDocumentsPage()
 
         await screen.findByRole("heading", { name: "Quando o próprio titular comparece" })
 
@@ -228,7 +269,7 @@ describe("DocumentsPage", () => {
     it("descartar desfaz todas as alterações pendentes", async () => {
         const user = userEvent.setup()
         stubDocumentsFetch()
-        renderDocumentsPage()
+        await renderDocumentsPage()
 
         await screen.findByRole("heading", { name: "Quando o próprio titular comparece" })
 
@@ -249,9 +290,10 @@ describe("DocumentsPage", () => {
     it("prévia mostra a mensagem com destaque de itens repetidos e atualiza com os seletores", async () => {
         const user = userEvent.setup()
         stubDocumentsFetch()
-        renderDocumentsPage()
+        await renderDocumentsPage()
 
         await screen.findByRole("heading", { name: "Prévia da mensagem de confirmação" })
+        await screen.findByText("Agendamento realizado")
 
         const bubble = screen.getByTestId("preview-bubble")
         expect(bubble).toHaveTextContent("Agendamento realizado")
@@ -263,7 +305,9 @@ describe("DocumentsPage", () => {
 
         // Troca para representante
         await user.selectOptions(screen.getByLabelText("Quem comparece"), "representative")
-        expect(bubble).toHaveTextContent("A pessoa que comparecer em seu nome deve levar:")
+        await waitFor(() =>
+            expect(bubble).toHaveTextContent("A pessoa que comparecer em seu nome deve levar:")
+        )
 
         // Troca para pergunta sem documentos
         await user.selectOptions(screen.getByLabelText("Pergunta de exemplo"), "2")

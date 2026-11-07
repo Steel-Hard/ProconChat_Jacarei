@@ -1334,6 +1334,22 @@ checagem de duplicidade por CPF e horário, documentos, `INSERT` do agendamento 
 `insertConversationEvent(client, ...)` e encerramento por `finishSessionWith(client, ...)` com
 `APPOINTMENT_CREATED`/`SCHEDULED`. Qualquer falha desfaz tudo.
 
+## Documentos para atendimento presencial (`/api/v1/documents`, #65)
+
+As rotas exigem sessão autenticada e `documents.configure`, aplicam a proteção CSRF nos métodos com
+corpo e respondem com `Cache-Control: no-store`. A configuração salva em `AttendanceDocuments` é
+usada nos próximos agendamentos; os dados de agenda vêm de `ScheduleSettings` e os documentos das
+perguntas de `RequiredDocuments`.
+
+| Rota | Entrada | Sucesso | Erros |
+| --- | --- | --- | --- |
+| `GET /api/v1/documents` | — | `200 { data: DocumentsViewOutput }`, com os grupos `holder` e `representative`, última alteração, endereço/lembrete e até 10 perguntas ativas com documentos | `401 UNAUTHORIZED`, `403 FORBIDDEN` |
+| `PUT /api/v1/documents` | `{ holder: string[], representative: string[] }` (descrições de 1 a 255 caracteres) | `200 { data: DocumentsViewOutput }`; substitui os dois grupos e registra a alteração em `AuditLog` | `400 BAD_REQUEST`, `401`, `403` |
+| `POST /api/v1/documents/preview` | `{ byRepresentative: boolean, groupDocuments: string[], questionId?: string \| number }` | `200 { data: { text: string } }`, formatado pela mesma `formatarConfirmacaoAgendamento` usada pelo bot, sem salvar alterações | `400 BAD_REQUEST`, `401`, `403` |
+
+O seletor de perguntas inclui somente perguntas ativas de categorias ativas. Quando `questionId` é
+omitido ou não identifica uma pergunta válida, a prévia não inclui documentos específicos da dúvida.
+
 
 ## Retorno de quem já tem agendamento (#59)
 

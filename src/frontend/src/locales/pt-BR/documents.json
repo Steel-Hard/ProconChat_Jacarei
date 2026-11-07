@@ -43,6 +43,7 @@
         "questionLabel": "Pergunta de exemplo",
         "unsavedNotice": "Mostrando alterações ainda não salvas",
         "noQuestionDocsNotice": "A pergunta escolhida não tem documentos úteis cadastrados",
+        "loadFailed": "Não foi possível gerar a prévia da mensagem. Tente novamente.",
         "duplicateTooltip": "Este item também está nos documentos da pergunta",
         "duplicateBadge": "Repetido na pergunta"
     },

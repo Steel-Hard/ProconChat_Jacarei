@@ -95,7 +95,8 @@ export class DocumentsRepository implements IDocumentsRepository {
         }>(
             `SELECT q.id, COALESCE(q.short_title, q.question) as title
              FROM Questions q
-             WHERE q.active = TRUE
+             INNER JOIN Categories c ON c.id = q.category_id
+             WHERE q.active = TRUE AND c.active = TRUE
              ORDER BY q.position ASC, q.id ASC
              LIMIT 10`
         )

@@ -7,10 +7,11 @@ import type AttendeeGroup from "@/types/documents/AttendeeGroup.types"
 import type SampleQuestion from "@/types/documents/SampleQuestion.types"
 import type LastChange from "@/types/settings/LastChange.types"
 import DEFAULT_SAMPLE_QUESTIONS from "@/utils/documents/defaultSampleQuestions"
-import findDuplicateDocuments from "@/utils/documents/findDuplicateDocuments"
-import formatConfirmationPreview from "@/utils/documents/formatConfirmationPreview"
+import { findDuplicateDocuments } from "@/utils/documents/findDuplicateDocuments"
 
-export function useDocuments() {
+const EMPTY_DOCS: string[] = []
+
+export default function useDocuments() {
     const { t } = useTranslation(["documents", "common"])
     const { showToast } = useToast()
 
@@ -42,23 +43,18 @@ export function useDocuments() {
     }, [sampleQuestions, previewQuestionId])
 
     const activeGroupDocs = previewGroup === "holder" ? draft.holder : draft.representative
-    const activeQuestionDocs = selectedQuestion?.documents ?? []
+    const activeQuestionDocs = selectedQuestion?.documents ?? EMPTY_DOCS
 
     const duplicateDocs = useMemo(() => {
         return findDuplicateDocuments(activeGroupDocs, activeQuestionDocs)
     }, [activeGroupDocs, activeQuestionDocs])
 
-    const confirmationText = useMemo(() => {
-        return formatConfirmationPreview({
-            byRepresentative: previewGroup === "representative",
-            groupDocuments: activeGroupDocs,
-            questionDocuments: activeQuestionDocs,
-            unitAddress: view?.unitAddress,
-            unitAddressComplement: view?.unitAddressComplement,
-            reminderEnabled: view?.reminderEnabled,
-            reminderHours: view?.reminderHours
-        })
-    }, [previewGroup, activeGroupDocs, activeQuestionDocs, view])
+    const confirmationQuery = documentsApi.usePreviewDocumentsQuery({
+        byRepresentative: previewGroup === "representative",
+        groupDocuments: activeGroupDocs,
+        questionId: selectedQuestion?.id
+    })
+    const confirmationText = confirmationQuery.currentData?.text ?? ""
 
     const isPreviewUnsaved =
         previewGroup === "holder" ? draft.holderChanged : draft.representativeChanged
@@ -99,11 +95,10 @@ export function useDocuments() {
             sampleQuestions,
             selectedQuestion,
             confirmationText,
+            confirmationError: confirmationQuery.isError,
             duplicateDocs,
             isPreviewUnsaved,
             isQuestionEmpty
         }
     }
 }
-
-export default useDocuments

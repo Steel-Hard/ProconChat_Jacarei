@@ -1,4 +1,4 @@
-import { NextFunction, Request, Response, Router } from "express"
+import { NextFunction, Request, RequestHandler, Response, Router } from "express"
 import DocumentsController from "../controllers/documents.controller"
 import { requireAuth, requirePermission } from "../middleware/auth.middleware"
 import { validateRequest } from "../middleware/validateRequest.middleware"
@@ -8,7 +8,10 @@ export class DocumentsRoutes {
     private controller: DocumentsController
     private router: Router = Router()
 
-    constructor(controller: DocumentsController = new DocumentsController()) {
+    constructor(
+        controller: DocumentsController = new DocumentsController(),
+        authMiddleware: RequestHandler = requireAuth
+    ) {
         this.controller = controller
 
         this.router.use((_req: Request, res: Response, next: NextFunction) => {
@@ -16,7 +19,7 @@ export class DocumentsRoutes {
             next()
         })
 
-        this.router.use(requireAuth)
+        this.router.use(authMiddleware)
         this.router.use(requirePermission("documents.configure"))
 
         this.router.get("/", this.controller.get.bind(this.controller))

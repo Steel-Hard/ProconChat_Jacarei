@@ -15,7 +15,7 @@ export type DocumentGroupProps = {
     onMoveDown: (index: number) => void
 }
 
-export function DocumentGroup({
+export default function DocumentGroup({
     title,
     description,
     items,
@@ -89,5 +89,3 @@ export function DocumentGroup({
         </section>
     )
 }
-
-export default DocumentGroup

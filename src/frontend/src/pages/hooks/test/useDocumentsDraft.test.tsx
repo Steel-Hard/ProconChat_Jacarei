@@ -77,4 +77,26 @@ describe("useDocumentsDraft", () => {
         expect(result.current.isHolderEmpty).toBe(true)
         expect(result.current.isRepresentativeEmpty).toBe(false)
     })
+
+    it("descarta o rascunho quando a configuração do servidor muda", () => {
+        const { result, rerender } = renderHook(
+            ({ config }) => useDocumentsDraft(config),
+            { initialProps: { config: initialConfig } }
+        )
+
+        act(() => {
+            result.current.actions.addItem("holder", "Documento local")
+        })
+        expect(result.current.holder).toContain("Documento local")
+
+        const updatedConfig = {
+            holder: ["Novo RG"],
+            representative: ["Nova procuração"]
+        }
+        rerender({ config: updatedConfig })
+
+        expect(result.current.holder).toEqual(["Novo RG"])
+        expect(result.current.representative).toEqual(["Nova procuração"])
+        expect(result.current.hasChanges).toBe(false)
+    })
 })

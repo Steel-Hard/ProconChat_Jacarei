@@ -11,18 +11,20 @@ export type DocumentsPreviewProps = {
     selectedQuestionId: string
     onChangeQuestionId: (id: string) => void
     confirmationText: string
+    hasPreviewError: boolean
     duplicateDocs: Set<string>
     isUnsaved: boolean
     isQuestionEmpty: boolean
 }
 
-export function DocumentsPreview({
+export default function DocumentsPreview({
     attendeeGroup,
     onChangeAttendeeGroup,
     sampleQuestions,
     selectedQuestionId,
     onChangeQuestionId,
     confirmationText,
+    hasPreviewError,
     duplicateDocs,
     isUnsaved,
     isQuestionEmpty
@@ -32,6 +34,7 @@ export function DocumentsPreview({
     const questionId = useId()
 
     const lines = confirmationText.split("\n")
+    const questionDocsHeadingIndex = lines.indexOf("Documentos úteis para esta dúvida:")
 
     return (
         <section className={css.previewCard} aria-labelledby="preview-heading">
@@ -81,15 +84,21 @@ export function DocumentsPreview({
 
             <div className={css.notices}>
                 {isUnsaved ? (
-                    <div role="status" className={css.unsavedNotice}>
+                    <output className={css.unsavedNotice}>
                         {t("preview.unsavedNotice")}
-                    </div>
+                    </output>
                 ) : null}
 
                 {isQuestionEmpty ? (
-                    <div role="status" className={css.noDocsNotice}>
+                    <output className={css.noDocsNotice}>
                         {t("preview.noQuestionDocsNotice")}
-                    </div>
+                    </output>
+                ) : null}
+
+                {hasPreviewError ? (
+                    <p role="alert" className={css.noDocsNotice}>
+                        {t("preview.loadFailed")}
+                    </p>
                 ) : null}
             </div>
 
@@ -98,12 +107,13 @@ export function DocumentsPreview({
                     {lines.map((line, idx) => {
                         if (line.startsWith("• ")) {
                             const docText = line.slice(2).trim()
-                            const isDuplicate = duplicateDocs.has(docText)
+                            const isDuplicate =
+                                idx < questionDocsHeadingIndex && duplicateDocs.has(docText)
 
                             if (isDuplicate) {
                                 return (
                                     <span key={idx}>
-                                        •{" "}
+                                        {"• "}
                                         <mark
                                             className={css.repeatedItem}
                                             title={t("preview.duplicateTooltip")}
@@ -133,5 +143,3 @@ export function DocumentsPreview({
         </section>
     )
 }
-
-export default DocumentsPreview

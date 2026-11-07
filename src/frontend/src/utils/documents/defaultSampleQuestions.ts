@@ -1,6 +1,6 @@
 import type SampleQuestion from "@/types/documents/SampleQuestion.types"
 
-export const DEFAULT_SAMPLE_QUESTIONS: SampleQuestion[] = [
+const DEFAULT_SAMPLE_QUESTIONS: SampleQuestion[] = [
     {
         id: "1",
         title: "Cobrança indevida no cartão de crédito",

@@ -19,7 +19,7 @@ export type DocumentItemProps = {
     onMoveDown: () => void
 }
 
-export function DocumentItem({
+export default function DocumentItem({
     description,
     isFirst,
     isLast,
@@ -32,10 +32,6 @@ export function DocumentItem({
     const [isEditing, setIsEditing] = useState(false)
     const [editText, setEditText] = useState(description)
     const inputRef = useRef<HTMLInputElement>(null)
-
-    useEffect(() => {
-        setEditText(description)
-    }, [description])
 
     useEffect(() => {
         if (isEditing) {
@@ -104,7 +100,6 @@ export function DocumentItem({
                     type="button"
                     className={css.textButton}
                     onClick={handleStartEdit}
-                    title={t("items.editButton")}
                 >
                     {description}
                 </button>
@@ -118,7 +113,7 @@ export function DocumentItem({
                     aria-label={t("items.moveUpAria", { item: description })}
                     title={t("items.moveUp")}
                 >
-                    ↑
+                    {"↑"}
                 </button>
                 <button
                     type="button"
@@ -128,7 +123,7 @@ export function DocumentItem({
                     aria-label={t("items.moveDownAria", { item: description })}
                     title={t("items.moveDown")}
                 >
-                    ↓
+                    {"↓"}
                 </button>
                 <button
                     type="button"
@@ -152,5 +147,3 @@ export function DocumentItem({
         </li>
     )
 }
-
-export default DocumentItem

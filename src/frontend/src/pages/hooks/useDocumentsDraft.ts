@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import type AttendeeGroup from "@/types/documents/AttendeeGroup.types"
 import type DocumentsConfig from "@/types/documents/DocumentsConfig.types"
@@ -8,30 +8,48 @@ function sameList(a: string[], b: string[]): boolean {
     return a.every((val, i) => val === b[i])
 }
 
-export function useDocumentsDraft(serverConfig: DocumentsConfig | null | undefined) {
+type DraftState = {
+    serverConfig: DocumentsConfig | null | undefined
+    holder: string[]
+    representative: string[]
+}
+
+export default function useDocumentsDraft(serverConfig: DocumentsConfig | null | undefined) {
     const { t } = useTranslation("documents")
-    const initialHolder = serverConfig?.holder ?? []
-    const initialRepresentative = serverConfig?.representative ?? []
+    const [draft, setDraft] = useState<DraftState | null>(null)
 
-    const [holder, setHolder] = useState<string[]>(initialHolder)
-    const [representative, setRepresentative] = useState<string[]>(initialRepresentative)
+    const currentDraft =
+        draft !== null && draft.serverConfig === serverConfig
+            ? draft
+            : {
+                  serverConfig,
+                  holder: serverConfig?.holder ?? [],
+                  representative: serverConfig?.representative ?? []
+              }
+    const holder = currentDraft.holder
+    const representative = currentDraft.representative
 
-    useEffect(() => {
-        if (serverConfig) {
-            setHolder(serverConfig.holder)
-            setRepresentative(serverConfig.representative)
-        }
-    }, [serverConfig])
+    function updateGroup(group: AttendeeGroup, updater: (items: string[]) => string[]) {
+        setDraft((previous) => {
+            const base =
+                previous !== null && previous.serverConfig === serverConfig
+                    ? previous
+                    : {
+                          serverConfig,
+                          holder: serverConfig?.holder ?? [],
+                          representative: serverConfig?.representative ?? []
+                      }
+            return group === "holder"
+                ? { ...base, holder: updater(base.holder) }
+                : { ...base, representative: updater(base.representative) }
+        })
+    }
 
     function addItem(group: AttendeeGroup, description: string) {
         const trimmed = description.trim()
         if (!trimmed) return
 
-        if (group === "holder") {
-            setHolder((prev) => [...prev, trimmed])
-        } else {
-            setRepresentative((prev) => [...prev, trimmed])
-        }
+        updateGroup(group, (prev) => [...prev, trimmed])
     }
 
     function editItem(group: AttendeeGroup, index: number, newDescription: string) {
@@ -45,11 +63,7 @@ export function useDocumentsDraft(serverConfig: DocumentsConfig | null | undefin
             return next
         }
 
-        if (group === "holder") {
-            setHolder(updater)
-        } else {
-            setRepresentative(updater)
-        }
+        updateGroup(group, updater)
     }
 
     function removeItem(group: AttendeeGroup, index: number) {
@@ -58,11 +72,7 @@ export function useDocumentsDraft(serverConfig: DocumentsConfig | null | undefin
             return prev.filter((_, i) => i !== index)
         }
 
-        if (group === "holder") {
-            setHolder(updater)
-        } else {
-            setRepresentative(updater)
-        }
+        updateGroup(group, updater)
     }
 
     function moveUp(group: AttendeeGroup, index: number) {
@@ -77,11 +87,7 @@ export function useDocumentsDraft(serverConfig: DocumentsConfig | null | undefin
             return next
         }
 
-        if (group === "holder") {
-            setHolder(updater)
-        } else {
-            setRepresentative(updater)
-        }
+        updateGroup(group, updater)
     }
 
     function moveDown(group: AttendeeGroup, index: number) {
@@ -94,16 +100,11 @@ export function useDocumentsDraft(serverConfig: DocumentsConfig | null | undefin
             return next
         }
 
-        if (group === "holder") {
-            setHolder(updater)
-        } else {
-            setRepresentative(updater)
-        }
+        updateGroup(group, updater)
     }
 
     function discard() {
-        setHolder(serverConfig?.holder ?? [])
-        setRepresentative(serverConfig?.representative ?? [])
+        setDraft(null)
     }
 
     const holderChanged = !sameList(holder, serverConfig?.holder ?? [])
@@ -136,5 +137,3 @@ export function useDocumentsDraft(serverConfig: DocumentsConfig | null | undefin
         }
     }
 }
-
-export default useDocumentsDraft

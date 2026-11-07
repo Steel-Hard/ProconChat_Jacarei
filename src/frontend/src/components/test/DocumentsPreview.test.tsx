@@ -27,6 +27,7 @@ describe("DocumentsPreview", () => {
                 selectedQuestionId="1"
                 onChangeQuestionId={vi.fn()}
                 confirmationText={"Agendamento realizado\nProtocolo: ABC12345"}
+                hasPreviewError={false}
                 duplicateDocs={new Set()}
                 isUnsaved={false}
                 isQuestionEmpty={false}
@@ -51,6 +52,7 @@ describe("DocumentsPreview", () => {
                 selectedQuestionId="1"
                 onChangeQuestionId={onChangeQuestion}
                 confirmationText={"Agendamento realizado"}
+                hasPreviewError={false}
                 duplicateDocs={new Set()}
                 isUnsaved={false}
                 isQuestionEmpty={false}
@@ -73,6 +75,7 @@ describe("DocumentsPreview", () => {
                 selectedQuestionId="2"
                 onChangeQuestionId={vi.fn()}
                 confirmationText={"Agendamento realizado"}
+                hasPreviewError={false}
                 duplicateDocs={new Set()}
                 isUnsaved={true}
                 isQuestionEmpty={true}
@@ -93,16 +96,41 @@ describe("DocumentsPreview", () => {
                 sampleQuestions={sampleQuestions}
                 selectedQuestionId="1"
                 onChangeQuestionId={vi.fn()}
-                confirmationText={"Agendamento realizado\n• CPF"}
+                confirmationText={
+                    "Agendamento realizado\nLeve ao atendimento:\n• CPF\n\nDocumentos úteis para esta dúvida:\n• CPF"
+                }
+                hasPreviewError={false}
                 duplicateDocs={new Set(["CPF"])}
                 isUnsaved={false}
                 isQuestionEmpty={false}
             />
         )
 
-        const mark = screen.getByText("CPF")
-        expect(mark.tagName).toBe("MARK")
-        expect(mark).toHaveAttribute("title", "Este item também está nos documentos da pergunta")
-        expect(screen.getByText("Repetido na pergunta")).toBeInTheDocument()
+        const markedItem = screen.getByTitle("Este item também está nos documentos da pergunta")
+        expect(markedItem).toHaveTextContent("CPF")
+        expect(markedItem.tagName).toBe("MARK")
+        expect(screen.getAllByText("CPF")).toHaveLength(2)
+        expect(screen.getAllByText("Repetido na pergunta")).toHaveLength(1)
+    })
+
+    it("exibe erro quando o backend não consegue gerar a prévia", () => {
+        render(
+            <DocumentsPreview
+                attendeeGroup="holder"
+                onChangeAttendeeGroup={vi.fn()}
+                sampleQuestions={sampleQuestions}
+                selectedQuestionId="1"
+                onChangeQuestionId={vi.fn()}
+                confirmationText=""
+                hasPreviewError={true}
+                duplicateDocs={new Set()}
+                isUnsaved={false}
+                isQuestionEmpty={false}
+            />
+        )
+
+        expect(screen.getByRole("alert")).toHaveTextContent(
+            "Não foi possível gerar a prévia da mensagem. Tente novamente."
+        )
     })
 })

@@ -1,11 +1,19 @@
 import { Provider } from "react-redux"
 import { render } from "@testing-library/react"
-import ToastProvider from "@/components/ToastProvider"
-import DocumentsPage from "@/pages/Documents.page"
-import createStore from "@/store/createStore"
+import { vi } from "vitest"
 import type RootState from "@/types/store/RootState.types"
 
-export function renderDocumentsPage(options: { preloadedState?: Partial<RootState> } = {}) {
+export default async function renderDocumentsPage(
+    options: { preloadedState?: Partial<RootState> } = {}
+) {
+    vi.stubEnv("VITE_API_URL", "http://api.test")
+    vi.resetModules()
+    const [{ default: ToastProvider }, { default: DocumentsPage }, { default: createStore }] =
+        await Promise.all([
+            import("@/components/ToastProvider"),
+            import("@/pages/Documents.page"),
+            import("@/store/createStore")
+        ])
     const store = createStore(options.preloadedState)
     const result = render(
         <Provider store={store}>
@@ -17,5 +25,3 @@ export function renderDocumentsPage(options: { preloadedState?: Partial<RootStat
 
     return { ...result, store }
 }
-
-export default renderDocumentsPage
