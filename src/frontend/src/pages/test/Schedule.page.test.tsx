@@ -48,6 +48,7 @@ describe("SchedulePage", () => {
         ;[
             "Janela de agendamento",
             "Dados da unidade",
+            "Lembrete ao cidadão",
             "Datas bloqueadas",
             "Prévia da grade"
         ].forEach((name) => expect(screen.getByRole("heading", { name })).toBeInTheDocument())
@@ -296,21 +297,18 @@ describe("SchedulePage", () => {
         ).toHaveLength(2)
     })
 
-    it("não mostra a seção do lembrete até o envio existir", async () => {
-        await loaded()
+    it("esconde a prévia do lembrete quando ele é desligado", async () => {
+        const { user } = await loaded()
 
-        expect(
-            screen.queryByRole("heading", { name: "Lembrete ao cidadão" })
-        ).not.toBeInTheDocument()
-        expect(
-            screen.queryByRole("checkbox", { name: "Enviar lembrete ao cidadão" })
-        ).not.toBeInTheDocument()
+        expect(screen.getByText("Prévia da mensagem")).toBeInTheDocument()
+        await user.click(screen.getByRole("checkbox", { name: "Enviar lembrete ao cidadão" }))
+
         expect(screen.queryByText("Prévia da mensagem")).not.toBeInTheDocument()
         expect(
-            screen.queryByText(
+            screen.getByText(
                 "Cada lembrete é uma mensagem de modelo e tem custo por mensagem cobrado pela Meta."
             )
-        ).not.toBeInTheDocument()
+        ).toBeInTheDocument()
     })
 
     it.each([
