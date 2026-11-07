@@ -102,7 +102,20 @@ export const CORPO_AVISO_CANCELAMENTO =
 
 export const MODELO_AVISO_CANCELAMENTO = { name: "aviso_cancelamento", languageCode: "pt_BR" } as const
 
+export const CORPO_LEMBRETE_ATENDIMENTO =
+    "Olá, {{1}}. Lembrete do seu atendimento no PROCON Jacareí: {{2}}, {{3}}, às {{4}} (protocolo {{5}}). Endereço: {{6}}. Traga: {{7}}. Se não puder comparecer, remarque ou cancele respondendo a esta mensagem."
+
 export const MODELO_LEMBRETE_ATENDIMENTO = { name: "lembrete_atendimento", languageCode: "pt_BR" } as const
+
+const DIAS_SEMANA_LEMBRETE = [
+    "domingo",
+    "segunda-feira",
+    "terça-feira",
+    "quarta-feira",
+    "quinta-feira",
+    "sexta-feira",
+    "sábado",
+] as const
 
 export const FRASES_MOTIVO_CANCELAMENTO: Record<CancellationReason, string> = {
     UNIT_CLOSED: "a unidade estará fechada nesta data",
@@ -118,11 +131,51 @@ export interface AvisoCancelamentoInput {
     reason: CancellationReason
 }
 
+export interface LembreteAtendimentoInput {
+    name: string
+    protocol: string
+    appointmentDatetime: Date
+    unitAddress: string
+    unitAddressComplement?: string | null
+    documentsSent: {
+        group?: string[]
+        question?: string[]
+    }
+}
+
+function normalizarParametroModelo(valor: string): string {
+    return valor.replace(/\s+/g, " ").trim()
+}
+
 export function parametrosAvisoCancelamento(input: AvisoCancelamentoInput): string[] {
     const primeiroNome = input.name.trim().split(/\s+/)[0] ?? ""
     const { dateStr, timeStr } = getLocalParts(input.appointmentDatetime)
     const [, mes, dia] = dateStr.split("-")
     return [primeiroNome, input.protocol, `${dia}/${mes}`, timeStr, FRASES_MOTIVO_CANCELAMENTO[input.reason]]
+}
+
+export function parametrosLembreteAtendimento(input: LembreteAtendimentoInput): string[] {
+    const primeiroNome = input.name.trim().split(/\s+/)[0] ?? ""
+    const { dateStr, timeStr } = getLocalParts(input.appointmentDatetime)
+    const [ano, mes, dia] = dateStr.split("-")
+    const dow = new Date(Date.UTC(Number(ano), Number(mes) - 1, Number(dia), 12, 0, 0)).getUTCDay()
+    const diaSemana = DIAS_SEMANA_LEMBRETE[dow] ?? ""
+    const enderecoBase = normalizarParametroModelo(input.unitAddress)
+    const complemento = input.unitAddressComplement ? normalizarParametroModelo(input.unitAddressComplement) : ""
+    const endereco = complemento ? `${enderecoBase} (${complemento})` : enderecoBase
+    const documentos = [...(input.documentsSent.group ?? []), ...(input.documentsSent.question ?? [])]
+        .map(normalizarParametroModelo)
+        .filter((item) => item !== "")
+        .join("; ")
+    return [
+        primeiroNome,
+        diaSemana,
+        `${dia}/${mes}`,
+        timeStr,
+        normalizarParametroModelo(input.protocol),
+        endereco,
+        documentos || "documento oficial com foto",
+    ]
 }
 
 export function formatarQuando(data: Date): string {

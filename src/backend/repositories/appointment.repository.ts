@@ -988,8 +988,10 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                  FROM AppointmentEvents e
                  JOIN Appointments a ON a.id = e.appointment_id
                  JOIN Sessions s ON s.id = a.session_id
-                 WHERE e.type = 'CITIZEN_NOTIFIED'
-                   AND e.data->>'kind' IN ('CANCELLATION', 'REMINDER')
+                 WHERE (
+                     (e.type = 'CITIZEN_NOTIFIED' AND e.data->>'kind' IN ('CANCELLATION', 'REMINDER'))
+                     OR e.type = 'REMINDER_SENT'
+                 )
                    AND e.created_at >= $1
                    AND e.created_at <= $2`,
                 [from, to],
