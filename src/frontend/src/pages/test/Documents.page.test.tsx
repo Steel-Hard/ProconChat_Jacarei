@@ -92,7 +92,7 @@ function stubDocumentsFetch(
             if (url.endsWith("/api/v1/documents/preview") && method === "POST") {
                 const byRepresentative = body?.byRepresentative === true
                 const groupDocuments = body?.groupDocuments as string[]
-                const question = initialDocuments.sampleQuestions.find(
+                const question = initialDocuments.sampleQuestions?.find(
                     (item) => item.id === body?.questionId
                 )
                 const lines = [
