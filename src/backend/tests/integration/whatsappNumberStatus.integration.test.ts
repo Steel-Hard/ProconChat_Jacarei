@@ -66,12 +66,14 @@ describe("Contagem de telefones avisados nas últimas 24h com Postgres", () => {
         await pool.end()
     })
 
-    it("conta uma vez cada telefone com CITIZEN_NOTIFIED de cancelamento ou lembrete em [agora - 24h, agora]", async () => {
+    it("conta uma vez cada telefone com CITIZEN_NOTIFIED de cancelamento ou lembrete, ou REMINDER_SENT, em [agora - 24h, agora]", async () => {
         const repeated = randomBytes(32).toString("hex")
         await notified(repeated, "CITIZEN_NOTIFIED", "CANCELLATION", new Date(NOW.getTime() - 120_000))
         await notified(repeated, "CITIZEN_NOTIFIED", "REMINDER", new Date(NOW.getTime() - 60_000))
+        await notified(repeated, "REMINDER_SENT", "", new Date(NOW.getTime() - 30_000))
         await notified(randomBytes(32).toString("hex"), "CITIZEN_NOTIFIED", "CANCELLATION", new Date(NOW.getTime() - DAY_MS))
         await notified(randomBytes(32).toString("hex"), "CITIZEN_NOTIFIED", "REMINDER", NOW)
+        await notified(randomBytes(32).toString("hex"), "REMINDER_SENT", "", NOW)
         await notified(randomBytes(32).toString("hex"), "CITIZEN_NOTIFIED", "CANCELLATION", new Date(NOW.getTime() - DAY_MS - 1))
         await notified(randomBytes(32).toString("hex"), "CITIZEN_NOTIFIED", "CANCELLATION", new Date(NOW.getTime() + 1))
         await notified(randomBytes(32).toString("hex"), "CITIZEN_NOTIFICATION_FAILED", "CANCELLATION", new Date(NOW.getTime() - 60_000))
@@ -79,6 +81,6 @@ describe("Contagem de telefones avisados nas últimas 24h com Postgres", () => {
 
         const count = await repository.countNotifiedPhonesBetween(new Date(NOW.getTime() - DAY_MS), NOW)
 
-        expect(count).toBe(3)
+        expect(count).toBe(4)
     })
 })
