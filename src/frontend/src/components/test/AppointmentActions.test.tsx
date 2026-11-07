@@ -10,7 +10,14 @@ const DATE_NOTE =
     "A data não pode ser alterada pelo painel. Remarcações são feitas pelo cidadão no chatbot."
 
 function view(overrides: Partial<AppointmentActionsView> = {}): AppointmentActionsView {
-    return { items: [], finalText: null, readOnlyText: null, error: null, ...overrides }
+    return {
+        items: [],
+        finalText: null,
+        readOnlyText: null,
+        cancelUnavailableText: null,
+        error: null,
+        ...overrides
+    }
 }
 
 function renderActions(value: AppointmentActionsView, onAction = vi.fn()) {

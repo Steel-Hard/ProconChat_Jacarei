@@ -43,11 +43,19 @@ function respond({ status, body }: Reply): Response {
     })
 }
 
-async function setup(patchReply: Reply = { status: 200, body: { data: DETAIL } }) {
+async function setup(
+    patchReply: Reply = { status: 200, body: { data: DETAIL } },
+    extraReplies: Record<string, Reply> = {}
+) {
     vi.stubEnv("VITE_API_URL", "https://api.example.com")
     vi.resetModules()
     const fetchMock = vi.fn(async (input: Request) => {
         const path = new URL(input.url).pathname
+        const reply = extraReplies[`${input.method} ${path}`]
+
+        if (reply) {
+            return respond(reply)
+        }
 
         if (input.method === "PATCH") {
             return respond(patchReply)
@@ -178,6 +186,30 @@ describe("appointmentsApi", () => {
         expect(requestAt(fetchMock, 0).url).toBe("https://api.example.com/api/v1/appointments/7")
     })
 
+    it("lê a prévia de cancelamento gerada pelo backend", async () => {
+        const preview = {
+            previews: [{ reason: "CITIZEN_REQUEST", message: "Mensagem oficial de cancelamento" }]
+        }
+        const { appointmentsApi, store, fetchMock } = await setup(
+            { status: 200, body: { data: DETAIL } },
+            {
+                "GET /api/v1/appointments/7/cancellation-preview": {
+                    status: 200,
+                    body: { data: preview }
+                }
+            }
+        )
+
+        const result = await store.dispatch(
+            appointmentsApi.endpoints.getCancellationPreview.initiate("7")
+        )
+
+        expect(result.data).toEqual(preview)
+        expect(requestAt(fetchMock, 0).url).toBe(
+            "https://api.example.com/api/v1/appointments/7/cancellation-preview"
+        )
+    })
+
     it("manda PATCH /:id/status com o corpo da ação e devolve o detalhe", async () => {
         const { appointmentsApi, store, fetchMock } = await setup()
 
@@ -191,6 +223,39 @@ describe("appointmentsApi", () => {
             "https://api.example.com/api/v1/appointments/7/status"
         )
         expect(await requestAt(fetchMock, 0).text()).toBe('{"action":"claim"}')
+    })
+
+    it("manda PATCH /:id/status com o motivo e a observação do cancelamento", async () => {
+        const { appointmentsApi, store, fetchMock } = await setup()
+
+        await store.dispatch(
+            appointmentsApi.endpoints.updateAppointmentStatus.initiate({
+                id: "7",
+                action: "cancel",
+                reason: "CITIZEN_REQUEST",
+                note: "Pedido confirmado pelo titular"
+            })
+        )
+
+        expect(requestAt(fetchMock, 0).method).toBe("PATCH")
+        expect(requestAt(fetchMock, 0).url).toBe(
+            "https://api.example.com/api/v1/appointments/7/status"
+        )
+        expect(await requestAt(fetchMock, 0).text()).toBe(
+            '{"action":"cancel","reason":"CITIZEN_REQUEST","note":"Pedido confirmado pelo titular"}'
+        )
+    })
+
+    it("envia POST para tentar novamente o aviso de cancelamento", async () => {
+        const { appointmentsApi, store, fetchMock } = await setup()
+
+        await store.dispatch(appointmentsApi.endpoints.retryCancellationNotice.initiate("7"))
+
+        expect(requestAt(fetchMock, 0).method).toBe("POST")
+        expect(requestAt(fetchMock, 0).url).toBe(
+            "https://api.example.com/api/v1/appointments/7/cancellation-notice/retry"
+        )
+        expect(await requestAt(fetchMock, 0).text()).toBe("")
     })
 
     it("no sucesso grava o detalhe no cache sem novo GET e refaz a lista e o contador", async () => {

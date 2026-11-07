@@ -10,7 +10,7 @@ Conectar o painel ao número institucional na **WhatsApp Cloud API** (oficial da
 
 ## Estado da tela
 
-**Entregue em parte (issues #54, #69 e #129).** Já funcionam: topo com número e situação, pausa, credenciais, "Configure no painel da Meta", teste de conexão, a aba **Privacidade** (issue #69), credenciais e webhook no **Estado do número**, falhas de entrega e **Histórico de alterações** (issue #129). Ainda não construídos na tela: **Modelos de mensagem** e a qualidade e o limite do **Estado do número** (API pronta na issue #67, tela na #127).
+**Entregue (issues #54, #69, #127 e #129).** Já funcionam: topo com número e situação, pausa, credenciais, "Configure no painel da Meta", teste de conexão, a aba **Privacidade** (issue #69), credenciais, webhook, qualidade e limite de envios no **Estado do número**, modelos de mensagem com atualização de status (issue #127), falhas de entrega e **Histórico de alterações** (issue #129).
 
 ## O que a tela mostra
 
@@ -37,7 +37,7 @@ Regras da troca de abas:
 
 ### Estado do número
 
-**Parte construída na issue #129.** A tela mostra credenciais, último evento do webhook e falhas de entrega das últimas 24 horas. A **qualidade** e o **limite de envios** já têm API (issue #67, `GET /api/v1/whatsapp/settings/number-status`, só Admin), mas a tela fica com a #127.
+**Construído nas issues #127 e #129.** A tela mostra credenciais, último evento do webhook, falhas de entrega das últimas 24 horas, qualidade e limite de envios. A seção permite atualizar a consulta à Meta e mostra alertas quando a consulta falha ou quando o uso alcança 80% do limite diário.
 
 | Item | O que mostra |
 |---|---|
@@ -86,7 +86,7 @@ E o passo a passo:
 
 ### Modelos de mensagem
 
-**API pronta (issue #67), tela na #127.** `GET /api/v1/whatsapp/settings/templates` (só Admin) consulta a Meta a cada chamada. O cadastro dos modelos na Meta está no [guia de modelos de mensagem](../whatsapp/modelos-de-mensagem.md).
+**Construído na #127.** A seção consulta os modelos na Meta ao abrir e oferece o botão **"Atualizar status da Meta"**. O cadastro dos modelos na Meta está no [guia de modelos de mensagem](../whatsapp/modelos-de-mensagem.md).
 
 Mensagens enviadas fora da conversa precisam de modelo aprovado pela Meta ([decisão 005](../decisoes/005-mensagens-ao-cidadao.md)).
 
@@ -95,7 +95,7 @@ Mensagens enviadas fora da conversa precisam de modelo aprovado pela Meta ([deci
 | Lembrete do atendimento | [Horários de atendimento](08-horarios-de-atendimento.md) |
 | Aviso de cancelamento | [Detalhe do agendamento](04-detalhe-do-agendamento.md) e cancelamento em massa |
 
-- Cada um mostra o status na Meta: **Aprovado**, **Em análise** ou **Rejeitado**, com o botão **"Atualizar status"**.
+- Cada um mostra o status na Meta: **Aprovado**, **Em análise**, **Rejeitado**, **Não encontrado** ou outro status informado pela Meta, com o botão **"Atualizar status da Meta"**.
 - Se algum não estiver aprovado: "Enquanto este modelo não for aprovado, [lembretes / avisos de cancelamento] não serão enviados."
 
 ### Privacidade
@@ -156,7 +156,7 @@ Quem alterou o quê e quando. **Os valores do token e do App Secret não são re
 | Ligar a anonimização automática ou reduzir um prazo | **Segue o padrão de salvar**, com a prévia de quantos registros passaram do prazo e a confirmação "Anonimizar" antes de gravar |
 | Editar IDs, substituir segredos | **Segue o padrão de salvar** ([regras gerais](00-regras-gerais.md#3-salvar-descartar-e-registrar-quem-alterou)). Salvar credenciais novas exige teste bem-sucedido |
 | Testar conexão | Pode ser feito a qualquer momento |
-| Atualizar status dos modelos | Consulta a Meta de novo. API pronta (issue #67), **botão na tela com a #127** |
+| Atualizar status dos modelos | Consulta os modelos e o estado do número na Meta de novo (#127) |
 | **Pausar respostas automáticas** | **Age na hora**, sem passar pelo Salvar, porque é de emergência. Pede confirmação: "O chatbot deixará de responder aos cidadãos até ser reativado" |
 | **Reativar respostas** | Age na hora, sem confirmação |
 

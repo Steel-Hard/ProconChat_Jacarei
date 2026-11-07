@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 import AppointmentHistory from "@/components/AppointmentHistory"
 
@@ -45,5 +46,53 @@ describe("AppointmentHistory", () => {
         expect(items[0]).toHaveAttribute("data-highlight", "true")
         expect(items[1]).not.toHaveAttribute("data-highlight")
         expect(screen.queryByRole("button")).not.toBeInTheDocument()
+    })
+
+    it("mostra o retry junto da falha e executa a ação", async () => {
+        const user = userEvent.setup()
+        const onRetry = vi.fn()
+        render(
+            <AppointmentHistory
+                title="Histórico"
+                entries={ENTRIES}
+                retry={{
+                    allowed: true,
+                    busy: false,
+                    label: "Tentar novamente",
+                    error: null,
+                    onRetry
+                }}
+            />
+        )
+
+        await user.click(screen.getByRole("button", { name: "Tentar novamente" }))
+
+        expect(onRetry).toHaveBeenCalledOnce()
+        expect(
+            within(screen.getAllByRole("listitem")[0] as HTMLElement).getByRole("button", {
+                name: "Tentar novamente"
+            })
+        ).toBeInTheDocument()
+    })
+
+    it("mantém o retry disponível sem evento de falha quando autorizado pelo backend", () => {
+        render(
+            <AppointmentHistory
+                title="Histórico"
+                entries={ENTRIES.slice(1)}
+                retry={{
+                    allowed: true,
+                    busy: false,
+                    label: "Tentar novamente",
+                    error: "Não foi possível concluir a ação. Tente de novo.",
+                    onRetry: vi.fn()
+                }}
+            />
+        )
+
+        expect(screen.getByRole("button", { name: "Tentar novamente" })).toBeInTheDocument()
+        expect(screen.getByRole("alert")).toHaveTextContent(
+            "Não foi possível concluir a ação. Tente de novo."
+        )
     })
 })

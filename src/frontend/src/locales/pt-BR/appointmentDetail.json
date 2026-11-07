@@ -98,6 +98,7 @@
     },
     "history": {
         "title": "Histórico",
+        "retryNotice": "Tentar novamente",
         "events": {
             "created": {
                 "withActor": "Criado pelo chatbot como Pendente",
@@ -171,7 +172,8 @@
             "claim": "Assumir para mim",
             "attended": "Marcar como atendido",
             "noShow": "Marcar como não compareceu",
-            "correctRecord": "Corrigir registro"
+            "correctRecord": "Corrigir registro",
+            "cancel": "Cancelar agendamento"
         },
         "waiting": {
             "attended": "Marcar como atendido: disponível a partir do dia do atendimento.",
@@ -181,6 +183,27 @@
             "attended": "Atendimento concluído.",
             "noShow": "O cidadão não compareceu ao atendimento.",
             "canceled": "Agendamento cancelado. O horário foi liberado no chatbot."
+        },
+        "cancel": {
+            "title": "Cancelar agendamento?",
+            "description": "O cidadão receberá o aviso de cancelamento pelo WhatsApp e o horário será liberado no chatbot. Esta ação não pode ser desfeita.",
+            "confirm": "Cancelar e avisar o cidadão",
+            "dismiss": "Voltar",
+            "reasonLabel": "Motivo obrigatório",
+            "selectReason": "Selecione o motivo",
+            "reasons": {
+                "UNIT_CLOSED": "Unidade fechada nesta data",
+                "CITIZEN_REQUEST": "A pedido do cidadão",
+                "DUPLICATE": "Agendamento duplicado",
+                "OTHER": "Outro motivo"
+            },
+            "previewLabel": "Prévia exata da mensagem ao cidadão",
+            "chooseReason": "Selecione o motivo para ver a mensagem.",
+            "previewFailed": "Não foi possível carregar a prévia da mensagem.",
+            "retryPreview": "Tentar carregar a prévia novamente",
+            "fixedMessageHint": "As mensagens seguem modelos fixos e podem ser enviadas a qualquer momento antes do horário do atendimento.",
+            "noteLabel": "Observação interna (opcional)",
+            "afterStart": "Não é possível cancelar depois do horário do atendimento. Registre como não compareceu."
         },
         "readOnly": "Sua conta pode apenas visualizar agendamentos.",
         "dateNote": "A data não pode ser alterada pelo painel. Remarcações são feitas pelo cidadão no chatbot.",

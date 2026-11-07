@@ -26,6 +26,9 @@ function AppointmentActions({ title, view, dateNote, onAction }: AppointmentActi
                     onAction={onAction}
                 />
             ))}
+            {view.cancelUnavailableText ? (
+                <p className={css.box}>{view.cancelUnavailableText}</p>
+            ) : null}
             {view.finalText ? <p className={css.box}>{view.finalText}</p> : null}
             {view.readOnlyText ? <p className={css.box}>{view.readOnlyText}</p> : null}
             <p className={css.dateNote}>{dateNote}</p>

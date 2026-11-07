@@ -8,6 +8,7 @@ import WhatsAppConnectionTest from "@/components/WhatsAppConnectionTest"
 import WhatsAppDeliveryFailures from "@/components/WhatsAppDeliveryFailures"
 import WhatsAppMessageBubble from "@/components/WhatsAppMessageBubble"
 import WhatsAppMetaSetup from "@/components/WhatsAppMetaSetup"
+import WhatsAppMetaStatus from "@/components/WhatsAppMetaStatus"
 import WhatsAppNumberStatus from "@/components/WhatsAppNumberStatus"
 import WhatsAppPauseSwitch from "@/components/WhatsAppPauseSwitch"
 import WhatsAppPrivacyForm from "@/components/WhatsAppPrivacyForm"
@@ -172,6 +173,7 @@ function WhatsAppPage() {
                                     />
                                 </WhatsAppNumberStatus>
                             ) : null}
+                            {view ? <WhatsAppMetaStatus /> : null}
                             {view ? (
                                 <section className={css.card}>
                                     <h2 className={css.sectionTitle}>{t("credentials.heading")}</h2>

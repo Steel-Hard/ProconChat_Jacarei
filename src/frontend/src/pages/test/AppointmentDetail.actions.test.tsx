@@ -54,6 +54,34 @@ const DUE = buildAppointmentDetail({
     }
 })
 
+const CANCELLABLE = buildAppointmentDetail({
+    available_actions: {
+        ...PENDING.available_actions,
+        cancel: { allowed: true, code: null }
+    }
+})
+
+const CANCELED = buildAppointmentDetail({
+    status: "CANCELED",
+    events: [
+        {
+            id: "2",
+            type: "CANCELED_BY_STAFF",
+            actor_user_id: "1",
+            actor_user_name: "Ana Paula Souza",
+            data: { reason: "CITIZEN_REQUEST" },
+            created_at: "2026-10-18T14:00:00.000Z"
+        },
+        ...PENDING.events
+    ],
+    available_actions: {
+        ...PENDING.available_actions,
+        claim: { allowed: false, code: "APPOINTMENT_CANCELED" },
+        cancel: { allowed: false, code: null },
+        retry_cancellation_notice: { allowed: false, code: null }
+    }
+})
+
 function ok(detail: AppointmentDetail): Reply {
     return { status: 200, body: { data: detail } }
 }
@@ -62,11 +90,16 @@ function failure(status: number, code: string): Reply {
     return { status, body: { error: { code, message: "x" } } }
 }
 
-async function renderActions(detail: Handler | AppointmentDetail, patch: Handler) {
+async function renderActions(
+    detail: Handler | AppointmentDetail,
+    patch: Handler,
+    extraHandlers: Record<string, Handler> = {}
+) {
     const page = await renderAppointmentDetailPage({
         handlers: {
             [`GET ${DETAIL_PATH}`]: typeof detail === "function" ? detail : () => ok(detail),
-            [`PATCH ${STATUS_PATH}`]: patch
+            [`PATCH ${STATUS_PATH}`]: patch,
+            ...extraHandlers
         }
     })
     await screen.findByRole("heading", { level: 1, name: "Maria Fictícia" })
@@ -126,6 +159,24 @@ describe("AppointmentDetail.page: botões e mensagens", () => {
         expect(box.queryByText(/outra pessoa já assumiu/i)).not.toBeInTheDocument()
     })
 
+    it("mostra a explicação quando o horário passou e não oferece cancelar", async () => {
+        const detail = buildAppointmentDetail({
+            available_actions: {
+                ...PENDING.available_actions,
+                cancel: { allowed: false, code: "CANCEL_AFTER_START" }
+            }
+        })
+        await renderActions(detail, () => ok(CLAIMED))
+
+        const box = actionsBox()
+        expect(box.queryByRole("button", { name: "Cancelar agendamento" })).not.toBeInTheDocument()
+        expect(
+            box.getByText(
+                "Não é possível cancelar depois do horário do atendimento. Registre como não compareceu."
+            )
+        ).toBeInTheDocument()
+    })
+
     it.each([
         ["ATTENDED", "ALREADY_ATTENDED", "Atendimento concluído."],
         ["NO_SHOW", "ALREADY_NO_SHOW", "O cidadão não compareceu ao atendimento."],
@@ -174,6 +225,86 @@ describe("AppointmentDetail.page: confirmação", () => {
         await page.user.click(within(dialog).getByRole("button", { name: "Voltar" }))
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
         expect(page.requests("PATCH", STATUS_PATH)).toHaveLength(0)
+    })
+
+    it("usa a prévia do backend, exige motivo e envia a observação interna no cancelamento", async () => {
+        const message = "Mensagem exata gerada pelo backend"
+        const page = await renderActions(CANCELLABLE, () => ok(CANCELED), {
+            "GET /api/v1/appointments/1/cancellation-preview": () => ({
+                status: 200,
+                body: {
+                    data: {
+                        previews: [
+                            { reason: "UNIT_CLOSED", message: "Mensagem para unidade fechada" },
+                            { reason: "CITIZEN_REQUEST", message },
+                            { reason: "DUPLICATE", message: "Mensagem para duplicidade" },
+                            { reason: "OTHER", message: "Mensagem para outro motivo" }
+                        ]
+                    }
+                }
+            })
+        })
+
+        await page.user.click(screen.getByRole("button", { name: "Cancelar agendamento" }))
+        const dialog = screen.getByRole("dialog", { name: "Cancelar agendamento?" })
+        expect(
+            await within(dialog).findByText("Selecione o motivo para ver a mensagem.")
+        ).toBeInTheDocument()
+
+        const confirm = within(dialog).getByRole("button", {
+            name: "Cancelar e avisar o cidadão"
+        })
+        expect(confirm).toBeDisabled()
+        await page.user.selectOptions(
+            within(dialog).getByRole("combobox", { name: "Motivo obrigatório" }),
+            "CITIZEN_REQUEST"
+        )
+        expect(await within(dialog).findByText(message)).toBeInTheDocument()
+        expect(confirm).toBeEnabled()
+        await page.user.type(
+            within(dialog).getByRole("textbox", { name: "Observação interna (opcional)" }),
+            "Pedido confirmado pelo titular"
+        )
+        await page.user.click(confirm)
+
+        await waitFor(() => {
+            expect(page.requests("PATCH", STATUS_PATH)).toHaveLength(1)
+        })
+        expect(page.requests("PATCH", STATUS_PATH)[0]?.body).toEqual({
+            action: "cancel",
+            reason: "CITIZEN_REQUEST",
+            note: "Pedido confirmado pelo titular"
+        })
+        expect(
+            await screen.findByText("Agendamento F10464F0 cancelado e aviso enviado ao cidadão.")
+        ).toBeInTheDocument()
+    })
+
+    it("mostra o retry mesmo sem evento de falha quando o backend o permite", async () => {
+        const retryable = buildAppointmentDetail({
+            ...CANCELED,
+            available_actions: {
+                ...CANCELED.available_actions,
+                retry_cancellation_notice: { allowed: true, code: null }
+            }
+        })
+        const page = await renderActions(retryable, () => ok(CLAIMED), {
+            "POST /api/v1/appointments/1/cancellation-notice/retry": () => ({
+                status: 200,
+                body: { data: CANCELED }
+            })
+        })
+
+        await page.user.click(screen.getByRole("button", { name: "Tentar novamente" }))
+
+        await waitFor(() =>
+            expect(
+                page.requests("POST", "/api/v1/appointments/1/cancellation-notice/retry")
+            ).toHaveLength(1)
+        )
+        expect(
+            await screen.findByText("Aviso de cancelamento enviado ao cidadão.")
+        ).toBeInTheDocument()
     })
 
     it.each([

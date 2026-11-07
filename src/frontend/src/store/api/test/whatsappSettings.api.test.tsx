@@ -37,6 +37,37 @@ async function setup(failing: Failing = {}) {
     vi.stubEnv("VITE_API_URL", "https://api.example.com")
     vi.resetModules()
     const fetchMock = vi.fn(async (input: Request) => {
+        if (input.url.endsWith("/templates")) {
+            return jsonResponse({
+                data: {
+                    checkedAt: "2026-10-14T13:00:00.000Z",
+                    templates: [
+                        {
+                            kind: "CANCELLATION",
+                            name: "aviso_cancelamento",
+                            languageCode: "pt_BR",
+                            status: "APPROVED",
+                            metaStatus: "APPROVED"
+                        }
+                    ]
+                }
+            })
+        }
+
+        if (input.url.endsWith("/number-status")) {
+            return jsonResponse({
+                data: {
+                    checkedAt: "2026-10-14T13:00:00.000Z",
+                    qualityRating: "HIGH",
+                    messagingLimit: {
+                        tier: "TIER_250",
+                        dailyLimit: 250,
+                        usedLast24h: 50
+                    }
+                }
+            })
+        }
+
         if (input.url.endsWith("/delivery-failures")) {
             return jsonResponse({
                 data: { since: "2026-10-14T13:00:00.000Z", count: 0, items: [] }
@@ -131,6 +162,38 @@ describe("whatsappSettingsApi", () => {
             "https://api.example.com/api/v1/whatsapp/settings/history"
         )
         expect(requestAt(fetchMock, 0).credentials).toBe("include")
+    })
+
+    it("lê os estados dos modelos de mensagem consultados na Meta", async () => {
+        const { whatsappSettingsApi, store, fetchMock } = await setup()
+
+        const result = await store.dispatch(
+            whatsappSettingsApi.endpoints.getWhatsAppTemplatesStatus.initiate()
+        )
+
+        expect(result.data?.templates[0]).toMatchObject({
+            kind: "CANCELLATION",
+            status: "APPROVED"
+        })
+        expect(requestAt(fetchMock, 0).url).toBe(
+            "https://api.example.com/api/v1/whatsapp/settings/templates"
+        )
+    })
+
+    it("lê qualidade, limite diário e uso do número na Meta", async () => {
+        const { whatsappSettingsApi, store, fetchMock } = await setup()
+
+        const result = await store.dispatch(
+            whatsappSettingsApi.endpoints.getWhatsAppNumberMetaStatus.initiate()
+        )
+
+        expect(result.data).toMatchObject({
+            qualityRating: "HIGH",
+            messagingLimit: { tier: "TIER_250", dailyLimit: 250, usedLast24h: 50 }
+        })
+        expect(requestAt(fetchMock, 0).url).toBe(
+            "https://api.example.com/api/v1/whatsapp/settings/number-status"
+        )
     })
 
     it("pausa com POST /pause e devolve a leitura", async () => {

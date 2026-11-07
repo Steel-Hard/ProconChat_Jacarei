@@ -53,6 +53,58 @@
     filter: brightness(0.94);
 }
 
+.cancelFields {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.cancelField {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.cancelField select,
+.cancelField textarea {
+    width: 100%;
+    padding: 9px 11px;
+    border: 1px solid var(--border-input);
+    border-radius: 8px;
+    background: var(--bg-surface);
+    color: var(--text-body);
+    font: 14px var(--font-body);
+}
+
+.cancelField textarea {
+    min-height: 84px;
+    resize: vertical;
+}
+
+.cancelPreview {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 12px;
+    border: 1px solid var(--divider);
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+}
+
+.cancelLabel {
+    font-weight: 600;
+}
+
+.cancelHint {
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--text-muted);
+}
+
 .columns {
     display: flex;
     flex-direction: column;
