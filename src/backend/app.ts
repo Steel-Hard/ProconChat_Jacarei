@@ -15,6 +15,7 @@ import whatsappInternalConfigRoutes from "./routes/whatsappInternalConfig.routes
 import whatsappInternalEventsRoutes from "./routes/whatsappInternalEvents.routes"
 import userAccountRoutes from "./routes/userAccount.routes"
 import scheduleRoutes from "./routes/schedule.routes"
+import documentsRoutes from "./routes/documents.routes"
 import privacyPublicRoutes from "./routes/privacyPublic.routes"
 import contentRoutes from "./routes/content.routes"
 import reportRoutes from "./routes/report.routes"
@@ -44,6 +45,7 @@ app.use("/api/v1/appointments", appointmentRoutes)
 app.use("/api/v1/whatsapp/settings", whatsappSettingsRoutes)
 app.use("/api/v1/users", userAccountRoutes)
 app.use("/api/v1/schedule", scheduleRoutes)
+app.use("/api/v1/documents", documentsRoutes)
 app.use("/api/v1/privacy", privacyPublicRoutes)
 app.use("/api/v1/content", contentRoutes)
 app.use("/api/v1/reports", reportRoutes)

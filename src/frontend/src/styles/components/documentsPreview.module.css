@@ -1,0 +1,133 @@
+.previewCard {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+}
+
+.header {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.title {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.subtitle {
+    font-size: 13.5px;
+    color: var(--text-muted);
+}
+
+.selectors {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+}
+
+.fieldGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.select {
+    padding: 8px 12px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    font-size: 13.5px;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+}
+
+.select:focus {
+    border-color: var(--color-primary);
+}
+
+.notices {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.unsavedNotice {
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: var(--info-bg, #eff6ff);
+    border: 1px solid var(--info-border, #bfdbfe);
+    color: var(--info-text, #1e40af);
+    font-size: 13px;
+}
+
+.noDocsNotice {
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: var(--warn-bg, #fffbeb);
+    border: 1px solid var(--warn-border, #fde68a);
+    color: var(--warn-text, #92400e);
+    font-size: 13px;
+}
+
+.chatPreview {
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    background: var(--chat-bg, #efeae2);
+    border-radius: 10px;
+    min-height: 200px;
+}
+
+.bubble {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-width: 95%;
+    padding: 12px 14px;
+    border-radius: 2px 10px 10px 10px;
+    background: var(--bg-surface);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    color: var(--chat-text, #111b21);
+    font-size: 13.5px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.bubbleHeading {
+    font-weight: 700;
+    font-size: 14.5px;
+}
+
+.repeatedItem {
+    background: #fef08a;
+    padding: 2px 4px;
+    border-radius: 4px;
+    cursor: help;
+}
+
+.repeatedBadge {
+    display: inline-block;
+    margin-left: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: #f59e0b;
+    color: #fff;
+    vertical-align: middle;
+}

@@ -7,7 +7,7 @@ const NAV_ITEMS_READY: Record<NavKey, boolean> = {
     content: false,
     sessions: false,
     schedule: true,
-    documents: false,
+    documents: true,
     users: true,
     whatsapp: true
 }

@@ -1,0 +1,118 @@
+.item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    transition:
+        background 0.15s ease,
+        border-color 0.15s ease;
+}
+
+.item:hover {
+    border-color: var(--border-accent);
+}
+
+.textWrapper {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.textButton {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 14px;
+    color: var(--text-primary);
+    text-align: left;
+    cursor: pointer;
+    width: 100%;
+    word-break: break-word;
+}
+
+.textButton:hover {
+    color: var(--color-primary);
+}
+
+.editForm {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1 1 auto;
+}
+
+.editInput {
+    flex: 1 1 auto;
+    padding: 6px 10px;
+    border: 1px solid var(--color-primary);
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+}
+
+.saveButton {
+    padding: 5px 10px;
+    border: none;
+    border-radius: 6px;
+    background: var(--color-primary);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.cancelButton {
+    padding: 5px 10px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    background: none;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.actionButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 28px;
+    padding: 2px 6px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    background: var(--bg-surface);
+    color: var(--text-muted);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.actionButton:hover:not(:disabled) {
+    color: var(--text-primary);
+    border-color: var(--border-strong);
+    background: var(--bg-subtle);
+}
+
+.actionButton:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.removeButton {
+    color: var(--error-text);
+}
+
+.removeButton:hover:not(:disabled) {
+    color: var(--error-text);
+    border-color: var(--error-border, #fca5a5);
+    background: var(--error-bg);
+}

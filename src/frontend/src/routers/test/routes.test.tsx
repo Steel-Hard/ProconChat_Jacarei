@@ -51,8 +51,7 @@ function renderRoutes(initialEntries: string[], preloadedState?: Partial<RootSta
 const underConstructionRoutes: Array<[string, string]> = [
     [ROUTES.reports, "Relatórios"],
     [ROUTES.content, "Conteúdo"],
-    [ROUTES.sessions, "Sessões"],
-    [ROUTES.documents, "Documentos"]
+    [ROUTES.sessions, "Sessões"]
 ]
 
 const protectedRoutes: Array<[string, string]> = [
@@ -61,6 +60,7 @@ const protectedRoutes: Array<[string, string]> = [
     [ROUTES.appointments, "Agendamentos"],
     ["/agendamentos/1", "Detalhe do agendamento"],
     [ROUTES.schedule, "Horários de atendimento"],
+    [ROUTES.documents, "Documentos para atendimento presencial"],
     [ROUTES.users, "Usuários"],
     [ROUTES.whatsapp, "WhatsApp"]
 ]
@@ -140,6 +140,7 @@ describe("routes", () => {
             () => import("@/pages/AppointmentDetail.page"),
             () => import("@/pages/Users.page"),
             () => import("@/pages/Schedule.page"),
+            () => import("@/pages/Documents.page"),
             () => import("@/pages/PrivacyPolicy.page")
         ])
     })
@@ -269,6 +270,34 @@ describe("routes", () => {
 
         expect(await screen.findByRole("heading", { name: "404 - Not Found" })).toBeInTheDocument()
         expect(requestedUrls().some((url) => url.includes("/api/v1/schedule"))).toBe(false)
+    })
+
+    it("renderiza a tela de Documentos para o Admin, carregando os documentos", async () => {
+        renderRoutes([ROUTES.documents], withSession)
+
+        expect(
+            await screen.findByRole("heading", {
+                name: "Documentos para atendimento presencial",
+                level: 1
+            })
+        ).toBeInTheDocument()
+        expect(screen.getByText("Carregando...")).toBeInTheDocument()
+        expect(screen.queryByText("Em construção.")).not.toBeInTheDocument()
+        await waitFor(() =>
+            expect(requestedUrls().some((url) => url.endsWith("/api/v1/documents"))).toBe(true)
+        )
+    })
+
+    it("mostra a NotFound em /documentos a quem não tem permissão", async () => {
+        renderRoutes([ROUTES.documents], {
+            account: {
+                current: { ...staffWithAllPermissions, permissions: ["users.manage"] },
+                status: "authenticated"
+            }
+        })
+
+        expect(await screen.findByRole("heading", { name: "404 - Not Found" })).toBeInTheDocument()
+        expect(requestedUrls().some((url) => url.includes("/api/v1/documents"))).toBe(false)
     })
 
     it("renderiza o detalhe do agendamento com sessão, pedindo o agendamento pelo id", async () => {
