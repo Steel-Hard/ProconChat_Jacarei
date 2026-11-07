@@ -10,6 +10,8 @@ type WhatsAppSettings = {
     graphApiVersion: string
     credentialsValid: boolean | null
     credentialsCheckedAt: string | null
+    credentialsStatus: "NOT_CHECKED" | "INVALID" | "EXPIRED" | "VALID"
+    webhook: { lastEventAt: string | null; stale: boolean }
     autoReplyPaused: boolean
     pausedMessage: string
     updatedBy: { id: number; name: string } | null

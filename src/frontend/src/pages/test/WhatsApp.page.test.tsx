@@ -23,6 +23,8 @@ function settingsView(overrides: Partial<WhatsAppSettings> = {}): WhatsAppSettin
         graphApiVersion: "v26.0",
         credentialsValid: true,
         credentialsCheckedAt: "2026-10-14T13:00:00.000Z",
+        credentialsStatus: "VALID",
+        webhook: { lastEventAt: "2026-10-14T13:00:00.000Z", stale: false },
         autoReplyPaused: false,
         pausedMessage: PAUSED_MESSAGE,
         updatedBy: { id: 1, name: "Ana Paula" },
@@ -90,6 +92,14 @@ async function renderPage(handlers: Record<string, Handler> = {}, view = setting
     vi.resetModules()
     const calls = stubApi({
         "GET /api/v1/whatsapp/settings": () => ({ status: 200, body: { data: view } }),
+        "GET /api/v1/whatsapp/settings/delivery-failures": () => ({
+            status: 200,
+            body: { data: { since: "2026-11-03T00:00:00.000Z", count: 0, items: [] } }
+        }),
+        "GET /api/v1/whatsapp/settings/history": () => ({
+            status: 200,
+            body: { data: { items: [] } }
+        }),
         ...handlers
     })
     const { default: createStore } = await import("@/store/createStore")
@@ -269,6 +279,45 @@ describe("WhatsAppPage", () => {
         expect(screen.queryByText("Conexão testada com sucesso.")).not.toBeInTheDocument()
     })
 
+    it("mostra a dica de testar uma vez, ao lado de Testar conexão e fora da barra do topo", async () => {
+        const { user } = await renderPage()
+        await loaded()
+
+        await user.type(screen.getByLabelText("ID do número de telefone"), "9")
+
+        expect(screen.getAllByText(NEED_TEST)).toHaveLength(1)
+        expect(
+            screen.getByRole("button", { name: "Testar conexão" }).parentElement
+        ).toContainElement(screen.getByText(NEED_TEST))
+        expect(
+            screen.getByRole("button", { name: "Descartar" }).parentElement
+        ).not.toContainElement(screen.getByText(NEED_TEST))
+    })
+
+    it("descreve o Salvar com a dica enquanto falta testar as credenciais novas", async () => {
+        const { user } = await renderPage()
+        await loaded()
+
+        await user.type(screen.getByLabelText("ID do número de telefone"), "9")
+
+        expect(
+            screen.getByRole("button", { name: "Salvar alterações" })
+        ).toHaveAccessibleDescription(NEED_TEST)
+    })
+
+    it("tira a descrição do Salvar depois do teste bem-sucedido com os valores atuais", async () => {
+        const { user } = await renderPage({ "POST /api/v1/whatsapp/settings/test": OK_TEST })
+        await loaded()
+
+        await user.type(screen.getByLabelText("ID do número de telefone"), "9")
+        await user.click(screen.getByRole("button", { name: "Testar conexão" }))
+        await screen.findByText("Conexão testada com sucesso.")
+
+        expect(
+            screen.getByRole("button", { name: "Salvar alterações" })
+        ).toHaveAccessibleDescription("")
+    })
+
     it("mostra Testando e desabilita o botão enquanto o teste está em andamento", async () => {
         let release: (reply: Reply) => void = noRelease
         const { user } = await renderPage({
@@ -335,6 +384,9 @@ describe("WhatsAppPage", () => {
         expect(within(group("Token de acesso")).getByText("••••••••77Zz")).toBeInTheDocument()
         expect(screen.queryByText("Conexão testada com sucesso.")).not.toBeInTheDocument()
         expect(screen.queryByText(/não salvas?$/)).not.toBeInTheDocument()
+        await waitFor(() =>
+            expect(callsTo(calls, "GET", "/api/v1/whatsapp/settings/history")).toHaveLength(2)
+        )
         expect(callsTo(calls, "PUT", "/api/v1/whatsapp/settings")[0]?.body).toEqual({
             phoneNumberId: "100000000000001",
             businessAccountId: "200000000000002",
@@ -455,6 +507,93 @@ describe("WhatsAppPage", () => {
         expect(screen.getByText("Credenciais inválidas")).toBeInTheDocument()
     })
 
+    it("mostra a saúde do número, alerta para webhook parado e lista o histórico sem valores secretos", async () => {
+        const { calls } = await renderPage(
+            {
+                "GET /api/v1/whatsapp/settings/delivery-failures": () => ({
+                    status: 200,
+                    body: {
+                        data: {
+                            since: "2026-11-03T00:00:00.000Z",
+                            count: 1,
+                            items: [
+                                {
+                                    id: "failure-1",
+                                    kind: "REMINDER",
+                                    errorCode: "131047",
+                                    failedAt: "2026-11-03T15:00:00.000Z",
+                                    appointmentId: "42"
+                                }
+                            ]
+                        }
+                    }
+                }),
+                "GET /api/v1/whatsapp/settings/history": () => ({
+                    status: 200,
+                    body: {
+                        data: {
+                            items: [
+                                {
+                                    id: "history-1",
+                                    action: "credentials_saved",
+                                    fields: ["accessToken", "appSecret", "businessAccountId"],
+                                    actor: { id: 2, name: "Bruno Lima" },
+                                    createdAt: "2026-11-02T18:30:00.000Z"
+                                }
+                            ]
+                        }
+                    }
+                })
+            },
+            settingsView({
+                credentialsStatus: "EXPIRED",
+                webhook: { lastEventAt: null, stale: true }
+            })
+        )
+        await loaded()
+
+        expect(await screen.findByText("Estado do número")).toBeInTheDocument()
+        expect(screen.getByText("Token inválido ou expirado")).toBeInTheDocument()
+        expect(
+            screen.getByText(
+                'Gere um token permanente, use "Substituir", teste a conexão e salve as credenciais.'
+            )
+        ).toBeInTheDocument()
+        expect(screen.getByText("Nenhum evento recebido")).toBeInTheDocument()
+        expect(screen.getByText(/Não há eventos do webhook há mais de 24 horas/)).toHaveAttribute(
+            "role",
+            "alert"
+        )
+        expect(await screen.findByText("1 falha")).toBeInTheDocument()
+        expect(screen.getByText("Lembrete")).toBeInTheDocument()
+        expect(screen.getByText("Código de erro: 131047")).toBeInTheDocument()
+        expect(screen.getByText("Agendamento #42")).toBeInTheDocument()
+        expect(screen.getByText("Bruno Lima")).toBeInTheDocument()
+        expect(
+            screen.getByText(
+                "Campos alterados: Token de acesso substituído, App Secret substituído, ID da conta WhatsApp Business"
+            )
+        ).toBeInTheDocument()
+        expect(screen.queryByText(/EAAG|accessTokenValue|appSecretValue/)).not.toBeInTheDocument()
+        expect(callsTo(calls, "GET", "/api/v1/whatsapp/settings/delivery-failures")).toHaveLength(1)
+        expect(callsTo(calls, "GET", "/api/v1/whatsapp/settings/history")).toHaveLength(1)
+    })
+
+    it("não alerta quando o webhook recebeu evento há menos de 24 horas", async () => {
+        await renderPage(
+            {},
+            settingsView({
+                webhook: { lastEventAt: "2026-11-04T14:00:00.000Z", stale: false }
+            })
+        )
+        await loaded()
+
+        expect(await screen.findByText("04/11/2026 às 11:00")).toBeInTheDocument()
+        expect(
+            screen.queryByText(/Não há eventos do webhook há mais de 24 horas/)
+        ).not.toBeInTheDocument()
+    })
+
     it("pede confirmação com a prévia e pausa na hora ao confirmar", async () => {
         const { user, calls } = await renderPage({
             "POST /api/v1/whatsapp/settings/pause": () => ({
@@ -493,6 +632,9 @@ describe("WhatsAppPage", () => {
         ).toHaveAttribute("aria-checked", "true")
         expect(screen.getByText("Pausadas")).toBeInTheDocument()
         expect(screen.getByText("Respostas pausadas")).toBeInTheDocument()
+        await waitFor(() =>
+            expect(callsTo(calls, "GET", "/api/v1/whatsapp/settings/history")).toHaveLength(2)
+        )
         expect(callsTo(calls, "POST", "/api/v1/whatsapp/settings/pause")).toHaveLength(1)
         expect(callsTo(calls, "PUT", "/api/v1/whatsapp/settings")).toHaveLength(0)
     })
@@ -531,6 +673,9 @@ describe("WhatsAppPage", () => {
             screen.getByRole("switch", { name: "Pausar respostas automáticas" })
         ).toHaveAttribute("aria-checked", "false")
         expect(callsTo(calls, "POST", "/api/v1/whatsapp/settings/resume")).toHaveLength(1)
+        await waitFor(() =>
+            expect(callsTo(calls, "GET", "/api/v1/whatsapp/settings/history")).toHaveLength(2)
+        )
     })
 
     it("desligar o interruptor pausado também reativa sem confirmação", async () => {
@@ -573,13 +718,15 @@ describe("WhatsAppPage", () => {
         ).toHaveAttribute("aria-checked", "false")
     })
 
-    it("não mostra os blocos que pertencem a outras issues", async () => {
+    it("mostra os blocos deste issue sem antecipar qualidade, limite ou modelos", async () => {
         await renderPage()
         await loaded()
 
-        expect(screen.queryByText("Estado do número")).not.toBeInTheDocument()
+        expect(screen.getByText("Estado do número")).toBeInTheDocument()
+        expect(screen.getByText("Histórico de alterações")).toBeInTheDocument()
+        expect(screen.queryByText("Qualidade do número na Meta")).not.toBeInTheDocument()
+        expect(screen.queryByText("Limite de envios da Meta")).not.toBeInTheDocument()
         expect(screen.queryByText("Modelos de mensagem")).not.toBeInTheDocument()
-        expect(screen.queryByText("Histórico de alterações")).not.toBeInTheDocument()
         expect(screen.queryByText("Controles do protótipo")).not.toBeInTheDocument()
     })
 

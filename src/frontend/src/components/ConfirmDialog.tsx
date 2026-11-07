@@ -7,6 +7,12 @@ const FIELD_SELECTOR = "input:not([disabled]), select:not([disabled]), textarea:
 const FOCUSABLE_SELECTOR =
     'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
+const TONE_CLASS = {
+    primary: css.confirm,
+    danger: `${css.confirm} ${css.danger}`,
+    warning: `${css.confirm} ${css.warning}`
+}
+
 type ConfirmDialogProps = {
     open: boolean
     title: string
@@ -14,7 +20,7 @@ type ConfirmDialogProps = {
     children?: ReactNode
     confirmLabel: string
     cancelLabel?: string
-    tone?: "primary" | "danger"
+    tone?: keyof typeof TONE_CLASS
     confirmDisabled?: boolean
     busy?: boolean
     submitOnEnter?: boolean
@@ -125,7 +131,7 @@ function ConfirmDialog({
         }
     }
 
-    const confirmClass = tone === "danger" ? `${css.confirm} ${css.danger}` : css.confirm
+    const confirmClass = TONE_CLASS[tone]
 
     const content = (
         <>

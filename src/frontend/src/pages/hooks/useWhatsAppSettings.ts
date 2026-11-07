@@ -294,6 +294,7 @@ function useWhatsAppSettings() {
                     { endpointName: "getWhatsAppSettings", arg: undefined, value: saved }
                 ])
             )
+            dispatch(whatsappSettingsApi.util.invalidateTags(["WhatsAppHistory"]))
             setDraft(EMPTY_DRAFT)
             setStored(null)
             refreshClock()

@@ -7,6 +7,8 @@ type WhatsAppConnectionTestProps = {
     testing: boolean
     disabled: boolean
     message: WhatsAppTestMessage | null
+    hint?: string
+    hintId?: string
     onTest: () => void
 }
 
@@ -16,19 +18,28 @@ function WhatsAppConnectionTest({
     testing,
     disabled,
     message,
+    hint,
+    hintId,
     onTest
 }: WhatsAppConnectionTestProps) {
     return (
         <div className={css.block}>
-            <button
-                type="button"
-                className={css.button}
-                disabled={disabled || testing}
-                aria-busy={testing || undefined}
-                onClick={onTest}
-            >
-                {buttonLabel}
-            </button>
+            <div className={css.row}>
+                <button
+                    type="button"
+                    className={css.button}
+                    disabled={disabled || testing}
+                    aria-busy={testing || undefined}
+                    onClick={onTest}
+                >
+                    {buttonLabel}
+                </button>
+                {hint ? (
+                    <span id={hintId} className={css.hint}>
+                        {hint}
+                    </span>
+                ) : null}
+            </div>
             <output className={css.result}>
                 {testing ? (
                     <p className={css.testing}>

@@ -1562,4 +1562,39 @@ A migration `13` garante no banco que `current_step = 'FINISHED'` só existe em 
 Esta regra roda quando o mesmo número volta a escrever. A **varredura periódica**
 (`services/abandonedSessionsSweep.service.ts`, iniciada em `index.ts`) cuida das sessões de quem nunca
 volta e aplica exatamente a mesma regra. A correspondência entre
-etapa e os nomes de abandono dos Relatórios é da #68.
+etapa e os 6 nomes de abandono dos Relatórios fica na aplicação (#73).
+
+
+## Conteúdo do chatbot (/api/v1/content)
+
+Rotas do painel para gerenciamento de categorias e perguntas do chatbot (#63, `.docs/regras/06-conteudo.md`). Todas exigem sessão (`requireAuth`), permissão `content.manage` (`requirePermission("content.manage")`, concedida também ao Admin) e devolvem `Cache-Control: no-store`. As rotas de escrita passam pela proteção CSRF (`403 INVALID_ORIGIN` quando `Origin` difere de `FRONTEND_ORIGIN`) e usam validação Zod com erros por campo (`details.issues` com `{ path, message }`).
+
+| Rota | Método | O que faz |
+| --- | --- | --- |
+| `/api/v1/content/categories` | `GET` | Lista todas as categorias em `position ASC, id ASC` com `questionsCount`, `activeQuestionsCount`, `hiddenInChatbot` (`active && activeQuestionsCount === 0`), `whatsappPage`, `pageBreak` (`"Página 2 no WhatsApp"` etc.), `updatedBy` e `updatedAt` |
+| `/api/v1/content/categories` | `POST` | Cria categoria ativa no fim da lista (`201 Created`). Recusa `title` duplicado sem diferenciar maiúsculas nem acentos (`409 CATEGORY_TITLE_CONFLICT`) |
+| `/api/v1/content/categories/:id` | `PUT` | Edita `title`, `shortTitle` (1..24 caracteres), `description` e opcionalmente `active`, gravando `updated_by` e `updated_at` |
+| `/api/v1/content/categories/:id/active` | `PATCH` | Ativa ou desativa a categoria (`{ active: boolean }`) |
+| `/api/v1/content/categories/reorder` | `PUT` | Reordena todas as categorias (`{ categoryIds: number[] }`) em transação e devolve a lista recalculada |
+| `/api/v1/content/questions` | `GET` | Lista perguntas da categoria (`?categoryId=<id>`, com `whatsappPage` e `pageBreak`) ou busca em todas as categorias (`?search=<termo>`, sem diferenciar maiúsculas nem acentos em `question`, `answer` e `short_title`) |
+| `/api/v1/content/categories/:id/questions` | `GET` | Atalho para listar as perguntas da categoria `:id` |
+| `/api/v1/content/questions` | `POST` | Cria pergunta no fim da categoria (`201 Created`), sincronizando `RequiredDocuments` em transação e calculando `answerLengthWarning` (`answer.length >= 1000`) |
+| `/api/v1/content/questions/:id` | `PUT` | Edita pergunta e sincroniza `RequiredDocuments` em transação (recusa mudança de `categoryId`; campos opcionais omitidos voltam ao padrão: `llmAllowed = true`, `legalBasis = null`, `requiredDocuments = []`) |
+| `/api/v1/content/questions/:id/active` | `PATCH` | Ativa ou desativa a pergunta (`{ active: boolean }`) |
+| `/api/v1/content/categories/:id/questions/reorder` | `PUT` | Reordena todas as perguntas da categoria `:id` (`{ questionIds: number[] }`) |
+| `/api/v1/content/preview` e `/api/v1/content/questions/preview` | `POST` | Gera a prévia "Ver como o cidadão recebe" usando `AVISO_NAO_VINCULANTE`, `PERGUNTA_RESOLVIDA`, `OFERTA_AGENDAMENTO`, `formatarRespostaFinal` e `paginarItens` de `services/messageFormatter.service.ts` |
+
+## Relatórios mínimos (#68)
+
+`GET /api/v1/reports` exige `requireAuth` e `requirePermission("reports.view")` (ou conta Admin), responde com `Cache-Control: no-store` e devolve os indicadores agregados do período selecionado em `America/Sao_Paulo`, sem expor nenhum dado pessoal (sem nome, CPF, telefone, protocolo ou código de sessão).
+
+- **Período (`query` validada por `schemas/report.schema.ts` com `withIssues: true`):**
+  - `period`: `7d` (7 dias fechados antes de hoje), `30d` (padrão — 30 dias fechados antes de hoje), `90d` (90 dias fechados antes de hoje), `current_month` (do dia `01` do mês atual até hoje), `previous_month` (mês anterior completo) ou `custom` (`startDate` e `endDate` obrigatórios no formato `AAAA-MM-DD`, com `startDate <= endDate` e `endDate <= hoje`).
+  - Se `period` for omitido e `startDate`/`endDate` forem informados, assume `custom`. Datas personalizadas junto com um preset fixo (`7d`, `30d`, `90d`, `current_month`, `previous_month`) retornam `400 BAD_REQUEST` com `details.issues`.
+- **Indicadores devolvidos em `data` (`types/report.types.ts`):**
+  - `period`: `{ preset, startDate, endDate, daysCount, today }`.
+  - `conversations`: `{ total, dailyAverage, appointmentsCreated }` — conversas iniciadas (`Sessions.started_at`) no período, média por dia arredondada a 1 casa decimal e agendamentos criados no período (`Appointments.request_datetime`).
+  - `outcomes`: lista de `{ outcome, label, count, percentage }` na ordem dos desfechos da decisão 008 (`RESOLVED`, `SCHEDULED`, `OUT_OF_SCOPE`, `NO_SLOT`, `DECLINED`, `MANAGED_APPOINTMENT`, `ABANDONED`, e `IN_PROGRESS` apenas quando `count > 0`), com percentuais distribuídos pelo método do maior resto em décimos de ponto percentual para somar 100% quando `total > 0`.
+  - `topCategories`: `{ categoryId, title, conversationsCount }[]` — quantidade de **conversas distintas** (`COUNT(DISTINCT ce.session_id)`) iniciadas no período que registraram `CATEGORY_CHOSEN`.
+  - `topQuestions`: `{ questionId, question, shortTitle, categoryId, categoryTitle, conversationsCount }[]` — ranking por **conversas distintas** que registraram `QUESTION_CHOSEN`.
+  - `appointmentsResult`: `{ attended, noShow, canceled, waitingRecord, upcoming, total, recordedTotal, noShowRate }` — agendamentos cuja **data do atendimento** (`Appointments.appointment_datetime`) está no período, independentemente de quando foram criados (`request_datetime`). `waitingRecord` conta pendentes e confirmados com `appointment_datetime < agora`; `upcoming` conta pendentes e confirmados futuros (`appointment_datetime >= agora`). `noShowRate` é `noShow / (attended + noShow)` em percentual com 1 casa decimal (`0` quando `recordedTotal === 0`).

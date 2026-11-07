@@ -10,7 +10,7 @@ Conectar o painel ao número institucional na **WhatsApp Cloud API** (oficial da
 
 ## Estado da tela
 
-**Entregue em parte (issues #54 e #69).** Já funcionam: topo com número e situação, pausa, credenciais, "Configure no painel da Meta", teste de conexão e a aba **Privacidade** (issue #69). Ainda não construídos na tela: **Modelos de mensagem** e a qualidade e o limite do **Estado do número** (API pronta na issue #67, tela na #127), o resto do **Estado do número** e o **Histórico de alterações** (API pronta na issue #88, tela na #129).
+**Entregue em parte (issues #54, #69 e #129).** Já funcionam: topo com número e situação, pausa, credenciais, "Configure no painel da Meta", teste de conexão, a aba **Privacidade** (issue #69), credenciais e webhook no **Estado do número**, falhas de entrega e **Histórico de alterações** (issue #129). Ainda não construídos na tela: **Modelos de mensagem** e a qualidade e o limite do **Estado do número** (API pronta na issue #67, tela na #127).
 
 ## O que a tela mostra
 
@@ -37,7 +37,7 @@ Regras da troca de abas:
 
 ### Estado do número
 
-**Ainda não construído na tela.** Hoje a tela mostra só a situação geral no topo. A **qualidade** e o **limite de envios** já têm API (issue #67, `GET /api/v1/whatsapp/settings/number-status`, só Admin) e a tela fica com a #127. As **credenciais** (`credentialsStatus`), o **último evento do webhook** (`webhook.lastEventAt` e `webhook.stale`, parado acima de 24h ou sem nenhum evento) e as **falhas de entrega das últimas 24h** (`GET /api/v1/whatsapp/settings/delivery-failures`) já têm API (issue #88); a tela fica com a #129.
+**Parte construída na issue #129.** A tela mostra credenciais, último evento do webhook e falhas de entrega das últimas 24 horas. A **qualidade** e o **limite de envios** já têm API (issue #67, `GET /api/v1/whatsapp/settings/number-status`, só Admin), mas a tela fica com a #127.
 
 | Item | O que mostra |
 |---|---|
@@ -144,7 +144,7 @@ Entregue em 02/11/2026 (#69, D3). A regra de cada prazo e as salvaguardas estão
 
 ### Histórico de alterações
 
-**Ainda não construído na tela.** A API está pronta (issue #88, `GET /api/v1/whatsapp/settings/history`, só Admin, as 50 alterações mais recentes) e a tela fica com a #129. Hoje a tela mostra só "Última alteração por [nome] em [data]", que muda ao salvar credenciais e também ao pausar ou reativar as respostas.
+**Construído na issue #129.** A tela lista as 50 alterações mais recentes da API `GET /api/v1/whatsapp/settings/history` (só Admin), com quem alterou, o que mudou e quando. Para segredos, mostra apenas que foram substituídos; os valores do token e do App Secret nunca são registrados nem exibidos. A nota "Última alteração por [nome] em [data]" continua no topo.
 
 Quem alterou o quê e quando. **Os valores do token e do App Secret não são registrados.**
 
