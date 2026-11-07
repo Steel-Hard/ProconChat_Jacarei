@@ -39,7 +39,7 @@ A busca procura **em todos os períodos, status e responsáveis**, ignorando os 
 
 - **Status**, em chips com contagem: Todos, Pendentes, Confirmados, Atendidos, Não compareceu, Cancelados, e o chip **Aguardando registro** (confirmados cujo horário já passou sem registro), em destaque.
 - **Período** (só na lista): Todos, Hoje, Esta semana, **Próximos (padrão)** e Anteriores a hoje.
-- **Responsável:** Todos, Sem responsável, Atribuídos a mim, ou um funcionário específico.
+- **Responsável:** Todos, Sem responsável, Atribuídos a mim, ou um funcionário específico (funcionários inativos aparecem identificados para permitir consultar históricos).
 
 ### Lista
 
@@ -67,7 +67,8 @@ Colunas: protocolo, titular (com CPF mascarado), categoria e pergunta de origem,
 ### Calendário semanal
 
 - Mostra **só os dias e horários configurados** em Horários de atendimento.
-- Cada horário mostra os agendamentos (protocolo e nome curto, na cor do status).
+- Cada dia mostra os horários configurados, bloqueios do dia e os agendamentos (protocolo, nome curto e status).
+- O filtro de status e responsável também se aplica aos agendamentos do calendário.
 - **"N vagas livres"** aparece **só** onde o chatbot realmente pode oferecer o horário: dentro da janela, depois da antecedência mínima, fora de bloqueios e não no passado.
 - Datas bloqueadas aparecem marcadas.
 - Navegação: semana anterior, próxima, "Esta semana".
@@ -97,5 +98,5 @@ As demais ações ficam no [Detalhe do agendamento](04-detalhe-do-agendamento.md
 
 ## Estado da tela
 
-- **Lista:** construída pela #85 (busca, chips, filtros de Período e Responsável, ordenação, paginação e "Assumir"). O filtro por um funcionário específico em "Responsável" já tem a lista de funcionários na API (#87, `GET /api/v1/appointments/staff`, com "Ver agendamentos"); a tela fica com a #126.
-- **Calendário semanal:** a API está pronta (#87, `GET /api/v1/appointments/calendar`, semana de domingo a sábado); a tela fica com a #126. Até lá, o botão "Lista / Calendário semanal" não aparece.
+- **Lista:** construída pela #85 (busca, chips, filtros de Período e Responsável, ordenação, paginação e "Assumir"). O filtro por funcionário específico usa `GET /api/v1/appointments/staff`, disponível para quem tem "Ver agendamentos".
+- **Calendário semanal:** integrado à API `GET /api/v1/appointments/calendar`, com navegação semanal, filtros de status e responsável, horários com vagas ofertáveis e bloqueios.

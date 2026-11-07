@@ -1,13 +1,17 @@
 import api from "@/store/api"
-import type AppointmentAction from "@/types/appointments/AppointmentAction.types"
+import type AppointmentCalendar from "@/types/appointments/AppointmentCalendar.types"
 import type AppointmentDetail from "@/types/appointments/AppointmentDetail.types"
 import type AppointmentList from "@/types/appointments/AppointmentList.types"
 import type AppointmentListFilters from "@/types/appointments/AppointmentListFilters.types"
+import type AppointmentStaff from "@/types/appointments/AppointmentStaff.types"
 import MIN_APPOINTMENT_SEARCH_LENGTH from "@/utils/minAppointmentSearchLength"
 
 type Envelope<T> = { data: T }
 
-type UpdateStatusArgs = { id: string; action: AppointmentAction }
+type UpdateStatusArgs =
+    | { id: string; action: "claim" | "attended" | "no_show" | "correct_record" }
+    | { id: string; action: "assign"; assigneeUserId: string }
+type CalendarArgs = Pick<AppointmentListFilters, "status" | "responsible"> & { date?: string }
 
 const APPOINTMENTS_PATH = "/api/v1/appointments"
 const PAGE_SIZE = 20
@@ -39,6 +43,19 @@ function listQuery(filters: AppointmentListFilters): string {
     return `${APPOINTMENTS_PATH}?${params.toString()}`
 }
 
+function calendarQuery(filters: CalendarArgs): string {
+    const params = new URLSearchParams({
+        status: filters.status,
+        responsible: filters.responsible
+    })
+
+    if (filters.date) {
+        params.set("date", filters.date)
+    }
+
+    return `${APPOINTMENTS_PATH}/calendar?${params.toString()}`
+}
+
 const appointmentsApi = api.injectEndpoints({
     endpoints: (build) => ({
         getAppointments: build.query<AppointmentList, AppointmentListFilters>({
@@ -56,13 +73,32 @@ const appointmentsApi = api.injectEndpoints({
             transformResponse: unwrap<AppointmentDetail>,
             providesTags: (_result, _error, id) => [{ type: "Appointment", id }]
         }),
+        getAppointmentCalendar: build.query<AppointmentCalendar, CalendarArgs>({
+            query: calendarQuery,
+            transformResponse: unwrap<AppointmentCalendar>,
+            providesTags: ["AppointmentList"]
+        }),
+        getAppointmentStaff: build.query<AppointmentStaff[], void>({
+            query: () => `${APPOINTMENTS_PATH}/staff`,
+            transformResponse: unwrap<AppointmentStaff[]>
+        }),
         updateAppointmentStatus: build.mutation<AppointmentDetail, UpdateStatusArgs>({
-            query: ({ id, action }) => ({
-                url: `${APPOINTMENTS_PATH}/${encodeURIComponent(id)}/status`,
+            query: (args) => ({
+                url: `${APPOINTMENTS_PATH}/${encodeURIComponent(args.id)}/status`,
                 method: "PATCH",
-                body: { action }
+                body:
+                    args.action === "assign"
+                        ? { action: args.action, assigneeUserId: args.assigneeUserId }
+                        : { action: args.action }
             }),
-            transformResponse: unwrap<AppointmentDetail>,
+            transformResponse: (
+                response: Envelope<AppointmentDetail> & {
+                    warning?: AppointmentDetail["correction_warning"]
+                }
+            ) => ({
+                ...response.data,
+                correction_warning: response.warning ?? null
+            }),
             invalidatesTags: ["AppointmentList", "AppointmentPendingCount"],
             async onQueryStarted({ id }, { dispatch, queryFulfilled }) {
                 const result = await queryFulfilled.catch(() => null)
@@ -75,6 +111,15 @@ const appointmentsApi = api.injectEndpoints({
                     )
                 }
             }
+        }),
+        addAppointmentNote: build.mutation<AppointmentDetail, { id: string; text: string }>({
+            query: ({ id, text }) => ({
+                url: `${APPOINTMENTS_PATH}/${encodeURIComponent(id)}/notes`,
+                method: "POST",
+                body: { text }
+            }),
+            transformResponse: unwrap<AppointmentDetail>,
+            invalidatesTags: (_result, _error, { id }) => [{ type: "Appointment", id }]
         })
     })
 })

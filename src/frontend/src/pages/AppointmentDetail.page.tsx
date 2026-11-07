@@ -4,6 +4,7 @@ import AppointmentDetailHeader from "@/components/AppointmentDetailHeader"
 import AppointmentDocuments from "@/components/AppointmentDocuments"
 import AppointmentFacts from "@/components/AppointmentFacts"
 import AppointmentHistory from "@/components/AppointmentHistory"
+import AppointmentManagement from "@/components/AppointmentManagement"
 import AppointmentTimeline from "@/components/AppointmentTimeline"
 import ConfirmDialog from "@/components/ConfirmDialog"
 import useAppointmentDetail from "@/pages/hooks/useAppointmentDetail"
@@ -63,6 +64,23 @@ function AppointmentDetailPage() {
                                     view={actions.view}
                                     dateNote={t("actions.dateNote")}
                                     onAction={actions.open}
+                                />
+                                <AppointmentManagement
+                                    assignment={actions.assignment}
+                                    labels={{
+                                        assignmentTitle: t("assignment.title"),
+                                        chooseStaff: t("assignment.chooseStaff"),
+                                        assign: t("assignment.assign"),
+                                        staffError: t("assignment.staffError"),
+                                        retry: t("retry"),
+                                        notesTitle: t("notes.title"),
+                                        notesVisibility: t("notes.visibility"),
+                                        notePlaceholder: t("notes.placeholder"),
+                                        addNote: t("notes.add"),
+                                        noNotes: t("notes.empty"),
+                                        author: t("notes.author"),
+                                        date: t("notes.date")
+                                    }}
                                 />
                                 <AppointmentHistory
                                     title={t("history.title")}

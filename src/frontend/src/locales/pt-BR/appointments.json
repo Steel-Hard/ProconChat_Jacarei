@@ -4,6 +4,24 @@
     },
     "heading": "Agendamentos",
     "subtitle": "Atendimentos presenciais criados pelo chatbot. Remarcações são feitas pelo cidadão no próprio chatbot.",
+    "view": {
+        "label": "Visualização dos agendamentos",
+        "list": "Lista",
+        "calendar": "Calendário semanal"
+    },
+    "calendar": {
+        "week": "Semana de {{start}} a {{end}}",
+        "previous": "‹ Semana anterior",
+        "next": "Próxima semana ›",
+        "current": "Semana atual",
+        "noDays": "Não há horários configurados para esta semana.",
+        "fullDay": "Dia bloqueado",
+        "freeSeats": "{{count}} vaga(s) livre(s)",
+        "slots": "Horários e vagas",
+        "blockedPeriod": "Bloqueado",
+        "offGrid": "Fora da grade",
+        "openAppointment": "Abrir agendamento de {{name}} às {{time}}"
+    },
     "search": {
         "label": "Buscar",
         "placeholder": "Nome do titular, protocolo ou CPF completo",
@@ -39,6 +57,11 @@
             "all": "Todos",
             "unassigned": "Sem responsável",
             "me": "Atribuídos a mim"
+        },
+        "staff": {
+            "inactive": "{{name}} (inativo)",
+            "unknown": "Funcionário {{id}}",
+            "loadFailed": "Não foi possível carregar os funcionários."
         }
     },
     "table": {

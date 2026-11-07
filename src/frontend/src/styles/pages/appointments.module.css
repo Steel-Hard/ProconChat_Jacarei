@@ -84,6 +84,36 @@
     gap: 14px;
 }
 
+.viewToggle {
+    display: flex;
+    gap: 8px;
+    margin: 0;
+    padding: 8px 10px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.viewToggle legend {
+    padding: 0 4px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.viewToggle button {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-surface);
+    color: var(--text-strong);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.viewToggle button[aria-pressed="true"] {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
 .card {
     overflow: hidden;
     border: 1px solid var(--border);

@@ -5,6 +5,7 @@ import useCompactTable from "@/hooks/useCompactTable"
 import useToast from "@/hooks/useToast"
 import hasPermission from "@/navigation/hasPermission"
 import useAppointmentSearch from "@/pages/hooks/useAppointmentSearch"
+import useAppointmentCalendar from "@/pages/hooks/useAppointmentCalendar"
 import ROUTES from "@/routers/paths"
 import appointmentsApi from "@/store/api/appointments.api"
 import useAppSelector from "@/store/useAppSelector"
@@ -17,10 +18,12 @@ import type AppointmentListOrigin from "@/types/appointments/AppointmentListOrig
 import type AppointmentPeriod from "@/types/appointments/AppointmentPeriod.types"
 import type AppointmentResponsibleFilter from "@/types/appointments/AppointmentResponsibleFilter.types"
 import type AppointmentRowView from "@/types/appointments/AppointmentRowView.types"
+import type AppointmentStaff from "@/types/appointments/AppointmentStaff.types"
 import type AppointmentSortBy from "@/types/appointments/AppointmentSortBy.types"
 import type AppointmentStatusFilter from "@/types/appointments/AppointmentStatusFilter.types"
 import parseAppointmentListParams from "@/utils/parseAppointmentListParams"
 import appointmentActionErrorKey from "@/utils/appointmentActionErrorKey"
+import appointmentActionErrorDetails from "@/utils/appointmentActionErrorDetails"
 import APPOINTMENT_PERIODS from "@/utils/appointmentPeriods"
 import APPOINTMENT_RESPONSIBLE_FILTERS from "@/utils/appointmentResponsibleFilters"
 import APPOINTMENT_STATUS_FILTERS from "@/utils/appointmentStatusFilters"
@@ -94,6 +97,7 @@ function useAppointments() {
     const canManage = hasPermission(account, "appointments.manage")
     const [searchParams, setSearchParams] = useSearchParams()
     const filters = useMemo(() => parseAppointmentListParams(searchParams), [searchParams])
+    const calendar = useAppointmentCalendar(filters)
     const [claimingIds, setClaimingIds] = useState<string[]>([])
     const claimsInFlight = useRef(new Set<string>())
 
@@ -116,6 +120,10 @@ function useAppointments() {
     const args = useMemo(() => ({ ...filters, search }), [filters, search])
 
     appointmentsApi.useGetPendingAppointmentsCountQuery(undefined, {
+        skip: account === null,
+        refetchOnMountOrArgChange: true
+    })
+    const staffQuery = appointmentsApi.useGetAppointmentStaffQuery(undefined, {
         skip: account === null,
         refetchOnMountOrArgChange: true
     })
@@ -202,6 +210,19 @@ function useAppointments() {
         value,
         label: t(`filters.responsibles.${value}`)
     }))
+    const staff = staffQuery.currentData ?? []
+    const staffOptions = staff.map((person: AppointmentStaff) => ({
+        value: person.id as AppointmentResponsibleFilter,
+        label: person.active ? person.name : t("filters.staff.inactive", { name: person.name })
+    }))
+    const staffFilterId = /^\d+$/.test(filters.responsible) ? filters.responsible : null
+
+    if (staffFilterId !== null && !staff.some((person) => person.id === staffFilterId)) {
+        staffOptions.push({
+            value: filters.responsible as AppointmentResponsibleFilter,
+            label: t("filters.staff.unknown", { id: staffFilterId })
+        })
+    }
 
     const sortOptions = SORT_OPTIONS.map((value) => ({
         value,
@@ -261,7 +282,13 @@ function useAppointments() {
             return
         }
 
-        showToast(t(`common:${appointmentActionErrorKey(result.error)}`))
+        const errorDetails = appointmentActionErrorDetails(result.error)
+        showToast(
+            t(`common:${appointmentActionErrorKey(result.error)}`, {
+                protocol: errorDetails.conflictingProtocol ?? "",
+                defaultValue: t("common:appointmentActions.errors.failed")
+            })
+        )
     }
 
     const canOpenSingle = searching && searchState.settled && current?.total === 1
@@ -348,7 +375,9 @@ function useAppointments() {
         footer,
         chips,
         periodOptions,
-        responsibleOptions,
+        responsibleOptions: [...responsibleOptions, ...staffOptions],
+        responsibleError: staffQuery.isError ? t("filters.staff.loadFailed") : null,
+        retryResponsible: () => void staffQuery.refetch(),
         sortOptions,
         sortValue,
         linkState,
@@ -363,7 +392,9 @@ function useAppointments() {
         selectSort,
         goToPage,
         clearFilters,
+        calendar,
         openRow: (row: AppointmentRowView) => openDetail(row.id),
+        openCalendarAppointment: openDetail,
         claim: (row: AppointmentRowView) => void claim(row)
     }
 }

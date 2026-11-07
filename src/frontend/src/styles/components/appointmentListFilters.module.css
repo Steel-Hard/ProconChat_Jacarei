@@ -13,6 +13,12 @@
     color: var(--text-muted);
 }
 
+.responsible {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
 .select {
     padding: 7px 10px;
     border: 1px solid var(--border-input);
@@ -20,4 +26,23 @@
     background: var(--bg-surface);
     color: var(--text-body);
     font-size: 13px;
+}
+
+.error {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    color: var(--error-text);
+    font-size: 12px;
+    margin: 0;
+}
+
+.error button {
+    align-self: flex-start;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-primary);
+    font-weight: 600;
+    cursor: pointer;
 }

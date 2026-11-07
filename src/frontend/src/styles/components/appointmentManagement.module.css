@@ -1,0 +1,85 @@
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+    padding: 18px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg-surface);
+}
+
+.section h2 {
+    margin: 0;
+    font: 700 16px var(--font-heading);
+}
+
+.section label,
+.meta {
+    font-size: 12.5px;
+    color: var(--text-muted);
+}
+
+.section select,
+.noteForm textarea {
+    width: 100%;
+    padding: 9px;
+    border: 1px solid var(--border-input);
+    border-radius: 8px;
+    background: var(--bg-surface);
+    color: var(--text-body);
+}
+
+.noteForm textarea {
+    min-height: 90px;
+    resize: vertical;
+}
+
+.section button {
+    align-self: flex-start;
+    padding: 9px 12px;
+    border: 0;
+    border-radius: 8px;
+    background: var(--color-primary);
+    color: var(--bg-surface);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.section button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.notes {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.notes li {
+    padding: 10px;
+    border-radius: 8px;
+    background: var(--bg-page);
+}
+
+.noteText {
+    margin: 0 0 8px;
+    font-size: 13.5px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.meta {
+    margin: 3px 0 0;
+}
+
+.noteForm {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 6px;
+}

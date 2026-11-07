@@ -365,13 +365,36 @@ describe("Appointments.page: paginação e URL", () => {
     it("usa o padrão para valores inválidos da URL sem mandá-los para a API", async () => {
         const page = await renderList(
             buildAppointmentList(ITEMS),
-            "/agendamentos?status=foo&page=0&responsible=7&period=semana&sortBy=cpf"
+            "/agendamentos?status=foo&page=0&responsible=invalid&period=semana&sortBy=cpf"
         )
 
         await screen.findByText("Maria Aparecida Santos")
 
         expect(page.listRequests()).toHaveLength(1)
         expect(page.lastListRequest()).toBe(DEFAULT_QUERY)
+    })
+
+    it("carrega funcionários e permite filtrar a lista por responsável específico", async () => {
+        const page = await renderAppointmentsPage({
+            handlers: {
+                "GET /api/v1/appointments/staff": () => ({
+                    status: 200,
+                    body: {
+                        data: [
+                            { id: "7", name: "Bruno Lima", active: true },
+                            { id: "8", name: "Carla Dias", active: false }
+                        ]
+                    }
+                })
+            }
+        })
+
+        await screen.findByRole("option", { name: "Bruno Lima" })
+        expect(screen.getByRole("option", { name: "Carla Dias (inativo)" })).toBeInTheDocument()
+        await page.user.selectOptions(screen.getByRole("combobox", { name: "Responsável" }), "7")
+
+        await waitFor(() => expect(page.router.state.location.search).toBe("?responsible=7"))
+        expect(page.lastListRequest()).toContain("responsible=7")
     })
 
     it("busca de novo o contador de pendentes e a lista sempre que a lista é aberta", async () => {
@@ -430,5 +453,82 @@ describe("Appointments.page: paginação e URL", () => {
             "aria-pressed",
             "true"
         )
+    })
+
+    it("mostra o calendário com vagas ofertáveis, bloqueios e abre o detalhe do agendamento", async () => {
+        const page = await renderAppointmentsPage({
+            handlers: {
+                "GET /api/v1/appointments/calendar": () => ({
+                    status: 200,
+                    body: {
+                        data: {
+                            weekStart: "2026-10-18",
+                            weekEnd: "2026-10-24",
+                            weekStartDay: 0,
+                            days: [
+                                {
+                                    date: "2026-10-19",
+                                    blocked: {
+                                        fullDay: true,
+                                        description: "Feriado municipal",
+                                        periods: [
+                                            {
+                                                start: "08:00",
+                                                end: "09:00",
+                                                description: "Manutenção"
+                                            }
+                                        ]
+                                    },
+                                    slots: [
+                                        { time: "08:00", freeSeats: null },
+                                        { time: "09:00", freeSeats: 2 }
+                                    ]
+                                }
+                            ],
+                            appointments: [
+                                {
+                                    id: "11",
+                                    protocol: "AG-0011",
+                                    shortName: "Maria",
+                                    date: "2026-10-19",
+                                    time: "09:30",
+                                    status: "PENDING",
+                                    assigned_user_id: null,
+                                    off_grid: false
+                                }
+                            ]
+                        }
+                    }
+                })
+            }
+        })
+
+        await page.user.click(screen.getByRole("button", { name: "Calendário semanal" }))
+
+        expect(await screen.findByText("Semana de 18/10/2026 a 24/10/2026")).toBeInTheDocument()
+        expect(
+            screen.getByRole("heading", { name: "Segunda-feira · 19/10/2026" })
+        ).toBeInTheDocument()
+        expect(screen.getByText("2 vaga(s) livre(s)")).toBeInTheDocument()
+        expect(screen.getByText("Feriado municipal")).toBeInTheDocument()
+        expect(screen.getByText("Bloqueado 08:00–09:00: Manutenção")).toBeInTheDocument()
+        expect(screen.getByText("AG-0011")).toBeInTheDocument()
+        expect(
+            page.calls.find((call) => call.url.pathname === "/api/v1/appointments/calendar")?.url
+                .search
+        ).toContain("status=all")
+        await page.user.click(screen.getByRole("button", { name: "‹ Semana anterior" }))
+        await waitFor(() => {
+            const requests = page.calls.filter(
+                (call) => call.url.pathname === "/api/v1/appointments/calendar"
+            )
+            expect(requests.at(-1)?.url.searchParams.get("date")).toBe("2026-10-11")
+        })
+
+        await page.user.click(
+            screen.getByRole("button", { name: "Abrir agendamento de Maria às 09:30" })
+        )
+
+        expect(page.router.state.location.pathname).toBe("/agendamentos/11")
     })
 })
