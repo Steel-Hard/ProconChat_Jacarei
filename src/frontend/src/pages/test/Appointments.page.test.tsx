@@ -526,7 +526,7 @@ describe("Appointments.page: paginação e URL", () => {
         })
 
         await page.user.click(
-            screen.getByRole("button", { name: "Abrir agendamento de Maria às 09:30" })
+            await screen.findByRole("button", { name: "Abrir agendamento de Maria às 09:30" })
         )
 
         expect(page.router.state.location.pathname).toBe("/agendamentos/11")
