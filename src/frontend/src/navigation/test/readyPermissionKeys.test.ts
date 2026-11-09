@@ -5,7 +5,7 @@ import type NavKey from "@/types/navigation/NavKey.types"
 const TODAY: Record<NavKey, boolean> = {
     dashboard: false,
     appointments: true,
-    reports: false,
+    reports: true,
     content: false,
     sessions: false,
     schedule: false,
@@ -41,14 +41,8 @@ afterEach(() => {
 })
 
 describe("readyPermissionKeys", () => {
-    it("devolve só as permissões de Agendamentos e Usuários com as telas prontas de hoje", async () => {
+    it("inclui Ver relatórios com as telas prontas de hoje", async () => {
         const keys = await readyWith(TODAY)
-
-        expect(keys).toEqual(["appointments.view", "appointments.manage", "users.manage"])
-    })
-
-    it("inclui Ver relatórios na ordem quando a tela de Relatórios fica pronta", async () => {
-        const keys = await readyWith({ ...TODAY, reports: true })
 
         expect(keys).toEqual([
             "appointments.view",
@@ -56,6 +50,12 @@ describe("readyPermissionKeys", () => {
             "reports.view",
             "users.manage"
         ])
+    })
+
+    it("omite Ver relatórios quando a tela de Relatórios não está pronta", async () => {
+        const keys = await readyWith({ ...TODAY, reports: false })
+
+        expect(keys).toEqual(["appointments.view", "appointments.manage", "users.manage"])
     })
 
     it("devolve as 8 permissões na ordem quando todas as telas estão prontas", async () => {
@@ -79,6 +79,7 @@ describe("readyPermissionKeys", () => {
             "appointments.manage",
             "schedule.configure",
             "documents.configure",
+            "reports.view",
             "users.manage"
         ])
     })

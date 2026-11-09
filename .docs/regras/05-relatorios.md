@@ -10,7 +10,7 @@ Analisar o uso do chatbot e dos agendamentos: quais assuntos mais aparecem, onde
 
 ## Estado da tela
 
-**API de Relatórios mínimos pronta (`GET /api/v1/reports`, issue #68). Tela no painel (#128) e itens bônus (#73) em construção.**
+**Relatórios mínimos entregues na #128** com a API `GET /api/v1/reports` (#68). A tela inclui seletor de período, total de conversas e agendamentos criados, desfechos, categorias e perguntas mais usadas e resultado dos agendamentos com taxa de não comparecimento. Os gráficos por dia, perguntas não resolvidas, abandono por etapa, horário de pico e exportação seguem como itens bônus da #73.
 
 ## Período
 
@@ -31,7 +31,7 @@ Cada conversa tem **exatamente um desfecho**, e todos somam 100%. Ver [decisão 
 | Resolvida sem agendamento | O cidadão respondeu que a dúvida foi resolvida |
 | Terminou em agendamento | Um agendamento foi criado |
 | Fora do escopo do PROCON | Recebeu a orientação para procurar outro órgão |
-| Sem horário disponível na janela | Quis agendar, mas não havia horário livre. **Em destaque vermelho**, com link para Horários de atendimento |
+| Sem horário disponível na janela | Quis agendar, mas não havia horário livre. **Em destaque vermelho** |
 | Não quis agendar | Recebeu a oferta de agendamento e recusou |
 | Remarcou ou cancelou agendamento existente | Voltou ao chatbot só para isso |
 | Abandonada | 30 minutos sem interação antes de um desfecho |

@@ -57,7 +57,8 @@ describe("RequireAccess", () => {
             () => import("@/pages/NotFound.page"),
             () => import("@/pages/UnderConstruction.page"),
             () => import("@/pages/Appointments.page"),
-            () => import("@/pages/Schedule.page")
+            () => import("@/pages/Schedule.page"),
+            () => import("@/pages/Reports.page")
         ])
     })
 
@@ -83,11 +84,11 @@ describe("RequireAccess", () => {
         expect(router.state.location.pathname).toBe("/")
     })
 
-    it("leva quem vê relatórios e gerencia usuários de / para /usuarios", async () => {
+    it("leva quem vê relatórios e gerencia usuários de / para Relatórios", async () => {
         const { router } = renderAs("/", ["reports.view", "users.manage"])
 
-        expect(await screen.findByRole("heading", { name: "Usuários" })).toBeInTheDocument()
-        expect(router.state.location.pathname).toBe("/usuarios")
+        expect(await screen.findByRole("heading", { name: "Relatórios" })).toBeInTheDocument()
+        expect(router.state.location.pathname).toBe("/relatorios")
         expect(router.state.historyAction).toBe("REPLACE")
         expect(screen.queryByRole("heading", { name: "404 - Not Found" })).not.toBeInTheDocument()
     })
@@ -99,26 +100,32 @@ describe("RequireAccess", () => {
         expect(router.state.location.pathname).toBe("/usuarios")
     })
 
-    it("mostra Relatórios em construção dentro do painel a quem vê relatórios e gerencia usuários", async () => {
+    it("mostra Relatórios dentro do painel a quem vê relatórios", async () => {
         renderAs("/relatorios", ["reports.view", "users.manage"])
 
         expect(await screen.findByRole("heading", { name: "Relatórios" })).toBeInTheDocument()
-        expect(screen.getByText("Em construção.")).toBeInTheDocument()
+        expect(screen.queryByText("Em construção.")).not.toBeInTheDocument()
         expect(screen.getByRole("navigation", { name: "Menu principal" })).toBeInTheDocument()
         expect(
             screen.queryByRole("heading", { name: "Sua conta ainda não tem acesso a nenhuma tela" })
         ).not.toBeInTheDocument()
     })
 
-    it("leva da NotFound para /usuarios pelo link da página inicial", async () => {
+    it("não libera Relatórios a quem não tem a permissão correspondente", async () => {
+        renderAs("/relatorios", ["users.manage"])
+
+        await expectNotFound()
+    })
+
+    it("leva da NotFound para Relatórios pelo link da página inicial", async () => {
         const user = userEvent.setup()
         const { router } = renderAs("/agendamentos", ["reports.view", "users.manage"])
         await expectNotFound()
 
         await user.click(screen.getByRole("link", { name: "Vá para a página inicial." }))
 
-        expect(await screen.findByRole("heading", { name: "Usuários" })).toBeInTheDocument()
-        expect(router.state.location.pathname).toBe("/usuarios")
+        expect(await screen.findByRole("heading", { name: "Relatórios" })).toBeInTheDocument()
+        expect(router.state.location.pathname).toBe("/relatorios")
         expect(screen.queryByRole("heading", { name: "404 - Not Found" })).not.toBeInTheDocument()
     })
 
@@ -162,10 +169,11 @@ describe("RequireAccess", () => {
         expect(router.state.location.pathname).toBe("/agendamentos")
     })
 
-    it("mostra o aviso em / à conta sem nenhuma permissão", async () => {
-        renderAs("/", [])
+    it("redireciona quem só vê relatórios para a tela permitida", async () => {
+        const { router } = renderAs("/", ["reports.view"])
 
-        await expectNoAccess()
+        expect(await screen.findByRole("heading", { name: "Relatórios" })).toBeInTheDocument()
+        expect(router.state.location.pathname).toBe("/relatorios")
     })
 
     it("mostra o aviso em /sessoes à conta sem nenhuma permissão", async () => {
@@ -207,10 +215,11 @@ describe("RequireAccess", () => {
         await expectNoAccess()
     })
 
-    it("mostra o aviso em / a quem só vê relatórios", async () => {
-        renderAs("/", ["reports.view"])
+    it("redireciona quem só vê relatórios para a tela permitida", async () => {
+        const { router } = renderAs("/", ["reports.view"])
 
-        await expectNoAccess()
+        expect(await screen.findByRole("heading", { name: "Relatórios" })).toBeInTheDocument()
+        expect(router.state.location.pathname).toBe("/relatorios")
     })
 
     it("mostra a NotFound em /whatsapp a um funcionário com todas as permissões", async () => {

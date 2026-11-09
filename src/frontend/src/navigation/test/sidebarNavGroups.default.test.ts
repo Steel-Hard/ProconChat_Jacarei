@@ -22,17 +22,23 @@ const staffWithAllPermissions: PanelAccount = {
 }
 
 describe("sidebarNavGroups com as flags de produção", () => {
-    it("Agendamentos, Horários de atendimento, Documentos, Usuários e WhatsApp estão liberados", () => {
+    it("Agendamentos, Relatórios, Horários de atendimento, Documentos, Usuários e WhatsApp estão liberados", () => {
         expect(
             Object.entries(NAV_ITEMS_READY)
                 .filter(([, ready]) => ready)
                 .map(([key]) => key)
-        ).toEqual(["appointments", "schedule", "documents", "users", "whatsapp"])
+        ).toEqual(["appointments", "reports", "schedule", "documents", "users", "whatsapp"])
     })
 
-    it("o Admin vê Agendamentos em Operação e Horários, Documentos, Usuários e WhatsApp em Configurações", () => {
+    it("o Admin vê Agendamentos e Relatórios em Operação e as outras telas prontas em Configurações", () => {
         expect(sidebarNavGroups(admin)).toEqual([
-            { key: "operation", items: [{ key: "appointments", path: ROUTES.appointments }] },
+            {
+                key: "operation",
+                items: [
+                    { key: "appointments", path: ROUTES.appointments },
+                    { key: "reports", path: ROUTES.reports }
+                ]
+            },
             {
                 key: "settings",
                 items: [
@@ -45,9 +51,15 @@ describe("sidebarNavGroups com as flags de produção", () => {
         ])
     })
 
-    it("um funcionário com todas as permissões vê Agendamentos em Operação e Horários, Documentos e Usuários em Configurações", () => {
+    it("um funcionário com todas as permissões vê Agendamentos e Relatórios em Operação", () => {
         expect(sidebarNavGroups(staffWithAllPermissions)).toEqual([
-            { key: "operation", items: [{ key: "appointments", path: ROUTES.appointments }] },
+            {
+                key: "operation",
+                items: [
+                    { key: "appointments", path: ROUTES.appointments },
+                    { key: "reports", path: ROUTES.reports }
+                ]
+            },
             {
                 key: "settings",
                 items: [
@@ -71,7 +83,13 @@ describe("sidebarNavGroups com as flags de produção", () => {
         }
 
         expect(sidebarNavGroups(staffWithoutUsers)).toEqual([
-            { key: "operation", items: [{ key: "appointments", path: ROUTES.appointments }] }
+            {
+                key: "operation",
+                items: [
+                    { key: "appointments", path: ROUTES.appointments },
+                    { key: "reports", path: ROUTES.reports }
+                ]
+            }
         ])
     })
 
