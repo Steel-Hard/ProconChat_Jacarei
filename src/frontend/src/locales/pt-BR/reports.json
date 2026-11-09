@@ -1,0 +1,94 @@
+{
+    "meta": {
+        "title": "Relatórios - ProconChat"
+    },
+    "heading": "Relatórios",
+    "subtitle": "Acompanhe o uso do chatbot e os resultados dos atendimentos presenciais.",
+    "loadFailed": "Não foi possível carregar os relatórios.",
+    "retry": "Tentar novamente",
+    "period": {
+        "heading": "Período",
+        "presets": {
+            "7d": "Últimos 7 dias",
+            "30d": "Últimos 30 dias",
+            "90d": "Últimos 90 dias",
+            "current_month": "Mês atual",
+            "previous_month": "Mês anterior",
+            "custom": "Personalizado"
+        },
+        "startDate": "Data inicial",
+        "endDate": "Data final",
+        "apply": "Aplicar período",
+        "invalidRange": "Informe um período válido, com data final igual ou posterior à inicial e até hoje.",
+        "selected": "Dados de {{start}} a {{end}}"
+    },
+    "conversations": {
+        "heading": "Conversas no período",
+        "total": "Conversas iniciadas",
+        "dailyAverage": "Média de conversas por dia",
+        "appointmentsCreated": "Agendamentos criados"
+    },
+    "outcomes": {
+        "heading": "Desfecho das conversas",
+        "countPercentage": "{{count}} · {{percentage}}%",
+        "labels": {
+            "RESOLVED": "Resolvida sem agendamento",
+            "SCHEDULED": "Terminou em agendamento",
+            "OUT_OF_SCOPE": "Fora do escopo do PROCON",
+            "NO_SLOT": "Sem horário disponível na janela",
+            "DECLINED": "Não quis agendar",
+            "MANAGED_APPOINTMENT": "Remarcou ou cancelou agendamento existente",
+            "ABANDONED": "Abandonada",
+            "IN_PROGRESS": "Em andamento"
+        }
+    },
+    "categories": {
+        "heading": "Categorias mais usadas"
+    },
+    "questions": {
+        "heading": "Perguntas mais usadas"
+    },
+    "appointments": {
+        "heading": "Resultado dos agendamentos",
+        "noShowRate": "Taxa de não comparecimento: {{rate}}%",
+        "recordedTotal": "{{count}} atendimentos com registro",
+        "total": "Total com atendimento no período",
+        "results": {
+            "attended": "Atendido",
+            "noShow": "Não compareceu",
+            "canceled": "Cancelado",
+            "waitingRecord": "Aguardando registro",
+            "upcoming": "Pendente ou Confirmado (ainda futuro)"
+        }
+    },
+    "count": {
+        "conversations_one": "{{count}} conversa",
+        "conversations_other": "{{count}} conversas"
+    },
+    "empty": {
+        "categories": "Nenhuma categoria escolhida neste período.",
+        "questions": "Nenhuma pergunta escolhida neste período."
+    },
+    "tooltips": {
+        "conversations": {
+            "label": "Definição de conversas no período",
+            "text": "Total de sessões iniciadas no WhatsApp entre as datas selecionadas. A média diária divide esse total pelos dias do período; 7, 30 e 90 dias consideram dias fechados até ontem. Agendamentos criados contam quando foram solicitados neste período."
+        },
+        "outcomes": {
+            "label": "Definição dos desfechos das conversas",
+            "text": "Cada conversa tem exatamente um desfecho. Resolvida sem agendamento exige resposta Sim à pergunta se a dúvida foi resolvida; Terminou em agendamento corresponde à criação de agendamento; abandonada é uma conversa sem interação por 30 minutos antes de um desfecho. As porcentagens somam 100%."
+        },
+        "categories": {
+            "label": "Definição das categorias mais usadas",
+            "text": "Conta conversas distintas que escolheram cada categoria. Escolher a mesma categoria novamente na mesma conversa conta apenas uma vez."
+        },
+        "questions": {
+            "label": "Definição das perguntas mais usadas",
+            "text": "Conta conversas distintas que escolheram cada pergunta. Escolher a mesma pergunta novamente na mesma conversa conta apenas uma vez."
+        },
+        "appointments": {
+            "label": "Definição do resultado dos agendamentos",
+            "text": "O período considera a data do atendimento, independentemente de quando o agendamento foi criado. A taxa de não comparecimento é Não compareceu dividido pela soma de Atendido e Não compareceu. Cancelados, aguardando registro e atendimentos futuros não entram nessa taxa."
+        }
+    }
+}
