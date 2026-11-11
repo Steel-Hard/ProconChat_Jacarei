@@ -179,16 +179,19 @@
     },
     "blocked": {
         "title": "Datas bloqueadas",
-        "description": "Feriados e pontos facultativos. O chatbot não oferece horários nos dias bloqueados.",
+        "description": "Bloqueie um dia inteiro ou apenas um período. O chatbot não oferece horários durante o bloqueio.",
         "empty": "Nenhuma data bloqueada.",
         "fullDay": "Dia inteiro",
         "period": "{{start}}–{{end}}",
         "remove": "Remover",
         "removeLabel": "Remover o bloqueio de {{date}}",
-        "newTitle": "Bloquear um dia inteiro",
+        "newTitle": "Novo bloqueio",
         "newDate": "Data",
         "newDescription": "Descrição",
         "newDescriptionPlaceholder": "Descrição (ex.: Aniversário de Jacareí)",
+        "fullDayToggle": "Bloquear o dia inteiro",
+        "startTime": "Início",
+        "endTime": "Fim",
         "add": "Adicionar",
         "problems": {
             "dateRequired": "Informe a data.",
@@ -196,7 +199,9 @@
             "dateHasAppointments_one": "Esta data tem {{count}} agendamento. Para bloqueá-la, peça a quem gerencia os agendamentos para cancelar ou remarcar antes.",
             "dateHasAppointments_other": "Esta data tem {{count}} agendamentos. Para bloqueá-la, peça a quem gerencia os agendamentos para cancelar ou remarcar antes.",
             "descriptionRequired": "Descrição do bloqueio obrigatória",
-            "descriptionTooLong": "Descrição deve ter no máximo 150 caracteres"
+            "descriptionTooLong": "Descrição deve ter no máximo 150 caracteres",
+            "periodRequired": "Informe o início e o fim do período.",
+            "periodInvalid": "O fim deve ser depois do início."
         }
     },
     "subtitle": "Define os horários livres que o chatbot oferece ao cidadão para o atendimento presencial.",

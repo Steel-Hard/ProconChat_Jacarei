@@ -28,9 +28,15 @@ function renderBlocks(overrides: Partial<Parameters<typeof ScheduleBlockedDates>
         blocks: BLOCKS,
         newDate: "",
         newDescription: "",
+        newFullDay: true,
+        newStartTime: "",
+        newEndTime: "",
         newError: null,
         onChangeNewDate: vi.fn(),
         onChangeNewDescription: vi.fn(),
+        onChangeNewFullDay: vi.fn(),
+        onChangeNewStartTime: vi.fn(),
+        onChangeNewEndTime: vi.fn(),
         onAdd: vi.fn(),
         onRemove: vi.fn(),
         ...overrides
@@ -67,7 +73,7 @@ describe("ScheduleBlockedDates", () => {
         expect(screen.getByText("Nenhuma data bloqueada.")).toBeInTheDocument()
         expect(
             screen.getByText(
-                "Feriados e pontos facultativos. O chatbot não oferece horários nos dias bloqueados."
+                "Bloqueie um dia inteiro ou apenas um período. O chatbot não oferece horários durante o bloqueio."
             )
         ).toBeInTheDocument()
     })
@@ -82,6 +88,24 @@ describe("ScheduleBlockedDates", () => {
         expect(onChangeNewDate).toHaveBeenCalledWith("2026-11-05")
         expect(onChangeNewDescription).toHaveBeenCalledWith("P")
         expect(onAdd).toHaveBeenCalled()
+    })
+
+    it("permite escolher um período parcial", async () => {
+        const { onChangeNewStartTime, onChangeNewEndTime } = renderBlocks({ newFullDay: false })
+
+        fireEvent.change(screen.getByLabelText("Início"), { target: { value: "13:00" } })
+        fireEvent.change(screen.getByLabelText("Fim"), { target: { value: "16:00" } })
+
+        expect(onChangeNewStartTime).toHaveBeenCalledWith("13:00")
+        expect(onChangeNewEndTime).toHaveBeenCalledWith("16:00")
+    })
+
+    it("permite desativar o bloqueio de dia inteiro", async () => {
+        const { onChangeNewFullDay, user } = renderBlocks()
+
+        await user.click(screen.getByLabelText("Bloquear o dia inteiro"))
+
+        expect(onChangeNewFullDay).toHaveBeenCalledWith(false)
     })
 
     it("mostra o erro do formulário ligado aos campos", () => {

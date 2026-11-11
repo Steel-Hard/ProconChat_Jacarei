@@ -43,6 +43,38 @@ describe("validateNewBlock", () => {
         ).toEqual({ code: "dateHasAppointments", count: 2 })
     })
 
+    it("aceita bloqueio parcial que não alcança agendamentos", () => {
+        expect(
+            validateNewBlock(
+                BLOCKS,
+                BOOKED,
+                {
+                    date: "2026-11-04",
+                    description: "Reunião",
+                    fullDay: false,
+                    startTime: "11:00",
+                    endTime: "12:00"
+                },
+                30
+            )
+        ).toBeNull()
+    })
+
+    it("pede os dois horários e exige que o fim seja posterior", () => {
+        const partial = { date: "2026-11-05", description: "Reunião", fullDay: false }
+
+        expect(validateNewBlock(BLOCKS, BOOKED, { ...partial, startTime: "09:00" })).toEqual({
+            code: "periodRequired"
+        })
+        expect(
+            validateNewBlock(BLOCKS, BOOKED, {
+                ...partial,
+                startTime: "10:00",
+                endTime: "10:00"
+            })
+        ).toEqual({ code: "periodInvalid" })
+    })
+
     it("pede a descrição sem contar os espaços", () => {
         expect(validateNewBlock(BLOCKS, BOOKED, { date: "2026-11-05", description: "  " })).toEqual(
             { code: "descriptionRequired" }
