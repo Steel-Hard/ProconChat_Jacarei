@@ -155,8 +155,49 @@ describe("useSchedule: rascunho", () => {
             ["2026-11-02", "Finados (feriado nacional)"],
             ["2026-11-20", "Consciência Negra"]
         ])
-        expect(result.current.newBlock).toEqual({ date: "", description: "" })
+        expect(result.current.newBlock).toEqual({
+            date: "",
+            description: "",
+            fullDay: true,
+            startTime: "",
+            endTime: ""
+        })
         expect(result.current.changes).toEqual(["datas bloqueadas"])
+    })
+
+    it("adiciona bloqueio parcial mesmo quando há agendamentos fora do período", async () => {
+        const { result } = await ready({ bookedDays: BOOKED })
+
+        act(() => result.current.actions.setNewBlockDate("2026-11-04"))
+        act(() => result.current.actions.setNewBlockDescription("Reunião"))
+        act(() => result.current.actions.setNewBlockFullDay(false))
+        act(() => result.current.actions.setNewBlockStartTime("10:00"))
+        act(() => result.current.actions.setNewBlockEndTime("11:00"))
+        act(() => result.current.actions.addBlock())
+
+        expect(result.current.blocks.find((block) => block.date === "2026-11-04")).toMatchObject({
+            date: "2026-11-04",
+            startTime: "10:00",
+            endTime: "11:00",
+            description: "Reunião"
+        })
+        expect(result.current.newBlockError).toBeNull()
+    })
+
+    it("recusa período parcial que sobrepõe um agendamento", async () => {
+        const { result } = await ready({ bookedDays: BOOKED })
+
+        act(() => result.current.actions.setNewBlockDate("2026-11-04"))
+        act(() => result.current.actions.setNewBlockDescription("Reunião"))
+        act(() => result.current.actions.setNewBlockFullDay(false))
+        act(() => result.current.actions.setNewBlockStartTime("08:30"))
+        act(() => result.current.actions.setNewBlockEndTime("09:30"))
+        act(() => result.current.actions.addBlock())
+
+        expect(result.current.newBlockError).toBe(
+            "Esta data tem 2 agendamentos. Para bloqueá-la, peça a quem gerencia os agendamentos para cancelar ou remarcar antes."
+        )
+        expect(result.current.blocks).toHaveLength(1)
     })
 
     it.each([
