@@ -150,41 +150,6 @@ function AppointmentsPage() {
                             {page.calendar.data ? (
                                 <AppointmentCalendar
                                     data={page.calendar.data}
-                                    labels={{
-                                        week: t("calendar.week", {
-                                            start: "{{start}}",
-                                            end: "{{end}}"
-                                        }),
-                                        previous: t("calendar.previous"),
-                                        next: t("calendar.next"),
-                                        current: t("calendar.current"),
-                                        noDays: t("calendar.noDays"),
-                                        fullDay: t("calendar.fullDay"),
-                                        freeSeats: t("calendar.freeSeats", { count: "{{count}}" }),
-                                        slots: t("calendar.slots"),
-                                        blockedPeriod: t("calendar.blockedPeriod"),
-                                        offGrid: t("calendar.offGrid"),
-                                        openAppointment: t("calendar.openAppointment", {
-                                            name: "{{name}}",
-                                            time: "{{time}}"
-                                        }),
-                                        status: {
-                                            PENDING: t("common:status.appointment.PENDING"),
-                                            CONFIRMED: t("common:status.appointment.CONFIRMED"),
-                                            ATTENDED: t("common:status.appointment.ATTENDED"),
-                                            NO_SHOW: t("common:status.appointment.NO_SHOW"),
-                                            CANCELED: t("common:status.appointment.CANCELED")
-                                        },
-                                        weekdays: {
-                                            sunday: t("common:weekdays.long.sunday"),
-                                            monday: t("common:weekdays.long.monday"),
-                                            tuesday: t("common:weekdays.long.tuesday"),
-                                            wednesday: t("common:weekdays.long.wednesday"),
-                                            thursday: t("common:weekdays.long.thursday"),
-                                            friday: t("common:weekdays.long.friday"),
-                                            saturday: t("common:weekdays.long.saturday")
-                                        }
-                                    }}
                                     onPrevious={page.calendar.previous}
                                     onNext={page.calendar.next}
                                     onCurrent={page.calendar.current}

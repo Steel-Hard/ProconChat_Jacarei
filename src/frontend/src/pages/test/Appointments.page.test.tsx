@@ -468,6 +468,7 @@ describe("Appointments.page: paginação e URL", () => {
                             days: [
                                 {
                                     date: "2026-10-19",
+                                    seatsPerSlot: 2,
                                     blocked: {
                                         fullDay: true,
                                         description: "Feriado municipal",
@@ -505,11 +506,11 @@ describe("Appointments.page: paginação e URL", () => {
 
         await page.user.click(screen.getByRole("button", { name: "Calendário semanal" }))
 
-        expect(await screen.findByText("Semana de 18/10/2026 a 24/10/2026")).toBeInTheDocument()
         expect(
-            screen.getByRole("heading", { name: "Segunda-feira · 19/10/2026" })
+            await screen.findByRole("table", { name: "Semana de 18/10/2026 a 24/10/2026" })
         ).toBeInTheDocument()
-        expect(screen.getByText(/2 vaga\(s\) livre\(s\)/)).toBeInTheDocument()
+        expect(screen.getByRole("columnheader", { name: /^Seg 19\/10/ })).toBeInTheDocument()
+        expect(screen.getByText("2 vagas livres")).toBeInTheDocument()
         expect(screen.getByText("Feriado municipal")).toBeInTheDocument()
         expect(screen.getByText("Bloqueado 08:00–09:00: Manutenção")).toBeInTheDocument()
         expect(screen.getByText("AG-0011")).toBeInTheDocument()
