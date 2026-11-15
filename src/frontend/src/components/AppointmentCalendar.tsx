@@ -1,8 +1,10 @@
 import { useTranslation } from "react-i18next"
 import AppointmentCalendarCell from "@/components/AppointmentCalendarCell"
 import AppointmentCalendarDayHeader from "@/components/AppointmentCalendarDayHeader"
+import AppointmentCalendarToolbar from "@/components/AppointmentCalendarToolbar"
 import type AppointmentCalendarData from "@/types/appointments/AppointmentCalendar.types"
 import appointmentCalendarGrid from "@/utils/appointmentCalendarGrid"
+import dayMonthOfDate from "@/utils/dayMonthOfDate"
 import formatDate from "@/utils/formatDate"
 import todayInSaoPaulo from "@/utils/schedule/todayInSaoPaulo"
 import css from "@/styles/components/appointmentCalendar.module.css"
@@ -18,7 +20,7 @@ type Props = {
 function AppointmentCalendar({ data, onPrevious, onNext, onCurrent, onOpen }: Props) {
     const { t } = useTranslation(["appointments", "common"])
     const weekLabel = t("calendar.week", {
-        start: formatDate(data.weekStart) ?? data.weekStart,
+        start: dayMonthOfDate(data.weekStart),
         end: formatDate(data.weekEnd) ?? data.weekEnd
     })
     const grid = appointmentCalendarGrid(data)
@@ -27,20 +29,13 @@ function AppointmentCalendar({ data, onPrevious, onNext, onCurrent, onOpen }: Pr
 
     return (
         <section className={css.calendar}>
-            <header className={css.toolbar}>
-                <h2>{weekLabel}</h2>
-                <div className={css.navigation}>
-                    <button type="button" onClick={onPrevious}>
-                        {t("calendar.previous")}
-                    </button>
-                    <button type="button" onClick={onCurrent}>
-                        {t("calendar.current")}
-                    </button>
-                    <button type="button" onClick={onNext}>
-                        {t("calendar.next")}
-                    </button>
-                </div>
-            </header>
+            <AppointmentCalendarToolbar
+                weekLabel={weekLabel}
+                seatsPerSlot={data.days.map((day) => day.seatsPerSlot)}
+                onPrevious={onPrevious}
+                onNext={onNext}
+                onCurrent={onCurrent}
+            />
             {grid.dates.length === 0 ? (
                 <p className={css.empty}>{t("calendar.noDays")}</p>
             ) : (

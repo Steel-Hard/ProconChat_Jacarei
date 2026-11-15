@@ -507,7 +507,7 @@ describe("Appointments.page: paginação e URL", () => {
         await page.user.click(screen.getByRole("button", { name: "Calendário semanal" }))
 
         expect(
-            await screen.findByRole("table", { name: "Semana de 18/10/2026 a 24/10/2026" })
+            await screen.findByRole("table", { name: "Semana de 18/10 a 24/10/2026" })
         ).toBeInTheDocument()
         expect(screen.getByRole("columnheader", { name: /^Seg 19\/10/ })).toBeInTheDocument()
         expect(screen.getByText("2 vagas livres")).toBeInTheDocument()
@@ -518,7 +518,7 @@ describe("Appointments.page: paginação e URL", () => {
             page.calls.find((call) => call.url.pathname === "/api/v1/appointments/calendar")?.url
                 .search
         ).toContain("status=all")
-        await page.user.click(screen.getByRole("button", { name: "‹ Semana anterior" }))
+        await page.user.click(screen.getByRole("button", { name: "Semana anterior" }))
         await waitFor(() => {
             const requests = page.calls.filter(
                 (call) => call.url.pathname === "/api/v1/appointments/calendar"

@@ -2,31 +2,83 @@
     min-width: 0;
 }
 
-.toolbar,
-.navigation {
+.toolbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
     gap: 12px;
-}
-
-.toolbar {
     padding: 14px 18px;
     border-bottom: 1px solid var(--border);
 }
 
-.toolbar h2 {
-    margin: 0;
-    font-size: 16px;
+.navigation {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-.navigation button {
-    padding: 7px 10px;
+.iconButton,
+.currentButton {
     border: 1px solid var(--border);
     border-radius: 8px;
     background: var(--bg-surface);
     color: var(--text-strong);
     cursor: pointer;
+    white-space: nowrap;
+}
+
+.iconButton {
+    width: 32px;
+    height: 32px;
+    font-size: 15px;
+}
+
+.currentButton {
+    margin-left: 6px;
+    padding: 6px 10px;
+    font-size: 12.5px;
+}
+
+.iconButton:hover,
+.currentButton:hover {
+    filter: brightness(0.94);
+}
+
+.weekLabel {
+    margin: 0 0 0 6px;
+    font: 700 15px var(--font-heading);
+}
+
+.legend {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.legendStatuses {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.legendStatus {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.swatch {
+    width: 10px;
+    height: 10px;
+    border: 1px solid transparent;
+    border-radius: 3px;
 }
 
 .scroll {
@@ -161,12 +213,4 @@
     padding: 24px;
     color: var(--text-muted);
     text-align: center;
-}
-
-@media (max-width: 600px) {
-    .toolbar,
-    .navigation {
-        align-items: stretch;
-        flex-wrap: wrap;
-    }
 }

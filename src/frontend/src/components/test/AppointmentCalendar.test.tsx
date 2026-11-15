@@ -263,4 +263,79 @@ describe("AppointmentCalendar", () => {
         expect(card).toHaveTextContent("Maria")
         expect(handlers.onOpen).toHaveBeenCalledWith("11")
     })
+
+    it.each([
+        [1, "1 vaga por horário"],
+        [2, "2 vagas por horário"]
+    ])("mostra na legenda as vagas por horário quando todos os dias têm %i", (seats, text) => {
+        renderCalendar(
+            calendar([
+                day("2026-10-19", [], { seatsPerSlot: seats }),
+                day("2026-10-20", [], { seatsPerSlot: seats })
+            ])
+        )
+
+        expect(
+            screen.getByText(
+                `${text} · vagas livres só onde o chatbot pode oferecer (janela, antecedência, bloqueios)`
+            )
+        ).toBeInTheDocument()
+    })
+
+    it.each([
+        [
+            "os dias têm vagas diferentes",
+            calendar([
+                day("2026-10-19", [], { seatsPerSlot: 2 }),
+                day("2026-10-22", [], { seatsPerSlot: 4 })
+            ])
+        ],
+        ["a semana não tem dias", calendar([], [item()])]
+    ])("mostra na legenda só onde há vagas livres quando %s", (_case, data) => {
+        renderCalendar(data)
+
+        expect(
+            screen.getByText(
+                "Vagas livres só onde o chatbot pode oferecer (janela, antecedência, bloqueios)"
+            )
+        ).toBeInTheDocument()
+        expect(screen.queryByText(/por horário/)).toBeNull()
+    })
+
+    it("mostra os cinco status na legenda", () => {
+        renderCalendar(calendar([day("2026-10-19", [])]))
+
+        const legend = screen.getByRole("list", { name: "Legenda do calendário" })
+
+        expect(
+            within(legend)
+                .getAllByRole("listitem")
+                .map((entry) => entry.textContent)
+        ).toEqual(["Pendente", "Confirmado", "Atendido", "Não compareceu", "Cancelado"])
+    })
+
+    it("mostra o rótulo da semana na barra e como legenda da tabela", () => {
+        renderCalendar(calendar([day("2026-10-19", [])]))
+
+        expect(
+            screen.getByRole("heading", { name: "Semana de 18/10 a 24/10/2026" })
+        ).toBeInTheDocument()
+        expect(
+            screen.getByRole("table", { name: "Semana de 18/10 a 24/10/2026" })
+        ).toBeInTheDocument()
+    })
+
+    it("navega pela semana com os botões da barra", async () => {
+        const user = userEvent.setup()
+        const handlers = renderCalendar(calendar([day("2026-10-19", [])]))
+
+        await user.click(screen.getByRole("button", { name: "Semana anterior" }))
+        await user.click(screen.getByRole("button", { name: "Próxima semana" }))
+        await user.click(screen.getByRole("button", { name: "Esta semana" }))
+
+        expect(handlers.onPrevious).toHaveBeenCalledTimes(1)
+        expect(handlers.onNext).toHaveBeenCalledTimes(1)
+        expect(handlers.onCurrent).toHaveBeenCalledTimes(1)
+        expect(screen.queryByRole("button", { name: "Semana atual" })).toBeNull()
+    })
 })
