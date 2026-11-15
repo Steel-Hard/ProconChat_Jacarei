@@ -4,6 +4,7 @@ import AppointmentCalendarDayHeader from "@/components/AppointmentCalendarDayHea
 import type AppointmentCalendarData from "@/types/appointments/AppointmentCalendar.types"
 import appointmentCalendarGrid from "@/utils/appointmentCalendarGrid"
 import formatDate from "@/utils/formatDate"
+import todayInSaoPaulo from "@/utils/schedule/todayInSaoPaulo"
 import css from "@/styles/components/appointmentCalendar.module.css"
 
 type Props = {
@@ -21,6 +22,7 @@ function AppointmentCalendar({ data, onPrevious, onNext, onCurrent, onOpen }: Pr
         end: formatDate(data.weekEnd) ?? data.weekEnd
     })
     const grid = appointmentCalendarGrid(data)
+    const today = todayInSaoPaulo()
     const dayByDate = new Map(data.days.map((day) => [day.date, day]))
 
     return (
@@ -53,6 +55,7 @@ function AppointmentCalendar({ data, onPrevious, onNext, onCurrent, onOpen }: Pr
                                         key={date}
                                         date={date}
                                         day={dayByDate.get(date)}
+                                        today={date === today}
                                     />
                                 ))}
                             </tr>

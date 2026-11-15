@@ -511,8 +511,8 @@ describe("Appointments.page: paginação e URL", () => {
         ).toBeInTheDocument()
         expect(screen.getByRole("columnheader", { name: /^Seg 19\/10/ })).toBeInTheDocument()
         expect(screen.getByText("2 vagas livres")).toBeInTheDocument()
-        expect(screen.getByText("Feriado municipal")).toBeInTheDocument()
-        expect(screen.getByText("Bloqueado 08:00–09:00: Manutenção")).toBeInTheDocument()
+        expect(screen.getByText("Bloqueado · Feriado municipal")).toBeInTheDocument()
+        expect(screen.queryByText(/08:00–09:00/)).toBeNull()
         expect(screen.getByText("AG-0011")).toBeInTheDocument()
         expect(
             page.calls.find((call) => call.url.pathname === "/api/v1/appointments/calendar")?.url
@@ -527,7 +527,9 @@ describe("Appointments.page: paginação e URL", () => {
         })
 
         await page.user.click(
-            await screen.findByRole("button", { name: "Abrir agendamento de Maria às 09:30" })
+            await screen.findByRole("button", {
+                name: "Abrir agendamento de Maria às 09:30 (Pendente)"
+            })
         )
 
         expect(page.router.state.location.pathname).toBe("/agendamentos/11")

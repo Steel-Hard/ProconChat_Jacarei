@@ -69,6 +69,10 @@
     vertical-align: top;
 }
 
+.today {
+    color: var(--color-primary);
+}
+
 .blocked {
     display: block;
     color: var(--error-text);
@@ -140,6 +144,10 @@
     font-weight: 600;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.canceled {
+    text-decoration: line-through;
 }
 
 .freeSeats {
