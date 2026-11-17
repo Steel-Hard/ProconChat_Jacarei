@@ -31,7 +31,7 @@ function AppointmentCalendar({ data, onPrevious, onNext, onCurrent, onOpen }: Pr
         <section className={css.calendar}>
             <AppointmentCalendarToolbar
                 weekLabel={weekLabel}
-                seatsPerSlot={data.days.map((day) => day.seatsPerSlot)}
+                seatsPerSlot={data.seatsPerSlot}
                 onPrevious={onPrevious}
                 onNext={onNext}
                 onCurrent={onCurrent}

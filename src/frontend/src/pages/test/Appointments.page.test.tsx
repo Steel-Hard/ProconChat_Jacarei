@@ -465,10 +465,10 @@ describe("Appointments.page: paginação e URL", () => {
                             weekStart: "2026-10-18",
                             weekEnd: "2026-10-24",
                             weekStartDay: 0,
+                            seatsPerSlot: 2,
                             days: [
                                 {
                                     date: "2026-10-19",
-                                    seatsPerSlot: 2,
                                     blocked: {
                                         fullDay: true,
                                         description: "Feriado municipal",

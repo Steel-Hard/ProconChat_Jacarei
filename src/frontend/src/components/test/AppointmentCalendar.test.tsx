@@ -10,7 +10,6 @@ type Item = AppointmentCalendarData["appointments"][number]
 function day(date: string, slots: Day["slots"], overrides: Partial<Day> = {}): Day {
     return {
         date,
-        seatsPerSlot: 2,
         blocked: { fullDay: false, description: null, periods: [] },
         slots,
         ...overrides
@@ -31,8 +30,19 @@ function item(overrides: Partial<Item> = {}): Item {
     }
 }
 
-function calendar(days: Day[], appointments: Item[] = []): AppointmentCalendarData {
-    return { weekStart: "2026-10-18", weekEnd: "2026-10-24", weekStartDay: 0, days, appointments }
+function calendar(
+    days: Day[],
+    appointments: Item[] = [],
+    seatsPerSlot: number | null = 2
+): AppointmentCalendarData {
+    return {
+        weekStart: "2026-10-18",
+        weekEnd: "2026-10-24",
+        weekStartDay: 0,
+        seatsPerSlot,
+        days,
+        appointments
+    }
 }
 
 function cellsOf(hour: string): HTMLElement[] {
@@ -267,13 +277,8 @@ describe("AppointmentCalendar", () => {
     it.each([
         [1, "1 vaga por horário"],
         [2, "2 vagas por horário"]
-    ])("mostra na legenda as vagas por horário quando todos os dias têm %i", (seats, text) => {
-        renderCalendar(
-            calendar([
-                day("2026-10-19", [], { seatsPerSlot: seats }),
-                day("2026-10-20", [], { seatsPerSlot: seats })
-            ])
-        )
+    ])("mostra na legenda as vagas por horário quando a API informa %i", (seats, text) => {
+        renderCalendar(calendar([day("2026-10-19", [])], [], seats))
 
         expect(
             screen.getByText(
@@ -282,24 +287,8 @@ describe("AppointmentCalendar", () => {
         ).toBeInTheDocument()
     })
 
-    it.each([
-        [
-            "os dias têm vagas diferentes",
-            calendar([
-                day("2026-10-19", [], { seatsPerSlot: 2 }),
-                day("2026-10-22", [], { seatsPerSlot: 4 })
-            ])
-        ],
-        ["a semana não tem dias", calendar([], [item()])],
-        [
-            "a API não informa as vagas por horário",
-            calendar([
-                day("2026-10-19", [], { seatsPerSlot: undefined }),
-                day("2026-10-20", [], { seatsPerSlot: undefined })
-            ])
-        ]
-    ])("mostra na legenda só onde há vagas livres quando %s", (_case, data) => {
-        renderCalendar(data)
+    it("mostra na legenda só onde há vagas livres quando a API não informa as vagas por horário", () => {
+        renderCalendar(calendar([day("2026-10-19", []), day("2026-10-22", [])], [], null))
 
         expect(
             screen.getByText(

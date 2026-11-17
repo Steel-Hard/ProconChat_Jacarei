@@ -4,9 +4,9 @@ type AppointmentCalendar = {
     weekStart: string
     weekEnd: string
     weekStartDay: number
+    seatsPerSlot: number | null
     days: {
         date: string
-        seatsPerSlot?: number
         blocked: {
             fullDay: boolean
             description: string | null

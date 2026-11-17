@@ -4,7 +4,7 @@ import css from "@/styles/components/appointmentCalendar.module.css"
 
 type Props = {
     weekLabel: string
-    seatsPerSlot: (number | undefined)[]
+    seatsPerSlot: number | null
     onPrevious: () => void
     onNext: () => void
     onCurrent: () => void
