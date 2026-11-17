@@ -1,6 +1,7 @@
 import express from "express"
 import request from "supertest"
 import { beforeEach, describe, expect, it } from "vitest"
+import InternalServerError from "../errors/InternalServerError"
 import errorHandler from "../middleware/errorHandler.middleware"
 import { DocumentsController } from "../controllers/documents.controller"
 import { DocumentsStubRepository } from "../repositories/mock/documentsStub.repository"
@@ -283,6 +284,81 @@ describe("DocumentsRoutes", () => {
             expect(res.body.error.message).toContain("holder.1")
             expect(res.body.error.message).toContain("Há um documento vazio na lista.")
             expect(res.body.error.message).not.toContain("Too small")
+        })
+
+        it("recusa o 11º item na prévia citando o limite, sem montar a mensagem", async () => {
+            const res = await request(app)
+                .post("/api/v1/documents/preview")
+                .set("Cookie", cookieOf(ADMIN_ID))
+                .send({ byRepresentative: false, groupDocuments: items(11) })
+
+            expect(res.status).toBe(400)
+            expect(res.body.error.message).toContain("Limite de 10 documentos por grupo")
+            expect(res.body.data).toBeUndefined()
+        })
+
+        it("aceita 10 itens na prévia", async () => {
+            const res = await request(app)
+                .post("/api/v1/documents/preview")
+                .set("Cookie", cookieOf(ADMIN_ID))
+                .send({ byRepresentative: false, groupDocuments: items(10) })
+
+            expect(res.status).toBe(200)
+            expect(res.body.data.groupBlock.items).toHaveLength(10)
+        })
+    })
+
+    describe("permissão em salvar e prévia", () => {
+        it.each([
+            ["put", "/api/v1/documents", { holder: [], representative: [] }],
+            ["post", "/api/v1/documents/preview", { byRepresentative: false, groupDocuments: [] }]
+        ] as const)("%s %s devolve 403 sem documents.configure e 401 sem login", async (method, url, body) => {
+            const semPermissao = await request(app)[method](url).set("Cookie", cookieOf(VIEWER_ID)).send(body)
+            const semLogin = await request(app)[method](url).send(body)
+
+            expect(semPermissao.status).toBe(403)
+            expect(semLogin.status).toBe(401)
+        })
+
+        it("não grava nada quando o salvar é recusado por falta de permissão", async () => {
+            const antes = { ...stubRepo.config }
+
+            await request(app)
+                .put("/api/v1/documents")
+                .set("Cookie", cookieOf(VIEWER_ID))
+                .send({ holder: ["Novo"], representative: [] })
+
+            expect(stubRepo.config).toEqual(antes)
+        })
+    })
+
+    describe("sem a configuração de Horários de atendimento", () => {
+        beforeEach(() => {
+            stubRepo.getScheduleContext = async () => {
+                throw new InternalServerError("Configuração de horários de atendimento não encontrada")
+            }
+        })
+
+        it("devolve 500 genérico na prévia em vez de inventar um endereço", async () => {
+            const res = await request(app)
+                .post("/api/v1/documents/preview")
+                .set("Cookie", cookieOf(ADMIN_ID))
+                .send({ byRepresentative: false, groupDocuments: ["CPF"] })
+
+            expect(res.status).toBe(500)
+            expect(res.body.error.code).toBe("INTERNAL_SERVER_ERROR")
+            expect(res.body.data).toBeUndefined()
+        })
+
+        it("devolve 500 ao abrir a tela e ao salvar", async () => {
+            const abrir = await request(app).get("/api/v1/documents").set("Cookie", cookieOf(ADMIN_ID))
+            const salvar = await request(app)
+                .put("/api/v1/documents")
+                .set("Cookie", cookieOf(ADMIN_ID))
+                .send({ holder: ["CPF"], representative: [] })
+
+            expect(abrir.status).toBe(500)
+            expect(salvar.status).toBe(500)
         })
     })
 })
