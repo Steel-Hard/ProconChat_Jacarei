@@ -331,6 +331,43 @@ describe("DocumentsRepository (Postgres)", () => {
             expect(await countDocumentsAudit()).toBe(auditBefore + 2)
         })
 
+        it("espera a trava de Documentos liberada por outra transação antes de gravar", async () => {
+            const userId = await createUser("Hugo Documentos")
+            await repository.saveDocumentsConfig({ holder: ["Antes"], representative: [] }, userId)
+            const auditBefore = await countDocumentsAudit()
+            const holder = await getPool().connect()
+            let finished = false
+
+            try {
+                await holder.query("BEGIN")
+                await holder.query("SELECT pg_advisory_xact_lock(hashtext('documents_config'))")
+
+                const pending = repository
+                    .saveDocumentsConfig({ holder: ["Depois"], representative: [] }, userId)
+                    .then(() => {
+                        finished = true
+                    })
+                await new Promise((resolve) => setTimeout(resolve, 300))
+
+                expect(finished).toBe(false)
+                expect(await repository.getDocumentsConfig()).toEqual({
+                    holder: ["Antes"],
+                    representative: [],
+                })
+
+                await holder.query("COMMIT")
+                await pending
+            } finally {
+                holder.release()
+            }
+
+            expect(await repository.getDocumentsConfig()).toEqual({
+                holder: ["Depois"],
+                representative: [],
+            })
+            expect(await countDocumentsAudit()).toBe(auditBefore + 1)
+        })
+
         it("desfaz tudo quando a gravação falha no meio", async () => {
             const userId = await createUser("Fabi Documentos")
             await repository.saveDocumentsConfig({ holder: ["K"], representative: [] }, userId)
