@@ -13,7 +13,8 @@ const STAFF_PATH = "/api/v1/appointments/staff"
 const STAFF = [
     { id: "2", name: "Bruno Lima", email: "bruno@procon.test", active: true },
     { id: "3", name: "Carla Dias", email: "carla@procon.test", active: false },
-    { id: "4", name: "Ana Paula Souza", email: "ana@procon.test", active: true }
+    { id: "4", name: "Ana Paula Souza", email: "ana@procon.test", active: true },
+    { id: "5", name: "Diego Reis", email: null, active: true }
 ]
 
 function assignable(overrides: Partial<AppointmentDetail> = {}): AppointmentDetail {
@@ -76,6 +77,9 @@ describe("AppointmentDetail.page: atribuir", () => {
             "bruno@procon.test"
         )
         expect(within(dialog).queryByText(/Carla Dias/)).toBeNull()
+        expect(within(dialog).getByRole("button", { name: /Diego Reis/ })).toHaveTextContent(
+            /^Diego Reis$/
+        )
         expect(within(dialog).getByRole("button", { name: "Voltar" })).toBeInTheDocument()
         expect(within(dialog).getByRole("button", { name: "Atribuir" })).toBeDisabled()
     })
