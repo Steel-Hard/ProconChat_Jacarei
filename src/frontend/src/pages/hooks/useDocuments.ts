@@ -6,7 +6,6 @@ import documentsApi from "@/store/api/documents.api"
 import type AttendeeGroup from "@/types/documents/AttendeeGroup.types"
 import type SampleQuestion from "@/types/documents/SampleQuestion.types"
 import type LastChange from "@/types/settings/LastChange.types"
-import DEFAULT_SAMPLE_QUESTIONS from "@/utils/documents/defaultSampleQuestions"
 import { findDuplicateDocuments } from "@/utils/documents/findDuplicateDocuments"
 
 const EMPTY_DOCS: string[] = []
@@ -22,15 +21,13 @@ export default function useDocuments() {
     const view = query.data
     const draft = useDocumentsDraft(view)
 
-    const sampleQuestions: SampleQuestion[] = useMemo(() => {
-        if (view?.sampleQuestions && view.sampleQuestions.length > 0) {
-            return view.sampleQuestions
-        }
-        return DEFAULT_SAMPLE_QUESTIONS
-    }, [view?.sampleQuestions])
+    const sampleQuestions: SampleQuestion[] = useMemo(
+        () => view?.sampleQuestions ?? [],
+        [view?.sampleQuestions]
+    )
 
     const [previewGroup, setPreviewGroup] = useState<AttendeeGroup>("holder")
-    const [previewQuestionId, setPreviewQuestionId] = useState<string>(sampleQuestions[0]?.id ?? "")
+    const [previewQuestionId, setPreviewQuestionId] = useState<string>("")
 
     const selectedQuestion = useMemo(() => {
         return sampleQuestions.find((q) => q.id === previewQuestionId) ?? sampleQuestions[0] ?? null
@@ -52,7 +49,7 @@ export default function useDocuments() {
 
     const isPreviewUnsaved =
         previewGroup === "holder" ? draft.holderChanged : draft.representativeChanged
-    const isQuestionEmpty = activeQuestionDocs.length === 0
+    const isQuestionEmpty = selectedQuestion !== null && activeQuestionDocs.length === 0
 
     const lastChange: LastChange | null =
         view?.updatedBy != null && view?.updatedAt != null
@@ -84,7 +81,7 @@ export default function useDocuments() {
         preview: {
             previewGroup,
             setPreviewGroup,
-            previewQuestionId: selectedQuestion?.id ?? previewQuestionId,
+            previewQuestionId: selectedQuestion?.id ?? "",
             setPreviewQuestionId,
             sampleQuestions,
             selectedQuestion,

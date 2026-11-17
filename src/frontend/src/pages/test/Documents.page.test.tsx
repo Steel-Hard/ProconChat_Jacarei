@@ -27,11 +27,13 @@ const initialDocuments: DocumentsConfigView = {
         {
             id: "1",
             title: "Cobrança indevida no cartão",
+            categoryTitle: "Bancos e cartões",
             documents: ["CPF", "Fatura do cartão"]
         },
         {
             id: "2",
             title: "Direito de arrependimento",
+            categoryTitle: "Compras",
             documents: []
         }
     ]
@@ -132,6 +134,15 @@ function stubDocumentsFetch(
         fetchMock,
         getCapturedPutBody: () => capturedPutBody
     }
+}
+
+function buildTwelveQuestions() {
+    return Array.from({ length: 12 }, (_, index) => ({
+        id: String(index + 1),
+        title: `Pergunta ${index + 1}`,
+        categoryTitle: index < 7 ? "Bancos e cartões" : "Compras",
+        documents: []
+    }))
 }
 
 afterEach(() => {
@@ -326,5 +337,71 @@ describe("DocumentsPage", () => {
         expect(
             screen.getByText("A pergunta escolhida não tem documentos úteis cadastrados")
         ).toBeInTheDocument()
+    })
+
+    it("lista todas as perguntas ativas agrupadas por categoria, na ordem recebida", async () => {
+        const { fetchMock } = stubDocumentsFetch({
+            status: 200,
+            data: { ...initialDocuments, sampleQuestions: buildTwelveQuestions() }
+        })
+        await renderDocumentsPage(fetchMock)
+
+        const select = await screen.findByLabelText("Pergunta de exemplo")
+        const groups = within(select).getAllByRole("group")
+
+        expect(groups.map((group) => group.getAttribute("label"))).toEqual([
+            "Bancos e cartões",
+            "Compras"
+        ])
+        expect(
+            within(select)
+                .getAllByRole("option")
+                .map((option) => option.textContent)
+        ).toEqual(Array.from({ length: 12 }, (_, index) => `Pergunta ${index + 1}`))
+    })
+
+    it("filtra as perguntas pela busca no título e escolhe a primeira que sobra", async () => {
+        const user = userEvent.setup()
+        const { fetchMock } = stubDocumentsFetch({
+            status: 200,
+            data: { ...initialDocuments, sampleQuestions: buildTwelveQuestions() }
+        })
+        await renderDocumentsPage(fetchMock)
+
+        await user.type(
+            await screen.findByRole("searchbox", { name: "Buscar pergunta" }),
+            "pergunta 1"
+        )
+
+        const select = screen.getByLabelText("Pergunta de exemplo")
+        expect(
+            within(select)
+                .getAllByRole("option")
+                .map((option) => option.textContent)
+        ).toEqual(["Pergunta 1", "Pergunta 10", "Pergunta 11", "Pergunta 12"])
+
+        await user.clear(screen.getByRole("searchbox", { name: "Buscar pergunta" }))
+        await user.type(screen.getByRole("searchbox", { name: "Buscar pergunta" }), "PERGUNTA 5")
+
+        expect(
+            within(select)
+                .getAllByRole("option")
+                .map((option) => option.textContent)
+        ).toEqual(["Pergunta 5"])
+        expect(select).toHaveValue("5")
+    })
+
+    it("sem perguntas ativas mostra o estado vazio e nenhuma pergunta inventada", async () => {
+        const { fetchMock } = stubDocumentsFetch({
+            status: 200,
+            data: { ...initialDocuments, sampleQuestions: [] }
+        })
+        await renderDocumentsPage(fetchMock)
+
+        expect(
+            await screen.findByText("Nenhuma pergunta ativa cadastrada na tela Conteúdo")
+        ).toBeInTheDocument()
+        expect(screen.queryByLabelText("Pergunta de exemplo")).not.toBeInTheDocument()
+        expect(screen.queryByText("Cobrança indevida no cartão de crédito")).not.toBeInTheDocument()
     })
 })

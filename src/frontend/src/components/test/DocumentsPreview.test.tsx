@@ -8,11 +8,13 @@ const sampleQuestions: SampleQuestion[] = [
     {
         id: "1",
         title: "Cobrança indevida no cartão",
+        categoryTitle: "Bancos e cartões",
         documents: ["Fatura do cartão", "CPF"]
     },
     {
         id: "2",
         title: "Direito de arrependimento",
+        categoryTitle: "Compras",
         documents: []
     }
 ]

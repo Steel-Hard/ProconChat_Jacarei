@@ -1,5 +1,6 @@
 import { useId } from "react"
 import { useTranslation } from "react-i18next"
+import DocumentsQuestionPicker from "@/components/DocumentsQuestionPicker"
 import type AttendeeGroup from "@/types/documents/AttendeeGroup.types"
 import type SampleQuestion from "@/types/documents/SampleQuestion.types"
 import css from "@/styles/components/documentsPreview.module.css"
@@ -31,7 +32,6 @@ export default function DocumentsPreview({
 }: DocumentsPreviewProps) {
     const { t } = useTranslation("documents")
     const attendeeId = useId()
-    const questionId = useId()
 
     const lines = confirmationText.split("\n")
     const questionDocsHeadingIndex = lines.indexOf("Documentos úteis para esta dúvida:")
@@ -63,23 +63,11 @@ export default function DocumentsPreview({
                     </select>
                 </div>
 
-                <div className={css.fieldGroup}>
-                    <label htmlFor={questionId} className={css.label}>
-                        {t("preview.questionLabel")}
-                    </label>
-                    <select
-                        id={questionId}
-                        className={css.select}
-                        value={selectedQuestionId}
-                        onChange={(e) => onChangeQuestionId(e.target.value)}
-                    >
-                        {sampleQuestions.map((q) => (
-                            <option key={q.id} value={q.id}>
-                                {q.title}
-                            </option>
-                        ))}
-                    </select>
-                </div>
+                <DocumentsQuestionPicker
+                    questions={sampleQuestions}
+                    selectedId={selectedQuestionId}
+                    onChange={onChangeQuestionId}
+                />
             </div>
 
             <div className={css.notices}>
