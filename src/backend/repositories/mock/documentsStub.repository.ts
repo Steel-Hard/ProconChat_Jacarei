@@ -23,7 +23,7 @@ export class DocumentsStubRepository implements IDocumentsRepository {
         reminderHours: 24
     }
     public sampleQuestions: SampleQuestionRow[] = [
-        { id: "1", title: "Pergunta 1", documents: ["Doc P1"] }
+        { id: "1", title: "Pergunta 1", categoryTitle: "Categoria 1", documents: ["Doc P1"] }
     ]
 
     async getDocumentsConfig(): Promise<DocumentsConfigData> {

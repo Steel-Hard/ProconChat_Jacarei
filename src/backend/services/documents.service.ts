@@ -14,6 +14,7 @@ export interface DocumentsViewOutput {
     sampleQuestions: Array<{
         id: string
         title: string
+        categoryTitle: string
         documents: string[]
     }>
 }

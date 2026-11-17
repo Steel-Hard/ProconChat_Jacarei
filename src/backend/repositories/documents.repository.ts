@@ -92,8 +92,9 @@ export class DocumentsRepository implements IDocumentsRepository {
         const qResult = await this.pool.query<{
             id: string
             title: string
+            category_title: string
         }>(
-            `SELECT q.id, COALESCE(q.short_title, q.question) as title
+            `SELECT q.id, COALESCE(q.short_title, q.question) as title, c.title as category_title
              FROM Questions q
              INNER JOIN Categories c ON c.id = q.category_id
              WHERE q.active = TRUE AND c.active = TRUE
@@ -128,6 +129,7 @@ export class DocumentsRepository implements IDocumentsRepository {
         return qResult.rows.map((q) => ({
             id: String(q.id),
             title: q.title,
+            categoryTitle: q.category_title,
             documents: docsByQuestion[String(q.id)] ?? []
         }))
     }

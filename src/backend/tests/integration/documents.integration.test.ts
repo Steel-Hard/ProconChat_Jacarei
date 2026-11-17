@@ -69,5 +69,33 @@ describe("DocumentsRepository (Postgres)", () => {
 
             expect(ids).toEqual([earlyId, ...lateIds])
         })
+
+        it("não lista pergunta inativa nem pergunta de categoria inativa", async () => {
+            const activeCategory = await createCategory(9003)
+            const inactiveCategory = await createCategory(9004, false)
+            const visibleId = await createQuestion(activeCategory, 0)
+            const inactiveQuestionId = await createQuestion(activeCategory, 1, { active: false })
+            const inactiveCategoryQuestionId = await createQuestion(inactiveCategory, 0)
+
+            const ids = (await repository.getSampleQuestions()).map((row) => Number(row.id))
+
+            expect(ids).toContain(visibleId)
+            expect(ids).not.toContain(inactiveQuestionId)
+            expect(ids).not.toContain(inactiveCategoryQuestionId)
+        })
+
+        it("devolve o título da categoria e os documentos de cada pergunta", async () => {
+            const categoryId = await createCategory(9005)
+            const questionId = await createQuestion(categoryId, 0, {
+                documents: ["Nota fiscal", "Contrato"],
+            })
+
+            const row = (await repository.getSampleQuestions()).find(
+                (item) => Number(item.id) === questionId,
+            )
+
+            expect(row?.categoryTitle).toBe("Categoria documentos teste")
+            expect(row?.documents).toEqual(["Nota fiscal", "Contrato"])
+        })
     })
 })

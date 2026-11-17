@@ -1,6 +1,7 @@
 export interface SampleQuestionRow {
     id: string
     title: string
+    categoryTitle: string
     documents: string[]
 }
 
