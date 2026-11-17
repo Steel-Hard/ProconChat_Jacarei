@@ -18,8 +18,8 @@ export class DocumentsRepository implements IDocumentsRepository {
         this.pool = pool
     }
 
-    async getDocumentsConfig(): Promise<DocumentsConfigData> {
-        const result = await this.pool.query<{
+    private async readConfig(db: Pick<Pool, "query">): Promise<DocumentsConfigData> {
+        const result = await db.query<{
             attendee_group: "HOLDER" | "REPRESENTATIVE"
             description: string
         }>(
@@ -40,6 +40,10 @@ export class DocumentsRepository implements IDocumentsRepository {
         }
 
         return { holder, representative }
+    }
+
+    async getDocumentsConfig(): Promise<DocumentsConfigData> {
+        return this.readConfig(this.pool)
     }
 
     async getLastChange(): Promise<DocumentsLastChange | null> {
@@ -168,6 +172,12 @@ export class DocumentsRepository implements IDocumentsRepository {
         const client = await this.pool.connect()
         try {
             await client.query("BEGIN")
+
+            const current = await this.readConfig(client)
+            if (JSON.stringify(current) === JSON.stringify(data)) {
+                await client.query("ROLLBACK")
+                return
+            }
 
             await client.query("DELETE FROM AttendanceDocuments")
 

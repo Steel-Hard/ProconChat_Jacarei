@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest"
 import getPool from "../../db/connection"
 import InternalServerError from "../../errors/InternalServerError"
 import { DocumentsRepository } from "../../repositories/documents.repository"
@@ -15,6 +15,13 @@ const createdCategoryIds: number[] = []
 const createdQuestionIds: number[] = []
 const createdAuditIds: number[] = []
 const createdUserIds: number[] = []
+
+async function countDocumentsAudit(): Promise<number> {
+    const result = await getPool().query<{ total: string }>(
+        "SELECT COUNT(*) AS total FROM AuditLog WHERE area = 'documents'",
+    )
+    return Number(result.rows[0]!.total)
+}
 
 async function createAuditEntry(actorUserId: number | null, createdAt: string): Promise<number> {
     const result = await getPool().query<{ id: string }>(
@@ -74,9 +81,16 @@ async function createQuestion(
     return id
 }
 
+afterEach(async () => {
+    await getPool().query("DELETE FROM AuditLog WHERE id = ANY($1::bigint[])", [createdAuditIds])
+})
+
 afterAll(async () => {
     const pool = getPool()
-    await pool.query("DELETE FROM AuditLog WHERE id = ANY($1::bigint[])", [createdAuditIds])
+    await pool.query(
+        "DELETE FROM AuditLog WHERE id = ANY($1::bigint[]) OR (area = 'documents' AND actor_user_id = ANY($2::bigint[]))",
+        [createdAuditIds, createdUserIds],
+    )
     await pool.query("DELETE FROM Users WHERE id = ANY($1::bigint[])", [createdUserIds])
     await pool.query("DELETE FROM RequiredDocuments WHERE question_id = ANY($1::bigint[])", [
         createdQuestionIds,
@@ -230,6 +244,93 @@ describe("DocumentsRepository (Postgres)", () => {
             await expect(repository.getScheduleContext()).rejects.toBeInstanceOf(
                 InternalServerError,
             )
+        })
+    })
+
+    describe("saveDocumentsConfig", () => {
+        let original: { holder: string[]; representative: string[] }
+
+        beforeAll(async () => {
+            original = await repository.getDocumentsConfig()
+        })
+
+        afterAll(async () => {
+            const client = await getPool().connect()
+            try {
+                await client.query("DELETE FROM AttendanceDocuments")
+                for (const [group, list] of [
+                    ["HOLDER", original.holder],
+                    ["REPRESENTATIVE", original.representative],
+                ] as const) {
+                    for (let index = 0; index < list.length; index++) {
+                        await client.query(
+                            "INSERT INTO AttendanceDocuments (attendee_group, description, position) VALUES ($1, $2, $3)",
+                            [group, list[index], index],
+                        )
+                    }
+                }
+            } finally {
+                client.release()
+            }
+        })
+
+        it("grava as listas na ordem enviada e registra quem alterou na auditoria", async () => {
+            const userId = await createUser("Bia Documentos")
+            const auditBefore = await countDocumentsAudit()
+
+            await repository.saveDocumentsConfig(
+                { holder: ["B", "A"], representative: ["C"] },
+                userId,
+            )
+
+            expect(await repository.getDocumentsConfig()).toEqual({
+                holder: ["B", "A"],
+                representative: ["C"],
+            })
+            expect(await countDocumentsAudit()).toBe(auditBefore + 1)
+            expect((await repository.getLastChange())?.id).toBe(userId)
+        })
+
+        it("não grava auditoria nem troca o autor ao salvar sem mudança", async () => {
+            const first = await createUser("Caio Documentos")
+            const second = await createUser("Duda Documentos")
+            await repository.saveDocumentsConfig({ holder: ["X"], representative: ["Y"] }, first)
+            const auditBefore = await countDocumentsAudit()
+            const lastBefore = await repository.getLastChange()
+
+            await repository.saveDocumentsConfig({ holder: ["X"], representative: ["Y"] }, second)
+
+            expect(await countDocumentsAudit()).toBe(auditBefore)
+            expect(await repository.getLastChange()).toEqual(lastBefore)
+        })
+
+        it("trata mudança só de ordem como alteração", async () => {
+            const userId = await createUser("Edu Documentos")
+            await repository.saveDocumentsConfig({ holder: ["X", "Z"], representative: [] }, userId)
+            const auditBefore = await countDocumentsAudit()
+
+            await repository.saveDocumentsConfig({ holder: ["Z", "X"], representative: [] }, userId)
+
+            expect(await countDocumentsAudit()).toBe(auditBefore + 1)
+        })
+
+        it("desfaz tudo quando a gravação falha no meio", async () => {
+            const userId = await createUser("Fabi Documentos")
+            await repository.saveDocumentsConfig({ holder: ["K"], representative: [] }, userId)
+            const auditBefore = await countDocumentsAudit()
+
+            await expect(
+                repository.saveDocumentsConfig(
+                    { holder: ["M", "a".repeat(256)], representative: [] },
+                    userId,
+                ),
+            ).rejects.toThrow()
+
+            expect(await repository.getDocumentsConfig()).toEqual({
+                holder: ["K"],
+                representative: [],
+            })
+            expect(await countDocumentsAudit()).toBe(auditBefore)
         })
     })
 })
