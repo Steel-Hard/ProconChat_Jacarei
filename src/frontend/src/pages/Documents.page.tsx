@@ -20,6 +20,7 @@ export default function DocumentsPage() {
                         <h1 className={css.title}>{t("heading")}</h1>
                         <p className={css.subtitle}>{t("subtitle")}</p>
                         <LastChangeNote change={page.lastChange} />
+                        <div className={css.notice}>{t("notice")}</div>
                     </div>
                     {page.status !== "loading" ? (
                         <UnsavedChangesBar
@@ -31,8 +32,6 @@ export default function DocumentsPage() {
                         />
                     ) : null}
                 </div>
-
-                <div className={css.notice}>{t("notice")}</div>
 
                 {page.status === "loading" ? (
                     <p className={css.loading}>{t("common:loading")}</p>

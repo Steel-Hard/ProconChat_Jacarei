@@ -3,7 +3,7 @@
         "title": "Documentos para atendimento presencial · PROCON Jacareí"
     },
     "heading": "Documentos para atendimento presencial",
-    "subtitle": "Defina os documentos pedidos ao cidadão no agendamento presencial.",
+    "subtitle": "Listas que o chatbot envia ao cidadão ao criar o agendamento, somadas aos documentos úteis da pergunta.",
     "notice": "As alterações valem só para os próximos agendamentos. Os já criados mantêm a lista que foi enviada ao cidadão na época.",
     "loadFailed": "Não foi possível carregar os documentos para atendimento presencial.",
     "saveToast": "Documentos atualizados com sucesso.",
