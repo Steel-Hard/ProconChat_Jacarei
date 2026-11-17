@@ -73,6 +73,7 @@ Colunas: protocolo, titular (com CPF mascarado), categoria e pergunta de origem,
 - A **legenda** do calendário mostra o número de vagas por horário e a frase "vagas livres só onde o chatbot pode oferecer (janela, antecedência, bloqueios)". Quando uma mudança de horários agendada ([decisão 012](../decisoes/012-horarios-agendados.md)) começa no meio da semana mostrada e altera as vagas, não existe um número único, e a legenda omite a parte numérica e mantém só a frase.
 - Datas bloqueadas aparecem marcadas.
 - Navegação: semana anterior, próxima, "Esta semana".
+- O **modo** (lista ou calendário) e a **semana vista** ficam no endereço da página, no formato `?visao=calendario&semana=AAAA-MM-DD` (a data é a segunda-feira da semana). Assim, ao voltar do Detalhe, a pessoa cai na mesma semana, e o link pode ser compartilhado. Sem esses parâmetros, vale a lista e "Esta semana".
 
 ## O que dá para fazer
 

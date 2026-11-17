@@ -69,6 +69,8 @@ As ações aparecem conforme o status e o momento:
 | **Corrigir registro** | Atendido ou Não compareceu | Volta ao **estado anterior**: Pendente se não havia responsável, Confirmado se havia |
 | **Cancelar agendamento** | Pendente ou Confirmado, **antes do horário** | Abre o modal de cancelamento (abaixo). Depois do horário, a tela explica que não é possível cancelar e que o caso deve ser registrado como atendido ou não compareceu |
 
+Quando **Corrigir registro** devolve o agendamento a Pendente sem responsável porque o responsável anterior está ocupado ou não pode mais assumir, a tela mostra um **aviso** dizendo isso, com quantos funcionários estão livres no horário. O aviso **fica visível na caixa "Ações"** até a próxima ação ou até a pessoa sair da tela.
+
 ### Modal de cancelamento
 
 1. **Motivo obrigatório**, de uma lista fixa:
