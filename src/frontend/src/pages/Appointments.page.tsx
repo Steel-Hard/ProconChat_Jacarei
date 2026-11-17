@@ -45,29 +45,31 @@ function AppointmentsPage() {
         <>
             <title>{t("meta.title")}</title>
             <section className={css.page}>
-                <div className={css.header}>
-                    <h1 className={css.title}>{t("heading")}</h1>
-                    <p className={css.subtitle}>{t("subtitle")}</p>
+                <div className={css.headerRow}>
+                    <div className={css.header}>
+                        <h1 className={css.title}>{t("heading")}</h1>
+                        <p className={css.subtitle}>{t("subtitle")}</p>
+                    </div>
+                    {!page.searching ? (
+                        <fieldset className={css.viewToggle}>
+                            <legend>{t("view.label")}</legend>
+                            <button
+                                type="button"
+                                aria-pressed={!page.calendar.enabled}
+                                onClick={() => page.calendar.setEnabled(false)}
+                            >
+                                {t("view.list")}
+                            </button>
+                            <button
+                                type="button"
+                                aria-pressed={page.calendar.enabled}
+                                onClick={() => page.calendar.setEnabled(true)}
+                            >
+                                {t("view.calendar")}
+                            </button>
+                        </fieldset>
+                    ) : null}
                 </div>
-                {!page.searching ? (
-                    <fieldset className={css.viewToggle}>
-                        <legend>{t("view.label")}</legend>
-                        <button
-                            type="button"
-                            aria-pressed={!page.calendar.enabled}
-                            onClick={() => page.calendar.setEnabled(false)}
-                        >
-                            {t("view.list")}
-                        </button>
-                        <button
-                            type="button"
-                            aria-pressed={page.calendar.enabled}
-                            onClick={() => page.calendar.setEnabled(true)}
-                        >
-                            {t("view.calendar")}
-                        </button>
-                    </fieldset>
-                ) : null}
                 <div className={css.searchArea}>
                     <div className={css.searchBox}>
                         <label htmlFor={searchId} className={css.searchLabel}>
