@@ -142,6 +142,15 @@ function buildTwelveQuestions() {
     }))
 }
 
+async function failSaving(put: { status: number; body: unknown }) {
+    const user = userEvent.setup()
+    const { fetchMock } = stubDocumentsFetch({ status: 200, data: initialDocuments, put })
+    await renderDocumentsPage(fetchMock)
+    await user.click(await screen.findByRole("button", { name: "Remover CPF" }))
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
+    return screen.findByRole("alert")
+}
+
 afterEach(() => {
     vi.unstubAllGlobals()
     vi.unstubAllEnvs()
@@ -438,15 +447,6 @@ describe("DocumentsPage", () => {
         expect(screen.queryByLabelText("Pergunta de exemplo")).not.toBeInTheDocument()
         expect(screen.queryByText("Cobrança indevida no cartão de crédito")).not.toBeInTheDocument()
     })
-
-    async function failSaving(put: { status: number; body: unknown }) {
-        const user = userEvent.setup()
-        const { fetchMock } = stubDocumentsFetch({ status: 200, data: initialDocuments, put })
-        await renderDocumentsPage(fetchMock)
-        await user.click(await screen.findByRole("button", { name: "Remover CPF" }))
-        await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
-        return screen.findByRole("alert")
-    }
 
     it("400 ao salvar mostra o item e o motivo vindos do backend", async () => {
         const alert = await failSaving({
