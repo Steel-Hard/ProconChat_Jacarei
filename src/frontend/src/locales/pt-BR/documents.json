@@ -52,7 +52,7 @@
         "questionSearchLabel": "Buscar pergunta",
         "questionSearchPlaceholder": "Digite parte do título da pergunta",
         "noQuestionsNotice": "Nenhuma pergunta ativa cadastrada na tela Conteúdo",
-        "questionSearchEmpty": "Nenhuma pergunta encontrada para essa busca",
+        "questionSearchEmpty": "Nenhuma pergunta encontrada para essa busca. A prévia continua com a pergunta anterior.",
         "unsavedNotice": "A prévia já inclui as alterações não salvas.",
         "noQuestionDocsNotice": "Esta pergunta não tem documentos úteis cadastrados. A mensagem mostra só a lista do grupo.",
         "loadFailed": "Não foi possível gerar a prévia da mensagem. Tente novamente.",

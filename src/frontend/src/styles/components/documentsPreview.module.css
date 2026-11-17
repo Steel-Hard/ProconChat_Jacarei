@@ -149,6 +149,23 @@
     color: var(--text-muted);
 }
 
+.updatingSlot {
+    min-height: 18px;
+}
+
+.updating {
+    display: block;
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--text-soft);
+}
+
+.previewCard:has([data-updating]) .bubble,
+.previewCard:has([data-search-empty]) .bubble {
+    opacity: 0.55;
+    transition: opacity 0.15s ease;
+}
+
 .draftNote {
     font-size: 12.5px;
     line-height: 1.5;
@@ -240,6 +257,14 @@
 }
 
 .blockList li::before {
+    content: "• ";
+}
+
+.blockList li:has(mark)::before {
+    content: none;
+}
+
+.repeatedItem::before {
     content: "• ";
 }
 

@@ -46,10 +46,22 @@
 
 .alert {
     padding: 10px 14px;
+    border: 1px solid var(--error-border);
     border-radius: 10px;
     background: var(--error-bg);
     color: var(--error-text);
     font-size: 13.5px;
+    line-height: 1.5;
+}
+
+.alert p {
+    margin: 0;
+    font-weight: 600;
+}
+
+.alert ul {
+    margin: 6px 0 0;
+    padding-left: 18px;
 }
 
 .columns {

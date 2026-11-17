@@ -58,7 +58,9 @@ function DocumentsQuestionPicker({
                 {t("preview.questionLabel")}
             </label>
             {visible.length === 0 ? (
-                <output className={css.note}>{t("preview.questionSearchEmpty")}</output>
+                <output className={css.note} data-search-empty="true">
+                    {t("preview.questionSearchEmpty")}
+                </output>
             ) : (
                 <select
                     id={selectId}

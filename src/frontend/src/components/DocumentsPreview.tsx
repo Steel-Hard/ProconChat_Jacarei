@@ -79,7 +79,13 @@ export default function DocumentsPreview({
                     <output className={css.draftNote}>{t("preview.unsavedNotice")}</output>
                 ) : null}
 
-                {isUpdating ? <output className={css.note}>{t("preview.updating")}</output> : null}
+                <div className={css.updatingSlot}>
+                    {isUpdating ? (
+                        <output className={css.updating} data-updating="true">
+                            {t("preview.updating")}
+                        </output>
+                    ) : null}
+                </div>
 
                 {hasPreviewError ? (
                     <p role="alert" className={css.errorNote}>
