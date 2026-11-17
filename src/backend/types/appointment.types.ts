@@ -302,5 +302,6 @@ export interface AppointmentCalendar {
     weekEnd: string
     weekStartDay: number
     days: CalendarDay[]
+    seatsPerSlot: number | null
     appointments: CalendarAppointment[]
 }

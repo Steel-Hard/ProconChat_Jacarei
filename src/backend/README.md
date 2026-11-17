@@ -1071,6 +1071,7 @@ conferir nada. Duas correções simultâneas: uma grava, a outra recebe `409 REC
         "weekStart": "2026-10-18",
         "weekEnd": "2026-10-24",
         "weekStartDay": 0,
+        "seatsPerSlot": 2,
         "days": [
             {
                 "date": "2026-10-22",
@@ -1089,6 +1090,10 @@ conferir nada. Duas correções simultâneas: uma grava, a outra recebe `409 REC
   `weekStartDay` para o painel não fixar o dia. Trocar o dia inicial (tela ou banco) é tarefa futura.
 - `days` traz só os dias com grade configurada, na ordem da semana; `slots` são os horários da grade
   do dia (`freeSlotStartsOfDay`, a mesma função do bot). Sem `ScheduleSettings`, `days` vem vazio.
+- `seatsPerSlot` é o número de vagas por horário configurado em Horários de atendimento, para a
+  legenda do calendário. Se uma mudança de horários agendada começa no meio da semana e as vagas por
+  horário diferem entre os dias com grade, não há número único e vem `null` (o painel omite o número).
+  Também vem `null` quando a semana não tem nenhum dia com grade (decisão 012).
 - `blocked` descreve os bloqueios do dia: `fullDay` e `description` (o texto do bloqueio de dia
   inteiro, por exemplo "Feriado municipal", ou `null` quando não há) e `periods` com os bloqueios de
   parte do dia (`start`, `end`, `description`).

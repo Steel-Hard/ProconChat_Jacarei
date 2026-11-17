@@ -79,6 +79,7 @@ export function createAppointmentCalendarService({
             const records = await appointments.findWeek(from, to, { status, responsible, currentUserId }, now)
 
             let days: CalendarDay[] = []
+            const seatsOfDays = new Set<number>()
             const versions = await scheduleRepository.getScheduleVersions(range.weekStart, range.weekEnd)
             if (versions.length > 0) {
                 const offered = new Map(
@@ -87,7 +88,11 @@ export function createAppointmentCalendarService({
                 days = range.dates
                     .map((day) => {
                         const version = effectiveVersionOf(versions, day)
-                        return version ? buildDay(day, version, offered) : null
+                        const built = version ? buildDay(day, version, offered) : null
+                        if (version && built) {
+                            seatsOfDays.add(version.config.seatsPerSlot)
+                        }
+                        return built
                     })
                     .filter((day): day is CalendarDay => day !== null)
             }
@@ -97,6 +102,7 @@ export function createAppointmentCalendarService({
                 weekEnd: range.weekEnd,
                 weekStartDay,
                 days,
+                seatsPerSlot: seatsOfDays.size === 1 ? (seatsOfDays.values().next().value ?? null) : null,
                 appointments: records.map((record) => {
                     const local = getLocalParts(record.appointmentDatetime)
                     return {
