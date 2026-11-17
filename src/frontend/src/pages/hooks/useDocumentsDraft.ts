@@ -177,11 +177,8 @@ export default function useDocumentsDraft(serverConfig: DocumentsConfig | null |
         holderItems,
         representativeItems,
         changes,
-        hasChanges: changes.length > 0,
         holderChanged,
         representativeChanged,
-        isHolderEmpty: holder.length === 0,
-        isRepresentativeEmpty: representative.length === 0,
         actions: {
             addItem,
             editItem,

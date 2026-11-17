@@ -13,7 +13,7 @@ describe("useDocumentsDraft", () => {
 
         expect(result.current.holder).toEqual(["RG", "CPF"])
         expect(result.current.representative).toEqual(["RG do titular", "Procuração"])
-        expect(result.current.hasChanges).toBe(false)
+        expect(result.current.changes).toEqual([])
         expect(result.current.changes).toEqual([])
     })
 
@@ -24,7 +24,7 @@ describe("useDocumentsDraft", () => {
             result.current.actions.addItem("holder", "Comprovante de endereço")
         })
         expect(result.current.holder).toEqual(["RG", "CPF", "Comprovante de endereço"])
-        expect(result.current.hasChanges).toBe(true)
+        expect(result.current.changes).not.toEqual([])
 
         act(() => {
             result.current.actions.moveUp("holder", 1)
@@ -56,16 +56,16 @@ describe("useDocumentsDraft", () => {
         act(() => {
             result.current.actions.addItem("representative", "Novo doc")
         })
-        expect(result.current.hasChanges).toBe(true)
+        expect(result.current.changes).not.toEqual([])
 
         act(() => {
             result.current.actions.discard()
         })
-        expect(result.current.hasChanges).toBe(false)
+        expect(result.current.changes).toEqual([])
         expect(result.current.representative).toEqual(["RG do titular", "Procuração"])
     })
 
-    it("identifica corretamente se um grupo ficou vazio", () => {
+    it("deixa só o grupo esvaziado sem itens", () => {
         const { result } = renderHook(() => useDocumentsDraft(initialConfig))
 
         act(() => {
@@ -74,8 +74,7 @@ describe("useDocumentsDraft", () => {
         })
 
         expect(result.current.holder).toEqual([])
-        expect(result.current.isHolderEmpty).toBe(true)
-        expect(result.current.isRepresentativeEmpty).toBe(false)
+        expect(result.current.representative).toEqual(["RG do titular", "Procuração"])
     })
 
     it("descarta o rascunho quando a configuração do servidor muda", () => {
@@ -96,7 +95,7 @@ describe("useDocumentsDraft", () => {
 
         expect(result.current.holder).toEqual(["Novo RG"])
         expect(result.current.representative).toEqual(["Nova procuração"])
-        expect(result.current.hasChanges).toBe(false)
+        expect(result.current.changes).toEqual([])
     })
 
     it("conta a mudança líquida em relação ao gravado, item a item e uma por grupo para a ordem", () => {
@@ -179,7 +178,7 @@ describe("useDocumentsDraft", () => {
             result.current.actions.addItem("holder", "CPF")
         })
         expect(result.current.changes).toEqual([])
-        expect(result.current.hasChanges).toBe(false)
+        expect(result.current.changes).toEqual([])
     })
 
     it("várias trocas de posição no mesmo grupo contam uma só alteração de ordem", () => {
@@ -231,7 +230,7 @@ describe("useDocumentsDraft", () => {
 
         expect(result.current.holder).toEqual(ten)
         expect(result.current.representative).toEqual(["RG", "Cédula"])
-        expect(result.current.hasChanges).toBe(false)
+        expect(result.current.changes).toEqual([])
     })
 
     it("não edita um item para o texto de outro item do mesmo grupo", () => {
