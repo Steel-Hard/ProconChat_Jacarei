@@ -11,7 +11,7 @@ function DocumentsPreviewBlock({ block }: DocumentsPreviewBlockProps) {
 
     return (
         <div className={css.block}>
-            <p>{block.heading}</p>
+            <p className={css.blockHeading}>{block.heading}</p>
             <ul className={css.blockList}>
                 {block.items.map((item, index) => (
                     <li key={`${index}-${item.text}`}>

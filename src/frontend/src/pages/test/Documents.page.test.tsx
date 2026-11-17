@@ -573,7 +573,7 @@ describe("DocumentsPage", () => {
         const { fetchMock, previewBodies } = stubDocumentsFetch()
         await renderDocumentsPage(fetchMock)
 
-        await user.selectOptions(await screen.findByLabelText("Quem comparece"), "representative")
+        await user.click(await screen.findByRole("button", { name: "Representante comparece" }))
 
         await waitFor(
             () =>

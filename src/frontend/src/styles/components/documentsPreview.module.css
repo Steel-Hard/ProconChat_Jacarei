@@ -1,34 +1,33 @@
 .previewCard {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+    align-items: start;
+    gap: 22px;
+    padding: 22px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+}
+
+.controls {
     display: flex;
     flex-direction: column;
     gap: 16px;
-    padding: 20px;
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-}
-
-.header {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    min-width: 0;
 }
 
 .title {
-    font-size: 17px;
-    font-weight: 700;
+    margin: 0;
+    font: 700 16px var(--font-heading);
     color: var(--text-body);
 }
 
 .subtitle {
-    font-size: 13.5px;
+    margin: 4px 0 0;
+    font-size: 13px;
+    line-height: 1.5;
     color: var(--text-muted);
-}
-
-.selectors {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 14px;
+    text-wrap: pretty;
 }
 
 .fieldGroup {
@@ -37,103 +36,175 @@
     gap: 6px;
 }
 
+.attendeeGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.attendeeGroup legend {
+    float: left;
+    width: 100%;
+    padding: 0;
+    margin-bottom: 6px;
+}
+
+.attendeeGroup .segmented {
+    clear: both;
+}
+
 .label {
     font-size: 13px;
     font-weight: 600;
-    color: var(--text-muted);
+    color: var(--text-strong);
+}
+
+.segmented {
+    display: flex;
+    flex-wrap: wrap;
+    align-self: flex-start;
+    max-width: 100%;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 8px;
+    background: var(--seal-neutral-bg);
+}
+
+.segment {
+    flex-shrink: 0;
+    padding: 7px 12px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-strong);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.segment:hover:not(.segmentActive) {
+    filter: brightness(0.94);
+}
+
+.segmentActive {
+    background: var(--color-primary);
+    color: #ffffff;
 }
 
 .select {
-    padding: 8px 12px;
-    border: 1px solid var(--border);
+    max-width: 100%;
+    padding: 9px 10px;
+    border: 1px solid var(--border-input);
     border-radius: 8px;
     background: var(--bg-surface);
     color: var(--text-body);
-    font-size: 13.5px;
-    outline: none;
+    font-size: 14px;
     cursor: pointer;
-    transition: border-color 0.15s ease;
 }
 
-.select:focus {
+.select:focus-visible {
     border-color: var(--color-primary);
 }
 
-.notices {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.unsavedNotice {
-    padding: 8px 12px;
-    border-radius: 8px;
-    background: var(--info-bg, #eff6ff);
-    border: 1px solid var(--info-border, #bfdbfe);
-    color: var(--info-text, #1e40af);
+.emptyGroupAlert {
+    padding: 11px 13px;
+    border-radius: 9px;
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-border);
+    color: var(--warn-text);
     font-size: 13px;
+    font-weight: 600;
+    line-height: 1.5;
+    text-wrap: pretty;
 }
 
-.noDocsNotice {
-    padding: 8px 12px;
-    border-radius: 8px;
-    background: var(--warn-bg, #fffbeb);
-    border: 1px solid var(--warn-border, #fde68a);
-    color: var(--warn-text, #92400e);
+.repeatedLegend {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-strong);
+}
+
+.repeatedSwatch {
+    flex-shrink: 0;
+    width: 12px;
+    height: 12px;
+    margin-top: 4px;
+    border: 1px solid var(--warn-border);
+    border-radius: 3px;
+    background: #fff1bf;
+}
+
+.note {
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--text-muted);
+}
+
+.draftNote {
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--warn-text);
+}
+
+.errorNote {
+    margin: 0;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: var(--error-bg);
+    color: var(--error-text);
     font-size: 13px;
 }
 
 .chatPreview {
     display: flex;
     flex-direction: column;
-    padding: 16px;
-    background: var(--chat-bg, #efeae2);
-    border-radius: 10px;
-    min-height: 200px;
+    gap: 8px;
+    min-width: 0;
+    padding: 16px 12px;
+    background: var(--chat-bg);
+    border-radius: 12px;
 }
 
 .bubble {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    max-width: 95%;
-    padding: 12px 14px;
+    align-self: flex-start;
+    max-width: 92%;
+    padding: 9px 11px 10px;
     border-radius: 2px 10px 10px 10px;
     background: var(--bg-surface);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-    color: var(--chat-text, #111b21);
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
+    color: var(--chat-text);
     font-size: 13.5px;
     line-height: 1.5;
-    white-space: pre-wrap;
-    word-break: break-word;
+    overflow-wrap: anywhere;
+    text-wrap: pretty;
 }
 
 .bubbleHeading {
+    display: block;
     font-weight: 700;
-    font-size: 14.5px;
-}
-
-.repeatedItem {
-    background: #fef08a;
-    padding: 2px 4px;
-    border-radius: 4px;
-    cursor: help;
 }
 
 .details {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    margin: 0;
+    margin: 6px 0 0;
 }
 
 .detail {
     display: flex;
-    gap: 6px;
+    flex-wrap: wrap;
+    gap: 0 4px;
 }
 
-.detail dt {
-    font-weight: 600;
+.detail dt::after {
+    content: ":";
 }
 
 .detail dd {
@@ -148,23 +219,43 @@
 }
 
 .block {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+    margin: 10px 0 0;
+    padding-top: 8px;
+    border-top: 1px solid #eeeae4;
+}
+
+.blockHeading {
+    margin: 0;
+    font-weight: 700;
 }
 
 .blockList {
     margin: 0;
-    padding-left: 18px;
+    padding: 0;
+    list-style: none;
+}
+
+.blockList li {
+    margin-top: 3px;
+}
+
+.blockList li::before {
+    content: "• ";
+}
+
+.repeatedItem {
+    margin: 0 -3px;
+    padding: 0 3px;
+    border-radius: 4px;
+    background: #fff1bf;
+    color: inherit;
 }
 
 .repeatedItemLegend {
     display: block;
+    margin: 1px 0 4px 10px;
     font-size: 11.5px;
-    color: var(--text-muted);
-}
-
-.repeatedLegend {
-    font-size: 12.5px;
     font-weight: 600;
+    line-height: 1.35;
+    color: var(--warn-text);
 }

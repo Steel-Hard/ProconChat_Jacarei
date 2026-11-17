@@ -41,18 +41,20 @@
         "duplicate": "Esse documento já está na lista."
     },
     "preview": {
-        "title": "Prévia da mensagem de confirmação",
-        "subtitle": "Mensagem recebida pelo cidadão logo depois de escolher o horário.",
+        "title": "Prévia da mensagem de confirmação do agendamento",
+        "subtitle": "Enviada pelo chatbot no WhatsApp logo após o cidadão escolher o horário. O endereço vem de Horários de atendimento.",
         "attendeeLabel": "Quem comparece",
-        "attendeeHolder": "O próprio titular",
-        "attendeeRepresentative": "Um representante",
+        "attendee": {
+            "holder": "Titular comparece",
+            "representative": "Representante comparece"
+        },
         "questionLabel": "Pergunta de exemplo",
         "questionSearchLabel": "Buscar pergunta",
         "questionSearchPlaceholder": "Digite parte do título da pergunta",
         "noQuestionsNotice": "Nenhuma pergunta ativa cadastrada na tela Conteúdo",
         "questionSearchEmpty": "Nenhuma pergunta encontrada para essa busca",
-        "unsavedNotice": "Mostrando alterações ainda não salvas",
-        "noQuestionDocsNotice": "A pergunta escolhida não tem documentos úteis cadastrados",
+        "unsavedNotice": "A prévia já inclui as alterações não salvas.",
+        "noQuestionDocsNotice": "Esta pergunta não tem documentos úteis cadastrados. A mensagem mostra só a lista do grupo.",
         "loadFailed": "Não foi possível gerar a prévia da mensagem. Tente novamente.",
         "duplicateTooltip": "Este item também está nos documentos da pergunta",
         "exampleTag": "exemplo",

@@ -36,7 +36,7 @@ function DocumentsQuestionPicker({
     if (questions.length === 0) {
         return (
             <div className={css.fieldGroup}>
-                <output className={css.noDocsNotice}>{t("preview.noQuestionsNotice")}</output>
+                <output className={css.note}>{t("preview.noQuestionsNotice")}</output>
             </div>
         )
     }
@@ -58,7 +58,7 @@ function DocumentsQuestionPicker({
                 {t("preview.questionLabel")}
             </label>
             {visible.length === 0 ? (
-                <output className={css.noDocsNotice}>{t("preview.questionSearchEmpty")}</output>
+                <output className={css.note}>{t("preview.questionSearchEmpty")}</output>
             ) : (
                 <select
                     id={selectId}

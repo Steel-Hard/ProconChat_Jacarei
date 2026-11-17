@@ -43,7 +43,16 @@ describe("DocumentsPreview", () => {
     it("renderiza os seletores de quem comparece e pergunta de exemplo", () => {
         renderPreview()
 
-        expect(screen.getByLabelText("Quem comparece")).toBeInTheDocument()
+        const attendee = screen.getByRole("group", { name: "Quem comparece" })
+        expect(
+            within(attendee).getByRole("button", { name: "Titular comparece", pressed: true })
+        ).toBeInTheDocument()
+        expect(
+            within(attendee).getByRole("button", {
+                name: "Representante comparece",
+                pressed: false
+            })
+        ).toBeInTheDocument()
         expect(screen.getByLabelText("Pergunta de exemplo")).toBeInTheDocument()
     })
 
@@ -56,7 +65,7 @@ describe("DocumentsPreview", () => {
             onChangeQuestionId: onChangeQuestion
         })
 
-        await user.selectOptions(screen.getByLabelText("Quem comparece"), "representative")
+        await user.click(screen.getByRole("button", { name: "Representante comparece" }))
         expect(onChangeGroup).toHaveBeenCalledWith("representative")
 
         await user.selectOptions(screen.getByLabelText("Pergunta de exemplo"), "2")
@@ -125,9 +134,11 @@ describe("DocumentsPreview", () => {
     it("exibe avisos de alterações não salvas e de pergunta sem documentos", () => {
         renderPreview({ selectedQuestionId: "2", isUnsaved: true, isQuestionEmpty: true })
 
-        expect(screen.getByText("Mostrando alterações ainda não salvas")).toBeInTheDocument()
+        expect(screen.getByText("A prévia já inclui as alterações não salvas.")).toBeInTheDocument()
         expect(
-            screen.getByText("A pergunta escolhida não tem documentos úteis cadastrados")
+            screen.getByText(
+                "Esta pergunta não tem documentos úteis cadastrados. A mensagem mostra só a lista do grupo."
+            )
         ).toBeInTheDocument()
     })
 
@@ -144,8 +155,21 @@ describe("DocumentsPreview", () => {
         renderPreview()
 
         const ids = screen
-            .getAllByRole("heading", { level: 2, name: "Prévia da mensagem de confirmação" })
+            .getAllByRole("heading", {
+                level: 2,
+                name: "Prévia da mensagem de confirmação do agendamento"
+            })
             .map((heading) => heading.id)
         expect(new Set(ids).size).toBe(2)
+    })
+
+    it("alerta na prévia quando o grupo escolhido está vazio", () => {
+        renderPreview({
+            preview: { ...(holderContract as DocumentsPreviewData), groupBlock: null }
+        })
+
+        expect(screen.getByRole("status")).toHaveTextContent(
+            "Nenhum documento será pedido quando o titular comparecer."
+        )
     })
 })
