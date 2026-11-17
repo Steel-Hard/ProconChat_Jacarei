@@ -290,7 +290,14 @@ describe("AppointmentCalendar", () => {
                 day("2026-10-22", [], { seatsPerSlot: 4 })
             ])
         ],
-        ["a semana não tem dias", calendar([], [item()])]
+        ["a semana não tem dias", calendar([], [item()])],
+        [
+            "a API não informa as vagas por horário",
+            calendar([
+                day("2026-10-19", [], { seatsPerSlot: undefined }),
+                day("2026-10-20", [], { seatsPerSlot: undefined })
+            ])
+        ]
     ])("mostra na legenda só onde há vagas livres quando %s", (_case, data) => {
         renderCalendar(data)
 

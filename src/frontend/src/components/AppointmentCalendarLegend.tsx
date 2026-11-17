@@ -4,7 +4,7 @@ import APPOINTMENT_STATUS from "@/status/appointmentStatusStyles"
 import css from "@/styles/components/appointmentCalendar.module.css"
 
 type Props = {
-    seatsPerSlot: number[]
+    seatsPerSlot: (number | undefined)[]
 }
 
 function AppointmentCalendarLegend({ seatsPerSlot }: Props) {
@@ -30,7 +30,7 @@ function AppointmentCalendarLegend({ seatsPerSlot }: Props) {
                 ))}
             </ul>
             <span>
-                {seats.size === 1
+                {seats.size === 1 && only !== undefined
                     ? t("calendar.legend.seats", { count: only })
                     : t("calendar.legend.freeSeatsOnly")}
             </span>
