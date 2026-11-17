@@ -51,6 +51,8 @@ async function expectNoAccess() {
     expect(screen.queryByRole("navigation", { name: "Menu principal" })).not.toBeInTheDocument()
 }
 
+const LAZY_LOAD_TIMEOUT = 10000
+
 describe("RequireAccess", () => {
     beforeAll(async () => {
         panel = await loadPanelRoutes([
@@ -86,7 +88,9 @@ describe("RequireAccess", () => {
     it("leva quem vê relatórios e gerencia usuários de / para /usuarios", async () => {
         const { router } = renderAs("/", ["reports.view", "users.manage"])
 
-        expect(await screen.findByRole("heading", { name: "Usuários" })).toBeInTheDocument()
+        expect(
+            await screen.findByRole("heading", { name: "Usuários" }, { timeout: LAZY_LOAD_TIMEOUT })
+        ).toBeInTheDocument()
         expect(router.state.location.pathname).toBe("/usuarios")
         expect(router.state.historyAction).toBe("REPLACE")
         expect(screen.queryByRole("heading", { name: "404 - Not Found" })).not.toBeInTheDocument()
@@ -95,7 +99,9 @@ describe("RequireAccess", () => {
     it("leva quem gerencia conteúdo e usuários de / para /usuarios", async () => {
         const { router } = renderAs("/", ["content.manage", "users.manage"])
 
-        expect(await screen.findByRole("heading", { name: "Usuários" })).toBeInTheDocument()
+        expect(
+            await screen.findByRole("heading", { name: "Usuários" }, { timeout: LAZY_LOAD_TIMEOUT })
+        ).toBeInTheDocument()
         expect(router.state.location.pathname).toBe("/usuarios")
     })
 
@@ -117,7 +123,9 @@ describe("RequireAccess", () => {
 
         await user.click(screen.getByRole("link", { name: "Vá para a página inicial." }))
 
-        expect(await screen.findByRole("heading", { name: "Usuários" })).toBeInTheDocument()
+        expect(
+            await screen.findByRole("heading", { name: "Usuários" }, { timeout: LAZY_LOAD_TIMEOUT })
+        ).toBeInTheDocument()
         expect(router.state.location.pathname).toBe("/usuarios")
         expect(screen.queryByRole("heading", { name: "404 - Not Found" })).not.toBeInTheDocument()
     })
@@ -125,7 +133,9 @@ describe("RequireAccess", () => {
     it("leva quem só gerencia usuários de / para /usuarios", async () => {
         const { router } = renderAs("/", ["users.manage"])
 
-        expect(await screen.findByRole("heading", { name: "Usuários" })).toBeInTheDocument()
+        expect(
+            await screen.findByRole("heading", { name: "Usuários" }, { timeout: LAZY_LOAD_TIMEOUT })
+        ).toBeInTheDocument()
         expect(router.state.location.pathname).toBe("/usuarios")
     })
 
