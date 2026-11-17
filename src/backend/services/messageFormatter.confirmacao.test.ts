@@ -49,6 +49,18 @@ describe("montarConfirmacaoAgendamento", () => {
         expect(resultado.repeatedCount).toBe(1)
     })
 
+    it("conta os itens repetidos do grupo, não os da pergunta", () => {
+        const resultado = montarConfirmacaoAgendamento(
+            input({
+                groupDocuments: ["RG", "CPF"],
+                questionDocuments: ["RG", "RG ou outro documento oficial com foto", "Nota fiscal"]
+            })
+        )
+
+        expect(resultado.questionBlock?.items.filter((item) => item.repeated)).toHaveLength(2)
+        expect(resultado.repeatedCount).toBe(1)
+    })
+
     it("devolve bloco nulo quando a lista está vazia e usa o título do representante", () => {
         const resultado = montarConfirmacaoAgendamento(
             input({ groupDocuments: ["CPF"], questionDocuments: [], byRepresentative: true })
