@@ -448,7 +448,8 @@ describe("DocumentsPage", () => {
         expect(screen.queryByText("Cobrança indevida no cartão de crédito")).not.toBeInTheDocument()
     })
 
-    it("400 ao salvar mostra o item e o motivo vindos do backend", async () => {
+    it("400 ao salvar mostra o item e o motivo vindos do backend sem aninhamento inválido", async () => {
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
         const alert = await failSaving({
             status: 400,
             body: {
@@ -474,6 +475,11 @@ describe("DocumentsPage", () => {
             'Representante, item 2: O documento "CPF" já está na lista.'
         )
         expect(alert).toHaveTextContent("Titular: Limite de 10 documentos por grupo.")
+        expect(
+            consoleError.mock.calls.filter((call) => String(call[0]).includes("validateDOMNesting"))
+        ).toHaveLength(0)
+        expect(alert.tagName).toBe("DIV")
+        consoleError.mockRestore()
     })
 
     it("401 ao salvar pede para entrar de novo", async () => {

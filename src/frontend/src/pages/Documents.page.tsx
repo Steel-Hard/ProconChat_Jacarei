@@ -44,8 +44,8 @@ export default function DocumentsPage() {
                 ) : null}
 
                 {page.actionError ? (
-                    <p role="alert" className={css.alert}>
-                        {page.actionError.message}
+                    <div role="alert" className={css.alert}>
+                        <p>{page.actionError.message}</p>
                         {page.actionError.issues.length > 0 ? (
                             <ul>
                                 {page.actionError.issues.map((issue) => (
@@ -53,7 +53,7 @@ export default function DocumentsPage() {
                                 ))}
                             </ul>
                         ) : null}
-                    </p>
+                    </div>
                 ) : null}
 
                 {page.status !== "loading" && page.status !== "error" ? (
