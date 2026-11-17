@@ -1,6 +1,13 @@
-import { afterAll, describe, expect, it } from "vitest"
+import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import getPool from "../../db/connection"
+import InternalServerError from "../../errors/InternalServerError"
 import { DocumentsRepository } from "../../repositories/documents.repository"
+import {
+    restoreScheduleConfig,
+    ScheduleConfigSnapshot,
+    snapshotScheduleConfig,
+    useScheduleConfig,
+} from "./helpers/scheduleDb"
 
 const repository = new DocumentsRepository()
 
@@ -178,6 +185,51 @@ describe("DocumentsRepository (Postgres)", () => {
                 name: "usuário removido",
                 at: "2999-01-02T10:00:00.000Z",
             })
+        })
+    })
+
+    describe("getScheduleContext", () => {
+        let snapshot: ScheduleConfigSnapshot
+
+        beforeAll(async () => {
+            snapshot = await snapshotScheduleConfig()
+        })
+
+        afterAll(async () => {
+            await restoreScheduleConfig(snapshot)
+        })
+
+        it("devolve endereço e lembrete configurados em Horários de atendimento", async () => {
+            await useScheduleConfig({
+                settings: {
+                    slot_minutes: 30,
+                    seats_per_slot: 2,
+                    window_days: 30,
+                    min_notice_days: 1,
+                    wait_alert_days: 7,
+                    unit_address: "Rua Teste, 10",
+                    unit_address_complement: "Sala 2",
+                    reminder_enabled: true,
+                    reminder_hours: 12,
+                },
+                ranges: [],
+            })
+
+            expect(await repository.getScheduleContext()).toEqual({
+                unitAddress: "Rua Teste, 10",
+                unitAddressComplement: "Sala 2",
+                reminderEnabled: true,
+                reminderHours: 12,
+            })
+        })
+
+        it("falha em vez de inventar um endereço quando não há configuração", async () => {
+            await getPool().query("DELETE FROM ScheduleChanges")
+            await getPool().query("DELETE FROM ScheduleSettings")
+
+            await expect(repository.getScheduleContext()).rejects.toBeInstanceOf(
+                InternalServerError,
+            )
         })
     })
 })

@@ -1,5 +1,6 @@
 import { Pool } from "pg"
 import getPool from "../db/connection"
+import InternalServerError from "../errors/InternalServerError"
 import {
     DocumentsConfigData,
     DocumentsLastChange,
@@ -80,13 +81,15 @@ export class DocumentsRepository implements IDocumentsRepository {
         )
 
         const row = result.rows[0]
+        if (!row) {
+            throw new InternalServerError("Configuração de horários de atendimento não encontrada")
+        }
+
         return {
-            unitAddress:
-                row?.unit_address ??
-                "Avenida Capitão Joaquim Pinheiro do Prado, 222 - Centro, Jacareí - SP, CEP 12327-160",
-            unitAddressComplement: row?.unit_address_complement ?? null,
-            reminderEnabled: row?.reminder_enabled ?? false,
-            reminderHours: row?.reminder_hours ?? 24
+            unitAddress: row.unit_address,
+            unitAddressComplement: row.unit_address_complement,
+            reminderEnabled: row.reminder_enabled,
+            reminderHours: row.reminder_hours
         }
     }
 
