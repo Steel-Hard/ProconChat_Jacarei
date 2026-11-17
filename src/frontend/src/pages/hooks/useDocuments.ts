@@ -113,7 +113,6 @@ export default function useDocuments() {
 
     return {
         status: query.isLoading ? "loading" : query.isError ? "error" : "success",
-        view,
         draft,
         lastChange,
         saving,
@@ -126,7 +125,6 @@ export default function useDocuments() {
             previewQuestionId: selectedQuestion?.id ?? "",
             setPreviewQuestionId,
             sampleQuestions,
-            selectedQuestion,
             previewData,
             confirmationError: confirmationQuery.isError,
             isPreviewUnsaved,
