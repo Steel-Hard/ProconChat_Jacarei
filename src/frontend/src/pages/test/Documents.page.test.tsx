@@ -39,7 +39,12 @@ const initialDocuments: DocumentsConfigView = {
 }
 
 function stubDocumentsFetch(
-    response: { status?: number; data?: unknown; error?: unknown } = {
+    response: {
+        status?: number
+        data?: unknown
+        error?: unknown
+        put?: { status: number; body: unknown }
+    } = {
         status: 200,
         data: initialDocuments
     }
@@ -83,6 +88,12 @@ function stubDocumentsFetch(
 
         if (url.endsWith("/api/v1/documents") && method === "PUT") {
             capturedPutBody = body
+            if (response.put) {
+                return new Response(JSON.stringify(response.put.body), {
+                    status: response.put.status,
+                    headers: { "Content-Type": "application/json" }
+                })
+            }
             const updatedData = {
                 ...initialDocuments,
                 ...(capturedPutBody as object),
@@ -425,5 +436,71 @@ describe("DocumentsPage", () => {
         ).toBeInTheDocument()
         expect(screen.queryByLabelText("Pergunta de exemplo")).not.toBeInTheDocument()
         expect(screen.queryByText("Cobrança indevida no cartão de crédito")).not.toBeInTheDocument()
+    })
+
+    async function failSaving(put: { status: number; body: unknown }) {
+        const user = userEvent.setup()
+        const { fetchMock } = stubDocumentsFetch({ status: 200, data: initialDocuments, put })
+        await renderDocumentsPage(fetchMock)
+        await user.click(await screen.findByRole("button", { name: "Remover CPF" }))
+        await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
+        return screen.findByRole("alert")
+    }
+
+    it("400 ao salvar mostra o item e o motivo vindos do backend", async () => {
+        const alert = await failSaving({
+            status: 400,
+            body: {
+                error: {
+                    code: "BAD_REQUEST",
+                    message:
+                        'Dados inválidos: representative.1: O documento "CPF" já está na lista.',
+                    details: {
+                        issues: [
+                            {
+                                path: "representative.1",
+                                message: 'O documento "CPF" já está na lista.'
+                            },
+                            { path: "holder", message: "Limite de 10 documentos por grupo." }
+                        ]
+                    }
+                }
+            }
+        })
+
+        expect(alert).toHaveTextContent("Confira os documentos informados antes de salvar.")
+        expect(alert).toHaveTextContent(
+            'Representante, item 2: O documento "CPF" já está na lista.'
+        )
+        expect(alert).toHaveTextContent("Titular: Limite de 10 documentos por grupo.")
+    })
+
+    it("401 ao salvar pede para entrar de novo", async () => {
+        const alert = await failSaving({
+            status: 401,
+            body: { error: { code: "UNAUTHORIZED", message: "Unauthorized" } }
+        })
+
+        expect(alert).toHaveTextContent("Sua sessão expirou. Entre novamente para salvar.")
+    })
+
+    it("403 ao salvar informa a falta de permissão", async () => {
+        const alert = await failSaving({
+            status: 403,
+            body: { error: { code: "FORBIDDEN", message: "Forbidden" } }
+        })
+
+        expect(alert).toHaveTextContent("Você não tem permissão para alterar os documentos.")
+    })
+
+    it("falha inesperada ao salvar mostra a mensagem genérica e mantém o rascunho", async () => {
+        const alert = await failSaving({
+            status: 500,
+            body: { error: { code: "INTERNAL_SERVER_ERROR", message: "Internal Server Error" } }
+        })
+
+        expect(alert).toHaveTextContent("Não foi possível salvar os documentos. Tente novamente.")
+        expect(screen.getByText("1 alteração não salva")).toBeInTheDocument()
+        expect(screen.queryByRole("button", { name: "CPF" })).not.toBeInTheDocument()
     })
 })

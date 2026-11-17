@@ -12,12 +12,14 @@
         "holder": {
             "title": "Quando o próprio titular comparece",
             "description": "Documentos pedidos quando o próprio consumidor comparece ao atendimento.",
-            "emptyAlert": "Nenhum documento será pedido quando o titular comparecer. O cidadão pode chegar sem o necessário para o atendimento."
+            "emptyAlert": "Nenhum documento será pedido quando o titular comparecer. O cidadão pode chegar sem o necessário para o atendimento.",
+            "short": "Titular"
         },
         "representative": {
             "title": "Quando um representante comparece em nome do titular",
             "description": "Documentos pedidos quando outra pessoa comparece em nome do consumidor.",
-            "emptyAlert": "Nenhum documento será pedido quando um representante comparecer. O cidadão pode chegar sem o necessário para o atendimento."
+            "emptyAlert": "Nenhum documento será pedido quando um representante comparecer. O cidadão pode chegar sem o necessário para o atendimento.",
+            "short": "Representante"
         }
     },
     "items": {
@@ -69,5 +71,12 @@
             "up": "Moveu “{{item}}” para cima ({{group}})",
             "down": "Moveu “{{item}}” para baixo ({{group}})"
         }
+    },
+    "saveErrors": {
+        "invalid": "Confira os documentos informados antes de salvar.",
+        "unauthorized": "Sua sessão expirou. Entre novamente para salvar.",
+        "forbidden": "Você não tem permissão para alterar os documentos.",
+        "issueWithPosition": "{{group}}, item {{position}}: {{message}}",
+        "issueWithGroup": "{{group}}: {{message}}"
     }
 }

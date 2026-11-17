@@ -3,6 +3,9 @@ import { useTranslation } from "react-i18next"
 import useToast from "@/hooks/useToast"
 import useDocumentsDraft from "@/pages/hooks/useDocumentsDraft"
 import documentsApi from "@/store/api/documents.api"
+import documentsSaveErrorOf from "@/utils/documents/documentsSaveErrorOf"
+import type DocumentsSaveFeedback from "@/types/documents/DocumentsSaveFeedback.types"
+import type DocumentsSaveIssue from "@/types/documents/DocumentsSaveIssue.types"
 import type AttendeeGroup from "@/types/documents/AttendeeGroup.types"
 import type SampleQuestion from "@/types/documents/SampleQuestion.types"
 import type LastChange from "@/types/settings/LastChange.types"
@@ -15,7 +18,7 @@ export default function useDocuments() {
 
     const query = documentsApi.useGetDocumentsQuery()
     const [saveMutation, { isLoading: saving }] = documentsApi.useSaveDocumentsMutation()
-    const [actionError, setActionError] = useState<string | null>(null)
+    const [actionError, setActionError] = useState<DocumentsSaveFeedback | null>(null)
 
     const view = query.data
     const draft = useDocumentsDraft(view)
@@ -51,6 +54,35 @@ export default function useDocuments() {
             ? { changedBy: view.updatedBy.name, changedAt: view.updatedAt }
             : null
 
+    function issueLine(issue: DocumentsSaveIssue): string {
+        if (issue.group === null) {
+            return issue.message
+        }
+        const group = t(`groups.${issue.group}.short`)
+        return issue.position === null
+            ? t("saveErrors.issueWithGroup", { group, message: issue.message })
+            : t("saveErrors.issueWithPosition", {
+                  group,
+                  position: issue.position,
+                  message: issue.message
+              })
+    }
+
+    function feedbackOf(error: unknown): DocumentsSaveFeedback {
+        const failure = documentsSaveErrorOf(error)
+
+        if (failure.kind === "invalid") {
+            return { message: t("saveErrors.invalid"), issues: failure.issues.map(issueLine) }
+        }
+        if (failure.kind === "unauthorized") {
+            return { message: t("saveErrors.unauthorized"), issues: [] }
+        }
+        if (failure.kind === "forbidden") {
+            return { message: t("saveErrors.forbidden"), issues: [] }
+        }
+        return { message: t("saveFailed"), issues: [] }
+    }
+
     async function save() {
         setActionError(null)
         try {
@@ -59,8 +91,8 @@ export default function useDocuments() {
                 representative: draft.representative
             }).unwrap()
             showToast(t("saveToast"))
-        } catch {
-            setActionError(t("saveFailed"))
+        } catch (error) {
+            setActionError(feedbackOf(error))
         }
     }
 

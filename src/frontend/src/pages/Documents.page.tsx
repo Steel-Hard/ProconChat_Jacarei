@@ -46,7 +46,14 @@ export default function DocumentsPage() {
 
                 {page.actionError ? (
                     <p role="alert" className={css.alert}>
-                        {page.actionError}
+                        {page.actionError.message}
+                        {page.actionError.issues.length > 0 ? (
+                            <ul>
+                                {page.actionError.issues.map((issue) => (
+                                    <li key={issue}>{issue}</li>
+                                ))}
+                            </ul>
+                        ) : null}
                     </p>
                 ) : null}
 
