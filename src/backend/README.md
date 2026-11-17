@@ -1352,6 +1352,13 @@ um contido no outro por palavras inteiras (por exemplo, "RG" e "RG ou outro docu
 foto"). `repeatedCount` conta os itens do grupo repetidos. A regra vive só no backend
 (`utils/documentMatch.ts`). Perguntas e categorias inativas ficam fora do seletor e da prévia.
 
+As respostas da prévia usadas pelos testes do painel ficam em `src/frontend/src/testUtils/documentsPreview*.json`.
+O teste `services/documents.previewFixtures.test.ts` compara cada arquivo com a saída real de
+`previewConfirmation` e falha se o contrato mudar. Quando a mudança for intencional, regenere os
+JSON com `npm run fixtures:documents-preview` (em `src/backend`, define `REGENERATE_PREVIEW_FIXTURES=1`
+e reescreve os arquivos em vez de comparar) e commite-os junto com a alteração do backend. As entradas de cada
+arquivo ficam em `services/mock/documentsPreviewFixtures.ts`.
+
 ## Retorno de quem já tem agendamento (#59)
 
 Quando uma mensagem abre uma sessão nova, `services/returnFlow.service.ts` (`createReturnFlow`) procura
