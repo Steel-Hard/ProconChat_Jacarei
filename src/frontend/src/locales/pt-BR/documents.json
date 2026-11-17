@@ -59,7 +59,11 @@
         "duplicateTooltip": "Este item também está nos documentos da pergunta",
         "exampleTag": "exemplo",
         "repeatedLegend_one": "{{count}} item aparece nas duas listas. O cidadão recebe o pedido repetido.",
-        "repeatedLegend_other": "{{count}} itens aparecem nas duas listas. O cidadão recebe o pedido repetido."
+        "repeatedLegend_other": "{{count}} itens aparecem nas duas listas. O cidadão recebe o pedido repetido.",
+        "exampleLabels": {
+            "protocol": "Protocolo",
+            "dateTime": "Data e hora"
+        }
     },
     "changes": {
         "group": {

@@ -131,6 +131,26 @@ describe("DocumentsPreview", () => {
         expect(address).not.toHaveTextContent("exemplo")
     })
 
+    it("rotula como exemplo só protocolo e data, mesmo quando o endereço tem o mesmo valor", () => {
+        const contract = holderContract as DocumentsPreviewData
+        renderPreview({
+            preview: {
+                ...contract,
+                details: contract.details.map((detail) =>
+                    detail.label === "Endereço" ? { ...detail, value: "A3F9C21B" } : detail
+                )
+            }
+        })
+
+        const bubble = screen.getByTestId("preview-bubble")
+        const rows = within(bubble)
+            .getAllByText("A3F9C21B")
+            .map((value) => value.closest("dd"))
+        expect(rows).toHaveLength(2)
+        expect(rows[0]).toHaveTextContent("exemplo")
+        expect(rows[1]).not.toHaveTextContent("exemplo")
+    })
+
     it("exibe avisos de alterações não salvas e de pergunta sem documentos", () => {
         renderPreview({ selectedQuestionId: "2", isUnsaved: true, isQuestionEmpty: true })
 

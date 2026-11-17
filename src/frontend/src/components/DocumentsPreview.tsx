@@ -18,6 +18,7 @@ export default function DocumentsPreview({
 }: DocumentsPreviewProps) {
     const { t } = useTranslation("documents")
     const headingId = useId()
+    const exampleLabels = [t("preview.exampleLabels.protocol"), t("preview.exampleLabels.dateTime")]
 
     return (
         <section className={css.previewCard} aria-labelledby={headingId}>
@@ -95,8 +96,7 @@ export default function DocumentsPreview({
                                         <dt>{detail.label}</dt>
                                         <dd>
                                             {detail.value}
-                                            {detail.value === preview.example.protocol ||
-                                            detail.value === preview.example.dateTime ? (
+                                            {exampleLabels.includes(detail.label) ? (
                                                 <span className={css.exampleTag}>
                                                     {t("preview.exampleTag")}
                                                 </span>
