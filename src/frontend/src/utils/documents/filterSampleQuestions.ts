@@ -1,17 +1,14 @@
 import type SampleQuestion from "@/types/documents/SampleQuestion.types"
-
-function normalize(text: string): string {
-    return text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim()
-}
+import normalizeDocument from "@/utils/documents/normalizeDocument"
 
 function filterSampleQuestions(questions: SampleQuestion[], term: string): SampleQuestion[] {
-    const needle = normalize(term)
+    const needle = normalizeDocument(term)
 
     if (needle === "") {
         return questions
     }
 
-    return questions.filter((question) => normalize(question.title).includes(needle))
+    return questions.filter((question) => normalizeDocument(question.title).includes(needle))
 }
 
 export default filterSampleQuestions
