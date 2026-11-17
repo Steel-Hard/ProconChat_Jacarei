@@ -140,7 +140,7 @@
     margin-top: 4px;
     border: 1px solid var(--warn-border);
     border-radius: 3px;
-    background: #fff1bf;
+    background: var(--highlight-bg);
 }
 
 .note {
@@ -221,7 +221,7 @@
 .block {
     margin: 10px 0 0;
     padding-top: 8px;
-    border-top: 1px solid #eeeae4;
+    border-top: 1px solid var(--chat-divider);
 }
 
 .blockHeading {
@@ -247,7 +247,7 @@
     margin: 0 -3px;
     padding: 0 3px;
     border-radius: 4px;
-    background: #fff1bf;
+    background: var(--highlight-bg);
     color: inherit;
 }
 
