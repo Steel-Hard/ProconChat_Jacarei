@@ -35,6 +35,12 @@ Os dados (agendamentos, sessões, usuários, números dos relatórios) são **de
 | `report-export.js` | Exportação dos relatórios (PDF, Excel, CSV) no navegador, só para demonstração. No sistema real a exportação é feita no backend |
 | `support.js` | Runtime do Claude Design. Não editar |
 
+## Divergências conhecidas
+
+O protótipo não é alterado; nestes pontos o sistema segue as [regras](../regras/):
+
+- **Selo de contagem no item Agendamentos do menu:** o protótipo mostra o número de agendamentos pendentes ao lado do item. O painel real não mostra (decisão do Felipe, [regras 01](../regras/01-login-e-conta.md)); os pendentes são acompanhados no chip "Pendentes" da tela de Agendamentos.
+
 ## Atualização
 
 Este é um retrato do protótipo em 27/09/2026. Se o protótipo mudar no Claude Design, copie os arquivos de novo para esta pasta no mesmo PR que atualizar as regras.
