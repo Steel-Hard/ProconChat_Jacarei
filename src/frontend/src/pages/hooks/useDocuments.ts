@@ -1,8 +1,11 @@
 import { useMemo, useState } from "react"
+import { skipToken } from "@reduxjs/toolkit/query/react"
 import { useTranslation } from "react-i18next"
+import useDebouncedValue from "@/hooks/useDebouncedValue"
 import useToast from "@/hooks/useToast"
 import useDocumentsDraft from "@/pages/hooks/useDocumentsDraft"
 import documentsApi from "@/store/api/documents.api"
+import PREVIEW_DEBOUNCE_MS from "@/utils/documents/previewDebounceMs"
 import documentsSaveErrorOf from "@/utils/documents/documentsSaveErrorOf"
 import type DocumentsSaveFeedback from "@/types/documents/DocumentsSaveFeedback.types"
 import type DocumentsSaveIssue from "@/types/documents/DocumentsSaveIssue.types"
@@ -38,11 +41,20 @@ export default function useDocuments() {
     const activeGroupDocs = previewGroup === "holder" ? draft.holder : draft.representative
     const activeQuestionDocs = selectedQuestion?.documents ?? EMPTY_DOCS
 
-    const confirmationQuery = documentsApi.usePreviewDocumentsQuery({
-        byRepresentative: previewGroup === "representative",
-        groupDocuments: activeGroupDocs,
-        questionId: selectedQuestion === null ? undefined : Number(selectedQuestion.id)
-    })
+    const questionId = selectedQuestion === null ? undefined : Number(selectedQuestion.id)
+    const previewArgs = useMemo(
+        () =>
+            view === undefined
+                ? skipToken
+                : {
+                      byRepresentative: previewGroup === "representative",
+                      groupDocuments: activeGroupDocs,
+                      questionId
+                  },
+        [view, previewGroup, activeGroupDocs, questionId]
+    )
+    const debouncedArgs = useDebouncedValue(previewArgs, PREVIEW_DEBOUNCE_MS)
+    const confirmationQuery = documentsApi.usePreviewDocumentsQuery(debouncedArgs)
     const previewData = confirmationQuery.currentData ?? null
 
     const isPreviewUnsaved =

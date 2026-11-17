@@ -1,0 +1,3 @@
+const PREVIEW_DEBOUNCE_MS = 400
+
+export default PREVIEW_DEBOUNCE_MS

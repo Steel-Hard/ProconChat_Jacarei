@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { screen, waitFor, within } from "@testing-library/react"
+import { fireEvent, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import renderDocumentsPage from "@/testUtils/renderDocumentsPage"
 import holderContract from "@/testUtils/documentsPreviewHolder.json"
@@ -50,6 +50,7 @@ function stubDocumentsFetch(
     }
 ) {
     let capturedPutBody: unknown = null
+    let currentData = response.data
     const previewBodies: Array<Record<string, unknown> | null> = []
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -79,7 +80,7 @@ function stubDocumentsFetch(
                 )
             }
             return Promise.resolve(
-                new Response(JSON.stringify({ data: response.data }), {
+                new Response(JSON.stringify({ data: currentData }), {
                     status: 200,
                     headers: { "Content-Type": "application/json" }
                 })
@@ -99,6 +100,7 @@ function stubDocumentsFetch(
                 ...(capturedPutBody as object),
                 updatedAt: new Date().toISOString()
             }
+            currentData = updatedData
             return Promise.resolve(
                 new Response(JSON.stringify({ data: updatedData }), {
                     status: 200,
@@ -313,7 +315,6 @@ describe("DocumentsPage", () => {
 
         await screen.findByRole("heading", { name: "Quando o próprio titular comparece" })
 
-        // Remove todos os 4 itens do titular
         for (let i = 0; i < 4; i++) {
             const removeButtons = screen.getAllByTitle("Remover")
             await user.click(removeButtons[0]!)
@@ -502,5 +503,86 @@ describe("DocumentsPage", () => {
         expect(alert).toHaveTextContent("Não foi possível salvar os documentos. Tente novamente.")
         expect(screen.getByText("1 alteração não salva")).toBeInTheDocument()
         expect(screen.queryByRole("button", { name: "CPF" })).not.toBeInTheDocument()
+    })
+
+    it("a prévia envia o corpo do rascunho e junta várias mudanças rápidas em uma requisição", async () => {
+        const { fetchMock, previewBodies } = stubDocumentsFetch()
+        await renderDocumentsPage(fetchMock)
+
+        await waitFor(() => expect(previewBodies).toHaveLength(1), { timeout: 5000 })
+        expect(previewBodies[0]).toEqual({
+            byRepresentative: false,
+            groupDocuments: initialDocuments.holder,
+            questionId: 1
+        })
+
+        const input = screen.getByRole("textbox", {
+            name: "Digite um documento e pressione Enter... (Quando o próprio titular comparece)"
+        })
+        for (const text of ["Doc A", "Doc B", "Doc C"]) {
+            fireEvent.change(input, { target: { value: text } })
+            fireEvent.submit(input.closest("form")!)
+        }
+
+        await waitFor(() => expect(previewBodies).toHaveLength(2), { timeout: 5000 })
+        expect(previewBodies[1]).toEqual({
+            byRepresentative: false,
+            groupDocuments: [...initialDocuments.holder, "Doc A", "Doc B", "Doc C"],
+            questionId: 1
+        })
+    })
+
+    it("edita um item do grupo do representante, salva e mostra o item gravado", async () => {
+        const user = userEvent.setup()
+        const { fetchMock, getCapturedPutBody } = stubDocumentsFetch()
+        await renderDocumentsPage(fetchMock)
+
+        const representativeList = await screen.findByRole("list", {
+            name: "Quando um representante comparece em nome do titular"
+        })
+        await user.click(
+            within(representativeList).getByRole("button", { name: "Procuração assinada" })
+        )
+        const input = screen.getByRole("textbox", { name: "Editar Procuração assinada" })
+        await user.clear(input)
+        await user.type(input, "Procuração com firma reconhecida{enter}")
+
+        await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
+
+        await waitFor(() => expect(getCapturedPutBody()).not.toBeNull())
+        expect(getCapturedPutBody()).toEqual({
+            holder: initialDocuments.holder,
+            representative: [
+                "RG e CPF do titular (cópia)",
+                "RG ou outro documento do representante",
+                "Procuração com firma reconhecida",
+                "Comprovante da reclamação"
+            ]
+        })
+        expect(await screen.findByText("Documentos atualizados com sucesso.")).toBeInTheDocument()
+        expect(
+            await screen.findByRole("button", { name: "Procuração com firma reconhecida" })
+        ).toBeInTheDocument()
+        expect(
+            screen.queryByText(/alteração não salva|alterações não salvas/)
+        ).not.toBeInTheDocument()
+    })
+
+    it("a prévia do representante envia a lista do representante", async () => {
+        const user = userEvent.setup()
+        const { fetchMock, previewBodies } = stubDocumentsFetch()
+        await renderDocumentsPage(fetchMock)
+
+        await user.selectOptions(await screen.findByLabelText("Quem comparece"), "representative")
+
+        await waitFor(
+            () =>
+                expect(previewBodies.at(-1)).toEqual({
+                    byRepresentative: true,
+                    groupDocuments: initialDocuments.representative,
+                    questionId: 1
+                }),
+            { timeout: 5000 }
+        )
     })
 })
