@@ -459,12 +459,14 @@ describe("DocumentsPage", () => {
         const bubble = await screen.findByTestId("preview-bubble")
         await within(bubble).findByText("Agendamento realizado")
 
-        expect(within(bubble).getByText("Protocolo")).toBeInTheDocument()
-        expect(within(bubble).getByText("Avenida Central, 100 (Térreo)")).toBeInTheDocument()
+        expect(within(bubble).getByText("Protocolo: A3F9C21B")).toBeInTheDocument()
+        expect(
+            within(bubble).getByText("Endereço: Avenida Central, 100 (Térreo)")
+        ).toBeInTheDocument()
         expect(within(bubble).getByText("Leve ao atendimento:")).toBeInTheDocument()
-        expect(within(bubble).getByText("CPF")).toBeInTheDocument()
+        expect(within(bubble).getByText("• CPF")).toBeInTheDocument()
         expect(within(bubble).getByText("Documentos úteis para esta dúvida:")).toBeInTheDocument()
-        expect(within(bubble).getByText("Fatura do cartão")).toBeInTheDocument()
+        expect(within(bubble).getByText("• Fatura do cartão")).toBeInTheDocument()
         expect(within(bubble).getByText(/Você receberá neste número avisos/)).toBeInTheDocument()
     })
 
@@ -775,7 +777,7 @@ describe("DocumentsPage", () => {
         await renderDocumentsPage(fetchMock)
 
         await within(await screen.findByTestId("preview-bubble")).findByText(
-            "Fatura do cartão",
+            "• Fatura do cartão",
             {},
             { timeout: 5000 }
         )

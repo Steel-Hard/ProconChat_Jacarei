@@ -53,14 +53,10 @@
         "unsavedNotice": "A prévia já inclui as alterações não salvas.",
         "noQuestionDocsNotice": "Esta pergunta não tem documentos úteis cadastrados. A mensagem mostra só a lista do grupo.",
         "loadFailed": "Não foi possível gerar a prévia da mensagem. Tente novamente.",
-        "duplicateTooltip": "Este item também está nos documentos da pergunta",
-        "exampleTag": "exemplo",
         "repeatedLegend_one": "{{count}} item aparece nas duas listas. O cidadão recebe o pedido repetido.",
         "repeatedLegend_other": "{{count}} itens aparecem nas duas listas. O cidadão recebe o pedido repetido.",
-        "exampleLabels": {
-            "protocol": "Protocolo",
-            "dateTime": "Data e hora"
-        },
+        "messageTime": "10:15",
+        "exampleNote": "Protocolo, data e hora são exemplos.",
         "updating": "Atualizando a prévia…"
     },
     "changes": {

@@ -160,8 +160,7 @@
     color: var(--text-soft);
 }
 
-.previewCard:has([data-updating]) .bubble,
-.previewCard:has([data-search-empty]) .bubble {
+.previewCard:has([data-updating]) .chatPreview {
     opacity: 0.55;
     transition: opacity 0.15s ease;
 }
@@ -181,106 +180,27 @@
     font-size: 13px;
 }
 
-.chatPreview {
+.chatColumn {
     display: flex;
     flex-direction: column;
     gap: 8px;
     min-width: 0;
+}
+
+.chatPreview {
     padding: 16px 12px;
-    background: var(--chat-bg);
     border-radius: 12px;
+    background: var(--chat-bg) url("/images/whatsapp-chat-background.webp") center / auto no-repeat;
 }
 
-.bubble {
-    align-self: flex-start;
-    max-width: 92%;
-    padding: 9px 11px 10px;
-    border-radius: 2px 10px 10px 10px;
-    background: var(--bg-surface);
-    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
-    color: var(--chat-text);
-    font-size: 13.5px;
-    line-height: 1.5;
-    overflow-wrap: anywhere;
-    text-wrap: pretty;
-}
-
-.bubbleHeading {
-    display: block;
-    font-weight: 700;
-}
-
-.details {
-    margin: 6px 0 0;
-}
-
-.detail {
+.chatNotes {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0 4px;
-}
-
-.detail dt::after {
-    content: ":";
-}
-
-.detail dd {
-    margin: 0;
-}
-
-.exampleTag {
-    margin-left: 6px;
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--text-muted);
-}
-
-.block {
-    margin: 10px 0 0;
-    padding-top: 8px;
-    border-top: 1px solid var(--chat-divider);
-}
-
-.blockHeading {
-    margin: 0;
-    font-weight: 700;
-}
-
-.blockList {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
-
-.blockList li {
-    margin-top: 3px;
-}
-
-.blockList li::before {
-    content: "• ";
-}
-
-.blockList li:has(mark)::before {
-    content: none;
-}
-
-.repeatedItem::before {
-    content: "• ";
+    flex-direction: column;
+    gap: 6px;
 }
 
 .repeatedItem {
-    margin: 0 -3px;
-    padding: 0 3px;
-    border-radius: 4px;
+    border-radius: 3px;
     background: var(--highlight-bg);
     color: inherit;
-}
-
-.repeatedItemLegend {
-    display: block;
-    margin: 1px 0 4px 10px;
-    font-size: 11.5px;
-    font-weight: 600;
-    line-height: 1.35;
-    color: var(--warn-text);
 }

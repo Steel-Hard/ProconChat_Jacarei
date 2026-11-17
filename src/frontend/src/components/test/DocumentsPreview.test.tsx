@@ -73,18 +73,26 @@ describe("DocumentsPreview", () => {
         expect(onChangeQuestion).toHaveBeenCalledWith("2")
     })
 
-    it("monta título, detalhes, grupo, pergunta e aviso pela resposta do backend", () => {
+    it("mostra no balão o texto exato que o backend devolve, em linhas, com a hora", () => {
         renderPreview()
 
         const bubble = screen.getByTestId("preview-bubble")
-        expect(within(bubble).getByText("Agendamento realizado")).toBeInTheDocument()
-        expect(within(bubble).getByText("Endereço")).toBeInTheDocument()
-        expect(within(bubble).getByText("Avenida Central, 100 (Térreo)")).toBeInTheDocument()
-        expect(within(bubble).getByText("Leve ao atendimento:")).toBeInTheDocument()
-        expect(within(bubble).getByText("CPF")).toBeInTheDocument()
+        const text = bubble.querySelector("p > span")
+        expect(text?.textContent).toBe(holderContract.text)
+        expect(within(bubble).getByText("10:15")).toBeInTheDocument()
+        expect(within(bubble).getByText("• CPF")).toBeInTheDocument()
         expect(within(bubble).getByText("Documentos úteis para esta dúvida:")).toBeInTheDocument()
-        expect(within(bubble).getByText("Fatura do cartão")).toBeInTheDocument()
-        expect(within(bubble).getByText(/Você receberá neste número avisos/)).toBeInTheDocument()
+    })
+
+    it("não desenha divisórias, títulos separados nem selos dentro do balão", () => {
+        renderPreview()
+
+        const bubble = screen.getByTestId("preview-bubble")
+        expect(bubble.querySelector("hr, dl, ul, h1, h2, h3, strong")).toBeNull()
+        expect(within(bubble).queryByText("exemplo")).not.toBeInTheDocument()
+        expect(
+            within(bubble).queryByText("Este item também está nos documentos da pergunta")
+        ).not.toBeInTheDocument()
     })
 
     it("omite os blocos que o backend devolve nulos", () => {
@@ -97,59 +105,34 @@ describe("DocumentsPreview", () => {
         ).not.toBeInTheDocument()
     })
 
-    it("destaca os itens repetidos com a legenda do item e a legenda geral", () => {
+    it("destaca só as linhas repetidas, sem mudar o texto, e explica fora do balão", () => {
         renderPreview()
 
-        const marked = screen.getAllByText(/^RG/).filter((element) => element.tagName === "MARK")
-        expect(marked.map((element) => element.textContent)).toEqual([
-            "RG ou outro documento oficial com foto",
-            "RG"
-        ])
-        expect(
-            screen.getAllByText("Este item também está nos documentos da pergunta")
-        ).toHaveLength(2)
-        expect(
-            screen.getByText("1 item aparece nas duas listas. O cidadão recebe o pedido repetido.")
-        ).toBeInTheDocument()
-        expect(screen.getByText("CPF").tagName).not.toBe("MARK")
+        const bubble = screen.getByTestId("preview-bubble")
+        const marked = Array.from(bubble.querySelectorAll("mark")).map(
+            (element) => element.textContent
+        )
+        expect(marked).toEqual(["• RG ou outro documento oficial com foto", "• RG"])
+        expect(within(bubble).getByText("• CPF").tagName).not.toBe("MARK")
+        const legend = screen.getByText(
+            "1 item aparece nas duas listas. O cidadão recebe o pedido repetido."
+        )
+        expect(bubble).not.toContainElement(legend)
     })
 
-    it("não mostra a legenda geral quando nada se repete", () => {
+    it("não mostra a legenda geral nem destaque quando nada se repete", () => {
         renderPreview({ preview: withoutQuestionContract as DocumentsPreviewData })
 
         expect(screen.queryByText(/aparece nas duas listas/)).not.toBeInTheDocument()
         expect(document.querySelector("mark")).toBeNull()
     })
 
-    it("rotula protocolo e data como exemplo e o endereço não", () => {
+    it("avisa fora do balão que protocolo, data e hora são exemplos", () => {
         renderPreview()
 
         const bubble = screen.getByTestId("preview-bubble")
-        expect(within(bubble).getAllByText("exemplo")).toHaveLength(2)
-        const protocol = within(bubble).getByText("A3F9C21B").closest("dd")
-        expect(protocol).toHaveTextContent("A3F9C21Bexemplo")
-        const address = within(bubble).getByText("Avenida Central, 100 (Térreo)").closest("dd")
-        expect(address).not.toHaveTextContent("exemplo")
-    })
-
-    it("rotula como exemplo só protocolo e data, mesmo quando o endereço tem o mesmo valor", () => {
-        const contract = holderContract as DocumentsPreviewData
-        renderPreview({
-            preview: {
-                ...contract,
-                details: contract.details.map((detail) =>
-                    detail.label === "Endereço" ? { ...detail, value: "A3F9C21B" } : detail
-                )
-            }
-        })
-
-        const bubble = screen.getByTestId("preview-bubble")
-        const rows = within(bubble)
-            .getAllByText("A3F9C21B")
-            .map((value) => value.closest("dd"))
-        expect(rows).toHaveLength(2)
-        expect(rows[0]).toHaveTextContent("exemplo")
-        expect(rows[1]).not.toHaveTextContent("exemplo")
+        const note = screen.getByText("Protocolo, data e hora são exemplos.")
+        expect(bubble).not.toContainElement(note)
     })
 
     it("exibe avisos de alterações não salvas e de pergunta sem documentos", () => {
