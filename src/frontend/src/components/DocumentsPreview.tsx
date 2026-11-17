@@ -2,22 +2,9 @@ import { useId } from "react"
 import { useTranslation } from "react-i18next"
 import DocumentsQuestionPicker from "@/components/DocumentsQuestionPicker"
 import DocumentsPreviewBlock from "@/components/DocumentsPreviewBlock"
-import type DocumentsPreviewData from "@/types/documents/DocumentsPreviewData.types"
 import type AttendeeGroup from "@/types/documents/AttendeeGroup.types"
-import type SampleQuestion from "@/types/documents/SampleQuestion.types"
+import type DocumentsPreviewProps from "@/types/documents/DocumentsPreviewProps.types"
 import css from "@/styles/components/documentsPreview.module.css"
-
-export type DocumentsPreviewProps = {
-    attendeeGroup: AttendeeGroup
-    onChangeAttendeeGroup: (group: AttendeeGroup) => void
-    sampleQuestions: SampleQuestion[]
-    selectedQuestionId: string
-    onChangeQuestionId: (id: string) => void
-    preview: DocumentsPreviewData | null
-    hasPreviewError: boolean
-    isUnsaved: boolean
-    isQuestionEmpty: boolean
-}
 
 export default function DocumentsPreview({
     attendeeGroup,

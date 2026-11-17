@@ -3,12 +3,16 @@ import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import DocumentGroup from "@/components/DocumentGroup"
 
+function asDraftItems(texts: string[]) {
+    return texts.map((text, index) => ({ id: `item-${index}`, text }))
+}
+
 function renderGroup(items: string[], onAddItem = vi.fn()) {
     return render(
         <DocumentGroup
             title="Grupo Teste"
             description="Descrição"
-            items={items}
+            items={asDraftItems(items)}
             emptyAlert="Vazio"
             onAddItem={onAddItem}
             onEditItem={vi.fn()}
@@ -25,7 +29,7 @@ describe("DocumentGroup", () => {
             <DocumentGroup
                 title="Quando o próprio titular comparece"
                 description="Documentos pedidos ao consumidor"
-                items={["RG", "CPF"]}
+                items={asDraftItems(["RG", "CPF"])}
                 emptyAlert="Nenhum documento será pedido"
                 onAddItem={vi.fn()}
                 onEditItem={vi.fn()}
@@ -49,7 +53,7 @@ describe("DocumentGroup", () => {
             <DocumentGroup
                 title="Quando um representante comparece em nome do titular"
                 description="Documentos pedidos ao representante"
-                items={[]}
+                items={asDraftItems([])}
                 emptyAlert="Nenhum documento será pedido quando um representante comparecer."
                 onAddItem={vi.fn()}
                 onEditItem={vi.fn()}
@@ -73,7 +77,7 @@ describe("DocumentGroup", () => {
             <DocumentGroup
                 title="Grupo Teste"
                 description="Descrição"
-                items={["Item 1"]}
+                items={asDraftItems(["Item 1"])}
                 emptyAlert="Vazio"
                 onAddItem={onAddItem}
                 onEditItem={vi.fn()}

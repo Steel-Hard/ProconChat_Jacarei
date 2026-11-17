@@ -1,11 +1,20 @@
-import { useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import isDocumentTaken from "@/utils/documents/isDocumentTaken"
 import MAX_DOCUMENT_LENGTH from "@/utils/documents/maxDocumentLength"
 import MAX_DOCUMENTS_PER_GROUP from "@/utils/documents/maxDocumentsPerGroup"
 import type AttendeeGroup from "@/types/documents/AttendeeGroup.types"
 import type DocumentsConfig from "@/types/documents/DocumentsConfig.types"
+import type DocumentsDraftItem from "@/types/documents/DocumentsDraftItem.types"
 import type DocumentsDraftState from "@/types/documents/DocumentsDraftState.types"
+
+function itemsOf(texts: string[], prefix: string): DocumentsDraftItem[] {
+    return texts.map((text, index) => ({ id: `${prefix}-${index}`, text }))
+}
+
+function textsOf(items: DocumentsDraftItem[]): string[] {
+    return items.map((item) => item.text)
+}
 
 function sameList(a: string[], b: string[]): boolean {
     if (a.length !== b.length) return false
@@ -15,29 +24,36 @@ function sameList(a: string[], b: string[]): boolean {
 function freshState(serverConfig: DocumentsConfig | null | undefined): DocumentsDraftState {
     return {
         serverConfig,
-        holder: serverConfig?.holder ?? [],
-        representative: serverConfig?.representative ?? [],
+        holder: itemsOf(serverConfig?.holder ?? [], "holder"),
+        representative: itemsOf(serverConfig?.representative ?? [], "representative"),
         log: []
     }
 }
 
-type GroupUpdate = { items: string[]; entry: string } | null
+type GroupUpdate = { items: DocumentsDraftItem[]; entry: string } | null
 
 export default function useDocumentsDraft(serverConfig: DocumentsConfig | null | undefined) {
     const { t } = useTranslation("documents")
     const [draft, setDraft] = useState<DocumentsDraftState | null>(null)
 
-    const currentDraft =
-        draft !== null && draft.serverConfig === serverConfig ? draft : freshState(serverConfig)
-    const holder = currentDraft.holder
-    const representative = currentDraft.representative
+    const nextId = useRef(0)
+    const baseState = useMemo(() => freshState(serverConfig), [serverConfig])
+    const currentDraft = draft !== null && draft.serverConfig === serverConfig ? draft : baseState
+    const holderItems = currentDraft.holder
+    const representativeItems = currentDraft.representative
+    const holder = useMemo(() => holderItems.map((item) => item.text), [holderItems])
+    const representative = useMemo(
+        () => representativeItems.map((item) => item.text),
+        [representativeItems]
+    )
 
-    function updateGroup(group: AttendeeGroup, updater: (items: string[]) => GroupUpdate) {
+    function updateGroup(
+        group: AttendeeGroup,
+        updater: (items: DocumentsDraftItem[]) => GroupUpdate
+    ) {
         setDraft((previous) => {
             const base =
-                previous !== null && previous.serverConfig === serverConfig
-                    ? previous
-                    : freshState(serverConfig)
+                previous !== null && previous.serverConfig === serverConfig ? previous : baseState
             const update = updater(group === "holder" ? base.holder : base.representative)
             if (update === null) return base
             const log = [...base.log, update.entry]
@@ -55,12 +71,15 @@ export default function useDocumentsDraft(serverConfig: DocumentsConfig | null |
         const trimmed = description.trim()
         if (!trimmed || trimmed.length > MAX_DOCUMENT_LENGTH) return
 
+        nextId.current += 1
+        const id = `new-${nextId.current}`
+
         updateGroup(group, (prev) => {
-            if (prev.length >= MAX_DOCUMENTS_PER_GROUP || isDocumentTaken(prev, trimmed)) {
+            if (prev.length >= MAX_DOCUMENTS_PER_GROUP || isDocumentTaken(textsOf(prev), trimmed)) {
                 return null
             }
             return {
-                items: [...prev, trimmed],
+                items: [...prev, { id, text: trimmed }],
                 entry: t("changes.added", { item: trimmed, group: groupLabel(group) })
             }
         })
@@ -71,15 +90,19 @@ export default function useDocumentsDraft(serverConfig: DocumentsConfig | null |
         if (!trimmed || trimmed.length > MAX_DOCUMENT_LENGTH) return
 
         updateGroup(group, (prev) => {
-            if (index < 0 || index >= prev.length || isDocumentTaken(prev, trimmed, index)) {
+            if (
+                index < 0 ||
+                index >= prev.length ||
+                isDocumentTaken(textsOf(prev), trimmed, index)
+            ) {
                 return null
             }
             const next = [...prev]
-            next[index] = trimmed
+            next[index] = { id: prev[index]!.id, text: trimmed }
             return {
                 items: next,
                 entry: t("changes.edited", {
-                    from: prev[index],
+                    from: prev[index]!.text,
                     to: trimmed,
                     group: groupLabel(group)
                 })
@@ -92,7 +115,7 @@ export default function useDocumentsDraft(serverConfig: DocumentsConfig | null |
             if (index < 0 || index >= prev.length) return null
             return {
                 items: prev.filter((_, i) => i !== index),
-                entry: t("changes.removed", { item: prev[index], group: groupLabel(group) })
+                entry: t("changes.removed", { item: prev[index]!.text, group: groupLabel(group) })
             }
         })
     }
@@ -108,7 +131,7 @@ export default function useDocumentsDraft(serverConfig: DocumentsConfig | null |
             return {
                 items: next,
                 entry: t(`changes.moved.${direction}`, {
-                    item: prev[index],
+                    item: prev[index]!.text,
                     group: groupLabel(group)
                 })
             }
@@ -134,6 +157,8 @@ export default function useDocumentsDraft(serverConfig: DocumentsConfig | null |
     return {
         holder,
         representative,
+        holderItems,
+        representativeItems,
         changes,
         hasChanges: changes.length > 0,
         holderChanged,

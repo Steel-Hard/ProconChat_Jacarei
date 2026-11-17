@@ -1,9 +1,10 @@
 import type DocumentsConfig from "@/types/documents/DocumentsConfig.types"
+import type DocumentsDraftItem from "@/types/documents/DocumentsDraftItem.types"
 
 type DocumentsDraftState = {
     serverConfig: DocumentsConfig | null | undefined
-    holder: string[]
-    representative: string[]
+    holder: DocumentsDraftItem[]
+    representative: DocumentsDraftItem[]
     log: string[]
 }
 

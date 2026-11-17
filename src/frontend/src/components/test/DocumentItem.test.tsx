@@ -8,7 +8,6 @@ describe("DocumentItem", () => {
         render(
             <DocumentItem
                 description="RG ou documento com foto"
-                index={0}
                 isTaken={() => false}
                 isFirst={true}
                 isLast={false}
@@ -33,7 +32,6 @@ describe("DocumentItem", () => {
         render(
             <DocumentItem
                 description="CPF"
-                index={0}
                 isTaken={() => false}
                 isFirst={false}
                 isLast={false}
@@ -62,7 +60,6 @@ describe("DocumentItem", () => {
         render(
             <DocumentItem
                 description="Comprovante de endereço"
-                index={0}
                 isTaken={() => false}
                 isFirst={false}
                 isLast={false}
@@ -89,7 +86,6 @@ describe("DocumentItem", () => {
         render(
             <DocumentItem
                 description="Comprovante"
-                index={0}
                 isTaken={() => false}
                 isFirst={false}
                 isLast={false}
@@ -112,7 +108,6 @@ describe("DocumentItem", () => {
         render(
             <DocumentItem
                 description="Item do meio"
-                index={1}
                 isTaken={() => false}
                 isFirst={false}
                 isLast={false}
@@ -135,7 +130,6 @@ describe("DocumentItem", () => {
         render(
             <DocumentItem
                 description="CPF"
-                index={0}
                 isTaken={() => false}
                 isFirst={false}
                 isLast={false}
@@ -157,7 +151,6 @@ describe("DocumentItem", () => {
         render(
             <DocumentItem
                 description="CPF"
-                index={0}
                 isTaken={(text) => text.trim().toLowerCase() === "rg"}
                 isFirst={false}
                 isLast={false}

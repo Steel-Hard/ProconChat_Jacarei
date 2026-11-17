@@ -1,19 +1,8 @@
 import { useState, useRef, useEffect, type FormEvent, type KeyboardEvent } from "react"
 import { useTranslation } from "react-i18next"
+import type DocumentItemProps from "@/types/documents/DocumentItemProps.types"
 import MAX_DOCUMENT_LENGTH from "@/utils/documents/maxDocumentLength"
 import css from "@/styles/components/documentItem.module.css"
-
-export type DocumentItemProps = {
-    description: string
-    index: number
-    isTaken: (text: string) => boolean
-    isFirst: boolean
-    isLast: boolean
-    onEdit: (newText: string) => void
-    onRemove: () => void
-    onMoveUp: () => void
-    onMoveDown: () => void
-}
 
 export default function DocumentItem({
     description,

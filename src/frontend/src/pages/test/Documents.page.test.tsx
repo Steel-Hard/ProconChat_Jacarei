@@ -585,4 +585,25 @@ describe("DocumentsPage", () => {
             { timeout: 5000 }
         )
     })
+
+    it("não perde o texto digitado em um item quando outro item é reordenado", async () => {
+        const user = userEvent.setup()
+        const { fetchMock } = stubDocumentsFetch()
+        await renderDocumentsPage(fetchMock)
+
+        const holderList = await screen.findByRole("list", {
+            name: "Quando o próprio titular comparece"
+        })
+        await user.click(within(holderList).getByRole("button", { name: "CPF" }))
+        const input = screen.getByRole("textbox", { name: "Editar CPF" })
+        await user.type(input, " do titular")
+
+        await user.click(
+            within(holderList).getByRole("button", {
+                name: "Mover Comprovante de endereço para cima"
+            })
+        )
+
+        expect(screen.getByRole("textbox", { name: "Editar CPF" })).toHaveValue("CPF do titular")
+    })
 })

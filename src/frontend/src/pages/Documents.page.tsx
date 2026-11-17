@@ -63,7 +63,7 @@ export default function DocumentsPage() {
                             <DocumentGroup
                                 title={t("groups.holder.title")}
                                 description={t("groups.holder.description")}
-                                items={draft.holder}
+                                items={draft.holderItems}
                                 emptyAlert={t("groups.holder.emptyAlert")}
                                 onAddItem={(desc) => draft.actions.addItem("holder", desc)}
                                 onEditItem={(index, desc) =>
@@ -77,7 +77,7 @@ export default function DocumentsPage() {
                             <DocumentGroup
                                 title={t("groups.representative.title")}
                                 description={t("groups.representative.description")}
-                                items={draft.representative}
+                                items={draft.representativeItems}
                                 emptyAlert={t("groups.representative.emptyAlert")}
                                 onAddItem={(desc) => draft.actions.addItem("representative", desc)}
                                 onEditItem={(index, desc) =>

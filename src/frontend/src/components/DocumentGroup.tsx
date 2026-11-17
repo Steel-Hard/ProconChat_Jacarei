@@ -1,22 +1,11 @@
 import { useState, type FormEvent } from "react"
 import { useTranslation } from "react-i18next"
 import DocumentItem from "@/components/DocumentItem"
+import type DocumentGroupProps from "@/types/documents/DocumentGroupProps.types"
 import isDocumentTaken from "@/utils/documents/isDocumentTaken"
 import MAX_DOCUMENT_LENGTH from "@/utils/documents/maxDocumentLength"
 import MAX_DOCUMENTS_PER_GROUP from "@/utils/documents/maxDocumentsPerGroup"
 import css from "@/styles/components/documentGroup.module.css"
-
-export type DocumentGroupProps = {
-    title: string
-    description: string
-    items: string[]
-    emptyAlert: string
-    onAddItem: (description: string) => void
-    onEditItem: (index: number, newText: string) => void
-    onRemoveItem: (index: number) => void
-    onMoveUp: (index: number) => void
-    onMoveDown: (index: number) => void
-}
 
 export default function DocumentGroup({
     title,
@@ -41,9 +30,10 @@ export default function DocumentGroup({
         }
     }
 
+    const texts = items.map((item) => item.text)
     const isEmpty = items.length === 0
     const limitReached = items.length >= MAX_DOCUMENTS_PER_GROUP
-    const duplicate = newText.trim() !== "" && isDocumentTaken(items, newText)
+    const duplicate = newText.trim() !== "" && isDocumentTaken(texts, newText)
 
     return (
         <section className={css.groupCard}>
@@ -61,10 +51,9 @@ export default function DocumentGroup({
             <ul className={css.list} aria-label={title}>
                 {items.map((item, index) => (
                     <DocumentItem
-                        key={`${item}-${index}`}
-                        description={item}
-                        index={index}
-                        isTaken={(text) => isDocumentTaken(items, text, index)}
+                        key={item.id}
+                        description={item.text}
+                        isTaken={(text) => isDocumentTaken(texts, text, index)}
                         isFirst={index === 0}
                         isLast={index === items.length - 1}
                         onEdit={(newDesc) => onEditItem(index, newDesc)}
