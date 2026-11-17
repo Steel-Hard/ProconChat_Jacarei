@@ -24,10 +24,10 @@ const initialDocuments: DocumentsConfigView = {
     updatedAt: "2026-10-15T14:30:00.000Z",
     sampleQuestions: [
         {
-            id: "1",
+            id: "12",
             title: "Cobrança indevida no cartão",
             categoryTitle: "Bancos e cartões",
-            documents: ["CPF", "Fatura do cartão"]
+            documents: ["RG", "Fatura do cartão"]
         },
         {
             id: "2",
@@ -36,6 +36,36 @@ const initialDocuments: DocumentsConfigView = {
             documents: []
         }
     ]
+}
+
+function invalidPreviewRequest(
+    body: Record<string, unknown> | null,
+    questions: Array<{ id: string }>
+): { status: number; message: string } | null {
+    if (body === null || typeof body.byRepresentative !== "boolean") {
+        return { status: 400, message: "byRepresentative inválido" }
+    }
+    const documents = body.groupDocuments
+    if (!Array.isArray(documents) || documents.length > 10) {
+        return { status: 400, message: "groupDocuments inválido" }
+    }
+    const seen = new Set<string>()
+    for (const document of documents) {
+        const key = typeof document === "string" ? document.trim().toLowerCase() : ""
+        if (key === "" || document.length > 255 || seen.has(key)) {
+            return { status: 400, message: "documento inválido" }
+        }
+        seen.add(key)
+    }
+    if (body.questionId !== undefined) {
+        if (!Number.isInteger(body.questionId) || (body.questionId as number) <= 0) {
+            return { status: 400, message: "questionId inválido" }
+        }
+        if (!questions.some((question) => question.id === String(body.questionId))) {
+            return { status: 404, message: "Pergunta não encontrada." }
+        }
+    }
+    return null
 }
 
 function stubDocumentsFetch(
@@ -112,6 +142,15 @@ function stubDocumentsFetch(
 
         if (url.endsWith("/api/v1/documents/preview") && method === "POST") {
             previewBodies.push(body)
+            const questions =
+                (currentData as DocumentsConfigView | undefined)?.sampleQuestions ?? []
+            const invalid = invalidPreviewRequest(body, questions)
+            if (invalid !== null) {
+                return new Response(
+                    JSON.stringify({ error: { code: "BAD_REQUEST", message: invalid.message } }),
+                    { status: invalid.status, headers: { "Content-Type": "application/json" } }
+                )
+            }
             const contract =
                 response.previewContract !== undefined
                     ? response.previewContract
@@ -559,7 +598,7 @@ describe("DocumentsPage", () => {
             expect(previewBodies[0]).toEqual({
                 byRepresentative: false,
                 groupDocuments: initialDocuments.holder,
-                questionId: 1
+                questionId: 12
             })
         })
 
@@ -575,7 +614,7 @@ describe("DocumentsPage", () => {
             expect(previewBodies[1]).toEqual({
                 byRepresentative: false,
                 groupDocuments: [...initialDocuments.holder, "Doc A"],
-                questionId: 1
+                questionId: 12
             })
 
             await advance(5000)
@@ -598,7 +637,7 @@ describe("DocumentsPage", () => {
             expect(previewBodies[1]).toEqual({
                 byRepresentative: false,
                 groupDocuments: [...initialDocuments.holder, "Doc A", "Doc B", "Doc C"],
-                questionId: 1
+                questionId: 12
             })
 
             await advance(5000)
@@ -668,7 +707,7 @@ describe("DocumentsPage", () => {
                 expect(previewBodies.at(-1)).toEqual({
                     byRepresentative: true,
                     groupDocuments: initialDocuments.representative,
-                    questionId: 1
+                    questionId: 12
                 }),
             { timeout: 5000 }
         )
@@ -700,7 +739,7 @@ describe("DocumentsPage", () => {
             status: 200,
             data: {
                 ...initialDocuments,
-                sampleQuestions: [{ id: "1", title: "P", categoryTitle: "C", documents: [] }]
+                sampleQuestions: [{ id: "12", title: "P", categoryTitle: "C", documents: [] }]
             },
             previewContract: holderContract
         })
@@ -724,7 +763,7 @@ describe("DocumentsPage", () => {
             data: {
                 ...initialDocuments,
                 sampleQuestions: [
-                    { id: "1", title: "P", categoryTitle: "C", documents: ["Fatura do cartão"] }
+                    { id: "12", title: "P", categoryTitle: "C", documents: ["Fatura do cartão"] }
                 ]
             },
             previewContract: withoutQuestionContract
