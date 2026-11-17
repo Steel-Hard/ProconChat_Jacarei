@@ -56,7 +56,7 @@ Com os seletores **"Quem comparece"** (titular ou representante) e **"Pergunta d
 
 - O título é **"Agendamento realizado"**, e não "confirmado", para não confundir com o status interno **Confirmado** do painel (que significa que um funcionário assumiu).
 - Se o lembrete estiver desligado, a frase sobre avisos cita só o aviso de cancelamento.
-- **Pergunta de exemplo:** lista **todas as perguntas ativas**, na ordem da tela [Conteúdo](06-conteudo.md), com busca. Sem perguntas ativas, a tela mostra um estado vazio.
+- **Pergunta de exemplo:** lista **todas as perguntas ativas**, na ordem da tela [Conteúdo](06-conteudo.md). Sem perguntas ativas, a tela mostra um estado vazio.
 - **Protocolo e data** da prévia são fixos e aparecem rotulados como **exemplo**.
 - **Itens repetidos** entre o grupo e a pergunta aparecem destacados, com a dica "Este item também está nos documentos da pergunta". Um item é repetido quando é igual ao outro, ignorando acento e maiúscula, ou quando um está contido no outro por palavras inteiras (por exemplo, "RG" e "RG ou outro documento oficial com foto").
 - A prévia vem pronta do servidor, montada pela mesma função que gera a mensagem do bot, e a tela não interpreta o texto.
