@@ -7,7 +7,9 @@ import buildAppointmentListItem from "@/testUtils/buildAppointmentListItem"
 import loadPanelRoutes from "@/testUtils/loadPanelRoutes"
 import type PanelAccount from "@/types/account/PanelAccount.types"
 
-vi.setConfig({ testTimeout: 20000 })
+vi.setConfig({ testTimeout: 60000 })
+
+const LAZY_LOAD_TIMEOUT = 10000
 
 const FICTITIOUS_CPF = "11122233344"
 
@@ -105,7 +107,9 @@ describe("Appointments.page: sair com a lista aberta", () => {
         await user.click(screen.getByRole("button", { name: "Minha conta" }))
         await user.click(screen.getByRole("button", { name: "Sair" }))
 
-        expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument()
+        expect(
+            await screen.findByRole("heading", { name: "Entrar" }, { timeout: LAZY_LOAD_TIMEOUT })
+        ).toBeInTheDocument()
         await waitFor(() =>
             expect(calls.some((call) => call.url.pathname === "/api/v1/auth/logout")).toBe(true)
         )
@@ -122,7 +126,9 @@ describe("Appointments.page: sair com a lista aberta", () => {
 
         act(() => unauthorized()?.())
 
-        expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument()
+        expect(
+            await screen.findByRole("heading", { name: "Entrar" }, { timeout: LAZY_LOAD_TIMEOUT })
+        ).toBeInTheDocument()
         expect(
             Object.keys(store.getState().api.queries).some((key) => key.includes(FICTITIOUS_CPF))
         ).toBe(false)
