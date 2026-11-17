@@ -23,13 +23,6 @@ function stubMe() {
             return new Response(JSON.stringify({ data: admin }), { status: 200 })
         }
 
-        if (url.endsWith("/api/v1/appointments/pending-count")) {
-            return new Response(JSON.stringify({ data: { count: 0 } }), {
-                status: 200,
-                headers: { "Content-Type": "application/json" }
-            })
-        }
-
         if (url.includes("/api/v1/appointments?")) {
             return new Response(JSON.stringify({ data: buildAppointmentList([]) }), {
                 status: 200,

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react"
 import useIsDocked from "@/hooks/useIsDocked"
 import useLogout from "@/hooks/useLogout"
-import useNavBadges from "@/hooks/useNavBadges"
 import useAppSelector from "@/store/useAppSelector"
 
 type SidebarMode = "docked" | "drawer" | "drawerOpen"
@@ -9,7 +8,6 @@ type SidebarMode = "docked" | "drawer" | "drawerOpen"
 function usePanelShell() {
     const account = useAppSelector((state) => state.account.current)
     const handleLogout = useLogout()
-    const badges = useNavBadges()
     const docked = useIsDocked()
     const sidebarId = useId()
     const [drawerOpen, setDrawerOpen] = useState(false)
@@ -77,7 +75,6 @@ function usePanelShell() {
 
     return {
         account,
-        badges,
         docked,
         sidebarId,
         sidebarMode,

@@ -118,7 +118,7 @@ describe("usersApi", () => {
         subscription.unsubscribe()
     })
 
-    it("invalida a lista, o contador e o detalhe dos agendamentos só quando redistribuiu", async () => {
+    it("invalida a lista e o detalhe dos agendamentos só quando redistribuiu", async () => {
         let redistributed = 0
         const { usersApi, store, fetchMock } = await setup((request) =>
             request.method === "PATCH"
@@ -127,7 +127,6 @@ describe("usersApi", () => {
         )
         const { default: appointmentsApi } = await import("@/store/api/appointments.api")
         const subscriptions = [
-            store.dispatch(appointmentsApi.endpoints.getPendingAppointmentsCount.initiate()),
             store.dispatch(appointmentsApi.endpoints.getAppointment.initiate("11")),
             store.dispatch(
                 appointmentsApi.endpoints.getAppointments.initiate(APPOINTMENT_LIST_DEFAULTS)
@@ -148,8 +147,8 @@ describe("usersApi", () => {
             usersApi.endpoints.saveUserChanges.initiate({ changes: [{ userId: 7, active: false }] })
         )
 
-        expect(afterNoRedistribution).toBe(3)
-        await vi.waitFor(() => expect(appointmentReads()).toBe(6))
+        expect(afterNoRedistribution).toBe(2)
+        await vi.waitFor(() => expect(appointmentReads()).toBe(4))
         subscriptions.forEach((subscription) => subscription.unsubscribe())
     })
 

@@ -5,7 +5,6 @@ import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import LANGUAGE_STORAGE_KEY from "@/i18n/languageStorageKey"
 import buildAppointmentList from "@/testUtils/buildAppointmentList"
 import loadPanelRoutes from "@/testUtils/loadPanelRoutes"
-import withPendingCount from "@/testUtils/withPendingCount"
 import type RootState from "@/types/store/RootState.types"
 
 type FetchHandler = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
@@ -36,7 +35,7 @@ function stubLogin(response: () => Response | Promise<Response>) {
 
         return fetchMock()
     }
-    vi.stubGlobal("fetch", vi.fn(withPendingCount(handler)))
+    vi.stubGlobal("fetch", handler)
     return fetchMock
 }
 
@@ -65,7 +64,10 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn(withPendingCount()))
+    vi.stubGlobal(
+        "fetch",
+        vi.fn(() => new Promise<Response>(() => {}))
+    )
 })
 
 afterEach(() => {

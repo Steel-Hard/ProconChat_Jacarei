@@ -7,7 +7,6 @@ import ToastProvider from "@/components/ToastProvider"
 import usePanelShell from "@/hooks/usePanelShell"
 import createStore from "@/store/createStore"
 import mockMatchMedia from "@/testUtils/mockMatchMedia"
-import withPendingCount from "@/testUtils/withPendingCount"
 import type PanelAccount from "@/types/account/PanelAccount.types"
 
 vi.hoisted(() => {
@@ -41,7 +40,10 @@ function renderShell(width: number) {
 
 describe("usePanelShell", () => {
     beforeEach(() => {
-        vi.stubGlobal("fetch", vi.fn(withPendingCount()))
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(() => new Promise<Response>(() => {}))
+        )
     })
 
     afterEach(() => {

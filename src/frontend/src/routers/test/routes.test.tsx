@@ -208,9 +208,6 @@ describe("routes", () => {
         await waitFor(() =>
             expect(requestedUrls().some((url) => url.includes("/api/v1/appointments?"))).toBe(true)
         )
-        expect(
-            requestedUrls().some((url) => url.endsWith("/api/v1/appointments/pending-count"))
-        ).toBe(true)
     })
 
     it("renderiza a tela de Usuários para o Admin, carregando as contas", async () => {

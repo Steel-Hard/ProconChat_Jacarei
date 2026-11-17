@@ -127,10 +127,6 @@ function useAppointments() {
     const { search, searching } = searchState
     const args = useMemo(() => ({ ...filters, search }), [filters, search])
 
-    appointmentsApi.useGetPendingAppointmentsCountQuery(undefined, {
-        skip: account === null,
-        refetchOnMountOrArgChange: true
-    })
     const staffQuery = appointmentsApi.useGetAppointmentStaffQuery(undefined, {
         skip: account === null,
         refetchOnMountOrArgChange: true

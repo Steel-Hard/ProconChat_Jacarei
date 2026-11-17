@@ -84,10 +84,7 @@
                 "title": "WhatsApp"
             }
         },
-        "appointmentDetail": "Detalhe do agendamento",
-        "itemWithBadge": "<label>{{label}}</label> <count>{{count}}</count> <hidden>{{badgeLabel}}</hidden>",
-        "pendingBadge_one": "agendamento pendente",
-        "pendingBadge_other": "agendamentos pendentes"
+        "appointmentDetail": "Detalhe do agendamento"
     },
     "sidebar": {
         "label": "Menu principal",

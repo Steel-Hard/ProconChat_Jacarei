@@ -31,23 +31,7 @@ describe("SidebarLink", () => {
         )
     })
 
-    it("mostra o contador com o texto acessível quando há pendências", () => {
-        render(
-            <MemoryRouter>
-                <SidebarLink
-                    item={{ key: "appointments", path: ROUTES.appointments }}
-                    active={false}
-                    badge={{ count: 4, label: "agendamentos pendentes" }}
-                />
-            </MemoryRouter>
-        )
-
-        expect(
-            screen.getByRole("link", { name: "Agendamentos 4 agendamentos pendentes" })
-        ).toBeInTheDocument()
-    })
-
-    it("não mostra contador zerado e avisa a navegação ao clicar", async () => {
+    it("avisa a navegação ao clicar", async () => {
         const user = userEvent.setup()
         const onNavigate = vi.fn()
         render(
@@ -55,7 +39,6 @@ describe("SidebarLink", () => {
                 <SidebarLink
                     item={{ key: "appointments", path: ROUTES.appointments }}
                     active={false}
-                    badge={{ count: 0, label: "agendamentos pendentes" }}
                     onNavigate={onNavigate}
                 />
             </MemoryRouter>

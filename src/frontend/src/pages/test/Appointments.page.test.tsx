@@ -397,12 +397,9 @@ describe("Appointments.page: paginação e URL", () => {
         expect(page.lastListRequest()).toContain("responsible=7")
     })
 
-    it("busca de novo o contador de pendentes e a lista sempre que a lista é aberta", async () => {
+    it("busca de novo a lista sempre que a lista é aberta", async () => {
         const page = await renderList()
-        const countCalls = () =>
-            page.calls.filter((call) => call.url.pathname === "/api/v1/appointments/pending-count")
         await screen.findByText("Maria Aparecida Santos")
-        expect(countCalls()).toHaveLength(1)
         const listBefore = page.listRequests().length
         await page.user.click(screen.getByText("Maria Aparecida Santos"))
         await screen.findByRole("heading", { name: "Detalhe do agendamento" })
@@ -410,7 +407,6 @@ describe("Appointments.page: paginação e URL", () => {
         await page.router.navigate(-1)
 
         await screen.findByText("Maria Aparecida Santos")
-        await waitFor(() => expect(countCalls()).toHaveLength(2))
         await waitFor(() => expect(page.listRequests()).toHaveLength(listBefore + 1))
     })
 
