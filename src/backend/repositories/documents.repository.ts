@@ -172,6 +172,7 @@ export class DocumentsRepository implements IDocumentsRepository {
         const client = await this.pool.connect()
         try {
             await client.query("BEGIN")
+            await client.query("SELECT pg_advisory_xact_lock(hashtext('documents_config'))")
 
             const current = await this.readConfig(client)
             if (JSON.stringify(current) === JSON.stringify(data)) {

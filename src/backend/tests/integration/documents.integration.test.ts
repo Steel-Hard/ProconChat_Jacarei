@@ -314,6 +314,23 @@ describe("DocumentsRepository (Postgres)", () => {
             expect(await countDocumentsAudit()).toBe(auditBefore + 1)
         })
 
+        it("serializa dois saves simultâneos e termina com uma única lista", async () => {
+            const userId = await createUser("Gabi Documentos")
+            await repository.saveDocumentsConfig({ holder: ["Base"], representative: [] }, userId)
+            const auditBefore = await countDocumentsAudit()
+            const first = { holder: ["A1", "A2", "A3"], representative: ["A4"] }
+            const second = { holder: ["B1", "B2"], representative: ["B3", "B4"] }
+
+            await Promise.all([
+                repository.saveDocumentsConfig(first, userId),
+                repository.saveDocumentsConfig(second, userId),
+            ])
+
+            const final = await repository.getDocumentsConfig()
+            expect([first, second]).toContainEqual(final)
+            expect(await countDocumentsAudit()).toBe(auditBefore + 2)
+        })
+
         it("desfaz tudo quando a gravação falha no meio", async () => {
             const userId = await createUser("Fabi Documentos")
             await repository.saveDocumentsConfig({ holder: ["K"], representative: [] }, userId)
