@@ -97,8 +97,7 @@ export class DocumentsRepository implements IDocumentsRepository {
              FROM Questions q
              INNER JOIN Categories c ON c.id = q.category_id
              WHERE q.active = TRUE AND c.active = TRUE
-             ORDER BY q.position ASC, q.id ASC
-             LIMIT 10`
+             ORDER BY c.position ASC, c.id ASC, q.position ASC, q.id ASC`
         )
 
         if (qResult.rows.length === 0) {
