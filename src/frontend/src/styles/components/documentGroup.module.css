@@ -30,7 +30,7 @@
     border-radius: 8px;
     background: var(--warn-bg, #fffbeb);
     border: 1px solid var(--warn-border, #fde68a);
-    color: var(--warn-text, #92400e);
+    color: var(--warn-text);
     font-size: 13.5px;
     line-height: 1.4;
 }
@@ -85,4 +85,11 @@
 .addButton:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+.warning {
+    margin: 0;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--warn-text);
 }

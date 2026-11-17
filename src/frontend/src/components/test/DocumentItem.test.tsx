@@ -9,6 +9,7 @@ describe("DocumentItem", () => {
             <DocumentItem
                 description="RG ou documento com foto"
                 index={0}
+                isTaken={() => false}
                 isFirst={true}
                 isLast={false}
                 onEdit={vi.fn()}
@@ -33,6 +34,7 @@ describe("DocumentItem", () => {
             <DocumentItem
                 description="CPF"
                 index={0}
+                isTaken={() => false}
                 isFirst={false}
                 isLast={false}
                 onEdit={onEdit}
@@ -61,6 +63,7 @@ describe("DocumentItem", () => {
             <DocumentItem
                 description="Comprovante de endereço"
                 index={0}
+                isTaken={() => false}
                 isFirst={false}
                 isLast={false}
                 onEdit={onEdit}
@@ -87,6 +90,7 @@ describe("DocumentItem", () => {
             <DocumentItem
                 description="Comprovante"
                 index={0}
+                isTaken={() => false}
                 isFirst={false}
                 isLast={false}
                 onEdit={vi.fn()}
@@ -109,6 +113,7 @@ describe("DocumentItem", () => {
             <DocumentItem
                 description="Item do meio"
                 index={1}
+                isTaken={() => false}
                 isFirst={false}
                 isLast={false}
                 onEdit={vi.fn()}
@@ -123,5 +128,54 @@ describe("DocumentItem", () => {
 
         await user.click(screen.getByTitle("Mover para baixo"))
         expect(onMoveDown).toHaveBeenCalledTimes(1)
+    })
+
+    it("limita o texto em edição a 255 caracteres", async () => {
+        const user = userEvent.setup()
+        render(
+            <DocumentItem
+                description="CPF"
+                index={0}
+                isTaken={() => false}
+                isFirst={false}
+                isLast={false}
+                onEdit={vi.fn()}
+                onRemove={vi.fn()}
+                onMoveUp={vi.fn()}
+                onMoveDown={vi.fn()}
+            />
+        )
+
+        await user.click(screen.getByTitle("Editar"))
+
+        expect(screen.getByRole("textbox")).toHaveAttribute("maxlength", "255")
+    })
+
+    it("avisa e impede salvar quando o texto editado repete outro item do grupo", async () => {
+        const user = userEvent.setup()
+        const onEdit = vi.fn()
+        render(
+            <DocumentItem
+                description="CPF"
+                index={0}
+                isTaken={(text) => text.trim().toLowerCase() === "rg"}
+                isFirst={false}
+                isLast={false}
+                onEdit={onEdit}
+                onRemove={vi.fn()}
+                onMoveUp={vi.fn()}
+                onMoveDown={vi.fn()}
+            />
+        )
+
+        await user.click(screen.getByTitle("Editar"))
+        const input = screen.getByRole("textbox")
+        await user.clear(input)
+        await user.type(input, "RG{enter}")
+
+        expect(screen.getByText("Esse documento já está na lista.")).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "Salvar" })).toBeDisabled()
+        expect(onEdit).not.toHaveBeenCalled()
+        expect(screen.getByRole("textbox")).toBeInTheDocument()
     })
 })

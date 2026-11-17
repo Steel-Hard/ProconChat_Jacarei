@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect, type FormEvent, type KeyboardEvent } from "react"
 import { useTranslation } from "react-i18next"
+import MAX_DOCUMENT_LENGTH from "@/utils/documents/maxDocumentLength"
 import css from "@/styles/components/documentItem.module.css"
 
 export type DocumentItemProps = {
     description: string
     index: number
+    isTaken: (text: string) => boolean
     isFirst: boolean
     isLast: boolean
     onEdit: (newText: string) => void
@@ -15,6 +17,7 @@ export type DocumentItemProps = {
 
 export default function DocumentItem({
     description,
+    isTaken,
     isFirst,
     isLast,
     onEdit,
@@ -49,6 +52,9 @@ export default function DocumentItem({
             event.preventDefault()
         }
         const trimmed = editText.trim()
+        if (trimmed && isTaken(trimmed)) {
+            return
+        }
         if (trimmed && trimmed !== description) {
             onEdit(trimmed)
         }
@@ -63,6 +69,8 @@ export default function DocumentItem({
         }
     }
 
+    const editTaken = isEditing && editText.trim() !== "" && isTaken(editText)
+
     if (isEditing) {
         return (
             <li className={css.item}>
@@ -75,14 +83,16 @@ export default function DocumentItem({
                         onChange={(e) => setEditText(e.target.value)}
                         onKeyDown={handleKeyDown}
                         aria-label={t("items.editItemAria", { item: description })}
+                        maxLength={MAX_DOCUMENT_LENGTH}
                     />
-                    <button type="submit" className={css.saveButton}>
+                    <button type="submit" className={css.saveButton} disabled={editTaken}>
                         {t("items.saveEditButton")}
                     </button>
                     <button type="button" className={css.cancelButton} onClick={handleCancel}>
                         {t("items.cancelEditButton")}
                     </button>
                 </form>
+                {editTaken ? <p className={css.warning}>{t("items.duplicate")}</p> : null}
             </li>
         )
     }

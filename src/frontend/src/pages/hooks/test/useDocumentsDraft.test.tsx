@@ -149,4 +149,35 @@ describe("useDocumentsDraft", () => {
         expect(result.current.hasChanges).toBe(false)
         expect(result.current.changes).toEqual([])
     })
+
+    it("não adiciona o 11º item, o duplicado nem o texto acima de 255 caracteres", () => {
+        const ten = Array.from({ length: 10 }, (_, index) => `Documento ${index + 1}`)
+        const config = { holder: ten, representative: ["RG", "Cédula"] }
+        const { result } = renderHook(() => useDocumentsDraft(config))
+
+        act(() => {
+            result.current.actions.addItem("holder", "Outro")
+            result.current.actions.addItem("representative", "rg")
+            result.current.actions.addItem("representative", "CEDULA")
+            result.current.actions.addItem("representative", "x".repeat(256))
+        })
+
+        expect(result.current.holder).toEqual(ten)
+        expect(result.current.representative).toEqual(["RG", "Cédula"])
+        expect(result.current.hasChanges).toBe(false)
+    })
+
+    it("não edita um item para o texto de outro item do mesmo grupo", () => {
+        const { result } = renderHook(() => useDocumentsDraft(initialConfig))
+
+        act(() => {
+            result.current.actions.editItem("holder", 1, "rg")
+        })
+        expect(result.current.holder).toEqual(["RG", "CPF"])
+
+        act(() => {
+            result.current.actions.editItem("holder", 0, "rg")
+        })
+        expect(result.current.holder).toEqual(["rg", "CPF"])
+    })
 })

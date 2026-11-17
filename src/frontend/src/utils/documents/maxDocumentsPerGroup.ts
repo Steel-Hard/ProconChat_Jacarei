@@ -1,0 +1,3 @@
+const MAX_DOCUMENTS_PER_GROUP = 10
+
+export default MAX_DOCUMENTS_PER_GROUP

@@ -1,5 +1,8 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
+import isDocumentTaken from "@/utils/documents/isDocumentTaken"
+import MAX_DOCUMENT_LENGTH from "@/utils/documents/maxDocumentLength"
+import MAX_DOCUMENTS_PER_GROUP from "@/utils/documents/maxDocumentsPerGroup"
 import type AttendeeGroup from "@/types/documents/AttendeeGroup.types"
 import type DocumentsConfig from "@/types/documents/DocumentsConfig.types"
 import type DocumentsDraftState from "@/types/documents/DocumentsDraftState.types"
@@ -50,20 +53,27 @@ export default function useDocumentsDraft(serverConfig: DocumentsConfig | null |
 
     function addItem(group: AttendeeGroup, description: string) {
         const trimmed = description.trim()
-        if (!trimmed) return
+        if (!trimmed || trimmed.length > MAX_DOCUMENT_LENGTH) return
 
-        updateGroup(group, (prev) => ({
-            items: [...prev, trimmed],
-            entry: t("changes.added", { item: trimmed, group: groupLabel(group) })
-        }))
+        updateGroup(group, (prev) => {
+            if (prev.length >= MAX_DOCUMENTS_PER_GROUP || isDocumentTaken(prev, trimmed)) {
+                return null
+            }
+            return {
+                items: [...prev, trimmed],
+                entry: t("changes.added", { item: trimmed, group: groupLabel(group) })
+            }
+        })
     }
 
     function editItem(group: AttendeeGroup, index: number, newDescription: string) {
         const trimmed = newDescription.trim()
-        if (!trimmed) return
+        if (!trimmed || trimmed.length > MAX_DOCUMENT_LENGTH) return
 
         updateGroup(group, (prev) => {
-            if (index < 0 || index >= prev.length) return null
+            if (index < 0 || index >= prev.length || isDocumentTaken(prev, trimmed, index)) {
+                return null
+            }
             const next = [...prev]
             next[index] = trimmed
             return {

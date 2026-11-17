@@ -1,6 +1,9 @@
 import { useState, type FormEvent } from "react"
 import { useTranslation } from "react-i18next"
 import DocumentItem from "@/components/DocumentItem"
+import isDocumentTaken from "@/utils/documents/isDocumentTaken"
+import MAX_DOCUMENT_LENGTH from "@/utils/documents/maxDocumentLength"
+import MAX_DOCUMENTS_PER_GROUP from "@/utils/documents/maxDocumentsPerGroup"
 import css from "@/styles/components/documentGroup.module.css"
 
 export type DocumentGroupProps = {
@@ -32,13 +35,15 @@ export default function DocumentGroup({
     function handleAdd(e: FormEvent) {
         e.preventDefault()
         const trimmed = newText.trim()
-        if (trimmed) {
+        if (trimmed && !limitReached && !duplicate) {
             onAddItem(trimmed)
             setNewText("")
         }
     }
 
     const isEmpty = items.length === 0
+    const limitReached = items.length >= MAX_DOCUMENTS_PER_GROUP
+    const duplicate = newText.trim() !== "" && isDocumentTaken(items, newText)
 
     return (
         <section className={css.groupCard}>
@@ -59,6 +64,7 @@ export default function DocumentGroup({
                         key={`${item}-${index}`}
                         description={item}
                         index={index}
+                        isTaken={(text) => isDocumentTaken(items, text, index)}
                         isFirst={index === 0}
                         isLast={index === items.length - 1}
                         onEdit={(newDesc) => onEditItem(index, newDesc)}
@@ -77,11 +83,23 @@ export default function DocumentGroup({
                     value={newText}
                     onChange={(e) => setNewText(e.target.value)}
                     aria-label={`${t("items.addPlaceholder")} (${title})`}
+                    maxLength={MAX_DOCUMENT_LENGTH}
+                    disabled={limitReached}
                 />
-                <button type="submit" className={css.addButton} disabled={!newText.trim()}>
+                <button
+                    type="submit"
+                    className={css.addButton}
+                    disabled={!newText.trim() || limitReached || duplicate}
+                >
                     {t("items.addButton")}
                 </button>
             </form>
+            {limitReached ? (
+                <p className={css.warning}>
+                    {t("items.limitReached", { max: MAX_DOCUMENTS_PER_GROUP })}
+                </p>
+            ) : null}
+            {duplicate ? <p className={css.warning}>{t("items.duplicate")}</p> : null}
         </section>
     )
 }

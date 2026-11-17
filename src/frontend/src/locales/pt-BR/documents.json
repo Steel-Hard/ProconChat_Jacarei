@@ -34,7 +34,9 @@
         "editItemAria": "Editar {{item}}",
         "removeItemAria": "Remover {{item}}",
         "moveUpAria": "Mover {{item}} para cima",
-        "moveDownAria": "Mover {{item}} para baixo"
+        "moveDownAria": "Mover {{item}} para baixo",
+        "limitReached": "Limite de {{max}} documentos por grupo atingido.",
+        "duplicate": "Esse documento já está na lista."
     },
     "preview": {
         "title": "Prévia da mensagem de confirmação",
