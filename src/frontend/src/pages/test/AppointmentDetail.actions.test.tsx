@@ -448,6 +448,30 @@ describe("AppointmentDetail.page: erros da ação", () => {
         expect(screen.getByText("Assumido por Bruno Lima · Confirmado")).toBeInTheDocument()
     })
 
+    it("com 409 ASSIGNEE_BUSY mostra o protocolo do conflito na caixa Ações, sem placeholder e sem toast repetido", async () => {
+        const page = await renderActions(PENDING, () => ({
+            status: 409,
+            body: {
+                error: {
+                    code: "ASSIGNEE_BUSY",
+                    message: "x",
+                    details: { conflictingProtocol: "AG-0099" }
+                }
+            }
+        }))
+        await page.user.click(screen.getByRole("button", { name: "Assumir para mim" }))
+        await page.user.click(
+            within(screen.getByRole("dialog")).getByRole("button", { name: "Assumir para mim" })
+        )
+
+        const alert = await within(
+            actionsBox().getByRole("alert").parentElement as HTMLElement
+        ).findByText("O funcionário já tem outro agendamento neste horário (AG-0099).")
+        expect(alert).toBeInTheDocument()
+        expect(document.body).not.toHaveTextContent("{{")
+        expect(screen.getAllByText(/AG-0099/)).toHaveLength(1)
+    })
+
     it("com 500 espera reler o detalhe antes de mostrar o erro", async () => {
         const second = Promise.withResolvers<Reply>()
         let reads = 0

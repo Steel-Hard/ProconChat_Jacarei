@@ -75,7 +75,10 @@ function useAppointmentActions({ detail, canManage }: Options) {
     const [noteText, setNoteText] = useState("")
     const [noteBusy, setNoteBusy] = useState(false)
     const [busy, setBusy] = useState(false)
-    const [errorKey, setErrorKey] = useState<ErrorKey | null>(null)
+    const [actionError, setActionError] = useState<{
+        key: ErrorKey
+        protocol: string
+    } | null>(null)
     const inFlight = useRef(false)
     const mounted = useRef(false)
 
@@ -107,7 +110,7 @@ function useAppointmentActions({ detail, canManage }: Options) {
         const action = pending
         inFlight.current = true
         setBusy(true)
-        setErrorKey(null)
+        setActionError(null)
         const result = await updateStatus({ id: detail.id, action })
 
         if ("data" in result && result.data !== undefined) {
@@ -149,14 +152,10 @@ function useAppointmentActions({ detail, canManage }: Options) {
 
             if (mounted.current) {
                 const errorDetails = appointmentActionErrorDetails(result.error)
-                setErrorKey(appointmentActionErrorKey(result.error))
-                if (errorDetails.code === "ASSIGNEE_BUSY" && errorDetails.conflictingProtocol) {
-                    showToast(
-                        t("common:appointmentActions.errors.ASSIGNEE_BUSY", {
-                            protocol: errorDetails.conflictingProtocol
-                        })
-                    )
-                }
+                setActionError({
+                    key: appointmentActionErrorKey(result.error),
+                    protocol: errorDetails.conflictingProtocol ?? ""
+                })
             }
         }
 
@@ -278,7 +277,9 @@ function useAppointmentActions({ detail, canManage }: Options) {
                 detail.available_actions.cancel.code === "CANCEL_AFTER_START"
                     ? t("actions.cancel.afterStart")
                     : null,
-            error: errorKey ? t(`common:${errorKey}`) : null
+            error: actionError
+                ? t(`common:${actionError.key}`, { protocol: actionError.protocol })
+                : null
         }
     }
 
