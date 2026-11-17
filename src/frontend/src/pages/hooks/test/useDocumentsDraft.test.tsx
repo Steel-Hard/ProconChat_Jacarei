@@ -99,7 +99,7 @@ describe("useDocumentsDraft", () => {
         expect(result.current.hasChanges).toBe(false)
     })
 
-    it("registra uma alteração por ação, na ordem em que aconteceram", () => {
+    it("conta a mudança líquida em relação ao gravado, item a item e uma por grupo para a ordem", () => {
         const { result } = renderHook(() => useDocumentsDraft(initialConfig))
 
         act(() => {
@@ -116,11 +116,92 @@ describe("useDocumentsDraft", () => {
         })
 
         expect(result.current.changes).toEqual([
-            "Adicionou “Comprovante de endereço” (titular)",
-            "Moveu “CPF” para cima (titular)",
-            "Editou “RG do titular” para “RG e CPF do titular” (representante)",
-            "Removeu “Procuração” (representante)"
+            "Adicionado: Comprovante de endereço (titular)",
+            "Ordem dos documentos do titular alterada",
+            "Removido: Procuração (representante)",
+            "Editado: RG do titular → RG e CPF do titular (representante)"
         ])
+    })
+
+    it("adiciona X, remove X e adiciona Y conta uma alteração e lista só o Y", () => {
+        const { result } = renderHook(() => useDocumentsDraft(initialConfig))
+
+        act(() => {
+            result.current.actions.addItem("holder", "X")
+        })
+        act(() => {
+            result.current.actions.removeItem("holder", 2)
+        })
+        act(() => {
+            result.current.actions.addItem("holder", "Y")
+        })
+
+        expect(result.current.changes).toEqual(["Adicionado: Y (titular)"])
+    })
+
+    it("conta só o texto final de um item adicionado e depois editado", () => {
+        const { result } = renderHook(() => useDocumentsDraft(initialConfig))
+
+        act(() => {
+            result.current.actions.addItem("holder", "X")
+        })
+        act(() => {
+            result.current.actions.editItem("holder", 2, "Z")
+        })
+
+        expect(result.current.changes).toEqual(["Adicionado: Z (titular)"])
+    })
+
+    it("zera quando o rascunho volta ao que está gravado", () => {
+        const { result } = renderHook(() => useDocumentsDraft(initialConfig))
+
+        act(() => {
+            result.current.actions.moveUp("holder", 1)
+        })
+        act(() => {
+            result.current.actions.moveDown("holder", 0)
+        })
+        expect(result.current.changes).toEqual([])
+
+        act(() => {
+            result.current.actions.editItem("holder", 0, "RG novo")
+        })
+        act(() => {
+            result.current.actions.editItem("holder", 0, "RG")
+        })
+        expect(result.current.changes).toEqual([])
+
+        act(() => {
+            result.current.actions.removeItem("holder", 1)
+        })
+        expect(result.current.changes).toEqual(["Removido: CPF (titular)"])
+        act(() => {
+            result.current.actions.addItem("holder", "CPF")
+        })
+        expect(result.current.changes).toEqual([])
+        expect(result.current.hasChanges).toBe(false)
+    })
+
+    it("várias trocas de posição no mesmo grupo contam uma só alteração de ordem", () => {
+        const { result } = renderHook(() => useDocumentsDraft(initialConfig))
+
+        act(() => {
+            result.current.actions.addItem("holder", "Outro")
+        })
+        act(() => {
+            result.current.actions.removeItem("holder", 2)
+        })
+        act(() => {
+            result.current.actions.moveDown("representative", 0)
+        })
+        act(() => {
+            result.current.actions.moveUp("representative", 1)
+        })
+        act(() => {
+            result.current.actions.moveDown("representative", 0)
+        })
+
+        expect(result.current.changes).toEqual(["Ordem dos documentos do representante alterada"])
     })
 
     it("zera os registros ao descartar", () => {
@@ -133,20 +214,6 @@ describe("useDocumentsDraft", () => {
             result.current.actions.discard()
         })
 
-        expect(result.current.changes).toEqual([])
-    })
-
-    it("não mostra registros quando as listas voltam ao que está salvo", () => {
-        const { result } = renderHook(() => useDocumentsDraft(initialConfig))
-
-        act(() => {
-            result.current.actions.addItem("holder", "Novo")
-        })
-        act(() => {
-            result.current.actions.removeItem("holder", 2)
-        })
-
-        expect(result.current.hasChanges).toBe(false)
         expect(result.current.changes).toEqual([])
     })
 

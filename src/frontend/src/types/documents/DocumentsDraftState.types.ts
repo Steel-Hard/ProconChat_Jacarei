@@ -5,7 +5,6 @@ type DocumentsDraftState = {
     serverConfig: DocumentsConfig | null | undefined
     holder: DocumentsDraftItem[]
     representative: DocumentsDraftItem[]
-    log: string[]
 }
 
 export default DocumentsDraftState

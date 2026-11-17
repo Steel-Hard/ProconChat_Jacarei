@@ -71,13 +71,10 @@
             "holder": "titular",
             "representative": "representante"
         },
-        "added": "Adicionou “{{item}}” ({{group}})",
-        "removed": "Removeu “{{item}}” ({{group}})",
-        "edited": "Editou “{{from}}” para “{{to}}” ({{group}})",
-        "moved": {
-            "up": "Moveu “{{item}}” para cima ({{group}})",
-            "down": "Moveu “{{item}}” para baixo ({{group}})"
-        }
+        "added": "Adicionado: {{item}} ({{group}})",
+        "removed": "Removido: {{item}} ({{group}})",
+        "edited": "Editado: {{from}} → {{to}} ({{group}})",
+        "reordered": "Ordem dos documentos do {{group}} alterada"
     },
     "saveErrors": {
         "invalid": "Confira os documentos informados antes de salvar.",

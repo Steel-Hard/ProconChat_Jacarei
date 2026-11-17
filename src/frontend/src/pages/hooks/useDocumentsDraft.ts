@@ -8,8 +8,10 @@ import type DocumentsConfig from "@/types/documents/DocumentsConfig.types"
 import type DocumentsDraftItem from "@/types/documents/DocumentsDraftItem.types"
 import type DocumentsDraftState from "@/types/documents/DocumentsDraftState.types"
 
-function itemsOf(texts: string[], prefix: string): DocumentsDraftItem[] {
-    return texts.map((text, index) => ({ id: `${prefix}-${index}`, text }))
+const NEW_ITEM_PREFIX = "new-"
+
+function itemsOf(texts: string[], group: AttendeeGroup): DocumentsDraftItem[] {
+    return texts.map((text, index) => ({ id: `${group}-${index}`, text }))
 }
 
 function textsOf(items: DocumentsDraftItem[]): string[] {
@@ -25,12 +27,9 @@ function freshState(serverConfig: DocumentsConfig | null | undefined): Documents
     return {
         serverConfig,
         holder: itemsOf(serverConfig?.holder ?? [], "holder"),
-        representative: itemsOf(serverConfig?.representative ?? [], "representative"),
-        log: []
+        representative: itemsOf(serverConfig?.representative ?? [], "representative")
     }
 }
-
-type GroupUpdate = { items: DocumentsDraftItem[]; entry: string } | null
 
 export default function useDocumentsDraft(serverConfig: DocumentsConfig | null | undefined) {
     const { t } = useTranslation("documents")
@@ -41,30 +40,64 @@ export default function useDocumentsDraft(serverConfig: DocumentsConfig | null |
     const currentDraft = draft !== null && draft.serverConfig === serverConfig ? draft : baseState
     const holderItems = currentDraft.holder
     const representativeItems = currentDraft.representative
-    const holder = useMemo(() => holderItems.map((item) => item.text), [holderItems])
-    const representative = useMemo(
-        () => representativeItems.map((item) => item.text),
-        [representativeItems]
-    )
+    const holder = useMemo(() => textsOf(holderItems), [holderItems])
+    const representative = useMemo(() => textsOf(representativeItems), [representativeItems])
 
     function updateGroup(
         group: AttendeeGroup,
-        updater: (items: DocumentsDraftItem[]) => GroupUpdate
+        updater: (items: DocumentsDraftItem[]) => DocumentsDraftItem[] | null
     ) {
         setDraft((previous) => {
             const base =
                 previous !== null && previous.serverConfig === serverConfig ? previous : baseState
-            const update = updater(group === "holder" ? base.holder : base.representative)
-            if (update === null) return base
-            const log = [...base.log, update.entry]
+            const next = updater(group === "holder" ? base.holder : base.representative)
+            if (next === null) return base
             return group === "holder"
-                ? { ...base, holder: update.items, log }
-                : { ...base, representative: update.items, log }
+                ? { ...base, holder: next }
+                : { ...base, representative: next }
         })
     }
 
-    function groupLabel(group: AttendeeGroup): string {
-        return t(`changes.group.${group}`)
+    function changesOf(
+        group: AttendeeGroup,
+        items: DocumentsDraftItem[],
+        serverTexts: string[]
+    ): string[] {
+        if (sameList(textsOf(items), serverTexts)) return []
+
+        const label = t(`changes.group.${group}`)
+        const present = new Set(items.map((item) => item.id))
+        const entries: string[] = []
+
+        for (const item of items) {
+            if (item.id.startsWith(NEW_ITEM_PREFIX)) {
+                entries.push(t("changes.added", { item: item.text, group: label }))
+            }
+        }
+
+        serverTexts.forEach((text, index) => {
+            if (!present.has(`${group}-${index}`)) {
+                entries.push(t("changes.removed", { item: text, group: label }))
+            }
+        })
+
+        const surviving: number[] = []
+        for (const item of items) {
+            if (item.id.startsWith(NEW_ITEM_PREFIX)) continue
+            const index = Number(item.id.slice(group.length + 1))
+            surviving.push(index)
+            if (item.text !== serverTexts[index]) {
+                entries.push(
+                    t("changes.edited", { from: serverTexts[index], to: item.text, group: label })
+                )
+            }
+        }
+
+        if (surviving.some((index, position) => position > 0 && index < surviving[position - 1]!)) {
+            entries.push(t("changes.reordered", { group: label }))
+        }
+
+        return entries
     }
 
     function addItem(group: AttendeeGroup, description: string) {
@@ -72,16 +105,13 @@ export default function useDocumentsDraft(serverConfig: DocumentsConfig | null |
         if (!trimmed || trimmed.length > MAX_DOCUMENT_LENGTH) return
 
         nextId.current += 1
-        const id = `new-${nextId.current}`
+        const id = `${NEW_ITEM_PREFIX}${nextId.current}`
 
         updateGroup(group, (prev) => {
             if (prev.length >= MAX_DOCUMENTS_PER_GROUP || isDocumentTaken(textsOf(prev), trimmed)) {
                 return null
             }
-            return {
-                items: [...prev, { id, text: trimmed }],
-                entry: t("changes.added", { item: trimmed, group: groupLabel(group) })
-            }
+            return [...prev, { id, text: trimmed }]
         })
     }
 
@@ -99,28 +129,18 @@ export default function useDocumentsDraft(serverConfig: DocumentsConfig | null |
             }
             const next = [...prev]
             next[index] = { id: prev[index]!.id, text: trimmed }
-            return {
-                items: next,
-                entry: t("changes.edited", {
-                    from: prev[index]!.text,
-                    to: trimmed,
-                    group: groupLabel(group)
-                })
-            }
+            return next
         })
     }
 
     function removeItem(group: AttendeeGroup, index: number) {
         updateGroup(group, (prev) => {
             if (index < 0 || index >= prev.length) return null
-            return {
-                items: prev.filter((_, i) => i !== index),
-                entry: t("changes.removed", { item: prev[index]!.text, group: groupLabel(group) })
-            }
+            return prev.filter((_, i) => i !== index)
         })
     }
 
-    function swap(group: AttendeeGroup, index: number, target: number, direction: "up" | "down") {
+    function swap(group: AttendeeGroup, index: number, target: number) {
         updateGroup(group, (prev) => {
             if (index < 0 || index >= prev.length || target < 0 || target >= prev.length) {
                 return null
@@ -128,22 +148,16 @@ export default function useDocumentsDraft(serverConfig: DocumentsConfig | null |
             const next = [...prev]
             next[index] = prev[target]!
             next[target] = prev[index]!
-            return {
-                items: next,
-                entry: t(`changes.moved.${direction}`, {
-                    item: prev[index]!.text,
-                    group: groupLabel(group)
-                })
-            }
+            return next
         })
     }
 
     function moveUp(group: AttendeeGroup, index: number) {
-        swap(group, index, index - 1, "up")
+        swap(group, index, index - 1)
     }
 
     function moveDown(group: AttendeeGroup, index: number) {
-        swap(group, index, index + 1, "down")
+        swap(group, index, index + 1)
     }
 
     function discard() {
@@ -152,7 +166,10 @@ export default function useDocumentsDraft(serverConfig: DocumentsConfig | null |
 
     const holderChanged = !sameList(holder, serverConfig?.holder ?? [])
     const representativeChanged = !sameList(representative, serverConfig?.representative ?? [])
-    const changes = holderChanged || representativeChanged ? currentDraft.log : []
+    const changes = [
+        ...changesOf("holder", holderItems, serverConfig?.holder ?? []),
+        ...changesOf("representative", representativeItems, serverConfig?.representative ?? [])
+    ]
 
     return {
         holder,

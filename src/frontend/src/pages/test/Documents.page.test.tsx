@@ -364,7 +364,7 @@ describe("DocumentsPage", () => {
         })
     })
 
-    it("conta uma alteração por ação e lista as pendentes ao passar o mouse", async () => {
+    it("conta a mudança líquida e lista as pendentes ao passar o mouse", async () => {
         const user = userEvent.setup()
         const { fetchMock } = stubDocumentsFetch()
         await renderDocumentsPage(fetchMock)
@@ -389,7 +389,7 @@ describe("DocumentsPage", () => {
         await user.hover(chip)
 
         expect(screen.getByRole("tooltip")).toHaveTextContent(
-            "Pendentes: Adicionou “Carteira de Trabalho” (titular); Removeu “CPF” (titular); Moveu “Comprovante de endereço” para cima (titular)"
+            "Pendentes: Adicionado: Carteira de Trabalho (titular); Removido: CPF (titular); Ordem dos documentos do titular alterada"
         )
     })
 
