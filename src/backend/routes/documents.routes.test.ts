@@ -203,4 +203,61 @@ describe("DocumentsRoutes", () => {
             expect(res.status).toBe(404)
         })
     })
+
+    describe("limites e duplicados da lista", () => {
+        function save(body: object) {
+            return request(app).put("/api/v1/documents").set("Cookie", cookieOf(ADMIN_ID)).send(body)
+        }
+
+        function items(count: number): string[] {
+            return Array.from({ length: count }, (_, index) => `Documento ${index + 1}`)
+        }
+
+        it("aceita 10 itens por grupo e recusa o 11º com mensagem do limite", async () => {
+            const aceito = await save({ holder: items(10), representative: items(10) })
+            const recusado = await save({ holder: items(11), representative: [] })
+
+            expect(aceito.status).toBe(200)
+            expect(recusado.status).toBe(400)
+            expect(recusado.body.error.message).toContain("Limite de 10 documentos por grupo")
+        })
+
+        it("recusa item repetido no mesmo grupo ignorando acento e maiúscula, citando o item", async () => {
+            const res = await save({
+                holder: ["Cédula de identidade", "CPF", "cedula de identidade"],
+                representative: []
+            })
+
+            expect(res.status).toBe(400)
+            expect(res.body.error.message).toContain("holder.2")
+            expect(res.body.error.message).toContain("cedula de identidade")
+            expect(res.body.error.message).toContain("já está na lista")
+        })
+
+        it("aceita o mesmo documento em grupos diferentes e documento contido no outro", async () => {
+            const res = await save({
+                holder: ["RG", "RG ou outro documento oficial com foto"],
+                representative: ["RG"]
+            })
+
+            expect(res.status).toBe(200)
+        })
+
+        it("aplica os mesmos limites à prévia", async () => {
+            const res = await request(app)
+                .post("/api/v1/documents/preview")
+                .set("Cookie", cookieOf(ADMIN_ID))
+                .send({ byRepresentative: false, groupDocuments: ["CPF", "cpf"] })
+
+            expect(res.status).toBe(400)
+        })
+
+        it("recusa item com mais de 255 caracteres e aceita com 255", async () => {
+            const aceito = await save({ holder: ["a".repeat(255)], representative: [] })
+            const recusado = await save({ holder: ["a".repeat(256)], representative: [] })
+
+            expect(aceito.status).toBe(200)
+            expect(recusado.status).toBe(400)
+        })
+    })
 })
