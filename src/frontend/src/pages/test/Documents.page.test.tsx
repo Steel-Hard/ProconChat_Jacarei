@@ -222,7 +222,7 @@ describe("DocumentsPage", () => {
         await screen.findByRole("heading", { name: "Quando o próprio titular comparece" })
 
         const input = screen.getByRole("textbox", {
-            name: "Digite um documento e pressione Enter... (Quando o próprio titular comparece)"
+            name: "Novo documento (Quando o próprio titular comparece)"
         })
         await user.type(input, "Carteira de Trabalho (CTPS){enter}")
 
@@ -298,7 +298,7 @@ describe("DocumentsPage", () => {
         })
         await user.type(
             screen.getByRole("textbox", {
-                name: "Digite um documento e pressione Enter... (Quando o próprio titular comparece)"
+                name: "Novo documento (Quando o próprio titular comparece)"
             }),
             "Carteira de Trabalho{enter}"
         )
@@ -353,7 +353,7 @@ describe("DocumentsPage", () => {
         await screen.findByRole("heading", { name: "Quando o próprio titular comparece" })
 
         const input = screen.getByRole("textbox", {
-            name: "Digite um documento e pressione Enter... (Quando o próprio titular comparece)"
+            name: "Novo documento (Quando o próprio titular comparece)"
         })
         await user.type(input, "Documento extra{enter}")
 
@@ -517,7 +517,7 @@ describe("DocumentsPage", () => {
         })
 
         const input = screen.getByRole("textbox", {
-            name: "Digite um documento e pressione Enter... (Quando o próprio titular comparece)"
+            name: "Novo documento (Quando o próprio titular comparece)"
         })
         for (const text of ["Doc A", "Doc B", "Doc C"]) {
             fireEvent.change(input, { target: { value: text } })

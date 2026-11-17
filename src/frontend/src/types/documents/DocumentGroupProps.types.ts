@@ -2,7 +2,6 @@ import type DocumentsDraftItem from "@/types/documents/DocumentsDraftItem.types"
 
 type DocumentGroupProps = {
     title: string
-    description: string
     items: DocumentsDraftItem[]
     emptyAlert: string
     onAddItem: (description: string) => void

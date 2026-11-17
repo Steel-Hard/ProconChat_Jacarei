@@ -11,19 +11,17 @@
     "groups": {
         "holder": {
             "title": "Quando o próprio titular comparece",
-            "description": "Documentos pedidos quando o próprio consumidor comparece ao atendimento.",
             "emptyAlert": "Nenhum documento será pedido quando o titular comparecer. O cidadão pode chegar sem o necessário para o atendimento.",
             "short": "Titular"
         },
         "representative": {
             "title": "Quando um representante comparece em nome do titular",
-            "description": "Documentos pedidos quando outra pessoa comparece em nome do consumidor.",
             "emptyAlert": "Nenhum documento será pedido quando um representante comparecer. O cidadão pode chegar sem o necessário para o atendimento.",
             "short": "Representante"
         }
     },
     "items": {
-        "addPlaceholder": "Digite um documento e pressione Enter...",
+        "addPlaceholder": "Novo documento",
         "addButton": "Adicionar",
         "editButton": "Editar",
         "saveEditButton": "OK",

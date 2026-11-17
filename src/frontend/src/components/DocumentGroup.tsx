@@ -9,7 +9,6 @@ import css from "@/styles/components/documentGroup.module.css"
 
 export default function DocumentGroup({
     title,
-    description,
     items,
     emptyAlert,
     onAddItem,
@@ -37,16 +36,7 @@ export default function DocumentGroup({
 
     return (
         <section className={css.groupCard}>
-            <div className={css.header}>
-                <h2 className={css.title}>{title}</h2>
-                <p className={css.description}>{description}</p>
-            </div>
-
-            {isEmpty ? (
-                <div role="alert" className={css.emptyAlert}>
-                    {emptyAlert}
-                </div>
-            ) : null}
+            <h2 className={css.title}>{title}</h2>
 
             <ul className={css.list} aria-label={title}>
                 {items.map((item, index) => (
@@ -64,6 +54,12 @@ export default function DocumentGroup({
                     />
                 ))}
             </ul>
+
+            {isEmpty ? (
+                <div role="alert" className={css.emptyAlert}>
+                    {emptyAlert}
+                </div>
+            ) : null}
 
             <form className={css.addForm} onSubmit={handleAdd}>
                 <input

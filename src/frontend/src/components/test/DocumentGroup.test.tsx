@@ -11,7 +11,6 @@ function renderGroup(items: string[], onAddItem = vi.fn()) {
     return render(
         <DocumentGroup
             title="Grupo Teste"
-            description="Descrição"
             items={asDraftItems(items)}
             emptyAlert="Vazio"
             onAddItem={onAddItem}
@@ -28,7 +27,6 @@ describe("DocumentGroup", () => {
         render(
             <DocumentGroup
                 title="Quando o próprio titular comparece"
-                description="Documentos pedidos ao consumidor"
                 items={asDraftItems(["RG", "CPF"])}
                 emptyAlert="Nenhum documento será pedido"
                 onAddItem={vi.fn()}
@@ -42,7 +40,6 @@ describe("DocumentGroup", () => {
         expect(
             screen.getByRole("heading", { name: "Quando o próprio titular comparece" })
         ).toBeInTheDocument()
-        expect(screen.getByText("Documentos pedidos ao consumidor")).toBeInTheDocument()
         expect(screen.getByRole("button", { name: "RG" })).toBeInTheDocument()
         expect(screen.getByRole("button", { name: "CPF" })).toBeInTheDocument()
         expect(screen.queryByRole("alert")).not.toBeInTheDocument()
@@ -52,7 +49,6 @@ describe("DocumentGroup", () => {
         render(
             <DocumentGroup
                 title="Quando um representante comparece em nome do titular"
-                description="Documentos pedidos ao representante"
                 items={asDraftItems([])}
                 emptyAlert="Nenhum documento será pedido quando um representante comparecer."
                 onAddItem={vi.fn()}
@@ -76,7 +72,6 @@ describe("DocumentGroup", () => {
         render(
             <DocumentGroup
                 title="Grupo Teste"
-                description="Descrição"
                 items={asDraftItems(["Item 1"])}
                 emptyAlert="Vazio"
                 onAddItem={onAddItem}
@@ -88,7 +83,7 @@ describe("DocumentGroup", () => {
         )
 
         const input = screen.getByRole("textbox", {
-            name: "Digite um documento e pressione Enter... (Grupo Teste)"
+            name: "Novo documento (Grupo Teste)"
         })
         await user.type(input, "Novo documento importante{enter}")
 
@@ -101,7 +96,7 @@ describe("DocumentGroup", () => {
 
         expect(
             screen.getByRole("textbox", {
-                name: "Digite um documento e pressione Enter... (Grupo Teste)"
+                name: "Novo documento (Grupo Teste)"
             })
         ).toHaveAttribute("maxlength", "255")
     })
@@ -114,7 +109,7 @@ describe("DocumentGroup", () => {
 
         expect(screen.getByText("Limite de 10 documentos por grupo atingido.")).toBeInTheDocument()
         const input = screen.getByRole("textbox", {
-            name: "Digite um documento e pressione Enter... (Grupo Teste)"
+            name: "Novo documento (Grupo Teste)"
         })
         expect(input).toBeDisabled()
         expect(screen.getByRole("button", { name: "Adicionar" })).toBeDisabled()
@@ -138,12 +133,34 @@ describe("DocumentGroup", () => {
         renderGroup([existing], onAddItem)
 
         const input = screen.getByRole("textbox", {
-            name: "Digite um documento e pressione Enter... (Grupo Teste)"
+            name: "Novo documento (Grupo Teste)"
         })
         await user.type(input, `${typed}{enter}`)
 
         expect(screen.getByText("Esse documento já está na lista.")).toBeInTheDocument()
         expect(screen.getByRole("button", { name: "Adicionar" })).toBeDisabled()
         expect(onAddItem).not.toHaveBeenCalled()
+    })
+
+    it("mostra o alerta de grupo vazio depois da lista e antes do campo de novo documento", () => {
+        render(
+            <DocumentGroup
+                title="Grupo Teste"
+                items={asDraftItems([])}
+                emptyAlert="Nenhum documento será pedido."
+                onAddItem={vi.fn()}
+                onEditItem={vi.fn()}
+                onRemoveItem={vi.fn()}
+                onMoveUp={vi.fn()}
+                onMoveDown={vi.fn()}
+            />
+        )
+
+        const list = screen.getByRole("list", { name: "Grupo Teste" })
+        const alert = screen.getByRole("alert")
+        const input = screen.getByRole("textbox", { name: "Novo documento (Grupo Teste)" })
+
+        expect(list.compareDocumentPosition(alert) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+        expect(alert.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     })
 })
