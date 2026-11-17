@@ -23,7 +23,7 @@ export class DocumentsStubRepository implements IDocumentsRepository {
         reminderHours: 24
     }
     public sampleQuestions: SampleQuestionRow[] = [
-        { id: "1", title: "Pergunta 1", documents: ["Doc P1"] }
+        { id: "1", title: "Pergunta 1", categoryTitle: "Categoria 1", documents: ["Doc P1"] }
     ]
 
     async getDocumentsConfig(): Promise<DocumentsConfigData> {
@@ -42,9 +42,9 @@ export class DocumentsStubRepository implements IDocumentsRepository {
         return [...this.sampleQuestions]
     }
 
-    async getQuestionDocuments(questionId: number): Promise<string[]> {
+    async getQuestionDocuments(questionId: number): Promise<string[] | null> {
         const found = this.sampleQuestions.find((q) => Number(q.id) === questionId)
-        return found ? found.documents : []
+        return found ? found.documents : null
     }
 
     async saveDocumentsConfig(data: DocumentsConfigData, actorUserId: number): Promise<void> {

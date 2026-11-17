@@ -1,18 +1,14 @@
 import api from "@/store/api"
+import type DocumentsEnvelope from "@/types/documents/DocumentsEnvelope.types"
+import type DocumentsPreviewArgs from "@/types/documents/DocumentsPreviewArgs.types"
+import type DocumentsPreviewData from "@/types/documents/DocumentsPreviewData.types"
 import type DocumentsConfig from "@/types/documents/DocumentsConfig.types"
 import type DocumentsConfigView from "@/types/documents/DocumentsConfigView.types"
-
-type Envelope<T> = { data: T }
-type DocumentsPreviewArgs = {
-    byRepresentative: boolean
-    groupDocuments: string[]
-    questionId?: string
-}
 
 const DOCUMENTS_PATH = "/api/v1/documents"
 const DOCUMENTS_PREVIEW_PATH = `${DOCUMENTS_PATH}/preview`
 
-function unwrap<T>(response: Envelope<T>): T {
+function unwrap<T>(response: DocumentsEnvelope<T>): T {
     return response.data
 }
 
@@ -43,13 +39,13 @@ const documentsApi = api.injectEndpoints({
                 }
             }
         }),
-        previewDocuments: build.query<{ text: string }, DocumentsPreviewArgs>({
+        previewDocuments: build.query<DocumentsPreviewData, DocumentsPreviewArgs>({
             query: (body) => ({
                 url: DOCUMENTS_PREVIEW_PATH,
                 method: "POST",
                 body
             }),
-            transformResponse: unwrap<{ text: string }>,
+            transformResponse: unwrap<DocumentsPreviewData>,
             providesTags: ["DocumentsPreview"],
             keepUnusedDataFor: 0
         })

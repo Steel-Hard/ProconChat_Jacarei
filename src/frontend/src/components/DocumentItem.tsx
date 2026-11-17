@@ -1,20 +1,13 @@
-import { useState, useRef, useEffect, type FormEvent, type KeyboardEvent } from "react"
+import { useId, useState, useRef, useEffect, type FormEvent, type KeyboardEvent } from "react"
 import { useTranslation } from "react-i18next"
+import type DocumentItemProps from "@/types/documents/DocumentItemProps.types"
+import MAX_DOCUMENT_LENGTH from "@/utils/documents/maxDocumentLength"
 import css from "@/styles/components/documentItem.module.css"
-
-export type DocumentItemProps = {
-    description: string
-    index: number
-    isFirst: boolean
-    isLast: boolean
-    onEdit: (newText: string) => void
-    onRemove: () => void
-    onMoveUp: () => void
-    onMoveDown: () => void
-}
 
 export default function DocumentItem({
     description,
+    position,
+    isTaken,
     isFirst,
     isLast,
     onEdit,
@@ -26,6 +19,7 @@ export default function DocumentItem({
     const [isEditing, setIsEditing] = useState(false)
     const [editText, setEditText] = useState(description)
     const inputRef = useRef<HTMLInputElement>(null)
+    const warningId = useId()
 
     useEffect(() => {
         if (isEditing) {
@@ -49,6 +43,9 @@ export default function DocumentItem({
             event.preventDefault()
         }
         const trimmed = editText.trim()
+        if (trimmed && isTaken(trimmed)) {
+            return
+        }
         if (trimmed && trimmed !== description) {
             onEdit(trimmed)
         }
@@ -63,25 +60,42 @@ export default function DocumentItem({
         }
     }
 
+    const editTaken = isEditing && editText.trim() !== "" && isTaken(editText)
+
     if (isEditing) {
         return (
             <li className={css.item}>
+                <span className={css.position} aria-hidden="true">
+                    {position}
+                </span>
                 <form className={css.editForm} onSubmit={handleSave}>
-                    <input
-                        ref={inputRef}
-                        type="text"
-                        className={css.editInput}
-                        value={editText}
-                        onChange={(e) => setEditText(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        aria-label={t("items.editItemAria", { item: description })}
-                    />
-                    <button type="submit" className={css.saveButton}>
-                        {t("items.saveEditButton")}
-                    </button>
-                    <button type="button" className={css.cancelButton} onClick={handleCancel}>
-                        {t("items.cancelEditButton")}
-                    </button>
+                    <div className={css.editField}>
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            className={css.editInput}
+                            value={editText}
+                            onChange={(e) => setEditText(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            aria-label={t("items.editItemAria", { item: description })}
+                            maxLength={MAX_DOCUMENT_LENGTH}
+                            aria-describedby={editTaken ? warningId : undefined}
+                        />
+                        <span className={css.editHint}>{t("items.editHint")}</span>
+                        {editTaken ? (
+                            <output id={warningId} className={css.warning}>
+                                {t("items.duplicate")}
+                            </output>
+                        ) : null}
+                    </div>
+                    <div className={css.actions}>
+                        <button type="submit" className={css.saveButton} disabled={editTaken}>
+                            {t("items.saveEditButton")}
+                        </button>
+                        <button type="button" className={css.cancelButton} onClick={handleCancel}>
+                            {t("items.cancelEditButton")}
+                        </button>
+                    </div>
                 </form>
             </li>
         )
@@ -89,12 +103,22 @@ export default function DocumentItem({
 
     return (
         <li className={css.item}>
-            <div className={css.textWrapper}>
-                <button type="button" className={css.textButton} onClick={handleStartEdit}>
-                    {description}
-                </button>
-            </div>
+            <span className={css.position} aria-hidden="true">
+                {position}
+            </span>
+            <button type="button" className={css.textButton} onClick={handleStartEdit}>
+                {description}
+            </button>
             <div className={css.actions}>
+                <button
+                    type="button"
+                    className={`${css.actionButton} ${css.editButton}`}
+                    onClick={handleStartEdit}
+                    aria-label={t("items.editItemAria", { item: description })}
+                    title={t("items.editButton")}
+                >
+                    {t("items.editButton")}
+                </button>
                 <button
                     type="button"
                     className={css.actionButton}
@@ -117,21 +141,12 @@ export default function DocumentItem({
                 </button>
                 <button
                     type="button"
-                    className={css.actionButton}
-                    onClick={handleStartEdit}
-                    aria-label={t("items.editItemAria", { item: description })}
-                    title={t("items.editButton")}
-                >
-                    {t("items.editButton")}
-                </button>
-                <button
-                    type="button"
                     className={`${css.actionButton} ${css.removeButton}`}
                     onClick={onRemove}
                     aria-label={t("items.removeItemAria", { item: description })}
                     title={t("items.removeButton")}
                 >
-                    {t("items.removeButton")}
+                    {t("items.removeIcon")}
                 </button>
             </div>
         </li>

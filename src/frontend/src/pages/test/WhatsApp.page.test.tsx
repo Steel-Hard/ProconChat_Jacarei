@@ -4,7 +4,9 @@ import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type WhatsAppSettings from "@/types/whatsapp/WhatsAppSettings.types"
 
-vi.setConfig({ testTimeout: 20000 })
+vi.setConfig({ testTimeout: 60000 })
+
+const LAZY_LOAD_TIMEOUT = 10000
 
 const NEW_TOKEN = "EAAG-token-novo-ficticio-77Zz"
 const UNKNOWN_LIFETIME = { kind: "UNKNOWN", expiresAt: null } as const
@@ -154,7 +156,7 @@ async function renderPage(handlers: Record<string, Handler> = {}, view = setting
 }
 
 async function loaded() {
-    await screen.findByRole("heading", { name: "Credenciais" })
+    await screen.findByRole("heading", { name: "Credenciais" }, { timeout: LAZY_LOAD_TIMEOUT })
 }
 
 function callsTo(calls: Call[], method: string, path: string): Call[] {

@@ -1,23 +1,14 @@
-import { useState, type FormEvent } from "react"
+import { useId, useState, type FormEvent } from "react"
 import { useTranslation } from "react-i18next"
 import DocumentItem from "@/components/DocumentItem"
+import type DocumentGroupProps from "@/types/documents/DocumentGroupProps.types"
+import isDocumentTaken from "@/utils/documents/isDocumentTaken"
+import MAX_DOCUMENT_LENGTH from "@/utils/documents/maxDocumentLength"
+import MAX_DOCUMENTS_PER_GROUP from "@/utils/documents/maxDocumentsPerGroup"
 import css from "@/styles/components/documentGroup.module.css"
-
-export type DocumentGroupProps = {
-    title: string
-    description: string
-    items: string[]
-    emptyAlert: string
-    onAddItem: (description: string) => void
-    onEditItem: (index: number, newText: string) => void
-    onRemoveItem: (index: number) => void
-    onMoveUp: (index: number) => void
-    onMoveDown: (index: number) => void
-}
 
 export default function DocumentGroup({
     title,
-    description,
     items,
     emptyAlert,
     onAddItem,
@@ -28,37 +19,34 @@ export default function DocumentGroup({
 }: DocumentGroupProps) {
     const { t } = useTranslation("documents")
     const [newText, setNewText] = useState("")
+    const limitId = useId()
+    const duplicateId = useId()
 
     function handleAdd(e: FormEvent) {
         e.preventDefault()
         const trimmed = newText.trim()
-        if (trimmed) {
+        if (trimmed && !limitReached && !duplicate) {
             onAddItem(trimmed)
             setNewText("")
         }
     }
 
+    const texts = items.map((item) => item.text)
     const isEmpty = items.length === 0
+    const limitReached = items.length >= MAX_DOCUMENTS_PER_GROUP
+    const duplicate = newText.trim() !== "" && isDocumentTaken(texts, newText)
 
     return (
         <section className={css.groupCard}>
-            <div className={css.header}>
-                <h2 className={css.title}>{title}</h2>
-                <p className={css.description}>{description}</p>
-            </div>
-
-            {isEmpty ? (
-                <div role="alert" className={css.emptyAlert}>
-                    {emptyAlert}
-                </div>
-            ) : null}
+            <h2 className={css.title}>{title}</h2>
 
             <ul className={css.list} aria-label={title}>
                 {items.map((item, index) => (
                     <DocumentItem
-                        key={`${item}-${index}`}
-                        description={item}
-                        index={index}
+                        key={item.id}
+                        description={item.text}
+                        position={index + 1}
+                        isTaken={(text) => isDocumentTaken(texts, text, index)}
                         isFirst={index === 0}
                         isLast={index === items.length - 1}
                         onEdit={(newDesc) => onEditItem(index, newDesc)}
@@ -69,6 +57,12 @@ export default function DocumentGroup({
                 ))}
             </ul>
 
+            {isEmpty ? (
+                <div role="alert" className={css.emptyAlert}>
+                    {emptyAlert}
+                </div>
+            ) : null}
+
             <form className={css.addForm} onSubmit={handleAdd}>
                 <input
                     type="text"
@@ -77,11 +71,28 @@ export default function DocumentGroup({
                     value={newText}
                     onChange={(e) => setNewText(e.target.value)}
                     aria-label={`${t("items.addPlaceholder")} (${title})`}
+                    maxLength={MAX_DOCUMENT_LENGTH}
+                    disabled={limitReached}
+                    aria-describedby={limitReached ? limitId : duplicate ? duplicateId : undefined}
                 />
-                <button type="submit" className={css.addButton} disabled={!newText.trim()}>
+                <button
+                    type="submit"
+                    className={css.addButton}
+                    disabled={!newText.trim() || limitReached || duplicate}
+                >
                     {t("items.addButton")}
                 </button>
             </form>
+            {limitReached ? (
+                <output id={limitId} className={css.warning}>
+                    {t("items.limitReached", { max: MAX_DOCUMENTS_PER_GROUP })}
+                </output>
+            ) : null}
+            {duplicate ? (
+                <output id={duplicateId} className={css.warning}>
+                    {t("items.duplicate")}
+                </output>
+            ) : null}
         </section>
     )
 }

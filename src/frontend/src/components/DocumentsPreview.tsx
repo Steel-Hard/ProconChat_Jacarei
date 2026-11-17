@@ -1,21 +1,10 @@
-import { useId } from "react"
+import { Fragment, useId } from "react"
 import { useTranslation } from "react-i18next"
-import type AttendeeGroup from "@/types/documents/AttendeeGroup.types"
-import type SampleQuestion from "@/types/documents/SampleQuestion.types"
+import DocumentsQuestionPicker from "@/components/DocumentsQuestionPicker"
+import WhatsAppMessageBubble from "@/components/WhatsAppMessageBubble"
+import type DocumentsPreviewProps from "@/types/documents/DocumentsPreviewProps.types"
+import buildPreviewLines from "@/utils/documents/buildPreviewLines"
 import css from "@/styles/components/documentsPreview.module.css"
-
-export type DocumentsPreviewProps = {
-    attendeeGroup: AttendeeGroup
-    onChangeAttendeeGroup: (group: AttendeeGroup) => void
-    sampleQuestions: SampleQuestion[]
-    selectedQuestionId: string
-    onChangeQuestionId: (id: string) => void
-    confirmationText: string
-    hasPreviewError: boolean
-    duplicateDocs: Set<string>
-    isUnsaved: boolean
-    isQuestionEmpty: boolean
-}
 
 export default function DocumentsPreview({
     attendeeGroup,
@@ -23,119 +12,111 @@ export default function DocumentsPreview({
     sampleQuestions,
     selectedQuestionId,
     onChangeQuestionId,
-    confirmationText,
+    preview,
     hasPreviewError,
-    duplicateDocs,
     isUnsaved,
-    isQuestionEmpty
+    isQuestionEmpty,
+    isUpdating
 }: DocumentsPreviewProps) {
     const { t } = useTranslation("documents")
-    const attendeeId = useId()
-    const questionId = useId()
-
-    const lines = confirmationText.split("\n")
-    const questionDocsHeadingIndex = lines.indexOf("Documentos úteis para esta dúvida:")
+    const headingId = useId()
 
     return (
-        <section className={css.previewCard} aria-labelledby="preview-heading">
-            <div className={css.header}>
-                <h2 id="preview-heading" className={css.title}>
-                    {t("preview.title")}
-                </h2>
-                <p className={css.subtitle}>{t("preview.subtitle")}</p>
-            </div>
-
-            <div className={css.selectors}>
-                <div className={css.fieldGroup}>
-                    <label htmlFor={attendeeId} className={css.label}>
-                        {t("preview.attendeeLabel")}
-                    </label>
-                    <select
-                        id={attendeeId}
-                        className={css.select}
-                        value={attendeeGroup}
-                        onChange={(e) => onChangeAttendeeGroup(e.target.value as AttendeeGroup)}
-                    >
-                        <option value="holder">{t("preview.attendeeHolder")}</option>
-                        <option value="representative">
-                            {t("preview.attendeeRepresentative")}
-                        </option>
-                    </select>
+        <section className={css.previewCard} aria-labelledby={headingId}>
+            <div className={css.controls}>
+                <div>
+                    <h2 id={headingId} className={css.title}>
+                        {t("preview.title")}
+                    </h2>
+                    <p className={css.subtitle}>{t("preview.subtitle")}</p>
                 </div>
 
-                <div className={css.fieldGroup}>
-                    <label htmlFor={questionId} className={css.label}>
-                        {t("preview.questionLabel")}
-                    </label>
-                    <select
-                        id={questionId}
-                        className={css.select}
-                        value={selectedQuestionId}
-                        onChange={(e) => onChangeQuestionId(e.target.value)}
-                    >
-                        {sampleQuestions.map((q) => (
-                            <option key={q.id} value={q.id}>
-                                {q.title}
-                            </option>
+                <fieldset className={css.attendeeGroup}>
+                    <legend className={css.label}>{t("preview.attendeeLabel")}</legend>
+                    <div className={css.segmented}>
+                        {(["holder", "representative"] as const).map((group) => (
+                            <button
+                                key={group}
+                                type="button"
+                                className={
+                                    group === attendeeGroup
+                                        ? `${css.segment} ${css.segmentActive}`
+                                        : css.segment
+                                }
+                                aria-pressed={group === attendeeGroup}
+                                onClick={() => onChangeAttendeeGroup(group)}
+                            >
+                                {t(`preview.attendee.${group}`)}
+                            </button>
                         ))}
-                    </select>
-                </div>
-            </div>
+                    </div>
+                </fieldset>
 
-            <div className={css.notices}>
-                {isUnsaved ? (
-                    <output className={css.unsavedNotice}>{t("preview.unsavedNotice")}</output>
-                ) : null}
+                <DocumentsQuestionPicker
+                    questions={sampleQuestions}
+                    selectedId={selectedQuestionId}
+                    onChange={onChangeQuestionId}
+                />
 
-                {isQuestionEmpty ? (
-                    <output className={css.noDocsNotice}>
-                        {t("preview.noQuestionDocsNotice")}
+                {preview !== null && preview.groupBlock === null ? (
+                    <output className={css.emptyGroupAlert}>
+                        {t(`groups.${attendeeGroup}.emptyAlert`)}
                     </output>
                 ) : null}
 
+                {isQuestionEmpty ? (
+                    <output className={css.note}>{t("preview.noQuestionDocsNotice")}</output>
+                ) : null}
+
+                {isUnsaved ? (
+                    <output className={css.draftNote}>{t("preview.unsavedNotice")}</output>
+                ) : null}
+
+                <div className={css.updatingSlot}>
+                    {isUpdating ? (
+                        <output className={css.updating} data-updating="true">
+                            {t("preview.updating")}
+                        </output>
+                    ) : null}
+                </div>
+
                 {hasPreviewError ? (
-                    <p role="alert" className={css.noDocsNotice}>
+                    <p role="alert" className={css.errorNote}>
                         {t("preview.loadFailed")}
                     </p>
                 ) : null}
             </div>
 
-            <div className={css.chatPreview}>
-                <div className={css.bubble} data-testid="preview-bubble">
-                    {lines.map((line, idx) => {
-                        if (line.startsWith("• ")) {
-                            const docText = line.slice(2).trim()
-                            const isDuplicate =
-                                idx < questionDocsHeadingIndex && duplicateDocs.has(docText)
-
-                            if (isDuplicate) {
-                                return (
-                                    <span key={idx}>
-                                        {t("preview.bullet")}
-                                        <mark
-                                            className={css.repeatedItem}
-                                            title={t("preview.duplicateTooltip")}
-                                        >
-                                            {docText}
-                                        </mark>
-                                        <span className={css.repeatedBadge}>
-                                            {t("preview.duplicateBadge")}
-                                        </span>
-                                    </span>
-                                )
-                            }
-                        }
-
-                        if (idx === 0) {
-                            return (
-                                <strong key={idx} className={css.bubbleHeading}>
-                                    {line}
-                                </strong>
-                            )
-                        }
-
-                        return <span key={idx}>{line || "\u00A0"}</span>
-                    })}
+            <div className={css.chatColumn}>
+                <div className={css.chatPreview}>
+                    <div data-testid="preview-bubble">
+                        {preview !== null ? (
+                            <WhatsAppMessageBubble
+                                text={buildPreviewLines(preview).map((line, index, lines) => (
+                                    <Fragment key={index}>
+                                        {line.repeated ? (
+                                            <mark className={css.repeatedItem}>{line.text}</mark>
+                                        ) : (
+                                            <span>{line.text}</span>
+                                        )}
+                                        {index < lines.length - 1 ? "\n" : null}
+                                    </Fragment>
+                                ))}
+                                time={t("preview.messageTime")}
+                            />
+                        ) : null}
+                    </div>
+                </div>
+                <div className={css.chatNotes}>
+                    <p className={css.note}>{t("preview.exampleNote")}</p>
+                    {preview !== null && preview.repeatedCount > 0 ? (
+                        <p className={css.repeatedLegend}>
+                            <i className={css.repeatedSwatch} aria-hidden="true" />
+                            <span>
+                                {t("preview.repeatedLegend", { count: preview.repeatedCount })}
+                            </span>
+                        </p>
+                    ) : null}
                 </div>
             </div>
         </section>

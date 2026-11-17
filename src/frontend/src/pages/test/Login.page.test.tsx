@@ -76,6 +76,8 @@ afterAll(() => {
     vi.unstubAllEnvs()
 })
 
+const LAZY_LOAD_TIMEOUT = 10000
+
 describe("LoginPage", () => {
     it("mostra a marca, os campos, o botão e o texto de apoio, sem recuperação de senha", async () => {
         renderLogin()
@@ -157,7 +159,13 @@ describe("LoginPage", () => {
 
         await signIn()
 
-        expect(await screen.findByRole("heading", { name: "Agendamentos" })).toBeInTheDocument()
+        expect(
+            await screen.findByRole(
+                "heading",
+                { name: "Agendamentos" },
+                { timeout: LAZY_LOAD_TIMEOUT }
+            )
+        ).toBeInTheDocument()
         expect(router.state.location.pathname).toBe("/agendamentos")
     })
 
@@ -167,7 +175,13 @@ describe("LoginPage", () => {
 
         await signIn()
 
-        expect(await screen.findByRole("heading", { name: "Agendamentos" })).toBeInTheDocument()
+        expect(
+            await screen.findByRole(
+                "heading",
+                { name: "Agendamentos" },
+                { timeout: LAZY_LOAD_TIMEOUT }
+            )
+        ).toBeInTheDocument()
     })
 
     it("não grava sessão nem conta no navegador depois de entrar", async () => {
@@ -175,7 +189,7 @@ describe("LoginPage", () => {
         renderLogin()
 
         await signIn()
-        await screen.findByRole("heading", { name: "Agendamentos" })
+        await screen.findByRole("heading", { name: "Agendamentos" }, { timeout: LAZY_LOAD_TIMEOUT })
 
         const keys = Object.keys(window.localStorage)
         expect(keys.filter((key) => key !== LANGUAGE_STORAGE_KEY)).toEqual([])

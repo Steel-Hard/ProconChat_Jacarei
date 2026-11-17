@@ -20,6 +20,7 @@ export default function DocumentsPage() {
                         <h1 className={css.title}>{t("heading")}</h1>
                         <p className={css.subtitle}>{t("subtitle")}</p>
                         <LastChangeNote change={page.lastChange} />
+                        <div className={css.notice}>{t("notice")}</div>
                     </div>
                     {page.status !== "loading" ? (
                         <UnsavedChangesBar
@@ -32,8 +33,6 @@ export default function DocumentsPage() {
                     ) : null}
                 </div>
 
-                <div className={css.notice}>{t("notice")}</div>
-
                 {page.status === "loading" ? (
                     <p className={css.loading}>{t("common:loading")}</p>
                 ) : null}
@@ -45,9 +44,16 @@ export default function DocumentsPage() {
                 ) : null}
 
                 {page.actionError ? (
-                    <p role="alert" className={css.alert}>
-                        {page.actionError}
-                    </p>
+                    <div role="alert" className={css.alert}>
+                        <p>{page.actionError.message}</p>
+                        {page.actionError.issues.length > 0 ? (
+                            <ul>
+                                {page.actionError.issues.map((issue) => (
+                                    <li key={issue}>{issue}</li>
+                                ))}
+                            </ul>
+                        ) : null}
+                    </div>
                 ) : null}
 
                 {page.status !== "loading" && page.status !== "error" ? (
@@ -55,8 +61,7 @@ export default function DocumentsPage() {
                         <div className={css.groupsColumn}>
                             <DocumentGroup
                                 title={t("groups.holder.title")}
-                                description={t("groups.holder.description")}
-                                items={draft.holder}
+                                items={draft.holderItems}
                                 emptyAlert={t("groups.holder.emptyAlert")}
                                 onAddItem={(desc) => draft.actions.addItem("holder", desc)}
                                 onEditItem={(index, desc) =>
@@ -69,8 +74,7 @@ export default function DocumentsPage() {
 
                             <DocumentGroup
                                 title={t("groups.representative.title")}
-                                description={t("groups.representative.description")}
-                                items={draft.representative}
+                                items={draft.representativeItems}
                                 emptyAlert={t("groups.representative.emptyAlert")}
                                 onAddItem={(desc) => draft.actions.addItem("representative", desc)}
                                 onEditItem={(index, desc) =>
@@ -93,11 +97,11 @@ export default function DocumentsPage() {
                                 sampleQuestions={preview.sampleQuestions}
                                 selectedQuestionId={preview.previewQuestionId}
                                 onChangeQuestionId={preview.setPreviewQuestionId}
-                                confirmationText={preview.confirmationText}
+                                preview={preview.previewData}
                                 hasPreviewError={preview.confirmationError}
-                                duplicateDocs={preview.duplicateDocs}
                                 isUnsaved={preview.isPreviewUnsaved}
                                 isQuestionEmpty={preview.isQuestionEmpty}
+                                isUpdating={preview.isPreviewUpdating}
                             />
                         </div>
                     </div>

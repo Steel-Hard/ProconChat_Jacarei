@@ -1,6 +1,7 @@
 export interface SampleQuestionRow {
     id: string
     title: string
+    categoryTitle: string
     documents: string[]
 }
 
@@ -17,7 +18,7 @@ export interface DocumentsSettingsContext {
 }
 
 export interface DocumentsLastChange {
-    id: number
+    id: number | null
     name: string
     at: string
 }
@@ -27,7 +28,7 @@ export interface IDocumentsRepository {
     getLastChange(): Promise<DocumentsLastChange | null>
     getScheduleContext(): Promise<DocumentsSettingsContext>
     getSampleQuestions(): Promise<SampleQuestionRow[]>
-    getQuestionDocuments(questionId: number): Promise<string[]>
+    getQuestionDocuments(questionId: number): Promise<string[] | null>
     saveDocumentsConfig(
         data: DocumentsConfigData,
         actorUserId: number

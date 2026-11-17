@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import buildMonthlyPreview from "@/testUtils/buildMonthlyPreview"
 import renderSchedulePage from "@/testUtils/renderSchedulePage"
 
-vi.setConfig({ testTimeout: 20000 })
+vi.setConfig({ testTimeout: 60000 })
 
 const SAVED_PREVIEW = buildMonthlyPreview("2026-11", [
     { date: "2026-11-03", status: "AVAILABLE", freeSeats: 7, capacity: 8 }

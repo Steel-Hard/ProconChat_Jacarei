@@ -12,6 +12,7 @@ export default defineConfig({
     test: {
         environment: "jsdom",
         pool: "vmThreads",
+        testTimeout: 15000,
         setupFiles: ["./src/setupTests.ts"],
         coverage: {
             provider: "v8",

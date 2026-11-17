@@ -35,6 +35,9 @@ Em cada grupo:
 
 Regras:
 - **Segue o padrão de salvar** ([regras gerais](00-regras-gerais.md#3-salvar-descartar-e-registrar-quem-alterou)), com "Última alteração por [nome] em [data]".
+- **Contador de alterações:** em Documentos, item novo, item removido e item editado contam 1 cada, e mudar só a ordem conta 1 por grupo.
+- **Limite:** no máximo **10 itens por grupo**. A tela avisa e impede o 11º.
+- **Item repetido no mesmo grupo:** a tela avisa e impede quando o item é igual a outro do grupo, ignorando acento e maiúscula.
 - **Grupo vazio:** a tela alerta "Nenhum documento será pedido quando [o titular / um representante] comparecer. O cidadão pode chegar sem o necessário para o atendimento." **Permite salvar mesmo assim.**
 
 ## Prévia da mensagem de confirmação do agendamento
@@ -53,7 +56,10 @@ Com os seletores **"Quem comparece"** (titular ou representante) e **"Pergunta d
 
 - O título é **"Agendamento realizado"**, e não "confirmado", para não confundir com o status interno **Confirmado** do painel (que significa que um funcionário assumiu).
 - Se o lembrete estiver desligado, a frase sobre avisos cita só o aviso de cancelamento.
-- **Itens repetidos** entre o grupo e a pergunta aparecem destacados, com a dica "Este item também está nos documentos da pergunta".
+- **Pergunta de exemplo:** lista **todas as perguntas ativas**, na ordem da tela [Conteúdo](06-conteudo.md). Sem perguntas ativas, a tela mostra um estado vazio.
+- **Protocolo e data** da prévia são fixos e aparecem rotulados como **exemplo**.
+- **Itens repetidos** entre o grupo e a pergunta aparecem destacados, com a dica "Este item também está nos documentos da pergunta". Um item é repetido quando é igual ao outro, ignorando acento e maiúscula, ou quando um está contido no outro por palavras inteiras (por exemplo, "RG" e "RG ou outro documento oficial com foto").
+- A prévia vem pronta do servidor, montada pela mesma função que gera a mensagem do bot, e a tela não interpreta o texto.
 - A prévia avisa quando está mostrando alterações ainda não salvas, ou quando a pergunta escolhida não tem documentos.
 
 ## O que não existe de propósito

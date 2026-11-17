@@ -1343,13 +1343,21 @@ perguntas de `RequiredDocuments`.
 
 | Rota | Entrada | Sucesso | Erros |
 | --- | --- | --- | --- |
-| `GET /api/v1/documents` | — | `200 { data: DocumentsViewOutput }`, com os grupos `holder` e `representative`, última alteração, endereço/lembrete e até 10 perguntas ativas com documentos | `401 UNAUTHORIZED`, `403 FORBIDDEN` |
-| `PUT /api/v1/documents` | `{ holder: string[], representative: string[] }` (descrições de 1 a 255 caracteres) | `200 { data: DocumentsViewOutput }`; substitui os dois grupos e registra a alteração em `AuditLog` | `400 BAD_REQUEST`, `401`, `403` |
-| `POST /api/v1/documents/preview` | `{ byRepresentative: boolean, groupDocuments: string[], questionId?: string \| number }` | `200 { data: { text: string } }`, formatado pela mesma `formatarConfirmacaoAgendamento` usada pelo bot, sem salvar alterações | `400 BAD_REQUEST`, `401`, `403` |
+| `GET /api/v1/documents` | — | `200 { data: DocumentsViewOutput }`, com os grupos `holder` e `representative`, última alteração (`updatedBy` fica `{ id: null, name: "usuário removido" }` quando o autor não existe mais), endereço/lembrete de `ScheduleSettings` e todas as perguntas ativas (`id`, `title`, `categoryTitle`, `documents`), na ordem da tela Conteúdo | `401 UNAUTHORIZED`, `403 FORBIDDEN`, `500` se faltar a configuração de horários |
+| `PUT /api/v1/documents` | `{ holder: string[], representative: string[] }` (até 10 itens por grupo, de 1 a 255 caracteres, sem item repetido no mesmo grupo ignorando acento e maiúscula) | `200 { data: DocumentsViewOutput }`; substitui os dois grupos e registra a alteração em `AuditLog`. Salvar a mesma lista não grava `AuditLog` nem troca "Última alteração por" (mudar só a ordem conta como alteração). Saves simultâneos são serializados por trava no banco | `400 BAD_REQUEST` com mensagem em português citando o item e o motivo, `401`, `403` |
+| `POST /api/v1/documents/preview` | `{ byRepresentative: boolean, groupDocuments: string[], questionId?: inteiro positivo ou texto numérico }`, com as mesmas regras de itens do `PUT` | `200 { data }` com `text` (saída de `formatarConfirmacaoAgendamento`, a mesma do bot), `example` (`protocol`, `dateTime` fixos), `title`, `details[]` (`label`, `value`), `groupBlock` e `questionBlock` (`heading`, `items[]` com `text` e `repeated`, ou `null` se a lista estiver vazia), `notice` e `repeatedCount`. Sem salvar alterações | `400 BAD_REQUEST` (inclui `questionId` inválido: "Pergunta inválida."), `401`, `403`, `404 NOT_FOUND` se a pergunta não existe ou está inativa |
 
-O seletor de perguntas inclui somente perguntas ativas de categorias ativas. Quando `questionId` é
-omitido ou não identifica uma pergunta válida, a prévia não inclui documentos específicos da dúvida.
+Um item é `repeated` quando aparece nas duas listas: igual ignorando acento, maiúscula e espaços, ou
+um contido no outro por palavras inteiras (por exemplo, "RG" e "RG ou outro documento oficial com
+foto"). `repeatedCount` conta os itens do grupo repetidos. A regra vive só no backend
+(`utils/documentMatch.ts`). Perguntas e categorias inativas ficam fora do seletor e da prévia.
 
+As respostas da prévia usadas pelos testes do painel ficam em `src/frontend/src/testUtils/documentsPreview*.json`.
+O teste `services/documents.previewFixtures.test.ts` compara cada arquivo com a saída real de
+`previewConfirmation` e falha se o contrato mudar. Quando a mudança for intencional, regenere os
+JSON com `npm run fixtures:documents-preview` (em `src/backend`, define `REGENERATE_PREVIEW_FIXTURES=1`
+e reescreve os arquivos em vez de comparar) e commite-os junto com a alteração do backend. As entradas de cada
+arquivo ficam em `services/mock/documentsPreviewFixtures.ts`.
 
 ## Retorno de quem já tem agendamento (#59)
 
