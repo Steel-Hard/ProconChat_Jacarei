@@ -13,8 +13,6 @@ import type AttendeeGroup from "@/types/documents/AttendeeGroup.types"
 import type SampleQuestion from "@/types/documents/SampleQuestion.types"
 import type LastChange from "@/types/settings/LastChange.types"
 
-const EMPTY_DOCS: string[] = []
-
 export default function useDocuments() {
     const { t } = useTranslation(["documents", "common"])
     const { showToast } = useToast()
@@ -39,7 +37,6 @@ export default function useDocuments() {
     }, [sampleQuestions, previewQuestionId])
 
     const activeGroupDocs = previewGroup === "holder" ? draft.holder : draft.representative
-    const activeQuestionDocs = selectedQuestion?.documents ?? EMPTY_DOCS
 
     const questionId = selectedQuestion === null ? undefined : Number(selectedQuestion.id)
     const previewArgs = useMemo(
@@ -59,7 +56,8 @@ export default function useDocuments() {
 
     const isPreviewUnsaved =
         previewGroup === "holder" ? draft.holderChanged : draft.representativeChanged
-    const isQuestionEmpty = selectedQuestion !== null && activeQuestionDocs.length === 0
+    const isQuestionEmpty =
+        selectedQuestion !== null && previewData !== null && previewData.questionBlock === null
 
     const lastChange: LastChange | null =
         view?.updatedBy != null && view?.updatedAt != null

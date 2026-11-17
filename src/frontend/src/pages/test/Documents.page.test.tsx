@@ -44,6 +44,7 @@ function stubDocumentsFetch(
         data?: unknown
         error?: unknown
         put?: { status: number; body: unknown }
+        previewContract?: unknown
     } = {
         status: 200,
         data: initialDocuments
@@ -112,11 +113,13 @@ function stubDocumentsFetch(
         if (url.endsWith("/api/v1/documents/preview") && method === "POST") {
             previewBodies.push(body)
             const contract =
-                body?.byRepresentative === true
-                    ? representativeContract
-                    : body?.questionId === undefined
-                      ? withoutQuestionContract
-                      : holderContract
+                response.previewContract !== undefined
+                    ? response.previewContract
+                    : body?.byRepresentative === true
+                      ? representativeContract
+                      : body?.questionId === undefined
+                        ? withoutQuestionContract
+                        : holderContract
             return new Response(JSON.stringify({ data: contract }), {
                 status: 200,
                 headers: { "Content-Type": "application/json" }
@@ -611,5 +614,50 @@ describe("DocumentsPage", () => {
         )
 
         expect(screen.getByRole("textbox", { name: "Editar CPF" })).toHaveValue("CPF do titular")
+    })
+
+    it("não avisa pergunta sem documentos quando a prévia traz o bloco da pergunta", async () => {
+        const { fetchMock } = stubDocumentsFetch({
+            status: 200,
+            data: {
+                ...initialDocuments,
+                sampleQuestions: [{ id: "1", title: "P", categoryTitle: "C", documents: [] }]
+            },
+            previewContract: holderContract
+        })
+        await renderDocumentsPage(fetchMock)
+
+        await within(await screen.findByTestId("preview-bubble")).findByText(
+            "Fatura do cartão",
+            {},
+            { timeout: 5000 }
+        )
+        expect(
+            screen.queryByText(
+                "Esta pergunta não tem documentos úteis cadastrados. A mensagem mostra só a lista do grupo."
+            )
+        ).not.toBeInTheDocument()
+    })
+
+    it("avisa pergunta sem documentos quando a prévia não traz o bloco da pergunta", async () => {
+        const { fetchMock } = stubDocumentsFetch({
+            status: 200,
+            data: {
+                ...initialDocuments,
+                sampleQuestions: [
+                    { id: "1", title: "P", categoryTitle: "C", documents: ["Fatura do cartão"] }
+                ]
+            },
+            previewContract: withoutQuestionContract
+        })
+        await renderDocumentsPage(fetchMock)
+
+        expect(
+            await screen.findByText(
+                "Esta pergunta não tem documentos úteis cadastrados. A mensagem mostra só a lista do grupo.",
+                {},
+                { timeout: 5000 }
+            )
+        ).toBeInTheDocument()
     })
 })
