@@ -98,4 +98,55 @@ describe("useDocumentsDraft", () => {
         expect(result.current.representative).toEqual(["Nova procuração"])
         expect(result.current.hasChanges).toBe(false)
     })
+
+    it("registra uma alteração por ação, na ordem em que aconteceram", () => {
+        const { result } = renderHook(() => useDocumentsDraft(initialConfig))
+
+        act(() => {
+            result.current.actions.addItem("holder", "Comprovante de endereço")
+        })
+        act(() => {
+            result.current.actions.moveUp("holder", 1)
+        })
+        act(() => {
+            result.current.actions.editItem("representative", 0, "RG e CPF do titular")
+        })
+        act(() => {
+            result.current.actions.removeItem("representative", 1)
+        })
+
+        expect(result.current.changes).toEqual([
+            "Adicionou “Comprovante de endereço” (titular)",
+            "Moveu “CPF” para cima (titular)",
+            "Editou “RG do titular” para “RG e CPF do titular” (representante)",
+            "Removeu “Procuração” (representante)"
+        ])
+    })
+
+    it("zera os registros ao descartar", () => {
+        const { result } = renderHook(() => useDocumentsDraft(initialConfig))
+
+        act(() => {
+            result.current.actions.addItem("holder", "Novo")
+        })
+        act(() => {
+            result.current.actions.discard()
+        })
+
+        expect(result.current.changes).toEqual([])
+    })
+
+    it("não mostra registros quando as listas voltam ao que está salvo", () => {
+        const { result } = renderHook(() => useDocumentsDraft(initialConfig))
+
+        act(() => {
+            result.current.actions.addItem("holder", "Novo")
+        })
+        act(() => {
+            result.current.actions.removeItem("holder", 2)
+        })
+
+        expect(result.current.hasChanges).toBe(false)
+        expect(result.current.changes).toEqual([])
+    })
 })

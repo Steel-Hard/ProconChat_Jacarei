@@ -56,7 +56,16 @@
         "repeatedLegend_other": "{{count}} itens aparecem nas duas listas. O cidadão recebe o pedido repetido."
     },
     "changes": {
-        "holderGroup": "Documentos do titular alterados",
-        "representativeGroup": "Documentos do representante alterados"
+        "group": {
+            "holder": "titular",
+            "representative": "representante"
+        },
+        "added": "Adicionou “{{item}}” ({{group}})",
+        "removed": "Removeu “{{item}}” ({{group}})",
+        "edited": "Editou “{{from}}” para “{{to}}” ({{group}})",
+        "moved": {
+            "up": "Moveu “{{item}}” para cima ({{group}})",
+            "down": "Moveu “{{item}}” para baixo ({{group}})"
+        }
     }
 }

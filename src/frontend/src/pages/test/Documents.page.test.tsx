@@ -231,17 +231,68 @@ describe("DocumentsPage", () => {
         expect(screen.getByText("1 alteração não salva")).toBeInTheDocument()
     })
 
-    it("reordena itens com botões de seta", async () => {
+    it("reordena itens e envia a ordem final no corpo do PUT", async () => {
+        const user = userEvent.setup()
+        const { fetchMock, getCapturedPutBody } = stubDocumentsFetch()
+        await renderDocumentsPage(fetchMock)
+
+        const holderList = await screen.findByRole("list", {
+            name: "Quando o próprio titular comparece"
+        })
+        await user.click(within(holderList).getByRole("button", { name: "Mover CPF para cima" }))
+
+        const titles = within(holderList)
+            .getAllByRole("listitem")
+            .map((item) => within(item).getAllByRole("button")[0]!.textContent)
+        expect(titles).toEqual([
+            "CPF",
+            "RG ou outro documento oficial com foto",
+            "Comprovante de endereço",
+            "Comprovante da reclamação"
+        ])
+        expect(screen.getByText("1 alteração não salva")).toBeInTheDocument()
+
+        await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
+
+        await waitFor(() => expect(getCapturedPutBody()).not.toBeNull())
+        expect(getCapturedPutBody()).toEqual({
+            holder: [
+                "CPF",
+                "RG ou outro documento oficial com foto",
+                "Comprovante de endereço",
+                "Comprovante da reclamação"
+            ],
+            representative: initialDocuments.representative
+        })
+    })
+
+    it("conta uma alteração por ação e lista as pendentes ao passar o mouse", async () => {
         const user = userEvent.setup()
         const { fetchMock } = stubDocumentsFetch()
         await renderDocumentsPage(fetchMock)
 
-        await screen.findByRole("heading", { name: "Quando o próprio titular comparece" })
+        const holderList = await screen.findByRole("list", {
+            name: "Quando o próprio titular comparece"
+        })
+        await user.type(
+            screen.getByRole("textbox", {
+                name: "Digite um documento e pressione Enter... (Quando o próprio titular comparece)"
+            }),
+            "Carteira de Trabalho{enter}"
+        )
+        await user.click(within(holderList).getByRole("button", { name: "Remover CPF" }))
+        await user.click(
+            within(holderList).getByRole("button", {
+                name: "Mover Comprovante de endereço para cima"
+            })
+        )
 
-        const moveDownButtons = screen.getAllByTitle("Mover para baixo")
-        await user.click(moveDownButtons[0]!)
+        const chip = screen.getByText("3 alterações não salvas")
+        await user.hover(chip)
 
-        expect(screen.getByText("1 alteração não salva")).toBeInTheDocument()
+        expect(screen.getByRole("tooltip")).toHaveTextContent(
+            "Pendentes: Adicionou “Carteira de Trabalho” (titular); Removeu “CPF” (titular); Moveu “Comprovante de endereço” para cima (titular)"
+        )
     })
 
     it("exibe alerta de grupo vazio mas permite salvar", async () => {
