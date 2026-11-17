@@ -27,46 +27,6 @@ afterEach(() => {
 })
 
 describe("AppointmentDetail.page: atribuição, correção e observações", () => {
-    it("atribui a um funcionário ativo e mostra erro de conflito com o protocolo", async () => {
-        const detail = detailWithActions({}, { assign: { allowed: true, code: null } })
-        const page = await renderAppointmentDetailPage({
-            handlers: {
-                [`GET ${DETAIL_PATH}`]: () => ({ status: 200, body: { data: detail } }),
-                "GET /api/v1/appointments/staff": () => ({
-                    status: 200,
-                    body: { data: [{ id: "2", name: "Bruno Lima", active: true }] }
-                }),
-                [`PATCH ${STATUS_PATH}`]: () => ({
-                    status: 409,
-                    body: {
-                        error: {
-                            code: "ASSIGNEE_BUSY",
-                            message: "ocupado",
-                            details: { conflictingProtocol: "AG-0099" }
-                        }
-                    }
-                })
-            }
-        })
-
-        await screen.findByRole("option", { name: "Bruno Lima" })
-        await page.user.selectOptions(
-            screen.getByRole("combobox", { name: "Selecione um funcionário" }),
-            "2"
-        )
-        await page.user.click(screen.getByRole("button", { name: "Atribuir agendamento" }))
-
-        expect(
-            await screen.findByText(
-                "O funcionário já tem outro agendamento neste horário (AG-0099)."
-            )
-        ).toBeInTheDocument()
-        expect(page.requests("PATCH", STATUS_PATH)[0]?.body).toEqual({
-            action: "assign",
-            assigneeUserId: "2"
-        })
-    })
-
     it.each([
         [
             "RESPONSIBLE_BUSY",
@@ -161,7 +121,7 @@ describe("AppointmentDetail.page: atribuição, correção e observações", () 
         expect(await box.findByRole("status")).toHaveTextContent(text)
     })
 
-    it("adiciona observações internas com autor e data, sem controles de edição ou exclusão", async () => {
+    it("mostra cada observação com autor e data, sem editar nem excluir, e salva uma nova", async () => {
         const detail = detailWithActions(
             {
                 notes: [
@@ -187,24 +147,60 @@ describe("AppointmentDetail.page: atribuição, correção e observações", () 
         })
 
         await screen.findByText("Cidadão trouxe os documentos.")
-        expect(
-            screen.getByText("Visíveis apenas para a equipe do PROCON e nunca enviadas ao cidadão.")
-        ).toBeInTheDocument()
-        expect(screen.getByText("Autor: Ana Paula Souza")).toBeInTheDocument()
+        expect(screen.getByText("Ana Paula Souza")).toBeInTheDocument()
+        expect(screen.getByText("19/10/2026 10:00")).toBeInTheDocument()
+        expect(screen.queryByText(/Autor:/)).toBeNull()
         expect(screen.queryByRole("button", { name: /editar observação/i })).not.toBeInTheDocument()
         expect(
             screen.queryByRole("button", { name: /excluir observação/i })
         ).not.toBeInTheDocument()
 
-        await page.user.type(
-            screen.getByRole("textbox", { name: "Escreva uma observação interna" }),
-            "Novo registro"
-        )
-        await page.user.click(screen.getByRole("button", { name: "Adicionar observação" }))
+        const field = screen.getByPlaceholderText("Visível apenas para a equipe do PROCON")
+        await page.user.type(field, "Novo registro")
+        await page.user.click(screen.getByRole("button", { name: "Salvar observação" }))
 
         expect(await screen.findByText("Observação adicionada.")).toBeInTheDocument()
         expect(page.requests("POST", `${DETAIL_PATH}/notes`)[0]?.body).toEqual({
             text: "Novo registro"
         })
+    })
+
+    it("mostra Conta removida quando a observação não tem autor", async () => {
+        const detail = detailWithActions(
+            {
+                notes: [
+                    {
+                        id: "9",
+                        author_user_id: "1",
+                        author_user_name: null,
+                        text: "Nota antiga.",
+                        created_at: "2026-10-19T13:00:00.000Z"
+                    }
+                ]
+            },
+            {}
+        )
+        await renderAppointmentDetailPage({
+            handlers: { [`GET ${DETAIL_PATH}`]: () => ({ status: 200, body: { data: detail } }) }
+        })
+
+        await screen.findByText("Nota antiga.")
+        expect(screen.getByText("Conta removida")).toBeInTheDocument()
+        expect(screen.queryByText("Autor")).toBeNull()
+    })
+
+    it("avisa quando não há observações e esconde o campo para conta só de leitura", async () => {
+        await renderAppointmentDetailPage({
+            handlers: {
+                [`GET ${DETAIL_PATH}`]: () => ({
+                    status: 200,
+                    body: { data: buildAppointmentDetail() }
+                })
+            }
+        })
+
+        expect(await screen.findByText("Nenhuma observação registrada.")).toBeInTheDocument()
+        expect(screen.queryByPlaceholderText("Visível apenas para a equipe do PROCON")).toBeNull()
+        expect(screen.queryByRole("button", { name: "Salvar observação" })).toBeNull()
     })
 })

@@ -227,14 +227,30 @@
     background: var(--color-primary-dark);
 }
 
-.actionWarning {
+.attention {
+    border: 1px solid #edb9a0;
+    background: var(--bg-surface);
+    color: #8a3a12;
+}
+
+.attention:hover {
+    background: #fdf3ee;
+}
+
+.danger {
     border: 1px solid var(--error-border);
     background: var(--bg-surface);
     color: var(--danger);
 }
 
-.actionWarning:hover {
+.danger:hover {
     background: var(--error-soft-bg);
+}
+
+.hint {
+    margin-top: -4px;
+    font-size: 12.5px;
+    color: var(--text-muted);
 }
 
 .box {
@@ -272,4 +288,14 @@
     color: var(--text-strong);
     font-size: 13px;
     line-height: 1.45;
+}
+
+.secondary {
+    border: 1px solid var(--border-input);
+    background: var(--bg-surface);
+    color: var(--color-primary-darker);
+}
+
+.secondary:hover {
+    background: var(--bg-page);
 }

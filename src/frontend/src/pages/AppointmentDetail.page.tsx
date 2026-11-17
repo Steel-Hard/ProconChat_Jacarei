@@ -1,10 +1,11 @@
 import { useTranslation } from "react-i18next"
 import AppointmentActions from "@/components/AppointmentActions"
+import AppointmentAssignDialog from "@/components/AppointmentAssignDialog"
 import AppointmentDetailHeader from "@/components/AppointmentDetailHeader"
 import AppointmentDocuments from "@/components/AppointmentDocuments"
 import AppointmentFacts from "@/components/AppointmentFacts"
 import AppointmentHistory from "@/components/AppointmentHistory"
-import AppointmentManagement from "@/components/AppointmentManagement"
+import AppointmentNotes from "@/components/AppointmentNotes"
 import AppointmentTimeline from "@/components/AppointmentTimeline"
 import ConfirmDialog from "@/components/ConfirmDialog"
 import useAppointmentDetail from "@/pages/hooks/useAppointmentDetail"
@@ -73,22 +74,13 @@ function AppointmentDetailPage() {
                                     dateNote={t("actions.dateNote")}
                                     onAction={onAction}
                                 />
-                                <AppointmentManagement
-                                    assignment={actions.assignment}
-                                    labels={{
-                                        assignmentTitle: t("assignment.title"),
-                                        chooseStaff: t("assignment.chooseStaff"),
-                                        assign: t("assignment.assign"),
-                                        staffError: t("assignment.staffError"),
-                                        retry: t("retry"),
-                                        notesTitle: t("notes.title"),
-                                        notesVisibility: t("notes.visibility"),
-                                        notePlaceholder: t("notes.placeholder"),
-                                        addNote: t("notes.add"),
-                                        noNotes: t("notes.empty"),
-                                        author: t("notes.author"),
-                                        date: t("notes.date")
-                                    }}
+                                <AppointmentNotes
+                                    notes={actions.notes.items}
+                                    text={actions.notes.text}
+                                    canAdd={actions.notes.canAdd}
+                                    busy={actions.notes.busy}
+                                    onChange={actions.notes.setText}
+                                    onAdd={actions.notes.add}
                                 />
                                 <AppointmentHistory
                                     title={t("history.title")}
@@ -108,6 +100,7 @@ function AppointmentDetailPage() {
                     </>
                 ) : null}
             </section>
+            <AppointmentAssignDialog view={actions.assign} />
             <ConfirmDialog
                 open={actions.dialog !== null}
                 title={actions.dialog?.title ?? ""}

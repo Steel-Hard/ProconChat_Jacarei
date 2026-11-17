@@ -173,6 +173,7 @@
             "attended": "Marcar como atendido",
             "noShow": "Marcar como não compareceu",
             "correctRecord": "Corrigir registro",
+            "assign": "Atribuir",
             "cancel": "Cancelar agendamento"
         },
         "waiting": {
@@ -231,6 +232,7 @@
             "alsoClaim": "{{description}} Ele também será assumido por você."
         },
         "correctRecord": {
+            "hint": "Volta ao estado anterior ao registro (Pendente ou Confirmado).",
             "result": {
                 "confirmed": "Registro corrigido. O agendamento voltou a Confirmado com {{name}}.",
                 "pending": "Registro corrigido. O agendamento voltou a Pendente.",
@@ -244,20 +246,21 @@
         }
     },
     "assignment": {
-        "title": "Atribuir a outro funcionário",
-        "chooseStaff": "Selecione um funcionário",
-        "assign": "Atribuir agendamento",
+        "title": "Atribuir {{protocol}}",
+        "description": "Escolha o funcionário responsável. O status passa a Confirmado.",
+        "assign": "Atribuir",
+        "back": "Voltar",
         "staffError": "Não foi possível carregar a lista de funcionários."
     },
     "notes": {
         "title": "Observações internas",
-        "visibility": "Visíveis apenas para a equipe do PROCON e nunca enviadas ao cidadão.",
-        "placeholder": "Escreva uma observação interna",
-        "add": "Adicionar observação",
+        "label": "Observação interna",
+        "placeholder": "Visível apenas para a equipe do PROCON",
+        "add": "Salvar observação",
         "success": "Observação adicionada.",
         "error": "Não foi possível adicionar a observação. Tente novamente.",
-        "empty": "Nenhuma observação interna.",
-        "author": "Autor",
-        "date": "Data"
+        "empty": "Nenhuma observação registrada.",
+        "removedAuthor": "Conta removida",
+        "dateTime": "{{date}} {{time}}"
     }
 }

@@ -52,6 +52,25 @@ describe("AppointmentActions", () => {
         expect(screen.getAllByRole("button")).toHaveLength(1)
     })
 
+    it("mostra a dica embaixo do botão que a tem", () => {
+        renderActions(
+            view({
+                items: [
+                    {
+                        kind: "button",
+                        action: "correct_record",
+                        label: "Corrigir registro",
+                        hint: "Volta ao estado anterior ao registro (Pendente ou Confirmado)."
+                    }
+                ]
+            })
+        )
+
+        expect(
+            screen.getByText("Volta ao estado anterior ao registro (Pendente ou Confirmado).")
+        ).toBeInTheDocument()
+    })
+
     it("chama a ação do botão clicado", async () => {
         const user = userEvent.setup()
         const onAction = renderActions(
