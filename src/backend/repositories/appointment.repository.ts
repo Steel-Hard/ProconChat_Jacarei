@@ -29,7 +29,7 @@ import {
     CorrectionHistoryEvent,
     CorrectionResult,
     CorrectionWarning,
-    StaffMember,
+    StaffRecord,
     WeekAppointmentRecord,
 } from "../types/appointment.types"
 import { cleanCpf, hashCpf } from "../utils/cpf.utils"
@@ -349,9 +349,9 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             }))
         },
 
-        async findStaff(): Promise<StaffMember[]> {
-            const result = await pool.query<{ id: string; name: string; active: boolean }>(
-                `SELECT u.id, u.name, u.active
+        async findStaff(): Promise<StaffRecord[]> {
+            const result = await pool.query<{ id: string; name: string; active: boolean; email: string }>(
+                `SELECT u.id, u.name, u.active, u.email
                  FROM Users u
                  WHERE u.is_admin
                     OR EXISTS (
@@ -360,7 +360,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                     )
                  ORDER BY u.name ASC, u.id ASC`,
             )
-            return result.rows.map((row) => ({ id: String(row.id), name: row.name, active: row.active }))
+            return result.rows.map((row) => ({ id: String(row.id), name: row.name, active: row.active, email: row.email }))
         },
 
         async findById(idOrCode: number | string): Promise<AppointmentDetailRecord | null> {

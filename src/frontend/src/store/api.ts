@@ -7,7 +7,6 @@ const api = createApi({
     tagTypes: [
         "Appointment",
         "AppointmentList",
-        "AppointmentPendingCount",
         "UserList",
         "SchedulePreview",
         "ScheduleEffective",

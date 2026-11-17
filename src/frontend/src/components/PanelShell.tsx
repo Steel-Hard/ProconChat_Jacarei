@@ -17,7 +17,6 @@ function PanelShell() {
     const { t } = useTranslation()
     const {
         account,
-        badges,
         docked,
         sidebarId,
         sidebarMode,
@@ -42,12 +41,7 @@ function PanelShell() {
                     className={SIDEBAR_CLASSES[sidebarMode]}
                     hidden={!docked && !drawerOpen}
                 >
-                    <Sidebar
-                        id={sidebarId}
-                        account={account}
-                        badges={badges}
-                        onNavigate={closeDrawer}
-                    />
+                    <Sidebar id={sidebarId} account={account} onNavigate={closeDrawer} />
                 </div>
                 {drawerVisible ? (
                     <div role="presentation" className={css.overlay} onClick={dismissDrawer} />

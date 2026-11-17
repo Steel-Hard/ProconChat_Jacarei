@@ -651,8 +651,8 @@ repositório dentro da transação, pelo mock e pelo detalhe.
 
 | Rota | Permissão | O que faz | Sucesso | Erros |
 | --- | --- | --- | --- | --- |
-| `GET /api/v1/appointments/pending-count` | `appointments.view` | Quantidade de agendamentos `PENDING` (badge do menu). Como `chk_appointments_pending_unassigned` impede pendente com responsável, é o mesmo que "pendentes sem responsável" | `200 { data: { count } }` | `401 UNAUTHORIZED`, `403 FORBIDDEN` |
-| `GET /api/v1/appointments/staff` | `appointments.view` | Funcionários que podem ser responsáveis: o Admin e as contas com `appointments.manage`, ativas e inativas, por nome. Serve ao filtro "Um funcionário específico" (todas) e ao seletor de "Atribuir" (só as ativas, sem o responsável atual) | `200 { data: [{ id, name, active }] }` | `401`, `403 FORBIDDEN` |
+| `GET /api/v1/appointments/pending-count` | `appointments.view` | Quantidade de agendamentos `PENDING` (o painel não chama mais esta rota; ela continua disponível). Como `chk_appointments_pending_unassigned` impede pendente com responsável, é o mesmo que "pendentes sem responsável" | `200 { data: { count } }` | `401 UNAUTHORIZED`, `403 FORBIDDEN` |
+| `GET /api/v1/appointments/staff` | `appointments.view` | Funcionários que podem ser responsáveis: o Admin e as contas com `appointments.manage`, ativas e inativas, por nome. Serve ao filtro "Um funcionário específico" (todas) e ao seletor de "Atribuir" (só as ativas, sem o responsável atual) | `200 { data: [{ id, name, active, email }] }`. `email` só vem preenchido (`string`) para quem tem `appointments.manage` (ou é Admin) e só nas contas ativas; para quem só tem `appointments.view`, e nas contas inativas, vem `null`. Nunca traz telefone, CPF nem dado do cidadão | `401`, `403 FORBIDDEN` |
 | `GET /api/v1/appointments/calendar` | `appointments.view` | Calendário semanal (seção abaixo). Query: `date` (`AAAA-MM-DD`, padrão hoje em São Paulo), `status` e `responsible` com os mesmos valores da lista | `200 { data: Calendar }` | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN` |
 | `GET /api/v1/appointments` | `appointments.view` | Lista com busca, filtros, ordenação, paginação e contagem dos chips (query abaixo) | `200 { data: { items, total, page, limit, totalPages, chipCounts } }` | `400 BAD_REQUEST`, `401`, `403` |
 | `GET /api/v1/appointments/:id` | `appointments.view` | Detalhe com histórico (`events`), linha do tempo da conversa de origem (`timeline`) e ações disponíveis (`available_actions`) | `200 { data: AppointmentDetail }` | `400 BAD_REQUEST` (id que não é inteiro positivo ou passa do limite do `bigint`), `401`, `403`, `404 NOT_FOUND` |
@@ -1071,6 +1071,7 @@ conferir nada. Duas correções simultâneas: uma grava, a outra recebe `409 REC
         "weekStart": "2026-10-18",
         "weekEnd": "2026-10-24",
         "weekStartDay": 0,
+        "seatsPerSlot": 2,
         "days": [
             {
                 "date": "2026-10-22",
@@ -1089,6 +1090,10 @@ conferir nada. Duas correções simultâneas: uma grava, a outra recebe `409 REC
   `weekStartDay` para o painel não fixar o dia. Trocar o dia inicial (tela ou banco) é tarefa futura.
 - `days` traz só os dias com grade configurada, na ordem da semana; `slots` são os horários da grade
   do dia (`freeSlotStartsOfDay`, a mesma função do bot). Sem `ScheduleSettings`, `days` vem vazio.
+- `seatsPerSlot` é o número de vagas por horário configurado em Horários de atendimento, para a
+  legenda do calendário. Se uma mudança de horários agendada começa no meio da semana e as vagas por
+  horário diferem entre os dias com grade, não há número único e vem `null` (o painel omite o número).
+  Também vem `null` quando a semana não tem nenhum dia com grade (decisão 012).
 - `blocked` descreve os bloqueios do dia: `fullDay` e `description` (o texto do bloqueio de dia
   inteiro, por exemplo "Feriado municipal", ou `null` quando não há) e `periods` com os bloqueios de
   parte do dia (`start`, `end`, `description`).

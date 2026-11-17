@@ -47,10 +47,6 @@ function stubApi(): Call[] {
                 return new Response(null, { status: 204 })
             }
 
-            if (url.pathname === "/api/v1/appointments/pending-count") {
-                return json(200, { data: { count: 0 } })
-            }
-
             if (url.pathname === "/api/v1/appointments") {
                 return json(200, {
                     data: buildAppointmentList([buildAppointmentListItem()])

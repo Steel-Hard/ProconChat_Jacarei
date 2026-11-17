@@ -1,5 +1,7 @@
 import { screen, within } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
+import APPOINTMENT_LIST_DEFAULTS from "@/utils/appointmentListDefaults"
+import buildAppointmentList from "@/testUtils/buildAppointmentList"
 import renderUsersPage from "@/testUtils/renderUsersPage"
 import USERS_FIXTURE from "@/testUtils/usersFixture"
 import type UserAccountList from "@/types/users/UserAccountList.types"
@@ -171,15 +173,15 @@ describe("UsersPage salvar em lote", () => {
             list: USERS_FIXTURE,
             handlers: {
                 "PATCH /api/v1/users": () => ({ status: 200, body: { data: savedList(2) } }),
-                "GET /api/v1/appointments/pending-count": () => ({
+                "GET /api/v1/appointments": () => ({
                     status: 200,
-                    body: { data: { count: 3 } }
+                    body: { data: buildAppointmentList([]) }
                 })
             }
         })
         const { default: appointmentsApi } = await import("@/store/api/appointments.api")
         const subscription = store.dispatch(
-            appointmentsApi.endpoints.getPendingAppointmentsCount.initiate()
+            appointmentsApi.endpoints.getAppointments.initiate(APPOINTMENT_LIST_DEFAULTS)
         )
         await subscription
         await user.click(await screen.findByRole("button", { name: /Carla Dias/ }))
@@ -190,9 +192,7 @@ describe("UsersPage salvar em lote", () => {
         expect(
             await screen.findByText("Alterações de usuários salvas. 2 agendamentos redistribuídos.")
         ).toBeInTheDocument()
-        await vi.waitFor(() =>
-            expect(callsTo("GET", "/api/v1/appointments/pending-count")).toHaveLength(2)
-        )
+        await vi.waitFor(() => expect(callsTo("GET", "/api/v1/appointments")).toHaveLength(2))
         subscription.unsubscribe()
     })
 
@@ -201,15 +201,15 @@ describe("UsersPage salvar em lote", () => {
             list: USERS_FIXTURE,
             handlers: {
                 "PATCH /api/v1/users": () => ({ status: 200, body: { data: savedList(0) } }),
-                "GET /api/v1/appointments/pending-count": () => ({
+                "GET /api/v1/appointments": () => ({
                     status: 200,
-                    body: { data: { count: 3 } }
+                    body: { data: buildAppointmentList([]) }
                 })
             }
         })
         const { default: appointmentsApi } = await import("@/store/api/appointments.api")
         const subscription = store.dispatch(
-            appointmentsApi.endpoints.getPendingAppointmentsCount.initiate()
+            appointmentsApi.endpoints.getAppointments.initiate(APPOINTMENT_LIST_DEFAULTS)
         )
         await subscription
         await user.click(await screen.findByRole("button", { name: /Carla Dias/ }))
@@ -218,7 +218,7 @@ describe("UsersPage salvar em lote", () => {
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
 
         expect(await screen.findByText("Alterações de usuários salvas.")).toBeInTheDocument()
-        expect(callsTo("GET", "/api/v1/appointments/pending-count")).toHaveLength(1)
+        expect(callsTo("GET", "/api/v1/appointments")).toHaveLength(1)
         subscription.unsubscribe()
     })
 

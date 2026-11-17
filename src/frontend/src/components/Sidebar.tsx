@@ -4,17 +4,15 @@ import SidebarGroup from "@/components/SidebarGroup"
 import activeNavKey from "@/navigation/activeNavKey"
 import sidebarNavGroups from "@/navigation/sidebarNavGroups"
 import type PanelAccount from "@/types/account/PanelAccount.types"
-import type NavBadges from "@/types/navigation/NavBadges.types"
 import css from "@/styles/components/sidebar.module.css"
 
 type SidebarProps = {
     account: PanelAccount | null
-    badges: NavBadges
     onNavigate?: () => void
     id?: string
 }
 
-function Sidebar({ account, badges, onNavigate, id }: SidebarProps) {
+function Sidebar({ account, onNavigate, id }: SidebarProps) {
     const { t } = useTranslation()
     const { pathname } = useLocation()
     const activeKey = activeNavKey(pathname)
@@ -31,7 +29,6 @@ function Sidebar({ account, badges, onNavigate, id }: SidebarProps) {
                         key={group.key}
                         group={group}
                         activeKey={activeKey}
-                        badges={badges}
                         onNavigate={onNavigate}
                     />
                 ))}

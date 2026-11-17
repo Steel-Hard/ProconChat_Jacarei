@@ -13,7 +13,7 @@ import type {
     CorrectionResult,
     CalendarFilters,
     CorrectionWarning,
-    StaffMember,
+    StaffRecord,
     WeekAppointmentRecord,
 } from "../../types/appointment.types"
 import type { AppointmentRepository } from "../appointment.repository.interface"
@@ -75,7 +75,7 @@ export interface AppointmentStubScenario {
     details?: AppointmentDetailRecord[]
     list?: AppointmentStubList
     pendingCount?: number
-    staff?: StaffMember[]
+    staff?: StaffRecord[]
     week?: WeekAppointmentRecord[]
     titles?: AppointmentStubTitles
     afterAction?: AppointmentAfterAction
@@ -96,7 +96,7 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
     private details: AppointmentDetailRecord[]
     private readonly list: AppointmentStubList
     private readonly pendingCount: number
-    private readonly staff: StaffMember[]
+    private readonly staff: StaffRecord[]
     private readonly week: WeekAppointmentRecord[]
     private readonly titles: AppointmentStubTitles
     private readonly afterAction: AppointmentAfterAction | undefined
@@ -134,7 +134,7 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
         return structuredClone(this.week)
     }
 
-    async findStaff(): Promise<StaffMember[]> {
+    async findStaff(): Promise<StaffRecord[]> {
         return structuredClone(this.staff)
     }
 

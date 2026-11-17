@@ -1,7 +1,6 @@
 import { useId } from "react"
 import { useTranslation } from "react-i18next"
 import SidebarLink from "@/components/SidebarLink"
-import type NavBadges from "@/types/navigation/NavBadges.types"
 import type NavGroup from "@/types/navigation/NavGroup.types"
 import type NavKey from "@/types/navigation/NavKey.types"
 import css from "@/styles/components/sidebarGroup.module.css"
@@ -9,11 +8,10 @@ import css from "@/styles/components/sidebarGroup.module.css"
 type SidebarGroupProps = {
     group: NavGroup
     activeKey: NavKey | null
-    badges: NavBadges
     onNavigate?: () => void
 }
 
-function SidebarGroup({ group, activeKey, badges, onNavigate }: SidebarGroupProps) {
+function SidebarGroup({ group, activeKey, onNavigate }: SidebarGroupProps) {
     const { t } = useTranslation()
     const labelId = useId()
 
@@ -28,7 +26,6 @@ function SidebarGroup({ group, activeKey, badges, onNavigate }: SidebarGroupProp
                         <SidebarLink
                             item={item}
                             active={item.key === activeKey}
-                            badge={badges[item.key]}
                             onNavigate={onNavigate}
                         />
                     </li>

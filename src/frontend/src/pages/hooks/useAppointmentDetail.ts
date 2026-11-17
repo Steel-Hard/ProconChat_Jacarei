@@ -1,3 +1,5 @@
+import type AppointmentCancelView from "@/types/appointments/AppointmentCancelView.types"
+import dateTimePartsOf from "@/utils/dateTimePartsOf"
 import { useTranslation } from "react-i18next"
 import { useLocation, useNavigate, useParams } from "react-router-dom"
 import hasPermission from "@/navigation/hasPermission"
@@ -54,6 +56,31 @@ function useAppointmentDetail() {
     const actions = useAppointmentActions({ detail, canManage })
     const cancellation = useAppointmentCancellation({ detail, canManage })
 
+    const when = dateTimePartsOf(detail?.appointment_datetime ?? null)
+    const cancelView: AppointmentCancelView = {
+        open: cancellation.open,
+        protocol: detail?.protocol ?? "",
+        subtitle: detail
+            ? t("actions.cancel.subtitle", {
+                  name: detail.name,
+                  date: when?.date ?? "",
+                  time: when?.time ?? ""
+              })
+            : "",
+        reason: cancellation.reason,
+        setReason: cancellation.setReason,
+        note: cancellation.note,
+        setNote: cancellation.setNote,
+        busy: cancellation.busy,
+        error: cancellation.error,
+        preview: cancellation.preview,
+        previewLoading: cancellation.previewLoading,
+        previewFailed: cancellation.previewFailed,
+        retryPreview: cancellation.retryPreview,
+        confirm: cancellation.cancelAppointment,
+        close: cancellation.closeDialog
+    }
+
     return {
         title: view?.title ?? t("meta.fallbackTitle"),
         loading,
@@ -62,6 +89,7 @@ function useAppointmentDetail() {
         view,
         actions,
         cancellation,
+        cancelView,
         retry: () => void query.refetch(),
         back: () => void navigate(returnPathOf(location.state))
     }

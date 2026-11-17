@@ -228,10 +228,18 @@ export interface AppointmentListFilters {
     currentUserId?: number
 }
 
+export interface StaffRecord {
+    id: string
+    name: string
+    active: boolean
+    email: string
+}
+
 export interface StaffMember {
     id: string
     name: string
     active: boolean
+    email: string | null
 }
 
 export interface CorrectionWarningDetails {
@@ -302,5 +310,6 @@ export interface AppointmentCalendar {
     weekEnd: string
     weekStartDay: number
     days: CalendarDay[]
+    seatsPerSlot: number | null
     appointments: CalendarAppointment[]
 }

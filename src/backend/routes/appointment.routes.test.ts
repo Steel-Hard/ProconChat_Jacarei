@@ -77,8 +77,8 @@ function simpleAction(action: string): keyof typeof STATUS_AFTER_ACTION {
 }
 const LIST_CHIPS = buildChipCounts({ all: 6, pending: 3, confirmed: 2, canceled: 1 })
 const STAFF = [
-    { id: "2", name: "Carlos Atendente", active: true },
-    { id: "11", name: "Ivone Antiga", active: false },
+    { id: "2", name: "Carlos Atendente", active: true, email: "carlos@procon.test" },
+    { id: "11", name: "Ivone Antiga", active: false, email: "ivone@procon.test" },
 ]
 
 function responsibleAfter(call: AppointmentActionCall, current: AppointmentDetailRecord): string {
@@ -248,13 +248,32 @@ describe("appointment.routes (HTTP)", () => {
             expect(res.body.error.code).toBe("FORBIDDEN")
         })
 
-        it("devolve a lista de funcionários para quem tem appointments.view, sem cair no validador de id", async () => {
+        it("devolve a lista sem e-mail para quem só tem appointments.view, sem cair no validador de id", async () => {
             const res = await request(app)
                 .get("/api/v1/appointments/staff")
                 .set("Cookie", accessCookieFor(5))
 
             expect(res.status).toBe(200)
-            expect(res.body).toEqual({ data: STAFF })
+            expect(res.body).toEqual({
+                data: [
+                    { id: "2", name: "Carlos Atendente", active: true, email: null },
+                    { id: "11", name: "Ivone Antiga", active: false, email: null },
+                ],
+            })
+        })
+
+        it("inclui o e-mail só das contas ativas para quem tem appointments.manage", async () => {
+            const res = await request(app)
+                .get("/api/v1/appointments/staff")
+                .set("Cookie", accessCookieFor(10))
+
+            expect(res.status).toBe(200)
+            expect(res.body).toEqual({
+                data: [
+                    { id: "2", name: "Carlos Atendente", active: true, email: "carlos@procon.test" },
+                    { id: "11", name: "Ivone Antiga", active: false, email: null },
+                ],
+            })
         })
     })
 

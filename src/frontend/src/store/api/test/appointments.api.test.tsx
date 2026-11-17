@@ -61,10 +61,6 @@ async function setup(
             return respond(patchReply)
         }
 
-        if (path.endsWith("/pending-count")) {
-            return respond({ status: 200, body: { data: { count: 4 } } })
-        }
-
         if (path === "/api/v1/appointments") {
             return respond({ status: 200, body: { data: LIST } })
         }
@@ -164,19 +160,6 @@ describe("appointmentsApi", () => {
         expect(params.get("limit")).toBe("20")
     })
 
-    it("devolve o número de pendentes de data.count", async () => {
-        const { appointmentsApi, store, fetchMock } = await setup()
-
-        const result = await store.dispatch(
-            appointmentsApi.endpoints.getPendingAppointmentsCount.initiate()
-        )
-
-        expect(result.data).toBe(4)
-        expect(requestAt(fetchMock, 0).url).toBe(
-            "https://api.example.com/api/v1/appointments/pending-count"
-        )
-    })
-
     it("lê o detalhe em GET /api/v1/appointments/:id", async () => {
         const { appointmentsApi, store, fetchMock } = await setup()
 
@@ -258,16 +241,13 @@ describe("appointmentsApi", () => {
         expect(await requestAt(fetchMock, 0).text()).toBe("")
     })
 
-    it("no sucesso grava o detalhe no cache sem novo GET e refaz a lista e o contador", async () => {
+    it("no sucesso grava o detalhe no cache sem novo GET e refaz a lista", async () => {
         const { appointmentsApi, store, fetchMock } = await setup()
         const detail = store.dispatch(appointmentsApi.endpoints.getAppointment.initiate("7"))
         const list = store.dispatch(
             appointmentsApi.endpoints.getAppointments.initiate(DEFAULT_FILTERS)
         )
-        const count = store.dispatch(
-            appointmentsApi.endpoints.getPendingAppointmentsCount.initiate()
-        )
-        await Promise.all([detail, list, count])
+        await Promise.all([detail, list])
 
         await store.dispatch(
             appointmentsApi.endpoints.updateAppointmentStatus.initiate({ id: "7", action: "claim" })
@@ -275,7 +255,6 @@ describe("appointmentsApi", () => {
 
         await vi.waitFor(() => {
             expect(requestsTo(fetchMock, "GET", "/api/v1/appointments")).toBe(2)
-            expect(requestsTo(fetchMock, "GET", "/api/v1/appointments/pending-count")).toBe(2)
         })
         expect(requestsTo(fetchMock, "GET", "/api/v1/appointments/7")).toBe(1)
         expect(
@@ -283,10 +262,9 @@ describe("appointmentsApi", () => {
         ).toBe("CONFIRMED")
         detail.unsubscribe()
         list.unsubscribe()
-        count.unsubscribe()
     })
 
-    it("com 409 refaz a lista e o contador, mas não o detalhe", async () => {
+    it("com 409 refaz a lista, mas não o detalhe", async () => {
         const { appointmentsApi, store, fetchMock } = await setup({
             status: 409,
             body: { error: { code: "APPOINTMENT_ALREADY_CLAIMED", message: "x" } }
@@ -295,10 +273,7 @@ describe("appointmentsApi", () => {
         const list = store.dispatch(
             appointmentsApi.endpoints.getAppointments.initiate(DEFAULT_FILTERS)
         )
-        const count = store.dispatch(
-            appointmentsApi.endpoints.getPendingAppointmentsCount.initiate()
-        )
-        await Promise.all([detail, list, count])
+        await Promise.all([detail, list])
 
         const result = await store.dispatch(
             appointmentsApi.endpoints.updateAppointmentStatus.initiate({ id: "7", action: "claim" })
@@ -307,7 +282,6 @@ describe("appointmentsApi", () => {
         expect(result.error).toMatchObject({ status: 409 })
         await vi.waitFor(() => {
             expect(requestsTo(fetchMock, "GET", "/api/v1/appointments")).toBe(2)
-            expect(requestsTo(fetchMock, "GET", "/api/v1/appointments/pending-count")).toBe(2)
         })
         expect(requestsTo(fetchMock, "GET", "/api/v1/appointments/7")).toBe(1)
         expect(
@@ -315,6 +289,5 @@ describe("appointmentsApi", () => {
         ).toBe("PENDING")
         detail.unsubscribe()
         list.unsubscribe()
-        count.unsubscribe()
     })
 })

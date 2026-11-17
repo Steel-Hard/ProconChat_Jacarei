@@ -39,7 +39,7 @@ function useAppointmentDetailView(detail: AppointmentDetail | undefined) {
         }
 
         if (detail.rescheduled_from !== null) {
-            seals.push({ label: t("header.seals.rescheduled"), tone: "neutral" })
+            seals.push({ label: t("header.seals.rescheduled"), tone: "info" })
         }
 
         if (detail.off_grid && active) {
@@ -79,11 +79,10 @@ function useAppointmentDetailView(detail: AppointmentDetail | undefined) {
 
         facts.push({
             label: t("facts.origin"),
-            value: t("facts.originValue", {
-                category: detail.category_name,
-                question: detail.question_title
-            }),
-            wide: true
+            value: detail.question_title,
+            prefix: t("facts.originPrefix", { category: detail.category_name }),
+            wide: true,
+            divided: true
         })
 
         const groups: AppointmentDocumentGroupView[] = [

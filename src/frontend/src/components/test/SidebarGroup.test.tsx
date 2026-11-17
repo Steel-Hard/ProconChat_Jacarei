@@ -17,7 +17,6 @@ describe("SidebarGroup", () => {
                         ]
                     }}
                     activeKey="sessions"
-                    badges={{}}
                 />
             </MemoryRouter>
         )

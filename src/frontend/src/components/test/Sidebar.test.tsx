@@ -3,7 +3,6 @@ import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import Sidebar from "@/components/Sidebar"
-import type NavBadges from "@/types/navigation/NavBadges.types"
 import ROUTES from "@/routers/paths"
 import type PanelAccount from "@/types/account/PanelAccount.types"
 
@@ -31,18 +30,16 @@ const admin: PanelAccount = {
 
 type SidebarOptions = {
     account?: PanelAccount | null
-    badges?: NavBadges
     onNavigate?: () => void
     path?: string
 }
 
 function renderSidebar({
     account = admin,
-    badges = {},
     onNavigate,
     path = ROUTES.dashboard
 }: SidebarOptions = {}) {
-    const sidebar = <Sidebar account={account} badges={badges} onNavigate={onNavigate} />
+    const sidebar = <Sidebar account={account} onNavigate={onNavigate} />
     const router = createMemoryRouter(
         [
             { path: "/", element: sidebar },
@@ -123,17 +120,12 @@ describe("Sidebar", () => {
         )
     })
 
-    it("mostra o contador só quando há pendências", () => {
-        renderSidebar({
-            badges: {
-                appointments: { count: 3, label: "agendamentos pendentes" },
-                sessions: { count: 0, label: "sessões" }
-            }
-        })
+    it("mostra os itens só com o rótulo, sem contador", () => {
+        renderSidebar()
 
-        expect(
-            screen.getByRole("link", { name: "Agendamentos 3 agendamentos pendentes" })
-        ).toBeInTheDocument()
+        expect(screen.getByRole("link", { name: "Agendamentos" })).toHaveTextContent(
+            /^Agendamentos$/
+        )
         expect(screen.getByRole("link", { name: "Sessões" })).toHaveTextContent(/^Sessões$/)
     })
 

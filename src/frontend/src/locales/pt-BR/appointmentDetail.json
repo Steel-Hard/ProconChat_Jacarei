@@ -38,7 +38,7 @@
         },
         "original": "Data original",
         "origin": "Origem no chatbot",
-        "originValue": "{{category}} → {{question}}",
+        "originPrefix": "{{category}} →",
         "representativeNotice": "O titular indicou no chatbot que outra pessoa comparecerá em seu nome. Nome e CPF acima são sempre do titular; confira os documentos exigidos para representante."
     },
     "documents": {
@@ -173,6 +173,7 @@
             "attended": "Marcar como atendido",
             "noShow": "Marcar como não compareceu",
             "correctRecord": "Corrigir registro",
+            "assign": "Atribuir a outro funcionário",
             "cancel": "Cancelar agendamento"
         },
         "waiting": {
@@ -185,25 +186,27 @@
             "canceled": "Agendamento cancelado. O horário foi liberado no chatbot."
         },
         "cancel": {
-            "title": "Cancelar agendamento?",
-            "description": "O cidadão receberá o aviso de cancelamento pelo WhatsApp e o horário será liberado no chatbot. Esta ação não pode ser desfeita.",
+            "title": "Cancelar o agendamento {{protocol}}?",
+            "subtitle": "{{name}} · {{date}} às {{time}}. O horário volta a ficar disponível no chatbot e o cidadão é avisado pelo WhatsApp. Esta ação não pode ser desfeita.",
             "confirm": "Cancelar e avisar o cidadão",
             "dismiss": "Voltar",
-            "reasonLabel": "Motivo obrigatório",
-            "selectReason": "Selecione o motivo",
+            "reasonLabel": "Motivo do cancelamento",
+            "required": "*",
+            "reasonRequired": "Escolha um motivo",
+            "fixedTag": "Modelo fixo",
             "reasons": {
                 "UNIT_CLOSED": "Unidade fechada nesta data",
                 "CITIZEN_REQUEST": "A pedido do cidadão",
                 "DUPLICATE": "Agendamento duplicado",
                 "OTHER": "Outro motivo"
             },
-            "previewLabel": "Prévia exata da mensagem ao cidadão",
-            "chooseReason": "Selecione o motivo para ver a mensagem.",
+            "previewLabel": "Mensagem que o cidadão receberá",
+            "chooseReason": "Escolha um motivo para ver a prévia.",
             "previewFailed": "Não foi possível carregar a prévia da mensagem.",
             "retryPreview": "Tentar carregar a prévia novamente",
             "fixedMessageHint": "As mensagens seguem modelos fixos e podem ser enviadas a qualquer momento antes do horário do atendimento.",
-            "noteLabel": "Observação interna (opcional)",
-            "afterStart": "Não é possível cancelar depois do horário do atendimento. Registre como não compareceu."
+            "noteLabel": "Observação interna (opcional, não é enviada ao cidadão)",
+            "afterStart": "O horário já passou; não é possível cancelar. Registre como atendido ou não compareceu."
         },
         "readOnly": "Sua conta pode apenas visualizar agendamentos.",
         "dateNote": "A data não pode ser alterada pelo painel. Remarcações são feitas pelo cidadão no chatbot.",
@@ -231,28 +234,35 @@
             "alsoClaim": "{{description}} Ele também será assumido por você."
         },
         "correctRecord": {
-            "warning": {
-                "busy": "Registro corrigido, mas o responsável está ocupado em outro agendamento ({{protocol}}).",
-                "unavailable": "Registro corrigido, mas o responsável anterior está indisponível. {{count}} funcionário(s) estão livres nesse horário.",
-                "noStaff": "Registro corrigido, mas ninguém está livre para atender nesse horário."
+            "hint": "Volta ao estado anterior ao registro (Pendente ou Confirmado).",
+            "result": {
+                "confirmed": "Registro corrigido. O agendamento voltou a Confirmado com {{name}}.",
+                "pending": "Registro corrigido. O agendamento voltou a Pendente.",
+                "busyNone": "Registro corrigido. O agendamento voltou a Pendente sem responsável, porque o responsável anterior já tem outro agendamento neste horário (protocolo {{protocol}}). Ninguém está livre neste horário no momento.",
+                "busyOne": "Registro corrigido. O agendamento voltou a Pendente sem responsável, porque o responsável anterior já tem outro agendamento neste horário (protocolo {{protocol}}). Há 1 funcionário livre neste horário.",
+                "busyMany": "Registro corrigido. O agendamento voltou a Pendente sem responsável, porque o responsável anterior já tem outro agendamento neste horário (protocolo {{protocol}}). Há {{count}} funcionários livres neste horário.",
+                "unavailableNone": "Registro corrigido. O agendamento voltou a Pendente sem responsável, porque o responsável anterior não pode mais assumir (conta desativada ou sem Gerenciar agendamentos). Ninguém está livre neste horário no momento.",
+                "unavailableSome": "Registro corrigido. O agendamento voltou a Pendente sem responsável, porque o responsável anterior não pode mais assumir (conta desativada ou sem Gerenciar agendamentos). Funcionários livres neste horário: {{count}}.",
+                "unknownProtocol": "não informado"
             }
         }
     },
     "assignment": {
-        "title": "Atribuir a outro funcionário",
-        "chooseStaff": "Selecione um funcionário",
-        "assign": "Atribuir agendamento",
+        "title": "Atribuir {{protocol}}",
+        "description": "Escolha o funcionário responsável. O status passa a Confirmado.",
+        "assign": "Atribuir",
+        "back": "Voltar",
         "staffError": "Não foi possível carregar a lista de funcionários."
     },
     "notes": {
         "title": "Observações internas",
-        "visibility": "Visíveis apenas para a equipe do PROCON e nunca enviadas ao cidadão.",
-        "placeholder": "Escreva uma observação interna",
-        "add": "Adicionar observação",
+        "label": "Observação interna",
+        "placeholder": "Visível apenas para a equipe do PROCON",
+        "add": "Salvar observação",
         "success": "Observação adicionada.",
         "error": "Não foi possível adicionar a observação. Tente novamente.",
-        "empty": "Nenhuma observação interna.",
-        "author": "Autor",
-        "date": "Data"
+        "empty": "Nenhuma observação registrada.",
+        "removedAuthor": "Conta removida",
+        "dateTime": "{{date}} {{time}}"
     }
 }

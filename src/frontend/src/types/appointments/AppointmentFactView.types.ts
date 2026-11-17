@@ -7,6 +7,8 @@ type AppointmentFactView = {
     emphasis?: boolean
     mono?: boolean
     wide?: boolean
+    prefix?: string
+    divided?: boolean
 }
 
 export default AppointmentFactView
