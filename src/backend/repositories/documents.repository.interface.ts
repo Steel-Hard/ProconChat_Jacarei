@@ -28,7 +28,7 @@ export interface IDocumentsRepository {
     getLastChange(): Promise<DocumentsLastChange | null>
     getScheduleContext(): Promise<DocumentsSettingsContext>
     getSampleQuestions(): Promise<SampleQuestionRow[]>
-    getQuestionDocuments(questionId: number): Promise<string[]>
+    getQuestionDocuments(questionId: number): Promise<string[] | null>
     saveDocumentsConfig(
         data: DocumentsConfigData,
         actorUserId: number

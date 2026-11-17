@@ -42,9 +42,9 @@ export class DocumentsStubRepository implements IDocumentsRepository {
         return [...this.sampleQuestions]
     }
 
-    async getQuestionDocuments(questionId: number): Promise<string[]> {
+    async getQuestionDocuments(questionId: number): Promise<string[] | null> {
         const found = this.sampleQuestions.find((q) => Number(q.id) === questionId)
-        return found ? found.documents : []
+        return found ? found.documents : null
     }
 
     async saveDocumentsConfig(data: DocumentsConfigData, actorUserId: number): Promise<void> {

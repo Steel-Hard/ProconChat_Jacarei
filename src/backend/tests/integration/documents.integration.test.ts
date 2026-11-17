@@ -98,4 +98,36 @@ describe("DocumentsRepository (Postgres)", () => {
             expect(row?.documents).toEqual(["Nota fiscal", "Contrato"])
         })
     })
+
+    describe("getQuestionDocuments", () => {
+        it("devolve os documentos da pergunta ativa na ordem cadastrada", async () => {
+            const categoryId = await createCategory(9006)
+            const questionId = await createQuestion(categoryId, 0, { documents: ["B", "A"] })
+
+            expect(await repository.getQuestionDocuments(questionId)).toEqual(["B", "A"])
+        })
+
+        it("devolve nulo para pergunta inexistente, inativa ou de categoria inativa", async () => {
+            const activeCategory = await createCategory(9007)
+            const inactiveCategory = await createCategory(9008, false)
+            const inactiveQuestionId = await createQuestion(activeCategory, 0, {
+                active: false,
+                documents: ["X"],
+            })
+            const inactiveCategoryQuestionId = await createQuestion(inactiveCategory, 0, {
+                documents: ["Y"],
+            })
+
+            expect(await repository.getQuestionDocuments(inactiveQuestionId)).toBeNull()
+            expect(await repository.getQuestionDocuments(inactiveCategoryQuestionId)).toBeNull()
+            expect(await repository.getQuestionDocuments(2147483647)).toBeNull()
+        })
+
+        it("devolve lista vazia para pergunta ativa sem documentos", async () => {
+            const categoryId = await createCategory(9009)
+            const questionId = await createQuestion(categoryId, 0)
+
+            expect(await repository.getQuestionDocuments(questionId)).toEqual([])
+        })
+    })
 })

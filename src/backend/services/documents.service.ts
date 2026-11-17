@@ -68,7 +68,7 @@ export class DocumentsService {
         if (args.questionId !== undefined && args.questionId !== "") {
             const qId = Number(args.questionId)
             if (!isNaN(qId) && qId > 0) {
-                questionDocuments = await this.repository.getQuestionDocuments(qId)
+                questionDocuments = (await this.repository.getQuestionDocuments(qId)) ?? []
             }
         }
 

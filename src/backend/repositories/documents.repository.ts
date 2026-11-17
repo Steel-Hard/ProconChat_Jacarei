@@ -134,7 +134,18 @@ export class DocumentsRepository implements IDocumentsRepository {
         }))
     }
 
-    async getQuestionDocuments(questionId: number): Promise<string[]> {
+    async getQuestionDocuments(questionId: number): Promise<string[] | null> {
+        const question = await this.pool.query(
+            `SELECT 1
+             FROM Questions q
+             INNER JOIN Categories c ON c.id = q.category_id
+             WHERE q.id = $1 AND q.active = TRUE AND c.active = TRUE`,
+            [questionId]
+        )
+        if (question.rows.length === 0) {
+            return null
+        }
+
         const result = await this.pool.query<{ description: string }>(
             `SELECT description
              FROM RequiredDocuments
