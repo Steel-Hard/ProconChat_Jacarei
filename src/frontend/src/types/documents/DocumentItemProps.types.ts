@@ -1,5 +1,6 @@
 type DocumentItemProps = {
     description: string
+    position: number
     isTaken: (text: string) => boolean
     isFirst: boolean
     isLast: boolean

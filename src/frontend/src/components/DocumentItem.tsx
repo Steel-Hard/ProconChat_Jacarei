@@ -6,6 +6,7 @@ import css from "@/styles/components/documentItem.module.css"
 
 export default function DocumentItem({
     description,
+    position,
     isTaken,
     isFirst,
     isLast,
@@ -63,37 +64,55 @@ export default function DocumentItem({
     if (isEditing) {
         return (
             <li className={css.item}>
+                <span className={css.position} aria-hidden="true">
+                    {position}
+                </span>
                 <form className={css.editForm} onSubmit={handleSave}>
-                    <input
-                        ref={inputRef}
-                        type="text"
-                        className={css.editInput}
-                        value={editText}
-                        onChange={(e) => setEditText(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        aria-label={t("items.editItemAria", { item: description })}
-                        maxLength={MAX_DOCUMENT_LENGTH}
-                    />
-                    <button type="submit" className={css.saveButton} disabled={editTaken}>
-                        {t("items.saveEditButton")}
-                    </button>
-                    <button type="button" className={css.cancelButton} onClick={handleCancel}>
-                        {t("items.cancelEditButton")}
-                    </button>
+                    <div className={css.editField}>
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            className={css.editInput}
+                            value={editText}
+                            onChange={(e) => setEditText(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            aria-label={t("items.editItemAria", { item: description })}
+                            maxLength={MAX_DOCUMENT_LENGTH}
+                        />
+                        <span className={css.editHint}>{t("items.editHint")}</span>
+                        {editTaken ? <p className={css.warning}>{t("items.duplicate")}</p> : null}
+                    </div>
+                    <div className={css.actions}>
+                        <button type="submit" className={css.saveButton} disabled={editTaken}>
+                            {t("items.saveEditButton")}
+                        </button>
+                        <button type="button" className={css.cancelButton} onClick={handleCancel}>
+                            {t("items.cancelEditButton")}
+                        </button>
+                    </div>
                 </form>
-                {editTaken ? <p className={css.warning}>{t("items.duplicate")}</p> : null}
             </li>
         )
     }
 
     return (
         <li className={css.item}>
-            <div className={css.textWrapper}>
-                <button type="button" className={css.textButton} onClick={handleStartEdit}>
-                    {description}
-                </button>
-            </div>
+            <span className={css.position} aria-hidden="true">
+                {position}
+            </span>
+            <button type="button" className={css.textButton} onClick={handleStartEdit}>
+                {description}
+            </button>
             <div className={css.actions}>
+                <button
+                    type="button"
+                    className={`${css.actionButton} ${css.editButton}`}
+                    onClick={handleStartEdit}
+                    aria-label={t("items.editItemAria", { item: description })}
+                    title={t("items.editButton")}
+                >
+                    {t("items.editButton")}
+                </button>
                 <button
                     type="button"
                     className={css.actionButton}
@@ -116,21 +135,12 @@ export default function DocumentItem({
                 </button>
                 <button
                     type="button"
-                    className={css.actionButton}
-                    onClick={handleStartEdit}
-                    aria-label={t("items.editItemAria", { item: description })}
-                    title={t("items.editButton")}
-                >
-                    {t("items.editButton")}
-                </button>
-                <button
-                    type="button"
                     className={`${css.actionButton} ${css.removeButton}`}
                     onClick={onRemove}
                     aria-label={t("items.removeItemAria", { item: description })}
                     title={t("items.removeButton")}
                 >
-                    {t("items.removeButton")}
+                    {t("items.removeIcon")}
                 </button>
             </div>
         </li>

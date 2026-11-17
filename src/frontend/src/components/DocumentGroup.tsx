@@ -53,6 +53,7 @@ export default function DocumentGroup({
                     <DocumentItem
                         key={item.id}
                         description={item.text}
+                        position={index + 1}
                         isTaken={(text) => isDocumentTaken(texts, text, index)}
                         isFirst={index === 0}
                         isLast={index === items.length - 1}

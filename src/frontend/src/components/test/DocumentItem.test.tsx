@@ -8,6 +8,7 @@ describe("DocumentItem", () => {
         render(
             <DocumentItem
                 description="RG ou documento com foto"
+                position={1}
                 isTaken={() => false}
                 isFirst={true}
                 isLast={false}
@@ -32,6 +33,7 @@ describe("DocumentItem", () => {
         render(
             <DocumentItem
                 description="CPF"
+                position={1}
                 isTaken={() => false}
                 isFirst={false}
                 isLast={false}
@@ -60,6 +62,7 @@ describe("DocumentItem", () => {
         render(
             <DocumentItem
                 description="Comprovante de endereço"
+                position={1}
                 isTaken={() => false}
                 isFirst={false}
                 isLast={false}
@@ -86,6 +89,7 @@ describe("DocumentItem", () => {
         render(
             <DocumentItem
                 description="Comprovante"
+                position={1}
                 isTaken={() => false}
                 isFirst={false}
                 isLast={false}
@@ -108,6 +112,7 @@ describe("DocumentItem", () => {
         render(
             <DocumentItem
                 description="Item do meio"
+                position={1}
                 isTaken={() => false}
                 isFirst={false}
                 isLast={false}
@@ -130,6 +135,7 @@ describe("DocumentItem", () => {
         render(
             <DocumentItem
                 description="CPF"
+                position={1}
                 isTaken={() => false}
                 isFirst={false}
                 isLast={false}
@@ -151,6 +157,7 @@ describe("DocumentItem", () => {
         render(
             <DocumentItem
                 description="CPF"
+                position={1}
                 isTaken={(text) => text.trim().toLowerCase() === "rg"}
                 isFirst={false}
                 isLast={false}
@@ -167,8 +174,53 @@ describe("DocumentItem", () => {
         await user.type(input, "RG{enter}")
 
         expect(screen.getByText("Esse documento já está na lista.")).toBeInTheDocument()
-        expect(screen.getByRole("button", { name: "Salvar" })).toBeDisabled()
+        expect(screen.getByRole("button", { name: "OK" })).toBeDisabled()
         expect(onEdit).not.toHaveBeenCalled()
         expect(screen.getByRole("textbox")).toBeInTheDocument()
+    })
+
+    it("mostra o número da posição e os botões na ordem Editar, subir, descer e remover", () => {
+        render(
+            <DocumentItem
+                description="CPF"
+                position={3}
+                isTaken={() => false}
+                isFirst={false}
+                isLast={false}
+                onEdit={vi.fn()}
+                onRemove={vi.fn()}
+                onMoveUp={vi.fn()}
+                onMoveDown={vi.fn()}
+            />
+        )
+
+        expect(screen.getByText("3")).toBeInTheDocument()
+        const buttons = screen.getAllByRole("button").map((button) => button.textContent)
+        expect(buttons).toEqual(["CPF", "Editar", "↑", "↓", "×"])
+        expect(screen.getByRole("button", { name: "Remover CPF" })).toHaveTextContent("×")
+    })
+
+    it("mostra a dica de Enter e Esc e os botões OK e Cancelar durante a edição", async () => {
+        const user = userEvent.setup()
+        render(
+            <DocumentItem
+                description="CPF"
+                position={1}
+                isTaken={() => false}
+                isFirst={false}
+                isLast={false}
+                onEdit={vi.fn()}
+                onRemove={vi.fn()}
+                onMoveUp={vi.fn()}
+                onMoveDown={vi.fn()}
+            />
+        )
+
+        await user.click(screen.getByTitle("Editar"))
+
+        expect(screen.getByText("Enter confirma · Esc cancela")).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "OK" })).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "Cancelar" })).toBeInTheDocument()
+        expect(screen.getByText("1")).toBeInTheDocument()
     })
 })
