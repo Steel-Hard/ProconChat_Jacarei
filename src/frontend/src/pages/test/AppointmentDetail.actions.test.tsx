@@ -172,7 +172,7 @@ describe("AppointmentDetail.page: botões e mensagens", () => {
         expect(box.queryByRole("button", { name: "Cancelar agendamento" })).not.toBeInTheDocument()
         expect(
             box.getByText(
-                "Não é possível cancelar depois do horário do atendimento. Registre como não compareceu."
+                "O horário já passou; não é possível cancelar. Registre como atendido ou não compareceu."
             )
         ).toBeInTheDocument()
     })
@@ -246,23 +246,29 @@ describe("AppointmentDetail.page: confirmação", () => {
         })
 
         await page.user.click(screen.getByRole("button", { name: "Cancelar agendamento" }))
-        const dialog = screen.getByRole("dialog", { name: "Cancelar agendamento?" })
+        const dialog = screen.getByRole("dialog", { name: "Cancelar o agendamento F10464F0?" })
+        expect(
+            within(dialog).getByText(
+                "Maria Fictícia · 19/10/2026 às 08:00. O horário volta a ficar disponível no chatbot e o cidadão é avisado pelo WhatsApp. Esta ação não pode ser desfeita."
+            )
+        ).toBeInTheDocument()
         expect(
             await within(dialog).findByText("Selecione o motivo para ver a mensagem.")
         ).toBeInTheDocument()
+        expect(within(dialog).getAllByRole("radio")).toHaveLength(4)
+        expect(within(dialog).getByText("Modelo fixo")).toBeInTheDocument()
 
         const confirm = within(dialog).getByRole("button", {
             name: "Cancelar e avisar o cidadão"
         })
         expect(confirm).toBeDisabled()
-        await page.user.selectOptions(
-            within(dialog).getByRole("combobox", { name: "Motivo obrigatório" }),
-            "CITIZEN_REQUEST"
-        )
+        await page.user.click(within(dialog).getByRole("radio", { name: "A pedido do cidadão" }))
         expect(await within(dialog).findByText(message)).toBeInTheDocument()
         expect(confirm).toBeEnabled()
         await page.user.type(
-            within(dialog).getByRole("textbox", { name: "Observação interna (opcional)" }),
+            within(dialog).getByRole("textbox", {
+                name: "Observação interna (opcional, não é enviada ao cidadão)"
+            }),
             "Pedido confirmado pelo titular"
         )
         await page.user.click(confirm)

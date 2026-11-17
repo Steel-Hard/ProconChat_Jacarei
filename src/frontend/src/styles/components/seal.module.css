@@ -18,3 +18,8 @@
     background: var(--seal-warning-bg);
     color: var(--seal-warning-text);
 }
+
+.info {
+    background: var(--seal-info-bg);
+    color: var(--seal-info-text);
+}

@@ -186,25 +186,25 @@
             "canceled": "Agendamento cancelado. O horário foi liberado no chatbot."
         },
         "cancel": {
-            "title": "Cancelar agendamento?",
-            "description": "O cidadão receberá o aviso de cancelamento pelo WhatsApp e o horário será liberado no chatbot. Esta ação não pode ser desfeita.",
+            "title": "Cancelar o agendamento {{protocol}}?",
+            "subtitle": "{{name}} · {{date}} às {{time}}. O horário volta a ficar disponível no chatbot e o cidadão é avisado pelo WhatsApp. Esta ação não pode ser desfeita.",
             "confirm": "Cancelar e avisar o cidadão",
             "dismiss": "Voltar",
             "reasonLabel": "Motivo obrigatório",
-            "selectReason": "Selecione o motivo",
+            "fixedTag": "Modelo fixo",
             "reasons": {
                 "UNIT_CLOSED": "Unidade fechada nesta data",
                 "CITIZEN_REQUEST": "A pedido do cidadão",
                 "DUPLICATE": "Agendamento duplicado",
                 "OTHER": "Outro motivo"
             },
-            "previewLabel": "Prévia exata da mensagem ao cidadão",
+            "previewLabel": "Mensagem que o cidadão receberá",
             "chooseReason": "Selecione o motivo para ver a mensagem.",
             "previewFailed": "Não foi possível carregar a prévia da mensagem.",
             "retryPreview": "Tentar carregar a prévia novamente",
             "fixedMessageHint": "As mensagens seguem modelos fixos e podem ser enviadas a qualquer momento antes do horário do atendimento.",
-            "noteLabel": "Observação interna (opcional)",
-            "afterStart": "Não é possível cancelar depois do horário do atendimento. Registre como não compareceu."
+            "noteLabel": "Observação interna (opcional, não é enviada ao cidadão)",
+            "afterStart": "O horário já passou; não é possível cancelar. Registre como atendido ou não compareceu."
         },
         "readOnly": "Sua conta pode apenas visualizar agendamentos.",
         "dateNote": "A data não pode ser alterada pelo painel. Remarcações são feitas pelo cidadão no chatbot.",

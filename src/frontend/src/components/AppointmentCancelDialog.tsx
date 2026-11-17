@@ -1,0 +1,94 @@
+import { useTranslation } from "react-i18next"
+import ConfirmDialog from "@/components/ConfirmDialog"
+import css from "@/styles/components/appointmentCancelDialog.module.css"
+import type AppointmentCancelView from "@/types/appointments/AppointmentCancelView.types"
+
+const REASONS = ["UNIT_CLOSED", "CITIZEN_REQUEST", "DUPLICATE", "OTHER"] as const
+
+type Props = {
+    view: AppointmentCancelView
+}
+
+function AppointmentCancelDialog({ view }: Props) {
+    const { t } = useTranslation(["appointmentDetail", "common"])
+
+    return (
+        <ConfirmDialog
+            open={view.open}
+            title={t("actions.cancel.title", { protocol: view.protocol })}
+            description={view.subtitle}
+            confirmLabel={t("actions.cancel.confirm")}
+            cancelLabel={t("actions.cancel.dismiss")}
+            tone="danger"
+            busy={view.busy}
+            confirmDisabled={view.reason === "" || view.preview === undefined}
+            onConfirm={view.confirm}
+            onCancel={view.close}
+            submitOnEnter
+        >
+            <div className={css.fields}>
+                <fieldset className={css.reasons}>
+                    <legend className={css.label}>{t("actions.cancel.reasonLabel")}</legend>
+                    {REASONS.map((reason) => (
+                        <label
+                            key={reason}
+                            className={
+                                view.reason === reason
+                                    ? `${css.reason} ${css.selected}`
+                                    : css.reason
+                            }
+                        >
+                            <input
+                                type="radio"
+                                name="cancel-reason"
+                                value={reason}
+                                checked={view.reason === reason}
+                                disabled={view.busy}
+                                onChange={() => view.setReason(reason)}
+                            />
+                            {t(`actions.cancel.reasons.${reason}`)}
+                        </label>
+                    ))}
+                </fieldset>
+                <div className={css.previewBlock}>
+                    <div className={css.previewHeader}>
+                        <span className={css.label}>{t("actions.cancel.previewLabel")}</span>
+                        <span className={css.tag}>{t("actions.cancel.fixedTag")}</span>
+                    </div>
+                    {view.previewLoading ? (
+                        <p className={css.preview}>{t("common:loading")}</p>
+                    ) : view.previewFailed ? (
+                        <div className={css.preview}>
+                            <p role="alert">{t("actions.cancel.previewFailed")}</p>
+                            <button type="button" className={css.retry} onClick={view.retryPreview}>
+                                {t("actions.cancel.retryPreview")}
+                            </button>
+                        </div>
+                    ) : (
+                        <p className={css.preview}>
+                            {view.preview ?? t("actions.cancel.chooseReason")}
+                        </p>
+                    )}
+                    <p className={css.hint}>{t("actions.cancel.fixedMessageHint")}</p>
+                </div>
+                <label className={css.note}>
+                    {t("actions.cancel.noteLabel")}
+                    <textarea
+                        rows={2}
+                        value={view.note}
+                        maxLength={2000}
+                        disabled={view.busy}
+                        onChange={(event) => view.setNote(event.target.value)}
+                    />
+                </label>
+                {view.error ? (
+                    <p role="alert" className={css.error}>
+                        {view.error}
+                    </p>
+                ) : null}
+            </div>
+        </ConfirmDialog>
+    )
+}
+
+export default AppointmentCancelDialog

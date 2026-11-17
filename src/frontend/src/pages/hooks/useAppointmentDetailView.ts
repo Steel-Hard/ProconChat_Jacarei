@@ -39,7 +39,7 @@ function useAppointmentDetailView(detail: AppointmentDetail | undefined) {
         }
 
         if (detail.rescheduled_from !== null) {
-            seals.push({ label: t("header.seals.rescheduled"), tone: "neutral" })
+            seals.push({ label: t("header.seals.rescheduled"), tone: "info" })
         }
 
         if (detail.off_grid && active) {

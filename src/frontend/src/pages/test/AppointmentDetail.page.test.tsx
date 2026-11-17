@@ -172,7 +172,7 @@ describe("AppointmentDetail.page: cabeçalho e dados", () => {
 
         const scope = within(name.closest("header") as HTMLElement)
         expect(scope.getByText("Comparece por representante")).toBeInTheDocument()
-        expect(scope.getByText("Remarcado pelo cidadão")).toBeInTheDocument()
+        expect(scope.getByText("Remarcado pelo cidadão")).toHaveAttribute("data-tone", "info")
         expect(scope.getByText("Fora da grade atual")).toBeInTheDocument()
         expect(factValue("Data original")).toBe("15/10/2026 às 14:30")
     })
