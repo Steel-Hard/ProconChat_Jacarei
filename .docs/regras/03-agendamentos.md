@@ -70,6 +70,7 @@ Colunas: protocolo, titular (com CPF mascarado), categoria e pergunta de origem,
 - Cada dia mostra os horários configurados, bloqueios do dia e os agendamentos (protocolo, nome curto e status).
 - O filtro de status e responsável também se aplica aos agendamentos do calendário.
 - **"N vagas livres"** aparece **só** onde o chatbot realmente pode oferecer o horário: dentro da janela, depois da antecedência mínima, fora de bloqueios e não no passado.
+- A **legenda** do calendário mostra o número de vagas por horário e a frase "vagas livres só onde o chatbot pode oferecer (janela, antecedência, bloqueios)". Quando uma mudança de horários agendada ([decisão 012](../decisoes/012-horarios-agendados.md)) começa no meio da semana mostrada e altera as vagas, não existe um número único, e a legenda omite a parte numérica e mantém só a frase.
 - Datas bloqueadas aparecem marcadas.
 - Navegação: semana anterior, próxima, "Esta semana".
 
