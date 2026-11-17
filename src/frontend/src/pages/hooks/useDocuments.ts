@@ -6,7 +6,6 @@ import documentsApi from "@/store/api/documents.api"
 import type AttendeeGroup from "@/types/documents/AttendeeGroup.types"
 import type SampleQuestion from "@/types/documents/SampleQuestion.types"
 import type LastChange from "@/types/settings/LastChange.types"
-import { findDuplicateDocuments } from "@/utils/documents/findDuplicateDocuments"
 
 const EMPTY_DOCS: string[] = []
 
@@ -36,16 +35,12 @@ export default function useDocuments() {
     const activeGroupDocs = previewGroup === "holder" ? draft.holder : draft.representative
     const activeQuestionDocs = selectedQuestion?.documents ?? EMPTY_DOCS
 
-    const duplicateDocs = useMemo(() => {
-        return findDuplicateDocuments(activeGroupDocs, activeQuestionDocs)
-    }, [activeGroupDocs, activeQuestionDocs])
-
     const confirmationQuery = documentsApi.usePreviewDocumentsQuery({
         byRepresentative: previewGroup === "representative",
         groupDocuments: activeGroupDocs,
-        questionId: selectedQuestion?.id
+        questionId: selectedQuestion === null ? undefined : Number(selectedQuestion.id)
     })
-    const confirmationText = confirmationQuery.currentData?.text ?? ""
+    const previewData = confirmationQuery.currentData ?? null
 
     const isPreviewUnsaved =
         previewGroup === "holder" ? draft.holderChanged : draft.representativeChanged
@@ -85,9 +80,8 @@ export default function useDocuments() {
             setPreviewQuestionId,
             sampleQuestions,
             selectedQuestion,
-            confirmationText,
+            previewData,
             confirmationError: confirmationQuery.isError,
-            duplicateDocs,
             isPreviewUnsaved,
             isQuestionEmpty
         }

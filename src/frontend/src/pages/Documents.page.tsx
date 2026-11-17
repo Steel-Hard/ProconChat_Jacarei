@@ -93,9 +93,8 @@ export default function DocumentsPage() {
                                 sampleQuestions={preview.sampleQuestions}
                                 selectedQuestionId={preview.previewQuestionId}
                                 onChangeQuestionId={preview.setPreviewQuestionId}
-                                confirmationText={preview.confirmationText}
+                                preview={preview.previewData}
                                 hasPreviewError={preview.confirmationError}
-                                duplicateDocs={preview.duplicateDocs}
                                 isUnsaved={preview.isPreviewUnsaved}
                                 isQuestionEmpty={preview.isQuestionEmpty}
                             />

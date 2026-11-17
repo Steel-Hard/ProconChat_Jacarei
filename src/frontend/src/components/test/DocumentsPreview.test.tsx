@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import DocumentsPreview from "@/components/DocumentsPreview"
+import holderContract from "@/testUtils/documentsPreviewHolder.json"
+import withoutQuestionContract from "@/testUtils/documentsPreviewWithoutQuestion.json"
+import type DocumentsPreviewData from "@/types/documents/DocumentsPreviewData.types"
 import type SampleQuestion from "@/types/documents/SampleQuestion.types"
 
 const sampleQuestions: SampleQuestion[] = [
@@ -19,47 +22,39 @@ const sampleQuestions: SampleQuestion[] = [
     }
 ]
 
+function renderPreview(overrides: Partial<Parameters<typeof DocumentsPreview>[0]> = {}) {
+    return render(
+        <DocumentsPreview
+            attendeeGroup="holder"
+            onChangeAttendeeGroup={vi.fn()}
+            sampleQuestions={sampleQuestions}
+            selectedQuestionId="1"
+            onChangeQuestionId={vi.fn()}
+            preview={holderContract as DocumentsPreviewData}
+            hasPreviewError={false}
+            isUnsaved={false}
+            isQuestionEmpty={false}
+            {...overrides}
+        />
+    )
+}
+
 describe("DocumentsPreview", () => {
     it("renderiza os seletores de quem comparece e pergunta de exemplo", () => {
-        render(
-            <DocumentsPreview
-                attendeeGroup="holder"
-                onChangeAttendeeGroup={vi.fn()}
-                sampleQuestions={sampleQuestions}
-                selectedQuestionId="1"
-                onChangeQuestionId={vi.fn()}
-                confirmationText={"Agendamento realizado\nProtocolo: ABC12345"}
-                hasPreviewError={false}
-                duplicateDocs={new Set()}
-                isUnsaved={false}
-                isQuestionEmpty={false}
-            />
-        )
+        renderPreview()
 
         expect(screen.getByLabelText("Quem comparece")).toBeInTheDocument()
         expect(screen.getByLabelText("Pergunta de exemplo")).toBeInTheDocument()
-        expect(screen.getByTestId("preview-bubble")).toHaveTextContent("Agendamento realizado")
     })
 
     it("chama callbacks ao alterar seletores", async () => {
         const user = userEvent.setup()
         const onChangeGroup = vi.fn()
         const onChangeQuestion = vi.fn()
-
-        render(
-            <DocumentsPreview
-                attendeeGroup="holder"
-                onChangeAttendeeGroup={onChangeGroup}
-                sampleQuestions={sampleQuestions}
-                selectedQuestionId="1"
-                onChangeQuestionId={onChangeQuestion}
-                confirmationText={"Agendamento realizado"}
-                hasPreviewError={false}
-                duplicateDocs={new Set()}
-                isUnsaved={false}
-                isQuestionEmpty={false}
-            />
-        )
+        renderPreview({
+            onChangeAttendeeGroup: onChangeGroup,
+            onChangeQuestionId: onChangeQuestion
+        })
 
         await user.selectOptions(screen.getByLabelText("Quem comparece"), "representative")
         expect(onChangeGroup).toHaveBeenCalledWith("representative")
@@ -68,21 +63,67 @@ describe("DocumentsPreview", () => {
         expect(onChangeQuestion).toHaveBeenCalledWith("2")
     })
 
+    it("monta título, detalhes, grupo, pergunta e aviso pela resposta do backend", () => {
+        renderPreview()
+
+        const bubble = screen.getByTestId("preview-bubble")
+        expect(within(bubble).getByText("Agendamento realizado")).toBeInTheDocument()
+        expect(within(bubble).getByText("Endereço")).toBeInTheDocument()
+        expect(within(bubble).getByText("Avenida Central, 100 (Térreo)")).toBeInTheDocument()
+        expect(within(bubble).getByText("Leve ao atendimento:")).toBeInTheDocument()
+        expect(within(bubble).getByText("CPF")).toBeInTheDocument()
+        expect(within(bubble).getByText("Documentos úteis para esta dúvida:")).toBeInTheDocument()
+        expect(within(bubble).getByText("Fatura do cartão")).toBeInTheDocument()
+        expect(within(bubble).getByText(/Você receberá neste número avisos/)).toBeInTheDocument()
+    })
+
+    it("omite os blocos que o backend devolve nulos", () => {
+        renderPreview({ preview: withoutQuestionContract as DocumentsPreviewData })
+
+        const bubble = screen.getByTestId("preview-bubble")
+        expect(within(bubble).getByText("Leve ao atendimento:")).toBeInTheDocument()
+        expect(
+            within(bubble).queryByText("Documentos úteis para esta dúvida:")
+        ).not.toBeInTheDocument()
+    })
+
+    it("destaca os itens repetidos com a legenda do item e a legenda geral", () => {
+        renderPreview()
+
+        const marked = screen.getAllByText(/^RG/).filter((element) => element.tagName === "MARK")
+        expect(marked.map((element) => element.textContent)).toEqual([
+            "RG ou outro documento oficial com foto",
+            "RG"
+        ])
+        expect(
+            screen.getAllByText("Este item também está nos documentos da pergunta")
+        ).toHaveLength(2)
+        expect(
+            screen.getByText("1 item aparece nas duas listas. O cidadão recebe o pedido repetido.")
+        ).toBeInTheDocument()
+        expect(screen.getByText("CPF").tagName).not.toBe("MARK")
+    })
+
+    it("não mostra a legenda geral quando nada se repete", () => {
+        renderPreview({ preview: withoutQuestionContract as DocumentsPreviewData })
+
+        expect(screen.queryByText(/aparece nas duas listas/)).not.toBeInTheDocument()
+        expect(document.querySelector("mark")).toBeNull()
+    })
+
+    it("rotula protocolo e data como exemplo e o endereço não", () => {
+        renderPreview()
+
+        const bubble = screen.getByTestId("preview-bubble")
+        expect(within(bubble).getAllByText("exemplo")).toHaveLength(2)
+        const protocol = within(bubble).getByText("A3F9C21B").closest("dd")
+        expect(protocol).toHaveTextContent("A3F9C21Bexemplo")
+        const address = within(bubble).getByText("Avenida Central, 100 (Térreo)").closest("dd")
+        expect(address).not.toHaveTextContent("exemplo")
+    })
+
     it("exibe avisos de alterações não salvas e de pergunta sem documentos", () => {
-        render(
-            <DocumentsPreview
-                attendeeGroup="holder"
-                onChangeAttendeeGroup={vi.fn()}
-                sampleQuestions={sampleQuestions}
-                selectedQuestionId="2"
-                onChangeQuestionId={vi.fn()}
-                confirmationText={"Agendamento realizado"}
-                hasPreviewError={false}
-                duplicateDocs={new Set()}
-                isUnsaved={true}
-                isQuestionEmpty={true}
-            />
-        )
+        renderPreview({ selectedQuestionId: "2", isUnsaved: true, isQuestionEmpty: true })
 
         expect(screen.getByText("Mostrando alterações ainda não salvas")).toBeInTheDocument()
         expect(
@@ -90,50 +131,21 @@ describe("DocumentsPreview", () => {
         ).toBeInTheDocument()
     })
 
-    it("destaca itens repetidos com tag e dica", () => {
-        render(
-            <DocumentsPreview
-                attendeeGroup="holder"
-                onChangeAttendeeGroup={vi.fn()}
-                sampleQuestions={sampleQuestions}
-                selectedQuestionId="1"
-                onChangeQuestionId={vi.fn()}
-                confirmationText={
-                    "Agendamento realizado\nLeve ao atendimento:\n• CPF\n\nDocumentos úteis para esta dúvida:\n• CPF"
-                }
-                hasPreviewError={false}
-                duplicateDocs={new Set(["CPF"])}
-                isUnsaved={false}
-                isQuestionEmpty={false}
-            />
-        )
-
-        const markedItem = screen.getByTitle("Este item também está nos documentos da pergunta")
-        expect(markedItem).toHaveTextContent("CPF")
-        expect(markedItem.tagName).toBe("MARK")
-        const previewText = screen.getByTestId("preview-bubble").textContent ?? ""
-        expect(previewText.match(/CPF/g)).toHaveLength(2)
-        expect(screen.getAllByText("Repetido na pergunta")).toHaveLength(1)
-    })
-
     it("exibe erro quando o backend não consegue gerar a prévia", () => {
-        render(
-            <DocumentsPreview
-                attendeeGroup="holder"
-                onChangeAttendeeGroup={vi.fn()}
-                sampleQuestions={sampleQuestions}
-                selectedQuestionId="1"
-                onChangeQuestionId={vi.fn()}
-                confirmationText=""
-                hasPreviewError={true}
-                duplicateDocs={new Set()}
-                isUnsaved={false}
-                isQuestionEmpty={false}
-            />
-        )
+        renderPreview({ preview: null, hasPreviewError: true })
 
         expect(screen.getByRole("alert")).toHaveTextContent(
             "Não foi possível gerar a prévia da mensagem. Tente novamente."
         )
+    })
+
+    it("dois cartões de prévia na tela não repetem o id do título", () => {
+        renderPreview()
+        renderPreview()
+
+        const ids = screen
+            .getAllByRole("heading", { level: 2, name: "Prévia da mensagem de confirmação" })
+            .map((heading) => heading.id)
+        expect(new Set(ids).size).toBe(2)
     })
 })

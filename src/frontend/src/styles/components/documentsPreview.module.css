@@ -120,14 +120,51 @@
     cursor: help;
 }
 
-.repeatedBadge {
-    display: inline-block;
+.details {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+}
+
+.detail {
+    display: flex;
+    gap: 6px;
+}
+
+.detail dt {
+    font-weight: 600;
+}
+
+.detail dd {
+    margin: 0;
+}
+
+.exampleTag {
     margin-left: 6px;
     font-size: 11px;
     font-weight: 600;
-    padding: 1px 5px;
-    border-radius: 4px;
-    background: #f59e0b;
-    color: #fff;
-    vertical-align: middle;
+    color: var(--text-muted);
+}
+
+.block {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.blockList {
+    margin: 0;
+    padding-left: 18px;
+}
+
+.repeatedItemLegend {
+    display: block;
+    font-size: 11.5px;
+    color: var(--text-muted);
+}
+
+.repeatedLegend {
+    font-size: 12.5px;
+    font-weight: 600;
 }

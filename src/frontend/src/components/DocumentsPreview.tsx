@@ -1,6 +1,8 @@
 import { useId } from "react"
 import { useTranslation } from "react-i18next"
 import DocumentsQuestionPicker from "@/components/DocumentsQuestionPicker"
+import DocumentsPreviewBlock from "@/components/DocumentsPreviewBlock"
+import type DocumentsPreviewData from "@/types/documents/DocumentsPreviewData.types"
 import type AttendeeGroup from "@/types/documents/AttendeeGroup.types"
 import type SampleQuestion from "@/types/documents/SampleQuestion.types"
 import css from "@/styles/components/documentsPreview.module.css"
@@ -11,9 +13,8 @@ export type DocumentsPreviewProps = {
     sampleQuestions: SampleQuestion[]
     selectedQuestionId: string
     onChangeQuestionId: (id: string) => void
-    confirmationText: string
+    preview: DocumentsPreviewData | null
     hasPreviewError: boolean
-    duplicateDocs: Set<string>
     isUnsaved: boolean
     isQuestionEmpty: boolean
 }
@@ -24,22 +25,19 @@ export default function DocumentsPreview({
     sampleQuestions,
     selectedQuestionId,
     onChangeQuestionId,
-    confirmationText,
+    preview,
     hasPreviewError,
-    duplicateDocs,
     isUnsaved,
     isQuestionEmpty
 }: DocumentsPreviewProps) {
     const { t } = useTranslation("documents")
     const attendeeId = useId()
-
-    const lines = confirmationText.split("\n")
-    const questionDocsHeadingIndex = lines.indexOf("Documentos úteis para esta dúvida:")
+    const headingId = useId()
 
     return (
-        <section className={css.previewCard} aria-labelledby="preview-heading">
+        <section className={css.previewCard} aria-labelledby={headingId}>
             <div className={css.header}>
-                <h2 id="preview-heading" className={css.title}>
+                <h2 id={headingId} className={css.title}>
                     {t("preview.title")}
                 </h2>
                 <p className={css.subtitle}>{t("preview.subtitle")}</p>
@@ -90,40 +88,39 @@ export default function DocumentsPreview({
 
             <div className={css.chatPreview}>
                 <div className={css.bubble} data-testid="preview-bubble">
-                    {lines.map((line, idx) => {
-                        if (line.startsWith("• ")) {
-                            const docText = line.slice(2).trim()
-                            const isDuplicate =
-                                idx < questionDocsHeadingIndex && duplicateDocs.has(docText)
-
-                            if (isDuplicate) {
-                                return (
-                                    <span key={idx}>
-                                        {t("preview.bullet")}
-                                        <mark
-                                            className={css.repeatedItem}
-                                            title={t("preview.duplicateTooltip")}
-                                        >
-                                            {docText}
-                                        </mark>
-                                        <span className={css.repeatedBadge}>
-                                            {t("preview.duplicateBadge")}
-                                        </span>
-                                    </span>
-                                )
-                            }
-                        }
-
-                        if (idx === 0) {
-                            return (
-                                <strong key={idx} className={css.bubbleHeading}>
-                                    {line}
-                                </strong>
-                            )
-                        }
-
-                        return <span key={idx}>{line || "\u00A0"}</span>
-                    })}
+                    {preview !== null ? (
+                        <>
+                            <strong className={css.bubbleHeading}>{preview.title}</strong>
+                            <dl className={css.details}>
+                                {preview.details.map((detail) => (
+                                    <div key={detail.label} className={css.detail}>
+                                        <dt>{detail.label}</dt>
+                                        <dd>
+                                            {detail.value}
+                                            {detail.value === preview.example.protocol ||
+                                            detail.value === preview.example.dateTime ? (
+                                                <span className={css.exampleTag}>
+                                                    {t("preview.exampleTag")}
+                                                </span>
+                                            ) : null}
+                                        </dd>
+                                    </div>
+                                ))}
+                            </dl>
+                            {preview.groupBlock !== null ? (
+                                <DocumentsPreviewBlock block={preview.groupBlock} />
+                            ) : null}
+                            {preview.questionBlock !== null ? (
+                                <DocumentsPreviewBlock block={preview.questionBlock} />
+                            ) : null}
+                            {preview.repeatedCount > 0 ? (
+                                <p className={css.repeatedLegend}>
+                                    {t("preview.repeatedLegend", { count: preview.repeatedCount })}
+                                </p>
+                            ) : null}
+                            <p>{preview.notice}</p>
+                        </>
+                    ) : null}
                 </div>
             </div>
         </section>

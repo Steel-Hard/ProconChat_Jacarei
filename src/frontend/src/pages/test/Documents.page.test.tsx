@@ -2,6 +2,9 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import renderDocumentsPage from "@/testUtils/renderDocumentsPage"
+import holderContract from "@/testUtils/documentsPreviewHolder.json"
+import representativeContract from "@/testUtils/documentsPreviewRepresentative.json"
+import withoutQuestionContract from "@/testUtils/documentsPreviewWithoutQuestion.json"
 import type DocumentsConfigView from "@/types/documents/DocumentsConfigView.types"
 
 const initialDocuments: DocumentsConfigView = {
@@ -19,10 +22,6 @@ const initialDocuments: DocumentsConfigView = {
     ],
     updatedBy: { id: 1, name: "Mariana Couto" },
     updatedAt: "2026-10-15T14:30:00.000Z",
-    unitAddress: "Avenida Central, 100",
-    unitAddressComplement: "Térreo",
-    reminderEnabled: true,
-    reminderHours: 24,
     sampleQuestions: [
         {
             id: "1",
@@ -46,6 +45,7 @@ function stubDocumentsFetch(
     }
 ) {
     let capturedPutBody: unknown = null
+    const previewBodies: Array<Record<string, unknown> | null> = []
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const request =
@@ -97,31 +97,14 @@ function stubDocumentsFetch(
         }
 
         if (url.endsWith("/api/v1/documents/preview") && method === "POST") {
-            const byRepresentative = body?.byRepresentative === true
-            const groupDocuments = body?.groupDocuments as string[]
-            const question = initialDocuments.sampleQuestions?.find(
-                (item) => item.id === body?.questionId
-            )
-            const lines = [
-                "Agendamento realizado",
-                "Protocolo: ABC12345",
-                "Data e hora: Seg, 09/11 às 10:00",
-                "Endereço: Avenida Central, 100 (Térreo)",
-                "",
-                byRepresentative
-                    ? "A pessoa que comparecer em seu nome deve levar:"
-                    : "Leve ao atendimento:",
-                ...groupDocuments.map((document) => `• ${document}`)
-            ]
-            if (question?.documents.length) {
-                lines.push("", "Documentos úteis para esta dúvida:")
-                lines.push(...question.documents.map((document) => `• ${document}`))
-            }
-            lines.push(
-                "",
-                "Você receberá neste número avisos sobre este agendamento, como um lembrete 24 horas antes do atendimento e o aviso em caso de cancelamento."
-            )
-            return new Response(JSON.stringify({ data: { text: lines.join("\n") } }), {
+            previewBodies.push(body)
+            const contract =
+                body?.byRepresentative === true
+                    ? representativeContract
+                    : body?.questionId === undefined
+                      ? withoutQuestionContract
+                      : holderContract
+            return new Response(JSON.stringify({ data: contract }), {
                 status: 200,
                 headers: { "Content-Type": "application/json" }
             })
@@ -132,7 +115,8 @@ function stubDocumentsFetch(
 
     return {
         fetchMock,
-        getCapturedPutBody: () => capturedPutBody
+        getCapturedPutBody: () => capturedPutBody,
+        previewBodies
     }
 }
 
@@ -310,33 +294,20 @@ describe("DocumentsPage", () => {
         expect(screen.queryByText("1 alteração não salva")).not.toBeInTheDocument()
     })
 
-    it("prévia mostra a mensagem com destaque de itens repetidos e atualiza com os seletores", async () => {
-        const user = userEvent.setup()
+    it("prévia monta título, detalhes, grupo e pergunta pela resposta do backend", async () => {
         const { fetchMock } = stubDocumentsFetch()
         await renderDocumentsPage(fetchMock)
 
-        await screen.findByRole("heading", { name: "Prévia da mensagem de confirmação" })
-        await screen.findByText("Agendamento realizado")
+        const bubble = await screen.findByTestId("preview-bubble")
+        await within(bubble).findByText("Agendamento realizado")
 
-        const bubble = screen.getByTestId("preview-bubble")
-        expect(bubble).toHaveTextContent("Agendamento realizado")
-        expect(bubble).toHaveTextContent("Leve ao atendimento:")
-        expect(bubble).toHaveTextContent("Documentos úteis para esta dúvida:")
-
-        // CPF está tanto no grupo do titular quanto na pergunta "Cobrança indevida no cartão"
-        expect(screen.getByText("Repetido na pergunta")).toBeInTheDocument()
-
-        // Troca para representante
-        await user.selectOptions(screen.getByLabelText("Quem comparece"), "representative")
-        await waitFor(() =>
-            expect(bubble).toHaveTextContent("A pessoa que comparecer em seu nome deve levar:")
-        )
-
-        // Troca para pergunta sem documentos
-        await user.selectOptions(screen.getByLabelText("Pergunta de exemplo"), "2")
-        expect(
-            screen.getByText("A pergunta escolhida não tem documentos úteis cadastrados")
-        ).toBeInTheDocument()
+        expect(within(bubble).getByText("Protocolo")).toBeInTheDocument()
+        expect(within(bubble).getByText("Avenida Central, 100 (Térreo)")).toBeInTheDocument()
+        expect(within(bubble).getByText("Leve ao atendimento:")).toBeInTheDocument()
+        expect(within(bubble).getByText("CPF")).toBeInTheDocument()
+        expect(within(bubble).getByText("Documentos úteis para esta dúvida:")).toBeInTheDocument()
+        expect(within(bubble).getByText("Fatura do cartão")).toBeInTheDocument()
+        expect(within(bubble).getByText(/Você receberá neste número avisos/)).toBeInTheDocument()
     })
 
     it("lista todas as perguntas ativas agrupadas por categoria, na ordem recebida", async () => {

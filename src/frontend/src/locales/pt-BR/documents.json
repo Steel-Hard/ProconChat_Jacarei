@@ -47,12 +47,13 @@
         "questionSearchPlaceholder": "Digite parte do título da pergunta",
         "noQuestionsNotice": "Nenhuma pergunta ativa cadastrada na tela Conteúdo",
         "questionSearchEmpty": "Nenhuma pergunta encontrada para essa busca",
-        "bullet": "• ",
         "unsavedNotice": "Mostrando alterações ainda não salvas",
         "noQuestionDocsNotice": "A pergunta escolhida não tem documentos úteis cadastrados",
         "loadFailed": "Não foi possível gerar a prévia da mensagem. Tente novamente.",
         "duplicateTooltip": "Este item também está nos documentos da pergunta",
-        "duplicateBadge": "Repetido na pergunta"
+        "exampleTag": "exemplo",
+        "repeatedLegend_one": "{{count}} item aparece nas duas listas. O cidadão recebe o pedido repetido.",
+        "repeatedLegend_other": "{{count}} itens aparecem nas duas listas. O cidadão recebe o pedido repetido."
     },
     "changes": {
         "holderGroup": "Documentos do titular alterados",
