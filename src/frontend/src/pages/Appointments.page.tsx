@@ -113,6 +113,7 @@ function AppointmentsPage() {
                             onSelect={page.selectStatus}
                         />
                         <AppointmentListFilters
+                            showPeriod={!page.calendar.enabled}
                             periodLabel={t("filters.period")}
                             responsibleLabel={t("filters.responsible")}
                             period={filters.period}

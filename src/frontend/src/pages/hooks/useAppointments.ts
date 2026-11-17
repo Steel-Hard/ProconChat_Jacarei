@@ -30,6 +30,7 @@ import APPOINTMENT_STATUS_FILTERS from "@/utils/appointmentStatusFilters"
 import defaultSortMode from "@/utils/defaultSortMode"
 import formatDayMonth from "@/utils/formatDayMonth"
 import formatTime from "@/utils/formatTime"
+import withCalendarParams from "@/utils/appointmentCalendarParams"
 import toAppointmentListParams from "@/utils/toAppointmentListParams"
 import weekdayOf from "@/utils/weekdayOf"
 
@@ -103,14 +104,21 @@ function useAppointments() {
 
     const applyFilters = useCallback(
         (next: AppointmentListFilters, replace = false) => {
-            setSearchParams(toAppointmentListParams(next), { replace })
+            setSearchParams(
+                (current) => withCalendarParams(toAppointmentListParams(next), current),
+                { replace }
+            )
         },
         [setSearchParams]
     )
 
     const resetOrder = useCallback(() => {
         setSearchParams(
-            (current) => toAppointmentListParams(withoutOrder(parseAppointmentListParams(current))),
+            (current) =>
+                withCalendarParams(
+                    toAppointmentListParams(withoutOrder(parseAppointmentListParams(current))),
+                    current
+                ),
             { replace: true, flushSync: true }
         )
     }, [setSearchParams])

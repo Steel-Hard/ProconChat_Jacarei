@@ -1,6 +1,8 @@
-import { useState } from "react"
+import { useSearchParams } from "react-router-dom"
 import appointmentsApi from "@/store/api/appointments.api"
 import type AppointmentListFilters from "@/types/appointments/AppointmentListFilters.types"
+
+const DATE = /^\d{4}-\d{2}-\d{2}$/
 
 function shiftDate(date: string, days: number): string {
     const shifted = new Date(`${date}T12:00:00Z`)
@@ -9,12 +11,49 @@ function shiftDate(date: string, days: number): string {
 }
 
 function useAppointmentCalendar(filters: AppointmentListFilters) {
-    const [enabled, setEnabled] = useState(false)
-    const [date, setDate] = useState<string>()
+    const [searchParams, setSearchParams] = useSearchParams()
+    const enabled = searchParams.get("visao") === "calendario"
+    const week = searchParams.get("semana")
+    const date = week !== null && DATE.test(week) ? week : undefined
     const query = appointmentsApi.useGetAppointmentCalendarQuery(
         { date, status: filters.status, responsible: filters.responsible },
         { skip: !enabled, refetchOnMountOrArgChange: true }
     )
+
+    function setWeek(next: string | undefined) {
+        setSearchParams(
+            (current) => {
+                const params = new URLSearchParams(current)
+
+                if (next === undefined) {
+                    params.delete("semana")
+                } else {
+                    params.set("semana", next)
+                }
+
+                return params
+            },
+            { replace: true }
+        )
+    }
+
+    function setEnabled(value: boolean) {
+        setSearchParams(
+            (current) => {
+                const params = new URLSearchParams(current)
+                params.delete("semana")
+
+                if (value) {
+                    params.set("visao", "calendario")
+                } else {
+                    params.delete("visao")
+                }
+
+                return params
+            },
+            { replace: true }
+        )
+    }
 
     return {
         enabled,
@@ -25,15 +64,15 @@ function useAppointmentCalendar(filters: AppointmentListFilters) {
         retry: () => void query.refetch(),
         previous: () => {
             if (query.currentData) {
-                setDate(shiftDate(query.currentData.weekStart, -7))
+                setWeek(shiftDate(query.currentData.weekStart, -7))
             }
         },
         next: () => {
             if (query.currentData) {
-                setDate(shiftDate(query.currentData.weekStart, 7))
+                setWeek(shiftDate(query.currentData.weekStart, 7))
             }
         },
-        current: () => setDate(undefined)
+        current: () => setWeek(undefined)
     }
 }
 
