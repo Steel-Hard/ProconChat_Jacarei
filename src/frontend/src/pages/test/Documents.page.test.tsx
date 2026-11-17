@@ -489,35 +489,16 @@ describe("DocumentsPage", () => {
         ).toEqual(Array.from({ length: 12 }, (_, index) => `Pergunta ${index + 1}`))
     })
 
-    it("filtra as perguntas pela busca no título e escolhe a primeira que sobra", async () => {
-        const user = userEvent.setup()
+    it("não oferece campo de busca de pergunta", async () => {
         const { fetchMock } = stubDocumentsFetch({
             status: 200,
             data: { ...initialDocuments, sampleQuestions: buildTwelveQuestions() }
         })
         await renderDocumentsPage(fetchMock)
 
-        await user.type(
-            await screen.findByRole("searchbox", { name: "Buscar pergunta" }),
-            "pergunta 1"
-        )
-
-        const select = screen.getByLabelText("Pergunta de exemplo")
-        expect(
-            within(select)
-                .getAllByRole("option")
-                .map((option) => option.textContent)
-        ).toEqual(["Pergunta 1", "Pergunta 10", "Pergunta 11", "Pergunta 12"])
-
-        await user.clear(screen.getByRole("searchbox", { name: "Buscar pergunta" }))
-        await user.type(screen.getByRole("searchbox", { name: "Buscar pergunta" }), "PERGUNTA 5")
-
-        expect(
-            within(select)
-                .getAllByRole("option")
-                .map((option) => option.textContent)
-        ).toEqual(["Pergunta 5"])
-        expect(select).toHaveValue("5")
+        await screen.findByLabelText("Pergunta de exemplo")
+        expect(screen.queryByRole("searchbox")).not.toBeInTheDocument()
+        expect(screen.queryByLabelText("Buscar pergunta")).not.toBeInTheDocument()
     })
 
     it("sem perguntas ativas mostra o estado vazio e nenhuma pergunta inventada", async () => {

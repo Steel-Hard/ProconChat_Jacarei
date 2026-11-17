@@ -206,16 +206,4 @@ describe("DocumentsPreview", () => {
             "Nenhum documento será pedido quando o titular comparecer."
         )
     })
-
-    it("diz que a prévia continua com a pergunta anterior quando a busca não encontra nada", async () => {
-        const user = userEvent.setup()
-        renderPreview()
-
-        await user.type(screen.getByLabelText("Buscar pergunta"), "zzzz")
-
-        expect(screen.getByRole("status")).toHaveTextContent(
-            "Nenhuma pergunta encontrada para essa busca. A prévia continua com a pergunta anterior."
-        )
-        expect(screen.getByTestId("preview-bubble")).toHaveTextContent("Agendamento realizado")
-    })
 })
