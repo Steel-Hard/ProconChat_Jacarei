@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
+import APPOINTMENT_NOTE_MAX_LENGTH from "@/utils/appointmentNoteMaxLength"
 import ConfirmDialog from "@/components/ConfirmDialog"
 import css from "@/styles/components/appointmentCancelDialog.module.css"
 import type AppointmentCancelView from "@/types/appointments/AppointmentCancelView.types"
@@ -109,7 +110,7 @@ function AppointmentCancelDialog({ view }: Props) {
                     <textarea
                         rows={2}
                         value={view.note}
-                        maxLength={2000}
+                        maxLength={APPOINTMENT_NOTE_MAX_LENGTH}
                         disabled={view.busy}
                         onChange={(event) => view.setNote(event.target.value)}
                     />

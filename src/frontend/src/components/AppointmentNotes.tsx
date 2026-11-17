@@ -1,11 +1,10 @@
 import { useId } from "react"
 import { useTranslation } from "react-i18next"
 import type AppointmentNote from "@/types/appointments/AppointmentNote.types"
+import APPOINTMENT_NOTE_MAX_LENGTH from "@/utils/appointmentNoteMaxLength"
 import dateTimePartsOf from "@/utils/dateTimePartsOf"
 import css from "@/styles/components/appointmentNotes.module.css"
 import section from "@/styles/components/appointmentDetailSection.module.css"
-
-const NOTE_MAX_LENGTH = 2000
 
 type Props = {
     notes: AppointmentNote[]
@@ -56,7 +55,7 @@ function AppointmentNotes({ notes, text, canAdd, busy, onChange, onAdd }: Props)
                         className={css.field}
                         placeholder={t("notes.placeholder")}
                         value={text}
-                        maxLength={NOTE_MAX_LENGTH}
+                        maxLength={APPOINTMENT_NOTE_MAX_LENGTH}
                         onChange={(event) => onChange(event.target.value)}
                     />
                     <button
