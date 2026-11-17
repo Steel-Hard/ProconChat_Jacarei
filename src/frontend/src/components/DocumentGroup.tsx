@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react"
+import { useId, useState, type FormEvent } from "react"
 import { useTranslation } from "react-i18next"
 import DocumentItem from "@/components/DocumentItem"
 import type DocumentGroupProps from "@/types/documents/DocumentGroupProps.types"
@@ -19,6 +19,8 @@ export default function DocumentGroup({
 }: DocumentGroupProps) {
     const { t } = useTranslation("documents")
     const [newText, setNewText] = useState("")
+    const limitId = useId()
+    const duplicateId = useId()
 
     function handleAdd(e: FormEvent) {
         e.preventDefault()
@@ -71,6 +73,7 @@ export default function DocumentGroup({
                     aria-label={`${t("items.addPlaceholder")} (${title})`}
                     maxLength={MAX_DOCUMENT_LENGTH}
                     disabled={limitReached}
+                    aria-describedby={limitReached ? limitId : duplicate ? duplicateId : undefined}
                 />
                 <button
                     type="submit"
@@ -81,11 +84,15 @@ export default function DocumentGroup({
                 </button>
             </form>
             {limitReached ? (
-                <p className={css.warning}>
+                <p id={limitId} role="status" className={css.warning}>
                     {t("items.limitReached", { max: MAX_DOCUMENTS_PER_GROUP })}
                 </p>
             ) : null}
-            {duplicate ? <p className={css.warning}>{t("items.duplicate")}</p> : null}
+            {duplicate ? (
+                <p id={duplicateId} role="status" className={css.warning}>
+                    {t("items.duplicate")}
+                </p>
+            ) : null}
         </section>
     )
 }

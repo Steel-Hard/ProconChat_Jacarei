@@ -163,4 +163,30 @@ describe("DocumentGroup", () => {
         expect(list.compareDocumentPosition(alert) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
         expect(alert.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     })
+
+    it("anuncia o limite como status e liga o motivo ao campo desabilitado", () => {
+        renderGroup(Array.from({ length: 10 }, (_, index) => `Documento ${index + 1}`))
+
+        expect(screen.getByRole("status")).toHaveTextContent(
+            "Limite de 10 documentos por grupo atingido."
+        )
+        expect(
+            screen.getByRole("textbox", {
+                name: "Novo documento (Grupo Teste)"
+            })
+        ).toHaveAccessibleDescription("Limite de 10 documentos por grupo atingido.")
+    })
+
+    it("anuncia o duplicado como status e liga o aviso ao campo", async () => {
+        const user = userEvent.setup()
+        renderGroup(["CPF"])
+
+        const input = screen.getByRole("textbox", {
+            name: "Novo documento (Grupo Teste)"
+        })
+        await user.type(input, "cpf")
+
+        expect(screen.getByRole("status")).toHaveTextContent("Esse documento já está na lista.")
+        expect(input).toHaveAccessibleDescription("Esse documento já está na lista.")
+    })
 })

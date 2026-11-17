@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type FormEvent, type KeyboardEvent } from "react"
+import { useId, useState, useRef, useEffect, type FormEvent, type KeyboardEvent } from "react"
 import { useTranslation } from "react-i18next"
 import type DocumentItemProps from "@/types/documents/DocumentItemProps.types"
 import MAX_DOCUMENT_LENGTH from "@/utils/documents/maxDocumentLength"
@@ -19,6 +19,7 @@ export default function DocumentItem({
     const [isEditing, setIsEditing] = useState(false)
     const [editText, setEditText] = useState(description)
     const inputRef = useRef<HTMLInputElement>(null)
+    const warningId = useId()
 
     useEffect(() => {
         if (isEditing) {
@@ -78,9 +79,14 @@ export default function DocumentItem({
                             onKeyDown={handleKeyDown}
                             aria-label={t("items.editItemAria", { item: description })}
                             maxLength={MAX_DOCUMENT_LENGTH}
+                            aria-describedby={editTaken ? warningId : undefined}
                         />
                         <span className={css.editHint}>{t("items.editHint")}</span>
-                        {editTaken ? <p className={css.warning}>{t("items.duplicate")}</p> : null}
+                        {editTaken ? (
+                            <p id={warningId} role="status" className={css.warning}>
+                                {t("items.duplicate")}
+                            </p>
+                        ) : null}
                     </div>
                     <div className={css.actions}>
                         <button type="submit" className={css.saveButton} disabled={editTaken}>

@@ -173,7 +173,10 @@ describe("DocumentItem", () => {
         await user.clear(input)
         await user.type(input, "RG{enter}")
 
-        expect(screen.getByText("Esse documento já está na lista.")).toBeInTheDocument()
+        expect(screen.getByRole("status")).toHaveTextContent("Esse documento já está na lista.")
+        expect(screen.getByRole("textbox")).toHaveAccessibleDescription(
+            "Esse documento já está na lista."
+        )
         expect(screen.getByRole("button", { name: "OK" })).toBeDisabled()
         expect(onEdit).not.toHaveBeenCalled()
         expect(screen.getByRole("textbox")).toBeInTheDocument()
