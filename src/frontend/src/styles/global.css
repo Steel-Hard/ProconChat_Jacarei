@@ -72,6 +72,7 @@
     --text-body: #1f1b33;
     --text-muted: #6b6780;
     --text-soft: #8a869c;
+    --text-faint: #a6a2b8;
     --text-strong: #3b3654;
     --text-link: var(--color-primary);
     --border: #e4e1ee;

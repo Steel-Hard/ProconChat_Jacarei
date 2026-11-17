@@ -157,6 +157,12 @@ describe("AppointmentCalendar", () => {
         expect(screen.queryByText(/\(s\)/)).toBeNull()
     })
 
+    it("não escreve texto de vagas no horário lotado", () => {
+        renderCalendar(calendar([day("2026-10-19", [{ time: "08:00", freeSeats: 0 }])]))
+
+        expect(cellsOf("08:00")[0]).toHaveTextContent(/^$/)
+    })
+
     it("não escreve vagas no horário sem vaga ofertável nem no horário que o dia não tem", () => {
         renderCalendar(
             calendar([

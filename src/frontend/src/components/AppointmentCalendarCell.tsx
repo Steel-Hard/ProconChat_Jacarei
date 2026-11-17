@@ -29,7 +29,7 @@ function AppointmentCalendarCell({ slot, appointments, onOpen }: Props) {
                     onOpen={onOpen}
                 />
             ))}
-            {slot && slot.freeSeats !== null ? (
+            {slot && slot.freeSeats !== null && slot.freeSeats > 0 ? (
                 <span className={css.freeSeats}>
                     {t("calendar.freeSeats", { count: slot.freeSeats })}
                 </span>
