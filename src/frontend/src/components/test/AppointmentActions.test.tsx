@@ -15,6 +15,7 @@ function view(overrides: Partial<AppointmentActionsView> = {}): AppointmentActio
         finalText: null,
         readOnlyText: null,
         cancelUnavailableText: null,
+        notice: null,
         error: null,
         ...overrides
     }

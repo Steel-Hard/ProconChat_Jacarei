@@ -67,23 +67,86 @@ describe("AppointmentDetail.page: atribuição, correção e observações", () 
         })
     })
 
-    it("corrige o registro e informa quando nenhum funcionário está livre", async () => {
-        const detail = detailWithActions(
+    it.each([
+        [
+            "RESPONSIBLE_BUSY",
+            { conflictingProtocol: "AG-0099", freeStaffCount: 0 },
+            "Registro corrigido. O agendamento voltou a Pendente sem responsável, porque o responsável anterior já tem outro agendamento neste horário (protocolo AG-0099). Ninguém está livre neste horário no momento."
+        ],
+        [
+            "RESPONSIBLE_BUSY",
+            { conflictingProtocol: "AG-0099", freeStaffCount: 1 },
+            "Registro corrigido. O agendamento voltou a Pendente sem responsável, porque o responsável anterior já tem outro agendamento neste horário (protocolo AG-0099). Há 1 funcionário livre neste horário."
+        ],
+        [
+            "RESPONSIBLE_BUSY",
+            { conflictingProtocol: "AG-0099", freeStaffCount: 3 },
+            "Registro corrigido. O agendamento voltou a Pendente sem responsável, porque o responsável anterior já tem outro agendamento neste horário (protocolo AG-0099). Há 3 funcionários livres neste horário."
+        ],
+        [
+            "RESPONSIBLE_UNAVAILABLE",
+            { freeStaffCount: 0 },
+            "Registro corrigido. O agendamento voltou a Pendente sem responsável, porque o responsável anterior não pode mais assumir (conta desativada ou sem Gerenciar agendamentos). Ninguém está livre neste horário no momento."
+        ],
+        [
+            "RESPONSIBLE_UNAVAILABLE",
+            { freeStaffCount: 2 },
+            "Registro corrigido. O agendamento voltou a Pendente sem responsável, porque o responsável anterior não pode mais assumir (conta desativada ou sem Gerenciar agendamentos). Funcionários livres neste horário: 2."
+        ]
+    ])(
+        "corrige o registro com aviso %s e deixa o aviso na caixa Ações",
+        async (code, details, text) => {
+            const detail = detailWithActions(
+                { status: "ATTENDED" },
+                { correct_record: { allowed: true, code: null } }
+            )
+            const page = await renderAppointmentDetailPage({
+                handlers: {
+                    [`GET ${DETAIL_PATH}`]: () => ({ status: 200, body: { data: detail } }),
+                    [`PATCH ${STATUS_PATH}`]: () => ({
+                        status: 200,
+                        body: { data: detail, warning: { code, details } }
+                    })
+                }
+            })
+
+            await page.user.click(await screen.findByRole("button", { name: "Corrigir registro" }))
+            const dialog = screen.getByRole("dialog", { name: "Corrigir registro do agendamento?" })
+            await page.user.click(within(dialog).getByRole("button", { name: "Corrigir registro" }))
+
+            const box = within(
+                screen.getByRole("heading", { level: 2, name: "Ações" }).closest("section")!
+            )
+            expect(await box.findByRole("status")).toHaveTextContent(text)
+            expect(screen.getAllByText(/Registro corrigido/)).toHaveLength(1)
+            expect(page.requests("PATCH", STATUS_PATH)[0]?.body).toEqual({
+                action: "correct_record"
+            })
+        }
+    )
+
+    it.each([
+        [
+            "com responsável",
+            { assigned_user_name: "Ana Paula Souza", status: "CONFIRMED" as const },
+            "Registro corrigido. O agendamento voltou a Confirmado com Ana Paula Souza."
+        ],
+        [
+            "sem responsável",
+            { assigned_user_name: null, status: "PENDING" as const },
+            "Registro corrigido. O agendamento voltou a Pendente."
+        ]
+    ])("corrige o registro sem aviso %s", async (_case, after, text) => {
+        const before = detailWithActions(
             { status: "ATTENDED" },
             { correct_record: { allowed: true, code: null } }
         )
         const page = await renderAppointmentDetailPage({
             handlers: {
-                [`GET ${DETAIL_PATH}`]: () => ({ status: 200, body: { data: detail } }),
+                [`GET ${DETAIL_PATH}`]: () => ({ status: 200, body: { data: before } }),
                 [`PATCH ${STATUS_PATH}`]: () => ({
                     status: 200,
-                    body: {
-                        data: detail,
-                        warning: {
-                            code: "RESPONSIBLE_UNAVAILABLE",
-                            details: { freeStaffCount: 0 }
-                        }
-                    }
+                    body: { data: { ...before, ...after } }
                 })
             }
         })
@@ -92,12 +155,10 @@ describe("AppointmentDetail.page: atribuição, correção e observações", () 
         const dialog = screen.getByRole("dialog", { name: "Corrigir registro do agendamento?" })
         await page.user.click(within(dialog).getByRole("button", { name: "Corrigir registro" }))
 
-        expect(
-            await screen.findByText(
-                "Registro corrigido, mas ninguém está livre para atender nesse horário."
-            )
-        ).toBeInTheDocument()
-        expect(page.requests("PATCH", STATUS_PATH)[0]?.body).toEqual({ action: "correct_record" })
+        const box = within(
+            screen.getByRole("heading", { level: 2, name: "Ações" }).closest("section")!
+        )
+        expect(await box.findByRole("status")).toHaveTextContent(text)
     })
 
     it("adiciona observações internas com autor e data, sem controles de edição ou exclusão", async () => {

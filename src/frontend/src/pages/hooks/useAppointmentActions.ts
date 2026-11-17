@@ -75,6 +75,7 @@ function useAppointmentActions({ detail, canManage }: Options) {
     const [noteText, setNoteText] = useState("")
     const [noteBusy, setNoteBusy] = useState(false)
     const [busy, setBusy] = useState(false)
+    const [notice, setNotice] = useState<string | null>(null)
     const [actionError, setActionError] = useState<{
         key: ErrorKey
         protocol: string
@@ -92,6 +93,7 @@ function useAppointmentActions({ detail, canManage }: Options) {
 
     const open = useCallback((action: AppointmentAction) => {
         if (isConfirmableAction(action)) {
+            setNotice(null)
             setPending(action)
         }
     }, [])
@@ -102,6 +104,37 @@ function useAppointmentActions({ detail, canManage }: Options) {
         }
     }, [])
 
+    function correctionNotice(corrected: AppointmentDetail): string {
+        const warning = corrected.correction_warning
+
+        if (warning?.code === "RESPONSIBLE_BUSY") {
+            const count = warning.details.freeStaffCount
+            const protocol =
+                warning.details.conflictingProtocol ??
+                t("actions.correctRecord.result.unknownProtocol")
+
+            if (count === 0) {
+                return t("actions.correctRecord.result.busyNone", { protocol })
+            }
+
+            return count === 1
+                ? t("actions.correctRecord.result.busyOne", { protocol })
+                : t("actions.correctRecord.result.busyMany", { protocol, count })
+        }
+
+        if (warning?.code === "RESPONSIBLE_UNAVAILABLE") {
+            const count = warning.details.freeStaffCount
+
+            return count === 0
+                ? t("actions.correctRecord.result.unavailableNone")
+                : t("actions.correctRecord.result.unavailableSome", { count })
+        }
+
+        return corrected.status === "CONFIRMED" && corrected.assigned_user_name
+            ? t("actions.correctRecord.result.confirmed", { name: corrected.assigned_user_name })
+            : t("actions.correctRecord.result.pending")
+    }
+
     async function confirm() {
         if (detail === undefined || pending === null || inFlight.current) {
             return
@@ -111,27 +144,13 @@ function useAppointmentActions({ detail, canManage }: Options) {
         inFlight.current = true
         setBusy(true)
         setActionError(null)
+        setNotice(null)
         const result = await updateStatus({ id: detail.id, action })
 
         if ("data" in result && result.data !== undefined) {
-            const warning = result.data.correction_warning
-            if (action === "correct_record" && warning) {
-                if (warning.code === "RESPONSIBLE_BUSY" && warning.details.conflictingProtocol) {
-                    showToast(
-                        t("actions.correctRecord.warning.busy", {
-                            protocol: warning.details.conflictingProtocol
-                        })
-                    )
-                } else {
-                    if (warning.details.freeStaffCount === 0) {
-                        showToast(t("actions.correctRecord.warning.noStaff"))
-                    } else {
-                        showToast(
-                            t("actions.correctRecord.warning.unavailable", {
-                                count: warning.details.freeStaffCount
-                            })
-                        )
-                    }
+            if (action === "correct_record") {
+                if (mounted.current) {
+                    setNotice(correctionNotice(result.data))
                 }
             } else {
                 showToast(
@@ -179,6 +198,7 @@ function useAppointmentActions({ detail, canManage }: Options) {
 
         inFlight.current = true
         setBusy(true)
+        setNotice(null)
         const result = await updateStatus({
             id: detail.id,
             action: "assign",
@@ -221,6 +241,7 @@ function useAppointmentActions({ detail, canManage }: Options) {
         }
 
         setNoteBusy(true)
+        setNotice(null)
         const result = await addNoteMutation({ id: detail.id, text })
         if ("data" in result && result.data !== undefined) {
             setNoteText("")
@@ -277,6 +298,7 @@ function useAppointmentActions({ detail, canManage }: Options) {
                 detail.available_actions.cancel.code === "CANCEL_AFTER_START"
                     ? t("actions.cancel.afterStart")
                     : null,
+            notice,
             error: actionError
                 ? t(`common:${actionError.key}`, { protocol: actionError.protocol })
                 : null

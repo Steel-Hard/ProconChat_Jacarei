@@ -19,6 +19,7 @@ function AppointmentActions({ title, view, dateNote, onAction }: AppointmentActi
                     {view.error}
                 </p>
             ) : null}
+            {view.notice ? <output className={css.notice}>{view.notice}</output> : null}
             {view.items.map((item) => (
                 <AppointmentActionItem
                     key={`${item.kind}-${item.action}`}

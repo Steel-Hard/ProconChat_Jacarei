@@ -61,6 +61,7 @@
 }
 
 .notice {
+    display: block;
     margin-top: 18px;
     padding: 12px 14px;
     border-radius: 10px;
@@ -260,4 +261,15 @@
     font-size: 12.5px;
     line-height: 1.5;
     color: var(--text-muted);
+}
+
+.notice {
+    display: block;
+    padding: 9px 11px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-page);
+    color: var(--text-strong);
+    font-size: 13px;
+    line-height: 1.45;
 }

@@ -231,10 +231,15 @@
             "alsoClaim": "{{description}} Ele também será assumido por você."
         },
         "correctRecord": {
-            "warning": {
-                "busy": "Registro corrigido, mas o responsável está ocupado em outro agendamento ({{protocol}}).",
-                "unavailable": "Registro corrigido, mas o responsável anterior está indisponível. {{count}} funcionário(s) estão livres nesse horário.",
-                "noStaff": "Registro corrigido, mas ninguém está livre para atender nesse horário."
+            "result": {
+                "confirmed": "Registro corrigido. O agendamento voltou a Confirmado com {{name}}.",
+                "pending": "Registro corrigido. O agendamento voltou a Pendente.",
+                "busyNone": "Registro corrigido. O agendamento voltou a Pendente sem responsável, porque o responsável anterior já tem outro agendamento neste horário (protocolo {{protocol}}). Ninguém está livre neste horário no momento.",
+                "busyOne": "Registro corrigido. O agendamento voltou a Pendente sem responsável, porque o responsável anterior já tem outro agendamento neste horário (protocolo {{protocol}}). Há 1 funcionário livre neste horário.",
+                "busyMany": "Registro corrigido. O agendamento voltou a Pendente sem responsável, porque o responsável anterior já tem outro agendamento neste horário (protocolo {{protocol}}). Há {{count}} funcionários livres neste horário.",
+                "unavailableNone": "Registro corrigido. O agendamento voltou a Pendente sem responsável, porque o responsável anterior não pode mais assumir (conta desativada ou sem Gerenciar agendamentos). Ninguém está livre neste horário no momento.",
+                "unavailableSome": "Registro corrigido. O agendamento voltou a Pendente sem responsável, porque o responsável anterior não pode mais assumir (conta desativada ou sem Gerenciar agendamentos). Funcionários livres neste horário: {{count}}.",
+                "unknownProtocol": "não informado"
             }
         }
     },
