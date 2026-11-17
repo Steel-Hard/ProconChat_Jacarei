@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import ConfirmDialog from "@/components/ConfirmDialog"
 import css from "@/styles/components/appointmentCancelDialog.module.css"
@@ -11,6 +12,21 @@ type Props = {
 
 function AppointmentCancelDialog({ view }: Props) {
     const { t } = useTranslation(["appointmentDetail", "common"])
+    const [attempted, setAttempted] = useState(false)
+
+    function confirm() {
+        if (view.reason === "") {
+            setAttempted(true)
+            return
+        }
+
+        view.confirm()
+    }
+
+    function close() {
+        setAttempted(false)
+        view.close()
+    }
 
     return (
         <ConfirmDialog
@@ -21,14 +37,19 @@ function AppointmentCancelDialog({ view }: Props) {
             cancelLabel={t("actions.cancel.dismiss")}
             tone="danger"
             busy={view.busy}
-            confirmDisabled={view.reason === "" || view.preview === undefined}
-            onConfirm={view.confirm}
-            onCancel={view.close}
+            confirmDisabled={view.reason !== "" && view.preview === undefined}
+            onConfirm={confirm}
+            onCancel={close}
             submitOnEnter
         >
             <div className={css.fields}>
                 <fieldset className={css.reasons}>
-                    <legend className={css.label}>{t("actions.cancel.reasonLabel")}</legend>
+                    <legend className={css.label}>
+                        {t("actions.cancel.reasonLabel")}
+                        <span className={css.required} aria-hidden="true">
+                            {t("actions.cancel.required")}
+                        </span>
+                    </legend>
                     {REASONS.map((reason) => (
                         <label
                             key={reason}
@@ -44,11 +65,19 @@ function AppointmentCancelDialog({ view }: Props) {
                                 value={reason}
                                 checked={view.reason === reason}
                                 disabled={view.busy}
-                                onChange={() => view.setReason(reason)}
+                                onChange={() => {
+                                    setAttempted(false)
+                                    view.setReason(reason)
+                                }}
                             />
                             {t(`actions.cancel.reasons.${reason}`)}
                         </label>
                     ))}
+                    {attempted && view.reason === "" ? (
+                        <p role="alert" className={css.error}>
+                            {t("actions.cancel.reasonRequired")}
+                        </p>
+                    ) : null}
                 </fieldset>
                 <div className={css.previewBlock}>
                     <div className={css.previewHeader}>
@@ -65,7 +94,11 @@ function AppointmentCancelDialog({ view }: Props) {
                             </button>
                         </div>
                     ) : (
-                        <p className={css.preview}>
+                        <p
+                            className={
+                                view.preview ? css.preview : `${css.preview} ${css.placeholder}`
+                            }
+                        >
                             {view.preview ?? t("actions.cancel.chooseReason")}
                         </p>
                     )}

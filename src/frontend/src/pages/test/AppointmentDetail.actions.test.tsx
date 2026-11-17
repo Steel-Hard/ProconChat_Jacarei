@@ -253,7 +253,7 @@ describe("AppointmentDetail.page: confirmação", () => {
             )
         ).toBeInTheDocument()
         expect(
-            await within(dialog).findByText("Selecione o motivo para ver a mensagem.")
+            await within(dialog).findByText("Escolha um motivo para ver a prévia.")
         ).toBeInTheDocument()
         expect(within(dialog).getAllByRole("radio")).toHaveLength(4)
         expect(within(dialog).getByText("Modelo fixo")).toBeInTheDocument()
@@ -261,7 +261,13 @@ describe("AppointmentDetail.page: confirmação", () => {
         const confirm = within(dialog).getByRole("button", {
             name: "Cancelar e avisar o cidadão"
         })
-        expect(confirm).toBeDisabled()
+        expect(
+            within(dialog).getByRole("group", { name: /Motivo do cancelamento/ })
+        ).toBeInTheDocument()
+        expect(confirm).toBeEnabled()
+        await page.user.click(confirm)
+        expect(await within(dialog).findByRole("alert")).toHaveTextContent("Escolha um motivo")
+        expect(page.requests("PATCH", STATUS_PATH)).toHaveLength(0)
         await page.user.click(within(dialog).getByRole("radio", { name: "A pedido do cidadão" }))
         expect(await within(dialog).findByText(message)).toBeInTheDocument()
         expect(confirm).toBeEnabled()

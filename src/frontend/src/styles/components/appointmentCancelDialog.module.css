@@ -59,6 +59,11 @@
     color: var(--text-muted);
 }
 
+.required {
+    margin-left: 4px;
+    color: var(--danger);
+}
+
 .preview {
     margin: 0;
     padding: 12px;
@@ -68,6 +73,10 @@
     font-size: 13.5px;
     line-height: 1.5;
     white-space: pre-wrap;
+}
+
+.placeholder {
+    color: var(--text-soft);
 }
 
 .hint {

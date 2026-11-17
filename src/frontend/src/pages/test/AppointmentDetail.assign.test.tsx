@@ -43,7 +43,9 @@ async function renderAssign(
             [`PATCH ${STATUS_PATH}`]: patch
         }
     })
-    await page.user.click(await screen.findByRole("button", { name: "Atribuir" }))
+    await page.user.click(
+        await screen.findByRole("button", { name: "Atribuir a outro funcionário" })
+    )
 
     return page
 }
@@ -140,7 +142,7 @@ describe("AppointmentDetail.page: atribuir", () => {
         await waitFor(() => expect(page.requests("GET", DETAIL_PATH)).toHaveLength(2))
         await waitFor(() => expect(page.requests("GET", STAFF_PATH).length).toBeGreaterThan(1))
 
-        await page.user.click(screen.getByRole("button", { name: "Atribuir" }))
+        await page.user.click(screen.getByRole("button", { name: "Atribuir a outro funcionário" }))
         const reopened = await screen.findByRole("dialog")
         expect(within(reopened).getByRole("button", { name: "Atribuir" })).toBeDisabled()
     })
@@ -197,6 +199,6 @@ describe("AppointmentDetail.page: atribuir", () => {
         })
 
         await screen.findByRole("heading", { level: 1, name: "Maria Fictícia" })
-        expect(screen.queryByRole("button", { name: "Atribuir" })).toBeNull()
+        expect(screen.queryByRole("button", { name: "Atribuir a outro funcionário" })).toBeNull()
     })
 })

@@ -19,6 +19,7 @@ function AppointmentAssignDialog({ view }: Props) {
             cancelLabel={t("assignment.back")}
             confirmDisabled={view.selectedId === "" || view.loading || view.failed}
             busy={view.busy}
+            narrow
             onConfirm={view.onConfirm}
             onCancel={view.onClose}
         >
