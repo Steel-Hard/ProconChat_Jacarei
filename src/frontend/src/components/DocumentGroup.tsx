@@ -84,14 +84,14 @@ export default function DocumentGroup({
                 </button>
             </form>
             {limitReached ? (
-                <p id={limitId} role="status" className={css.warning}>
+                <output id={limitId} className={css.warning}>
                     {t("items.limitReached", { max: MAX_DOCUMENTS_PER_GROUP })}
-                </p>
+                </output>
             ) : null}
             {duplicate ? (
-                <p id={duplicateId} role="status" className={css.warning}>
+                <output id={duplicateId} className={css.warning}>
                     {t("items.duplicate")}
-                </p>
+                </output>
             ) : null}
         </section>
     )

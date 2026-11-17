@@ -83,9 +83,9 @@ export default function DocumentItem({
                         />
                         <span className={css.editHint}>{t("items.editHint")}</span>
                         {editTaken ? (
-                            <p id={warningId} role="status" className={css.warning}>
+                            <output id={warningId} className={css.warning}>
                                 {t("items.duplicate")}
-                            </p>
+                            </output>
                         ) : null}
                     </div>
                     <div className={css.actions}>

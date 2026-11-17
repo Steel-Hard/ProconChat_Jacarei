@@ -156,6 +156,38 @@ async function failSaving(put: { status: number; body: unknown }) {
 
 const realSetTimeout = globalThis.setTimeout
 
+async function until(condition: () => boolean) {
+    for (let attempt = 0; attempt < 100 && !condition(); attempt += 1) {
+        await act(async () => {
+            await new Promise((resolve) => realSetTimeout(resolve, 50))
+        })
+    }
+    expect(condition()).toBe(true)
+}
+
+async function advance(ms: number) {
+    await act(async () => {
+        vi.advanceTimersByTime(ms)
+    })
+}
+
+async function renderWithFakeTimers() {
+    const stub = stubDocumentsFetch()
+    await renderDocumentsPage(stub.fetchMock)
+    await waitFor(() => expect(stub.previewBodies).toHaveLength(1), { timeout: 5000 })
+    await screen.findByText("Agendamento realizado", {}, { timeout: 5000 })
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    return stub
+}
+
+function addDocument(text: string) {
+    const input = screen.getByRole("textbox", {
+        name: "Novo documento (Quando o próprio titular comparece)"
+    })
+    fireEvent.change(input, { target: { value: text } })
+    fireEvent.submit(input.closest("form")!)
+}
+
 afterEach(() => {
     vi.unstubAllGlobals()
     vi.unstubAllEnvs()
@@ -520,38 +552,6 @@ describe("DocumentsPage", () => {
         afterEach(() => {
             vi.useRealTimers()
         })
-
-        function addDocument(text: string) {
-            const input = screen.getByRole("textbox", {
-                name: "Novo documento (Quando o próprio titular comparece)"
-            })
-            fireEvent.change(input, { target: { value: text } })
-            fireEvent.submit(input.closest("form")!)
-        }
-
-        async function until(condition: () => boolean) {
-            for (let attempt = 0; attempt < 100 && !condition(); attempt += 1) {
-                await act(async () => {
-                    await new Promise((resolve) => realSetTimeout(resolve, 50))
-                })
-            }
-            expect(condition()).toBe(true)
-        }
-
-        async function advance(ms: number) {
-            await act(async () => {
-                vi.advanceTimersByTime(ms)
-            })
-        }
-
-        async function renderWithFakeTimers() {
-            const stub = stubDocumentsFetch()
-            await renderDocumentsPage(stub.fetchMock)
-            await waitFor(() => expect(stub.previewBodies).toHaveLength(1), { timeout: 5000 })
-            await screen.findByText("Agendamento realizado", {}, { timeout: 5000 })
-            vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
-            return stub
-        }
 
         it("a primeira prévia sai sem esperar o atraso e leva o corpo do rascunho", async () => {
             const { previewBodies } = await renderWithFakeTimers()
