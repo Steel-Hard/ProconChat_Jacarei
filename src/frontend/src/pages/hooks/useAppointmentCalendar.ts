@@ -4,6 +4,12 @@ import type AppointmentListFilters from "@/types/appointments/AppointmentListFil
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/
 
+function isRealDate(value: string): boolean {
+    const parsed = new Date(`${value}T12:00:00Z`)
+
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value
+}
+
 function shiftDate(date: string, days: number): string {
     const shifted = new Date(`${date}T12:00:00Z`)
     shifted.setUTCDate(shifted.getUTCDate() + days)
@@ -14,7 +20,7 @@ function useAppointmentCalendar(filters: AppointmentListFilters) {
     const [searchParams, setSearchParams] = useSearchParams()
     const enabled = searchParams.get("visao") === "calendario"
     const week = searchParams.get("semana")
-    const date = week !== null && DATE.test(week) ? week : undefined
+    const date = week !== null && DATE.test(week) && isRealDate(week) ? week : undefined
     const query = appointmentsApi.useGetAppointmentCalendarQuery(
         { date, status: filters.status, responsible: filters.responsible },
         { skip: !enabled, refetchOnMountOrArgChange: true }

@@ -70,6 +70,21 @@ describe("Appointments.page: calendário", () => {
         expect(calendarRequests(page).at(-1)?.url.searchParams.get("date")).toBe("2026-10-11")
     })
 
+    it.each(["2026-02-31", "2026-13-01", "abc"])(
+        "trata a semana %s como inválida e mostra Esta semana",
+        async (invalid) => {
+            const page = await renderAppointmentsPage({
+                initialEntry: `/agendamentos?visao=calendario&semana=${invalid}`,
+                handlers: CALENDAR_HANDLER
+            })
+
+            expect(
+                await screen.findByRole("table", { name: "Semana de 18/10 a 24/10/2026" })
+            ).toBeInTheDocument()
+            expect(calendarRequests(page).at(-1)?.url.searchParams.get("date")).toBeNull()
+        }
+    )
+
     it("guarda o modo e a semana na URL e volta ao padrão sem parâmetros", async () => {
         const page = await renderAppointmentsPage({ handlers: CALENDAR_HANDLER })
         expect(page.router.state.location.search).toBe("")
