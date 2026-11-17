@@ -103,7 +103,7 @@ const PATCH_CONFLICT_CODES = [
 const AVAILABILITY_CODES = [...PATCH_CONFLICT_CODES, "PERMISSION_REQUIRED"]
 const FORBIDDEN_FIELDS = ["cpf_hash", "phone_encrypted", "phone_hash"]
 const NOTE_KEYS = ["author_user_id", "author_user_name", "created_at", "id", "text"]
-const STAFF_KEYS = ["active", "id", "name"]
+const STAFF_KEYS = ["active", "email", "id", "name"]
 const CALENDAR_KEYS = ["appointments", "days", "seatsPerSlot", "weekEnd", "weekStart", "weekStartDay"]
 const CALENDAR_DAY_KEYS = ["blocked", "date", "slots"]
 const CALENDAR_SLOT_KEYS = ["freeSeats", "time"]
@@ -176,7 +176,7 @@ function contractScenario(): AppointmentRepositoryStub {
         created_at: FIXED_NOW.toISOString(),
     }
     return new AppointmentRepositoryStub({
-        staff: [{ id: "2", name: "Carlos Atendente", active: true }],
+        staff: [{ id: "2", name: "Carlos Atendente", active: true, email: "carlos@procon.test" }],
         week: [
             {
                 id: "1",
@@ -405,7 +405,7 @@ describe("contrato da API de agendamentos", () => {
     })
 
     describe("funcionários e calendário", () => {
-        it("a lista de funcionários só tem id, name e active", async () => {
+        it("a lista de funcionários só tem id, name, active e email", async () => {
             const res = await get("/staff", 5)
 
             expect(res.status).toBe(200)

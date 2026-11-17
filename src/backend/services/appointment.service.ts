@@ -44,7 +44,7 @@ export interface AppointmentService {
 
     getPendingCount(): Promise<{ count: number }>
 
-    listStaff(): Promise<StaffMember[]>
+    listStaff(access: ActionAccess): Promise<StaffMember[]>
 
     getAppointmentDetail(
         idOrCode: number | string,
@@ -289,8 +289,12 @@ export function createAppointmentService(deps?: {
             return { count }
         },
 
-        listStaff(): Promise<StaffMember[]> {
-            return repository.findStaff()
+        async listStaff(access: ActionAccess): Promise<StaffMember[]> {
+            const staff = await repository.findStaff()
+            return staff.map(({ email, ...member }) => ({
+                ...member,
+                email: access.canManage && member.active ? email : null,
+            }))
         },
 
         getAppointmentDetail,
