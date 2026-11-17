@@ -8,7 +8,12 @@ export const documentsBodySchema = z.object({
 export const previewBodySchema = z.object({
     byRepresentative: z.boolean(),
     groupDocuments: z.array(z.string().trim().min(1).max(255)),
-    questionId: z.union([z.string(), z.number()]).optional()
+    questionId: z
+        .union([
+            z.number().int().positive(),
+            z.string().regex(/^[1-9]\d*$/).transform(Number)
+        ])
+        .optional()
 })
 
 export type DocumentsBodyInput = z.infer<typeof documentsBodySchema>

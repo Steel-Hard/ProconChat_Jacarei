@@ -4,7 +4,8 @@ import { beforeEach, describe, expect, it } from "vitest"
 import errorHandler from "../middleware/errorHandler.middleware"
 import { DocumentsController } from "../controllers/documents.controller"
 import { DocumentsStubRepository } from "../repositories/mock/documentsStub.repository"
-import { DocumentsService } from "../services/documents.service"
+import { createDocumentsService } from "../services/documents.service"
+import { formatarConfirmacaoAgendamento } from "../services/messageFormatter.service"
 import { DocumentsRoutes } from "./documents.routes"
 import { createRequireAuth } from "../middleware/auth.middleware"
 import { MockAuthRepository } from "../repositories/mock/authMock.repository"
@@ -39,7 +40,7 @@ describe("DocumentsRoutes", () => {
 
     beforeEach(() => {
         stubRepo = new DocumentsStubRepository()
-        const service = new DocumentsService(stubRepo)
+        const service = createDocumentsService({ documents: stubRepo })
         const controller = new DocumentsController(service)
 
         app = express()
@@ -119,5 +120,87 @@ describe("DocumentsRoutes", () => {
         expect(res.body.data.text).toContain("• CPF")
         expect(res.body.data.text).toContain("Documentos úteis para esta dúvida:")
         expect(res.body.data.text).toContain("• Doc P1")
+    })
+
+    describe("prévia estruturada", () => {
+        function preview(body: object) {
+            return request(app)
+                .post("/api/v1/documents/preview")
+                .set("Cookie", cookieOf(ADMIN_ID))
+                .send(body)
+        }
+
+        it("devolve a confirmação em blocos e o mesmo texto que o bot envia", async () => {
+            stubRepo.sampleQuestions = [
+                { id: "1", title: "Pergunta 1", categoryTitle: "Cat", documents: ["RG", "Nota fiscal"] }
+            ]
+            const groupDocuments = ["RG ou outro documento oficial com foto", "CPF"]
+
+            const res = await preview({ byRepresentative: false, groupDocuments, questionId: 1 })
+
+            expect(res.status).toBe(200)
+            expect(res.body.data.text).toBe(
+                formatarConfirmacaoAgendamento({
+                    protocol: "A3F9C21B",
+                    quando: "Ter, 10/11 às 14:00",
+                    unitAddress: stubRepo.scheduleContext.unitAddress,
+                    unitAddressComplement: stubRepo.scheduleContext.unitAddressComplement,
+                    byRepresentative: false,
+                    groupDocuments,
+                    questionDocuments: ["RG", "Nota fiscal"],
+                    reminderEnabled: stubRepo.scheduleContext.reminderEnabled,
+                    reminderHours: stubRepo.scheduleContext.reminderHours
+                })
+            )
+            expect(res.body.data.example).toEqual({
+                protocol: "A3F9C21B",
+                dateTime: "Ter, 10/11 às 14:00"
+            })
+            expect(res.body.data.title).toBe("Agendamento realizado")
+            expect(res.body.data.details).toEqual([
+                { label: "Protocolo", value: "A3F9C21B" },
+                { label: "Data e hora", value: "Ter, 10/11 às 14:00" },
+                { label: "Endereço", value: "Rua Central, 100" }
+            ])
+            expect(res.body.data.groupBlock).toEqual({
+                heading: "Leve ao atendimento:",
+                items: [
+                    { text: "RG ou outro documento oficial com foto", repeated: true },
+                    { text: "CPF", repeated: false }
+                ]
+            })
+            expect(res.body.data.questionBlock.items).toEqual([
+                { text: "RG", repeated: true },
+                { text: "Nota fiscal", repeated: false }
+            ])
+            expect(res.body.data.repeatedCount).toBe(1)
+        })
+
+        it("aceita questionId numérico em texto e omitido", async () => {
+            const comTexto = await preview({ byRepresentative: false, groupDocuments: [], questionId: "1" })
+            const semPergunta = await preview({ byRepresentative: false, groupDocuments: [] })
+
+            expect(comTexto.status).toBe(200)
+            expect(comTexto.body.data.questionBlock.items).toEqual([
+                { text: "Doc P1", repeated: false }
+            ])
+            expect(semPergunta.status).toBe(200)
+            expect(semPergunta.body.data.questionBlock).toBeNull()
+        })
+
+        it.each([["abc"], [0], [-3], [1.5], [""]])(
+            "recusa questionId inválido (%s) com 400",
+            async (questionId) => {
+                const res = await preview({ byRepresentative: false, groupDocuments: [], questionId })
+
+                expect(res.status).toBe(400)
+            }
+        )
+
+        it("devolve 404 quando a pergunta não existe ou está inativa", async () => {
+            const res = await preview({ byRepresentative: false, groupDocuments: [], questionId: 999 })
+
+            expect(res.status).toBe(404)
+        })
     })
 })
