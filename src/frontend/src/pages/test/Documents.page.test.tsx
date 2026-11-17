@@ -75,6 +75,7 @@ function stubDocumentsFetch(
         error?: unknown
         put?: { status: number; body: unknown }
         previewContract?: unknown
+        holdPreviewFrom?: number
     } = {
         status: 200,
         data: initialDocuments
@@ -83,6 +84,7 @@ function stubDocumentsFetch(
     let capturedPutBody: unknown = null
     let currentData = response.data
     const previewBodies: Array<Record<string, unknown> | null> = []
+    let heldPreview: (() => void) | null = null
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const request =
@@ -142,6 +144,14 @@ function stubDocumentsFetch(
 
         if (url.endsWith("/api/v1/documents/preview") && method === "POST") {
             previewBodies.push(body)
+            if (
+                response.holdPreviewFrom !== undefined &&
+                previewBodies.length >= response.holdPreviewFrom
+            ) {
+                await new Promise<void>((resolve) => {
+                    heldPreview = resolve
+                })
+            }
             const questions =
                 (currentData as DocumentsConfigView | undefined)?.sampleQuestions ?? []
             const invalid = invalidPreviewRequest(body, questions)
@@ -171,7 +181,8 @@ function stubDocumentsFetch(
     return {
         fetchMock,
         getCapturedPutBody: () => capturedPutBody,
-        previewBodies
+        previewBodies,
+        releaseHeldPreview: () => heldPreview?.()
     }
 }
 
@@ -210,8 +221,7 @@ async function advance(ms: number) {
     })
 }
 
-async function renderWithFakeTimers() {
-    const stub = stubDocumentsFetch()
+async function renderWithFakeTimers(stub = stubDocumentsFetch()) {
     await renderDocumentsPage(stub.fetchMock)
     await waitFor(() => expect(stub.previewBodies).toHaveLength(1), { timeout: 5000 })
     await screen.findByText("Agendamento realizado", {}, { timeout: 5000 })
@@ -590,6 +600,44 @@ describe("DocumentsPage", () => {
     describe("atraso da prévia", () => {
         afterEach(() => {
             vi.useRealTimers()
+        })
+
+        it("com os timers falsos ligados antes de abrir a tela, o primeiro pedido sai sem avançar 400 ms", async () => {
+            vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+            const stub = stubDocumentsFetch()
+            await renderDocumentsPage(stub.fetchMock)
+
+            await until(() => stub.previewBodies.length === 1)
+
+            expect(stub.previewBodies[0]).toEqual({
+                byRepresentative: false,
+                groupDocuments: initialDocuments.holder,
+                questionId: 12
+            })
+        })
+
+        it("enquanto a resposta nova não chega, a bolha segue com a prévia anterior e avisa que está atualizando", async () => {
+            const stub = stubDocumentsFetch({
+                status: 200,
+                data: initialDocuments,
+                holdPreviewFrom: 2
+            })
+            await renderWithFakeTimers(stub)
+
+            addDocument("Doc A")
+            await advance(400)
+            await until(() => stub.previewBodies.length === 2)
+
+            expect(
+                within(screen.getByTestId("preview-bubble")).getByText("Agendamento realizado")
+            ).toBeInTheDocument()
+            expect(screen.getByText("Atualizando a prévia…")).toBeInTheDocument()
+
+            stub.releaseHeldPreview()
+            await until(() => screen.queryByText("Atualizando a prévia…") === null)
+            expect(
+                within(screen.getByTestId("preview-bubble")).getByText("Agendamento realizado")
+            ).toBeInTheDocument()
         })
 
         it("a primeira prévia sai sem esperar o atraso e leva o corpo do rascunho", async () => {
