@@ -8,6 +8,8 @@ import {
     SampleQuestionRow
 } from "./documents.repository.interface"
 
+const REMOVED_USER_NAME = "usuário removido"
+
 export class DocumentsRepository implements IDocumentsRepository {
     private pool: Pool
 
@@ -42,8 +44,8 @@ export class DocumentsRepository implements IDocumentsRepository {
     async getLastChange(): Promise<DocumentsLastChange | null> {
         const result = await this.pool.query<{
             created_at: Date
-            user_id: number
-            user_name: string
+            user_id: string | null
+            user_name: string | null
         }>(
             `SELECT a.created_at, u.id as user_id, u.name as user_name
              FROM AuditLog a
@@ -54,13 +56,13 @@ export class DocumentsRepository implements IDocumentsRepository {
         )
 
         const row = result.rows[0]
-        if (!row || !row.user_name) {
+        if (!row) {
             return null
         }
 
         return {
-            id: Number(row.user_id),
-            name: row.user_name,
+            id: row.user_id === null ? null : Number(row.user_id),
+            name: row.user_name ?? REMOVED_USER_NAME,
             at: new Date(row.created_at).toISOString()
         }
     }

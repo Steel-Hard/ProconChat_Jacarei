@@ -6,6 +6,31 @@ const repository = new DocumentsRepository()
 
 const createdCategoryIds: number[] = []
 const createdQuestionIds: number[] = []
+const createdAuditIds: number[] = []
+const createdUserIds: number[] = []
+
+async function createAuditEntry(actorUserId: number | null, createdAt: string): Promise<number> {
+    const result = await getPool().query<{ id: string }>(
+        `INSERT INTO AuditLog (area, action, actor_user_id, data, created_at)
+         VALUES ('documents', 'documents_updated', $1, '{}'::jsonb, $2)
+         RETURNING id`,
+        [actorUserId, createdAt],
+    )
+    const id = Number(result.rows[0]!.id)
+    createdAuditIds.push(id)
+    return id
+}
+
+async function createUser(name: string): Promise<number> {
+    const result = await getPool().query<{ id: string }>(
+        `INSERT INTO Users (name, email, password_hash)
+         VALUES ($1, $2, 'hash') RETURNING id`,
+        [name, `docs-${process.pid}-${Date.now()}-${createdUserIds.length}@teste.local`],
+    )
+    const id = Number(result.rows[0]!.id)
+    createdUserIds.push(id)
+    return id
+}
 
 async function createCategory(position: number, active = true): Promise<number> {
     const result = await getPool().query<{ id: string }>(
@@ -44,6 +69,8 @@ async function createQuestion(
 
 afterAll(async () => {
     const pool = getPool()
+    await pool.query("DELETE FROM AuditLog WHERE id = ANY($1::bigint[])", [createdAuditIds])
+    await pool.query("DELETE FROM Users WHERE id = ANY($1::bigint[])", [createdUserIds])
     await pool.query("DELETE FROM RequiredDocuments WHERE question_id = ANY($1::bigint[])", [
         createdQuestionIds,
     ])
@@ -128,6 +155,29 @@ describe("DocumentsRepository (Postgres)", () => {
             const questionId = await createQuestion(categoryId, 0)
 
             expect(await repository.getQuestionDocuments(questionId)).toEqual([])
+        })
+    })
+
+    describe("getLastChange", () => {
+        it("devolve quem alterou por último e quando", async () => {
+            const userId = await createUser("Ana Documentos")
+            await createAuditEntry(userId, "2999-01-01T10:00:00Z")
+
+            expect(await repository.getLastChange()).toEqual({
+                id: userId,
+                name: "Ana Documentos",
+                at: "2999-01-01T10:00:00.000Z",
+            })
+        })
+
+        it("mostra usuário removido quando a alteração não tem mais autor", async () => {
+            await createAuditEntry(null, "2999-01-02T10:00:00Z")
+
+            expect(await repository.getLastChange()).toEqual({
+                id: null,
+                name: "usuário removido",
+                at: "2999-01-02T10:00:00.000Z",
+            })
         })
     })
 })

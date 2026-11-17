@@ -18,7 +18,7 @@ export interface DocumentsSettingsContext {
 }
 
 export interface DocumentsLastChange {
-    id: number
+    id: number | null
     name: string
     at: string
 }

@@ -5,7 +5,7 @@ import { formatarConfirmacaoAgendamento } from "./messageFormatter.service"
 export interface DocumentsViewOutput {
     holder: string[]
     representative: string[]
-    updatedBy: { id: number; name: string } | null
+    updatedBy: { id: number | null; name: string } | null
     updatedAt: string | null
     unitAddress: string
     unitAddressComplement: string | null
