@@ -38,7 +38,7 @@
         },
         "original": "Data original",
         "origin": "Origem no chatbot",
-        "originValue": "{{category}} → {{question}}",
+        "originPrefix": "{{category}} →",
         "representativeNotice": "O titular indicou no chatbot que outra pessoa comparecerá em seu nome. Nome e CPF acima são sempre do titular; confira os documentos exigidos para representante."
     },
     "documents": {
