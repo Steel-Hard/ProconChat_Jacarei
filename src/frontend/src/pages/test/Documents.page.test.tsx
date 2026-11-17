@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { fireEvent, screen, waitFor, within } from "@testing-library/react"
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import renderDocumentsPage from "@/testUtils/renderDocumentsPage"
 import holderContract from "@/testUtils/documentsPreviewHolder.json"
@@ -153,6 +153,8 @@ async function failSaving(put: { status: number; body: unknown }) {
     await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
     return screen.findByRole("alert")
 }
+
+const realSetTimeout = globalThis.setTimeout
 
 afterEach(() => {
     vi.unstubAllGlobals()
@@ -514,30 +516,107 @@ describe("DocumentsPage", () => {
         expect(screen.queryByRole("button", { name: "CPF" })).not.toBeInTheDocument()
     })
 
-    it("a prévia envia o corpo do rascunho e junta várias mudanças rápidas em uma requisição", async () => {
-        const { fetchMock, previewBodies } = stubDocumentsFetch()
-        await renderDocumentsPage(fetchMock)
-
-        await waitFor(() => expect(previewBodies).toHaveLength(1), { timeout: 5000 })
-        expect(previewBodies[0]).toEqual({
-            byRepresentative: false,
-            groupDocuments: initialDocuments.holder,
-            questionId: 1
+    describe("atraso da prévia", () => {
+        afterEach(() => {
+            vi.useRealTimers()
         })
 
-        const input = screen.getByRole("textbox", {
-            name: "Novo documento (Quando o próprio titular comparece)"
-        })
-        for (const text of ["Doc A", "Doc B", "Doc C"]) {
+        function addDocument(text: string) {
+            const input = screen.getByRole("textbox", {
+                name: "Novo documento (Quando o próprio titular comparece)"
+            })
             fireEvent.change(input, { target: { value: text } })
             fireEvent.submit(input.closest("form")!)
         }
 
-        await waitFor(() => expect(previewBodies).toHaveLength(2), { timeout: 5000 })
-        expect(previewBodies[1]).toEqual({
-            byRepresentative: false,
-            groupDocuments: [...initialDocuments.holder, "Doc A", "Doc B", "Doc C"],
-            questionId: 1
+        async function until(condition: () => boolean) {
+            for (let attempt = 0; attempt < 100 && !condition(); attempt += 1) {
+                await act(async () => {
+                    await new Promise((resolve) => realSetTimeout(resolve, 50))
+                })
+            }
+            expect(condition()).toBe(true)
+        }
+
+        async function advance(ms: number) {
+            await act(async () => {
+                vi.advanceTimersByTime(ms)
+            })
+        }
+
+        async function renderWithFakeTimers() {
+            const stub = stubDocumentsFetch()
+            await renderDocumentsPage(stub.fetchMock)
+            await waitFor(() => expect(stub.previewBodies).toHaveLength(1), { timeout: 5000 })
+            await screen.findByText("Agendamento realizado", {}, { timeout: 5000 })
+            vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+            return stub
+        }
+
+        it("a primeira prévia sai sem esperar o atraso e leva o corpo do rascunho", async () => {
+            const { previewBodies } = await renderWithFakeTimers()
+
+            expect(previewBodies[0]).toEqual({
+                byRepresentative: false,
+                groupDocuments: initialDocuments.holder,
+                questionId: 1
+            })
+        })
+
+        it("não pede nada antes de 400 ms e pede exatamente uma vez depois", async () => {
+            const { previewBodies } = await renderWithFakeTimers()
+
+            addDocument("Doc A")
+            await advance(399)
+            expect(previewBodies).toHaveLength(1)
+
+            await advance(1)
+            await until(() => previewBodies.length === 2)
+            expect(previewBodies[1]).toEqual({
+                byRepresentative: false,
+                groupDocuments: [...initialDocuments.holder, "Doc A"],
+                questionId: 1
+            })
+
+            await advance(5000)
+            expect(previewBodies).toHaveLength(2)
+        })
+
+        it("mudanças espaçadas de 150 ms reiniciam o atraso e geram uma só requisição", async () => {
+            const { previewBodies } = await renderWithFakeTimers()
+
+            addDocument("Doc A")
+            await advance(150)
+            addDocument("Doc B")
+            await advance(150)
+            addDocument("Doc C")
+            await advance(399)
+            expect(previewBodies).toHaveLength(1)
+
+            await advance(1)
+            await until(() => previewBodies.length === 2)
+            expect(previewBodies[1]).toEqual({
+                byRepresentative: false,
+                groupDocuments: [...initialDocuments.holder, "Doc A", "Doc B", "Doc C"],
+                questionId: 1
+            })
+
+            await advance(5000)
+            expect(previewBodies).toHaveLength(2)
+        })
+
+        it("mantém a prévia anterior visível e avisa que está atualizando", async () => {
+            const { previewBodies } = await renderWithFakeTimers()
+            const bubble = screen.getByTestId("preview-bubble")
+            addDocument("Doc A")
+
+            expect(within(bubble).getByText("Agendamento realizado")).toBeInTheDocument()
+            expect(screen.getByText("Atualizando a prévia…")).toBeInTheDocument()
+
+            await advance(400)
+            await until(() => previewBodies.length === 2)
+            await until(() => screen.queryByText("Atualizando a prévia…") === null)
+            expect(within(bubble).getByText("Agendamento realizado")).toBeInTheDocument()
         })
     })
 

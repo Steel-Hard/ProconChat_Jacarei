@@ -12,6 +12,7 @@ type DocumentsPreviewProps = {
     hasPreviewError: boolean
     isUnsaved: boolean
     isQuestionEmpty: boolean
+    isUpdating: boolean
 }
 
 export default DocumentsPreviewProps

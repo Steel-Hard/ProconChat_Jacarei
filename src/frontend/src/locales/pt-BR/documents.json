@@ -63,7 +63,8 @@
         "exampleLabels": {
             "protocol": "Protocolo",
             "dateTime": "Data e hora"
-        }
+        },
+        "updating": "Atualizando a prévia…"
     },
     "changes": {
         "group": {

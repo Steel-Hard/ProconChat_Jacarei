@@ -34,6 +34,7 @@ function renderPreview(overrides: Partial<Parameters<typeof DocumentsPreview>[0]
             hasPreviewError={false}
             isUnsaved={false}
             isQuestionEmpty={false}
+            isUpdating={false}
             {...overrides}
         />
     )
@@ -160,6 +161,19 @@ describe("DocumentsPreview", () => {
                 "Esta pergunta não tem documentos úteis cadastrados. A mensagem mostra só a lista do grupo."
             )
         ).toBeInTheDocument()
+    })
+
+    it("mantém a prévia anterior e avisa que está atualizando", () => {
+        renderPreview({ isUpdating: true })
+
+        expect(screen.getByText("Atualizando a prévia…")).toBeInTheDocument()
+        expect(screen.getByTestId("preview-bubble")).toHaveTextContent("Agendamento realizado")
+    })
+
+    it("não mostra o aviso de atualização quando a prévia está em dia", () => {
+        renderPreview()
+
+        expect(screen.queryByText("Atualizando a prévia…")).not.toBeInTheDocument()
     })
 
     it("exibe erro quando o backend não consegue gerar a prévia", () => {

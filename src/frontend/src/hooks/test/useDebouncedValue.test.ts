@@ -37,4 +37,32 @@ describe("useDebouncedValue", () => {
         })
         expect(result.current).toBe("c")
     })
+
+    it("publica na hora o primeiro valor quando o anterior pede publicação imediata", () => {
+        const { result, rerender } = renderHook(
+            ({ value }) =>
+                useDebouncedValue<string | null>(value, 300, (current) => current === null),
+            { initialProps: { value: null as string | null } }
+        )
+
+        rerender({ value: "a" })
+        expect(result.current).toBe("a")
+
+        rerender({ value: "b" })
+        expect(result.current).toBe("a")
+        act(() => {
+            vi.advanceTimersByTime(300)
+        })
+        expect(result.current).toBe("b")
+    })
+
+    it("sem a condição de publicação imediata, o primeiro valor também espera", () => {
+        const { result, rerender } = renderHook(
+            ({ value }) => useDebouncedValue<string | null>(value, 300),
+            { initialProps: { value: null as string | null } }
+        )
+
+        rerender({ value: "a" })
+        expect(result.current).toBeNull()
+    })
 })

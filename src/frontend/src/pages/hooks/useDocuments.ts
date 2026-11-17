@@ -50,9 +50,14 @@ export default function useDocuments() {
                   },
         [view, previewGroup, activeGroupDocs, questionId]
     )
-    const debouncedArgs = useDebouncedValue(previewArgs, PREVIEW_DEBOUNCE_MS)
+    const debouncedArgs = useDebouncedValue(
+        previewArgs,
+        PREVIEW_DEBOUNCE_MS,
+        (current) => current === skipToken
+    )
     const confirmationQuery = documentsApi.usePreviewDocumentsQuery(debouncedArgs)
-    const previewData = confirmationQuery.currentData ?? null
+    const previewData = confirmationQuery.isError ? null : (confirmationQuery.data ?? null)
+    const isPreviewUpdating = confirmationQuery.isFetching || debouncedArgs !== previewArgs
 
     const isPreviewUnsaved =
         previewGroup === "holder" ? draft.holderChanged : draft.representativeChanged
@@ -125,7 +130,8 @@ export default function useDocuments() {
             previewData,
             confirmationError: confirmationQuery.isError,
             isPreviewUnsaved,
-            isQuestionEmpty
+            isQuestionEmpty,
+            isPreviewUpdating
         }
     }
 }

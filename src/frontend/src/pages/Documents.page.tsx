@@ -101,6 +101,7 @@ export default function DocumentsPage() {
                                 hasPreviewError={preview.confirmationError}
                                 isUnsaved={preview.isPreviewUnsaved}
                                 isQuestionEmpty={preview.isQuestionEmpty}
+                                isUpdating={preview.isPreviewUpdating}
                             />
                         </div>
                     </div>

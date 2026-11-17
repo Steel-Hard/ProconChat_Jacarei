@@ -14,7 +14,8 @@ export default function DocumentsPreview({
     preview,
     hasPreviewError,
     isUnsaved,
-    isQuestionEmpty
+    isQuestionEmpty,
+    isUpdating
 }: DocumentsPreviewProps) {
     const { t } = useTranslation("documents")
     const headingId = useId()
@@ -77,6 +78,8 @@ export default function DocumentsPreview({
                 {isUnsaved ? (
                     <output className={css.draftNote}>{t("preview.unsavedNotice")}</output>
                 ) : null}
+
+                {isUpdating ? <output className={css.note}>{t("preview.updating")}</output> : null}
 
                 {hasPreviewError ? (
                     <p role="alert" className={css.errorNote}>
