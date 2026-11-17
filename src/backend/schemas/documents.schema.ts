@@ -3,7 +3,26 @@ import { normalizeDocument } from "../utils/documentMatch"
 
 export const MAX_DOCUMENTS_PER_GROUP = 10
 
-const documentItemSchema = z.string().trim().min(1).max(255)
+const MAX_DOCUMENT_LENGTH = 255
+const EXCERPT_LENGTH = 30
+
+function excerpt(text: string): string {
+    return text.length > EXCERPT_LENGTH ? `${text.slice(0, EXCERPT_LENGTH)}…` : text
+}
+
+const documentItemSchema = z
+    .string()
+    .trim()
+    .superRefine((item, ctx) => {
+        if (item.length === 0) {
+            ctx.addIssue({ code: "custom", message: "Há um documento vazio na lista." })
+        } else if (item.length > MAX_DOCUMENT_LENGTH) {
+            ctx.addIssue({
+                code: "custom",
+                message: `O documento "${excerpt(item)}" passa de ${MAX_DOCUMENT_LENGTH} caracteres.`
+            })
+        }
+    })
 
 const groupSchema = z
     .array(documentItemSchema)
@@ -34,10 +53,19 @@ export const previewBodySchema = z.object({
     byRepresentative: z.boolean(),
     groupDocuments: groupSchema,
     questionId: z
-        .union([
-            z.number().int().positive(),
-            z.string().regex(/^[1-9]\d*$/).transform(Number)
-        ])
+        .unknown()
+        .transform((value, ctx): number | undefined => {
+            if (value === undefined) {
+                return undefined
+            }
+            const parsed =
+                typeof value === "string" && /^[1-9]\d*$/.test(value) ? Number(value) : value
+            if (typeof parsed !== "number" || !Number.isSafeInteger(parsed) || parsed <= 0) {
+                ctx.addIssue({ code: "custom", message: "Pergunta inválida." })
+                return z.NEVER
+            }
+            return parsed
+        })
         .optional()
 })
 

@@ -189,11 +189,22 @@ describe("DocumentsRoutes", () => {
         })
 
         it.each([["abc"], [0], [-3], [1.5], [""]])(
-            "recusa questionId inválido (%s) com 400",
+            "recusa questionId inválido (%s) com 400 e mensagem em português",
             async (questionId) => {
                 const res = await preview({ byRepresentative: false, groupDocuments: [], questionId })
 
                 expect(res.status).toBe(400)
+                expect(res.body.error.message).toContain("questionId: Pergunta inválida.")
+            }
+        )
+
+        it.each([["99999999999999999999"], [1e21]])(
+            "recusa questionId acima do limite (%s) com 400 em vez de 500",
+            async (questionId) => {
+                const res = await preview({ byRepresentative: false, groupDocuments: [], questionId })
+
+                expect(res.status).toBe(400)
+                expect(res.body.error.message).toContain("Pergunta inválida.")
             }
         )
 
@@ -258,6 +269,20 @@ describe("DocumentsRoutes", () => {
 
             expect(aceito.status).toBe(200)
             expect(recusado.status).toBe(400)
+            expect(recusado.body.error.message).toContain("holder.0")
+            expect(recusado.body.error.message).toContain(
+                `O documento "${"a".repeat(30)}…" passa de 255 caracteres.`
+            )
+            expect(recusado.body.error.message).not.toContain("Too big")
+        })
+
+        it("recusa item vazio ou só com espaços com mensagem em português", async () => {
+            const res = await save({ holder: ["CPF", "   "], representative: [] })
+
+            expect(res.status).toBe(400)
+            expect(res.body.error.message).toContain("holder.1")
+            expect(res.body.error.message).toContain("Há um documento vazio na lista.")
+            expect(res.body.error.message).not.toContain("Too small")
         })
     })
 })
