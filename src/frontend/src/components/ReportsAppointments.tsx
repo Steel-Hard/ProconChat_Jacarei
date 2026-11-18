@@ -28,7 +28,7 @@ function ReportsAppointments({ result }: Props) {
     const noShow = APPOINTMENT_STATUS.NO_SHOW
 
     return (
-        <section className={css.card} aria-labelledby="appointments-heading">
+        <section className={`${css.card} ${css.resultCard}`} aria-labelledby="appointments-heading">
             <h2 className={css.cardTitle} id="appointments-heading">
                 {t("appointments.heading")}
                 <InfoTooltip

@@ -27,6 +27,7 @@ type Props = {
 
 function ReportsOutcomes({ outcomes, canOpenSchedule }: Props) {
     const { t } = useTranslation("reports")
+    const { t: tc } = useTranslation("common")
     const items = ORDER.flatMap((outcome) => {
         const item = outcomes.find((candidate) => candidate.outcome === outcome)
 
@@ -46,7 +47,7 @@ function ReportsOutcomes({ outcomes, canOpenSchedule }: Props) {
                 {items.map((item) => (
                     <span
                         key={item.outcome}
-                        title={`${t(`outcomes.labels.${item.outcome}`)}: ${t("outcomes.percent", { value: formatReportPercent(item.percentage) })}`}
+                        title={`${tc(`status.outcome.${item.outcome}`)}: ${t("outcomes.percent", { value: formatReportPercent(item.percentage) })}`}
                         style={{
                             width: `${item.percentage}%`,
                             background: CONVERSATION_OUTCOME[item.outcome].chart
@@ -56,7 +57,7 @@ function ReportsOutcomes({ outcomes, canOpenSchedule }: Props) {
             </div>
             <ul className={css.outcomeLegend} aria-labelledby="outcomes-heading">
                 {items.map((item) => {
-                    const label = t(`outcomes.labels.${item.outcome}`)
+                    const label = tc(`status.outcome.${item.outcome}`)
                     const highlight = item.outcome === "NO_SLOT"
 
                     return (

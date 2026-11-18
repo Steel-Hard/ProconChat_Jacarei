@@ -10,7 +10,7 @@ function ReportsQuestions({ questions }: Props) {
     const { t } = useTranslation("reports")
 
     return (
-        <section className={css.card} aria-labelledby="questions-heading">
+        <section className={`${css.card} ${css.questionsCard}`} aria-labelledby="questions-heading">
             <h2 className={css.cardTitle} id="questions-heading">
                 {t("questions.heading")}
                 <InfoTooltip

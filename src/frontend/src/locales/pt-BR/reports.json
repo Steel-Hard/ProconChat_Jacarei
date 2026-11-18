@@ -30,16 +30,6 @@
     },
     "outcomes": {
         "heading": "Desfecho das conversas",
-        "labels": {
-            "RESOLVED": "Resolvida sem agendamento",
-            "SCHEDULED": "Terminou em agendamento",
-            "OUT_OF_SCOPE": "Fora do escopo do PROCON",
-            "NO_SLOT": "Sem horário disponível na janela",
-            "DECLINED": "Não quis agendar",
-            "MANAGED_APPOINTMENT": "Remarcou ou cancelou agendamento existente",
-            "ABANDONED": "Abandonada",
-            "IN_PROGRESS": "Em andamento"
-        },
         "definitionLabel": "Definição de {{label}}",
         "noSlotHint": "O chatbot não conseguiu oferecer horário.",
         "scheduleLink": "Horários de atendimento →",

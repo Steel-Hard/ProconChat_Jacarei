@@ -227,11 +227,18 @@
 }
 
 .outcomeLink {
+    align-self: flex-start;
     margin-top: 2px;
+    text-decoration: none;
     font-size: 12.5px;
     font-weight: 600;
     color: var(--danger);
     white-space: nowrap;
+}
+
+.outcomeLink:hover {
+    color: var(--danger);
+    text-decoration: none;
 }
 
 .outcomeValue {
@@ -455,4 +462,16 @@
 .retry:focus-visible {
     outline: 2px solid var(--focus-ring);
     outline-offset: 2px;
+}
+
+.resultCard {
+    gap: 18px;
+}
+
+.questionsCard {
+    gap: 4px;
+}
+
+.questionsCard .cardTitle {
+    margin-bottom: 10px;
 }
