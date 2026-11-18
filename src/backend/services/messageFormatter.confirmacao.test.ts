@@ -16,6 +16,7 @@ function input(overrides: Partial<ConfirmacaoAgendamentoInput> = {}): Confirmaca
         questionDocuments: ["RG", "Nota fiscal"],
         reminderEnabled: true,
         reminderHours: 24,
+        cancellationNoticeEnabled: true,
         ...overrides
     }
 }

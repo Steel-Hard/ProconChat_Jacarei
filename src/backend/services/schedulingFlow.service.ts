@@ -51,6 +51,7 @@ interface SchedulingFlowDependencies {
     schedule: ScheduleProvider
     logger: ConversationEventLogger
     closer: SessionCloser
+    isCancellationNoticeEnabled: () => Promise<boolean>
 }
 
 export interface SchedulingFlow {
@@ -86,6 +87,7 @@ export function createSchedulingFlow({
     schedule,
     logger,
     closer,
+    isCancellationNoticeEnabled,
 }: SchedulingFlowDependencies): SchedulingFlow {
     async function noSlotReply(sessionId: string): Promise<ConversationFlowResult> {
         const closing: SessionClosing = {
@@ -340,6 +342,7 @@ export function createSchedulingFlow({
                 questionDocuments: bookResult.documentsSent.question,
                 reminderEnabled: bookResult.reminderEnabled,
                 reminderHours: bookResult.reminderHours,
+                cancellationNoticeEnabled: await isCancellationNoticeEnabled(),
             })
 
             return {

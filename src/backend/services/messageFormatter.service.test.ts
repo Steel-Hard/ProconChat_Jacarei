@@ -359,6 +359,7 @@ describe("messageFormatter.service", () => {
                 questionDocuments: ["Contrato"],
                 reminderEnabled: true,
                 reminderHours: 24,
+                cancellationNoticeEnabled: true,
             })
 
             expect(texto).toContain("Agendamento realizado")
@@ -384,6 +385,7 @@ describe("messageFormatter.service", () => {
                 questionDocuments: [],
                 reminderEnabled: false,
                 reminderHours: 24,
+                cancellationNoticeEnabled: true,
             })
 
             expect(texto).toContain("A pessoa que comparecer em seu nome deve levar:")
@@ -732,6 +734,7 @@ describe("messageFormatter.service", () => {
                 questionDocuments: [],
                 reminderEnabled: true,
                 reminderHours: 24,
+                cancellationNoticeEnabled: true,
             }
 
             const remarcado = formatarConfirmacaoAgendamento({ ...confirmacao, titulo: "Agendamento remarcado" })

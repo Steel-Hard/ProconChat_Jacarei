@@ -52,6 +52,7 @@ export function createConversationFlowHarness() {
 
     const hashPhone = vi.fn((phone: string) => `hash-${phone}`)
     const isAutoReplyPaused = vi.fn<() => Promise<boolean>>(async () => false)
+    const isCancellationNoticeEnabled = vi.fn<() => Promise<boolean>>(async () => true)
     const deliverAnswer = vi.fn<(job: LlmAnswerJob) => Promise<void>>(async () => undefined)
     const answerLogger = { log: vi.fn() }
     const now = () => FIXED_NOW
@@ -65,6 +66,7 @@ export function createConversationFlowHarness() {
             hashPhone,
             logger,
             isAutoReplyPaused,
+            isCancellationNoticeEnabled,
             deliverAnswer,
             answerLogger,
             now,
@@ -96,6 +98,7 @@ export function createConversationFlowHarness() {
         schedule,
         hashPhone,
         isAutoReplyPaused,
+        isCancellationNoticeEnabled,
         deliverAnswer,
         answerLogger,
         now,

@@ -44,6 +44,7 @@ interface ReturnFlowDependencies {
     schedule: ScheduleProvider
     logger: ConversationEventLogger
     startOver: (sessionId: string, newSession: boolean) => Promise<ConversationFlowResult>
+    isCancellationNoticeEnabled: () => Promise<boolean>
 }
 
 export interface ReturnFlow {
@@ -146,7 +147,7 @@ function targetIdOf(session: ActiveSession): number | null {
     return typeof id === "number" && Number.isSafeInteger(id) && id > 0 ? id : null
 }
 
-export function createReturnFlow({ sessions, events, schedule, logger, startOver }: ReturnFlowDependencies): ReturnFlow {
+export function createReturnFlow({ sessions, events, schedule, logger, startOver, isCancellationNoticeEnabled }: ReturnFlowDependencies): ReturnFlow {
     async function offerReturnMenu(sessionId: string, phoneHash: string): Promise<ConversationFlowResult | null> {
         let returning: ReturningAppointment | null
         try {
@@ -423,6 +424,7 @@ export function createReturnFlow({ sessions, events, schedule, logger, startOver
             questionDocuments: result.documentsSent.question,
             reminderEnabled: result.reminderEnabled,
             reminderHours: result.reminderHours,
+            cancellationNoticeEnabled: await isCancellationNoticeEnabled(),
         })
         return replyOf(session.id, "FINISHED", confirmation, [{ type: "text", text: confirmation }])
     }

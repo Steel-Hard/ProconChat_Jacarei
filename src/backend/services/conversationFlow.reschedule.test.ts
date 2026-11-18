@@ -239,6 +239,7 @@ describe("conversationFlow.service: remarcação pelo cidadão (#59)", () => {
                 questionDocuments: ["Contrato"],
                 reminderEnabled: true,
                 reminderHours: 2,
+                cancellationNoticeEnabled: true,
             })
             expect(result).toEqual({
                 sessionId: "s1",

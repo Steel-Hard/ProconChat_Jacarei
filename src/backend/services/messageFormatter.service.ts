@@ -92,6 +92,7 @@ export interface ConfirmacaoAgendamentoInput {
     questionDocuments: string[]
     reminderEnabled: boolean
     reminderHours: number
+    cancellationNoticeEnabled: boolean
     titulo?: string
 }
 
@@ -340,7 +341,7 @@ export interface ConfirmacaoAgendamentoEstrutura {
     details: Array<{ label: string; value: string }>
     groupBlock: ConfirmacaoBloco | null
     questionBlock: ConfirmacaoBloco | null
-    notice: string
+    notice: string | null
     repeatedCount: number
 }
 
@@ -349,6 +350,23 @@ function marcarItens(items: string[], outros: string[]): ConfirmacaoItem[] {
         text,
         repeated: outros.some((outro) => isRepeatedDocument(text, outro))
     }))
+}
+
+function montarFraseDeAvisos(input: ConfirmacaoAgendamentoInput): string | null {
+    const horasTexto = input.reminderHours === 1 ? "1 hora" : `${input.reminderHours} horas`
+    const lembrete = `um lembrete ${horasTexto} antes do atendimento`
+    const cancelamento = "o aviso em caso de cancelamento"
+    const prefixo = "Você receberá neste número avisos sobre este agendamento, como "
+    if (input.reminderEnabled && input.cancellationNoticeEnabled) {
+        return `${prefixo}${lembrete} e ${cancelamento}.`
+    }
+    if (input.reminderEnabled) {
+        return `${prefixo}${lembrete}.`
+    }
+    if (input.cancellationNoticeEnabled) {
+        return `${prefixo}${cancelamento}.`
+    }
+    return null
 }
 
 export function montarConfirmacaoAgendamento(
@@ -361,10 +379,7 @@ export function montarConfirmacaoAgendamento(
     const groupItems = marcarItens(input.groupDocuments, input.questionDocuments)
     const questionItems = marcarItens(input.questionDocuments, input.groupDocuments)
 
-    const horasTexto = input.reminderHours === 1 ? "1 hora" : `${input.reminderHours} horas`
-    const notice = input.reminderEnabled
-        ? `Você receberá neste número avisos sobre este agendamento, como um lembrete ${horasTexto} antes do atendimento e o aviso em caso de cancelamento.`
-        : "Você receberá neste número avisos sobre este agendamento, como o aviso em caso de cancelamento."
+    const notice = montarFraseDeAvisos(input)
 
     return {
         title: input.titulo ?? "Agendamento realizado",
@@ -404,7 +419,9 @@ export function formatarConfirmacaoAgendamento(input: ConfirmacaoAgendamentoInpu
         }
     }
 
-    linhas.push("", estrutura.notice)
+    if (estrutura.notice !== null) {
+        linhas.push("", estrutura.notice)
+    }
 
     return linhas.join("\n")
 }
