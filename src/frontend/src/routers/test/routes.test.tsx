@@ -48,10 +48,7 @@ function renderRoutes(initialEntries: string[], preloadedState?: Partial<RootSta
     return { ...result, router }
 }
 
-const underConstructionRoutes: Array<[string, string]> = [
-    [ROUTES.content, "Conteúdo"],
-    [ROUTES.documents, "Documentos"][(ROUTES.sessions, "Sessões")]
-]
+const underConstructionRoutes: Array<[string, string]> = [[ROUTES.content, "Conteúdo"]]
 
 const protectedRoutes: Array<[string, string]> = [
     [ROUTES.dashboard, "Painel"],
