@@ -106,7 +106,12 @@ function AppointmentCancelDialog({ view }: Props) {
                     <p className={css.hint}>{t("actions.cancel.fixedMessageHint")}</p>
                 </div>
                 <label className={css.note}>
-                    {t("actions.cancel.noteLabel")}
+                    <span>
+                        {t("actions.cancel.noteLabel")}
+                        <span className={css.optional} data-optional="true">
+                            {t("actions.cancel.noteOptional")}
+                        </span>
+                    </span>
                     <textarea
                         rows={2}
                         value={view.note}

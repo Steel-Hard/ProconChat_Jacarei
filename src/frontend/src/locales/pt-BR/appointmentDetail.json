@@ -145,16 +145,20 @@
                 "withoutActor": "Cancelado no painel"
             },
             "citizenNotified": {
-                "withActor": "Cidadão avisado pelo WhatsApp",
-                "withoutActor": "Cidadão avisado pelo WhatsApp"
+                "withActor": "Cidadão avisado do cancelamento",
+                "withoutActor": "Cidadão avisado do cancelamento"
             },
             "citizenNotificationFailed": {
-                "withActor": "Falha ao avisar o cidadão pelo WhatsApp",
-                "withoutActor": "Falha ao avisar o cidadão pelo WhatsApp"
+                "withActor": "Falha ao avisar o cidadão do cancelamento",
+                "withoutActor": "Falha ao avisar o cidadão do cancelamento"
+            },
+            "reminderFailed": {
+                "withActor": "Falha ao avisar o cidadão do lembrete",
+                "withoutActor": "Falha ao avisar o cidadão do lembrete"
             },
             "reminderSent": {
-                "withActor": "Lembrete enviado pelo WhatsApp",
-                "withoutActor": "Lembrete enviado pelo WhatsApp"
+                "withActor": "Lembrete enviado",
+                "withoutActor": "Lembrete enviado"
             },
             "keptOffGrid": {
                 "withActor": "Mantido fora da grade atual após alteração de horários",
@@ -204,8 +208,9 @@
             "chooseReason": "Escolha um motivo para ver a prévia.",
             "previewFailed": "Não foi possível carregar a prévia da mensagem.",
             "retryPreview": "Tentar carregar a prévia novamente",
-            "fixedMessageHint": "As mensagens seguem modelos fixos e podem ser enviadas a qualquer momento antes do horário do atendimento.",
-            "noteLabel": "Observação interna (opcional, não é enviada ao cidadão)",
+            "fixedMessageHint": "As mensagens enviadas pelo chatbot seguem modelos fixos e não podem ser editadas livremente. Por isso o aviso pode ser enviado a qualquer momento antes do horário do atendimento.",
+            "noteLabel": "Observação interna ",
+            "noteOptional": "(opcional, não é enviada ao cidadão)",
             "afterStart": "O horário já passou; não é possível cancelar. Registre como atendido ou não compareceu."
         },
         "readOnly": "Sua conta pode apenas visualizar agendamentos.",

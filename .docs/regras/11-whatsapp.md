@@ -37,14 +37,14 @@ Regras da troca de abas:
 
 ### Estado do número
 
-**Construído nas issues #127 e #129.** A tela mostra credenciais, último evento do webhook, falhas de entrega das últimas 24 horas, qualidade e limite de envios. A seção permite atualizar a consulta à Meta e mostra alertas quando a consulta falha ou quando o uso alcança 80% do limite diário.
+**Construído nas issues #127 e #129.** A tela mostra credenciais, último evento do webhook, falhas de entrega das últimas 24 horas, qualidade e limite de envios. A seção permite atualizar a consulta à Meta e mostra alertas quando a consulta falha ou quando o uso fica acima de 80% do limite diário.
 
 | Item | O que mostra |
 |---|---|
 | **Credenciais** | "Válidas" (com a data da última verificação) ou "Token inválido ou expirado", com a orientação para gerar um novo token, usar "Substituir", testar e salvar |
 | **Último evento recebido pelo webhook** | Data e hora. **Sem eventos há mais de 24 horas**, alerta para conferir se o webhook está verificado e assinado em "messages" |
-| **Qualidade do número na Meta** | Alta, Média ou Baixa, com a explicação de cada uma. Com qualidade baixa, a Meta pode limitar os envios |
-| **Limite de envios da Meta** | Limite diário de conversas iniciadas pela empresa, quantas foram usadas nas últimas 24h (lembretes e avisos de cancelamento) e uma barra. **Acima de 80%**, alerta: "Perto do limite diário da Meta. Lembretes e avisos podem deixar de ser enviados" |
+| **Qualidade do número na Meta** | Alta, Média ou Baixa, com a explicação de cada uma. Com qualidade baixa, a Meta pode limitar os envios. **Alta:** "Poucos bloqueios ou denúncias de usuários. Envio sem restrições." **Média:** "Aumento recente de bloqueios ou denúncias. Vale revisar o texto das mensagens." **Baixa:** "Muitos bloqueios ou denúncias. A Meta pode limitar o envio de mensagens." |
+| **Limite de envios da Meta** | Limite diário de conversas iniciadas pela empresa, quantas foram usadas nas últimas 24h (lembretes e avisos de cancelamento) e uma barra. **Acima de 80%**, alerta: "Perto do limite diário da Meta. Lembretes e avisos podem deixar de ser enviados" **Formato:** "Limite diário: [N] conversas iniciadas pela empresa. Usadas nas últimas 24h: [X] de [N]", com N igual a 250, 1.000, 10.000 ou 100.000 conforme o nível da conta na Meta. Se a Meta informar que não há limite, a tela mostra "Sem limite diário", sem barra nem alerta. Se o nível for desconhecido, mostra "Limite não informado pela Meta", também sem barra nem alerta. A tela nunca mostra o código do nível (por exemplo, TIER_250). |
 
 ### Credenciais
 
@@ -95,8 +95,10 @@ Mensagens enviadas fora da conversa precisam de modelo aprovado pela Meta ([deci
 | Lembrete do atendimento | [Horários de atendimento](08-horarios-de-atendimento.md) |
 | Aviso de cancelamento | [Detalhe do agendamento](04-detalhe-do-agendamento.md) e cancelamento em massa |
 
-- Cada um mostra o status na Meta: **Aprovado**, **Em análise**, **Rejeitado**, **Não encontrado** ou outro status informado pela Meta, com o botão **"Atualizar status da Meta"**.
+- Cada um mostra, ao lado do nome, o **nome técnico do modelo** (por exemplo, `lembrete_atendimento`), para o Admin encontrá-lo no Gerenciador da Meta.
+- Cada um mostra o status na Meta: **Aprovado** (verde), **Em análise** (âmbar), **Rejeitado** (vermelho), **Não encontrado** (vermelho) ou outro status informado pela Meta (âmbar, com o nome do status devolvido), com o botão **"Atualizar status da Meta"**.
 - Se algum não estiver aprovado: "Enquanto este modelo não for aprovado, [lembretes / avisos de cancelamento] não serão enviados."
+- Se o modelo estiver **Rejeitado**, o alerta acrescenta, depois da frase acima: "A Meta rejeitou o modelo: revise o texto no Gerenciador do WhatsApp e envie novamente."
 
 ### Privacidade
 

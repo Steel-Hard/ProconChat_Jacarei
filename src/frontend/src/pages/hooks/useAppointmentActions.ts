@@ -10,6 +10,7 @@ import type AppointmentDetail from "@/types/appointments/AppointmentDetail.types
 import type AppointmentStatus from "@/types/status/AppointmentStatus.types"
 import appointmentActionErrorKey from "@/utils/appointmentActionErrorKey"
 import appointmentActionErrorDetails from "@/utils/appointmentActionErrorDetails"
+import errorStatusOf from "@/utils/errorStatusOf"
 
 type ConfirmableAction = Extract<
     AppointmentAction,
@@ -46,10 +47,6 @@ const FINAL_KEYS: Record<
     ATTENDED: "actions.final.attended",
     NO_SHOW: "actions.final.noShow",
     CANCELED: "actions.final.canceled"
-}
-
-function statusOf(error: unknown): unknown {
-    return typeof error === "object" && error !== null && "status" in error ? error.status : null
 }
 
 function isConfirmableAction(action: AppointmentAction): action is ConfirmableAction {
@@ -164,7 +161,7 @@ function useAppointmentActions({ detail, canManage }: Options) {
                 )
             }
         } else {
-            const status = statusOf(result.error)
+            const status = errorStatusOf(result.error)
 
             if (status !== 403 && status !== 404) {
                 await dispatch(
@@ -221,7 +218,7 @@ function useAppointmentActions({ detail, canManage }: Options) {
                 })
             )
         } else {
-            const status = statusOf(result.error)
+            const status = errorStatusOf(result.error)
 
             if (status !== 403 && status !== 404) {
                 await Promise.all([

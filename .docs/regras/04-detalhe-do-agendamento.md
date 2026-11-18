@@ -54,7 +54,13 @@ Os **passos** que o cidadão percorreu no chatbot, na ordem, com horário: iníc
 
 Todos os eventos do agendamento, do mais recente para o mais antigo: criado, assumido, atribuído, remarcado (de → para), voltou a Pendente, lembrete enviado, cancelado (com motivo), cidadão avisado ou falha ao avisar, registrado, registro corrigido, mantido fora da grade.
 
-Uma falha ao avisar o cidadão aparece em destaque, com **"Tentar novamente"**.
+Os eventos de aviso ao cidadão têm estes rótulos: **"Cidadão avisado do cancelamento"**, **"Lembrete enviado"**, **"Falha ao avisar o cidadão do cancelamento"** e **"Falha ao avisar o cidadão do lembrete"**.
+
+Uma falha ao avisar o cidadão aparece em destaque. O botão **"Tentar novamente"** aparece **só na falha do cancelamento**; a falha do lembrete fica em destaque, sem botão, porque reenviar um lembrete perto ou depois do horário gera custo e pode chegar fora de hora.
+
+Quando o cancelamento é feito mas o aviso ao cidadão falha, o aviso persistente na caixa "Ações" diz: "Agendamento [protocolo] cancelado, mas o aviso ao cidadão falhou. Use "Tentar novamente" no histórico."
+
+Quando o aviso não pode ser enviado por **falta de telefone** do cidadão, o aviso persistente na caixa "Ações" diz: "Agendamento [protocolo] cancelado, mas o cidadão não pôde ser avisado: não há telefone disponível para o envio." Nesse caso não há reenvio possível: o Histórico mostra **"Falha ao avisar o cidadão do cancelamento"** **sem o botão "Tentar novamente"**, e a tela nunca diz que o cidadão foi avisado.
 
 ## O que dá para fazer
 

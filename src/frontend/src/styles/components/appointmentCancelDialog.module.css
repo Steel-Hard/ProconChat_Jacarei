@@ -95,6 +95,11 @@
     color: var(--text-strong);
 }
 
+.optional {
+    font-weight: 400;
+    color: var(--text-muted);
+}
+
 .note textarea {
     width: 100%;
     padding: 9px 11px;

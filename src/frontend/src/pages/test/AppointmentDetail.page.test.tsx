@@ -401,7 +401,7 @@ describe("AppointmentDetail.page: linha do tempo e histórico", () => {
 
         const items = within(section("Histórico")).getAllByRole("listitem")
         expect(items.map((item) => item.textContent)).toEqual([
-            "Falha ao avisar o cidadão pelo WhatsApp19/10/2026 às 09:00",
+            "Falha ao avisar o cidadão do cancelamento19/10/2026 às 09:00",
             "Evento registrado19/10/2026 às 08:30",
             "Assumido automaticamente por Admin · Confirmado18/10/2026 às 10:47",
             "Criado pelo chatbot como Pendente18/10/2026 às 10:46"

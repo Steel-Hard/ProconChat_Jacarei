@@ -1,5 +1,6 @@
 import type { SerializedError } from "@reduxjs/toolkit"
 import type { FetchBaseQueryError } from "@reduxjs/toolkit/query/react"
+import apiErrorCodeOf from "@/utils/apiErrorCodeOf"
 import type AppointmentActionCode from "@/types/appointments/AppointmentActionCode.types"
 
 type ActionErrorKey =
@@ -23,22 +24,9 @@ const ACTION_CODES: readonly string[] = [
     "CANCEL_AFTER_START",
     "NOTIFICATION_NOT_RETRYABLE",
     "CITIZEN_PHONE_UNAVAILABLE",
-    "NOTIFICATION_AFTER_START"
+    "NOTIFICATION_AFTER_START",
+    "NOTIFICATION_IN_PROGRESS"
 ] satisfies AppointmentActionCode[]
-
-function errorCodeOf(data: unknown): string | null {
-    if (typeof data !== "object" || data === null || !("error" in data)) {
-        return null
-    }
-
-    const { error } = data
-
-    if (typeof error !== "object" || error === null || !("code" in error)) {
-        return null
-    }
-
-    return typeof error.code === "string" ? error.code : null
-}
 
 function isActionCode(code: string | null): code is AppointmentActionCode {
     return code !== null && ACTION_CODES.includes(code)
@@ -51,7 +39,7 @@ function appointmentActionErrorKey(
         return "appointmentActions.errors.failed"
     }
 
-    const code = "data" in error ? errorCodeOf(error.data) : null
+    const code = apiErrorCodeOf(error)
 
     if (error.status === 409 && isActionCode(code)) {
         return `appointmentActions.errors.${code}`

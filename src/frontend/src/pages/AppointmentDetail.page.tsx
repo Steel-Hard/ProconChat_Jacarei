@@ -73,6 +73,7 @@ function AppointmentDetailPage() {
                                     title={t("actions.title")}
                                     view={actions.view}
                                     dateNote={t("actions.dateNote")}
+                                    warning={page.cancellation.failedNotice}
                                     onAction={onAction}
                                 />
                                 <AppointmentNotes
@@ -90,9 +91,7 @@ function AppointmentDetailPage() {
                                         allowed: page.cancellation.canRetryNotice,
                                         busy: page.cancellation.retryBusy,
                                         label: t("history.retryNotice"),
-                                        error: page.cancellation.canRetryNotice
-                                            ? page.cancellation.retryError
-                                            : null,
+                                        error: page.cancellation.retryError,
                                         onRetry: page.cancellation.retryNotice
                                     }}
                                 />
