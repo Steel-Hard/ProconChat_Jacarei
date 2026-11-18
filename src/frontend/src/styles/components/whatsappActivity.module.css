@@ -230,36 +230,72 @@
     font-weight: 400;
 }
 
-.metaStats {
+.qualityBand {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 14px;
-}
-
-.metaStats > div {
-    display: flex;
-    flex-direction: column;
-    gap: 7px;
-    padding: 14px;
-    border: 1px solid var(--divider);
-    border-radius: 10px;
-    font-size: 13.5px;
-}
-
-.metaStats dt {
+    grid-template-columns: 62px 1fr;
+    align-items: start;
+    gap: 8px;
+    margin: 0;
     font-size: 12.5px;
+    line-height: 1.45;
     color: var(--text-muted);
 }
 
-.metaStats dd {
-    margin: 0;
+.qualityBand[data-current="true"] {
+    font-weight: 700;
+    color: var(--text-strong);
+}
+
+.qualityPill {
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--divider);
+    text-align: center;
     font-weight: 600;
+}
+
+.qualityBand[data-current="true"] .qualityPill {
+    background: var(--color-primary);
+    color: #fff;
+    font-weight: 700;
+}
+
+.limitTotal {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
 }
 
 .usageProgress {
     width: 100%;
-    height: 12px;
-    accent-color: var(--color-primary);
+    height: 8px;
+    border: 0;
+    border-radius: 999px;
+    background: #efedf7;
+    appearance: none;
+    overflow: hidden;
+}
+
+.usageProgress::-webkit-progress-bar {
+    background: #efedf7;
+}
+
+.usageProgress::-webkit-progress-value {
+    border-radius: 999px;
+    background: #483d8b;
+}
+
+.usageProgress::-moz-progress-bar {
+    border-radius: 999px;
+    background: #483d8b;
+}
+
+.usageProgressDanger::-webkit-progress-value {
+    background: #c0392b;
+}
+
+.usageProgressDanger::-moz-progress-bar {
+    background: #c0392b;
 }
 
 .countValue {

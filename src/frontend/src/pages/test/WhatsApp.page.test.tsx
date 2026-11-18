@@ -105,6 +105,24 @@ function templatesWith(
     }
 }
 
+function numberStatusWith(
+    qualityRating: string,
+    messagingLimit: { tier: string | null; dailyLimit: number | null; usedLast24h: number }
+) {
+    return {
+        "GET /api/v1/whatsapp/settings/number-status": () => ({
+            status: 200,
+            body: {
+                data: {
+                    checkedAt: "2026-11-04T14:00:00.000Z",
+                    qualityRating,
+                    messagingLimit
+                }
+            }
+        })
+    }
+}
+
 async function renderPage(handlers: Record<string, Handler> = {}, view = settingsView()) {
     vi.stubEnv("VITE_API_URL", "http://api.test")
     vi.resetModules()
@@ -829,11 +847,9 @@ describe("WhatsAppPage", () => {
         expect(screen.getByText("Qualidade do número na Meta")).toBeInTheDocument()
         expect(screen.getByText("Alta")).toBeInTheDocument()
         expect(
-            screen.getByText("Limite diário: 250 conversas iniciadas pela empresa (TIER_250).")
+            screen.getByText("Limite diário: 250 conversas iniciadas pela empresa.")
         ).toBeInTheDocument()
-        expect(
-            screen.getByText("50 conversas iniciadas pela empresa usadas nas últimas 24 horas.")
-        ).toBeInTheDocument()
+        expect(screen.getByText("Usadas nas últimas 24h: 50 de 250.")).toBeInTheDocument()
 
         await user.click(screen.getByRole("button", { name: "Atualizar status da Meta" }))
         await waitFor(() => {
@@ -884,7 +900,11 @@ describe("WhatsAppPage", () => {
                 "Perto do limite diário da Meta. Lembretes e avisos podem deixar de ser enviados."
             )
         ).toHaveAttribute("role", "alert")
-        expect(screen.getByText("A Meta pode limitar os envios deste número.")).toBeInTheDocument()
+        expect(
+            screen.getByText(
+                "Muitos bloqueios ou denúncias. A Meta pode limitar o envio de mensagens."
+            )
+        ).toBeInTheDocument()
     })
 
     it("mostra o nome técnico de cada modelo ao lado do nome e o parágrafo de apoio", async () => {
@@ -981,6 +1001,183 @@ describe("WhatsAppPage", () => {
 
         expect(approved).toHaveLength(2)
         approved.forEach((badge) => expect(badge).toHaveAttribute("data-tone", "success"))
+    })
+
+    it("mostra Qualidade e Limite dentro do card Estado do número e na ordem da regra", async () => {
+        await renderPage()
+        await loaded()
+
+        const numberCard = (
+            await screen.findByRole("heading", { name: "Estado do número" })
+        ).closest("section") as HTMLElement
+
+        expect(within(numberCard).getByText("Qualidade do número na Meta")).toBeInTheDocument()
+        expect(within(numberCard).getByText("Limite de envios da Meta")).toBeInTheDocument()
+        expect(
+            screen.queryByRole("heading", { name: "Qualidade e limite de envios da Meta" })
+        ).not.toBeInTheDocument()
+        const order = [
+            "Estado do número",
+            "Credenciais",
+            "Configure no painel da Meta",
+            "Testar conexão",
+            "Modelos de mensagem",
+            "Histórico de alterações"
+        ].map((name) => {
+            const node = screen.getAllByText(name).find((item) => /^H[1-6]$/.test(item.tagName))
+            const button = screen.queryByRole("button", { name })
+
+            return (node ?? button) as HTMLElement
+        })
+        order.slice(1).forEach((node, index) => {
+            const previous = order[index] as HTMLElement
+
+            expect(
+                previous.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING
+            ).toBeTruthy()
+        })
+    })
+
+    it("mostra as três faixas de qualidade e destaca só a atual", async () => {
+        await renderPage(
+            numberStatusWith("MEDIUM", { tier: "TIER_250", dailyLimit: 250, usedLast24h: 1 })
+        )
+        await loaded()
+
+        const high = (await screen.findByText("Alta")).closest("dd") as HTMLElement
+        const medium = screen.getByText("Média").closest("dd") as HTMLElement
+        const low = screen.getByText("Baixa").closest("dd") as HTMLElement
+
+        expect(
+            within(high).getByText(
+                "Poucos bloqueios ou denúncias de usuários. Envio sem restrições."
+            )
+        ).toBeInTheDocument()
+        expect(
+            within(medium).getByText(
+                "Aumento recente de bloqueios ou denúncias. Vale revisar o texto das mensagens."
+            )
+        ).toBeInTheDocument()
+        expect(
+            within(low).getByText(
+                "Muitos bloqueios ou denúncias. A Meta pode limitar o envio de mensagens."
+            )
+        ).toBeInTheDocument()
+        expect(high).toHaveAttribute("data-current", "false")
+        expect(medium).toHaveAttribute("data-current", "true")
+        expect(low).toHaveAttribute("data-current", "false")
+    })
+
+    it("não destaca nenhuma faixa e avisa quando a Meta não informa a qualidade", async () => {
+        await renderPage(
+            numberStatusWith("UNKNOWN", { tier: "TIER_250", dailyLimit: 250, usedLast24h: 1 })
+        )
+        await loaded()
+
+        expect(
+            await screen.findByText("A Meta não informou a qualidade atual do número.")
+        ).toBeInTheDocument()
+        ;["Alta", "Média", "Baixa"].forEach((name) =>
+            expect(screen.getByText(name).closest("dd")).toHaveAttribute("data-current", "false")
+        )
+    })
+
+    it.each([
+        ["TIER_250", null, "250"],
+        ["TIER_1K", null, "1.000"],
+        ["TIER_10K", null, "10.000"],
+        ["TIER_100K", null, "100.000"]
+    ])(
+        "traduz o patamar %s para o limite diário sem mostrar o código",
+        async (tier, dailyLimit, total) => {
+            await renderPage(numberStatusWith("HIGH", { tier, dailyLimit, usedLast24h: 40 }))
+            await loaded()
+
+            expect(
+                await screen.findByText(`Limite diário: ${total} conversas iniciadas pela empresa.`)
+            ).toBeInTheDocument()
+            expect(screen.getByText(`Usadas nas últimas 24h: 40 de ${total}.`)).toBeInTheDocument()
+            expect(screen.getByRole("progressbar")).toBeInTheDocument()
+            expect(document.body.textContent).not.toContain("TIER_")
+        }
+    )
+
+    it("mostra Sem limite diário, sem barra nem alerta, no patamar ilimitado", async () => {
+        await renderPage(
+            numberStatusWith("HIGH", { tier: "TIER_UNLIMITED", dailyLimit: null, usedLast24h: 900 })
+        )
+        await loaded()
+
+        expect(await screen.findByText("Sem limite diário")).toBeInTheDocument()
+        expect(screen.queryByRole("progressbar")).not.toBeInTheDocument()
+        expect(screen.queryByText(/Perto do limite diário/)).not.toBeInTheDocument()
+        expect(document.body.textContent).not.toContain("TIER_")
+    })
+
+    it.each([
+        [null, null],
+        ["TIER_NOVO", null],
+        [null, 0]
+    ])(
+        "mostra Limite não informado pela Meta, sem barra nem alerta (patamar %s, limite %s)",
+        async (tier, dailyLimit) => {
+            await renderPage(numberStatusWith("HIGH", { tier, dailyLimit, usedLast24h: 900 }))
+            await loaded()
+
+            expect(await screen.findByText("Limite não informado pela Meta")).toBeInTheDocument()
+            expect(screen.queryByRole("progressbar")).not.toBeInTheDocument()
+            expect(screen.queryByText(/Perto do limite diário/)).not.toBeInTheDocument()
+            expect(document.body.textContent).not.toContain("TIER_")
+        }
+    )
+
+    it("mostra a falha genérica quando a consulta à Meta não traz um código conhecido", async () => {
+        await renderPage({
+            "GET /api/v1/whatsapp/settings/templates": () => ({
+                status: 500,
+                body: { error: { code: "OUTRO", message: "x" } }
+            }),
+            "GET /api/v1/whatsapp/settings/number-status": () => ({
+                status: 500,
+                body: { error: { code: "OUTRO", message: "x" } }
+            })
+        })
+        await loaded()
+
+        const alerts = await screen.findAllByText(
+            "Não foi possível consultar a Meta. Confira as credenciais e tente novamente.",
+            { selector: '[role="alert"]' }
+        )
+
+        expect(alerts).toHaveLength(2)
+    })
+
+    it("desabilita o botão e mostra Atualizando… enquanto consulta a Meta", async () => {
+        const gate = Promise.withResolvers<void>()
+        let calls = 0
+        const { user } = await renderPage({
+            "GET /api/v1/whatsapp/settings/templates": async () => {
+                calls += 1
+
+                if (calls > 1) {
+                    await gate.promise
+                }
+
+                return {
+                    status: 200,
+                    body: { data: { checkedAt: "2026-11-04T14:00:00.000Z", templates: [] } }
+                }
+            }
+        })
+        await loaded()
+        await user.click(await screen.findByRole("button", { name: "Atualizar status da Meta" }))
+
+        const busy = await screen.findByRole("button", { name: "Atualizando…" })
+
+        expect(busy).toBeDisabled()
+        expect(busy).toHaveAttribute("aria-busy", "true")
+        gate.resolve()
+        await screen.findByRole("button", { name: "Atualizar status da Meta" })
     })
 
     it("não mostra o alerta de limite antes de ultrapassar 80%", async () => {
