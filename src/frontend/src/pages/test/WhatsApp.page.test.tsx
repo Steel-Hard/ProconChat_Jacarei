@@ -993,6 +993,52 @@ describe("WhatsAppPage", () => {
         expect(within(reminder).getByRole("alert")).toHaveAttribute("data-tone", "warning")
     })
 
+    it.each([
+        ["PENDING", "CANCELLATION", "aviso_cancelamento", "os avisos de cancelamento"],
+        ["NOT_FOUND", "CANCELLATION", "aviso_cancelamento", "os avisos de cancelamento"],
+        ["OTHER", "CANCELLATION", "aviso_cancelamento", "os avisos de cancelamento"],
+        ["REJECTED", "CANCELLATION", "aviso_cancelamento", "os avisos de cancelamento"],
+        ["PENDING", "REMINDER", "lembrete_atendimento", "os lembretes"],
+        ["NOT_FOUND", "REMINDER", "lembrete_atendimento", "os lembretes"],
+        ["OTHER", "REMINDER", "lembrete_atendimento", "os lembretes"],
+        ["REJECTED", "REMINDER", "lembrete_atendimento", "os lembretes"]
+    ])("alerta no modelo %s de %s com o texto do tipo", async (status, kind, name, who) => {
+        await renderPage(templatesWith([{ kind, name, status, metaStatus: "X" }]))
+        await loaded()
+
+        const item = (await screen.findByText(name)).closest("li") as HTMLElement
+
+        expect(within(item).getByRole("alert")).toHaveTextContent(
+            `Enquanto este modelo não for aprovado, ${who} não serão enviados.`
+        )
+    })
+
+    it("não alerta nos modelos aprovados", async () => {
+        await renderPage()
+        await loaded()
+        await screen.findByText("aviso_cancelamento")
+
+        const list = screen.getByText("aviso_cancelamento").closest("ul") as HTMLElement
+
+        expect(within(list).queryByRole("alert")).not.toBeInTheDocument()
+    })
+
+    it("mostra o status informado pela Meta quando o modelo tem outro status", async () => {
+        await renderPage(
+            templatesWith([
+                {
+                    kind: "REMINDER",
+                    name: "lembrete_atendimento",
+                    status: "OTHER",
+                    metaStatus: "PAUSED"
+                }
+            ])
+        )
+        await loaded()
+
+        expect(await screen.findByText("Status informado pela Meta: PAUSED")).toBeInTheDocument()
+    })
+
     it("mostra o selo verde nos modelos aprovados", async () => {
         await renderPage()
         await loaded()
