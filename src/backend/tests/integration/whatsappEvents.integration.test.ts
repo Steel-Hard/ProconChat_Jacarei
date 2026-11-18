@@ -269,6 +269,21 @@ describe("Repositorio de mensagens enviadas com Postgres", () => {
         expect(await storedRows(id)).toHaveLength(1)
     })
 
+    test("findProblemSignals devolve só as falhas com os códigos pedidos dentro da janela e o último envio bem-sucedido por tipo", async () => {
+        const since = new Date("2031-04-02T00:00:00.000Z")
+        await insertWithStatus("FAILED", new Date("2031-04-02T10:00:00.000Z"), "131042")
+        await insertWithStatus("FAILED", new Date("2031-04-02T11:00:00.000Z"), "131047")
+        await insertWithStatus("FAILED", new Date("2031-04-01T23:00:00.000Z"), "131042")
+        await insertWithStatus("DELIVERED", new Date("2031-04-02T12:00:00.000Z"), null)
+        await insertWithStatus("SENT", new Date("2031-04-02T08:00:00.000Z"), null)
+
+        const signals = await outboundMessageRepository.findProblemSignals(since, ["131042", "190"])
+
+        expect(signals.failures).toEqual([{ kind: expect.any(String), errorCode: "131042", failedAt: new Date("2031-04-02T10:00:00.000Z") }])
+        const latest = Object.values(signals.lastSuccessByKind).map((at) => (at as Date).toISOString())
+        expect(latest).toContain("2031-04-02T12:00:00.000Z")
+    })
+
     test("listRecentFailures deixa fora a falha exatamente em since e inclui a de 1 ms depois", async () => {
         const since = windowSince(0)
         await insertWithStatus("FAILED", since)

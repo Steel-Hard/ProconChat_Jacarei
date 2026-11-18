@@ -254,7 +254,7 @@ describe("contrato da API de agendamentos", () => {
             "/api/v1/appointments",
             new AppointmentRoutes({
                 repository,
-                cancellationNotice: { isEnabled: async () => true },
+                cancellationNotice: { isEnabled: async () => true, getState: async () => ({ enabled: true, problem: null }) },
                 conversationEvents: conversationEventsOf(conversationTimelineEvents("101")),
                 authMiddleware: createRequireAuth({ users: authUsers, tokens: sessionTokens }),
                 calendar: createAppointmentCalendarService({

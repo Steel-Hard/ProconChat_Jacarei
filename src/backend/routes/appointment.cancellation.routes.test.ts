@@ -12,6 +12,7 @@ import type { AppointmentCalendarService } from "../services/appointmentCalendar
 import type { CancellationNoticeTarget } from "../types/appointment.types"
 import { sessionTokens } from "../utils/sessionToken"
 import { AppointmentRoutes } from "./appointment.routes"
+import type { CancellationNoticeProblem } from "../types/outboundMessage.types"
 
 const authUsers = new MockAuthRepository([
     {
@@ -62,6 +63,8 @@ describe("appointment.routes: cancelamento pela equipe (HTTP)", () => {
     let app: express.Express
     const calendar: AppointmentCalendarService = { getCalendar: vi.fn() }
     let noticeEnabled = true
+    let noticeProblem: CancellationNoticeProblem | null = null
+    let noticeStateError: Error | null = null
 
     function buildApp(): express.Express {
         const notifications = createCitizenNotificationService({
@@ -80,7 +83,15 @@ describe("appointment.routes: cancelamento pela equipe (HTTP)", () => {
                 authMiddleware: createRequireAuth({ users: authUsers, tokens: sessionTokens }),
                 calendar,
                 notifications,
-                cancellationNotice: { isEnabled: async () => noticeEnabled },
+                cancellationNotice: {
+                    isEnabled: async () => noticeEnabled,
+                    getState: async () => {
+                        if (noticeStateError) {
+                            throw noticeStateError
+                        }
+                        return { enabled: noticeEnabled, problem: noticeProblem }
+                    },
+                },
             }).getRouter(),
         )
         built.use(errorHandler)
@@ -115,6 +126,8 @@ describe("appointment.routes: cancelamento pela equipe (HTTP)", () => {
 
     beforeEach(() => {
         noticeEnabled = true
+        noticeProblem = null
+        noticeStateError = null
         vi.useFakeTimers({ toFake: ["Date"] })
         vi.setSystemTime(FIXED_NOW)
         sendTemplate = vi.fn<(input: SendTemplateInput) => Promise<SendTemplateResult>>().mockResolvedValue({
@@ -256,6 +269,8 @@ describe("appointment.routes: cancelamento pela equipe (HTTP)", () => {
         expect(res.status).toBe(200)
         expect(res.body).toEqual({
             data: {
+                noticeEnabled: true,
+                problem: null,
                 previews: [
                     { reason: "UNIT_CLOSED", message: FIXED_PREVIEW },
                     {
@@ -279,6 +294,32 @@ describe("appointment.routes: cancelamento pela equipe (HTTP)", () => {
                 ],
             },
         })
+    })
+
+    it("C2 com o aviso desligado responde noticeEnabled false e nenhuma prévia", async () => {
+        noticeEnabled = false
+
+        const res = await request(app).get("/api/v1/appointments/1/cancellation-preview").set("Cookie", cookieFor(OPERATOR))
+
+        expect(res.status).toBe(200)
+        expect(res.body).toEqual({ data: { noticeEnabled: false, problem: null, previews: [] } })
+    })
+
+    it("C2 com problema conhecido da Meta devolve o código estável e a frase, sem telefone", async () => {
+        noticeProblem = { code: "PAYMENT_METHOD", metaErrorCode: "131042", message: "a conta da Meta está sem forma de pagamento" }
+
+        const res = await request(app).get("/api/v1/appointments/1/cancellation-preview").set("Cookie", cookieFor(OPERATOR))
+
+        expect(res.body.data.problem).toEqual(noticeProblem)
+        expect(JSON.stringify(res.body)).not.toContain(PHONE)
+    })
+
+    it("C2 responde 500 quando o estado do aviso não pode ser lido", async () => {
+        noticeStateError = new Error("db down")
+
+        const res = await request(app).get("/api/v1/appointments/1/cancellation-preview").set("Cookie", cookieFor(OPERATOR))
+
+        expect(res.status).toBe(500)
     })
 
     it("C2 com um id inexistente responde 404", async () => {

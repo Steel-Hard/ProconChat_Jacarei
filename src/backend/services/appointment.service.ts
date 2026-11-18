@@ -31,6 +31,7 @@ import {
 import type { RecordedConversationEvent } from "../types/conversationEvent.types"
 import { decrypt } from "../utils/crypto.utils"
 import { CitizenNotificationService, createCitizenNotificationService } from "./citizenNotification.service"
+import type { CancellationNoticeSetting } from "../types/whatsappSettings.types"
 import { whatsappSettingsService } from "./whatsappSettings.service"
 import { CORPO_AVISO_CANCELAMENTO, parametrosAvisoCancelamento, renderizarModelo } from "./messageFormatter.service"
 
@@ -190,10 +191,12 @@ function noticeStateOf(target: CancellationNoticeTarget): CancellationNoticeStat
 
 export interface CancellationNoticeSwitch {
     isEnabled(): Promise<boolean>
+    getState(): Promise<CancellationNoticeSetting>
 }
 
 const defaultCancellationNoticeSwitch: CancellationNoticeSwitch = {
     isEnabled: () => whatsappSettingsService.isCancellationNoticeEnabled(),
+    getState: () => whatsappSettingsService.getCancellationNoticeState(),
 }
 
 function cancellationNoticeStatusOf(notice: CancellationNoticeTarget | null): CancellationNoticeStatus | null {
@@ -432,7 +435,13 @@ export function createAppointmentService(deps?: {
             if (!target) {
                 throw new NotFoundError("Agendamento não encontrado")
             }
+            const state = await cancellationNotice.getState()
+            if (!state.enabled) {
+                return { noticeEnabled: false, problem: null, previews: [] }
+            }
             return {
+                noticeEnabled: true,
+                problem: state.problem,
                 previews: CANCELLATION_REASONS.map((reason) => ({
                     reason,
                     message: renderizarModelo(

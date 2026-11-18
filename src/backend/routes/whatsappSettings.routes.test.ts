@@ -6,6 +6,8 @@ import { whatsappSettingsRepository } from "../repositories/whatsappSettings.rep
 import { MockWhatsAppSettingsRepository } from "../repositories/mock/whatsappSettingsMock.repository"
 import { AuditLogStubRepository } from "../repositories/mock/auditLogStub.repository"
 import { auditLogRepository } from "../repositories/auditLog.repository"
+import { OutboundMessageStubRepository } from "../repositories/mock/outboundMessageStub.repository"
+import { outboundMessageRepository } from "../repositories/outboundMessage.repository"
 import { metaGraphClient } from "../clients/metaGraph.client"
 import { MockMetaGraphClient } from "../clients/metaGraphMock.client"
 import { gatewayClient } from "../clients/gateway.client"
@@ -22,6 +24,10 @@ vi.mock("../repositories/whatsappSettings.repository", async () => {
     return { whatsappSettingsRepository: new Repository(null) }
 })
 
+vi.mock("../repositories/outboundMessage.repository", async () => {
+    const { OutboundMessageStubRepository: Repository } = await import("../repositories/mock/outboundMessageStub.repository")
+    return { outboundMessageRepository: new Repository() }
+})
 vi.mock("../repositories/auditLog.repository", async () => {
     const { AuditLogStubRepository: Repository } = await import("../repositories/mock/auditLogStub.repository")
     return { auditLogRepository: new Repository() }
@@ -86,6 +92,7 @@ function savedView(overrides: Record<string, unknown> = {}) {
         credentialsCheckedAt: null,
         autoReplyPaused: false,
         cancellationNoticeEnabled: false,
+        cancellationNoticeProblem: null,
         pausedMessage: PAUSED_MESSAGE,
         updatedBy: null,
         updatedAt: NOW.toISOString(),
@@ -320,6 +327,26 @@ describe("/api/v1/whatsapp/settings", () => {
 
         expect(response.status).toBe(200)
         expect(response.body.data.cancellationNoticeEnabled).toBe(false)
+    })
+
+    test("GET / com o aviso ligado e falha de pagamento recente traz cancellationNoticeProblem sem telefone", async () => {
+        const outbound = outboundMessageRepository as unknown as OutboundMessageStubRepository
+        outbound.problemSignals = {
+            failures: [{ kind: "CANCELLATION", errorCode: "131042", failedAt: new Date(NOW.getTime() - 60_000) }],
+            lastSuccessByKind: {},
+        }
+        if (settings.row) {
+            settings.row.cancellationNoticeEnabled = true
+        }
+
+        const response = await call("get", "/api/v1/whatsapp/settings")
+
+        expect(response.body.data.cancellationNoticeProblem).toEqual({
+            code: "PAYMENT_METHOD",
+            metaErrorCode: "131042",
+            message: "a conta da Meta está sem forma de pagamento",
+        })
+        outbound.problemSignals = { failures: [], lastSuccessByKind: {} }
     })
 
     test("PUT /cancellation-notice liga o aviso na hora e devolve a leitura com quem alterou", async () => {

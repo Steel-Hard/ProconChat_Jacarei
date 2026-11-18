@@ -1,3 +1,4 @@
+import type { CancellationNoticeProblem } from "./outboundMessage.types"
 export type AppointmentStatus =
     | "PENDING"
     | "CONFIRMED"
@@ -73,6 +74,8 @@ export interface CancelOptions {
 export type CancellationNoticeStatus = CitizenNotificationOutcome | "DISABLED"
 
 export interface CancellationPreview {
+    noticeEnabled: boolean
+    problem: CancellationNoticeProblem | null
     previews: { reason: CancellationReason; message: string }[]
 }
 

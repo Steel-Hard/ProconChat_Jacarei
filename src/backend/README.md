@@ -311,6 +311,7 @@ O cadastro dos modelos na Meta está em [`.docs/whatsapp/modelos-de-mensagem.md`
     "credentialsCheckedAt": "2026-10-14T13:00:00.000Z",
     "autoReplyPaused": false,
     "cancellationNoticeEnabled": false,
+    "cancellationNoticeProblem": null,
     "pausedMessage": "O atendimento automático do PROCON Jacareí está temporariamente indisponível. Tente novamente mais tarde.",
     "updatedBy": { "id": 1, "name": "Admin" },
     "updatedAt": "2026-10-14T13:00:00.000Z",
@@ -660,7 +661,7 @@ repositório dentro da transação, pelo mock e pelo detalhe.
 | `GET /api/v1/appointments` | `appointments.view` | Lista com busca, filtros, ordenação, paginação e contagem dos chips (query abaixo) | `200 { data: { items, total, page, limit, totalPages, chipCounts } }` | `400 BAD_REQUEST`, `401`, `403` |
 | `GET /api/v1/appointments/:id` | `appointments.view` | Detalhe com histórico (`events`), linha do tempo da conversa de origem (`timeline`) e ações disponíveis (`available_actions`) | `200 { data: AppointmentDetail }` | `400 BAD_REQUEST` (id que não é inteiro positivo ou passa do limite do `bigint`), `401`, `403`, `404 NOT_FOUND` |
 | `PATCH /api/v1/appointments/:id/status` | `appointments.manage` | Executa uma ação. Corpo: `{ "action": "claim" \| "attended" \| "no_show" \| "correct_record" }`, `{ "action": "assign", "assigneeUserId": <id> }` (número ou texto numérico) ou `{ "action": "cancel", "reason": "UNIT_CLOSED" \| "CITIZEN_REQUEST" \| "DUPLICATE" \| "OTHER", "note"?: "..." }` (seção "Cancelamento pela equipe") | `200 { data: AppointmentDetail }`, o mesmo objeto que um `GET /:id` feito em seguida. `correct_record` pode trazer também `warning` (abaixo) | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN`, `403 INVALID_ORIGIN`, `404 NOT_FOUND`, `409` (codes na tabela de ações) |
-| `GET /api/v1/appointments/:id/cancellation-preview` | `appointments.manage` | A mensagem exata que o cidadão recebe para cada motivo, na ordem `UNIT_CLOSED`, `CITIZEN_REQUEST`, `DUPLICATE`, `OTHER` | `200 { data: { previews: [{ reason, message }] } }` | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN`, `404 NOT_FOUND` |
+| `GET /api/v1/appointments/:id/cancellation-preview` | `appointments.manage` | A mensagem exata que o cidadão recebe para cada motivo, na ordem `UNIT_CLOSED`, `CITIZEN_REQUEST`, `DUPLICATE`, `OTHER` | `200 { data: { noticeEnabled: boolean, problem: NoticeProblem \| null, previews: [{ reason, message }] } }` (com o aviso desligado: `noticeEnabled: false`, `problem: null` e `previews: []`; se o estado do aviso não puder ser lido, responde erro e o front não libera a confirmação) | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN`, `404 NOT_FOUND` |
 | `POST /api/v1/appointments/:id/cancellation-notice/retry` | `appointments.manage` | Reenvia o aviso de cancelamento que falhou | `200 { data: AppointmentDetail }` | `401`, `403 FORBIDDEN`, `403 INVALID_ORIGIN`, `404 NOT_FOUND`, `409 NOTIFICATION_NOT_RETRYABLE`, `409 CITIZEN_PHONE_UNAVAILABLE`, `409 NOTIFICATION_AFTER_START`, `409 NOTIFICATION_IN_PROGRESS` |
 | `POST /api/v1/appointments/:id/notes` | `appointments.manage` | Grava uma observação interna. Corpo: `{ "text": "..." }`, de 1 a 2000 caracteres depois de aparar. Não há rota de edição nem de exclusão, e o trigger `trg_appointment_notes_immutable` recusa `UPDATE` e `DELETE` | `201 { data: AppointmentDetail }` | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN`, `403 INVALID_ORIGIN`, `404 NOT_FOUND` |
 
@@ -988,6 +989,22 @@ marcado (no horário ou depois, `409 CANCEL_AFTER_START`).
   "CANCELLATION" }` e quem agiu. Falha do gateway, gateway não configurado ou telefone ausente ou
   ilegível gravam a falha, e o cancelamento continua respondendo `200`. A pausa das respostas
   automáticas não bloqueia o aviso.
+- **Problema conhecido da Meta** (`cancellationNoticeProblem` em `GET /api/v1/whatsapp/settings` e `problem` em `cancellation-preview`): objeto `{ code, metaErrorCode, message }` ou `null`. Só existe com o aviso ligado, para erros da **conta** com uma falha de envio nas últimas 24 horas e nenhum envio bem-sucedido depois dela (o do aviso de cancelamento, no caso de erro de modelo; de qualquer tipo, no caso de erro de conta), ou com `credentialsValid = false`. A frase vem da regra 11:
+
+  | `metaErrorCode` | `code` |
+  |---|---|
+  | `131042` | `PAYMENT_METHOD` |
+  | `132001` | `TEMPLATE_NOT_FOUND` |
+  | `132000` | `TEMPLATE_PARAMETER_COUNT` |
+  | `132012` | `TEMPLATE_PARAMETER_FORMAT` |
+  | `132007` | `TEMPLATE_POLICY_VIOLATION` |
+  | `132015` | `TEMPLATE_PAUSED` |
+  | `132016` | `TEMPLATE_DISABLED` |
+  | `132005` | `TEMPLATE_TRANSLATION_TOO_LONG` |
+  | `190` ou credenciais inválidas (`metaErrorCode: null`) | `INVALID_TOKEN` |
+  | `131048` | `SEND_LIMIT_REACHED` |
+
+  Os códigos do destinatário (`131026`, `131049`, `131056`, `131047`) não geram faixa e aparecem só no Histórico do agendamento. O estado atual do modelo (não aprovado, pausado ou desativado) exige uma consulta à Meta: o front combina `GET /api/v1/whatsapp/settings/templates` e mostra "o modelo de aviso não está aprovado na Meta".
 - Quando a Meta recusa o envio, ou avisa depois pelo webhook de status que a entrega falhou, o evento
   `CITIZEN_NOTIFICATION_FAILED` traz também `data.errorCode` (texto só com dígitos, por exemplo
   `"131042"`) e a mensagem em `OutboundMessages.error_code` guarda o mesmo código. Só o código é

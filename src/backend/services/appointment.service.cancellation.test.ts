@@ -3,6 +3,7 @@ import type { SendTemplateInput, SendTemplateResult } from "../clients/gateway.c
 import { buildAppointmentDetail, conversationEventsOf, FIXED_DATES, FIXED_NOW } from "../repositories/mock/appointment.builders"
 import { AppointmentRepositoryStub } from "../repositories/mock/appointmentStub.repository"
 import type { AppointmentStatus, CancellationNoticeTarget, CancellationReason } from "../types/appointment.types"
+import type { CancellationNoticeProblem } from "../types/outboundMessage.types"
 import { createAppointmentService } from "./appointment.service"
 import { createCitizenNotificationService } from "./citizenNotification.service"
 import { CORPO_AVISO_CANCELAMENTO, renderizarModelo } from "./messageFormatter.service"
@@ -29,6 +30,8 @@ function setup({
     result = { ok: true, providerMessageId: "wamid.X" } as SendTemplateResult,
     status = "CONFIRMED" as AppointmentStatus,
     isEnabled = async () => true,
+    problem = null as CancellationNoticeProblem | null,
+    getState = async () => ({ enabled: await isEnabled(), problem }),
 } = {}) {
     const repository = new AppointmentRepositoryStub({
         details: [buildAppointmentDetail({ id: "1", status, appointment_datetime: FIXED_DATES.tomorrow })],
@@ -50,7 +53,7 @@ function setup({
         repository,
         conversationEvents: conversationEventsOf({}),
         notifications,
-        cancellationNotice: { isEnabled },
+        cancellationNotice: { isEnabled, getState },
         logger,
     })
     return { repository, sendTemplate, service, logger }
@@ -243,6 +246,35 @@ describe("appointment.service: cancelamento pela equipe", () => {
         expect(preview.previews[0]?.message).toBe(
             "Olá, Maria. Seu agendamento 1A2B3C4D no PROCON Jacareí, marcado para 05/11 às 14:00, foi cancelado. Motivo: a unidade estará fechada nesta data. Para agendar novamente, envie uma mensagem para este número.",
         )
+    })
+
+    it("getCancellationPreview com o aviso ligado devolve noticeEnabled true e o problema conhecido da Meta", async () => {
+        const problem = { code: "PAYMENT_METHOD", metaErrorCode: "131042", message: "a conta da Meta está sem forma de pagamento" } as const
+        const { service } = setup({ problem })
+
+        const preview = await service.getCancellationPreview("1")
+
+        expect(preview.noticeEnabled).toBe(true)
+        expect(preview.problem).toEqual(problem)
+        expect(preview.previews).toHaveLength(4)
+    })
+
+    it("getCancellationPreview com o aviso desligado devolve noticeEnabled false, sem prévias e sem problema", async () => {
+        const { service } = setup({ isEnabled: async () => false })
+
+        const preview = await service.getCancellationPreview("1")
+
+        expect(preview).toEqual({ noticeEnabled: false, problem: null, previews: [] })
+    })
+
+    it("getCancellationPreview falha quando não consegue ler o estado do aviso, para o front não liberar a confirmação", async () => {
+        const { service } = setup({
+            getState: async () => {
+                throw new Error("db down")
+            },
+        })
+
+        await expect(service.getCancellationPreview("1")).rejects.toThrow("db down")
     })
 
     it("getCancellationPreview recusa com 404 quando o agendamento não existe", async () => {
