@@ -1007,7 +1007,8 @@ marcado (no horário ou depois, `409 CANCEL_AFTER_START`).
   Os códigos do destinatário (`131026`, `131049`, `131056`, `131047`) não geram faixa e aparecem só no Histórico do agendamento. O estado atual do modelo (não aprovado, pausado ou desativado) exige uma consulta à Meta: o front combina `GET /api/v1/whatsapp/settings/templates` e mostra "o modelo de aviso não está aprovado na Meta".
 - Quando a Meta recusa o envio, ou avisa depois pelo webhook de status que a entrega falhou, o evento
   `CITIZEN_NOTIFICATION_FAILED` traz também `data.errorCode` (texto só com dígitos, por exemplo
-  `"131042"`) e a mensagem em `OutboundMessages.error_code` guarda o mesmo código. Só o código é
+  `"131042"`) e a mensagem em `OutboundMessages.error_code` guarda o mesmo código. O código vindo do webhook só é aceito com 1 a 7 dígitos; qualquer outro valor é gravado como
+  nulo (a falha continua registrada). Só o código é
   guardado: a mensagem e os detalhes da Meta podem conter o telefone e nunca são lidos. Sem código
   (rede fora do ar, gateway não configurado), o evento fica só com `kind`.
 - Se o próprio aviso lança depois do `COMMIT` (por exemplo, a gravação do resultado falha), o
