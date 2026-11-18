@@ -21,6 +21,8 @@ import {
     AppointmentNote,
     AppointmentStatus,
     CalendarFilters,
+    CancelOptions,
+    CancellationNoticeStatus,
     CancellationNoticeTarget,
     CancellationReason,
     CitizenNotificationKind,
@@ -266,6 +268,16 @@ async function ensureActorCanTake(
     if (conflict?.reason === "BUSY") {
         throw assigneeBusyError(actor.id, conflict)
     }
+}
+
+function noticeStatusOf(type: string | null): CancellationNoticeStatus | null {
+    if (type === null) {
+        return null
+    }
+    if (type === "CITIZEN_NOTIFIED") {
+        return "NOTIFIED"
+    }
+    return type === "CITIZEN_NOTICE_DISABLED" ? "DISABLED" : "FAILED"
 }
 
 export function createAppointmentRepository(pool: Pool = getPool()): AppointmentRepository {
@@ -877,6 +889,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             reason: CancellationReason,
             note: string | undefined,
             now: Date = new Date(),
+            options: CancelOptions = { noticeDisabled: false },
         ): Promise<void> {
             return inTransaction(pool, async (client) => {
                 await lockAccounts(client, [actorUserId])
@@ -887,6 +900,13 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                      VALUES ($1, 'CANCELED_BY_STAFF', $2, $3::jsonb, $4)`,
                     [id, actorUserId, JSON.stringify({ reason }), now],
                 )
+                if (options.noticeDisabled) {
+                    await client.query(
+                        `INSERT INTO AppointmentEvents (appointment_id, type, actor_user_id, data, created_at)
+                         VALUES ($1, 'CITIZEN_NOTICE_DISABLED', $2, $3::jsonb, $4)`,
+                        [id, actorUserId, JSON.stringify({ kind: "CANCELLATION" }), now],
+                    )
+                }
                 if (note !== undefined) {
                     await client.query(
                         `INSERT INTO AppointmentNotes (appointment_id, author_user_id, text, created_at)
@@ -908,7 +928,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                 protocol: string
                 phone_encrypted: string | null
                 last_staff_cancel_reason: CancellationReason | null
-                last_notice_type: "CITIZEN_NOTIFIED" | "CITIZEN_NOTIFICATION_FAILED" | null
+                last_notice_type: "CITIZEN_NOTIFIED" | "CITIZEN_NOTIFICATION_FAILED" | "CITIZEN_NOTICE_DISABLED" | null
             }>(
                 `SELECT a.status, a.appointment_datetime, a.name, ${PROTOCOL_SQL} AS protocol, a.phone_encrypted,
                         (SELECT e.data->>'reason' FROM AppointmentEvents e
@@ -916,7 +936,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                          ORDER BY e.created_at DESC, e.id DESC LIMIT 1) AS last_staff_cancel_reason,
                         (SELECT e.type::text FROM AppointmentEvents e
                          WHERE e.appointment_id = a.id
-                           AND e.type IN ('CITIZEN_NOTIFIED', 'CITIZEN_NOTIFICATION_FAILED')
+                           AND e.type IN ('CITIZEN_NOTIFIED', 'CITIZEN_NOTIFICATION_FAILED', 'CITIZEN_NOTICE_DISABLED')
                            AND e.data->>'kind' = 'CANCELLATION'
                          ORDER BY e.created_at DESC, e.id DESC LIMIT 1) AS last_notice_type
                  FROM Appointments a
@@ -934,8 +954,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                 protocol: row.protocol,
                 phoneEncrypted: row.phone_encrypted,
                 lastStaffCancelReason: row.last_staff_cancel_reason,
-                lastCancellationNotice:
-                    row.last_notice_type === null ? null : row.last_notice_type === "CITIZEN_NOTIFIED" ? "NOTIFIED" : "FAILED",
+                lastCancellationNotice: noticeStatusOf(row.last_notice_type),
             }
         },
 

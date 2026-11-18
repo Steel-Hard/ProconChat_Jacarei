@@ -66,6 +66,12 @@ export type CitizenNotificationKind = "CANCELLATION"
 
 export type CitizenNotificationOutcome = "NOTIFIED" | "FAILED"
 
+export interface CancelOptions {
+    noticeDisabled: boolean
+}
+
+export type CancellationNoticeStatus = CitizenNotificationOutcome | "DISABLED"
+
 export interface CancellationPreview {
     previews: { reason: CancellationReason; message: string }[]
 }
@@ -77,7 +83,7 @@ export interface CancellationNoticeTarget {
     protocol: string
     phoneEncrypted: string | null
     lastStaffCancelReason: CancellationReason | null
-    lastCancellationNotice: CitizenNotificationOutcome | null
+    lastCancellationNotice: CancellationNoticeStatus | null
 }
 
 export type AppointmentActionType = "claim" | "attended" | "no_show" | "assign" | "correct_record" | "cancel"
@@ -212,9 +218,10 @@ export interface AppointmentDetail {
     notes: AppointmentNote[]
     timeline: ConversationTimelineStep[]
     available_actions: AppointmentAvailableActions
+    cancellation_notice_status: CancellationNoticeStatus | null
 }
 
-export type AppointmentDetailRecord = Omit<AppointmentDetail, "available_actions">
+export type AppointmentDetailRecord = Omit<AppointmentDetail, "available_actions" | "cancellation_notice_status">
 
 export interface AppointmentListFilters {
     search?: string

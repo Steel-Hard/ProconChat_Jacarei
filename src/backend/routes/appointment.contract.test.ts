@@ -50,6 +50,7 @@ const DETAIL_KEYS = [
     "assigned_user_name",
     "available_actions",
     "by_representative",
+    "cancellation_notice_status",
     "category_id",
     "category_name",
     "cpf_masked",
@@ -253,6 +254,7 @@ describe("contrato da API de agendamentos", () => {
             "/api/v1/appointments",
             new AppointmentRoutes({
                 repository,
+                cancellationNotice: { isEnabled: async () => true },
                 conversationEvents: conversationEventsOf(conversationTimelineEvents("101")),
                 authMiddleware: createRequireAuth({ users: authUsers, tokens: sessionTokens }),
                 calendar: createAppointmentCalendarService({

@@ -4,6 +4,7 @@ import {
     AppointmentListFilters,
     AppointmentListItem,
     CalendarFilters,
+    CancelOptions,
     CancellationNoticeTarget,
     CancellationReason,
     CitizenNotificationKind,
@@ -75,6 +76,7 @@ export interface AppointmentRepository {
         reason: CancellationReason,
         note: string | undefined,
         now?: Date,
+        options?: CancelOptions,
     ): Promise<void>
 
     findCancellationNoticeTarget(id: string): Promise<CancellationNoticeTarget | null>

@@ -83,6 +83,7 @@ describe("appointment.routes: cada ação do PATCH /status chega ao seu ramo (HT
                 authMiddleware: createRequireAuth({ users: authUsers, tokens: sessionTokens }),
                 calendar,
                 notifications,
+                cancellationNotice: { isEnabled: async () => true },
             }).getRouter(),
         )
         app.use(errorHandler)

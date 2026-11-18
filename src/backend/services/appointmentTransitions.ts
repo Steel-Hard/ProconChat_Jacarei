@@ -5,6 +5,7 @@ import type {
     AppointmentActionType,
     AppointmentAvailableActions,
     AppointmentStatus,
+    CancellationNoticeStatus,
     CorrectionHistoryEvent,
     CorrectionTarget,
     TransitionErrorCode,
@@ -23,7 +24,7 @@ export interface ActionAccess {
 export interface CancellationNoticeState {
     status: AppointmentStatus
     hasStaffCancellation: boolean
-    lastCancellationNotice: "NOTIFIED" | "FAILED" | null
+    lastCancellationNotice: CancellationNoticeStatus | null
     hasPhone: boolean
     appointmentDatetime: Date
 }
@@ -158,7 +159,7 @@ export function decideTransition(
 }
 
 export function decideRetryCancellationNotice(state: CancellationNoticeState, now: Date): TransitionDecision {
-    if (state.status !== "CANCELED" || !state.hasStaffCancellation || state.lastCancellationNotice === "NOTIFIED") {
+    if (state.status !== "CANCELED" || !state.hasStaffCancellation || state.lastCancellationNotice === "NOTIFIED" || state.lastCancellationNotice === "DISABLED") {
         return refuse("Não há aviso de cancelamento com falha para reenviar", "NOTIFICATION_NOT_RETRYABLE")
     }
     if (isDatetimePast(state.appointmentDatetime, now)) {

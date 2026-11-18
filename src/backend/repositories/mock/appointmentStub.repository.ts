@@ -6,6 +6,7 @@ import type {
     AppointmentDetailRecord,
     AppointmentListFilters,
     AppointmentListItem,
+    CancelOptions,
     CancellationNoticeTarget,
     CancellationReason,
     CitizenNotificationKind,
@@ -51,6 +52,7 @@ export interface AppointmentCancelCall {
     reason: CancellationReason
     note: string | undefined
     now: Date | undefined
+    noticeDisabled: boolean
 }
 
 export interface CitizenNotificationCall {
@@ -190,9 +192,10 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
         reason: CancellationReason,
         note: string | undefined,
         now?: Date,
+        options?: CancelOptions,
     ): Promise<void> {
         this.callOrder.push("cancel")
-        this.cancelCalls.push({ id, actorUserId, reason, note, now })
+        this.cancelCalls.push({ id, actorUserId, reason, note, now, noticeDisabled: options?.noticeDisabled ?? false })
         this.applyAction({ action: "cancel", id, actorUserId, now })
     }
 

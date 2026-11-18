@@ -1,4 +1,5 @@
 import { gatewayClient } from "../clients/gateway.client"
+import ConflictError from "../errors/ConflictError"
 import NotFoundError from "../errors/NotFoundError"
 import { AppointmentRepository } from "../repositories/appointment.repository.interface"
 import { appointmentRepository as defaultAppointmentRepository } from "../repositories/appointment.repository"
@@ -8,6 +9,7 @@ import {
     AppointmentListFilters,
     AppointmentListResponse,
     CANCELLATION_REASONS,
+    CancellationNoticeStatus,
     CancellationNoticeTarget,
     CancellationPreview,
     CancellationReason,
@@ -29,6 +31,7 @@ import {
 import type { RecordedConversationEvent } from "../types/conversationEvent.types"
 import { decrypt } from "../utils/crypto.utils"
 import { CitizenNotificationService, createCitizenNotificationService } from "./citizenNotification.service"
+import { whatsappSettingsService } from "./whatsappSettings.service"
 import { CORPO_AVISO_CANCELAMENTO, parametrosAvisoCancelamento, renderizarModelo } from "./messageFormatter.service"
 
 export interface CorrectedAppointment {
@@ -185,6 +188,21 @@ function noticeStateOf(target: CancellationNoticeTarget): CancellationNoticeStat
     }
 }
 
+export interface CancellationNoticeSwitch {
+    isEnabled(): Promise<boolean>
+}
+
+const defaultCancellationNoticeSwitch: CancellationNoticeSwitch = {
+    isEnabled: () => whatsappSettingsService.isCancellationNoticeEnabled(),
+}
+
+function cancellationNoticeStatusOf(notice: CancellationNoticeTarget | null): CancellationNoticeStatus | null {
+    if (!notice || notice.status !== "CANCELED" || notice.lastStaffCancelReason === null) {
+        return null
+    }
+    return notice.lastCancellationNotice
+}
+
 export interface AppointmentTimelineFailureLog {
     appointmentId: string
     code: string
@@ -199,10 +217,12 @@ export function createAppointmentService(deps?: {
     conversationEvents?: ConversationEventService
     logger?: AppointmentServiceLogger
     notifications?: CitizenNotificationService
+    cancellationNotice?: CancellationNoticeSwitch
 }): AppointmentService {
     const repository = deps?.repository ?? defaultAppointmentRepository
     const conversationEvents = deps?.conversationEvents ?? defaultConversationEventService
     const logger = deps?.logger ?? console
+    const cancellationNotice = deps?.cancellationNotice ?? defaultCancellationNoticeSwitch
     const notifications =
         deps?.notifications ?? createCitizenNotificationService({ appointments: repository, gateway: gatewayClient, decrypt })
 
@@ -256,6 +276,7 @@ export function createAppointmentService(deps?: {
                 access,
                 notice ? noticeStateOf(notice) : undefined,
             ),
+            cancellation_notice_status: cancellationNoticeStatusOf(notice),
         }
     }
 
@@ -370,14 +391,17 @@ export function createAppointmentService(deps?: {
             access: ActionAccess,
             now: Date = new Date(),
         ): Promise<AppointmentDetail> {
-            await repository.cancel(String(idOrCode), actorUserId, reason, note, now)
-            try {
-                await notifications.notifyCancellation(String(idOrCode), actorUserId, now)
-            } catch (error) {
-                logger.error("Erro no aviso de cancelamento ao cidadão depois do cancelamento", {
-                    appointmentId: String(idOrCode),
-                    code: errorCodeOf(error),
-                })
+            const noticeEnabled = await cancellationNotice.isEnabled()
+            await repository.cancel(String(idOrCode), actorUserId, reason, note, now, { noticeDisabled: !noticeEnabled })
+            if (noticeEnabled) {
+                try {
+                    await notifications.notifyCancellation(String(idOrCode), actorUserId, now)
+                } catch (error) {
+                    logger.error("Erro no aviso de cancelamento ao cidadão depois do cancelamento", {
+                        appointmentId: String(idOrCode),
+                        code: errorCodeOf(error),
+                    })
+                }
             }
             return getAppointmentDetail(idOrCode, access, now)
         },
@@ -395,6 +419,9 @@ export function createAppointmentService(deps?: {
             const decision = decideRetryCancellationNotice(noticeStateOf(target), now)
             if (!decision.allowed) {
                 throw decision.error
+            }
+            if (!(await cancellationNotice.isEnabled())) {
+                throw new ConflictError("O aviso de cancelamento está desligado", "NOTIFICATION_NOT_RETRYABLE")
             }
             await notifications.notifyCancellation(String(idOrCode), actorUserId, now)
             return getAppointmentDetail(idOrCode, access, now)

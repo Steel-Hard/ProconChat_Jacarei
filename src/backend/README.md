@@ -973,6 +973,17 @@ marcado (no horário ou depois, `409 CANCEL_AFTER_START`).
   maior que os 10 s do gateway). Os parâmetros vêm de `parametrosAvisoCancelamento` (nome, protocolo,
   data e hora em Brasília e a frase do motivo), os mesmos da prévia. A observação interna nunca vai ao
   cidadão.
+- **Aviso desligado (issue #164, padrão):** antes de cancelar, o service lê a configuração
+  (`PUT /api/v1/whatsapp/settings/cancellation-notice`). Se não conseguir ler, o cancelamento nem
+  começa e o erro sobe. Com o aviso desligado, o `COMMIT` do cancelamento já inclui o evento
+  `CITIZEN_NOTICE_DISABLED` (`data: { kind: "CANCELLATION" }`, com quem cancelou), o gateway e a Meta
+  não são chamados e nenhuma falha é gravada, nem de telefone ausente. O horário volta a ficar livre
+  do mesmo jeito. Esse evento não é falha e não vira reenvio, mesmo que o Admin ligue o aviso depois:
+  `retry_cancellation_notice` fica recusado com `NOTIFICATION_NOT_RETRYABLE`. Com o aviso desligado, o
+  reenvio de uma falha antiga também responde `409 NOTIFICATION_NOT_RETRYABLE` e não chama a Meta.
+- `AppointmentDetail.cancellation_notice_status` (`"NOTIFIED" | "FAILED" | "DISABLED" | null`) traz o
+  último registro do aviso de cancelamento quando a equipe cancelou o agendamento, e `null` nos demais
+  casos. É a marca para a faixa que não some ao recarregar.
 - O resultado vira `CITIZEN_NOTIFIED` ou `CITIZEN_NOTIFICATION_FAILED`, com `data: { kind:
   "CANCELLATION" }` e quem agiu. Falha do gateway, gateway não configurado ou telefone ausente ou
   ilegível gravam a falha, e o cancelamento continua respondendo `200`. A pausa das respostas

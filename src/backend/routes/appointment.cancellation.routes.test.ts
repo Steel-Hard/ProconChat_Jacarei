@@ -61,6 +61,7 @@ describe("appointment.routes: cancelamento pela equipe (HTTP)", () => {
     let sendTemplate: ReturnType<typeof vi.fn<(input: SendTemplateInput) => Promise<SendTemplateResult>>>
     let app: express.Express
     const calendar: AppointmentCalendarService = { getCalendar: vi.fn() }
+    let noticeEnabled = true
 
     function buildApp(): express.Express {
         const notifications = createCitizenNotificationService({
@@ -79,6 +80,7 @@ describe("appointment.routes: cancelamento pela equipe (HTTP)", () => {
                 authMiddleware: createRequireAuth({ users: authUsers, tokens: sessionTokens }),
                 calendar,
                 notifications,
+                cancellationNotice: { isEnabled: async () => noticeEnabled },
             }).getRouter(),
         )
         built.use(errorHandler)
@@ -112,6 +114,7 @@ describe("appointment.routes: cancelamento pela equipe (HTTP)", () => {
     }
 
     beforeEach(() => {
+        noticeEnabled = true
         vi.useFakeTimers({ toFake: ["Date"] })
         vi.setSystemTime(FIXED_NOW)
         sendTemplate = vi.fn<(input: SendTemplateInput) => Promise<SendTemplateResult>>().mockResolvedValue({
@@ -205,6 +208,27 @@ describe("appointment.routes: cancelamento pela equipe (HTTP)", () => {
         expect(JSON.stringify(logged)).not.toContain(PHONE)
     })
 
+    it("C1 com o aviso desligado responde 200 CANCELED sem chamar o gateway e com o estado DISABLED no detalhe", async () => {
+        noticeEnabled = false
+        repository = new AppointmentRepositoryStub({
+            details: [buildAppointmentDetail({ id: "1", status: "CONFIRMED", appointment_datetime: FIXED_DATES.tomorrow })],
+            noticeTargets: { "1": noticeTarget({ lastCancellationNotice: "DISABLED" }) },
+            afterAction: (_call, current) => ({ ...current, status: "CANCELED" }),
+        })
+        app = buildApp()
+
+        const res = await request(app)
+            .patch("/api/v1/appointments/1/status")
+            .set("Cookie", cookieFor(OPERATOR))
+            .send({ action: "cancel", reason: "UNIT_CLOSED" })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.status).toBe("CANCELED")
+        expect(res.body.data.cancellation_notice_status).toBe("DISABLED")
+        expect(sendTemplate).not.toHaveBeenCalled()
+        expect(repository.cancelCalls[0]?.noticeDisabled).toBe(true)
+    })
+
     it("C1 válido responde 200 com o detalhe cancelado e os eventos de cancelamento e de aviso", async () => {
         const res = await request(app)
             .patch("/api/v1/appointments/1/status")
@@ -221,7 +245,7 @@ describe("appointment.routes: cancelamento pela equipe (HTTP)", () => {
         ])
         expect(res.body.data.events[0]).toMatchObject({ actor_user_id: String(OPERATOR), data: { kind: "CANCELLATION" } })
         expect(repository.cancelCalls).toEqual([
-            { id: "1", actorUserId: OPERATOR, reason: "UNIT_CLOSED", note: "Reforma na unidade", now: FIXED_NOW },
+            { id: "1", actorUserId: OPERATOR, reason: "UNIT_CLOSED", note: "Reforma na unidade", now: FIXED_NOW, noticeDisabled: false },
         ])
         expect(JSON.stringify(res.body)).not.toContain(PHONE)
     })
