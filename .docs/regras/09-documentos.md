@@ -55,7 +55,16 @@ Com os seletores **"Quem comparece"** (titular ou representante) e **"Pergunta d
 > Você receberá neste número avisos sobre este agendamento, como um lembrete [N] horas antes do atendimento e o aviso em caso de cancelamento.
 
 - O título é **"Agendamento realizado"**, e não "confirmado", para não confundir com o status interno **Confirmado** do painel (que significa que um funcionário assumiu).
-- Se o lembrete estiver desligado, a frase sobre avisos cita só o aviso de cancelamento.
+- **A frase sobre avisos acompanha o que está ligado** (lembrete em [Horários de atendimento](08-horarios-de-atendimento.md); aviso de cancelamento na tela de [WhatsApp](11-whatsapp.md), desligado por padrão, [decisão 005](../decisoes/005-mensagens-ao-cidadao.md)). A prévia usa a mesma função do bot, então mostra a frase da combinação atual:
+
+  | Lembrete | Aviso de cancelamento | Frase |
+  |---|---|---|
+  | Ligado | Ligado | "Você receberá neste número avisos sobre este agendamento, como um lembrete [N] horas antes do atendimento e o aviso em caso de cancelamento." |
+  | Ligado | Desligado | "Você receberá neste número avisos sobre este agendamento, como um lembrete [N] horas antes do atendimento." |
+  | Desligado | Ligado | "Você receberá neste número avisos sobre este agendamento, como o aviso em caso de cancelamento." |
+  | Desligado | Desligado | **Sem a frase**: a mensagem termina nos documentos, sem a linha em branco que a precederia. |
+
+  Com [N] igual a 1, o texto é "1 hora" (e não "1 horas").
 - **Pergunta de exemplo:** lista **todas as perguntas ativas**, na ordem da tela [Conteúdo](06-conteudo.md). Sem perguntas ativas, a tela mostra um estado vazio.
 - **Protocolo e data** da prévia são fixos e aparecem rotulados como **exemplo**.
 - **Itens repetidos** entre o grupo e a pergunta aparecem destacados, com a dica "Este item também está nos documentos da pergunta". Um item é repetido quando é igual ao outro, ignorando acento e maiúscula, ou quando um está contido no outro por palavras inteiras (por exemplo, "RG" e "RG ou outro documento oficial com foto").
