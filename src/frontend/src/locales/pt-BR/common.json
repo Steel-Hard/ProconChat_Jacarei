@@ -172,7 +172,8 @@
             "retryNoticeFailed": "Não foi possível reenviar o aviso ao cidadão. Tente novamente em instantes."
         },
         "warnings": {
-            "cancelNoticeFailed": "Agendamento {{protocol}} cancelado, mas o aviso ao cidadão falhou. Use \"Tentar novamente\" no histórico."
+            "cancelNoticeFailed": "Agendamento {{protocol}} cancelado, mas o aviso ao cidadão falhou. Use \"Tentar novamente\" no histórico.",
+            "cancelNoticeNoPhone": "Agendamento {{protocol}} cancelado, mas o cidadão não pôde ser avisado: não há telefone disponível para o envio."
         },
         "success": {
             "claim": "Agendamento {{protocol}} assumido por você.",

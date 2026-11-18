@@ -37,7 +37,7 @@ const CANCELED_NOTIFIED = buildAppointmentDetail({
         ...PENDING.available_actions,
         claim: { allowed: false, code: "APPOINTMENT_CANCELED" },
         cancel: { allowed: false, code: null },
-        retry_cancellation_notice: { allowed: false, code: null }
+        retry_cancellation_notice: { allowed: false, code: "NOTIFICATION_NOT_RETRYABLE" }
     }
 })
 
@@ -57,6 +57,14 @@ const CANCELED_FAILED = buildAppointmentDetail({
     available_actions: {
         ...CANCELED_NOTIFIED.available_actions,
         retry_cancellation_notice: { allowed: true, code: null }
+    }
+})
+
+const CANCELED_NO_PHONE = buildAppointmentDetail({
+    ...CANCELED_FAILED,
+    available_actions: {
+        ...CANCELED_FAILED.available_actions,
+        retry_cancellation_notice: { allowed: false, code: "CITIZEN_PHONE_UNAVAILABLE" }
     }
 })
 
@@ -162,6 +170,26 @@ describe("AppointmentDetail: cancelamento e reenvio do aviso", () => {
         expect(historyBox().getByRole("button", { name: "Tentar novamente" })).toBeInTheDocument()
     })
 
+    it("explica que não há telefone, sem Tentar novamente e sem dizer que o cidadão foi avisado", async () => {
+        const page = await renderCancellation(CANCELLABLE, {
+            [`PATCH ${STATUS_PATH}`]: () => ok(CANCELED_NO_PHONE)
+        })
+
+        await openAndConfirm(page)
+
+        const notice = await actionsBox().findByText(
+            "Agendamento F10464F0 cancelado, mas o cidadão não pôde ser avisado: não há telefone disponível para o envio."
+        )
+        expect(notice).toHaveAttribute("data-tone", "warning")
+        expect(screen.queryByText(/cancelado e cidadão avisado/)).not.toBeInTheDocument()
+        expect(
+            historyBox().queryByRole("button", { name: "Tentar novamente" })
+        ).not.toBeInTheDocument()
+        expect(
+            historyBox().getByText("Falha ao avisar o cidadão do cancelamento")
+        ).toBeInTheDocument()
+    })
+
     it("reenvia com sucesso, avisa o painel e remove o aviso persistente", async () => {
         const page = await renderCancellation(CANCELLABLE, {
             [`PATCH ${STATUS_PATH}`]: () => ok(CANCELED_FAILED),
@@ -257,6 +285,59 @@ describe("AppointmentDetail: cancelamento e reenvio do aviso", () => {
         )
     })
 
+    it("mantém a explicação quando o reenvio é recusado por o horário já ter passado", async () => {
+        const afterStart = buildAppointmentDetail({
+            ...CANCELED_FAILED,
+            available_actions: {
+                ...CANCELED_FAILED.available_actions,
+                retry_cancellation_notice: { allowed: false, code: "NOTIFICATION_AFTER_START" }
+            }
+        })
+        let reads = 0
+        const page = await renderCancellation(CANCELED_FAILED, {
+            [`GET ${DETAIL_PATH}`]: () => {
+                reads += 1
+
+                return ok(reads === 1 ? CANCELED_FAILED : afterStart)
+            },
+            [`POST ${RETRY_PATH}`]: () => failure(409, "NOTIFICATION_AFTER_START")
+        })
+
+        await page.user.click(historyBox().getByRole("button", { name: "Tentar novamente" }))
+
+        await waitFor(() => expect(page.requests("GET", DETAIL_PATH)).toHaveLength(2))
+        expect(await historyBox().findByRole("alert")).toHaveTextContent(
+            "O horário do atendimento já passou e o aviso não pode mais ser enviado."
+        )
+        expect(
+            historyBox().queryByRole("button", { name: "Tentar novamente" })
+        ).not.toBeInTheDocument()
+    })
+
+    it("tira o aviso persistente quando o reenvio é recusado e a releitura mostra o aviso resolvido", async () => {
+        let reads = 0
+        const page = await renderCancellation(CANCELLABLE, {
+            [`GET ${DETAIL_PATH}`]: () => {
+                reads += 1
+
+                return ok(reads === 1 ? CANCELLABLE : CANCELED_NOTIFIED)
+            },
+            [`PATCH ${STATUS_PATH}`]: () => ok(CANCELED_FAILED),
+            [`POST ${RETRY_PATH}`]: () => failure(409, "NOTIFICATION_NOT_RETRYABLE")
+        })
+        await openAndConfirm(page)
+        await actionsBox().findByText(/o aviso ao cidadão falhou/)
+
+        await page.user.click(historyBox().getByRole("button", { name: "Tentar novamente" }))
+
+        await waitFor(() =>
+            expect(actionsBox().queryByText(/o aviso ao cidadão falhou/)).not.toBeInTheDocument()
+        )
+        expect(
+            historyBox().queryByRole("button", { name: "Tentar novamente" })
+        ).not.toBeInTheDocument()
+    })
+
     it("explica quando já há um envio do aviso em andamento", async () => {
         const page = await renderCancellation(CANCELED_FAILED, {
             [`POST ${RETRY_PATH}`]: () => failure(409, "NOTIFICATION_IN_PROGRESS")
@@ -285,7 +366,6 @@ describe("AppointmentDetail: cancelamento e reenvio do aviso", () => {
         expect(
             within(dialog).getByRole("button", { name: "Cancelar e avisar o cidadão" })
         ).toBeDisabled()
-        await new Promise((resolve) => setTimeout(resolve, 150))
         expect(page.requests("PATCH", STATUS_PATH)).toHaveLength(0)
         await page.user.click(
             within(dialog).getByRole("button", { name: "Tentar carregar a prévia novamente" })

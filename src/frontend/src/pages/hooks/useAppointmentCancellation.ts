@@ -14,7 +14,9 @@ type Options = {
 }
 
 function noticeFailedIn(detail: AppointmentDetail): boolean {
-    return detail.available_actions.retry_cancellation_notice.allowed
+    const retry = detail.available_actions.retry_cancellation_notice
+
+    return retry.allowed || retry.code !== "NOTIFICATION_NOT_RETRYABLE"
 }
 
 function useAppointmentCancellation({ detail, canManage }: Options) {
@@ -156,10 +158,13 @@ function useAppointmentCancellation({ detail, canManage }: Options) {
         canRetryNotice:
             canManage && detail?.available_actions.retry_cancellation_notice.allowed === true,
         failedNotice:
-            failedProtocol !== null && detail?.available_actions.retry_cancellation_notice.allowed
-                ? t("common:appointmentActions.warnings.cancelNoticeFailed", {
-                      protocol: failedProtocol
-                  })
+            failedProtocol !== null && detail !== undefined && noticeFailedIn(detail)
+                ? t(
+                      detail.available_actions.retry_cancellation_notice.allowed
+                          ? "common:appointmentActions.warnings.cancelNoticeFailed"
+                          : "common:appointmentActions.warnings.cancelNoticeNoPhone",
+                      { protocol: failedProtocol }
+                  )
                 : null,
         retryBusy: retryState.isLoading,
         retryError,
