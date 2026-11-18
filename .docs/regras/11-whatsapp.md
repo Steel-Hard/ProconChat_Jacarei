@@ -37,7 +37,7 @@ Regras da troca de abas:
 
 ### Estado do número
 
-**Construído nas issues #127 e #129.** A tela mostra credenciais, último evento do webhook, falhas de entrega das últimas 24 horas, qualidade e limite de envios. A seção permite atualizar a consulta à Meta e mostra alertas quando a consulta falha ou quando o uso alcança 80% do limite diário.
+**Construído nas issues #127 e #129.** A tela mostra credenciais, último evento do webhook, falhas de entrega das últimas 24 horas, qualidade e limite de envios. A seção permite atualizar a consulta à Meta e mostra alertas quando a consulta falha ou quando o uso fica acima de 80% do limite diário.
 
 | Item | O que mostra |
 |---|---|
