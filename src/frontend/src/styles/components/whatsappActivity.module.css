@@ -153,18 +153,81 @@
     list-style: none;
 }
 
-.metaList > li {
+.metaItem {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    padding-top: 12px;
+    border-top: 1px solid var(--divider);
+}
+
+.metaItem:first-child {
+    padding-top: 0;
+    border-top: 0;
 }
 
 .metaTemplate {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     justify-content: space-between;
     gap: 6px 12px;
-    font-size: 13.5px;
+}
+
+.metaTemplateName {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.metaTemplateLabel {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.metaTemplateId {
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.badge {
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+.badgeSuccess {
+    background: #dff1e6;
+    color: #1b6138;
+}
+
+.badgeWarning {
+    background: #fcefd6;
+    color: #7a4f00;
+}
+
+.badgeDanger {
+    background: #fae3e0;
+    color: #8e2c22;
+}
+
+.warningAmber {
+    padding: 9px 11px;
+    border: 1px solid #e9c98a;
+    border-radius: 8px;
+    background: #fcf4e3;
+    color: #7a4f00;
+    font-size: 12.5px;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+.rejectedNote {
+    display: block;
+    margin-top: 4px;
+    font-weight: 400;
 }
 
 .metaStats {

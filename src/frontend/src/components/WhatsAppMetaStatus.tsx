@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next"
 import whatsappSettingsApi from "@/store/api/whatsappSettings.api"
 import type WhatsAppConnectionReason from "@/types/whatsapp/WhatsAppConnectionReason.types"
-import type WhatsAppMessageTemplateStatus from "@/types/whatsapp/WhatsAppMessageTemplateStatus.types"
+import WhatsAppTemplateItem from "@/components/WhatsAppTemplateItem"
 import dateTimePartsOf from "@/utils/dateTimePartsOf"
 import css from "@/styles/components/whatsappActivity.module.css"
 
@@ -37,10 +37,6 @@ function errorCodeOf(error: unknown): string | null {
 function connectionReasonOf(error: unknown): WhatsAppConnectionReason | null {
     const code = errorCodeOf(error)
     return CONNECTION_REASONS.find((item) => item === code) ?? null
-}
-
-function statusLabelKey(template: WhatsAppMessageTemplateStatus) {
-    return `metaStatus.templates.status.${template.status}` as const
 }
 
 function WhatsAppMetaStatus() {
@@ -86,6 +82,7 @@ function WhatsAppMetaStatus() {
                 ) : null}
                 {templates.currentData ? (
                     <>
+                        <p className={css.note}>{t("metaStatus.templates.support")}</p>
                         <p className={css.note}>
                             {t("metaStatus.checkedAt", {
                                 date: templatesCheckedAt?.date ?? t("unknownDate"),
@@ -94,28 +91,10 @@ function WhatsAppMetaStatus() {
                         </p>
                         <ul className={css.metaList}>
                             {templates.currentData.templates.map((template) => (
-                                <li
+                                <WhatsAppTemplateItem
                                     key={`${template.kind}-${template.name}-${template.languageCode}`}
-                                >
-                                    <div className={css.metaTemplate}>
-                                        <span>
-                                            {t(`metaStatus.templates.kind.${template.kind}`)}
-                                        </span>
-                                        <strong>{t(statusLabelKey(template))}</strong>
-                                    </div>
-                                    {template.status === "OTHER" && template.metaStatus ? (
-                                        <p className={css.note}>
-                                            {t("metaStatus.templates.metaStatus", {
-                                                status: template.metaStatus
-                                            })}
-                                        </p>
-                                    ) : null}
-                                    {template.status !== "APPROVED" ? (
-                                        <p role="alert" className={css.warning}>
-                                            {t(`metaStatus.templates.notApproved.${template.kind}`)}
-                                        </p>
-                                    ) : null}
-                                </li>
+                                    template={template}
+                                />
                             ))}
                             {templates.currentData.templates.length === 0 ? (
                                 <li className={css.empty}>{t("metaStatus.templates.empty")}</li>

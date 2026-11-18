@@ -89,6 +89,22 @@ function stubApi(handlers: Record<string, Handler>) {
     return calls
 }
 
+function templatesWith(
+    templates: { kind: string; name: string; status: string; metaStatus: string | null }[]
+) {
+    return {
+        "GET /api/v1/whatsapp/settings/templates": () => ({
+            status: 200,
+            body: {
+                data: {
+                    checkedAt: "2026-11-04T14:00:00.000Z",
+                    templates: templates.map((item) => ({ ...item, languageCode: "pt_BR" }))
+                }
+            }
+        })
+    }
+}
+
 async function renderPage(handlers: Record<string, Handler> = {}, view = settingsView()) {
     vi.stubEnv("VITE_API_URL", "http://api.test")
     vi.resetModules()
@@ -826,6 +842,102 @@ describe("WhatsAppPage", () => {
             )
         ).toHaveAttribute("role", "alert")
         expect(screen.getByText("A Meta pode limitar os envios deste número.")).toBeInTheDocument()
+    })
+
+    it("mostra o nome técnico de cada modelo ao lado do nome e o parágrafo de apoio", async () => {
+        await renderPage()
+        await loaded()
+
+        const cancellation = (await screen.findByText("aviso_cancelamento")).closest(
+            "li"
+        ) as HTMLElement
+        const reminder = screen.getByText("lembrete_atendimento").closest("li") as HTMLElement
+
+        expect(within(cancellation).getByText("Aviso de cancelamento")).toBeInTheDocument()
+        expect(within(reminder).getByText("Lembrete do atendimento")).toBeInTheDocument()
+        expect(
+            screen.getByText(
+                "Mensagens enviadas fora da conversa precisam de modelo aprovado pela Meta."
+            )
+        ).toBeInTheDocument()
+    })
+
+    it("pinta o selo de cada status e acrescenta o aviso de rejeição só no rejeitado", async () => {
+        await renderPage(
+            templatesWith([
+                {
+                    kind: "CANCELLATION",
+                    name: "aviso_cancelamento",
+                    status: "REJECTED",
+                    metaStatus: "REJECTED"
+                },
+                {
+                    kind: "REMINDER",
+                    name: "lembrete_atendimento",
+                    status: "PENDING",
+                    metaStatus: "PENDING"
+                }
+            ])
+        )
+        await loaded()
+
+        const cancellation = (await screen.findByText("aviso_cancelamento")).closest(
+            "li"
+        ) as HTMLElement
+        const reminder = screen.getByText("lembrete_atendimento").closest("li") as HTMLElement
+
+        expect(within(cancellation).getByText("Rejeitado")).toHaveAttribute("data-tone", "danger")
+        expect(within(reminder).getByText("Em análise")).toHaveAttribute("data-tone", "warning")
+        expect(within(cancellation).getByRole("alert")).toHaveAttribute("data-tone", "danger")
+        expect(within(reminder).getByRole("alert")).toHaveAttribute("data-tone", "warning")
+        expect(
+            within(cancellation).getByText(
+                "A Meta rejeitou o modelo: revise o texto no Gerenciador do WhatsApp e envie novamente."
+            )
+        ).toBeInTheDocument()
+        expect(within(reminder).queryByText(/A Meta rejeitou o modelo/)).not.toBeInTheDocument()
+    })
+
+    it("usa vermelho para Não encontrado aprovado em verde e âmbar com o nome de outro status", async () => {
+        await renderPage(
+            templatesWith([
+                {
+                    kind: "CANCELLATION",
+                    name: "aviso_cancelamento",
+                    status: "NOT_FOUND",
+                    metaStatus: null
+                },
+                {
+                    kind: "REMINDER",
+                    name: "lembrete_atendimento",
+                    status: "OTHER",
+                    metaStatus: "PAUSED"
+                }
+            ])
+        )
+        await loaded()
+
+        const cancellation = (await screen.findByText("aviso_cancelamento")).closest(
+            "li"
+        ) as HTMLElement
+        const reminder = screen.getByText("lembrete_atendimento").closest("li") as HTMLElement
+
+        expect(within(cancellation).getByText("Não encontrado")).toHaveAttribute(
+            "data-tone",
+            "danger"
+        )
+        expect(within(reminder).getByText("PAUSED")).toHaveAttribute("data-tone", "warning")
+        expect(within(reminder).getByRole("alert")).toHaveAttribute("data-tone", "warning")
+    })
+
+    it("mostra o selo verde nos modelos aprovados", async () => {
+        await renderPage()
+        await loaded()
+
+        const approved = await screen.findAllByText("Aprovado")
+
+        expect(approved).toHaveLength(2)
+        approved.forEach((badge) => expect(badge).toHaveAttribute("data-tone", "success"))
     })
 
     it("não mostra o alerta de limite antes de ultrapassar 80%", async () => {
