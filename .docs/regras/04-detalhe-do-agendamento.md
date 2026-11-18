@@ -60,6 +60,8 @@ Uma falha ao avisar o cidadão aparece em destaque. O botão **"Tentar novamente
 
 Quando o cancelamento é feito mas o aviso ao cidadão falha, o aviso persistente na caixa "Ações" diz: "Agendamento [protocolo] cancelado, mas o aviso ao cidadão falhou. Use "Tentar novamente" no histórico."
 
+Quando o aviso não pode ser enviado por **falta de telefone** do cidadão, o aviso persistente na caixa "Ações" diz: "Agendamento [protocolo] cancelado, mas o cidadão não pôde ser avisado: não há telefone disponível para o envio." Nesse caso não há reenvio possível: o Histórico mostra **"Falha ao avisar o cidadão do cancelamento"** **sem o botão "Tentar novamente"**, e a tela nunca diz que o cidadão foi avisado.
+
 ## O que dá para fazer
 
 As ações aparecem conforme o status e o momento:
