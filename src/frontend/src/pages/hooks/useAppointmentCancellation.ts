@@ -67,13 +67,17 @@ function useAppointmentCancellation({ detail, canManage }: Options) {
     }
 
     async function cancelAppointment() {
+        const config = previewQuery.currentData
+        const hasPreview =
+            config?.noticeEnabled === false ||
+            config?.previews.find((preview) => preview.reason === reason) !== undefined
+
         if (
             detail === undefined ||
             reason === "" ||
             !detail.available_actions.cancel.allowed ||
             inFlight.current ||
-            previewQuery.currentData?.previews.find((preview) => preview.reason === reason) ===
-                undefined
+            !hasPreview
         ) {
             return
         }
@@ -153,6 +157,10 @@ function useAppointmentCancellation({ detail, canManage }: Options) {
                       ?.message,
         previewLoading: previewQuery.isFetching,
         previewFailed: previewQuery.isError,
+        noticeDisabled: previewQuery.currentData?.noticeEnabled === false,
+        problemCode: previewQuery.currentData?.noticeEnabled
+            ? (previewQuery.currentData.problem?.code ?? null)
+            : null,
         retryPreview: () => void previewQuery.refetch(),
         cancelAppointment: () => void cancelAppointment(),
         canRetryNotice:

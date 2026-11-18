@@ -34,11 +34,17 @@ function AppointmentCancelDialog({ view }: Props) {
             open={view.open}
             title={t("actions.cancel.title", { protocol: view.protocol })}
             description={view.subtitle}
-            confirmLabel={t("actions.cancel.confirm")}
+            confirmLabel={t(
+                view.noticeDisabled ? "actions.cancel.confirmNoNotice" : "actions.cancel.confirm"
+            )}
             cancelLabel={t("actions.cancel.dismiss")}
             tone="danger"
             busy={view.busy}
-            confirmDisabled={view.reason !== "" && view.preview === undefined}
+            confirmDisabled={
+                view.previewLoading ||
+                view.previewFailed ||
+                (!view.noticeDisabled && view.reason !== "" && view.preview === undefined)
+            }
             onConfirm={confirm}
             onCancel={close}
             submitOnEnter
@@ -80,31 +86,52 @@ function AppointmentCancelDialog({ view }: Props) {
                         </p>
                     ) : null}
                 </fieldset>
-                <div className={css.previewBlock}>
-                    <div className={css.previewHeader}>
-                        <span className={css.label}>{t("actions.cancel.previewLabel")}</span>
-                        <span className={css.tag}>{t("actions.cancel.fixedTag")}</span>
-                    </div>
-                    {view.previewLoading ? (
-                        <p className={css.preview}>{t("common:loading")}</p>
-                    ) : view.previewFailed ? (
-                        <div className={css.preview}>
-                            <p role="alert">{t("actions.cancel.previewFailed")}</p>
-                            <button type="button" className={css.retry} onClick={view.retryPreview}>
-                                {t("actions.cancel.retryPreview")}
-                            </button>
+                {view.noticeDisabled ? (
+                    <p className={css.noNotice}>
+                        <strong>{t("actions.cancel.noticeOff")}</strong>
+                    </p>
+                ) : (
+                    <>
+                        {view.problem ? (
+                            <output className={css.problem}>
+                                {t("actions.cancel.problemPrefix", { reason: view.problem })}
+                            </output>
+                        ) : null}
+                        <div className={css.previewBlock}>
+                            <div className={css.previewHeader}>
+                                <span className={css.label}>
+                                    {t("actions.cancel.previewLabel")}
+                                </span>
+                                <span className={css.tag}>{t("actions.cancel.fixedTag")}</span>
+                            </div>
+                            {view.previewLoading ? (
+                                <p className={css.preview}>{t("common:loading")}</p>
+                            ) : view.previewFailed ? (
+                                <div className={css.preview}>
+                                    <p role="alert">{t("actions.cancel.previewFailed")}</p>
+                                    <button
+                                        type="button"
+                                        className={css.retry}
+                                        onClick={view.retryPreview}
+                                    >
+                                        {t("actions.cancel.retryPreview")}
+                                    </button>
+                                </div>
+                            ) : (
+                                <p
+                                    className={
+                                        view.preview
+                                            ? css.preview
+                                            : `${css.preview} ${css.placeholder}`
+                                    }
+                                >
+                                    {view.preview ?? t("actions.cancel.chooseReason")}
+                                </p>
+                            )}
+                            <p className={css.hint}>{t("actions.cancel.fixedMessageHint")}</p>
                         </div>
-                    ) : (
-                        <p
-                            className={
-                                view.preview ? css.preview : `${css.preview} ${css.placeholder}`
-                            }
-                        >
-                            {view.preview ?? t("actions.cancel.chooseReason")}
-                        </p>
-                    )}
-                    <p className={css.hint}>{t("actions.cancel.fixedMessageHint")}</p>
-                </div>
+                    </>
+                )}
                 <label className={css.note}>
                     <span>
                         {t("actions.cancel.noteLabel")}

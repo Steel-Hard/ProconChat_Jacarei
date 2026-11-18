@@ -61,11 +61,16 @@ function useAppointmentDetail() {
         open: cancellation.open,
         protocol: detail?.protocol ?? "",
         subtitle: detail
-            ? t("actions.cancel.subtitle", {
-                  name: detail.name,
-                  date: when?.date ?? "",
-                  time: when?.time ?? ""
-              })
+            ? t(
+                  cancellation.noticeDisabled
+                      ? "actions.cancel.subtitleNoNotice"
+                      : "actions.cancel.subtitle",
+                  {
+                      name: detail.name,
+                      date: when?.date ?? "",
+                      time: when?.time ?? ""
+                  }
+              )
             : "",
         reason: cancellation.reason,
         setReason: cancellation.setReason,
@@ -76,6 +81,10 @@ function useAppointmentDetail() {
         preview: cancellation.preview,
         previewLoading: cancellation.previewLoading,
         previewFailed: cancellation.previewFailed,
+        noticeDisabled: cancellation.noticeDisabled,
+        problem: cancellation.problemCode
+            ? t(`actions.cancel.problems.${cancellation.problemCode}`)
+            : null,
         retryPreview: cancellation.retryPreview,
         confirm: cancellation.cancelAppointment,
         close: cancellation.closeDialog
