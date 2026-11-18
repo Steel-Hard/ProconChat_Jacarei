@@ -1017,7 +1017,11 @@ marcado (no horário ou depois, `409 CANCEL_AFTER_START`).
   cancelamento continua gravado.
 - `available_actions.retry_cancellation_notice` só fica `allowed` quando o agendamento foi cancelado
   pela equipe, o último aviso de `kind` `CANCELLATION` (por `created_at, id`) falhou ou não existe, há
-  telefone, o aviso está ligado e o horário ainda não passou. Com o aviso desligado, uma falha antiga
+  telefone, o aviso está ligado e o horário ainda não passou. A ordem das recusas é
+  `NOTIFICATION_NOT_RETRYABLE`, `NOTIFICATION_AFTER_START`, `NOTIFICATION_DISABLED` e
+  `CITIZEN_PHONE_UNAVAILABLE`: depois do horário do atendimento vale sempre `NOTIFICATION_AFTER_START`,
+  com o aviso ligado ou desligado, e o front não mostra as faixas de aviso ao cidadão (falha com aviso
+  desligado, "cancelado sem aviso" e falta de telefone) quando `appointment_datetime` já passou. Com o aviso desligado, uma falha antiga
   continua com `cancellation_notice_status: "FAILED"`, mas a ação vem `{ allowed: false, code:
   "NOTIFICATION_DISABLED" }` (o front não lê as configurações, que são só do Admin, então o botão segue
   só esta ação). O reenvio tem uma trava em memória por agendamento

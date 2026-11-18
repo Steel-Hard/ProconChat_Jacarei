@@ -32,9 +32,10 @@ function setup({
     isEnabled = async () => true,
     problem = null as CancellationNoticeProblem | null,
     getState = async () => ({ enabled: await isEnabled(), problem }),
+    datetime = FIXED_DATES.tomorrow as string,
 } = {}) {
     const repository = new AppointmentRepositoryStub({
-        details: [buildAppointmentDetail({ id: "1", status, appointment_datetime: FIXED_DATES.tomorrow })],
+        details: [buildAppointmentDetail({ id: "1", status, appointment_datetime: datetime })],
         noticeTargets: { "1": notice },
         afterAction: (_call, current) => ({ ...current, status: "CANCELED" }),
     })
@@ -150,6 +151,20 @@ describe("appointment.service: cancelamento pela equipe", () => {
 
         expect(detail.cancellation_notice_status).toBe("FAILED")
         expect(detail.available_actions.retry_cancellation_notice).toEqual({ allowed: false, code: "NOTIFICATION_DISABLED" })
+    })
+
+    it.each([true, false])("o detalhe de falha antiga de um horário já passado, com o aviso ligado=%s, bloqueia com NOTIFICATION_AFTER_START e mantém FAILED", async (enabled) => {
+        const { service } = setup({
+            status: "CANCELED",
+            notice: noticeTarget({ lastCancellationNotice: "FAILED" }),
+            datetime: FIXED_DATES.yesterday,
+            isEnabled: async () => enabled,
+        })
+
+        const detail = await service.getAppointmentDetail("1", MANAGER, FIXED_NOW)
+
+        expect(detail.cancellation_notice_status).toBe("FAILED")
+        expect(detail.available_actions.retry_cancellation_notice).toEqual({ allowed: false, code: "NOTIFICATION_AFTER_START" })
     })
 
     it("o detalhe de falha antiga com o aviso ligado libera o reenvio", async () => {

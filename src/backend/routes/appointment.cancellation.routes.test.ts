@@ -104,8 +104,9 @@ describe("appointment.routes: cancelamento pela equipe (HTTP)", () => {
                 buildAppointmentDetail({ id: "1", status: "CONFIRMED", appointment_datetime: "2026-11-05T17:00:00.000Z" }),
                 buildAppointmentDetail({ id: "3", status: "CONFIRMED", appointment_datetime: FIXED_DATES.yesterday }),
                 buildAppointmentDetail({ id: "6", status: "CANCELED", appointment_datetime: FIXED_DATES.inThreeDays }),
+                buildAppointmentDetail({ id: "7", status: "CANCELED", appointment_datetime: FIXED_DATES.yesterday }),
             ],
-            noticeTargets: { "1": notice, "3": notice, "6": notice },
+            noticeTargets: { "1": notice, "3": notice, "6": notice, "7": notice },
             afterAction: (call, current) => ({
                 ...current,
                 status: "CANCELED",
@@ -373,6 +374,33 @@ describe("appointment.routes: cancelamento pela equipe (HTTP)", () => {
         const on = await request(app).get("/api/v1/appointments/6").set("Cookie", cookieFor(OPERATOR))
 
         expect(on.body.data.available_actions.retry_cancellation_notice).toEqual({ allowed: true, code: null })
+    })
+
+    it("C3 com o horário já passado e o aviso desligado responde 409 NOTIFICATION_AFTER_START", async () => {
+        repository = scenario(noticeTarget({ lastCancellationNotice: "FAILED", appointmentDatetime: new Date(FIXED_DATES.yesterday) }))
+        noticeEnabled = false
+        app = buildApp()
+
+        const res = await request(app)
+            .post("/api/v1/appointments/7/cancellation-notice/retry")
+            .set("Cookie", cookieFor(OPERATOR))
+
+        expect(res.status).toBe(409)
+        expect(res.body.error.code).toBe("NOTIFICATION_AFTER_START")
+        expect(sendTemplate).not.toHaveBeenCalled()
+    })
+
+    it("o detalhe pela rota de um cancelado com horário passado traz retry bloqueado com NOTIFICATION_AFTER_START com o aviso ligado ou desligado", async () => {
+        repository = scenario(noticeTarget({ lastCancellationNotice: "FAILED" }))
+        app = buildApp()
+
+        for (const enabled of [true, false]) {
+            noticeEnabled = enabled
+            const res = await request(app).get("/api/v1/appointments/7").set("Cookie", cookieFor(OPERATOR))
+
+            expect(res.body.data.available_actions.retry_cancellation_notice).toEqual({ allowed: false, code: "NOTIFICATION_AFTER_START" })
+            expect(res.body.data.cancellation_notice_status).toBe("FAILED")
+        }
     })
 
     it("C3 responde 200 com o detalhe quando o último aviso falhou", async () => {

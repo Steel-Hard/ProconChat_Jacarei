@@ -323,6 +323,24 @@ describe("appointmentTransitions", () => {
             }
         })
 
+        it.each([true, false])("com o horário já passado e o aviso ligado=%s recusa com NOTIFICATION_AFTER_START", (noticeEnabled) => {
+            const decision = decideRetryCancellationNotice({ ...failedNotice, appointmentDatetime: past, noticeEnabled }, now)
+
+            expect(decision.allowed).toBe(false)
+            if (!decision.allowed) {
+                expect(decision.error.code).toBe("NOTIFICATION_AFTER_START")
+            }
+        })
+
+        it("com o horário já passado, sem telefone e aviso desligado, AFTER_START vem antes de DISABLED e de PHONE_UNAVAILABLE", () => {
+            const decision = decideRetryCancellationNotice({ ...failedNotice, appointmentDatetime: past, noticeEnabled: false, hasPhone: false }, now)
+
+            expect(decision.allowed).toBe(false)
+            if (!decision.allowed) {
+                expect(decision.error.code).toBe("NOTIFICATION_AFTER_START")
+            }
+        })
+
         it("mantém NOTIFICATION_NOT_RETRYABLE para o que não é reenviável mesmo com o aviso desligado", () => {
             const decision = decideRetryCancellationNotice({ ...failedNotice, lastCancellationNotice: "NOTIFIED", noticeEnabled: false }, now)
 

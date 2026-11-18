@@ -164,11 +164,11 @@ export function decideRetryCancellationNotice(state: CancellationNoticeState, no
     if (state.status !== "CANCELED" || !state.hasStaffCancellation || state.lastCancellationNotice === "NOTIFIED" || state.lastCancellationNotice === "DISABLED") {
         return refuse("Não há aviso de cancelamento com falha para reenviar", "NOTIFICATION_NOT_RETRYABLE")
     }
-    if (!state.noticeEnabled) {
-        return refuse("O aviso de cancelamento está desligado", "NOTIFICATION_DISABLED")
-    }
     if (isDatetimePast(state.appointmentDatetime, now)) {
         return refuse("O horário do atendimento já passou e o aviso não serve mais", "NOTIFICATION_AFTER_START")
+    }
+    if (!state.noticeEnabled) {
+        return refuse("O aviso de cancelamento está desligado", "NOTIFICATION_DISABLED")
     }
     if (!state.hasPhone) {
         return refuse("O agendamento não tem telefone para enviar o aviso", "CITIZEN_PHONE_UNAVAILABLE")
