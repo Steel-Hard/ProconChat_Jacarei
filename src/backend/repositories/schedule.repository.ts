@@ -32,6 +32,8 @@ import {
     ReminderHours,
     ReturningAppointment,
     ScheduleConfigView,
+    ScheduleConflictItem,
+    ScheduleConflictResolution,
     ScheduleRange,
     ScheduleSettings,
     ScheduleVersion,
@@ -44,6 +46,7 @@ import { returnAppointmentToPending } from "./appointmentReassignment"
 import { lockAccounts } from "./responsibleQueries"
 import { finishSessionWith } from "./session.repository"
 import {
+    DeleteScheduledConfigRepoOptions,
     IScheduleRepository,
     SaveScheduleConfigRepoParams,
 } from "./schedule.repository.interface"
@@ -345,12 +348,63 @@ async function nextScheduleChangeDate(db: Queryable, effectiveFrom: string): Pro
     return result.rows[0]?.effective_from ?? null
 }
 
+async function applyConflictResolution(
+    client: PoolClient,
+    conflicts: ScheduleConflictItem[],
+    resolution: ScheduleConflictResolution,
+    actorUserId: number,
+    now: Date,
+    noticeDisabled: boolean,
+): Promise<string[]> {
+    const ids = conflicts.map((item) => item.id)
+    if (resolution === "KEEP") {
+        for (const conflict of conflicts) {
+            await client.query(
+                "UPDATE Appointments SET off_grid = TRUE WHERE id = $1",
+                [conflict.id],
+            )
+            await client.query(
+                `INSERT INTO AppointmentEvents (appointment_id, type, actor_user_id, data, created_at)
+                 VALUES ($1, 'KEPT_OFF_GRID', $2, $3::jsonb, $4)`,
+                [conflict.id, actorUserId, JSON.stringify({ reason: conflict.reason }), now],
+            )
+        }
+        return ids
+    }
+    for (const conflict of conflicts) {
+        const reason =
+            conflict.code === "DATE_BLOCKED" || conflict.code === "PERIOD_BLOCKED"
+                ? "UNIT_CLOSED"
+                : "OTHER"
+        await client.query(
+            "UPDATE Appointments SET status = 'CANCELED' WHERE id = $1",
+            [conflict.id],
+        )
+        await client.query(
+            `INSERT INTO AppointmentEvents (appointment_id, type, actor_user_id, data, created_at)
+             VALUES ($1, 'CANCELED_BY_STAFF', $2, $3::jsonb, $4)`,
+            [conflict.id, actorUserId, JSON.stringify({ reason }), now],
+        )
+        if (noticeDisabled) {
+            await client.query(
+                `INSERT INTO AppointmentEvents (appointment_id, type, actor_user_id, data, created_at)
+                 VALUES ($1, 'CITIZEN_NOTICE_DISABLED', $2, $3::jsonb, $4)`,
+                [conflict.id, actorUserId, JSON.stringify({ kind: "CANCELLATION" }), now],
+            )
+        }
+    }
+    return ids
+}
+
 async function saveScheduledConfig({
     config,
     actorUserId,
     now,
     effectiveFrom,
     validateAgainstVersions,
+    conflictResolution,
+    noticeDisabled = false,
+    onResolved,
 }: SaveScheduleConfigRepoParams & { effectiveFrom: string }): Promise<ScheduleConfigView> {
     const today = getLocalParts(now).dateStr
     if (effectiveFrom <= today) {
@@ -379,11 +433,22 @@ async function saveScheduledConfig({
             nextDate,
         )
         const conflicts = detectScheduleConflicts(config, appointments, previous.config.slotMinutes)
+        let resolvedIds: string[] = []
         if (conflicts.length > 0) {
-            throw new ConflictError(
-                "Esta alteração afeta agendamentos futuros",
-                "SCHEDULE_CONFLICTS",
-                { conflicts },
+            if (!conflictResolution) {
+                throw new ConflictError(
+                    "Esta alteração afeta agendamentos futuros",
+                    "SCHEDULE_CONFLICTS",
+                    { conflicts },
+                )
+            }
+            resolvedIds = await applyConflictResolution(
+                client,
+                conflicts,
+                conflictResolution,
+                actorUserId,
+                now,
+                noticeDisabled,
             )
         }
 
@@ -403,6 +468,7 @@ async function saveScheduledConfig({
             throw new ScheduleNotConfiguredError()
         }
         await client.query("COMMIT")
+        onResolved?.(resolvedIds)
         return saved
     } catch (error) {
         await client.query("ROLLBACK")
@@ -412,7 +478,11 @@ async function saveScheduledConfig({
     }
 }
 
-async function deleteScheduledConfig(effectiveFrom: string, now: Date): Promise<void> {
+async function deleteScheduledConfig(
+    effectiveFrom: string,
+    now: Date,
+    options?: DeleteScheduledConfigRepoOptions,
+): Promise<void> {
     const today = getLocalParts(now).dateStr
     if (effectiveFrom <= today) {
         throw new BadRequestError("Não é possível cancelar uma mudança que já começou")
@@ -423,6 +493,9 @@ async function deleteScheduledConfig(effectiveFrom: string, now: Date): Promise<
     try {
         await client.query("BEGIN")
         await client.query("SELECT pg_advisory_xact_lock(hashtext('schedule_config'))")
+        if (options?.actorUserId !== undefined) {
+            await lockAccounts(client, [options.actorUserId])
+        }
         const existing = await client.query(
             "SELECT 1 FROM ScheduleChanges WHERE effective_from = $1 FOR UPDATE",
             [effectiveFrom],
@@ -449,16 +522,28 @@ async function deleteScheduledConfig(effectiveFrom: string, now: Date): Promise<
             appointments,
             previous.config.slotMinutes,
         )
+        let resolvedIds: string[] = []
         if (conflicts.length > 0) {
-            throw new ConflictError(
-                "O cancelamento afeta agendamentos futuros",
-                "SCHEDULE_CONFLICTS",
-                { conflicts },
+            if (!options?.conflictResolution || options.actorUserId === undefined) {
+                throw new ConflictError(
+                    "O cancelamento afeta agendamentos futuros",
+                    "SCHEDULE_CONFLICTS",
+                    { conflicts },
+                )
+            }
+            resolvedIds = await applyConflictResolution(
+                client,
+                conflicts,
+                options.conflictResolution,
+                options.actorUserId,
+                now,
+                options.noticeDisabled ?? false,
             )
         }
 
         await client.query("DELETE FROM ScheduleChanges WHERE effective_from = $1", [effectiveFrom])
         await client.query("COMMIT")
+        options?.onResolved?.(resolvedIds)
     } catch (error) {
         await client.query("ROLLBACK")
         throw error
@@ -534,6 +619,9 @@ async function saveConfig({
     actorUserId,
     now,
     validateAgainstVersions,
+    conflictResolution,
+    noticeDisabled = false,
+    onResolved,
 }: SaveScheduleConfigRepoParams): Promise<ScheduleConfigView> {
     const pool = getPool()
     const client = await pool.connect()
@@ -558,11 +646,22 @@ async function saveConfig({
             nextDate,
         )
         const conflicts = detectScheduleConflicts(config, futureAppointments, currentSlotMinutes)
+        let resolvedIds: string[] = []
         if (conflicts.length > 0) {
-            throw new ConflictError(
-                "Esta alteração afeta agendamentos futuros",
-                "SCHEDULE_CONFLICTS",
-                { conflicts },
+            if (!conflictResolution) {
+                throw new ConflictError(
+                    "Esta alteração afeta agendamentos futuros",
+                    "SCHEDULE_CONFLICTS",
+                    { conflicts },
+                )
+            }
+            resolvedIds = await applyConflictResolution(
+                client,
+                conflicts,
+                conflictResolution,
+                actorUserId,
+                now,
+                noticeDisabled,
             )
         }
 
@@ -638,6 +737,7 @@ async function saveConfig({
         }
 
         await client.query("COMMIT")
+        onResolved?.(resolvedIds)
         return updatedView
     } catch (err) {
         await client.query("ROLLBACK")

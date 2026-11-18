@@ -1,7 +1,12 @@
 import { NextFunction, Request, Response } from "express"
+import ForbiddenError from "../errors/ForbiddenError"
 import UnauthorizedError from "../errors/UnauthorizedError"
 import { IScheduleService, scheduleService } from "../services/schedule.service"
-import { ScheduleConfigInput } from "../types/schedule.types"
+import {
+    ScheduleConfigInput,
+    ScheduleConflictResolution,
+    ScheduleConflictResolutionSummary,
+} from "../types/schedule.types"
 
 interface ScheduleControllerDependencies {
     service?: IScheduleService
@@ -42,14 +47,33 @@ class ScheduleController {
         }
     }
 
+    public async getCancellationNoticeState(
+        _req: Request,
+        res: Response,
+        next: NextFunction,
+    ): Promise<void> {
+        try {
+            const state = await this.service.getCancellationNoticeState()
+            res.status(200).json({ data: state })
+        } catch (error) {
+            next(error)
+        }
+    }
+
     public async saveConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const actorUserId = this.userId(req)
-            const updated = await this.service.saveConfig(
-                req.body as ScheduleConfigInput,
-                actorUserId,
-            )
-            res.status(200).json({ data: updated })
+            const body = req.body as ScheduleConfigInput
+            if (body.conflictResolution === "CANCEL") {
+                this.ensureCanCancelAppointments(req)
+            }
+            let resolution: ScheduleConflictResolutionSummary | undefined
+            const updated = await this.service.saveConfig(body, actorUserId, undefined, {
+                onResolution: (summary) => {
+                    resolution = summary
+                },
+            })
+            res.status(200).json(resolution ? { data: updated, resolution } : { data: updated })
         } catch (error) {
             next(error)
         }
@@ -58,15 +82,26 @@ class ScheduleController {
     public async saveScheduledConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const actorUserId = this.userId(req)
+            const body = req.body as ScheduleConfigInput
+            if (body.conflictResolution === "CANCEL") {
+                this.ensureCanCancelAppointments(req)
+            }
             const effectiveFrom = typeof req.params.effectiveFrom === "string"
                 ? req.params.effectiveFrom
                 : ""
+            let resolution: ScheduleConflictResolutionSummary | undefined
             const updated = await this.service.saveScheduledConfig(
-                req.body as ScheduleConfigInput,
+                body,
                 effectiveFrom,
                 actorUserId,
+                undefined,
+                {
+                    onResolution: (summary) => {
+                        resolution = summary
+                    },
+                },
             )
-            res.status(200).json({ data: updated })
+            res.status(200).json(resolution ? { data: updated, resolution } : { data: updated })
         } catch (error) {
             next(error)
         }
@@ -77,7 +112,26 @@ class ScheduleController {
             const effectiveFrom = typeof req.params.effectiveFrom === "string"
                 ? req.params.effectiveFrom
                 : ""
-            await this.service.deleteScheduledConfig(effectiveFrom)
+            const conflictResolution =
+                req.query.conflictResolution === "KEEP" || req.query.conflictResolution === "CANCEL"
+                    ? (req.query.conflictResolution as ScheduleConflictResolution)
+                    : undefined
+            if (conflictResolution === "CANCEL") {
+                this.ensureCanCancelAppointments(req)
+            }
+            const actorUserId = conflictResolution ? this.userId(req) : undefined
+            let resolution: ScheduleConflictResolutionSummary | undefined
+            await this.service.deleteScheduledConfig(effectiveFrom, undefined, {
+                actorUserId,
+                conflictResolution,
+                onResolution: (summary) => {
+                    resolution = summary
+                },
+            })
+            if (resolution) {
+                res.status(200).json({ resolution })
+                return
+            }
             res.status(204).end()
         } catch (error) {
             next(error)
@@ -126,6 +180,16 @@ class ScheduleController {
             throw new UnauthorizedError("Authentication required")
         }
         return req.authUser.id
+    }
+
+    private ensureCanCancelAppointments(req: Request): void {
+        const user = req.authUser
+        if (!user) {
+            throw new UnauthorizedError("Authentication required")
+        }
+        if (!user.isAdmin && !user.permissions.includes("appointments.manage")) {
+            throw new ForbiddenError("Insufficient permission")
+        }
     }
 }
 

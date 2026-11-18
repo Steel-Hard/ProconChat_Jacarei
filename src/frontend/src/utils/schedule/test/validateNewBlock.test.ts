@@ -37,10 +37,10 @@ describe("validateNewBlock", () => {
         })
     })
 
-    it("recusa a data com agendamento, com a quantidade do dia", () => {
+    it("aceita bloquear data com agendamento para resolução no salvar", () => {
         expect(
             validateNewBlock(BLOCKS, BOOKED, { date: "2026-11-04", description: "Ponto" })
-        ).toEqual({ code: "dateHasAppointments", count: 2 })
+        ).toBeNull()
     })
 
     it("pede a descrição sem contar os espaços", () => {

@@ -8,7 +8,7 @@ type NewBlock = { date: string; description: string }
 
 function validateNewBlock(
     blocks: BlockedDate[],
-    bookedDays: BookedDay[],
+    _bookedDays: BookedDay[],
     { date, description }: NewBlock
 ): BlockedDateProblem | null {
     if (date === "") {
@@ -17,12 +17,6 @@ function validateNewBlock(
 
     if (blocks.some((block) => block.date === date)) {
         return { code: "dateAlreadyBlocked" }
-    }
-
-    const booked = bookedDays.find((day) => day.date === date)
-
-    if (booked) {
-        return { code: "dateHasAppointments", count: booked.total }
     }
 
     const text = description.trim()

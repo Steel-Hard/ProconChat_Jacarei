@@ -171,7 +171,7 @@ describe("useSchedule: prévia", () => {
         expect(result.current.preview.stale).toBe(true)
     })
 
-    it("trava o salvar com os conflitos da prévia atual e libera quando somem", async () => {
+    it("mostra os conflitos da prévia atual sem travar o salvar e limpa quando somem", async () => {
         const { result } = await ready({
             handlers: {
                 "POST /api/v1/schedule/preview": ({ body }) => ({
@@ -192,12 +192,11 @@ describe("useSchedule: prévia", () => {
         act(() => result.current.actions.setText("seatsPerSlot", "1"))
         await settle()
         await waitFor(() => expect(result.current.conflictRows).toEqual([CONFLICT]))
-        const blocked = [result.current.saveDisabled, result.current.saveHint]
+        expect(result.current.saveDisabled).toBe(false)
         act(() => result.current.actions.setText("seatsPerSlot", "3"))
         await settle()
         await waitFor(() => expect(result.current.conflictRows).toBeNull())
 
-        expect(blocked).toEqual([true, "A alteração afeta agendamentos. Veja a lista abaixo."])
         expect(result.current.saveDisabled).toBe(false)
         expect(result.current.days.find((day) => day.weekday === 3)?.messages).toEqual([])
     })

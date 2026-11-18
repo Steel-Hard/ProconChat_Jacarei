@@ -1,5 +1,7 @@
+import { gatewayClient } from "../clients/gateway.client"
 import BadRequestError from "../errors/BadRequestError"
 import ScheduleNotConfiguredError from "../errors/ScheduleNotConfiguredError"
+import { appointmentRepository as defaultAppointmentRepository } from "../repositories/appointment.repository"
 import { scheduleRepository } from "../repositories/schedule.repository"
 import { IScheduleRepository } from "../repositories/schedule.repository.interface"
 import { isValidCalendarDate, isValidMonthString } from "../schemas/schedule.schema"
@@ -16,13 +18,22 @@ import {
     MonthlyPreviewResult,
     NormalizedScheduleConfig,
     ReturningAppointment,
+    ScheduleCancellationNoticeState,
     ScheduleConfigInput,
     ScheduleConfigView,
     ScheduleConflictItem,
+    ScheduleConflictResolution,
+    ScheduleConflictResolutionSummary,
     SchedulePreviewConflict,
     ScheduleVersion,
 } from "../types/schedule.types"
+import { decrypt } from "../utils/crypto.utils"
 import { addDaysToDateString, getLocalParts, parseLocalDate } from "../utils/date.utils"
+import {
+    CitizenNotificationService,
+    createCitizenNotificationService,
+} from "./citizenNotification.service"
+import { whatsappSettingsService } from "./whatsappSettings.service"
 import {
     appointmentsInScheduleInterval,
     blockVigencyIssues,
@@ -62,24 +73,49 @@ export interface GetMonthlyPreviewParams {
     now?: Date
 }
 
+export interface ScheduleServiceDependencies {
+    cancellationNotice?: {
+        isEnabled(): Promise<boolean>
+        getState(): Promise<ScheduleCancellationNoticeState>
+    }
+    notifications?: CitizenNotificationService
+}
+
+export interface SaveScheduleOptions {
+    onResolution?: (summary: ScheduleConflictResolutionSummary) => void
+}
+
+export interface DeleteScheduleOptions {
+    actorUserId?: number
+    conflictResolution?: ScheduleConflictResolution
+    onResolution?: (summary: ScheduleConflictResolutionSummary) => void
+}
+
 export interface IScheduleService {
     getAvailableSlots(now?: Date): Promise<AvailableSlot[]>
     bookSlot(input: BookAppointmentInput): Promise<BookAppointmentResult>
     getConfig(): Promise<ScheduleConfigView>
     getConfigForDate(date: string): Promise<ScheduleConfigView>
     listScheduledConfigs(fromDate?: string, now?: Date): Promise<ScheduleVersion[]>
+    getCancellationNoticeState(): Promise<ScheduleCancellationNoticeState>
     saveConfig(
         input: ScheduleConfigInput,
         actorUserId: number,
         now?: Date,
+        options?: SaveScheduleOptions,
     ): Promise<ScheduleConfigView>
     saveScheduledConfig(
         input: ScheduleConfigInput,
         effectiveFrom: string,
         actorUserId: number,
         now?: Date,
+        options?: SaveScheduleOptions,
     ): Promise<ScheduleConfigView>
-    deleteScheduledConfig(effectiveFrom: string, now?: Date): Promise<void>
+    deleteScheduledConfig(
+        effectiveFrom: string,
+        now?: Date,
+        options?: DeleteScheduleOptions,
+    ): Promise<void>
     getMonthlyPreview(params?: GetMonthlyPreviewParams): Promise<MonthlyPreviewResult>
     getBookedDays(now?: Date): Promise<BookedDaysResult>
     findReturningAppointment(phoneHash: string, now?: Date): Promise<ReturningAppointment | null>
@@ -121,7 +157,45 @@ function windowBoundsOf(versions: ScheduleVersion[], current: ScheduleVersion, t
 
 export function createScheduleService(
     repository: IScheduleRepository,
+    deps: ScheduleServiceDependencies = {},
 ): IScheduleService {
+    const cancellationNotice = deps.cancellationNotice ?? {
+        isEnabled: () => whatsappSettingsService.isCancellationNoticeEnabled(),
+        getState: () => whatsappSettingsService.getCancellationNoticeState(),
+    }
+    const notifications =
+        deps.notifications ??
+        createCitizenNotificationService({
+            appointments: defaultAppointmentRepository,
+            gateway: gatewayClient,
+            decrypt,
+        })
+
+    async function sendMassCancellationNotices(
+        affectedIds: string[],
+        actorUserId: number,
+        now: Date,
+    ): Promise<{ notifiedCount: number; failedCount: number }> {
+        let notifiedCount = 0
+        let failedCount = 0
+        for (const id of affectedIds) {
+            try {
+                const outcome = await notifications.notifyCancellation(id, actorUserId, now)
+                if (outcome === "NOTIFIED") {
+                    notifiedCount += 1
+                } else {
+                    failedCount += 1
+                }
+            } catch {
+                failedCount += 1
+            }
+        }
+        return { notifiedCount, failedCount }
+    }
+
+    async function getCancellationNoticeState(): Promise<ScheduleCancellationNoticeState> {
+        return cancellationNotice.getState()
+    }
     function blocksInVigencyCheck(
         input: ScheduleConfigInput,
         start: string,
@@ -299,15 +373,39 @@ export function createScheduleService(
         input: ScheduleConfigInput,
         actorUserId: number,
         now = new Date(),
+        options?: SaveScheduleOptions,
     ): Promise<ScheduleConfigView> {
         const normalized = normalizeAndValidateScheduleConfig(input)
         const todayStr = getLocalParts(now).dateStr
-        return repository.saveConfig({
+        const resolution = input.conflictResolution
+        const noticeEnabled =
+            resolution === "CANCEL" ? await cancellationNotice.isEnabled() : false
+        let affectedIds: string[] = []
+        const saved = await repository.saveConfig({
             config: normalized,
             actorUserId,
             now,
             validateAgainstVersions: blocksInVigencyCheck(input, todayStr, todayStr),
+            conflictResolution: resolution,
+            noticeDisabled: resolution === "CANCEL" ? !noticeEnabled : false,
+            onResolved: (ids) => {
+                affectedIds = ids
+            },
         })
+        if (resolution) {
+            const counts =
+                resolution === "CANCEL" && noticeEnabled
+                    ? await sendMassCancellationNotices(affectedIds, actorUserId, now)
+                    : { notifiedCount: 0, failedCount: 0 }
+            options?.onResolution?.({
+                action: resolution,
+                affectedCount: affectedIds.length,
+                notifiedCount: counts.notifiedCount,
+                failedCount: counts.failedCount,
+                noticeDisabled: resolution === "CANCEL" && !noticeEnabled,
+            })
+        }
+        return saved
     }
 
     async function saveScheduledConfig(
@@ -315,6 +413,7 @@ export function createScheduleService(
         effectiveFrom: string,
         actorUserId: number,
         now = new Date(),
+        options?: SaveScheduleOptions,
     ): Promise<ScheduleConfigView> {
         if (!isValidCalendarDate(effectiveFrom)) {
             throw new BadRequestError("Data de início inválida")
@@ -323,20 +422,75 @@ export function createScheduleService(
             throw new BadRequestError("A data de início da mudança deve ser futura")
         }
         const normalized = normalizeAndValidateScheduleConfig(input)
-        return repository.saveScheduledConfig({
+        const resolution = input.conflictResolution
+        const noticeEnabled =
+            resolution === "CANCEL" ? await cancellationNotice.isEnabled() : false
+        let affectedIds: string[] = []
+        const saved = await repository.saveScheduledConfig({
             config: normalized,
             effectiveFrom,
             actorUserId,
             now,
             validateAgainstVersions: blocksInVigencyCheck(input, effectiveFrom, getLocalParts(now).dateStr),
+            conflictResolution: resolution,
+            noticeDisabled: resolution === "CANCEL" ? !noticeEnabled : false,
+            onResolved: (ids) => {
+                affectedIds = ids
+            },
         })
+        if (resolution) {
+            const counts =
+                resolution === "CANCEL" && noticeEnabled
+                    ? await sendMassCancellationNotices(affectedIds, actorUserId, now)
+                    : { notifiedCount: 0, failedCount: 0 }
+            options?.onResolution?.({
+                action: resolution,
+                affectedCount: affectedIds.length,
+                notifiedCount: counts.notifiedCount,
+                failedCount: counts.failedCount,
+                noticeDisabled: resolution === "CANCEL" && !noticeEnabled,
+            })
+        }
+        return saved
     }
 
-    async function deleteScheduledConfig(effectiveFrom: string, now = new Date()): Promise<void> {
+    async function deleteScheduledConfig(
+        effectiveFrom: string,
+        now = new Date(),
+        options?: DeleteScheduleOptions,
+    ): Promise<void> {
         if (!isValidCalendarDate(effectiveFrom)) {
             throw new BadRequestError("Data de início inválida")
         }
-        return repository.deleteScheduledConfig(effectiveFrom, now)
+        const resolution = options?.conflictResolution
+        if (!resolution) {
+            await repository.deleteScheduledConfig(effectiveFrom, now)
+            return
+        }
+        const noticeEnabled =
+            resolution === "CANCEL" ? await cancellationNotice.isEnabled() : false
+        let affectedIds: string[] = []
+        await repository.deleteScheduledConfig(effectiveFrom, now, {
+            actorUserId: options?.actorUserId,
+            conflictResolution: resolution,
+            noticeDisabled: resolution === "CANCEL" ? !noticeEnabled : false,
+            onResolved: (ids) => {
+                affectedIds = ids
+            },
+        })
+        if (resolution && options?.actorUserId !== undefined) {
+            const counts =
+                resolution === "CANCEL" && noticeEnabled
+                    ? await sendMassCancellationNotices(affectedIds, options.actorUserId, now)
+                    : { notifiedCount: 0, failedCount: 0 }
+            options.onResolution?.({
+                action: resolution,
+                affectedCount: affectedIds.length,
+                notifiedCount: counts.notifiedCount,
+                failedCount: counts.failedCount,
+                noticeDisabled: resolution === "CANCEL" && !noticeEnabled,
+            })
+        }
     }
 
     async function getMonthlyPreview(
@@ -542,6 +696,7 @@ export function createScheduleService(
         getConfig,
         getConfigForDate,
         listScheduledConfigs,
+        getCancellationNoticeState,
         saveConfig,
         saveScheduledConfig,
         deleteScheduledConfig,

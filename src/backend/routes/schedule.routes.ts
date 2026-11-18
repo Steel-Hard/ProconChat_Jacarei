@@ -5,6 +5,7 @@ import { validateRequest } from "../middleware/validateRequest.middleware"
 import { scheduleRepository as defaultScheduleRepository } from "../repositories/schedule.repository"
 import { IScheduleRepository } from "../repositories/schedule.repository.interface"
 import {
+    deleteScheduledConfigQuerySchema,
     previewScheduleBodySchema,
     previewScheduleQuerySchema,
     scheduleDateQuerySchema,
@@ -47,6 +48,10 @@ export class ScheduleRoutes {
             controller.getConfigForDate.bind(controller),
         )
         this.router.get("/versions", controller.listScheduledConfigs.bind(controller))
+        this.router.get(
+            "/cancellation-notice",
+            controller.getCancellationNoticeState.bind(controller),
+        )
 
         this.router.put(
             "/",
@@ -62,7 +67,10 @@ export class ScheduleRoutes {
 
         this.router.delete(
             "/versions/:effectiveFrom",
-            validateRequest({ params: scheduleEffectiveDateSchema }, { withIssues: true }),
+            validateRequest(
+                { params: scheduleEffectiveDateSchema, query: deleteScheduledConfigQuerySchema },
+                { withIssues: true },
+            ),
             controller.deleteScheduledConfig.bind(controller),
         )
 

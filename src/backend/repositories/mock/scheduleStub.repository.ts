@@ -17,6 +17,7 @@ import {
     ScheduleVersion,
 } from "../../types/schedule.types"
 import {
+    DeleteScheduledConfigRepoOptions,
     IScheduleRepository,
     SaveScheduleConfigRepoParams,
 } from "../schedule.repository.interface"
@@ -44,6 +45,7 @@ export type ScheduledSaveCall = SaveScheduleConfigRepoParams & { effectiveFrom: 
 export interface ScheduledDeleteCall {
     effectiveFrom: string
     now: Date
+    options?: DeleteScheduledConfigRepoOptions
 }
 
 export const DEFAULT_STUB_NOW = new Date("2026-10-05T09:00:00-03:00")
@@ -283,6 +285,8 @@ export function createScheduleStubRepository(
         actorUserId,
         now,
         validateAgainstVersions,
+        conflictResolution,
+        onResolved,
     }: SaveScheduleConfigRepoParams): Promise<ScheduleConfigView> {
         validateAgainstVersions?.(configuredVersions())
         const future: FutureActiveAppointment[] = appointments
@@ -297,12 +301,24 @@ export function createScheduleStubRepository(
             future,
             currentConfig?.slotMinutes ?? null,
         )
+        let resolvedIds: string[] = []
         if (conflicts.length > 0) {
-            throw new ConflictError(
-                "Esta alteração afeta agendamentos futuros",
-                "SCHEDULE_CONFLICTS",
-                { conflicts },
-            )
+            if (!conflictResolution) {
+                throw new ConflictError(
+                    "Esta alteração afeta agendamentos futuros",
+                    "SCHEDULE_CONFLICTS",
+                    { conflicts },
+                )
+            }
+            resolvedIds = conflicts.map((c) => c.id)
+            const idSet = new Set(resolvedIds)
+            if (conflictResolution === "KEEP") {
+                appointments = appointments.map((a) =>
+                    idSet.has(a.id) ? { ...a, offGrid: true } : a,
+                )
+            } else {
+                appointments = appointments.filter((a) => !idSet.has(a.id))
+            }
         }
 
         const actorName = users.get(actorUserId) ?? "Usuário"
@@ -322,6 +338,7 @@ export function createScheduleStubRepository(
             updatedAt: now.toISOString(),
         }
 
+        onResolved?.(resolvedIds)
         return copyConfig(currentConfig)
     }
 
@@ -333,7 +350,8 @@ export function createScheduleStubRepository(
             throw scheduledSaveError
         }
         params.validateAgainstVersions?.(configuredVersions())
-        const { config, actorUserId, now, effectiveFrom } = params
+        const { config, actorUserId, now, effectiveFrom, onResolved } = params
+        onResolved?.([])
         return buildDefaultScheduleConfigView({
             ...config,
             effectiveFrom,
@@ -344,11 +362,18 @@ export function createScheduleStubRepository(
 
     const scheduledDeleteCalls: ScheduledDeleteCall[] = []
 
-    async function deleteScheduledConfig(effectiveFrom: string, now: Date): Promise<void> {
-        scheduledDeleteCalls.push({ effectiveFrom, now })
+    async function deleteScheduledConfig(
+        effectiveFrom: string,
+        now: Date,
+        deleteOptions?: DeleteScheduledConfigRepoOptions,
+    ): Promise<void> {
+        scheduledDeleteCalls.push(
+            deleteOptions ? { effectiveFrom, now, options: deleteOptions } : { effectiveFrom, now },
+        )
         if (scheduledDeleteError) {
             throw scheduledDeleteError
         }
+        deleteOptions?.onResolved?.([])
     }
 
     return {

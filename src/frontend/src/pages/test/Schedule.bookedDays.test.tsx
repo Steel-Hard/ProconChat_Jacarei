@@ -44,23 +44,19 @@ describe("SchedulePage: dias com agendamento", () => {
         expect(screen.getByText("14:00 · 1 agendamento")).toBeInTheDocument()
     })
 
-    it("trava o dia da semana e as faixas com agendamento", async () => {
+    it("permite desligar o dia da semana e remover faixas mesmo com agendamento", async () => {
         await renderBooked()
         await screen.findByRole("button", { name: "04/11: 6 vagas livres · 2 agendamentos" })
 
-        expect(screen.getByRole("checkbox", { name: "Quarta-feira" })).toHaveAttribute(
-            "aria-disabled",
-            "true"
-        )
-        expect(screen.getByRole("checkbox", { name: "Quarta-feira" })).toHaveAccessibleDescription(
-            "Há agendamentos em 04/11. Para desligar este dia, peça a quem gerencia os agendamentos para cancelar ou remarcar antes."
+        expect(screen.getByRole("checkbox", { name: "Quarta-feira" })).not.toHaveAttribute(
+            "aria-disabled"
         )
         within(wednesdayRow())
-            .getAllByRole("button", { name: /^Remover faixa .* de Quarta-feira indisponível/ })
-            .forEach((button) => expect(button).toHaveAttribute("aria-disabled", "true"))
+            .getAllByRole("button", { name: /^Remover faixa .* de Quarta-feira$/ })
+            .forEach((button) => expect(button).not.toHaveAttribute("aria-disabled"))
     })
 
-    it("recusa bloquear a data com agendamento", async () => {
+    it("permite adicionar bloqueio em data com agendamento para resolver ao salvar", async () => {
         const { user } = await renderBooked()
         await screen.findByRole("button", { name: "04/11: 6 vagas livres · 2 agendamentos" })
 
@@ -70,11 +66,8 @@ describe("SchedulePage: dias com agendamento", () => {
         })
         await user.click(screen.getByRole("button", { name: "Adicionar" }))
 
-        expect(screen.getByRole("alert")).toHaveTextContent(
-            "Esta data tem 2 agendamentos. Para bloqueá-la, peça a quem gerencia os agendamentos para cancelar ou remarcar antes."
-        )
-        expect(screen.queryByText("Ponto facultativo", { selector: "div" })).not.toBeInTheDocument()
-        expect(screen.queryByRole("button", { name: /não salvas?$/ })).not.toBeInTheDocument()
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument()
+        expect(screen.getByText("Ponto facultativo")).toBeInTheDocument()
     })
 
     it("não trava nada sem agendamento", async () => {

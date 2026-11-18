@@ -10,6 +10,7 @@ import {
     NormalizedScheduleConfig,
     ReturningAppointment,
     ScheduleConfigView,
+    ScheduleConflictResolution,
     ScheduleRange,
     ScheduleSettings,
     ScheduleVersion,
@@ -20,6 +21,16 @@ export interface SaveScheduleConfigRepoParams {
     actorUserId: number
     now: Date
     validateAgainstVersions?: (versions: ScheduleVersion[]) => void
+    conflictResolution?: ScheduleConflictResolution
+    noticeDisabled?: boolean
+    onResolved?: (affectedIds: string[]) => void
+}
+
+export interface DeleteScheduledConfigRepoOptions {
+    actorUserId?: number
+    conflictResolution?: ScheduleConflictResolution
+    noticeDisabled?: boolean
+    onResolved?: (affectedIds: string[]) => void
 }
 
 export interface IScheduleRepository {
@@ -39,7 +50,11 @@ export interface IScheduleRepository {
     saveScheduledConfig(
         params: SaveScheduleConfigRepoParams & { effectiveFrom: string },
     ): Promise<ScheduleConfigView>
-    deleteScheduledConfig(effectiveFrom: string, now: Date): Promise<void>
+    deleteScheduledConfig(
+        effectiveFrom: string,
+        now: Date,
+        options?: DeleteScheduledConfigRepoOptions,
+    ): Promise<void>
     listFutureActiveAppointments(now: Date): Promise<FutureActiveAppointment[]>
     findReturningAppointment(phoneHash: string, now?: Date): Promise<ReturningAppointment | null>
     cancelByCitizen(input: CitizenCancelInput): Promise<CitizenCancelResult>

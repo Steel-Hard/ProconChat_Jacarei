@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next"
 import LastChangeNote from "@/components/LastChangeNote"
 import ScheduleBlockedDates from "@/components/ScheduleBlockedDates"
 import ScheduleConflictList from "@/components/ScheduleConflictList"
+import ScheduleConflictModal from "@/components/ScheduleConflictModal"
 import ScheduleDurationSeats from "@/components/ScheduleDurationSeats"
 import SchedulePreview from "@/components/SchedulePreview"
 import ScheduleUnitFields from "@/components/ScheduleUnitFields"
@@ -125,6 +126,7 @@ function SchedulePage() {
                         />
                     </div>
                 ) : null}
+                <ScheduleConflictModal {...page.conflictModal} />
             </section>
         </>
     )
