@@ -134,6 +134,27 @@ describe("AppointmentDetail: faixa de cancelado sem aviso", () => {
     })
 })
 
+describe("AppointmentDetail: falha de aviso com o aviso desligado depois", () => {
+    it("esconde o botão e mostra a faixa de aviso desligado, não a de Tentar novamente", async () => {
+        await renderDetail(canceled("FAILED", { allowed: false, code: "NOTIFICATION_DISABLED" }))
+
+        expect(
+            actionsBox().getByText(
+                "Agendamento F10464F0 cancelado. O aviso ao cidadão falhou e o aviso por WhatsApp está desligado: avise por outro meio."
+            )
+        ).toBeInTheDocument()
+        expect(actionsBox().queryByText(/Use "Tentar novamente"/)).toBeNull()
+        expect(screen.queryByRole("button", { name: "Tentar novamente" })).toBeNull()
+    })
+
+    it("com o aviso ligado a falha mostra o botão e a faixa de Tentar novamente", async () => {
+        await renderDetail(canceled("FAILED", { allowed: true, code: null }))
+
+        expect(screen.getByRole("button", { name: "Tentar novamente" })).toBeInTheDocument()
+        expect(actionsBox().getByText(/Use "Tentar novamente" no histórico/)).toBeInTheDocument()
+    })
+})
+
 describe("AppointmentDetail: Tentar novamente escondido", () => {
     it("esconde o botão quando o aviso estava desativado, mesmo que a API libere a ação", async () => {
         const detail = canceled("DISABLED", { allowed: true, code: null })

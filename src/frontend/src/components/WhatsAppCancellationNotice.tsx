@@ -1,7 +1,7 @@
 import { useId } from "react"
 import { useTranslation } from "react-i18next"
 import ConfirmDialog from "@/components/ConfirmDialog"
-import LastChangeNote from "@/components/LastChangeNote"
+import AppointmentNotice from "@/components/AppointmentNotice"
 import WhatsAppPauseSwitch from "@/components/WhatsAppPauseSwitch"
 import useWhatsAppCancellationNotice from "@/pages/hooks/useWhatsAppCancellationNotice"
 import type WhatsAppSettings from "@/types/whatsapp/WhatsAppSettings.types"
@@ -11,6 +11,7 @@ type Props = { settings: WhatsAppSettings }
 
 function WhatsAppCancellationNotice({ settings }: Props) {
     const { t } = useTranslation("whatsapp")
+    const { t: tc } = useTranslation("common")
     const notice = useWhatsAppCancellationNotice(settings)
     const supportId = useId()
     const turningOn = notice.target === true
@@ -39,16 +40,18 @@ function WhatsAppCancellationNotice({ settings }: Props) {
                     {t("cancellationNotice.saveFailed")}
                 </p>
             ) : null}
+            {notice.enabled && settings.cancellationNoticeProblem ? (
+                <AppointmentNotice>
+                    {tc("cancellationNoticeProblem.prefix", {
+                        reason: tc(
+                            `cancellationNoticeProblem.codes.${settings.cancellationNoticeProblem.code}`
+                        )
+                    })}
+                </AppointmentNotice>
+            ) : null}
             {notice.modelNotApproved ? (
                 <p className={css.warning}>{t("cancellationNotice.modelNotApproved")}</p>
             ) : null}
-            <LastChangeNote
-                change={
-                    settings.updatedBy
-                        ? { changedBy: settings.updatedBy.name, changedAt: settings.updatedAt }
-                        : null
-                }
-            />
             <ConfirmDialog
                 open={notice.target !== null}
                 title={t(`cancellationNotice.dialog.${dialogKey}.title`)}

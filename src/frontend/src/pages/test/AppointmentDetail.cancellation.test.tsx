@@ -359,7 +359,7 @@ describe("AppointmentDetail: cancelamento e reenvio do aviso", () => {
         await page.user.click(screen.getByRole("button", { name: "Cancelar agendamento" }))
         const dialog = screen.getByRole("dialog", { name: "Cancelar o agendamento F10464F0?" })
 
-        await within(dialog).findByRole("button", { name: "Tentar carregar a prévia novamente" })
+        await within(dialog).findByRole("button", { name: "Tentar de novo" })
         await page.user.click(within(dialog).getByRole("radio", { name: "A pedido do cidadão" }))
         await page.user.click(
             within(dialog).getByRole("button", { name: "Cancelar e avisar o cidadão" })
@@ -369,9 +369,7 @@ describe("AppointmentDetail: cancelamento e reenvio do aviso", () => {
             within(dialog).getByRole("button", { name: "Cancelar e avisar o cidadão" })
         ).toBeDisabled()
         expect(page.requests("PATCH", STATUS_PATH)).toHaveLength(0)
-        await page.user.click(
-            within(dialog).getByRole("button", { name: "Tentar carregar a prévia novamente" })
-        )
+        await page.user.click(within(dialog).getByRole("button", { name: "Tentar de novo" }))
         await waitFor(() => expect(page.requests("GET", PREVIEW_PATH).length).toBeGreaterThan(1))
     })
 

@@ -18,6 +18,7 @@ const WARNING_KEYS = {
     failed: "cancelNoticeFailed",
     noPhone: "cancelNoticeNoPhone",
     disabled: "cancelNoticeDisabled",
+    failedDisabled: "cancelNoticeFailedDisabled",
     ok: "cancelNoticeFailed"
 } as const
 

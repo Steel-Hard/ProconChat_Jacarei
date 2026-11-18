@@ -95,30 +95,32 @@ function AppointmentCancelDialog({ view }: Props) {
                     <>
                         {view.problem ? (
                             <AppointmentNotice>
-                                {t("actions.cancel.problemPrefix", { reason: view.problem })}
+                                {t("common:cancellationNoticeProblem.prefix", {
+                                    reason: view.problem
+                                })}
                             </AppointmentNotice>
                         ) : null}
-                        <div className={css.previewBlock}>
-                            <div className={css.previewHeader}>
-                                <span className={css.label}>
-                                    {t("actions.cancel.previewLabel")}
-                                </span>
-                                <span className={css.tag}>{t("actions.cancel.fixedTag")}</span>
+                        {view.previewLoading ? (
+                            <p className={css.preview}>{t("actions.cancel.verifying")}</p>
+                        ) : view.previewFailed ? (
+                            <div className={css.preview}>
+                                <p role="alert">{t("actions.cancel.previewFailed")}</p>
+                                <button
+                                    type="button"
+                                    className={css.retry}
+                                    onClick={view.retryPreview}
+                                >
+                                    {t("actions.cancel.retryPreview")}
+                                </button>
                             </div>
-                            {view.previewLoading ? (
-                                <p className={css.preview}>{t("common:loading")}</p>
-                            ) : view.previewFailed ? (
-                                <div className={css.preview}>
-                                    <p role="alert">{t("actions.cancel.previewFailed")}</p>
-                                    <button
-                                        type="button"
-                                        className={css.retry}
-                                        onClick={view.retryPreview}
-                                    >
-                                        {t("actions.cancel.retryPreview")}
-                                    </button>
+                        ) : (
+                            <div className={css.previewBlock}>
+                                <div className={css.previewHeader}>
+                                    <span className={css.label}>
+                                        {t("actions.cancel.previewLabel")}
+                                    </span>
+                                    <span className={css.tag}>{t("actions.cancel.fixedTag")}</span>
                                 </div>
-                            ) : (
                                 <p
                                     className={
                                         view.preview
@@ -128,9 +130,9 @@ function AppointmentCancelDialog({ view }: Props) {
                                 >
                                     {view.preview ?? t("actions.cancel.chooseReason")}
                                 </p>
-                            )}
-                            <p className={css.hint}>{t("actions.cancel.fixedMessageHint")}</p>
-                        </div>
+                                <p className={css.hint}>{t("actions.cancel.fixedMessageHint")}</p>
+                            </div>
+                        )}
                     </>
                 )}
                 <label className={css.note}>

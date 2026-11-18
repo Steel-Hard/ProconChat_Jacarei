@@ -173,6 +173,8 @@
             "credentials_saved": "Credenciais atualizadas",
             "auto_reply_paused": "Respostas automáticas pausadas",
             "auto_reply_resumed": "Respostas automáticas reativadas",
+            "cancellation_notice_enabled": "Aviso ao cidadão ligado",
+            "cancellation_notice_disabled": "Aviso ao cidadão desligado",
             "other": "Configuração atualizada"
         },
         "field": {

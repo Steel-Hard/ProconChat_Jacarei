@@ -51,7 +51,7 @@ function WhatsAppNumberMeta() {
                     </>
                 ) : null}
             </dl>
-            <dl className={css.statusBlock}>
+            <dl className={`${css.statusBlock} ${css.limitBlock}`}>
                 <dt className={css.statusLabel}>{t("metaStatus.number.limitLabel")}</dt>
                 {limit?.kind === "limited" ? (
                     <>

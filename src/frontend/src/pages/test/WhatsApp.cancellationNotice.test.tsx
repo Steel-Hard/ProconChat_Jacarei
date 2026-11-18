@@ -198,9 +198,51 @@ describe("WhatsApp: card Avisos ao cidadão", () => {
         ).not.toBeInTheDocument()
     })
 
-    it("mostra quem alterou por último dentro do card", async () => {
+    it("não repete a última alteração no cartão", async () => {
         await renderWhatsAppPage()
 
-        expect(within(noticeCard()).getByText(/Última alteração por Ana Paula/)).toBeInTheDocument()
+        expect(within(noticeCard()).queryByText(/Última alteração/)).toBeNull()
+    })
+
+    it("mostra a faixa de problema da conta quando ligado e com problema", async () => {
+        await renderWhatsAppPage(
+            {},
+            buildWhatsAppSettings({
+                cancellationNoticeEnabled: true,
+                cancellationNoticeProblem: {
+                    code: "PAYMENT_METHOD",
+                    metaErrorCode: "131042",
+                    message: "x"
+                }
+            })
+        )
+
+        expect(
+            within(noticeCard()).getByText(
+                "O aviso pode não chegar: a conta da Meta está sem forma de pagamento."
+            )
+        ).toBeInTheDocument()
+    })
+
+    it("não mostra a faixa ligado e sem problema", async () => {
+        await renderWhatsAppPage({}, buildWhatsAppSettings({ cancellationNoticeEnabled: true }))
+
+        expect(within(noticeCard()).queryByText(/O aviso pode não chegar/)).toBeNull()
+    })
+
+    it("não mostra a faixa desligado, mesmo com problema guardado", async () => {
+        await renderWhatsAppPage(
+            {},
+            buildWhatsAppSettings({
+                cancellationNoticeEnabled: false,
+                cancellationNoticeProblem: {
+                    code: "PAYMENT_METHOD",
+                    metaErrorCode: "131042",
+                    message: "x"
+                }
+            })
+        )
+
+        expect(within(noticeCard()).queryByText(/O aviso pode não chegar/)).toBeNull()
     })
 })

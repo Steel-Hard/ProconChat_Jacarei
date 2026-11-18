@@ -83,7 +83,7 @@ function useAppointmentDetail() {
         previewFailed: cancellation.previewFailed,
         noticeDisabled: cancellation.noticeDisabled,
         problem: cancellation.problemCode
-            ? t(`actions.cancel.problems.${cancellation.problemCode}`)
+            ? t(`cancellationNoticeProblem.codes.${cancellation.problemCode}`, { ns: "common" })
             : null,
         retryPreview: cancellation.retryPreview,
         confirm: cancellation.cancelAppointment,

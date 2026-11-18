@@ -27,9 +27,23 @@
 
 .statusGrid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     align-items: stretch;
     gap: 14px;
+}
+
+.limitBlock {
+    grid-column: span 2;
+}
+
+@media (max-width: 900px) {
+    .statusGrid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .limitBlock {
+        grid-column: auto;
+    }
 }
 
 .statusBlock {

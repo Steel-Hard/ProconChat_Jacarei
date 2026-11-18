@@ -108,21 +108,24 @@ describe("AppointmentDetail: modal Cancelar com o aviso desligado", () => {
 describe("AppointmentDetail: modal Cancelar com problema na conta da Meta", () => {
     it.each([
         ["PAYMENT_METHOD", "a conta da Meta está sem forma de pagamento"],
-        ["TEMPLATE_NOT_FOUND", "o modelo de aviso não existe na Meta ou não está aprovado"],
+        [
+            "TEMPLATE_NOT_FOUND",
+            "o modelo de aviso não existe no idioma usado ou não está aprovado na Meta"
+        ],
         [
             "TEMPLATE_PARAMETER_COUNT",
-            "o texto ou os parâmetros do modelo cadastrado na Meta não conferem com o do sistema"
+            "o número de parâmetros enviado é diferente do modelo cadastrado na Meta"
         ],
         [
             "TEMPLATE_PARAMETER_FORMAT",
-            "o texto ou os parâmetros do modelo cadastrado na Meta não conferem com o do sistema"
+            "os parâmetros do modelo foram enviados com formato incorreto"
         ],
-        ["TEMPLATE_TRANSLATION_TOO_LONG", "a tradução do modelo é longa demais"],
-        ["TEMPLATE_POLICY_VIOLATION", "o modelo viola uma política do WhatsApp"],
-        ["TEMPLATE_PAUSED", "o modelo de aviso está pausado por baixa qualidade"],
-        ["TEMPLATE_DISABLED", "o modelo de aviso foi desativado na Meta"],
+        ["TEMPLATE_TRANSLATION_TOO_LONG", "a tradução do texto do modelo ficou longa demais"],
+        ["TEMPLATE_POLICY_VIOLATION", "o conteúdo do modelo viola a política do WhatsApp"],
+        ["TEMPLATE_PAUSED", "o modelo de aviso foi pausado pela Meta por baixa qualidade"],
+        ["TEMPLATE_DISABLED", "o modelo de aviso foi desativado de vez pela Meta"],
         ["INVALID_TOKEN", "o token da Meta está inválido ou expirado"],
-        ["SEND_LIMIT_REACHED", "o número atingiu o limite de envios da Meta"]
+        ["SEND_LIMIT_REACHED", "o limite de envios do número foi atingido"]
     ])("mostra a faixa para %s e deixa cancelar", async (code, phrase) => {
         const { page, dialog } = await openModal(() =>
             previewReply(true, { code, metaErrorCode: null, message: "x" })
@@ -168,9 +171,10 @@ describe("AppointmentDetail: modal Cancelar sem conseguir ler a configuração d
             within(dialog).getByRole("button", { name: "Cancelar e avisar o cidadão" })
         ).toBeDisabled()
         expect(page.requests("PATCH", STATUS_PATH)).toHaveLength(0)
-        await page.user.click(
-            within(dialog).getByRole("button", { name: "Tentar carregar a prévia novamente" })
-        )
+        expect(within(dialog).queryByText("Mensagem que o cidadão receberá")).toBeNull()
+        expect(within(dialog).queryByText("Modelo fixo")).toBeNull()
+        expect(within(dialog).queryByText(/modelos fixos/)).toBeNull()
+        await page.user.click(within(dialog).getByRole("button", { name: "Tentar de novo" }))
         await waitFor(() => expect(page.requests("GET", PREVIEW_PATH).length).toBeGreaterThan(1))
     })
 
@@ -179,7 +183,10 @@ describe("AppointmentDetail: modal Cancelar sem conseguir ler a configuração d
 
         await page.user.click(within(dialog).getByRole("radio", { name: "A pedido do cidadão" }))
 
-        expect(within(dialog).getByText("Carregando...")).toBeInTheDocument()
+        expect(within(dialog).getByText("Verificando o aviso ao cidadão…")).toBeInTheDocument()
+        expect(within(dialog).queryByText("Mensagem que o cidadão receberá")).toBeNull()
+        expect(within(dialog).queryByText("Modelo fixo")).toBeNull()
+        expect(within(dialog).queryByText(/modelos fixos/)).toBeNull()
         expect(
             within(dialog).getByRole("button", { name: "Cancelar e avisar o cidadão" })
         ).toBeDisabled()

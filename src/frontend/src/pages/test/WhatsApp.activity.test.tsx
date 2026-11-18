@@ -603,4 +603,13 @@ describe("WhatsAppPage, estado do número, falhas e histórico", () => {
         expect(callsTo(calls, "GET", FAILURES_PATH)).toHaveLength(1)
         expect(callsTo(calls, "GET", HISTORY_PATH)).toHaveLength(1)
     })
+
+    it.each([
+        ["cancellation_notice_enabled", "Aviso ao cidadão ligado"],
+        ["cancellation_notice_disabled", "Aviso ao cidadão desligado"]
+    ])("traduz a ação %s do histórico", async (action, text) => {
+        await renderPage({ [`GET ${HISTORY_PATH}`]: historyReply([historyItem({ action })]) })
+
+        expect(await screen.findByText(text)).toBeInTheDocument()
+    })
 })

@@ -1,6 +1,6 @@
 import type AppointmentDetail from "@/types/appointments/AppointmentDetail.types"
 
-type CancellationNoticeOutcome = "ok" | "failed" | "noPhone" | "disabled"
+type CancellationNoticeOutcome = "ok" | "failed" | "noPhone" | "disabled" | "failedDisabled"
 
 function cancellationNoticeOutcomeOf(detail: AppointmentDetail): CancellationNoticeOutcome {
     if (detail.status !== "CANCELED") {
@@ -16,6 +16,10 @@ function cancellationNoticeOutcomeOf(detail: AppointmentDetail): CancellationNot
     }
 
     const retry = detail.available_actions.retry_cancellation_notice
+
+    if (retry.code === "NOTIFICATION_DISABLED") {
+        return "failedDisabled"
+    }
 
     if (retry.allowed) {
         return "failed"
