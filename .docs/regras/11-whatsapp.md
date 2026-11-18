@@ -112,15 +112,23 @@ Issue #164, [decisão 005](../decisoes/005-mensagens-ao-cidadao.md). Um cartão 
 - **O que muda no cancelamento:** ver [Detalhe do agendamento](04-detalhe-do-agendamento.md#modal-de-cancelamento) e o cancelamento em massa em [Horários de atendimento](08-horarios-de-atendimento.md). Não vale para o lembrete, que tem o próprio liga e desliga.
 - **Faixa "O aviso pode não chegar: [motivo]"**, no cartão e no modal de cancelar, com o aviso ligado. Só entram **problemas da conta**, não do destinatário. Aparece quando há uma falha de envio nas **últimas 24 horas** (a mesma janela das falhas de entrega) e nenhum envio bem-sucedido depois dela, ou quando o estado atual já mostra o problema. Frases:
 
-  | Situação | Frase |
+  | Erro da Meta | Frase |
   |---|---|
-  | Erro 131042 | a conta da Meta está sem forma de pagamento |
-  | Erro 132001 | o modelo de aviso não existe na Meta |
-  | Erros 132000 e 132005 | o texto do modelo cadastrado na Meta não confere com o do sistema |
-  | Erro 190, credenciais inválidas | o token da Meta está inválido ou expirado |
-  | Modelo não aprovado ou pausado | o modelo de aviso não está aprovado na Meta |
+  | 131042 | a conta da Meta está sem forma de pagamento |
+  | 132001 | o modelo de aviso não existe no idioma usado ou não está aprovado na Meta (é o único código para "não aprovado"; não há código dedicado) |
+  | 132000 | o número de parâmetros enviado é diferente do modelo cadastrado na Meta |
+  | 132012 | os parâmetros do modelo foram enviados com formato incorreto |
+  | 132007 | o conteúdo do modelo viola a política do WhatsApp |
+  | 132015 | o modelo de aviso foi pausado pela Meta por baixa qualidade |
+  | 132016 | o modelo de aviso foi desativado de vez pela Meta (é preciso criar um novo, com conteúdo diferente) |
+  | 132005 | a tradução do texto do modelo ficou longa demais |
+  | 190 (ou credenciais inválidas) | o token da Meta está inválido ou expirado |
+  | 131048 | o limite de envios do número foi atingido |
+  | Modelo não aprovado, pausado ou desativado no estado atual | o modelo de aviso não está aprovado na Meta |
 
-  Os erros 131026 (mensagem não entregável) e 131049 (limite de envio proativo) dizem respeito àquele cidadão, não à conta: não geram a faixa e aparecem só na falha do Histórico do agendamento. Os códigos acima seguem a lista que a equipe usou; só o 131042 foi confirmado na documentação oficial da Meta (17/11/2026), os demais **não foram confirmados** e devem ser conferidos antes da entrega.
+  **Só no Histórico do agendamento, sem faixa** (dizem respeito ao cidadão ou ao momento do envio, não à conta): 131026 (mensagem não entregável: sem WhatsApp, termos não aceitos ou aplicativo desatualizado); 131049 (limite de engajamento do usuário: esperar 24 horas e não insistir); 131056 (muitos envios ao mesmo destinatário); 131047 (fora da janela de 24 horas).
+
+  **O que foi confirmado e o que é inferência** (conferido na [documentação oficial de códigos de erro da Meta](https://developers.facebook.com/documentation/business-messaging/whatsapp/support/error-codes) em 17/11/2026): o significado de cada código acima foi **confirmado**. A separação entre "problema da conta" e "problema do destinatário" **não vem da documentação da Meta: é inferência nossa**. O 132005 na documentação é "texto traduzido longo demais"; **não foi confirmado** se ele também cobre uma variável longa demais. **Não foram confirmados** o status HTTP de cada código nem os títulos curtos oficiais. O erro chega tanto na resposta síncrona da Graph API quanto no webhook de status (`entry.changes.value.statuses` e `errors`), e os dois caminhos precisam ser tratados.
 
 ### Privacidade
 
