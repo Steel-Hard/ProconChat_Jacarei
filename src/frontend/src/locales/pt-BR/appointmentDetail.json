@@ -145,16 +145,20 @@
                 "withoutActor": "Cancelado no painel"
             },
             "citizenNotified": {
-                "withActor": "Cidadão avisado pelo WhatsApp",
-                "withoutActor": "Cidadão avisado pelo WhatsApp"
+                "withActor": "Cidadão avisado do cancelamento",
+                "withoutActor": "Cidadão avisado do cancelamento"
             },
             "citizenNotificationFailed": {
-                "withActor": "Falha ao avisar o cidadão pelo WhatsApp",
-                "withoutActor": "Falha ao avisar o cidadão pelo WhatsApp"
+                "withActor": "Falha ao avisar o cidadão do cancelamento",
+                "withoutActor": "Falha ao avisar o cidadão do cancelamento"
+            },
+            "reminderFailed": {
+                "withActor": "Falha ao avisar o cidadão do lembrete",
+                "withoutActor": "Falha ao avisar o cidadão do lembrete"
             },
             "reminderSent": {
-                "withActor": "Lembrete enviado pelo WhatsApp",
-                "withoutActor": "Lembrete enviado pelo WhatsApp"
+                "withActor": "Lembrete enviado",
+                "withoutActor": "Lembrete enviado"
             },
             "keptOffGrid": {
                 "withActor": "Mantido fora da grade atual após alteração de horários",

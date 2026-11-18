@@ -120,7 +120,8 @@ function useAppointmentDetailView(detail: AppointmentDetail | undefined) {
                 id: event.id,
                 text: t(label.key, { ns: "appointmentDetail", ...label.values }),
                 when: at(event.created_at),
-                highlight: label.highlight
+                highlight: label.highlight,
+                retryable: label.retryable
             }
         })
 

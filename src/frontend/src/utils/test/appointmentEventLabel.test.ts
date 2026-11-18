@@ -44,13 +44,13 @@ describe("appointmentEventLabel", () => {
             "Cancelado pelo cidadão no chatbot"
         ],
         ["CANCELED_BY_STAFF", "Cancelado no painel por Ana", "Cancelado no painel"],
-        ["CITIZEN_NOTIFIED", "Cidadão avisado pelo WhatsApp", "Cidadão avisado pelo WhatsApp"],
+        ["CITIZEN_NOTIFIED", "Cidadão avisado do cancelamento", "Cidadão avisado do cancelamento"],
         [
             "CITIZEN_NOTIFICATION_FAILED",
-            "Falha ao avisar o cidadão pelo WhatsApp",
-            "Falha ao avisar o cidadão pelo WhatsApp"
+            "Falha ao avisar o cidadão do cancelamento",
+            "Falha ao avisar o cidadão do cancelamento"
         ],
-        ["REMINDER_SENT", "Lembrete enviado pelo WhatsApp", "Lembrete enviado pelo WhatsApp"],
+        ["REMINDER_SENT", "Lembrete enviado", "Lembrete enviado"],
         [
             "KEPT_OFF_GRID",
             "Mantido fora da grade atual após alteração de horários",
@@ -87,5 +87,33 @@ describe("appointmentEventLabel", () => {
         )
 
         expect(highlights).toEqual([true, false, false])
+    })
+
+    it("distingue a falha do lembrete da falha do aviso de cancelamento", () => {
+        const reminder = event("CITIZEN_NOTIFICATION_FAILED", null, { kind: "REMINDER" })
+        const cancellation = event("CITIZEN_NOTIFICATION_FAILED", null, { kind: "CANCELLATION" })
+
+        expect(render(reminder)).toBe("Falha ao avisar o cidadão do lembrete")
+        expect(render(cancellation)).toBe("Falha ao avisar o cidadão do cancelamento")
+    })
+
+    it("só permite tentar de novo na falha do aviso de cancelamento", () => {
+        const flags = [
+            event("CITIZEN_NOTIFICATION_FAILED", null, { kind: "CANCELLATION" }),
+            event("CITIZEN_NOTIFICATION_FAILED", null, { kind: "REMINDER" }),
+            event("CITIZEN_NOTIFICATION_FAILED", null),
+            event("CITIZEN_NOTIFIED", null, { kind: "CANCELLATION" })
+        ].map((value) => {
+            const label = appointmentEventLabel(value)
+
+            return [label.highlight, label.retryable]
+        })
+
+        expect(flags).toEqual([
+            [true, true],
+            [true, false],
+            [true, false],
+            [false, false]
+        ])
     })
 })

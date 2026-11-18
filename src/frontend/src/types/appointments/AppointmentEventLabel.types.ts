@@ -6,6 +6,7 @@ type AppointmentEventLabel = {
     key: `history.events.${keyof HistoryEvents}.${"withActor" | "withoutActor"}`
     values: Record<string, string>
     highlight: boolean
+    retryable: boolean
 }
 
 export default AppointmentEventLabel

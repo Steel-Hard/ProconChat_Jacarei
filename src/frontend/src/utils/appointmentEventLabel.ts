@@ -31,6 +31,10 @@ function eventKeyOf(event: AppointmentEvent): EventKey {
         return "autoClaimed"
     }
 
+    if (event.type === "CITIZEN_NOTIFICATION_FAILED" && event.data.kind === "REMINDER") {
+        return "reminderFailed"
+    }
+
     return EVENT_KEYS[event.type]
 }
 
@@ -41,7 +45,9 @@ function appointmentEventLabel(event: AppointmentEvent): AppointmentEventLabel {
     return {
         key: `history.events.${eventKeyOf(event)}.${variant}`,
         values: name === null ? {} : { name },
-        highlight: event.type === "CITIZEN_NOTIFICATION_FAILED"
+        highlight: event.type === "CITIZEN_NOTIFICATION_FAILED",
+        retryable:
+            event.type === "CITIZEN_NOTIFICATION_FAILED" && event.data.kind === "CANCELLATION"
     }
 }
 
