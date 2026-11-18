@@ -20,7 +20,7 @@ function ReportsCategories({ categories }: Props) {
                 />
             </h2>
             {categories.length ? (
-                <ol className={css.rankList}>
+                <ol className={css.rankList} aria-labelledby="categories-heading">
                     {categories.map((category) => (
                         <li key={category.categoryId} className={css.categoryItem}>
                             <div className={css.categoryLine}>

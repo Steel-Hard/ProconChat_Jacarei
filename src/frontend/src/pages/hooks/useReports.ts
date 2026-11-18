@@ -56,9 +56,9 @@ function useReports() {
 
     return {
         report,
-        firstLoading: report === undefined && query.isLoading,
+        firstLoading: report === undefined && query.isFetching,
         refreshing: report !== undefined && query.isFetching,
-        failed: query.isError,
+        failed: query.isError && !query.isFetching,
         refetch: () => void query.refetch(),
         preset,
         selectPreset,

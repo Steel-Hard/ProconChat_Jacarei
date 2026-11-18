@@ -63,14 +63,16 @@
     },
     "appointments": {
         "heading": "Resultado dos agendamentos",
-        "noShowRate": "Taxa de não comparecimento: {{rate}}%",
-        "recordedTotal": "{{count}} atendimentos com registro",
+        "noShowRateLabel": "Taxa de não comparecimento",
+        "noShowRate": "{{rate}}%",
+        "noShowDetail": "{{noShow}} não compareceram de {{recorded}} agendamentos já registrados (Atendido ou Não compareceu).",
+        "rowValue": " · {{percent}}%",
         "total": "Total com atendimento no período",
         "results": {
             "attended": "Atendido",
             "noShow": "Não compareceu",
             "canceled": "Cancelado",
-            "waitingRecord": "Aguardando registro",
+            "waitingRecord": "Aguardando registro (horário já passou)",
             "upcoming": "Pendente ou Confirmado (ainda futuro)"
         }
     },
@@ -101,7 +103,12 @@
         },
         "appointments": {
             "label": "Definição do resultado dos agendamentos",
-            "text": "O período considera a data do atendimento, independentemente de quando o agendamento foi criado. A taxa de não comparecimento é Não compareceu dividido pela soma de Atendido e Não compareceu. Cancelados, aguardando registro e atendimentos futuros não entram nessa taxa."
+            "text": "Situação atual dos agendamentos cuja data do atendimento está no período selecionado, independentemente de quando foram criados."
+        },
+        "noShowRate": {
+            "label": "Definição da taxa de não comparecimento",
+            "text": "Não compareceu dividido por (Atendido + Não compareceu), entre os agendamentos com atendimento no período. Cancelados, aguardando registro e futuros não entram na conta."
         }
-    }
+    },
+    "loading": "Carregando…"
 }

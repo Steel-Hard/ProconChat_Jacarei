@@ -330,3 +330,129 @@
     font-size: 13.5px;
     color: var(--text-muted);
 }
+
+.resultGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+    align-items: start;
+    gap: 18px;
+}
+
+.rateCard {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 18px;
+    border: 1px solid;
+    border-radius: 12px;
+}
+
+.rateTitle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.rateValue {
+    font: 800 40px var(--font-heading);
+    color: var(--no-show-strong);
+}
+
+.rateDetail {
+    margin: 0;
+    font-size: 12.5px;
+}
+
+.resultList {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.resultRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 0;
+    border-top: 1px solid var(--divider);
+}
+
+.pill {
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.pillWaiting {
+    background: var(--warn-bg);
+    color: var(--warn-text);
+}
+
+.resultValue {
+    font-size: 13.5px;
+    white-space: nowrap;
+}
+
+.resultValue span {
+    color: var(--text-muted);
+}
+
+.resultTotal {
+    display: flex;
+    justify-content: space-between;
+    padding: 9px 0;
+    border-top: 1px solid var(--border);
+    font-size: 13.5px;
+    font-weight: 700;
+}
+
+.refreshing {
+    opacity: 0.6;
+}
+
+.loading {
+    display: block;
+    margin: 0;
+    font-size: 13.5px;
+    color: var(--text-muted);
+}
+
+.alert {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 11px 13px;
+    border: 1px solid var(--error-border);
+    border-radius: 9px;
+    background: var(--error-soft-bg);
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--error-text);
+}
+
+.alert p {
+    margin: 0;
+}
+
+.retry {
+    padding: 9px 14px;
+    border: 1px solid var(--border-input);
+    border-radius: 8px;
+    background: var(--bg-surface);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-strong);
+    cursor: pointer;
+}
+
+.retry:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}

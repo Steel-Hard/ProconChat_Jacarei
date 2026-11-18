@@ -19,7 +19,7 @@ function ReportsQuestions({ questions }: Props) {
                 />
             </h2>
             {questions.length ? (
-                <ol className={css.questionList}>
+                <ol className={css.questionList} aria-labelledby="questions-heading">
                     {questions.map((question, index) => (
                         <li key={question.questionId} className={css.questionItem}>
                             <span className={css.questionPosition}>{index + 1}</span>
