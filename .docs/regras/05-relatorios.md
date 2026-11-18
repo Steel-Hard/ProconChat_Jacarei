@@ -31,7 +31,7 @@ Cada conversa tem **exatamente um desfecho**, e todos somam 100%. Ver [decisão 
 | Resolvida sem agendamento | O cidadão respondeu que a dúvida foi resolvida |
 | Terminou em agendamento | Um agendamento foi criado |
 | Fora do escopo do PROCON | Recebeu a orientação para procurar outro órgão |
-| Sem horário disponível na janela | Quis agendar, mas não havia horário livre. **Em destaque vermelho** |
+| Sem horário disponível na janela | Quis agendar, mas não havia horário livre. **Em destaque vermelho**, com link para Horários de atendimento |
 | Não quis agendar | Recebeu a oferta de agendamento e recusou |
 | Remarcou ou cancelou agendamento existente | Voltou ao chatbot só para isso |
 | Abandonada | 30 minutos sem interação antes de um desfecho |
