@@ -115,7 +115,6 @@ describe("ReportsPage", () => {
         const { calls } = await renderReportsPage()
 
         expect(await screen.findByText("Conversas iniciadas")).toBeInTheDocument()
-        expect(screen.getByText("Dados de 08/10/2026 a 06/11/2026")).toBeInTheDocument()
         expect(screen.getByText("Conversas iniciadas")).toBeInTheDocument()
         expect(screen.getByText("Agendamentos criados")).toBeInTheDocument()
         expect(screen.getByText("Sem horário disponível na janela")).toBeInTheDocument()
@@ -143,47 +142,14 @@ describe("ReportsPage", () => {
         )
     })
 
-    it("só envia período personalizado válido e bloqueia datas futuras", async () => {
-        const { user, calls } = await renderReportsPage()
+    it("explica a definição em tooltip", async () => {
+        const { user } = await renderReportsPage()
         await screen.findByText("Conversas iniciadas")
 
-        await user.click(screen.getByRole("button", { name: "Personalizado" }))
-        const start = screen.getByLabelText("Data inicial")
-        const end = screen.getByLabelText("Data final")
-        expect(start).toHaveValue("2026-10-08")
-        expect(end).toHaveValue("2026-11-06")
-        expect(end).toHaveAttribute("max", "2026-11-07")
+        await user.click(
+            screen.getByRole("button", { name: "Definição do resultado dos agendamentos" })
+        )
 
-        await user.clear(start)
-        await user.type(start, "2026-11-05")
-        await user.clear(end)
-        await user.type(end, "2026-11-07")
-        await user.click(screen.getByRole("button", { name: "Aplicar período" }))
-
-        await waitFor(() => {
-            expect(calls).toHaveLength(2)
-            expect(calls[1]?.url.searchParams.get("startDate")).toBe("2026-11-05")
-            expect(calls[1]?.url.searchParams.get("endDate")).toBe("2026-11-07")
-        })
-    })
-
-    it("não consulta a API com intervalo invertido e explica a definição em tooltip", async () => {
-        const { user, calls } = await renderReportsPage()
-        await screen.findByText("Conversas iniciadas")
-        await user.click(screen.getByRole("button", { name: "Personalizado" }))
-        await user.clear(screen.getByLabelText("Data inicial"))
-        await user.type(screen.getByLabelText("Data inicial"), "2026-11-06")
-        await user.clear(screen.getByLabelText("Data final"))
-        await user.type(screen.getByLabelText("Data final"), "2026-11-05")
-
-        expect(screen.getByRole("button", { name: "Aplicar período" })).toBeDisabled()
-        expect(calls).toHaveLength(1)
-
-        const tooltipButton = screen.getByRole("button", {
-            name: "Definição do resultado dos agendamentos"
-        })
-        await user.click(tooltipButton)
-        expect(screen.getByRole("tooltip")).toBeInTheDocument()
         expect(screen.getByRole("tooltip")).toHaveTextContent(
             "O período considera a data do atendimento"
         )

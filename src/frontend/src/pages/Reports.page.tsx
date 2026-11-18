@@ -1,19 +1,10 @@
-import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import InfoTooltip from "@/components/InfoTooltip"
-import reportsApi from "@/store/api/reports.api"
-import type ReportPeriodPreset from "@/types/reports/ReportPeriodPreset.types"
-import type { ReportOutcome } from "@/types/reports/ReportsSummary.types"
-import formatDate from "@/utils/formatDate"
+import ReportsPeriod from "@/components/ReportsPeriod"
+import useReports from "@/pages/hooks/useReports"
+import type ReportOutcome from "@/types/reports/ReportOutcome.types"
 import css from "@/styles/pages/reports.module.css"
-
-const PRESETS: Exclude<ReportPeriodPreset, "custom">[] = [
-    "7d",
-    "30d",
-    "90d",
-    "current_month",
-    "previous_month"
-]
+import sections from "@/styles/components/reportSections.module.css"
 
 const OUTCOMES: ReportOutcome[] = [
     "RESOLVED",
@@ -30,150 +21,47 @@ const numberFormatter = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 
 
 function ReportsPage() {
     const { t } = useTranslation(["reports", "common"])
-    const [preset, setPreset] = useState<ReportPeriodPreset>("30d")
-    const [queryPreset, setQueryPreset] = useState<Exclude<ReportPeriodPreset, "custom">>("30d")
-    const [startDate, setStartDate] = useState("")
-    const [endDate, setEndDate] = useState("")
-    const [customMaxDate, setCustomMaxDate] = useState<string | null>(null)
-    const [appliedCustom, setAppliedCustom] = useState<{
-        startDate: string
-        endDate: string
-    } | null>(null)
-
-    const queryArg =
-        preset === "custom" && appliedCustom
-            ? { period: "custom" as const, ...appliedCustom }
-            : { period: preset === "custom" ? queryPreset : preset }
-    const query = reportsApi.useGetReportsQuery(queryArg)
-    const report = query.data
-    const maxCustomDate = report?.period.today ?? customMaxDate
-    const customRangeValid =
-        startDate !== "" &&
-        endDate !== "" &&
-        startDate <= endDate &&
-        maxCustomDate !== null &&
-        maxCustomDate !== undefined &&
-        endDate <= maxCustomDate
-
-    function selectPreset(value: ReportPeriodPreset) {
-        setPreset(value)
-        setAppliedCustom(null)
-
-        if (value === "custom") {
-            if (report) {
-                setStartDate(report.period.startDate)
-                setEndDate(report.period.endDate)
-                setCustomMaxDate(report.period.today)
-            }
-        } else {
-            setQueryPreset(value)
-        }
-    }
-
-    function applyCustomRange() {
-        if (customRangeValid) {
-            setAppliedCustom({ startDate, endDate })
-        }
-    }
+    const reports = useReports()
+    const report = reports.report
 
     return (
         <>
             <title>{t("meta.title")}</title>
-            <section className={css.page}>
-                <header className={css.header}>
+            <section className={sections.page}>
+                <header className={sections.header}>
                     <div>
-                        <h1 className={css.title}>{t("heading")}</h1>
-                        <p className={css.subtitle}>{t("subtitle")}</p>
+                        <h1 className={sections.title}>{t("heading")}</h1>
+                        <p className={sections.subtitle}>
+                            {reports.range
+                                ? t(
+                                      reports.range.untilNow
+                                          ? "subtitle.withPeriodUntilNow"
+                                          : "subtitle.withPeriod",
+                                      { start: reports.range.start, end: reports.range.end }
+                                  )
+                                : t("subtitle.base")}
+                        </p>
                     </div>
                 </header>
 
-                <section className={css.card} aria-labelledby="report-period-heading">
-                    <h2 className={css.sectionTitle} id="report-period-heading">
-                        {t("period.heading")}
-                    </h2>
-                    <div className={css.periodOptions}>
-                        {PRESETS.map((value) => (
-                            <button
-                                key={value}
-                                type="button"
-                                className={css.periodButton}
-                                aria-pressed={preset === value}
-                                onClick={() => selectPreset(value)}
-                            >
-                                {t(`period.presets.${value}`)}
-                            </button>
-                        ))}
-                        <button
-                            type="button"
-                            className={css.periodButton}
-                            aria-pressed={preset === "custom"}
-                            disabled={report === undefined || query.isFetching}
-                            onClick={() => selectPreset("custom")}
-                        >
-                            {t("period.presets.custom")}
-                        </button>
-                    </div>
-                    {preset === "custom" ? (
-                        <div className={css.customPeriod}>
-                            <label className={css.dateField}>
-                                {t("period.startDate")}
-                                <input
-                                    type="date"
-                                    value={startDate}
-                                    max={maxCustomDate ?? undefined}
-                                    aria-invalid={
-                                        startDate !== "" && startDate > endDate && endDate !== ""
-                                    }
-                                    onChange={(event) => {
-                                        setStartDate(event.target.value)
-                                        setAppliedCustom(null)
-                                    }}
-                                />
-                            </label>
-                            <label className={css.dateField}>
-                                {t("period.endDate")}
-                                <input
-                                    type="date"
-                                    value={endDate}
-                                    max={maxCustomDate ?? undefined}
-                                    aria-invalid={
-                                        endDate !== "" &&
-                                        ((startDate !== "" && endDate < startDate) ||
-                                            (maxCustomDate !== null &&
-                                                maxCustomDate !== undefined &&
-                                                endDate > maxCustomDate))
-                                    }
-                                    onChange={(event) => {
-                                        setEndDate(event.target.value)
-                                        setAppliedCustom(null)
-                                    }}
-                                />
-                            </label>
-                            <button
-                                type="button"
-                                className={css.applyButton}
-                                disabled={!customRangeValid || query.isFetching}
-                                onClick={applyCustomRange}
-                            >
-                                {t("period.apply")}
-                            </button>
-                            {!customRangeValid && (startDate !== "" || endDate !== "") ? (
-                                <p className={css.validation} role="alert">
-                                    {t("period.invalidRange")}
-                                </p>
-                            ) : null}
-                        </div>
-                    ) : null}
-                </section>
+                <ReportsPeriod
+                    preset={reports.preset}
+                    startDate={reports.startDate}
+                    endDate={reports.endDate}
+                    today={reports.today}
+                    onSelect={reports.selectPreset}
+                    onChangeStart={reports.changeStartDate}
+                    onChangeEnd={reports.changeEndDate}
+                />
 
-                {query.isFetching ? <p className={css.loading}>{t("common:loading")}</p> : null}
-                {query.isError ? (
+                {reports.firstLoading ? <p className={css.loading}>{t("common:loading")}</p> : null}
+                {reports.failed ? (
                     <div className={css.alert}>
                         <p role="alert">{t("loadFailed")}</p>
                         <button
                             type="button"
                             className={css.retryButton}
-                            onClick={() => void query.refetch()}
+                            onClick={() => reports.refetch()}
                         >
                             {t("retry")}
                         </button>
@@ -181,13 +69,6 @@ function ReportsPage() {
                 ) : null}
                 {report ? (
                     <>
-                        <p className={css.selectedPeriod}>
-                            {t("period.selected", {
-                                start:
-                                    formatDate(report.period.startDate) ?? report.period.startDate,
-                                end: formatDate(report.period.endDate) ?? report.period.endDate
-                            })}
-                        </p>
                         <section className={css.section} aria-labelledby="conversations-heading">
                             <div className={css.sectionHeader}>
                                 <h2 className={css.sectionTitle} id="conversations-heading">

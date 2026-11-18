@@ -3,7 +3,11 @@
         "title": "Relatórios - ProconChat"
     },
     "heading": "Relatórios",
-    "subtitle": "Acompanhe o uso do chatbot e os resultados dos atendimentos presenciais.",
+    "subtitle": {
+        "base": "Uso do chatbot e dos agendamentos presenciais",
+        "withPeriod": "Uso do chatbot e dos agendamentos presenciais · {{start}} a {{end}}",
+        "withPeriodUntilNow": "Uso do chatbot e dos agendamentos presenciais · {{start}} a {{end}} (hoje até agora)"
+    },
     "loadFailed": "Não foi possível carregar os relatórios.",
     "retry": "Tentar novamente",
     "period": {
@@ -16,11 +20,8 @@
             "previous_month": "Mês anterior",
             "custom": "Personalizado"
         },
-        "startDate": "Data inicial",
-        "endDate": "Data final",
-        "apply": "Aplicar período",
-        "invalidRange": "Informe um período válido, com data final igual ou posterior à inicial e até hoje.",
-        "selected": "Dados de {{start}} a {{end}}"
+        "from": "De",
+        "until": "até"
     },
     "conversations": {
         "heading": "Conversas no período",

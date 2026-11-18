@@ -1,14 +1,5 @@
+import type ReportOutcome from "@/types/reports/ReportOutcome.types"
 import type ReportPeriodPreset from "@/types/reports/ReportPeriodPreset.types"
-
-type ReportOutcome =
-    | "RESOLVED"
-    | "SCHEDULED"
-    | "OUT_OF_SCOPE"
-    | "NO_SLOT"
-    | "DECLINED"
-    | "MANAGED_APPOINTMENT"
-    | "ABANDONED"
-    | "IN_PROGRESS"
 
 type ReportsSummary = {
     period: {
@@ -54,5 +45,4 @@ type ReportsSummary = {
     }
 }
 
-export type { ReportOutcome }
 export default ReportsSummary

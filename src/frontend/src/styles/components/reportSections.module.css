@@ -1,0 +1,94 @@
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 16px;
+}
+
+.title {
+    margin: 0;
+    font: 700 26px var(--font-heading);
+    letter-spacing: -0.01em;
+}
+
+.subtitle {
+    margin: 6px 0 0;
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.periodRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    min-inline-size: 0;
+    margin: 0;
+    padding: 3px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--bg-surface);
+}
+
+.chip {
+    padding: 7px 12px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--text-strong);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.chip[aria-pressed="true"] {
+    background: var(--color-primary);
+    color: var(--bg-surface);
+}
+
+.chip[aria-pressed="false"]:hover {
+    filter: brightness(0.94);
+}
+
+.chip:focus-visible,
+.dateInput:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
+.customPeriod {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.dateField {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.dateInput {
+    padding: 7px 9px;
+    border: 1px solid var(--border-input);
+    border-radius: 8px;
+    background: var(--bg-surface);
+    font-size: 13px;
+}

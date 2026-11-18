@@ -1,10 +1,6 @@
 import api from "@/store/api"
-import type ReportPeriodPreset from "@/types/reports/ReportPeriodPreset.types"
+import type ReportsQuery from "@/types/reports/ReportsQuery.types"
 import type ReportsSummary from "@/types/reports/ReportsSummary.types"
-
-type ReportsQuery =
-    | { period: Exclude<ReportPeriodPreset, "custom"> }
-    | { period: "custom"; startDate: string; endDate: string }
 
 type Envelope<T> = { data: T }
 
@@ -30,5 +26,4 @@ const reportsApi = api.injectEndpoints({
     })
 })
 
-export type { ReportsQuery }
 export default reportsApi
