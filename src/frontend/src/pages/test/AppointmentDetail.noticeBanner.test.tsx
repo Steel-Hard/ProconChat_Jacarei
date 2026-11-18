@@ -1,5 +1,5 @@
 import { screen, waitFor, within } from "@testing-library/react"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import buildAppointmentDetail from "@/testUtils/buildAppointmentDetail"
 import renderAppointmentDetailPage from "@/testUtils/renderAppointmentDetailPage"
 import type AppointmentDetail from "@/types/appointments/AppointmentDetail.types"
@@ -71,7 +71,15 @@ function actionsBox(): ReturnType<typeof within> {
     return within(heading.closest("section") as HTMLElement)
 }
 
+const BEFORE = "2026-10-19T10:59:59.000Z"
+const AT_START = "2026-10-19T11:00:00.000Z"
+
+beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date(BEFORE) })
+})
+
 afterEach(() => {
+    vi.useRealTimers()
     vi.unstubAllGlobals()
     vi.unstubAllEnvs()
     vi.resetModules()
@@ -176,5 +184,71 @@ describe("AppointmentDetail: Tentar novamente escondido", () => {
         await renderDetail(canceled("FAILED", { allowed: true, code: null }))
 
         expect(screen.getByRole("button", { name: "Tentar novamente" })).toBeInTheDocument()
+    })
+})
+
+describe("AppointmentDetail: faixas de aviso somem quando o horário já passou", () => {
+    const CASES = [
+        [
+            "cancelado sem aviso",
+            () => canceled("DISABLED"),
+            "O cidadão não foi avisado pelo sistema: avise por outro meio."
+        ],
+        [
+            "falha com o aviso desligado",
+            () => canceled("FAILED", { allowed: false, code: "NOTIFICATION_DISABLED" }),
+            "O aviso ao cidadão falhou e o aviso por WhatsApp está desligado"
+        ],
+        [
+            "falta de telefone",
+            () => canceled("FAILED", { allowed: false, code: "CITIZEN_PHONE_UNAVAILABLE" }),
+            "não há telefone disponível para o envio"
+        ]
+    ] as const
+
+    it.each(CASES)(
+        "mostra a faixa de %s com o atendimento no futuro",
+        async (_name, build, text) => {
+            await renderDetail(build())
+
+            expect(actionsBox().getByText(new RegExp(text))).toBeInTheDocument()
+        }
+    )
+
+    it.each(CASES)("esconde a faixa de %s no instante do horário", async (_name, build, text) => {
+        vi.setSystemTime(new Date(AT_START))
+        await renderDetail(build())
+
+        expect(actionsBox().queryByText(new RegExp(text))).toBeNull()
+    })
+
+    it.each(CASES)(
+        "esconde a faixa de %s com o atendimento já passado",
+        async (_name, build, text) => {
+            vi.setSystemTime(new Date("2026-10-25T00:00:00.000Z"))
+            await renderDetail(build())
+
+            expect(actionsBox().queryByText(new RegExp(text))).toBeNull()
+        }
+    )
+
+    it("mantém o evento no histórico mesmo sem a faixa", async () => {
+        vi.setSystemTime(new Date("2026-10-25T00:00:00.000Z"))
+        await renderDetail(
+            canceled("DISABLED", undefined, [
+                {
+                    id: "9",
+                    type: "CITIZEN_NOTICE_DISABLED",
+                    actor_user_id: null,
+                    actor_user_name: null,
+                    data: {},
+                    created_at: "2026-10-18T14:00:01.000Z"
+                }
+            ])
+        )
+
+        expect(
+            screen.getByText("Aviso ao cidadão desativado: cidadão não avisado pelo sistema")
+        ).toBeInTheDocument()
     })
 })

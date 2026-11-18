@@ -6,6 +6,8 @@ import useAppDispatch from "@/store/useAppDispatch"
 import type AppointmentDetail from "@/types/appointments/AppointmentDetail.types"
 import type CancellationReason from "@/types/appointments/CancellationReason.types"
 import appointmentActionErrorKey from "@/utils/appointmentActionErrorKey"
+import useNowMs from "@/hooks/useNowMs"
+import appointmentHasPassed from "@/utils/appointmentHasPassed"
 import cancellationNoticeOutcomeOf from "@/utils/cancellationNoticeOutcomeOf"
 import errorStatusOf from "@/utils/errorStatusOf"
 
@@ -23,6 +25,7 @@ const WARNING_KEYS = {
 } as const
 
 function useAppointmentCancellation({ detail, canManage }: Options) {
+    const nowMs = useNowMs()
     const { t } = useTranslation(["appointmentDetail", "common"])
     const { showToast } = useToast()
     const dispatch = useAppDispatch()
@@ -167,7 +170,9 @@ function useAppointmentCancellation({ detail, canManage }: Options) {
             detail.cancellation_notice_status !== "DISABLED" &&
             detail.cancellation_notice_status !== "NOTIFIED",
         failedNotice:
-            detail !== undefined && cancellationNoticeOutcomeOf(detail) !== "ok"
+            detail !== undefined &&
+            !appointmentHasPassed(detail.appointment_datetime, nowMs) &&
+            cancellationNoticeOutcomeOf(detail) !== "ok"
                 ? t(
                       `common:appointmentActions.warnings.${WARNING_KEYS[cancellationNoticeOutcomeOf(detail)]}`,
                       {

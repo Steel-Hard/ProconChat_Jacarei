@@ -1,5 +1,5 @@
 import { screen, waitFor, within } from "@testing-library/react"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import buildAppointmentDetail from "@/testUtils/buildAppointmentDetail"
 import renderAppointmentDetailPage from "@/testUtils/renderAppointmentDetailPage"
 import type AppointmentDetail from "@/types/appointments/AppointmentDetail.types"
@@ -137,7 +137,12 @@ function historyBox(): ReturnType<typeof within> {
     return within(heading.closest("section") as HTMLElement)
 }
 
+beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-10-19T10:59:59.000Z") })
+})
+
 afterEach(() => {
+    vi.useRealTimers()
     vi.unstubAllGlobals()
     vi.unstubAllEnvs()
     vi.resetModules()
