@@ -282,6 +282,10 @@ describe("AppointmentDetail: cancelamento e reenvio do aviso", () => {
             within(dialog).getByRole("button", { name: "Cancelar e avisar o cidadão" })
         )
 
+        expect(
+            within(dialog).getByRole("button", { name: "Cancelar e avisar o cidadão" })
+        ).toBeDisabled()
+        await new Promise((resolve) => setTimeout(resolve, 150))
         expect(page.requests("PATCH", STATUS_PATH)).toHaveLength(0)
         await page.user.click(
             within(dialog).getByRole("button", { name: "Tentar carregar a prévia novamente" })
