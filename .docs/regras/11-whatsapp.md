@@ -100,6 +100,28 @@ Mensagens enviadas fora da conversa precisam de modelo aprovado pela Meta ([deci
 - Se algum não estiver aprovado: "Enquanto este modelo não for aprovado, [lembretes / avisos de cancelamento] não serão enviados."
 - Se o modelo estiver **Rejeitado**, o alerta acrescenta, depois da frase acima: "A Meta rejeitou o modelo: revise o texto no Gerenciador do WhatsApp e envie novamente."
 
+### Aviso de cancelamento ao cidadão
+
+Issue #164, [decisão 005](../decisoes/005-mensagens-ao-cidadao.md). Um cartão com o interruptor **"Avisar o cidadão por WhatsApp quando a equipe cancelar um agendamento"**, **desligado por padrão**, que fica depois de "Modelos de mensagem".
+
+- Texto de apoio: "Cada aviso de cancelamento é uma mensagem de modelo e tem custo por mensagem cobrado pela Meta. Os avisos contam no limite diário de envios da Meta. Com o aviso desligado, o agendamento é cancelado sem avisar o cidadão e a equipe precisa avisar por outro meio."
+- **Age na hora**, sem passar pelo Salvar ([regras gerais §3](00-regras-gerais.md#3-salvar-descartar-e-registrar-quem-alterou)), e **pede confirmação nos dois sentidos**:
+  - **Ligar:** título "Ligar o aviso de cancelamento?", texto "Quando a equipe cancelar um agendamento, o cidadão receberá uma mensagem pelo WhatsApp. Cada aviso é uma mensagem de modelo e tem custo por mensagem cobrado pela Meta.", botões "Ligar aviso" e "Voltar".
+  - **Desligar:** título "Desligar o aviso de cancelamento?", texto "Quando a equipe cancelar um agendamento, o cidadão NÃO será avisado pelo sistema. A equipe precisa avisar por outro meio.", botões "Desligar aviso" e "Voltar".
+- Só o Admin muda o interruptor, validado no servidor. Cada mudança entra no **Histórico de alterações** com quem e quando.
+- **O que muda no cancelamento:** ver [Detalhe do agendamento](04-detalhe-do-agendamento.md#modal-de-cancelamento) e o cancelamento em massa em [Horários de atendimento](08-horarios-de-atendimento.md). Não vale para o lembrete, que tem o próprio liga e desliga.
+- **Faixa "O aviso pode não chegar: [motivo]"**, no cartão e no modal de cancelar, com o aviso ligado. Só entram **problemas da conta**, não do destinatário. Aparece quando há uma falha de envio nas **últimas 24 horas** (a mesma janela das falhas de entrega) e nenhum envio bem-sucedido depois dela, ou quando o estado atual já mostra o problema. Frases:
+
+  | Situação | Frase |
+  |---|---|
+  | Erro 131042 | a conta da Meta está sem forma de pagamento |
+  | Erro 132001 | o modelo de aviso não existe na Meta |
+  | Erros 132000 e 132005 | o texto do modelo cadastrado na Meta não confere com o do sistema |
+  | Erro 190, credenciais inválidas | o token da Meta está inválido ou expirado |
+  | Modelo não aprovado ou pausado | o modelo de aviso não está aprovado na Meta |
+
+  Os erros 131026 (mensagem não entregável) e 131049 (limite de envio proativo) dizem respeito àquele cidadão, não à conta: não geram a faixa e aparecem só na falha do Histórico do agendamento. Os códigos acima seguem a lista que a equipe usou; só o 131042 foi confirmado na documentação oficial da Meta (17/11/2026), os demais **não foram confirmados** e devem ser conferidos antes da entrega.
+
 ### Privacidade
 
 **Entregue (issue #69).** Dados de quem responde pelo tratamento dos dados pessoais ([decisão 002](../decisoes/002-lgpd-dados-pessoais.md)). Eles mudam na passagem para o PROCON, por isso ficam no painel e não no código.
@@ -159,6 +181,7 @@ Quem alterou o quê e quando. **Os valores do token e do App Secret não são re
 | Editar IDs, substituir segredos | **Segue o padrão de salvar** ([regras gerais](00-regras-gerais.md#3-salvar-descartar-e-registrar-quem-alterou)). Salvar credenciais novas exige teste bem-sucedido |
 | Testar conexão | Pode ser feito a qualquer momento |
 | Atualizar status dos modelos | Consulta os modelos e o estado do número na Meta de novo (#127) |
+| **Ligar ou desligar o aviso de cancelamento ao cidadão** | **Age na hora**, com diálogo de confirmação nos dois sentidos (issue #164). Só o Admin |
 | **Pausar respostas automáticas** | **Age na hora**, sem passar pelo Salvar, porque é de emergência. Pede confirmação: "O chatbot deixará de responder aos cidadãos até ser reativado" |
 | **Reativar respostas** | Age na hora, sem confirmação |
 

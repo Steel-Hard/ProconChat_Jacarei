@@ -111,7 +111,7 @@ Ao salvar, o sistema verifica se algum agendamento **Pendente ou Confirmado futu
 **Quando a issue #75 for feita:** se houver afetados, abre a janela **"Esta alteração afeta N agendamentos"** com a lista e três opções:
 
 - **Manter os agendamentos:** continuam válidos e ganham o selo "Fora da grade atual" (não são apontados de novo em mudanças futuras). Nenhum aviso é enviado.
-- **Cancelar e avisar os cidadãos:** cancela todos com o motivo "Unidade fechada nesta data" (bloqueios) ou "Outro motivo" (demais casos), envia o aviso pelo WhatsApp e registra no histórico de cada um.
+- **Cancelar e avisar os cidadãos:** cancela todos com o motivo "Unidade fechada nesta data" (bloqueios) ou "Outro motivo" (demais casos), envia o aviso pelo WhatsApp e registra no histórico de cada um. Isso vale **com o aviso de cancelamento ligado** na tela de WhatsApp. Com o aviso desligado (padrão), a opção se chama **"Cancelar agendamentos"**, o modal diz que os cidadãos não serão avisados pelo sistema e que a equipe deve avisá-los por outro meio, e cada histórico registra "Aviso ao cidadão desativado: cidadão não avisado pelo sistema".
 - **Voltar sem salvar.**
 
 ## O que não existe de propósito
