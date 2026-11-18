@@ -102,15 +102,15 @@ Mensagens enviadas fora da conversa precisam de modelo aprovado pela Meta ([deci
 
 ### Aviso de cancelamento ao cidadão
 
-Issue #164, [decisão 005](../decisoes/005-mensagens-ao-cidadao.md). Um cartão com o interruptor **"Avisar o cidadão por WhatsApp quando a equipe cancelar um agendamento"**, **desligado por padrão**, que fica depois de "Modelos de mensagem".
+Issue #164, [decisão 005](../decisoes/005-mensagens-ao-cidadao.md). Um cartão com o interruptor **"Avisar o cidadão por WhatsApp quando a equipe cancelar um agendamento"**, **desligado por padrão**, que fica **antes** de "Modelos de mensagem": o Admin vê o interruptor e, logo abaixo, o status dos modelos. O cartão **não mostra "Última alteração por"**: a auditoria do interruptor fica só no Histórico de alterações.
 
 - Texto de apoio: "Cada aviso de cancelamento é uma mensagem de modelo e tem custo por mensagem cobrado pela Meta. Os avisos contam no limite diário de envios da Meta. Com o aviso desligado, o agendamento é cancelado sem avisar o cidadão e a equipe precisa avisar por outro meio."
 - **Age na hora**, sem passar pelo Salvar ([regras gerais §3](00-regras-gerais.md#3-salvar-descartar-e-registrar-quem-alterou)), e **pede confirmação nos dois sentidos**:
   - **Ligar:** título "Ligar o aviso de cancelamento?", texto "Quando a equipe cancelar um agendamento, o cidadão receberá uma mensagem pelo WhatsApp. Cada aviso é uma mensagem de modelo e tem custo por mensagem cobrado pela Meta.", botões "Ligar aviso" e "Voltar".
   - **Desligar:** título "Desligar o aviso de cancelamento?", texto "Quando a equipe cancelar um agendamento, o cidadão NÃO será avisado pelo sistema. A equipe precisa avisar por outro meio.", botões "Desligar aviso" e "Voltar".
-- Só o Admin muda o interruptor, validado no servidor. Cada mudança entra no **Histórico de alterações** com quem e quando.
+- Só o Admin muda o interruptor, validado no servidor. Cada mudança entra no **Histórico de alterações** com quem e quando, com o texto **"Aviso ao cidadão ligado"** ou **"Aviso ao cidadão desligado"**.
 - **O que muda no cancelamento:** ver [Detalhe do agendamento](04-detalhe-do-agendamento.md#modal-de-cancelamento) e o cancelamento em massa em [Horários de atendimento](08-horarios-de-atendimento.md). Não vale para o lembrete, que tem o próprio liga e desliga.
-- **Faixa "O aviso pode não chegar: [motivo]"**, no cartão e no modal de cancelar, com o aviso ligado. Só entram **problemas da conta**, não do destinatário. Aparece quando há uma falha de envio nas **últimas 24 horas** (a mesma janela das falhas de entrega) e nenhum envio bem-sucedido depois dela, ou quando o estado atual já mostra o problema. Frases:
+- **Faixa "O aviso pode não chegar: [motivo]"**, no cartão e no modal de cancelar, com o aviso ligado. Só entram **problemas da conta**, não do destinatário. Aparece quando há uma falha de envio nas **últimas 24 horas** (a mesma janela das falhas de entrega) e nenhum envio bem-sucedido depois dela. No **modal de cancelar**, a faixa só aparece para os problemas que o servidor detecta pelos códigos de erro já recebidos, porque quem só gerencia agendamentos não lê as configurações da Meta (que são só do Admin). A frase "o modelo de aviso não está aprovado na Meta", que vem do estado atual dos modelos, aparece **só no cartão, para o Admin**. As frases do modal são as da tabela abaixo. Frases:
 
   | Erro da Meta | Frase |
   |---|---|
