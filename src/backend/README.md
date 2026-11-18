@@ -988,6 +988,11 @@ marcado (no horário ou depois, `409 CANCEL_AFTER_START`).
   "CANCELLATION" }` e quem agiu. Falha do gateway, gateway não configurado ou telefone ausente ou
   ilegível gravam a falha, e o cancelamento continua respondendo `200`. A pausa das respostas
   automáticas não bloqueia o aviso.
+- Quando a Meta recusa o envio, ou avisa depois pelo webhook de status que a entrega falhou, o evento
+  `CITIZEN_NOTIFICATION_FAILED` traz também `data.errorCode` (texto só com dígitos, por exemplo
+  `"131042"`) e a mensagem em `OutboundMessages.error_code` guarda o mesmo código. Só o código é
+  guardado: a mensagem e os detalhes da Meta podem conter o telefone e nunca são lidos. Sem código
+  (rede fora do ar, gateway não configurado), o evento fica só com `kind`.
 - Se o próprio aviso lança depois do `COMMIT` (por exemplo, a gravação do resultado falha), o
   cancelamento responde `200` com o detalhe `CANCELED` e o log registra só o id do agendamento e o
   código do erro, sem telefone. Se a leitura do detalhe também falhar, a resposta é `500`, mas o

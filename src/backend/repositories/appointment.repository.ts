@@ -965,37 +965,39 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             actorUserId: number,
             now: Date = new Date(),
             providerMessageId: string | null = null,
+            errorCode: string | null = null,
         ): Promise<void> {
             await inTransaction(pool, async (client) => {
+                const eventData = outcome === "FAILED" && errorCode !== null ? { kind, errorCode } : { kind }
                 await client.query(
                     `INSERT INTO AppointmentEvents (appointment_id, type, actor_user_id, data, created_at)
                      VALUES ($1, $2::appointment_event_type, $3, $4::jsonb, $5)`,
-                    [id, outcome === "NOTIFIED" ? "CITIZEN_NOTIFIED" : "CITIZEN_NOTIFICATION_FAILED", actorUserId, JSON.stringify({ kind }), now],
+                    [id, outcome === "NOTIFIED" ? "CITIZEN_NOTIFIED" : "CITIZEN_NOTIFICATION_FAILED", actorUserId, JSON.stringify(eventData), now],
                 )
                 if (outcome === "FAILED") {
                     await client.query(
-                        `INSERT INTO OutboundMessages (kind, appointment_id, status, status_at)
-                         VALUES ($1::outbound_kind, $2, 'FAILED', $3)`,
-                        [kind, id, now],
+                        `INSERT INTO OutboundMessages (kind, appointment_id, status, error_code, status_at)
+                         VALUES ($1::outbound_kind, $2, 'FAILED', $3, $4)`,
+                        [kind, id, errorCode, now],
                     )
                     return
                 }
                 if (providerMessageId === null) {
                     return
                 }
-                const sent = await client.query<{ status: string }>(
+                const sent = await client.query<{ status: string; error_code: string | null }>(
                     `INSERT INTO OutboundMessages (provider_message_hash, kind, appointment_id, status, status_at)
                      VALUES ($1, $2::outbound_kind, $3, 'SENT', $4)
                      ON CONFLICT (provider_message_hash) DO UPDATE
                      SET kind = EXCLUDED.kind, appointment_id = EXCLUDED.appointment_id
-                     RETURNING status`,
+                     RETURNING status, error_code`,
                     [hashProviderMessageId(providerMessageId), kind, id, now],
                 )
                 if (sent.rows[0]?.status === "FAILED") {
                     await client.query(
                         `INSERT INTO AppointmentEvents (appointment_id, type, actor_user_id, data, created_at)
                          VALUES ($1, 'CITIZEN_NOTIFICATION_FAILED', NULL, $2::jsonb, $3)`,
-                        [id, JSON.stringify({ kind }), new Date(now.getTime() + 1)],
+                        [id, JSON.stringify(sent.rows[0].error_code === null ? { kind } : { kind, errorCode: sent.rows[0].error_code }), new Date(now.getTime() + 1)],
                     )
                 }
             })

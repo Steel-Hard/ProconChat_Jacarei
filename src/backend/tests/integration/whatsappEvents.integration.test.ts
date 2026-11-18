@@ -251,7 +251,7 @@ describe("Repositorio de mensagens enviadas com Postgres", () => {
         await apply(id, "FAILED", "131047")
 
         expect(await failureEvents(appointmentId)).toEqual([
-            { actor_user_id: null, data: { kind: "CANCELLATION" }, created_at: NOW },
+            { actor_user_id: null, data: { kind: "CANCELLATION", errorCode: "131047" }, created_at: NOW },
         ])
         const target = await createAppointmentRepository().findCancellationNoticeTarget(String(appointmentId))
         expect(target?.lastCancellationNotice).toBe("FAILED")
@@ -416,6 +416,40 @@ describe("Repositorio de mensagens enviadas com Postgres", () => {
         })
     })
 
+    test("aviso recusado com o código da Meta guarda o código no evento e na mensagem, sem telefone", async () => {
+        const appointmentId = await canceledAppointment()
+        const failedAt = new Date("2031-04-02T09:30:00.000Z")
+
+        await createAppointmentRepository().recordCitizenNotification(String(appointmentId), "FAILED", "CANCELLATION", staff.id, failedAt, null, "131042")
+
+        expect(await noticeEvents(appointmentId)).toEqual([
+            { type: "CITIZEN_NOTIFICATION_FAILED", actor_user_id: String(staff.id), data: { kind: "CANCELLATION", errorCode: "131042" }, created_at: failedAt },
+        ])
+        expect((await outboundOfAppointment(appointmentId))[0]?.error_code).toBe("131042")
+    })
+
+    test("failed que chega depois do envio aceito grava um evento de falha com o código da Meta", async () => {
+        const appointmentId = await canceledAppointment()
+        const id = wamid()
+        await createAppointmentRepository().recordCitizenNotification(String(appointmentId), "NOTIFIED", "CANCELLATION", staff.id, NOW, id)
+
+        await apply(id, "FAILED", "131042")
+
+        const events = await noticeEvents(appointmentId)
+        expect(events.map((event) => event.type)).toEqual(["CITIZEN_NOTIFIED", "CITIZEN_NOTIFICATION_FAILED"])
+        expect(events[1]?.data).toEqual({ kind: "CANCELLATION", errorCode: "131042" })
+    })
+
+    test("failed sem código da Meta mantém o evento só com o kind", async () => {
+        const appointmentId = await canceledAppointment()
+        const id = wamid()
+        await createAppointmentRepository().recordCitizenNotification(String(appointmentId), "NOTIFIED", "CANCELLATION", staff.id, NOW, id)
+
+        await apply(id, "FAILED", null)
+
+        expect((await noticeEvents(appointmentId))[1]?.data).toEqual({ kind: "CANCELLATION" })
+    })
+
     test("failed que chega antes da gravacao do envio fica uma linha CANCELLATION FAILED e o historico termina em FAILED, em 5 rodadas", async () => {
         for (let round = 0; round < 5; round += 1) {
             const appointmentId = await canceledAppointment()
@@ -432,7 +466,7 @@ describe("Repositorio de mensagens enviadas com Postgres", () => {
                 {
                     type: "CITIZEN_NOTIFICATION_FAILED",
                     actor_user_id: null,
-                    data: { kind: "CANCELLATION" },
+                    data: { kind: "CANCELLATION", errorCode: "131047" },
                     created_at: new Date(NOW.getTime() + 1),
                 },
             ])

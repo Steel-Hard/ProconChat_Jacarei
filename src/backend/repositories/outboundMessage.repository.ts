@@ -23,7 +23,9 @@ export function createOutboundMessageRepository(pool: Pool = getPool()): Outboun
                                  RETURNING kind, appointment_id
                              )
                              INSERT INTO AppointmentEvents (appointment_id, type, actor_user_id, data, created_at)
-                             SELECT appointment_id, 'CITIZEN_NOTIFICATION_FAILED', NULL, '{"kind":"CANCELLATION"}'::jsonb, $4
+                             SELECT appointment_id, 'CITIZEN_NOTIFICATION_FAILED', NULL,
+                                    CASE WHEN $2::text IS NULL THEN '{"kind":"CANCELLATION"}'::jsonb
+                                         ELSE jsonb_build_object('kind', 'CANCELLATION', 'errorCode', $2::text) END, $4
                              FROM failed
                              WHERE kind = 'CANCELLATION' AND appointment_id IS NOT NULL`,
                             [providerMessageHash, status.errorCode, statusAt, now],

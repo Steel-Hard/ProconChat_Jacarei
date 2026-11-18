@@ -88,6 +88,7 @@ export interface AppointmentRepository {
         actorUserId: number,
         now?: Date,
         providerMessageId?: string | null,
+        errorCode?: string | null,
     ): Promise<void>
 
     countNotifiedPhonesBetween(from: Date, to: Date): Promise<number>

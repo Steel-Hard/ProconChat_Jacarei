@@ -20,7 +20,7 @@ export interface SendTemplateInput {
 
 export type SendTemplateResult =
     | { ok: true; providerMessageId: string | null }
-    | { ok: false; reason: "NOT_CONFIGURED" | "REJECTED" | "UNREACHABLE" }
+    | { ok: false; reason: "NOT_CONFIGURED" | "REJECTED" | "UNREACHABLE"; errorCode?: string }
 
 export interface SendMessagesInput {
     to: string
@@ -49,6 +49,16 @@ async function readProviderMessageId(response: Partial<Pick<Response, "json">>):
         return typeof id === "string" ? id : null
     } catch {
         return null
+    }
+}
+
+async function readProviderErrorCode(response: Partial<Pick<Response, "json">>): Promise<string | undefined> {
+    try {
+        const payload = (await response.json?.()) as { error?: { details?: { providerErrorCode?: unknown } } } | undefined
+        const code = payload?.error?.details?.providerErrorCode
+        return typeof code === "string" && /^\d{1,7}$/.test(code) ? code : undefined
+    } catch {
+        return undefined
     }
 }
 
@@ -102,7 +112,8 @@ export function createGatewayClient({
             }
             if (!response.ok) {
                 logger.log(JSON.stringify({ event: "gateway_template_send_failed", status: response.status }))
-                return { ok: false, reason: "REJECTED" }
+                const errorCode = await readProviderErrorCode(response)
+                return errorCode === undefined ? { ok: false, reason: "REJECTED" } : { ok: false, reason: "REJECTED", errorCode }
             }
             return { ok: true, providerMessageId: await readProviderMessageId(response) }
         },
