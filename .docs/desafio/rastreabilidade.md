@@ -29,6 +29,8 @@ Revisão feita em 27/09/2026, no início da Sprint 2 (15/09 a 19/10/2026), e col
 
 **Nota 4: painel em construção.** O stack foi decidido (React 19 + Vite, a partir do `template-react`). Estão prontos o login, "Minha conta", Agendamentos, Detalhe do agendamento e WhatsApp; enquanto não há Dashboard, a tela inicial (`/`) leva a Agendamentos (PR #115). Dashboard, Relatórios, Conteúdo, Sessões, Horários, Documentos e Usuários continuam "Em construção". O cancelamento pela equipe e as observações internas do agendamento ainda não existem na API.
 
+**Nota 5: aviso de cancelamento ao cidadão.** O aviso de cancelamento por WhatsApp não é requisito do desafio (RF07 e RF08 não dependem dele). Como a Meta cobra cada mensagem de modelo e a conta do projeto não tem forma de pagamento, o aviso é **opcional e nasce desligado** ([decisão 005](../decisoes/005-mensagens-ao-cidadao.md), issue #164). Com ele desligado, o cancelamento funciona igual e a equipe avisa o cidadão por outro meio. Sugestão futura, fora do escopo: o bot informar o cancelamento quando o cidadão escrever e tiver um agendamento cancelado sem aviso.
+
 ## Requisitos não funcionais
 
 | Req. | Situação | O que falta |
