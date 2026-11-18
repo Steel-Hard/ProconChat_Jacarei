@@ -414,7 +414,7 @@ describe("AppointmentDetail: cancelamento e reenvio do aviso", () => {
         const dialog = screen.getByRole("dialog", { name: "Cancelar o agendamento F10464F0?" })
 
         expect(
-            within(dialog).getByText(
+            await within(dialog).findByText(
                 "As mensagens enviadas pelo chatbot seguem modelos fixos e não podem ser editadas livremente. Por isso o aviso pode ser enviado a qualquer momento antes do horário do atendimento."
             )
         ).toBeInTheDocument()
