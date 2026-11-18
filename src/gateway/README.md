@@ -106,7 +106,7 @@ O Backend pede ao gateway o envio de um modelo aprovado pela Meta (hoje, o aviso
   `^[a-z]{2}(_[A-Z]{2})?$` ou algum parâmetro está vazio, tem quebra de linha, tabulação ou mais de 4
   espaços seguidos. Nesses casos a Meta não é chamada.
 - Com o cache frio, o gateway carrega a configuração antes de enviar. Sem configuração, responde
-  `503 SERVICE_UNAVAILABLE`. A Meta recusar ou não responder em 10 s dá `502 PROVIDER_ERROR`.
+  `503 SERVICE_UNAVAILABLE`. A Meta recusar ou não responder em 10 s dá `502 PROVIDER_ERROR`. Quando a Meta recusa com um código de erro numérico (por exemplo `131042`, problema de pagamento da conta), a resposta traz `error.details.providerErrorCode` com esse código, como texto. Só o código é repassado: a mensagem e os detalhes da Meta podem conter o telefone e nunca são lidos nem registrados.
 - O log de falha (`template_send_failed`) registra só o nome do modelo, nunca o telefone nem os
   parâmetros. O cadastro dos modelos está em
   [`.docs/whatsapp/modelos-de-mensagem.md`](../../.docs/whatsapp/modelos-de-mensagem.md).
