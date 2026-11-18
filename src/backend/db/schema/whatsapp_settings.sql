@@ -6,6 +6,7 @@ CREATE TABLE WhatsAppSettings (
     app_secret_encrypted TEXT,
     verify_token VARCHAR(64) NOT NULL,
     auto_reply_paused BOOLEAN NOT NULL DEFAULT FALSE,
+    cancellation_notice_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     credentials_checked_at TIMESTAMPTZ,
     credentials_valid BOOLEAN,
     display_phone_number VARCHAR(40),
