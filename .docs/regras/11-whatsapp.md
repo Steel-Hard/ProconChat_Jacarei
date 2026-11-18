@@ -110,7 +110,7 @@ Issue #164, [decisão 005](../decisoes/005-mensagens-ao-cidadao.md). Um cartão 
   - **Desligar:** título "Desligar o aviso de cancelamento?", texto "Quando a equipe cancelar um agendamento, o cidadão NÃO será avisado pelo sistema. A equipe precisa avisar por outro meio.", botões "Desligar aviso" e "Voltar".
 - Só o Admin muda o interruptor, validado no servidor. Cada mudança entra no **Histórico de alterações** com quem e quando, com o texto **"Aviso ao cidadão ligado"** ou **"Aviso ao cidadão desligado"**.
 - **O que muda no cancelamento:** ver [Detalhe do agendamento](04-detalhe-do-agendamento.md#modal-de-cancelamento) e o cancelamento em massa em [Horários de atendimento](08-horarios-de-atendimento.md). Não vale para o lembrete, que tem o próprio liga e desliga.
-- **Faixa "O aviso pode não chegar: [motivo]"**, no cartão e no modal de cancelar, com o aviso ligado. Só entram **problemas da conta**, não do destinatário. Aparece quando há uma falha de envio nas **últimas 24 horas** (a mesma janela das falhas de entrega) e nenhum envio bem-sucedido depois dela. No **modal de cancelar**, a faixa só aparece para os problemas que o servidor detecta pelos códigos de erro já recebidos, porque quem só gerencia agendamentos não lê as configurações da Meta (que são só do Admin). A frase "o modelo de aviso não está aprovado na Meta", que vem do estado atual dos modelos, aparece **só no cartão, para o Admin**. As frases do modal são as da tabela abaixo. Frases:
+- **Faixa "O aviso pode não chegar: [motivo]"**, no cartão e no modal de cancelar, com o aviso ligado. Só entram **problemas da conta**, não do destinatário. Aparece quando há uma falha de envio nas **últimas 24 horas** (a mesma janela das falhas de entrega) e nenhum envio bem-sucedido depois dela. No **modal de cancelar**, a faixa só aparece para os problemas que o servidor detecta pelos códigos de erro já recebidos, porque quem só gerencia agendamentos não lê as configurações da Meta (que são só do Admin). O aviso sobre o modelo não aprovado, que vem do estado atual dos modelos, aparece **só no cartão, para o Admin**, com o texto "Enquanto o modelo Aviso de cancelamento não for aprovado, os avisos não serão enviados." As frases do modal são as da tabela abaixo. Frases:
 
   | Erro da Meta | Frase |
   |---|---|
@@ -124,7 +124,7 @@ Issue #164, [decisão 005](../decisoes/005-mensagens-ao-cidadao.md). Um cartão 
   | 132005 | a tradução do texto do modelo ficou longa demais |
   | 190 (ou credenciais inválidas) | o token da Meta está inválido ou expirado |
   | 131048 | o limite de envios do número foi atingido |
-  | Modelo não aprovado, pausado ou desativado no estado atual | o modelo de aviso não está aprovado na Meta |
+  | Modelo não aprovado, pausado ou desativado no estado atual (só no cartão, para o Admin) | em vez da faixa, o cartão mostra: "Enquanto o modelo Aviso de cancelamento não for aprovado, os avisos não serão enviados." |
 
   **Só no Histórico do agendamento, sem faixa** (dizem respeito ao cidadão ou ao momento do envio, não à conta): 131026 (mensagem não entregável: sem WhatsApp, termos não aceitos ou aplicativo desatualizado); 131049 (limite de engajamento do usuário: esperar 24 horas e não insistir); 131056 (muitos envios ao mesmo destinatário); 131047 (fora da janela de 24 horas).
 
