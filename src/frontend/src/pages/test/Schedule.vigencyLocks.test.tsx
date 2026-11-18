@@ -63,13 +63,12 @@ describe("SchedulePage: travas pela vigência da versão editada", () => {
         expect(screen.getByRole("button", { name: "Salvar alterações" })).toBeEnabled()
     })
 
-    it("mantém travado o dia cujo agendamento cai na vigência da mudança editada", async () => {
+    it("permite editar o dia cujo agendamento cai na vigência da mudança editada", async () => {
         await renderWithChange("2026-11-02")
         await editChange("2026-11-02")
 
-        expect(screen.getByRole("checkbox", { name: "Quarta-feira" })).toHaveAttribute(
-            "aria-disabled",
-            "true"
+        expect(screen.getByRole("checkbox", { name: "Quarta-feira" })).not.toHaveAttribute(
+            "aria-disabled"
         )
     })
 

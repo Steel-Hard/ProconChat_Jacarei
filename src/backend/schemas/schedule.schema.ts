@@ -146,6 +146,7 @@ export const scheduleConfigBodySchema: z.ZodType<ScheduleConfigInput> = z
         reminderHours: reminderHoursSchema,
         ranges: z.array(scheduleRangeItemSchema).max(21),
         blockedDates: z.array(blockedDateItemSchema).max(366).default([]),
+        conflictResolution: z.enum(["KEEP", "CANCEL"]).optional(),
     })
     .superRefine((data: ScheduleConfigInput, ctx: z.RefinementCtx) => {
         const byWeekday = new Map<number, { idx: number; item: ScheduleRangeInputItem }[]>()
@@ -290,4 +291,8 @@ export const scheduleDateQuerySchema = z.object({
         .string()
         .trim()
         .refine(isValidCalendarDate, { message: "Data inválida (use YYYY-MM-DD)" }),
+})
+
+export const deleteScheduledConfigQuerySchema = z.object({
+    conflictResolution: z.enum(["KEEP", "CANCEL"]).optional(),
 })

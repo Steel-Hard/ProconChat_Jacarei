@@ -8,8 +8,6 @@ import type ScheduleConfigView from "@/types/schedule/ScheduleConfigView.types"
 import type ScheduleDayDraft from "@/types/schedule/ScheduleDayDraft.types"
 import type ScheduleDraft from "@/types/schedule/ScheduleDraft.types"
 import type SlotMinutes from "@/types/schedule/SlotMinutes.types"
-import bookedDatesOfWeekday from "@/utils/schedule/bookedDatesOfWeekday"
-import rangeHasBooking from "@/utils/schedule/rangeHasBooking"
 import scheduleChanges from "@/utils/schedule/scheduleChanges"
 import toScheduleDraft from "@/utils/schedule/toScheduleDraft"
 import toScheduleInput from "@/utils/schedule/toScheduleInput"
@@ -65,7 +63,7 @@ function useScheduleDraft(view: ScheduleConfigView | undefined, bookedDays: Book
     function toggleDay(weekday: number) {
         const day = dayOf(weekday)
 
-        if (!day || (day.enabled && bookedDatesOfWeekday(bookedDays, weekday).length > 0)) {
+        if (!day) {
             return
         }
 
@@ -88,7 +86,7 @@ function useScheduleDraft(view: ScheduleConfigView | undefined, bookedDays: Book
     function removeRange(weekday: number, index: number) {
         const range = dayOf(weekday)?.ranges[index]
 
-        if (!range || rangeHasBooking(range, weekday, bookedDays)) {
+        if (!range) {
             return
         }
 

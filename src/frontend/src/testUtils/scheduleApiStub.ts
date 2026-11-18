@@ -62,6 +62,10 @@ function scheduleApiStub({ handlers = {}, bookedDays = [] }: StubOptions = {}) {
             status: 200,
             body: { data: { days: bookedDays } }
         }),
+        "GET /api/v1/schedule/cancellation-notice": () => ({
+            status: 200,
+            body: { data: { enabled: false, problem: null } }
+        }),
         "POST /api/v1/auth/refresh": () => ({ status: 401 }),
         ...handlers
     }

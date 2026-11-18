@@ -1,14 +1,29 @@
 import api from "@/store/api"
 import type BookedDay from "@/types/schedule/BookedDay.types"
 import type MonthlyPreview from "@/types/schedule/MonthlyPreview.types"
+import type ScheduleCancellationNoticeState from "@/types/schedule/ScheduleCancellationNoticeState.types"
 import type ScheduleConfigInput from "@/types/schedule/ScheduleConfigInput.types"
 import type ScheduleConfigView from "@/types/schedule/ScheduleConfigView.types"
+import type ScheduleConflictResolution from "@/types/schedule/ScheduleConflictResolution.types"
+import type ScheduleConflictResolutionSummary from "@/types/schedule/ScheduleConflictResolutionSummary.types"
 import type ScheduleVersion from "@/types/schedule/ScheduleVersion.types"
 
 type Envelope<T> = { data: T }
 
 type DraftPreviewArgs = { month?: string; config: ScheduleConfigInput; effectiveFrom?: string }
-type SaveScheduleArgs = { config: ScheduleConfigInput; effectiveFrom?: string }
+type SaveScheduleArgs = {
+    config: ScheduleConfigInput
+    effectiveFrom?: string
+    conflictResolution?: ScheduleConflictResolution
+}
+type SaveScheduleResult = ScheduleConfigView & {
+    resolution?: ScheduleConflictResolutionSummary
+}
+type DeleteScheduleVersionArgs =
+    string | { effectiveFrom: string; conflictResolution?: ScheduleConflictResolution }
+type DeleteScheduleVersionResult = {
+    resolution?: ScheduleConflictResolutionSummary
+} | null
 
 const SCHEDULE_PATH = "/api/v1/schedule"
 const PREVIEW_PATH = `${SCHEDULE_PATH}/preview`
@@ -38,26 +53,39 @@ const scheduleApi = api.injectEndpoints({
             transformResponse: unwrap<ScheduleVersion[]>,
             providesTags: ["ScheduleVersions"]
         }),
-        saveSchedule: build.mutation<ScheduleConfigView, SaveScheduleArgs>({
-            query: ({ config, effectiveFrom }) => ({
+        saveSchedule: build.mutation<SaveScheduleResult, SaveScheduleArgs>({
+            query: ({ config, effectiveFrom, conflictResolution }) => ({
                 url: effectiveFrom ? `${SCHEDULE_PATH}/versions/${effectiveFrom}` : SCHEDULE_PATH,
                 method: "PUT",
-                body: config
+                body: conflictResolution ? { ...config, conflictResolution } : config
             }),
-            transformResponse: unwrap<ScheduleConfigView>,
+            transformResponse: (
+                response: Envelope<ScheduleConfigView> & {
+                    resolution?: ScheduleConflictResolutionSummary
+                }
+            ): SaveScheduleResult =>
+                response.resolution
+                    ? { ...response.data, resolution: response.resolution }
+                    : response.data,
             invalidatesTags: (result) =>
                 result ? ["SchedulePreview", "ScheduleVersions", "ScheduleEffective"] : [],
             async onQueryStarted({ effectiveFrom }, { dispatch, queryFulfilled }) {
                 const result = await queryFulfilled.catch(() => null)
 
                 if (result !== null && !effectiveFrom) {
+                    const { resolution: _, ...configView } = result.data
                     dispatch(
                         scheduleApi.util.upsertQueryEntries([
-                            { endpointName: "getSchedule", arg: undefined, value: result.data }
+                            { endpointName: "getSchedule", arg: undefined, value: configView }
                         ])
                     )
                 }
             }
+        }),
+        getScheduleCancellationNotice: build.query<ScheduleCancellationNoticeState, void>({
+            query: () => `${SCHEDULE_PATH}/cancellation-notice`,
+            transformResponse: unwrap<ScheduleCancellationNoticeState>,
+            keepUnusedDataFor: 0
         }),
         getSchedulePreview: build.query<MonthlyPreview, string | undefined>({
             query: previewPath,
@@ -74,11 +102,26 @@ const scheduleApi = api.injectEndpoints({
             transformResponse: (response: Envelope<{ days: BookedDay[] }>) => response.data.days,
             keepUnusedDataFor: 0
         }),
-        deleteScheduleVersion: build.mutation<void, string>({
-            query: (effectiveFrom) => ({
-                url: `${SCHEDULE_PATH}/versions/${effectiveFrom}`,
-                method: "DELETE"
-            }),
+        deleteScheduleVersion: build.mutation<
+            DeleteScheduleVersionResult,
+            DeleteScheduleVersionArgs
+        >({
+            query: (arg) => {
+                const effectiveFrom = typeof arg === "string" ? arg : arg.effectiveFrom
+                const conflictResolution =
+                    typeof arg === "string" ? undefined : arg.conflictResolution
+                const query = conflictResolution
+                    ? `?conflictResolution=${encodeURIComponent(conflictResolution)}`
+                    : ""
+
+                return {
+                    url: `${SCHEDULE_PATH}/versions/${effectiveFrom}${query}`,
+                    method: "DELETE"
+                }
+            },
+            transformResponse: (
+                response: { resolution?: ScheduleConflictResolutionSummary } | null | undefined
+            ): DeleteScheduleVersionResult => response ?? null,
             invalidatesTags: ["ScheduleVersions", "ScheduleEffective", "SchedulePreview"]
         })
     })

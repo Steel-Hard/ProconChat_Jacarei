@@ -41,7 +41,7 @@ async function seats(user: ReturnType<typeof userEvent.setup>, value: string) {
 }
 
 describe("SchedulePage: agendamentos afetados", () => {
-    it("mostra os afetados da prévia, trava o salvar e libera quando a edição os tira", async () => {
+    it("mostra os afetados da prévia sem travar o salvar e limpa quando a edição os tira", async () => {
         vi.useFakeTimers({ shouldAdvanceTime: true })
         await renderSchedulePage({
             handlers: {
@@ -70,10 +70,7 @@ describe("SchedulePage: agendamentos afetados", () => {
         })
         expect(within(list).getByText("Protocolo A1B2C3D4")).toBeInTheDocument()
         expect(within(list).getByText("Quarta-feira, 04/11 às 14:00")).toBeInTheDocument()
-        expect(screen.getByRole("button", { name: "Salvar alterações" })).toBeDisabled()
-        expect(
-            screen.getByText("A alteração afeta agendamentos. Veja a lista abaixo.")
-        ).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "Salvar alterações" })).toBeEnabled()
         expect(
             within(
                 screen.getByRole("checkbox", { name: "Quarta-feira" }).closest("li") as HTMLElement
@@ -98,7 +95,7 @@ describe("SchedulePage: agendamentos afetados", () => {
         )
     })
 
-    it("mostra o 409 com nome e CPF mascarado, trava o salvar, relê os dias e libera ao editar", async () => {
+    it("mostra o 409 com nome e CPF mascarado no modal, relê os dias e fecha ao voltar sem salvar", async () => {
         const { user, callsTo } = await renderSchedulePage({
             handlers: {
                 "PUT /api/v1/schedule": () => ({
@@ -118,16 +115,18 @@ describe("SchedulePage: agendamentos afetados", () => {
         await seats(user, "1")
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
 
-        const list = await screen.findByRole("region", {
+        const dialog = await screen.findByRole("dialog", {
             name: "Esta alteração afeta 1 agendamento"
         })
-        expect(within(list).getByText("Maria Souza")).toBeInTheDocument()
-        expect(within(list).getByText("***.982.247-**")).toBeInTheDocument()
-        expect(within(list).getByText("Protocolo E5F6A7B8")).toBeInTheDocument()
-        expect(within(list).getByText("Quinta-feira, 05/11 às 09:00")).toBeInTheDocument()
-        expect(within(list).getByText("Pendente")).toBeInTheDocument()
-        expect(screen.getByRole("button", { name: "Salvar alterações" })).toBeDisabled()
+        expect(within(dialog).getByText("Maria Souza")).toBeInTheDocument()
+        expect(within(dialog).getByText("***.982.247-**")).toBeInTheDocument()
+        expect(within(dialog).getByText("Protocolo E5F6A7B8")).toBeInTheDocument()
+        expect(within(dialog).getByText("Quinta-feira, 05/11 às 09:00")).toBeInTheDocument()
+        expect(within(dialog).getByText("Pendente")).toBeInTheDocument()
         await waitFor(() => expect(callsTo("GET", "/api/v1/schedule/booked-days")).toHaveLength(2))
+
+        await user.click(within(dialog).getByRole("button", { name: "Voltar sem salvar" }))
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
 
         await seats(user, "4")
 

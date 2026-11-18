@@ -13,7 +13,11 @@ import useAppSelector from "@/store/useAppSelector"
 import type LastChange from "@/types/settings/LastChange.types"
 import type BlockedDateProblem from "@/types/schedule/BlockedDateProblem.types"
 import type ScheduleBlockedDateView from "@/types/schedule/ScheduleBlockedDateView.types"
+import type ScheduleConflict from "@/types/schedule/ScheduleConflict.types"
+import type ScheduleConflictResolution from "@/types/schedule/ScheduleConflictResolution.types"
+import type ScheduleConflictResolutionSummary from "@/types/schedule/ScheduleConflictResolutionSummary.types"
 import type ScheduleConflictRowView from "@/types/schedule/ScheduleConflictRowView.types"
+import type ScheduleInputWithOrigins from "@/types/schedule/ScheduleInputWithOrigins.types"
 import type ScheduleVersionsActions from "@/types/schedule/ScheduleVersionsActions.types"
 import type ScheduleVersionsView from "@/types/schedule/ScheduleVersionsView.types"
 import type ScheduleDayView from "@/types/schedule/ScheduleDayView.types"
@@ -21,22 +25,29 @@ import type ScheduleDraftField from "@/types/schedule/ScheduleDraftField.types"
 import type ScheduleIssueField from "@/types/schedule/ScheduleIssueField.types"
 import type SchedulePreviewConflict from "@/types/schedule/SchedulePreviewConflict.types"
 import type ScheduleProblem from "@/types/schedule/ScheduleProblem.types"
-import bookedDatesOfWeekday from "@/utils/schedule/bookedDatesOfWeekday"
 import bookedDaysInVigency from "@/utils/schedule/bookedDaysInVigency"
 import conflictTargets from "@/utils/schedule/conflictTargets"
 import dayAfter from "@/utils/schedule/dayAfter"
-import dayMonthOf from "@/utils/schedule/dayMonthOf"
 import fieldOfIssuePath from "@/utils/schedule/fieldOfIssuePath"
 import formatDate from "@/utils/formatDate"
-import rangeHasBooking from "@/utils/schedule/rangeHasBooking"
 import rangeKey from "@/utils/schedule/rangeKey"
 import scheduleSaveErrorOf from "@/utils/schedule/scheduleSaveErrorOf"
 import todayInSaoPaulo from "@/utils/schedule/todayInSaoPaulo"
 
 type IssueTarget = Extract<ScheduleIssueField, { kind: "field" }>["field"]
 type FieldMessages = Partial<Record<IssueTarget, string[]>>
+type ConflictModalSource =
+    | {
+          kind: "save"
+          built: ScheduleInputWithOrigins
+          revision: number
+          effectiveFrom?: string
+      }
+    | {
+          kind: "cancelVersion"
+          effectiveFrom: string
+      }
 
-const MAX_LOCK_DATES = 3
 const MAX_RANGES = 3
 const SHOWN_FIELDS: readonly IssueTarget[] = [
     "slotMinutes",
@@ -46,7 +57,6 @@ const SHOWN_FIELDS: readonly IssueTarget[] = [
     "unitAddress",
     "unitAddressComplement"
 ]
-const dateList = new Intl.ListFormat("pt-BR", { type: "conjunction" })
 
 function useSchedule() {
     const { t } = useTranslation(["schedule", "common"])
@@ -58,9 +68,18 @@ function useSchedule() {
     const [pendingVersion, setPendingVersion] = useState<string | null>(null)
     const [cancelTarget, setCancelTarget] = useState<string | null>(null)
     const [cancelConflicts, setCancelConflicts] = useState<ScheduleConflictRowView[] | null>(null)
+    const [modalConflicts, setModalConflicts] = useState<ScheduleConflict[] | null>(null)
+    const [modalSource, setModalSource] = useState<ConflictModalSource | null>(null)
+    const [modalError, setModalError] = useState<string | null>(null)
+    const [resolving, setResolving] = useState(false)
+    const canManageAppointments =
+        account !== null && (account.isAdmin || account.permissions.includes("appointments.manage"))
     const currentQuery = scheduleApi.useGetScheduleQuery()
     const effectiveQuery = scheduleApi.useGetScheduleEffectiveQuery(effectiveFrom || skipToken)
     const versionsQuery = scheduleApi.useGetScheduleVersionsQuery()
+    const noticeQuery = scheduleApi.useGetScheduleCancellationNoticeQuery(undefined, {
+        skip: modalConflicts === null || !canManageAppointments
+    })
     const view = effectiveFrom ? effectiveQuery.currentData : currentQuery.currentData
     const queryFailed = effectiveFrom ? effectiveQuery.isError : currentQuery.isError
     const [deleteVersion, { isLoading: cancelling }] =
@@ -138,30 +157,10 @@ function useSchedule() {
         return [...(local ? [problemText(local)] : []), ...(fieldIssues[field] ?? []), ...extra]
     }
 
-    function lockReason(weekday: number): string | null {
-        const dates = bookedDatesOfWeekday(vigencyDays, weekday)
-
-        if (dates.length === 0) {
-            return null
-        }
-
-        const shown = dates.slice(0, MAX_LOCK_DATES)
-        const crossesYear = new Set(shown.map((day) => day.date.slice(0, 4))).size > 1
-        const list = dateList.format(
-            shown.map((day) =>
-                crossesYear ? (formatDate(day.date) ?? day.date) : dayMonthOf(day.date)
-            )
-        )
-
-        return dates.length > MAX_LOCK_DATES
-            ? t("grid.dayLockedMore", { dates: list })
-            : t("grid.dayLocked", { dates: list })
-    }
-
     const days: ScheduleDayView[] = (draft.current?.days ?? []).map((day) => ({
         weekday: day.weekday,
         enabled: day.enabled,
-        lockedReason: day.enabled ? lockReason(day.weekday) : null,
+        lockedReason: null,
         ranges: day.ranges.map((range, index) => {
             const key = rangeKey(day.weekday, index)
             const problem = errors?.ranges[key]
@@ -169,7 +168,7 @@ function useSchedule() {
             return {
                 ...range,
                 error: problem ? problemText(problem) : (rangeIssues[key] ?? null),
-                removeLocked: rangeHasBooking(range, day.weekday, vigencyDays)
+                removeLocked: false
             }
         }),
         canAdd: day.enabled && day.ranges.length < MAX_RANGES,
@@ -192,15 +191,8 @@ function useSchedule() {
 
     const conflictRows: ScheduleConflictRowView[] | null =
         saveConflicts ?? (preview.draftConflicts.length > 0 ? preview.draftConflicts : null)
-    const blockedBySave = saveConflicts !== null
-    const saveDisabled =
-        errorCount > 0 || preview.draftConflicts.length > 0 || blockedBySave || dateInvalid
-    const saveHint =
-        errorCount > 0
-            ? t("save.hintErrors", { count: errorCount })
-            : saveDisabled
-              ? t("save.hintConflicts")
-              : undefined
+    const saveDisabled = errorCount > 0 || dateInvalid
+    const saveHint = errorCount > 0 ? t("save.hintErrors", { count: errorCount }) : undefined
     const actionError =
         versionActionError ??
         (outcome?.kind === "invalidOrigin"
@@ -213,23 +205,128 @@ function useSchedule() {
             ? { changedBy: view.updatedBy.name, changedAt: view.updatedAt }
             : null
 
+    function resolutionToast(summary: ScheduleConflictResolutionSummary): string {
+        if (summary.action === "KEEP") {
+            return t("conflictModal.keptToast", { count: summary.affectedCount })
+        }
+
+        if (summary.failedCount > 0) {
+            return `${t("conflictModal.canceledCount", { count: summary.affectedCount })}. ${t("conflictModal.failedCount", { count: summary.failedCount })}.`
+        }
+
+        if (summary.noticeDisabled) {
+            return t("conflictModal.canceledOffToast", { count: summary.affectedCount })
+        }
+
+        return t("conflictModal.canceledOnToast", { count: summary.affectedCount })
+    }
+
+    function closeConflictModal() {
+        if (resolving || saver.saving) {
+            return
+        }
+
+        setModalConflicts(null)
+        setModalSource(null)
+        setModalError(null)
+    }
+
     function save() {
         if (!draft.built || !hasChanges || saveDisabled) {
             return
         }
 
+        const built = draft.built
         const sentRevision = draft.revision
+        const targetEffectiveFrom = effectiveFrom || undefined
 
         void saver.save({
-            built: draft.built,
+            built,
             revision: sentRevision,
-            effectiveFrom: effectiveFrom || undefined,
+            effectiveFrom: targetEffectiveFrom,
             onSaved: () => {
                 draft.resetIfUnchangedSince(sentRevision)
-                showToast(t(effectiveFrom ? "save.scheduledToast" : "save.toast"))
+                showToast(t(targetEffectiveFrom ? "save.scheduledToast" : "save.toast"))
             },
-            onConflicts: booked.refetch
+            onConflicts: (conflicts) => {
+                booked.refetch()
+                setModalError(null)
+                setModalSource({
+                    kind: "save",
+                    built,
+                    revision: sentRevision,
+                    effectiveFrom: targetEffectiveFrom
+                })
+                setModalConflicts(conflicts)
+            }
         })
+    }
+
+    async function resolveConflicts(action: ScheduleConflictResolution) {
+        if (!modalSource || resolving) {
+            return
+        }
+
+        setModalError(null)
+
+        if (modalSource.kind === "save") {
+            setResolving(true)
+            await saver.save({
+                built: modalSource.built,
+                revision: modalSource.revision,
+                effectiveFrom: modalSource.effectiveFrom,
+                conflictResolution: action,
+                onSaved: (resolution) => {
+                    draft.resetIfUnchangedSince(modalSource.revision)
+                    setModalConflicts(null)
+                    setModalSource(null)
+                    booked.refetch()
+                    showToast(
+                        resolution
+                            ? resolutionToast(resolution)
+                            : t(modalSource.effectiveFrom ? "save.scheduledToast" : "save.toast")
+                    )
+                },
+                onConflicts: (conflicts) => {
+                    booked.refetch()
+                    setModalConflicts(conflicts)
+                },
+                onError: () => {
+                    setModalError(t("conflictModal.resolveFailed"))
+                }
+            })
+            setResolving(false)
+            return
+        }
+
+        setResolving(true)
+        try {
+            const result = await deleteVersion({
+                effectiveFrom: modalSource.effectiveFrom,
+                conflictResolution: action
+            }).unwrap()
+            setModalConflicts(null)
+            setModalSource(null)
+            setCancelConflicts(null)
+            booked.refetch()
+
+            if (effectiveFrom === modalSource.effectiveFrom) {
+                applyVersion("")
+            }
+
+            showToast(
+                result?.resolution ? resolutionToast(result.resolution) : t("versions.cancelled")
+            )
+        } catch (caught) {
+            const error = scheduleSaveErrorOf(caught)
+            if (error?.kind === "conflicts") {
+                setModalConflicts(error.conflicts)
+            } else {
+                setModalError(t("conflictModal.resolveFailed"))
+            }
+        } finally {
+            setResolving(false)
+        }
     }
 
     const today = preview.preview?.today ?? todayInSaoPaulo()
@@ -302,6 +399,9 @@ function useSchedule() {
 
             if (error?.kind === "conflicts") {
                 setCancelConflicts(error.conflicts)
+                setModalError(null)
+                setModalSource({ kind: "cancelVersion", effectiveFrom: date })
+                setModalConflicts(error.conflicts)
             } else if (error !== null) {
                 setVersionActionError(t("versions.cancelFailed"))
             }
@@ -359,6 +459,22 @@ function useSchedule() {
         save,
         discard: draft.discard,
         conflictRows,
+        conflictModal: {
+            conflicts: modalConflicts,
+            canManageAppointments,
+            noticeEnabled: noticeQuery.currentData?.enabled ?? null,
+            noticeProblemCode: noticeQuery.currentData?.enabled
+                ? (noticeQuery.currentData.problem?.code ?? null)
+                : null,
+            noticeLoading: noticeQuery.isFetching,
+            noticeFailed: noticeQuery.isError,
+            busy: resolving || saver.saving,
+            error: modalError,
+            onRetryNotice: () => void noticeQuery.refetch(),
+            onKeep: () => void resolveConflicts("KEEP"),
+            onCancelAppointments: () => void resolveConflicts("CANCEL"),
+            onClose: closeConflictModal
+        },
         actionError,
         lastChange,
         showContentLink: canAccess(account, "content") && NAV_ITEMS_READY.content,
