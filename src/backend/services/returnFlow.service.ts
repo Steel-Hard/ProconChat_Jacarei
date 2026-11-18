@@ -1,3 +1,4 @@
+import { createSafeNoticeReader } from "./noticeSwitchReader"
 import AppointmentNotChangeableError from "../errors/AppointmentNotChangeableError"
 import DuplicateAppointmentError from "../errors/DuplicateAppointmentError"
 import SlotFullError from "../errors/SlotFullError"
@@ -148,6 +149,8 @@ function targetIdOf(session: ActiveSession): number | null {
 }
 
 export function createReturnFlow({ sessions, events, schedule, logger, startOver, isCancellationNoticeEnabled }: ReturnFlowDependencies): ReturnFlow {
+    const readNotice = createSafeNoticeReader(isCancellationNoticeEnabled, logger)
+
     async function offerReturnMenu(sessionId: string, phoneHash: string): Promise<ConversationFlowResult | null> {
         let returning: ReturningAppointment | null
         try {
@@ -385,6 +388,7 @@ export function createReturnFlow({ sessions, events, schedule, logger, startOver
         slots: AvailableSlot[],
         currentPage: number,
     ): Promise<ConversationFlowResult> {
+        const cancellationNoticeEnabled = await readNotice(session.id)
         let result: CitizenRescheduleResult
         try {
             result = await schedule.rescheduleByCitizen({
@@ -424,7 +428,7 @@ export function createReturnFlow({ sessions, events, schedule, logger, startOver
             questionDocuments: result.documentsSent.question,
             reminderEnabled: result.reminderEnabled,
             reminderHours: result.reminderHours,
-            cancellationNoticeEnabled: await isCancellationNoticeEnabled(),
+            cancellationNoticeEnabled,
         })
         return replyOf(session.id, "FINISHED", confirmation, [{ type: "text", text: confirmation }])
     }

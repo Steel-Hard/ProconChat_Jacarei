@@ -1,3 +1,4 @@
+import { createSafeNoticeReader } from "./noticeSwitchReader"
 import {
     ActiveSession,
     NavigationState,
@@ -89,6 +90,8 @@ export function createSchedulingFlow({
     closer,
     isCancellationNoticeEnabled,
 }: SchedulingFlowDependencies): SchedulingFlow {
+    const readNotice = createSafeNoticeReader(isCancellationNoticeEnabled, logger)
+
     async function noSlotReply(sessionId: string): Promise<ConversationFlowResult> {
         const closing: SessionClosing = {
             outcome: "NO_SLOT",
@@ -319,6 +322,8 @@ export function createSchedulingFlow({
 
         const reason = (await offeredReason(session.id)) ?? (await reasonFromQuestion(questionId))
 
+        const cancellationNoticeEnabled = await readNotice(session.id)
+
         try {
             const bookResult = await schedule.bookSlot({
                 sessionId: session.id,
@@ -342,7 +347,7 @@ export function createSchedulingFlow({
                 questionDocuments: bookResult.documentsSent.question,
                 reminderEnabled: bookResult.reminderEnabled,
                 reminderHours: bookResult.reminderHours,
-                cancellationNoticeEnabled: await isCancellationNoticeEnabled(),
+                cancellationNoticeEnabled,
             })
 
             return {

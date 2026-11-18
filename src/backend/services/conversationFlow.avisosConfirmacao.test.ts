@@ -75,4 +75,55 @@ describe("conversationFlow.service: frase de avisos acompanha o lembrete e o avi
         expect(result.reply.text.split("\n")[0]).toBe("Agendamento remarcado")
         expect(result.reply.text).not.toContain("Você receberá")
     })
+
+    test("se a leitura do interruptor falhar, o agendamento já gravado ainda recebe a confirmação sem a frase do cancelamento", async () => {
+        const process = harness.createFlow({
+            isCancellationNoticeEnabled: async () => {
+                throw new Error("db down")
+            },
+        })
+        findOrCreateActive.mockResolvedValueOnce(
+            buildActiveSession({ currentStep: "AWAITING_SLOT", currentCategoryId: "1", currentQuestionId: "10", draft: buildBookingDraft() }),
+        )
+        getAvailableSlots.mockResolvedValueOnce(mockSlots)
+        processarPergunta.mockResolvedValueOnce(respostaPadrao)
+        bookSlot.mockResolvedValueOnce({ ...mockBookResult, reminderEnabled: true, reminderHours: 24 })
+
+        const result = await process({ phone: PHONE, optionId: slotOptionId(mockSlots[0]!) })
+
+        expect(result.reply.step).toBe("FINISHED")
+        expect(result.reply.text).toContain("Agendamento realizado")
+        expect(result.reply.text).not.toContain("em caso de cancelamento")
+        expect(result.reply.text).not.toContain("não foi gravado")
+    })
+
+    test("se a leitura do interruptor falhar, a remarcação já feita ainda recebe a confirmação", async () => {
+        const process = harness.createFlow({
+            isCancellationNoticeEnabled: async () => {
+                throw new Error("db down")
+            },
+        })
+        findOrCreateActive.mockResolvedValueOnce(
+            buildActiveSession({ currentStep: "AWAITING_SLOT", draft: { target_appointment_id: 7 }, listPage: 1 }),
+        )
+        findReturningAppointment.mockResolvedValueOnce(buildReturningAppointment({ appointmentDatetime: mockSlots[0]!.datetime }))
+        getAvailableSlots.mockResolvedValueOnce([mockSlots[0]!, mockSlots[1]!])
+        rescheduleByCitizen.mockResolvedValueOnce({
+            protocol: "AB12CD34",
+            from: mockSlots[0]!.datetime,
+            appointmentDatetime: mockSlots[1]!.datetime,
+            unitAddress: "Rua do Procon, 100",
+            unitAddressComplement: "Sala 2",
+            documentsSent: { group: ["Procuração"], question: ["Contrato"] },
+            byRepresentative: true,
+            reminderEnabled: true,
+            reminderHours: 2,
+        })
+
+        const result = await process({ phone: PHONE, optionId: slotOptionId(mockSlots[1]!) })
+
+        expect(result.reply.step).toBe("FINISHED")
+        expect(result.reply.text.split("\n")[0]).toBe("Agendamento remarcado")
+        expect(result.reply.text).not.toContain("em caso de cancelamento")
+    })
 })
