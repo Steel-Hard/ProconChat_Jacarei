@@ -42,11 +42,13 @@ const whatsappSettingsApi = api.injectEndpoints({
         }),
         getWhatsAppTemplatesStatus: build.query<WhatsAppTemplatesStatus, void>({
             query: () => `${SETTINGS_PATH}/templates`,
-            transformResponse: (response: TemplatesStatusEnvelope) => response.data
+            transformResponse: (response: TemplatesStatusEnvelope) => response.data,
+            providesTags: ["WhatsAppMeta"]
         }),
         getWhatsAppNumberMetaStatus: build.query<WhatsAppNumberMetaStatus, void>({
             query: () => `${SETTINGS_PATH}/number-status`,
-            transformResponse: (response: NumberStatusEnvelope) => response.data
+            transformResponse: (response: NumberStatusEnvelope) => response.data,
+            providesTags: ["WhatsAppMeta"]
         }),
         pauseWhatsAppReplies: build.mutation<WhatsAppSettings, void>({
             query: () => ({ url: `${SETTINGS_PATH}/pause`, method: "POST" }),

@@ -452,6 +452,49 @@ describe("WhatsAppPage", () => {
         expect(document.body.textContent).not.toContain(NEW_TOKEN)
     })
 
+    it("consulta de novo os modelos e a qualidade depois de testar a conexão", async () => {
+        const { user, calls } = await renderPage({ "POST /api/v1/whatsapp/settings/test": OK_TEST })
+        await loaded()
+        await waitFor(() =>
+            expect(callsTo(calls, "GET", "/api/v1/whatsapp/settings/templates")).toHaveLength(1)
+        )
+        await user.type(screen.getByLabelText("ID do número de telefone"), "9")
+
+        await user.click(screen.getByRole("button", { name: "Testar conexão" }))
+        await screen.findByText("Conexão testada com sucesso.")
+
+        await waitFor(() => {
+            expect(callsTo(calls, "GET", "/api/v1/whatsapp/settings/templates")).toHaveLength(2)
+            expect(callsTo(calls, "GET", "/api/v1/whatsapp/settings/number-status")).toHaveLength(2)
+        })
+    })
+
+    it("consulta de novo os modelos e a qualidade depois de salvar as credenciais", async () => {
+        const saved = settingsView({ accessToken: { configured: true, last4: "77Zz" } })
+        const { user, calls } = await renderPage({
+            "POST /api/v1/whatsapp/settings/test": OK_TEST,
+            "PUT /api/v1/whatsapp/settings": () => ({ status: 200, body: { data: saved } })
+        })
+        await loaded()
+        await user.click(
+            within(group("Token de acesso")).getByRole("button", { name: "Substituir" })
+        )
+        await user.type(screen.getByLabelText("Token de acesso", { selector: "input" }), NEW_TOKEN)
+        await user.click(screen.getByRole("button", { name: "Testar conexão" }))
+        await screen.findByText("Conexão testada com sucesso.")
+        await waitFor(() =>
+            expect(callsTo(calls, "GET", "/api/v1/whatsapp/settings/templates")).toHaveLength(2)
+        )
+
+        await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
+        await screen.findByText("Credenciais salvas. O chatbot já usa os novos valores.")
+
+        await waitFor(() => {
+            expect(callsTo(calls, "GET", "/api/v1/whatsapp/settings/templates")).toHaveLength(3)
+            expect(callsTo(calls, "GET", "/api/v1/whatsapp/settings/number-status")).toHaveLength(3)
+        })
+    })
+
     it("Descartar volta aos valores do servidor e cancela as substituições", async () => {
         const { user } = await renderPage()
         await loaded()
