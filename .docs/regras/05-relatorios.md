@@ -10,7 +10,7 @@ Analisar o uso do chatbot e dos agendamentos: quais assuntos mais aparecem, onde
 
 ## Estado da tela
 
-**API de Relatórios mínimos pronta (`GET /api/v1/reports`, issue #68). Tela no painel (#128) e itens bônus (#73) em construção.**
+**Relatórios mínimos entregues na #128** com a API `GET /api/v1/reports` (#68). A tela inclui seletor de período, total de conversas e agendamentos criados, desfechos, categorias e perguntas mais usadas e resultado dos agendamentos com taxa de não comparecimento. Os gráficos por dia, perguntas não resolvidas, abandono por etapa, horário de pico e exportação seguem como itens bônus da #73.
 
 ## Período
 

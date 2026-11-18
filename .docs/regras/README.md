@@ -22,7 +22,7 @@ A referência visual é o protótipo navegável aprovado no Claude Design, copia
 | [02-dashboard.md](02-dashboard.md) | Dashboard | Pendente (#71) |
 | [03-agendamentos.md](03-agendamentos.md) | Agendamentos: lista, calendário e busca | Entregue (#85). Calendário semanal: API na #87, tela na #126 |
 | [04-detalhe-do-agendamento.md](04-detalhe-do-agendamento.md) | Detalhe do agendamento | Entregue (#86). Atribuir, observações internas e corrigir registro: tela na #126. Cancelar com aviso ao cidadão: tela na #127 (API #67) |
-| [05-relatorios.md](05-relatorios.md) | Relatórios | Pendente (#68, #73) |
+| [05-relatorios.md](05-relatorios.md) | Relatórios | Mínimo entregue (#68, #128). Itens bônus e exportação: #73 |
 | [06-conteudo.md](06-conteudo.md) | Conteúdo do chatbot | Pendente (#63) |
 | [07-sessoes.md](07-sessoes.md) | Sessões | Pendente (#72, #76) |
 | [08-horarios-de-atendimento.md](08-horarios-de-atendimento.md) | Horários de atendimento | Pendente (#64, #74, #75, #77) |

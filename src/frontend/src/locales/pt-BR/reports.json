@@ -1,0 +1,104 @@
+{
+    "meta": {
+        "title": "Relatórios - ProconChat"
+    },
+    "heading": "Relatórios",
+    "subtitle": {
+        "base": "Uso do chatbot e dos agendamentos presenciais",
+        "withPeriod": "Uso do chatbot e dos agendamentos presenciais · {{start}} a {{end}}",
+        "withPeriodUntilNow": "Uso do chatbot e dos agendamentos presenciais · {{start}} a {{end}} (hoje até agora)"
+    },
+    "loadFailed": "Não foi possível carregar os relatórios.",
+    "retry": "Tentar novamente",
+    "period": {
+        "heading": "Período",
+        "presets": {
+            "7d": "Últimos 7 dias",
+            "30d": "Últimos 30 dias",
+            "90d": "Últimos 90 dias",
+            "current_month": "Mês atual",
+            "previous_month": "Mês anterior",
+            "custom": "Personalizado"
+        },
+        "from": "De",
+        "until": "até"
+    },
+    "conversations": {
+        "heading": "Conversas no período",
+        "averageOne": "Média de {{average}} por dia · {{total}} agendamento criado",
+        "averageOther": "Média de {{average}} por dia · {{total}} agendamentos criados"
+    },
+    "outcomes": {
+        "heading": "Desfecho das conversas",
+        "definitionLabel": "Definição de {{label}}",
+        "noSlotHint": "O chatbot não conseguiu oferecer horário.",
+        "scheduleLink": "Horários de atendimento →",
+        "percent": "{{value}}%",
+        "definitions": {
+            "RESOLVED": "O cidadão respondeu no chatbot que a dúvida foi resolvida.",
+            "SCHEDULED": "A conversa terminou com um agendamento criado.",
+            "OUT_OF_SCOPE": "Encaminhada a outro órgão, conforme o conteúdo marcado como fora do escopo.",
+            "NO_SLOT": "O cidadão quis agendar, mas não havia horário livre na janela de agendamento.",
+            "DECLINED": "O cidadão respondeu que a dúvida não foi resolvida e recusou o agendamento.",
+            "MANAGED_APPOINTMENT": "Conversas em que o cidadão voltou ao chatbot apenas para remarcar ou cancelar um agendamento já existente.",
+            "ABANDONED": "Sem interação por mais de 30 minutos antes de um desfecho.",
+            "IN_PROGRESS": "Conversas iniciadas hoje que ainda não terminaram."
+        }
+    },
+    "categories": {
+        "heading": "Categorias mais usadas"
+    },
+    "questions": {
+        "heading": "Perguntas mais usadas"
+    },
+    "appointments": {
+        "heading": "Resultado dos agendamentos",
+        "noShowRateLabel": "Taxa de não comparecimento",
+        "noShowRate": "{{rate}}%",
+        "noShowDetail": "{{noShow}} não compareceram de {{recorded}} agendamentos já registrados (Atendido ou Não compareceu).",
+        "rowValue": " · {{percent}}%",
+        "total": "Total com atendimento no período",
+        "results": {
+            "attended": "Atendido",
+            "noShow": "Não compareceu",
+            "canceled": "Cancelado",
+            "waitingRecord": "Aguardando registro (horário já passou)",
+            "upcoming": "Pendente ou Confirmado (ainda futuro)"
+        }
+    },
+    "count": {
+        "conversationsOne": "{{formatted}} conversa",
+        "conversationsOther": "{{formatted}} conversas"
+    },
+    "empty": {
+        "categories": "Nenhuma categoria escolhida neste período.",
+        "questions": "Nenhuma pergunta escolhida neste período."
+    },
+    "tooltips": {
+        "conversations": {
+            "label": "Definição de conversas no período",
+            "text": "Conversas iniciadas no WhatsApp com o chatbot no período selecionado."
+        },
+        "outcomes": {
+            "label": "Definição dos desfechos das conversas",
+            "text": "Cada conversa do período tem um único desfecho. As categorias somam 100%."
+        },
+        "categories": {
+            "label": "Definição das categorias mais usadas",
+            "text": "Quantidade de conversas distintas que escolheram cada categoria no período. Escolher o mesmo item de novo na mesma conversa conta uma vez."
+        },
+        "questions": {
+            "label": "Definição das perguntas mais usadas",
+            "text": "Quantidade de conversas distintas que escolheram cada pergunta no período. Escolher o mesmo item de novo na mesma conversa conta uma vez."
+        },
+        "appointments": {
+            "label": "Definição do resultado dos agendamentos",
+            "text": "Situação atual dos agendamentos cuja data do atendimento está no período selecionado, independentemente de quando foram criados."
+        },
+        "noShowRate": {
+            "label": "Definição da taxa de não comparecimento",
+            "text": "Não compareceu dividido por (Atendido + Não compareceu), entre os agendamentos com atendimento no período. Cancelados, aguardando registro e futuros não entram na conta."
+        }
+    },
+    "loading": "Carregando…"
+}
