@@ -148,6 +148,24 @@ describe("appointment.service: cancelamento pela equipe", () => {
         expect(detail.cancellation_notice_status).toBe("DISABLED")
     })
 
+    it("o detalhe não mostra o estado do aviso quando o agendamento não está cancelado, mesmo com falha registrada", async () => {
+        const { service } = setup({
+            status: "CONFIRMED",
+            notice: noticeTarget({ status: "CONFIRMED", lastStaffCancelReason: "UNIT_CLOSED", lastCancellationNotice: "FAILED" }),
+        })
+
+        expect((await service.getAppointmentDetail("1", MANAGER, FIXED_NOW)).cancellation_notice_status).toBeNull()
+    })
+
+    it("o detalhe não mostra o estado do aviso quando o cancelamento não foi da equipe, mesmo com falha registrada", async () => {
+        const { service } = setup({
+            status: "CANCELED",
+            notice: noticeTarget({ status: "CANCELED", lastStaffCancelReason: null, lastCancellationNotice: "FAILED" }),
+        })
+
+        expect((await service.getAppointmentDetail("1", MANAGER, FIXED_NOW)).cancellation_notice_status).toBeNull()
+    })
+
     it("o detalhe informa o estado FAILED e NOTIFIED do aviso e nulo quando não houve cancelamento pela equipe", async () => {
         const failed = setup({ status: "CANCELED", notice: noticeTarget({ lastCancellationNotice: "FAILED" }) })
         const notified = setup({ status: "CANCELED", notice: noticeTarget({ lastCancellationNotice: "NOTIFIED" }) })

@@ -344,6 +344,21 @@ describe("appointment.routes: cancelamento pela equipe (HTTP)", () => {
         expect(sendTemplate).not.toHaveBeenCalled()
     })
 
+    it("C3 com o aviso desligado responde 409 NOTIFICATION_NOT_RETRYABLE sem chamar o gateway", async () => {
+        repository = scenario(noticeTarget({ lastCancellationNotice: "FAILED" }))
+        noticeEnabled = false
+        app = buildApp()
+
+        const res = await request(app)
+            .post("/api/v1/appointments/6/cancellation-notice/retry")
+            .set("Cookie", cookieFor(OPERATOR))
+
+        expect(res.status).toBe(409)
+        expect(res.body.error.code).toBe("NOTIFICATION_NOT_RETRYABLE")
+        expect(sendTemplate).not.toHaveBeenCalled()
+        expect(repository.notificationCalls).toEqual([])
+    })
+
     it("C3 responde 200 com o detalhe quando o último aviso falhou", async () => {
         repository = scenario(noticeTarget({ lastCancellationNotice: "FAILED" }))
         app = buildApp()

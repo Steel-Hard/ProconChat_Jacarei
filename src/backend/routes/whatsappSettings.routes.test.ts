@@ -370,6 +370,13 @@ describe("/api/v1/whatsapp/settings", () => {
         expect(settings.row?.cancellationNoticeEnabled).toBe(false)
     })
 
+    test("PUT /cancellation-notice recusa campo extra no corpo com 400 e não altera o aviso", async () => {
+        const response = await call("put", "/api/v1/whatsapp/settings/cancellation-notice").send({ enabled: true, extra: 1 })
+
+        expect(response.status).toBe(400)
+        expect(settings.row?.cancellationNoticeEnabled).toBe(false)
+    })
+
     test.each([{}, { enabled: "true" }, { enabled: 1 }, { enabled: null }])("PUT /cancellation-notice recusa o corpo %j com 400 e não altera o aviso", async (body) => {
         const response = await call("put", "/api/v1/whatsapp/settings/cancellation-notice").send(body)
 
