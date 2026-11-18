@@ -6,6 +6,7 @@ type WhatsAppPauseSwitchProps = {
     checked: boolean
     disabled?: boolean
     tone?: "warning" | "primary"
+    placement?: "inline" | "end"
     describedBy?: string
     onToggle: () => void
 }
@@ -16,6 +17,7 @@ function WhatsAppPauseSwitch({
     checked,
     disabled = false,
     tone = "warning",
+    placement = "inline",
     describedBy,
     onToggle
 }: WhatsAppPauseSwitchProps) {
@@ -23,8 +25,8 @@ function WhatsAppPauseSwitch({
     const trackClass = checked ? `${css.track} ${onClass}` : css.track
 
     return (
-        <div className={css.wrapper}>
-            <div>
+        <div className={placement === "end" ? `${css.wrapper} ${css.spread}` : css.wrapper}>
+            <div className={css.text}>
                 <div className={css.label}>{label}</div>
                 <div className={css.state}>{stateLabel}</div>
             </div>

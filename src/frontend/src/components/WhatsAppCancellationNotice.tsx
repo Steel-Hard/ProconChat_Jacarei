@@ -29,6 +29,7 @@ function WhatsAppCancellationNotice({ settings }: Props) {
                 checked={notice.enabled}
                 disabled={notice.saving}
                 tone="primary"
+                placement="end"
                 describedBy={supportId}
                 onToggle={notice.toggle}
             />
