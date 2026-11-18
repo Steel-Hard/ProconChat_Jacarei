@@ -29,6 +29,8 @@ function settingsView(overrides: Partial<WhatsAppSettings> = {}): WhatsAppSettin
         webhook: { lastEventAt: "2026-10-14T13:00:00.000Z", stale: false },
         autoReplyPaused: false,
         pausedMessage: PAUSED_MESSAGE,
+        cancellationNoticeEnabled: false,
+        cancellationNoticeProblem: null,
         updatedBy: { id: 1, name: "Ana Paula" },
         updatedAt: "2026-10-14T13:00:00.000Z",
         displayPhoneNumber: "+55 12 3955-9000",
@@ -591,7 +593,9 @@ describe("WhatsAppPage", () => {
         expect(screen.getByText("+55 12 3955-9000")).toBeInTheDocument()
         expect(screen.getByText("PROCON Jacareí · WhatsApp Cloud API")).toBeInTheDocument()
         expect(screen.getByText("Operando")).toBeInTheDocument()
-        expect(screen.getByText("Última alteração por Ana Paula em 14/10/2026")).toBeInTheDocument()
+        expect(
+            screen.getAllByText("Última alteração por Ana Paula em 14/10/2026")[0]
+        ).toBeInTheDocument()
         expect(
             screen.getByText("Mensagem fixa enviada ao cidadão enquanto estiver pausado")
         ).toBeInTheDocument()
@@ -723,7 +727,7 @@ describe("WhatsAppPage", () => {
         await loaded()
         const toggle = screen.getByRole("switch", { name: "Pausar respostas automáticas" })
         expect(toggle).toHaveAttribute("aria-checked", "false")
-        expect(screen.getByText("Desligado")).toBeInTheDocument()
+        expect(screen.getAllByText("Desligado")[0]).toBeInTheDocument()
 
         await user.click(toggle)
         const dialog = screen.getByRole("dialog", { name: "Pausar respostas automáticas?" })

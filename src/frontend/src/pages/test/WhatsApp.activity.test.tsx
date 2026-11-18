@@ -36,6 +36,8 @@ function settingsView(overrides: Partial<WhatsAppSettings> = {}): WhatsAppSettin
         webhook: { lastEventAt: "2026-10-14T13:00:00.000Z", stale: false },
         autoReplyPaused: false,
         pausedMessage: "Mensagem fixa de pausa",
+        cancellationNoticeEnabled: false,
+        cancellationNoticeProblem: null,
         updatedBy: { id: 1, name: "Ana Paula" },
         updatedAt: "2026-10-14T13:00:00.000Z",
         displayPhoneNumber: "+55 12 3955-9000",

@@ -31,6 +31,10 @@
     background: var(--warn-accent);
 }
 
+.onPrimary {
+    background: var(--color-primary);
+}
+
 .track:disabled {
     opacity: 0.6;
     cursor: not-allowed;
@@ -53,7 +57,8 @@
     transition: left 0.15s ease;
 }
 
-.on .knob {
+.on .knob,
+.onPrimary .knob {
     left: 20px;
 }
 
