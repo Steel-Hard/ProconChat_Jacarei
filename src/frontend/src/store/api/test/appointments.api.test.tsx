@@ -171,6 +171,8 @@ describe("appointmentsApi", () => {
 
     it("lê a prévia de cancelamento gerada pelo backend", async () => {
         const preview = {
+            noticeEnabled: true,
+            problem: null,
             previews: [{ reason: "CITIZEN_REQUEST", message: "Mensagem oficial de cancelamento" }]
         }
         const { appointmentsApi, store, fetchMock } = await setup(

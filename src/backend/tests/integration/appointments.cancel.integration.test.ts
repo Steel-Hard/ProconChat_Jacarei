@@ -179,6 +179,42 @@ describe("Cancelamento pela equipe com Postgres", () => {
         ])
     })
 
+    it("cancelar com o aviso desativado grava o CITIZEN_NOTICE_DISABLED junto com o cancelamento, sem registro de falha, e o alvo lê DISABLED", async () => {
+        const id = await appointment("CONFIRMED", undefined, admin.id)
+
+        await repository.cancel(String(id), staff.id, "UNIT_CLOSED", undefined, NOW, { noticeDisabled: true })
+
+        const types = (await eventsOf([id])).map((event) => event.type)
+        expect(types).toContain("CANCELED_BY_STAFF")
+        expect(types).toContain("CITIZEN_NOTICE_DISABLED")
+        expect(types).not.toContain("CITIZEN_NOTIFICATION_FAILED")
+        const disabled = (await eventsOf([id])).filter((event) => event.type === "CITIZEN_NOTICE_DISABLED")
+        expect(disabled).toEqual([
+            expect.objectContaining({ actorUserId: staff.id, data: { kind: "CANCELLATION" } }),
+        ])
+        expect((await repository.findCancellationNoticeTarget(String(id)))?.lastCancellationNotice).toBe("DISABLED")
+        expect((await getPool().query("SELECT 1 FROM OutboundMessages WHERE appointment_id = $1", [id])).rowCount).toBe(0)
+    })
+
+    it("cancelar com o aviso ligado não grava o evento de aviso desativado", async () => {
+        const id = await appointment("CONFIRMED", undefined, admin.id)
+
+        await repository.cancel(String(id), staff.id, "UNIT_CLOSED", undefined, NOW, { noticeDisabled: false })
+
+        expect((await eventsOf([id])).map((event) => event.type)).not.toContain("CITIZEN_NOTICE_DISABLED")
+        expect((await repository.findCancellationNoticeTarget(String(id)))?.lastCancellationNotice).toBeNull()
+    })
+
+    it("recusar o cancelamento não deixa o evento de aviso desativado", async () => {
+        const id = await appointment("CONFIRMED", NOW, staff.id)
+
+        await expect(repository.cancel(String(id), staff.id, "UNIT_CLOSED", undefined, NOW, { noticeDisabled: true })).rejects.toMatchObject({
+            code: "CANCEL_AFTER_START",
+        })
+
+        expect(await countEvents(id, "CITIZEN_NOTICE_DISABLED")).toBe(0)
+    })
+
     it("grava a observação com o texto e o autor quando vem nota, e nenhuma quando não vem", async () => {
         const withNote = await appointment("PENDING")
         const withoutNote = await appointment("PENDING")

@@ -1,5 +1,5 @@
 import { screen, waitFor, within } from "@testing-library/react"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import buildAppointmentDetail from "@/testUtils/buildAppointmentDetail"
 import renderAppointmentDetailPage from "@/testUtils/renderAppointmentDetailPage"
 import type AppointmentDetail from "@/types/appointments/AppointmentDetail.types"
@@ -72,6 +72,8 @@ const PREVIEWS = {
     status: 200,
     body: {
         data: {
+            noticeEnabled: true,
+            problem: null,
             previews: [
                 { reason: "UNIT_CLOSED", message: "Mensagem para unidade fechada" },
                 { reason: "CITIZEN_REQUEST", message: "Mensagem a pedido do cidadão" },
@@ -135,7 +137,12 @@ function historyBox(): ReturnType<typeof within> {
     return within(heading.closest("section") as HTMLElement)
 }
 
+beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-10-19T10:59:59.000Z") })
+})
+
 afterEach(() => {
+    vi.useRealTimers()
     vi.unstubAllGlobals()
     vi.unstubAllEnvs()
     vi.resetModules()
@@ -357,7 +364,7 @@ describe("AppointmentDetail: cancelamento e reenvio do aviso", () => {
         await page.user.click(screen.getByRole("button", { name: "Cancelar agendamento" }))
         const dialog = screen.getByRole("dialog", { name: "Cancelar o agendamento F10464F0?" })
 
-        await within(dialog).findByRole("button", { name: "Tentar carregar a prévia novamente" })
+        await within(dialog).findByRole("button", { name: "Tentar de novo" })
         await page.user.click(within(dialog).getByRole("radio", { name: "A pedido do cidadão" }))
         await page.user.click(
             within(dialog).getByRole("button", { name: "Cancelar e avisar o cidadão" })
@@ -367,9 +374,7 @@ describe("AppointmentDetail: cancelamento e reenvio do aviso", () => {
             within(dialog).getByRole("button", { name: "Cancelar e avisar o cidadão" })
         ).toBeDisabled()
         expect(page.requests("PATCH", STATUS_PATH)).toHaveLength(0)
-        await page.user.click(
-            within(dialog).getByRole("button", { name: "Tentar carregar a prévia novamente" })
-        )
+        await page.user.click(within(dialog).getByRole("button", { name: "Tentar de novo" }))
         await waitFor(() => expect(page.requests("GET", PREVIEW_PATH).length).toBeGreaterThan(1))
     })
 
@@ -414,7 +419,7 @@ describe("AppointmentDetail: cancelamento e reenvio do aviso", () => {
         const dialog = screen.getByRole("dialog", { name: "Cancelar o agendamento F10464F0?" })
 
         expect(
-            within(dialog).getByText(
+            await within(dialog).findByText(
                 "As mensagens enviadas pelo chatbot seguem modelos fixos e não podem ser editadas livremente. Por isso o aviso pode ser enviado a qualquer momento antes do horário do atendimento."
             )
         ).toBeInTheDocument()

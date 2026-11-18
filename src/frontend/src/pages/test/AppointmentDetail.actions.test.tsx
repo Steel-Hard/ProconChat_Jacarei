@@ -234,6 +234,8 @@ describe("AppointmentDetail.page: confirmação", () => {
                 status: 200,
                 body: {
                     data: {
+                        noticeEnabled: true,
+                        problem: null,
                         previews: [
                             { reason: "UNIT_CLOSED", message: "Mensagem para unidade fechada" },
                             { reason: "CITIZEN_REQUEST", message },

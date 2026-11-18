@@ -189,4 +189,34 @@ describe("DocumentsPreview", () => {
             "Nenhum documento será pedido quando o titular comparecer."
         )
     })
+
+    it("mostra só o texto devolvido pela API, sem acrescentar a frase de avisos por conta própria", () => {
+        const phrase = holderContract.notice
+        const withPhrase = holderContract.text
+        const withoutPhrase = holderContract.text.replace(phrase, "").trimEnd()
+        const { rerender } = renderPreview({
+            preview: { ...(holderContract as DocumentsPreviewData), text: withPhrase }
+        })
+
+        expect(screen.getByTestId("preview-bubble").textContent).toContain(phrase)
+
+        rerender(
+            <DocumentsPreview
+                attendeeGroup="holder"
+                onChangeAttendeeGroup={vi.fn()}
+                sampleQuestions={sampleQuestions}
+                selectedQuestionId="1"
+                onChangeQuestionId={vi.fn()}
+                preview={
+                    { ...holderContract, text: withoutPhrase, notice: null } as DocumentsPreviewData
+                }
+                hasPreviewError={false}
+                isUnsaved={false}
+                isQuestionEmpty={false}
+                isUpdating={false}
+            />
+        )
+
+        expect(screen.getByTestId("preview-bubble").textContent).not.toContain(phrase)
+    })
 })

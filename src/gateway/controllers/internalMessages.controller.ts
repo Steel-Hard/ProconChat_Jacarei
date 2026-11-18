@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from "express"
 import AppError from "../errors/AppError"
 import BadGatewayError from "../errors/BadGatewayError"
 import BadRequestError from "../errors/BadRequestError"
+import ProviderRequestError from "../errors/ProviderRequestError"
 import UnauthorizedError from "../errors/UnauthorizedError"
 import { cloudApiProvider } from "../gateways/cloudApi.gateway"
 import { MessageProvider } from "../gateways/messageProvider"
@@ -12,6 +13,10 @@ import {
 import { PhoneQueue, whatsappPhoneQueue } from "../services/phoneQueue"
 import { WhatsAppConfigStore, whatsappConfigStore } from "../services/whatsappConfigStore"
 import { isValidInternalToken } from "../utils/internalToken"
+
+function providerErrorCodeOf(error: unknown): string | null {
+    return error instanceof ProviderRequestError ? error.providerErrorCode : null
+}
 
 export interface InternalMessagesControllerDependencies {
     config?: Pick<WhatsAppConfigStore, "load">
@@ -58,7 +63,7 @@ class InternalMessagesController {
                 return
             }
             this.logger.log(JSON.stringify({ event: "template_send_failed", template: validation.value.template.name }))
-            next(new BadGatewayError("WhatsApp provider did not accept the message"))
+            next(new BadGatewayError("WhatsApp provider did not accept the message", providerErrorCodeOf(error)))
         }
     }
 

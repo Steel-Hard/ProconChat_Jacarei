@@ -164,7 +164,7 @@ describe("appointment.routes (HTTP)", () => {
         built.use(express.json())
         built.use(
             "/api/v1/appointments",
-            new AppointmentRoutes({ repository, conversationEvents, authMiddleware, calendar }).getRouter(),
+            new AppointmentRoutes({ repository, conversationEvents, authMiddleware, calendar, cancellationNotice: { isEnabled: async () => true, getState: async () => ({ enabled: true, problem: null }) } }).getRouter(),
         )
         built.use(errorHandler)
         return built

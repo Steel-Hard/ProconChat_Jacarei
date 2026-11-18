@@ -113,6 +113,27 @@ describe("POST /internal/whatsapp/messages/template", () => {
         })
     })
 
+    test("responde 502 PROVIDER_ERROR com o código de erro da Meta em details e sem a mensagem da Meta", async () => {
+        const fetchFn = vi.fn().mockResolvedValue({
+            ok: false,
+            status: 400,
+            json: () => Promise.resolve({ error: { message: "Detalhe com 5512999990000", code: 131042 } }),
+        })
+        const { testApp } = buildApp({ fetchFn })
+
+        const response = await send(testApp)
+
+        expect(response.status).toBe(502)
+        expect(response.body).toEqual({
+            error: {
+                code: "PROVIDER_ERROR",
+                message: "WhatsApp provider did not accept the message",
+                details: { providerErrorCode: "131042" },
+            },
+        })
+        expect(response.text).not.toContain("5512999990000")
+    })
+
     test("com o cache frio, carrega a configuração antes de enviar", async () => {
         const { testApp, fetchFn, getWhatsappConfig } = buildApp()
 

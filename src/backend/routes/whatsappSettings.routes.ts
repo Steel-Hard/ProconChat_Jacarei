@@ -27,6 +27,7 @@ class WhatsAppSettingsRoutes {
         this.router.post("/test", ...adminOnly, controller.test.bind(controller))
         this.router.post("/pause", ...adminOnly, controller.pause.bind(controller))
         this.router.post("/resume", ...adminOnly, controller.resume.bind(controller))
+        this.router.put("/cancellation-notice", ...adminOnly, controller.setCancellationNotice.bind(controller))
         this.router.get("/templates", ...adminOnly, controller.templates.bind(controller))
         this.router.get("/number-status", ...adminOnly, controller.numberStatus.bind(controller))
         this.router.get("/delivery-failures", ...adminOnly, controller.deliveryFailures.bind(controller))

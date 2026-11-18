@@ -116,4 +116,58 @@ describe("appointmentEventLabel", () => {
             [false, false]
         ])
     })
+
+    it("monta o evento de aviso desativado em estilo neutro, sem destaque nem retry", () => {
+        const label = appointmentEventLabel(event("CITIZEN_NOTICE_DISABLED", null))
+
+        expect(render(event("CITIZEN_NOTICE_DISABLED", null))).toBe(
+            "Aviso ao cidadão desativado: cidadão não avisado pelo sistema"
+        )
+        expect(label).toMatchObject({ highlight: false, retryable: false, muted: true })
+    })
+
+    it("não marca como neutros os demais eventos", () => {
+        expect(appointmentEventLabel(event("CITIZEN_NOTIFICATION_FAILED", null)).muted).toBe(false)
+        expect(appointmentEventLabel(event("CREATED", null)).muted).toBe(false)
+    })
+
+    it.each([
+        ["131042", "A conta da Meta está sem forma de pagamento."],
+        ["132001", "O modelo de aviso não existe no idioma usado ou não está aprovado na Meta."],
+        [
+            "131026",
+            "Mensagem não entregável: o número pode não ter WhatsApp, não ter aceitado os termos ou estar com o aplicativo desatualizado."
+        ],
+        ["131049", "Limite de engajamento do usuário: esperar 24 horas e não insistir."],
+        ["131056", "Muitos envios ao mesmo destinatário."],
+        ["131047", "Fora da janela de 24 horas."]
+    ])("traduz o código %s da Meta no motivo da falha", (code, text) => {
+        const label = appointmentEventLabel(
+            event("CITIZEN_NOTIFICATION_FAILED", null, { kind: "CANCELLATION", errorCode: code })
+        )
+
+        expect(label.detailKey).not.toBeNull()
+        expect(
+            i18n.t(label.detailKey as NonNullable<typeof label.detailKey>, {
+                ns: "appointmentDetail",
+                lng: "pt-BR"
+            })
+        ).toBe(text)
+    })
+
+    it("não mostra motivo quando o código é desconhecido ou não veio", () => {
+        expect(
+            appointmentEventLabel(
+                event("CITIZEN_NOTIFICATION_FAILED", null, {
+                    kind: "CANCELLATION",
+                    errorCode: "999999"
+                })
+            ).detailKey
+        ).toBeNull()
+        expect(
+            appointmentEventLabel(
+                event("CITIZEN_NOTIFICATION_FAILED", null, { kind: "CANCELLATION" })
+            ).detailKey
+        ).toBeNull()
+    })
 })

@@ -103,6 +103,24 @@ describe("citizenNotification.service", () => {
         })
     })
 
+    it("repassa o código de erro da Meta ao registrar a falha e não o põe no log", async () => {
+        const sendTemplate = vi
+            .fn<(input: SendTemplateInput) => Promise<SendTemplateResult>>()
+            .mockResolvedValue({ ok: false, reason: "REJECTED", errorCode: "131042" })
+        const { appointments, logger, service } = setup({ sendTemplate })
+
+        await service.notifyCancellation("1", 42, FIXED_NOW)
+
+        expect(appointments.notificationCalls).toEqual([
+            { id: "1", outcome: "FAILED", kind: "CANCELLATION", actorUserId: 42, now: FIXED_NOW, providerMessageId: null, errorCode: "131042" },
+        ])
+        expect(JSON.parse(String(logger.log.mock.calls[0]?.[0]))).toEqual({
+            event: "citizen_notification_failed",
+            appointmentId: "1",
+            reason: "REJECTED",
+        })
+    })
+
     it.each(["REJECTED", "UNREACHABLE", "NOT_CONFIGURED"] as const)(
         "grava FAILED sem lançar quando o gateway devolve %s",
         async (reason) => {

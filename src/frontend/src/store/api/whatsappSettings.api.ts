@@ -66,6 +66,26 @@ const whatsappSettingsApi = api.injectEndpoints({
                 }
             }
         }),
+        setWhatsAppCancellationNotice: build.mutation<WhatsAppSettings, boolean>({
+            query: (enabled) => ({
+                url: `${SETTINGS_PATH}/cancellation-notice`,
+                method: "PUT",
+                body: { enabled }
+            }),
+            transformResponse: unwrap,
+            invalidatesTags: (result) => (result ? ["WhatsAppHistory"] : []),
+            async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+                const view = await settledView(queryFulfilled)
+
+                if (view !== null) {
+                    dispatch(
+                        whatsappSettingsApi.util.upsertQueryEntries([
+                            { endpointName: "getWhatsAppSettings", arg: undefined, value: view }
+                        ])
+                    )
+                }
+            }
+        }),
         resumeWhatsAppReplies: build.mutation<WhatsAppSettings, void>({
             query: () => ({ url: `${SETTINGS_PATH}/resume`, method: "POST" }),
             transformResponse: unwrap,

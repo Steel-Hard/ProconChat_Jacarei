@@ -11,8 +11,12 @@ function AppointmentHistoryEntry({ entry, retry }: AppointmentHistoryEntryProps)
         <li
             className={entry.highlight ? `${css.entry} ${css.failed}` : css.entry}
             data-highlight={entry.highlight || undefined}
+            data-muted={entry.muted || undefined}
         >
-            <span className={css.entryText}>{entry.text}</span>
+            <span className={entry.muted ? `${css.entryText} ${css.entryMuted}` : css.entryText}>
+                {entry.text}
+            </span>
+            {entry.detail ? <span className={css.entryDetail}>{entry.detail}</span> : null}
             <span className={css.entryWhen}>{entry.when}</span>
             {retry ? (
                 <button

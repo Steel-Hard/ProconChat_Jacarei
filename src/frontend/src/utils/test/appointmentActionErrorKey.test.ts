@@ -12,7 +12,8 @@ const CODES: AppointmentActionCode[] = [
     "INVALID_ASSIGNEE",
     "ASSIGNEE_BUSY",
     "RECORD_NOT_CORRECTABLE",
-    "PERMISSION_REQUIRED"
+    "PERMISSION_REQUIRED",
+    "NOTIFICATION_DISABLED"
 ]
 
 function apiError(status: number, code: string) {

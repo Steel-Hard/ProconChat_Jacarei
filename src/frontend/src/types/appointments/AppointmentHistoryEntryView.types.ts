@@ -4,6 +4,8 @@ type AppointmentHistoryEntryView = {
     when: string
     highlight: boolean
     retryable: boolean
+    muted: boolean
+    detail: string | null
 }
 
 export default AppointmentHistoryEntryView

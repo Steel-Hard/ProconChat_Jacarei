@@ -4,6 +4,7 @@ import ConfirmDialog from "@/components/ConfirmDialog"
 import LastChangeNote from "@/components/LastChangeNote"
 import StatusBadge from "@/components/StatusBadge"
 import UnsavedChangesBar from "@/components/UnsavedChangesBar"
+import WhatsAppCancellationNotice from "@/components/WhatsAppCancellationNotice"
 import WhatsAppConnectionTest from "@/components/WhatsAppConnectionTest"
 import WhatsAppDeliveryFailures from "@/components/WhatsAppDeliveryFailures"
 import WhatsAppMessageBubble from "@/components/WhatsAppMessageBubble"
@@ -272,6 +273,7 @@ function WhatsAppPage() {
                                     />
                                 </section>
                             ) : null}
+                            {view ? <WhatsAppCancellationNotice settings={view} /> : null}
                             {view ? <WhatsAppMetaStatus /> : null}
                             {view ? (
                                 <WhatsAppSettingsHistory

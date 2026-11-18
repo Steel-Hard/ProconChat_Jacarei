@@ -50,6 +50,7 @@ const DETAIL_KEYS = [
     "assigned_user_name",
     "available_actions",
     "by_representative",
+    "cancellation_notice_status",
     "category_id",
     "category_name",
     "cpf_masked",
@@ -97,6 +98,7 @@ const PATCH_CONFLICT_CODES = [
     "ASSIGNEE_BUSY",
     "CANCEL_AFTER_START",
     "NOTIFICATION_NOT_RETRYABLE",
+    "NOTIFICATION_DISABLED",
     "CITIZEN_PHONE_UNAVAILABLE",
     "NOTIFICATION_AFTER_START",
 ]
@@ -253,6 +255,7 @@ describe("contrato da API de agendamentos", () => {
             "/api/v1/appointments",
             new AppointmentRoutes({
                 repository,
+                cancellationNotice: { isEnabled: async () => true, getState: async () => ({ enabled: true, problem: null }) },
                 conversationEvents: conversationEventsOf(conversationTimelineEvents("101")),
                 authMiddleware: createRequireAuth({ users: authUsers, tokens: sessionTokens }),
                 calendar: createAppointmentCalendarService({

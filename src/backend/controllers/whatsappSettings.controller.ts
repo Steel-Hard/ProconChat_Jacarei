@@ -53,6 +53,14 @@ class WhatsAppSettingsController {
         }
     }
 
+    public async setCancellationNotice(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            res.status(200).json({ data: await this.settings.setCancellationNotice(req.body, this.userId(req)) })
+        } catch (error) {
+            next(error)
+        }
+    }
+
     public async templates(_req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             res.status(200).json({ data: await this.settings.getTemplatesStatus() })

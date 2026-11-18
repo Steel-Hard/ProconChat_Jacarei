@@ -100,6 +100,36 @@ Mensagens enviadas fora da conversa precisam de modelo aprovado pela Meta ([deci
 - Se algum não estiver aprovado: "Enquanto este modelo não for aprovado, [lembretes / avisos de cancelamento] não serão enviados."
 - Se o modelo estiver **Rejeitado**, o alerta acrescenta, depois da frase acima: "A Meta rejeitou o modelo: revise o texto no Gerenciador do WhatsApp e envie novamente."
 
+### Aviso de cancelamento ao cidadão
+
+Issue #164, [decisão 005](../decisoes/005-mensagens-ao-cidadao.md). Um cartão com o interruptor **"Avisar o cidadão por WhatsApp quando a equipe cancelar um agendamento"**, **desligado por padrão**, que fica **antes** de "Modelos de mensagem": o Admin vê o interruptor e, logo abaixo, o status dos modelos. O cartão **não mostra "Última alteração por"**: a auditoria do interruptor fica só no Histórico de alterações.
+
+- Texto de apoio: "Cada aviso de cancelamento é uma mensagem de modelo e tem custo por mensagem cobrado pela Meta. Os avisos contam no limite diário de envios da Meta. Com o aviso desligado, o agendamento é cancelado sem avisar o cidadão e a equipe precisa avisar por outro meio."
+- **Age na hora**, sem passar pelo Salvar ([regras gerais §3](00-regras-gerais.md#3-salvar-descartar-e-registrar-quem-alterou)), e **pede confirmação nos dois sentidos**:
+  - **Ligar:** título "Ligar o aviso de cancelamento?", texto "Quando a equipe cancelar um agendamento, o cidadão receberá uma mensagem pelo WhatsApp. Cada aviso é uma mensagem de modelo e tem custo por mensagem cobrado pela Meta.", botões "Ligar aviso" e "Voltar".
+  - **Desligar:** título "Desligar o aviso de cancelamento?", texto "Quando a equipe cancelar um agendamento, o cidadão NÃO será avisado pelo sistema. A equipe precisa avisar por outro meio.", botões "Desligar aviso" e "Voltar".
+- Só o Admin muda o interruptor, validado no servidor. Cada mudança entra no **Histórico de alterações** com quem e quando, com o texto **"Aviso ao cidadão ligado"** ou **"Aviso ao cidadão desligado"**.
+- **O que muda no cancelamento:** ver [Detalhe do agendamento](04-detalhe-do-agendamento.md#modal-de-cancelamento) e o cancelamento em massa em [Horários de atendimento](08-horarios-de-atendimento.md). Não vale para o lembrete, que tem o próprio liga e desliga.
+- **Faixa "O aviso pode não chegar: [motivo]"**, no cartão e no modal de cancelar, com o aviso ligado. Só entram **problemas da conta**, não do destinatário. Aparece quando há uma falha de envio nas **últimas 24 horas** (a mesma janela das falhas de entrega) e nenhum envio bem-sucedido depois dela. No **modal de cancelar**, a faixa só aparece para os problemas que o servidor detecta pelos códigos de erro já recebidos, porque quem só gerencia agendamentos não lê as configurações da Meta (que são só do Admin). O aviso sobre o modelo não aprovado, que vem do estado atual dos modelos, aparece **só no cartão, para o Admin**, com o texto "Enquanto o modelo Aviso de cancelamento não for aprovado, os avisos não serão enviados." As frases do modal são as da tabela abaixo. Frases:
+
+  | Erro da Meta | Frase |
+  |---|---|
+  | 131042 | a conta da Meta está sem forma de pagamento |
+  | 132001 | o modelo de aviso não existe no idioma usado ou não está aprovado na Meta (é o único código para "não aprovado"; não há código dedicado) |
+  | 132000 | o número de parâmetros enviado é diferente do modelo cadastrado na Meta |
+  | 132012 | os parâmetros do modelo foram enviados com formato incorreto |
+  | 132007 | o conteúdo do modelo viola a política do WhatsApp |
+  | 132015 | o modelo de aviso foi pausado pela Meta por baixa qualidade |
+  | 132016 | o modelo de aviso foi desativado de vez pela Meta (é preciso criar um novo, com conteúdo diferente) |
+  | 132005 | a tradução do texto do modelo ficou longa demais |
+  | 190 (ou credenciais inválidas) | o token da Meta está inválido ou expirado |
+  | 131048 | o limite de envios do número foi atingido |
+  | Modelo não aprovado, pausado ou desativado no estado atual (só no cartão, para o Admin) | em vez da faixa, o cartão mostra: "Enquanto o modelo Aviso de cancelamento não for aprovado, os avisos não serão enviados." |
+
+  **Só no Histórico do agendamento, sem faixa** (dizem respeito ao cidadão ou ao momento do envio, não à conta): 131026 (mensagem não entregável: sem WhatsApp, termos não aceitos ou aplicativo desatualizado); 131049 (limite de engajamento do usuário: esperar 24 horas e não insistir); 131056 (muitos envios ao mesmo destinatário); 131047 (fora da janela de 24 horas).
+
+  **O que foi confirmado e o que é inferência** (conferido na [documentação oficial de códigos de erro da Meta](https://developers.facebook.com/documentation/business-messaging/whatsapp/support/error-codes) em 17/11/2026): o significado de cada código acima foi **confirmado**. A separação entre "problema da conta" e "problema do destinatário" **não vem da documentação da Meta: é inferência nossa**. O 132005 na documentação é "texto traduzido longo demais"; **não foi confirmado** se ele também cobre uma variável longa demais. **Não foram confirmados** o status HTTP de cada código nem os títulos curtos oficiais. O erro chega tanto na resposta síncrona da Graph API quanto no webhook de status (`entry.changes.value.statuses` e `errors`), e os dois caminhos precisam ser tratados.
+
 ### Privacidade
 
 **Entregue (issue #69).** Dados de quem responde pelo tratamento dos dados pessoais ([decisão 002](../decisoes/002-lgpd-dados-pessoais.md)). Eles mudam na passagem para o PROCON, por isso ficam no painel e não no código.
@@ -159,6 +189,7 @@ Quem alterou o quê e quando. **Os valores do token e do App Secret não são re
 | Editar IDs, substituir segredos | **Segue o padrão de salvar** ([regras gerais](00-regras-gerais.md#3-salvar-descartar-e-registrar-quem-alterou)). Salvar credenciais novas exige teste bem-sucedido |
 | Testar conexão | Pode ser feito a qualquer momento |
 | Atualizar status dos modelos | Consulta os modelos e o estado do número na Meta de novo (#127) |
+| **Ligar ou desligar o aviso de cancelamento ao cidadão** | **Age na hora**, com diálogo de confirmação nos dois sentidos (issue #164). Só o Admin |
 | **Pausar respostas automáticas** | **Age na hora**, sem passar pelo Salvar, porque é de emergência. Pede confirmação: "O chatbot deixará de responder aos cidadãos até ser reativado" |
 | **Reativar respostas** | Age na hora, sem confirmação |
 

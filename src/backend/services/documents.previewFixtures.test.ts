@@ -27,7 +27,7 @@ describe("fixtures do frontend para a prévia de Documentos", () => {
                     documents: question
                 }
             ]
-            const actual = await createDocumentsService({ documents: repository }).previewConfirmation(args)
+            const actual = await createDocumentsService({ documents: repository, isCancellationNoticeEnabled: async () => true }).previewConfirmation(args)
             const target = path.join(FRONTEND_FIXTURES_DIR, file)
 
             if (REGENERATE) {

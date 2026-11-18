@@ -13,6 +13,8 @@ type AppointmentCancelView = {
     preview: string | undefined
     previewLoading: boolean
     previewFailed: boolean
+    noticeDisabled: boolean
+    problem: string | null
     retryPreview: () => void
     confirm: () => void
     close: () => void

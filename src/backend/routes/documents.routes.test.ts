@@ -41,7 +41,7 @@ describe("DocumentsRoutes", () => {
 
     beforeEach(() => {
         stubRepo = new DocumentsStubRepository()
-        const service = createDocumentsService({ documents: stubRepo })
+        const service = createDocumentsService({ documents: stubRepo, isCancellationNoticeEnabled: async () => true })
         const controller = new DocumentsController(service)
 
         app = express()
@@ -150,7 +150,8 @@ describe("DocumentsRoutes", () => {
                     groupDocuments,
                     questionDocuments: ["RG", "Nota fiscal"],
                     reminderEnabled: stubRepo.scheduleContext.reminderEnabled,
-                    reminderHours: stubRepo.scheduleContext.reminderHours
+                    reminderHours: stubRepo.scheduleContext.reminderHours,
+                    cancellationNoticeEnabled: true
                 })
             )
             expect(res.body.data.example).toEqual({

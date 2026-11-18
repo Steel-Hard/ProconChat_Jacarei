@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto"
 import BadRequestError from "../errors/BadRequestError"
+import { cancellationNoticeBodySchema } from "../schemas/cancellationNotice.schema"
 import ConflictError from "../errors/ConflictError"
 import InternalServerError from "../errors/InternalServerError"
 import WhatsAppConnectionError from "../errors/WhatsAppConnectionError"
@@ -11,6 +12,8 @@ import { AppointmentRepository } from "../repositories/appointment.repository.in
 import { appointmentRepository } from "../repositories/appointment.repository"
 import { whatsappSettingsRepository } from "../repositories/whatsappSettings.repository"
 import { OutboundMessageRepository } from "../repositories/outboundMessage.repository.interface"
+import { decideCancellationNoticeProblem, PROBLEM_ERROR_CODES } from "./cancellationNoticeProblem"
+import { CancellationNoticeProblem } from "../types/outboundMessage.types"
 import { outboundMessageRepository } from "../repositories/outboundMessage.repository"
 import { AuditLogRepository } from "../repositories/auditLog.repository.interface"
 import { auditLogRepository } from "../repositories/auditLog.repository"
@@ -25,6 +28,7 @@ import {
     NumberStatusView,
     SecretView,
     TemplatesStatusView,
+    CancellationNoticeSetting,
     WebhookStatusView,
     WhatsAppAuditField,
     WhatsAppHistoryView,
@@ -74,6 +78,9 @@ export interface WhatsAppSettingsService {
     save(body: unknown, userId: number): Promise<WhatsAppSettingsView>
     pause(userId: number): Promise<WhatsAppSettingsView>
     resume(userId: number): Promise<WhatsAppSettingsView>
+    setCancellationNotice(body: unknown, userId: number): Promise<WhatsAppSettingsView>
+    isCancellationNoticeEnabled(): Promise<boolean>
+    getCancellationNoticeState(): Promise<CancellationNoticeSetting>
     getInternalConfig(): Promise<WhatsAppInternalConfig>
     isAutoReplyPaused(): Promise<boolean>
     getTemplatesStatus(): Promise<TemplatesStatusView>
@@ -84,7 +91,7 @@ export interface WhatsAppSettingsService {
 
 interface WhatsAppSettingsServiceDependencies {
     settings: WhatsAppSettingsRepository
-    outbound: Pick<OutboundMessageRepository, "listRecentFailures">
+    outbound: Pick<OutboundMessageRepository, "listRecentFailures" | "findProblemSignals">
     audit: Pick<AuditLogRepository, "listByArea">
     meta: MetaGraphClient
     gateway: Pick<GatewayClient, "notifyConfigChanged">
@@ -206,7 +213,17 @@ export function createWhatsAppSettingsService({
         return base ? new URL(WEBHOOK_PATH, base).toString() : null
     }
 
-    function toView(row: WhatsAppSettingsRow): WhatsAppSettingsView {
+    async function noticeProblemOf(row: WhatsAppSettingsRow): Promise<CancellationNoticeProblem | null> {
+        if (!row.cancellationNoticeEnabled) {
+            return null
+        }
+        const since = new Date(now().getTime() - DELIVERY_FAILURES_WINDOW_MS)
+        const signals = await outbound.findProblemSignals(since, PROBLEM_ERROR_CODES)
+        return decideCancellationNoticeProblem({ signals, credentialsValid: row.credentialsValid })
+    }
+
+    async function toView(row: WhatsAppSettingsRow): Promise<WhatsAppSettingsView> {
+        const cancellationNoticeProblem = await noticeProblemOf(row)
         return {
             phoneNumberId: row.phoneNumberId,
             businessAccountId: row.businessAccountId,
@@ -218,6 +235,8 @@ export function createWhatsAppSettingsService({
             credentialsValid: row.credentialsValid,
             credentialsCheckedAt: row.credentialsCheckedAt ? row.credentialsCheckedAt.toISOString() : null,
             autoReplyPaused: row.autoReplyPaused,
+            cancellationNoticeEnabled: row.cancellationNoticeEnabled,
+            cancellationNoticeProblem,
             pausedMessage: MENSAGEM_ATENDIMENTO_PAUSADO,
             updatedBy: row.updatedBy,
             updatedAt: row.updatedAt.toISOString(),
@@ -380,7 +399,7 @@ export function createWhatsAppSettingsService({
         },
 
         async getView() {
-            return toView(await ensureRow())
+            return await toView(await ensureRow())
         },
 
         async testConnection(body) {
@@ -423,17 +442,33 @@ export function createWhatsAppSettingsService({
                 auditFields: changedFields(row, input),
             })
             await notifyGateway()
-            return toView(saved)
+            return await toView(saved)
         },
 
         async pause(userId) {
             await ensureRow()
-            return toView(await settings.setAutoReplyPaused(true, userId))
+            return await toView(await settings.setAutoReplyPaused(true, userId))
         },
 
         async resume(userId) {
             await ensureRow()
-            return toView(await settings.setAutoReplyPaused(false, userId))
+            return await toView(await settings.setAutoReplyPaused(false, userId))
+        },
+
+        async setCancellationNotice(body, userId) {
+            const parsed = cancellationNoticeBodySchema.safeParse(body)
+            if (!parsed.success) {
+                throw new BadRequestError("enabled must be a boolean")
+            }
+            await ensureRow()
+            return await toView(await settings.setCancellationNoticeEnabled(parsed.data.enabled, userId))
+        },
+
+        isCancellationNoticeEnabled: () => settings.isCancellationNoticeEnabled(),
+
+        async getCancellationNoticeState() {
+            const row = await ensureRow()
+            return { enabled: row.cancellationNoticeEnabled, problem: await noticeProblemOf(row) }
         },
 
         async getInternalConfig() {

@@ -39,7 +39,7 @@ Todas as **telas de configuração** (Horários de atendimento, Documentos, Usu�
 3. **"Descartar"** desfaz todas as alterações pendentes.
 4. O topo da tela mostra **"Última alteração por [nome] em [data]"**.
 
-A única exceção é o interruptor **"Pausar respostas automáticas"**, na tela de WhatsApp, que age na hora porque é de emergência.
+As exceções são os interruptores da tela de WhatsApp que agem na hora, com diálogo de confirmação: **"Pausar respostas automáticas"**, porque é de emergência, e **"Avisar o cidadão quando a equipe cancelar"**, porque é uma chave operacional com efeito imediato no próximo cancelamento e não deve se misturar com a barra de alterações não salvas das credenciais.
 
 Nas telas de operação (Agendamentos, Detalhe, Conteúdo), cada ação é aplicada quando confirmada, e fica registrada no histórico correspondente.
 

@@ -99,6 +99,22 @@
     "history": {
         "title": "Histórico",
         "retryNotice": "Tentar novamente",
+        "metaErrors": {
+            "131042": "A conta da Meta está sem forma de pagamento.",
+            "132001": "O modelo de aviso não existe no idioma usado ou não está aprovado na Meta.",
+            "132000": "O número de parâmetros enviado é diferente do modelo cadastrado na Meta.",
+            "132012": "Os parâmetros do modelo foram enviados com formato incorreto.",
+            "132007": "O conteúdo do modelo viola a política do WhatsApp.",
+            "132015": "O modelo de aviso foi pausado pela Meta por baixa qualidade.",
+            "132016": "O modelo de aviso foi desativado de vez pela Meta.",
+            "132005": "A tradução do texto do modelo ficou longa demais.",
+            "190": "O token da Meta está inválido ou expirado.",
+            "131048": "O limite de envios do número foi atingido.",
+            "131026": "Mensagem não entregável: o número pode não ter WhatsApp, não ter aceitado os termos ou estar com o aplicativo desatualizado.",
+            "131049": "Limite de engajamento do usuário: esperar 24 horas e não insistir.",
+            "131056": "Muitos envios ao mesmo destinatário.",
+            "131047": "Fora da janela de 24 horas."
+        },
         "events": {
             "created": {
                 "withActor": "Criado pelo chatbot como Pendente",
@@ -152,6 +168,10 @@
                 "withActor": "Falha ao avisar o cidadão do cancelamento",
                 "withoutActor": "Falha ao avisar o cidadão do cancelamento"
             },
+            "noticeDisabled": {
+                "withActor": "Aviso ao cidadão desativado: cidadão não avisado pelo sistema",
+                "withoutActor": "Aviso ao cidadão desativado: cidadão não avisado pelo sistema"
+            },
             "reminderFailed": {
                 "withActor": "Falha ao avisar o cidadão do lembrete",
                 "withoutActor": "Falha ao avisar o cidadão do lembrete"
@@ -192,7 +212,10 @@
         "cancel": {
             "title": "Cancelar o agendamento {{protocol}}?",
             "subtitle": "{{name}} · {{date}} às {{time}}. O horário volta a ficar disponível no chatbot e o cidadão é avisado pelo WhatsApp. Esta ação não pode ser desfeita.",
+            "subtitleNoNotice": "{{name}} · {{date}} às {{time}}. O horário volta a ficar disponível no chatbot. O cidadão não será avisado pelo sistema. Esta ação não pode ser desfeita.",
             "confirm": "Cancelar e avisar o cidadão",
+            "confirmNoNotice": "Cancelar agendamento",
+            "noticeOff": "O aviso por WhatsApp está desligado. O cidadão não será avisado pelo sistema. Avise por outro meio.",
             "dismiss": "Voltar",
             "reasonLabel": "Motivo do cancelamento",
             "required": "*",
@@ -206,8 +229,9 @@
             },
             "previewLabel": "Mensagem que o cidadão receberá",
             "chooseReason": "Escolha um motivo para ver a prévia.",
-            "previewFailed": "Não foi possível carregar a prévia da mensagem.",
-            "retryPreview": "Tentar carregar a prévia novamente",
+            "previewFailed": "Não foi possível verificar o aviso ao cidadão. Tente de novo.",
+            "retryPreview": "Tentar de novo",
+            "verifying": "Verificando o aviso ao cidadão…",
             "fixedMessageHint": "As mensagens enviadas pelo chatbot seguem modelos fixos e não podem ser editadas livremente. Por isso o aviso pode ser enviado a qualquer momento antes do horário do atendimento.",
             "noteLabel": "Observação interna ",
             "noteOptional": "(opcional, não é enviada ao cidadão)",

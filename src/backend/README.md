@@ -253,6 +253,7 @@ em `POST`/`PUT` sem origem confiável e `400 BAD_REQUEST` `"Malformed JSON body"
 | `PUT /` | igual ao teste | `200 { data: WhatsAppSettingsView }` | `400`; `422 { error: { code: <reason>, message: "WhatsApp connection test failed" } }` |
 | `POST /pause` | — | `200 { data: WhatsAppSettingsView }` com `autoReplyPaused: true` | — |
 | `POST /resume` | — | `200 { data: WhatsAppSettingsView }` com `autoReplyPaused: false` | — |
+| `PUT /cancellation-notice` | `{ enabled: boolean }` | `200 { data: WhatsAppSettingsView }` com `cancellationNoticeEnabled` igual ao enviado | `400` se `enabled` não for booleano ou houver outro campo |
 | `GET /templates` | — | `200 { data: { checkedAt, templates: [{ kind: "CANCELLATION" \| "REMINDER", name, languageCode, status, metaStatus }] } }` | `409 WHATSAPP_NOT_CONFIGURED` (sem ID da conta, token ou App Secret); `422 { error: { code: <reason> } }` |
 | `GET /number-status` | — | `200 { data: { checkedAt, qualityRating, messagingLimit: { tier, dailyLimit, usedLast24h } } }` | `409 WHATSAPP_NOT_CONFIGURED` (sem ID do número, token ou App Secret); `422 { error: { code: <reason> } }` |
 | `GET /delivery-failures` | — | `200 { data: { since, count, items: [{ id, kind, errorCode, failedAt, appointmentId }] } }` | — |
@@ -271,6 +272,7 @@ em `POST`/`PUT` sem origem confiável e `400 BAD_REQUEST` `"Malformed JSON body"
   `kind`: `REPLY` (resposta comum; o Gateway não informa o id das respostas, então toda falha de id
   desconhecido entra assim), `CANCELLATION` (aviso de cancelamento, com o agendamento), e
   `CONFIRMATION`, `PAUSED` e `REMINDER`, reservados. Sem telefone, texto nem id da mensagem na Meta.
+- `PUT /cancellation-notice` liga ou desliga o aviso de cancelamento ao cidadão (issue #164). Só o Admin, age na hora e grava `cancellation_notice_enabled` ou `cancellation_notice_disabled` no `AuditLog` da área `whatsapp`, com quem alterou. O aviso nasce desligado (coluna `cancellation_notice_enabled`, padrão `FALSE`, na instalação nova e na atualização).
 - `GET /history` lê `AuditLog` da área `whatsapp`, da alteração mais recente para a mais antiga
   (desempate pelo `id`), no máximo 50. `action`: `credentials_saved` (com `fields`, o subconjunto de
   `phoneNumberId` e `businessAccountId` quando mudaram, e de `accessToken` e `appSecret` quando foram
@@ -308,6 +310,8 @@ O cadastro dos modelos na Meta está em [`.docs/whatsapp/modelos-de-mensagem.md`
     "credentialsValid": true,
     "credentialsCheckedAt": "2026-10-14T13:00:00.000Z",
     "autoReplyPaused": false,
+    "cancellationNoticeEnabled": false,
+    "cancellationNoticeProblem": null,
     "pausedMessage": "O atendimento automático do PROCON Jacareí está temporariamente indisponível. Tente novamente mais tarde.",
     "updatedBy": { "id": 1, "name": "Admin" },
     "updatedAt": "2026-10-14T13:00:00.000Z",
@@ -657,8 +661,8 @@ repositório dentro da transação, pelo mock e pelo detalhe.
 | `GET /api/v1/appointments` | `appointments.view` | Lista com busca, filtros, ordenação, paginação e contagem dos chips (query abaixo) | `200 { data: { items, total, page, limit, totalPages, chipCounts } }` | `400 BAD_REQUEST`, `401`, `403` |
 | `GET /api/v1/appointments/:id` | `appointments.view` | Detalhe com histórico (`events`), linha do tempo da conversa de origem (`timeline`) e ações disponíveis (`available_actions`) | `200 { data: AppointmentDetail }` | `400 BAD_REQUEST` (id que não é inteiro positivo ou passa do limite do `bigint`), `401`, `403`, `404 NOT_FOUND` |
 | `PATCH /api/v1/appointments/:id/status` | `appointments.manage` | Executa uma ação. Corpo: `{ "action": "claim" \| "attended" \| "no_show" \| "correct_record" }`, `{ "action": "assign", "assigneeUserId": <id> }` (número ou texto numérico) ou `{ "action": "cancel", "reason": "UNIT_CLOSED" \| "CITIZEN_REQUEST" \| "DUPLICATE" \| "OTHER", "note"?: "..." }` (seção "Cancelamento pela equipe") | `200 { data: AppointmentDetail }`, o mesmo objeto que um `GET /:id` feito em seguida. `correct_record` pode trazer também `warning` (abaixo) | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN`, `403 INVALID_ORIGIN`, `404 NOT_FOUND`, `409` (codes na tabela de ações) |
-| `GET /api/v1/appointments/:id/cancellation-preview` | `appointments.manage` | A mensagem exata que o cidadão recebe para cada motivo, na ordem `UNIT_CLOSED`, `CITIZEN_REQUEST`, `DUPLICATE`, `OTHER` | `200 { data: { previews: [{ reason, message }] } }` | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN`, `404 NOT_FOUND` |
-| `POST /api/v1/appointments/:id/cancellation-notice/retry` | `appointments.manage` | Reenvia o aviso de cancelamento que falhou | `200 { data: AppointmentDetail }` | `401`, `403 FORBIDDEN`, `403 INVALID_ORIGIN`, `404 NOT_FOUND`, `409 NOTIFICATION_NOT_RETRYABLE`, `409 CITIZEN_PHONE_UNAVAILABLE`, `409 NOTIFICATION_AFTER_START`, `409 NOTIFICATION_IN_PROGRESS` |
+| `GET /api/v1/appointments/:id/cancellation-preview` | `appointments.manage` | A mensagem exata que o cidadão recebe para cada motivo, na ordem `UNIT_CLOSED`, `CITIZEN_REQUEST`, `DUPLICATE`, `OTHER` | `200 { data: { noticeEnabled: boolean, problem: NoticeProblem \| null, previews: [{ reason, message }] } }` (com o aviso desligado: `noticeEnabled: false`, `problem: null` e `previews: []`; se o estado do aviso não puder ser lido, responde erro e o front não libera a confirmação) | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN`, `404 NOT_FOUND` |
+| `POST /api/v1/appointments/:id/cancellation-notice/retry` | `appointments.manage` | Reenvia o aviso de cancelamento que falhou | `200 { data: AppointmentDetail }` | `401`, `403 FORBIDDEN`, `403 INVALID_ORIGIN`, `404 NOT_FOUND`, `409 NOTIFICATION_NOT_RETRYABLE`, `409 NOTIFICATION_DISABLED`, `409 CITIZEN_PHONE_UNAVAILABLE`, `409 NOTIFICATION_AFTER_START`, `409 NOTIFICATION_IN_PROGRESS` |
 | `POST /api/v1/appointments/:id/notes` | `appointments.manage` | Grava uma observação interna. Corpo: `{ "text": "..." }`, de 1 a 2000 caracteres depois de aparar. Não há rota de edição nem de exclusão, e o trigger `trg_appointment_notes_immutable` recusa `UPDATE` e `DELETE` | `201 { data: AppointmentDetail }` | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN`, `403 INVALID_ORIGIN`, `404 NOT_FOUND` |
 
 Erros sempre no envelope `{ "error": { "code": "...", "message": "..." } }`. O painel traduz pelo
@@ -970,17 +974,57 @@ marcado (no horário ou depois, `409 CANCEL_AFTER_START`).
   maior que os 10 s do gateway). Os parâmetros vêm de `parametrosAvisoCancelamento` (nome, protocolo,
   data e hora em Brasília e a frase do motivo), os mesmos da prévia. A observação interna nunca vai ao
   cidadão.
+- **Aviso desligado (issue #164, padrão):** antes de cancelar, o service lê a configuração
+  (`PUT /api/v1/whatsapp/settings/cancellation-notice`). Se não conseguir ler, o cancelamento nem
+  começa e o erro sobe. Com o aviso desligado, o `COMMIT` do cancelamento já inclui o evento
+  `CITIZEN_NOTICE_DISABLED` (`data: { kind: "CANCELLATION" }`, com quem cancelou), o gateway e a Meta
+  não são chamados e nenhuma falha é gravada, nem de telefone ausente. O horário volta a ficar livre
+  do mesmo jeito. Esse evento não é falha e não vira reenvio, mesmo que o Admin ligue o aviso depois:
+  `retry_cancellation_notice` fica recusado com `NOTIFICATION_NOT_RETRYABLE`. Com o aviso desligado, o
+  reenvio de uma falha antiga responde `409 NOTIFICATION_DISABLED` e não chama a Meta.
+- `AppointmentDetail.cancellation_notice_status` (`"NOTIFIED" | "FAILED" | "DISABLED" | null`) traz o
+  último registro do aviso de cancelamento quando a equipe cancelou o agendamento, e `null` nos demais
+  casos. É a marca para a faixa que não some ao recarregar.
 - O resultado vira `CITIZEN_NOTIFIED` ou `CITIZEN_NOTIFICATION_FAILED`, com `data: { kind:
   "CANCELLATION" }` e quem agiu. Falha do gateway, gateway não configurado ou telefone ausente ou
   ilegível gravam a falha, e o cancelamento continua respondendo `200`. A pausa das respostas
   automáticas não bloqueia o aviso.
+- **Problema conhecido da Meta** (`cancellationNoticeProblem` em `GET /api/v1/whatsapp/settings` e `problem` em `cancellation-preview`): objeto `{ code, metaErrorCode, message }` ou `null`. Só existe com o aviso ligado, para erros da **conta** com uma falha de envio nas últimas 24 horas e nenhum envio bem-sucedido depois dela (o do aviso de cancelamento, no caso de erro de modelo; de qualquer tipo, no caso de erro de conta), ou com `credentialsValid = false`. A frase vem da regra 11:
+
+  | `metaErrorCode` | `code` |
+  |---|---|
+  | `131042` | `PAYMENT_METHOD` |
+  | `132001` | `TEMPLATE_NOT_FOUND` |
+  | `132000` | `TEMPLATE_PARAMETER_COUNT` |
+  | `132012` | `TEMPLATE_PARAMETER_FORMAT` |
+  | `132007` | `TEMPLATE_POLICY_VIOLATION` |
+  | `132015` | `TEMPLATE_PAUSED` |
+  | `132016` | `TEMPLATE_DISABLED` |
+  | `132005` | `TEMPLATE_TRANSLATION_TOO_LONG` |
+  | `190` ou credenciais inválidas (`metaErrorCode: null`) | `INVALID_TOKEN` |
+  | `131048` | `SEND_LIMIT_REACHED` |
+
+  Os códigos do destinatário (`131026`, `131049`, `131056`, `131047`) não geram faixa e aparecem só no Histórico do agendamento. O estado atual do modelo (não aprovado, pausado ou desativado) exige uma consulta à Meta: o front combina `GET /api/v1/whatsapp/settings/templates` e mostra "o modelo de aviso não está aprovado na Meta".
+- Quando a Meta recusa o envio, ou avisa depois pelo webhook de status que a entrega falhou, o evento
+  `CITIZEN_NOTIFICATION_FAILED` traz também `data.errorCode` (texto só com dígitos, por exemplo
+  `"131042"`) e a mensagem em `OutboundMessages.error_code` guarda o mesmo código. O código vindo do webhook só é aceito com 1 a 7 dígitos; qualquer outro valor é gravado como
+  nulo (a falha continua registrada). Só o código é
+  guardado: a mensagem e os detalhes da Meta podem conter o telefone e nunca são lidos. Sem código
+  (rede fora do ar, gateway não configurado), o evento fica só com `kind`.
 - Se o próprio aviso lança depois do `COMMIT` (por exemplo, a gravação do resultado falha), o
   cancelamento responde `200` com o detalhe `CANCELED` e o log registra só o id do agendamento e o
   código do erro, sem telefone. Se a leitura do detalhe também falhar, a resposta é `500`, mas o
   cancelamento continua gravado.
 - `available_actions.retry_cancellation_notice` só fica `allowed` quando o agendamento foi cancelado
   pela equipe, o último aviso de `kind` `CANCELLATION` (por `created_at, id`) falhou ou não existe, há
-  telefone e o horário ainda não passou. O reenvio tem uma trava em memória por agendamento
+  telefone, o aviso está ligado e o horário ainda não passou. A ordem das recusas é
+  `NOTIFICATION_NOT_RETRYABLE`, `NOTIFICATION_AFTER_START`, `NOTIFICATION_DISABLED` e
+  `CITIZEN_PHONE_UNAVAILABLE`: depois do horário do atendimento vale sempre `NOTIFICATION_AFTER_START`,
+  com o aviso ligado ou desligado, e o front não mostra as faixas de aviso ao cidadão (falha com aviso
+  desligado, "cancelado sem aviso" e falta de telefone) quando `appointment_datetime` já passou. Com o aviso desligado, uma falha antiga
+  continua com `cancellation_notice_status: "FAILED"`, mas a ação vem `{ allowed: false, code:
+  "NOTIFICATION_DISABLED" }` (o front não lê as configurações, que são só do Admin, então o botão segue
+  só esta ação). O reenvio tem uma trava em memória por agendamento
   (`409 NOTIFICATION_IN_PROGRESS`), suficiente porque o backend roda numa instância só. Dentro da trava
   o alvo é relido, e um aviso que já saiu (`CITIZEN_NOTIFIED`) recusa o reenvio com
   `409 NOTIFICATION_NOT_RETRYABLE`.
@@ -1350,7 +1394,7 @@ perguntas de `RequiredDocuments`.
 | --- | --- | --- | --- |
 | `GET /api/v1/documents` | — | `200 { data: DocumentsViewOutput }`, com os grupos `holder` e `representative`, última alteração (`updatedBy` fica `{ id: null, name: "usuário removido" }` quando o autor não existe mais), endereço/lembrete de `ScheduleSettings` e todas as perguntas ativas (`id`, `title`, `categoryTitle`, `documents`), na ordem da tela Conteúdo | `401 UNAUTHORIZED`, `403 FORBIDDEN`, `500` se faltar a configuração de horários |
 | `PUT /api/v1/documents` | `{ holder: string[], representative: string[] }` (até 10 itens por grupo, de 1 a 255 caracteres, sem item repetido no mesmo grupo ignorando acento e maiúscula) | `200 { data: DocumentsViewOutput }`; substitui os dois grupos e registra a alteração em `AuditLog`. Salvar a mesma lista não grava `AuditLog` nem troca "Última alteração por" (mudar só a ordem conta como alteração). Saves simultâneos são serializados por trava no banco | `400 BAD_REQUEST` com mensagem em português citando o item e o motivo, `401`, `403` |
-| `POST /api/v1/documents/preview` | `{ byRepresentative: boolean, groupDocuments: string[], questionId?: inteiro positivo ou texto numérico }`, com as mesmas regras de itens do `PUT` | `200 { data }` com `text` (saída de `formatarConfirmacaoAgendamento`, a mesma do bot), `example` (`protocol`, `dateTime` fixos), `title`, `details[]` (`label`, `value`), `groupBlock` e `questionBlock` (`heading`, `items[]` com `text` e `repeated`, ou `null` se a lista estiver vazia), `notice` e `repeatedCount`. Sem salvar alterações | `400 BAD_REQUEST` (inclui `questionId` inválido: "Pergunta inválida."), `401`, `403`, `404 NOT_FOUND` se a pergunta não existe ou está inativa |
+| `POST /api/v1/documents/preview` | `{ byRepresentative: boolean, groupDocuments: string[], questionId?: inteiro positivo ou texto numérico }`, com as mesmas regras de itens do `PUT` | `200 { data }` com `text` (saída de `formatarConfirmacaoAgendamento`, a mesma do bot), `example` (`protocol`, `dateTime` fixos), `title`, `details[]` (`label`, `value`), `groupBlock` e `questionBlock` (`heading`, `items[]` com `text` e `repeated`, ou `null` se a lista estiver vazia), `notice` (`string` ou `null`: com o lembrete e o aviso de cancelamento desligados não há frase, e `text` termina nos documentos sem a linha em branco que a precederia) e `repeatedCount`. Sem salvar alterações | `400 BAD_REQUEST` (inclui `questionId` inválido: "Pergunta inválida."), `401`, `403`, `404 NOT_FOUND` se a pergunta não existe ou está inativa |
 
 Um item é `repeated` quando aparece nas duas listas: igual ignorando acento, maiúscula e espaços, ou
 um contido no outro por palavras inteiras (por exemplo, "RG" e "RG ou outro documento oficial com
@@ -1359,7 +1403,7 @@ foto"). `repeatedCount` conta os itens do grupo repetidos. A regra vive só no b
 
 As respostas da prévia usadas pelos testes do painel ficam em `src/frontend/src/testUtils/documentsPreview*.json`.
 O teste `services/documents.previewFixtures.test.ts` compara cada arquivo com a saída real de
-`previewConfirmation` e falha se o contrato mudar. Quando a mudança for intencional, regenere os
+`previewConfirmation` e falha se o contrato mudar. A frase de avisos acompanha o que está ligado (lembrete em Horários de atendimento e aviso de cancelamento na tela de WhatsApp, lido a cada confirmação, sem cache): as quatro combinações e o `1 hora` estão em `.docs/regras/09-documentos.md`, e valem para o bot (agendamento e remarcação) e para esta prévia, que usam a mesma função. Quando a mudança for intencional, regenere os
 JSON com `npm run fixtures:documents-preview` (em `src/backend`, define `REGENERATE_PREVIEW_FIXTURES=1`
 e reescreve os arquivos em vez de comparar) e commite-os junto com a alteração do backend. As entradas de cada
 arquivo ficam em `services/mock/documentsPreviewFixtures.ts`.

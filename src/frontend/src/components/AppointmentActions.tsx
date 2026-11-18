@@ -1,3 +1,4 @@
+import AppointmentNotice from "@/components/AppointmentNotice"
 import AppointmentActionItem from "@/components/AppointmentActionItem"
 import type AppointmentAction from "@/types/appointments/AppointmentAction.types"
 import type AppointmentActionsView from "@/types/appointments/AppointmentActionsView.types"
@@ -20,11 +21,7 @@ function AppointmentActions({ title, view, dateNote, warning, onAction }: Appoin
                     {view.error}
                 </p>
             ) : null}
-            {warning ? (
-                <output className={css.warningNotice} data-tone="warning">
-                    {warning}
-                </output>
-            ) : null}
+            {warning ? <AppointmentNotice>{warning}</AppointmentNotice> : null}
             {view.notice ? <output className={css.correction}>{view.notice}</output> : null}
             {view.items.map((item) => (
                 <AppointmentActionItem

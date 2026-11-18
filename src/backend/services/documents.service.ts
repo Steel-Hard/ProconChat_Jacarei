@@ -1,6 +1,7 @@
 import NotFoundError from "../errors/NotFoundError"
 import { documentsRepository } from "../repositories/documents.repository"
 import { IDocumentsRepository } from "../repositories/documents.repository.interface"
+import { whatsappSettingsService } from "./whatsappSettings.service"
 import {
     ConfirmacaoAgendamentoEstrutura,
     formatarConfirmacaoAgendamento,
@@ -49,6 +50,7 @@ export interface DocumentsService {
 
 export function createDocumentsService(deps: {
     documents: IDocumentsRepository
+    isCancellationNoticeEnabled: () => Promise<boolean>
 }): DocumentsService {
     const repository = deps.documents
 
@@ -84,7 +86,10 @@ export function createDocumentsService(deps: {
     async function previewConfirmation(
         args: PreviewConfirmationArgs
     ): Promise<PreviewConfirmationOutput> {
-        const scheduleContext = await repository.getScheduleContext()
+        const [scheduleContext, cancellationNoticeEnabled] = await Promise.all([
+            repository.getScheduleContext(),
+            deps.isCancellationNoticeEnabled()
+        ])
         let questionDocuments: string[] = []
 
         if (args.questionId !== undefined) {
@@ -104,7 +109,8 @@ export function createDocumentsService(deps: {
             groupDocuments: args.groupDocuments,
             questionDocuments,
             reminderEnabled: scheduleContext.reminderEnabled,
-            reminderHours: scheduleContext.reminderHours
+            reminderHours: scheduleContext.reminderHours,
+            cancellationNoticeEnabled
         }
 
         return {
@@ -117,4 +123,7 @@ export function createDocumentsService(deps: {
     return { getDocumentsView, saveDocuments, previewConfirmation }
 }
 
-export const documentsService = createDocumentsService({ documents: documentsRepository })
+export const documentsService = createDocumentsService({
+    documents: documentsRepository,
+    isCancellationNoticeEnabled: () => whatsappSettingsService.isCancellationNoticeEnabled()
+})

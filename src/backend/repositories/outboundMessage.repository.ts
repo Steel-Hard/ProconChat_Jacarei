@@ -23,7 +23,9 @@ export function createOutboundMessageRepository(pool: Pool = getPool()): Outboun
                                  RETURNING kind, appointment_id
                              )
                              INSERT INTO AppointmentEvents (appointment_id, type, actor_user_id, data, created_at)
-                             SELECT appointment_id, 'CITIZEN_NOTIFICATION_FAILED', NULL, '{"kind":"CANCELLATION"}'::jsonb, $4
+                             SELECT appointment_id, 'CITIZEN_NOTIFICATION_FAILED', NULL,
+                                    CASE WHEN $2::text IS NULL THEN '{"kind":"CANCELLATION"}'::jsonb
+                                         ELSE jsonb_build_object('kind', 'CANCELLATION', 'errorCode', $2::text) END, $4
                              FROM failed
                              WHERE kind = 'CANCELLATION' AND appointment_id IS NOT NULL`,
                             [providerMessageHash, status.errorCode, statusAt, now],
@@ -65,6 +67,32 @@ export function createOutboundMessageRepository(pool: Pool = getPool()): Outboun
                     failedAt: row.status_at,
                     appointmentId: row.appointment_id === null ? null : String(row.appointment_id),
                 })),
+            }
+        },
+
+        async findProblemSignals(since, errorCodes) {
+            const failures = await pool.query<{ kind: OutboundKind; error_code: string; status_at: Date }>(
+                `SELECT kind, error_code, status_at
+                 FROM OutboundMessages
+                 WHERE status = 'FAILED' AND status_at > $1 AND error_code = ANY($2::text[])
+                 ORDER BY status_at DESC, id DESC
+                 LIMIT 100`,
+                [since, errorCodes],
+            )
+            const successes = await pool.query<{ kind: OutboundKind; last_at: Date }>(
+                `SELECT kind, MAX(status_at) AS last_at
+                 FROM OutboundMessages
+                 WHERE status IN ('SENT', 'DELIVERED', 'READ') AND status_at > $1
+                 GROUP BY kind`,
+                [since],
+            )
+            const lastSuccessByKind: Partial<Record<OutboundKind, Date>> = {}
+            for (const row of successes.rows) {
+                lastSuccessByKind[row.kind] = row.last_at
+            }
+            return {
+                failures: failures.rows.map((row) => ({ kind: row.kind, errorCode: row.error_code, failedAt: row.status_at })),
+                lastSuccessByKind,
             }
         },
     }
