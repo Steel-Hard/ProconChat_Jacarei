@@ -9,7 +9,7 @@ type DocumentsPreviewData = {
     details: DocumentsPreviewDetail[]
     groupBlock: DocumentsPreviewBlock | null
     questionBlock: DocumentsPreviewBlock | null
-    notice: string
+    notice: string | null
     repeatedCount: number
 }
 

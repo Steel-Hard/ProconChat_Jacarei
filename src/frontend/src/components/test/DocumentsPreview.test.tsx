@@ -189,4 +189,24 @@ describe("DocumentsPreview", () => {
             "Nenhum documento será pedido quando o titular comparecer."
         )
     })
+
+    it.each([
+        ["com o aviso de cancelamento", holderContract.notice],
+        ["sem o aviso de cancelamento", null]
+    ])("mostra o texto do backend e a frase de avisos %s", (_label, notice) => {
+        const contract = { ...holderContract, notice } as DocumentsPreviewData
+        const text =
+            notice === null
+                ? holderContract.text.replace(holderContract.notice, "").trimEnd()
+                : holderContract.text
+        renderPreview({ preview: { ...contract, text } })
+
+        const bubble = screen.getByTestId("preview-bubble")
+
+        if (notice === null) {
+            expect(bubble.textContent).not.toContain("aviso em caso de cancelamento")
+        } else {
+            expect(bubble.textContent).toContain("aviso em caso de cancelamento")
+        }
+    })
 })
