@@ -17,7 +17,7 @@ function AppointmentHistoryEntry({ entry, retry }: AppointmentHistoryEntryProps)
             {retry ? (
                 <button
                     type="button"
-                    className={css.action}
+                    className={css.entryRetry}
                     disabled={retry.busy}
                     aria-busy={retry.busy || undefined}
                     onClick={retry.onClick}

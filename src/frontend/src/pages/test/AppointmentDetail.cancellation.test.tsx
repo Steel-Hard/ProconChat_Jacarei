@@ -323,4 +323,21 @@ describe("AppointmentDetail: cancelamento e reenvio do aviso", () => {
         ).not.toBeInTheDocument()
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
     })
+
+    it("mostra a dica dos modelos fixos, o asterisco do motivo e a observação opcional separada", async () => {
+        const page = await renderCancellation(CANCELLABLE)
+        await page.user.click(screen.getByRole("button", { name: "Cancelar agendamento" }))
+        const dialog = screen.getByRole("dialog", { name: "Cancelar o agendamento F10464F0?" })
+
+        expect(
+            within(dialog).getByText(
+                "As mensagens enviadas pelo chatbot seguem modelos fixos e não podem ser editadas livremente. Por isso o aviso pode ser enviado a qualquer momento antes do horário do atendimento."
+            )
+        ).toBeInTheDocument()
+        expect(within(dialog).getByText("*")).toBeInTheDocument()
+        const optional = within(dialog).getByText("(opcional, não é enviada ao cidadão)")
+        expect(optional.tagName).toBe("SPAN")
+        expect(optional).toHaveAttribute("data-optional", "true")
+        expect(within(dialog).getByText("Observação interna")).toBeInTheDocument()
+    })
 })

@@ -205,7 +205,7 @@
 }
 
 .failed {
-    padding: 8px 10px;
+    padding: 9px 11px;
     border: 1px solid var(--error-border);
     border-radius: 8px;
     background: var(--error-soft-bg);
@@ -214,6 +214,24 @@
 .failed .entryText {
     color: var(--error-text);
     font-weight: 600;
+}
+
+.entryRetry {
+    align-self: flex-start;
+    margin-top: 6px;
+    padding: 5px 10px;
+    border: 1px solid #ebc7c2;
+    border-radius: 8px;
+    background: var(--bg-surface);
+    color: #a3261b;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.entryRetry:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 .entryWhen {
