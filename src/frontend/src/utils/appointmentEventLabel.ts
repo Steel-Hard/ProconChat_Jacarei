@@ -18,6 +18,7 @@ const EVENT_KEYS: Record<AppointmentEventType, EventKey> = {
     CANCELED_BY_STAFF: "canceledByStaff",
     CITIZEN_NOTIFIED: "citizenNotified",
     CITIZEN_NOTIFICATION_FAILED: "citizenNotificationFailed",
+    CITIZEN_NOTICE_DISABLED: "noticeDisabled",
     REMINDER_SENT: "reminderSent",
     KEPT_OFF_GRID: "keptOffGrid"
 }
@@ -38,6 +39,39 @@ function eventKeyOf(event: AppointmentEvent): EventKey {
     return EVENT_KEYS[event.type]
 }
 
+const META_ERROR_CODES = [
+    "131042",
+    "132001",
+    "132000",
+    "132012",
+    "132007",
+    "132015",
+    "132016",
+    "132005",
+    "190",
+    "131048",
+    "131026",
+    "131049",
+    "131056",
+    "131047"
+] as const
+
+type MetaErrorCode = (typeof META_ERROR_CODES)[number]
+
+function isMetaErrorCode(code: unknown): code is MetaErrorCode {
+    return META_ERROR_CODES.some((known) => known === code)
+}
+
+function detailKeyOf(event: AppointmentEvent): AppointmentEventLabel["detailKey"] {
+    const code = event.data.errorCode
+
+    if (event.type !== "CITIZEN_NOTIFICATION_FAILED" || !isMetaErrorCode(code)) {
+        return null
+    }
+
+    return `history.metaErrors.${code}`
+}
+
 function appointmentEventLabel(event: AppointmentEvent): AppointmentEventLabel {
     const name = event.actor_user_name
     const variant = name === null ? "withoutActor" : "withActor"
@@ -47,7 +81,9 @@ function appointmentEventLabel(event: AppointmentEvent): AppointmentEventLabel {
         values: name === null ? {} : { name },
         highlight: event.type === "CITIZEN_NOTIFICATION_FAILED",
         retryable:
-            event.type === "CITIZEN_NOTIFICATION_FAILED" && event.data.kind === "CANCELLATION"
+            event.type === "CITIZEN_NOTIFICATION_FAILED" && event.data.kind === "CANCELLATION",
+        muted: event.type === "CITIZEN_NOTICE_DISABLED",
+        detailKey: detailKeyOf(event)
     }
 }
 

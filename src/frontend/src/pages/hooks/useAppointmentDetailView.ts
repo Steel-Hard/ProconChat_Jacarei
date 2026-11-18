@@ -121,7 +121,12 @@ function useAppointmentDetailView(detail: AppointmentDetail | undefined) {
                 text: t(label.key, { ns: "appointmentDetail", ...label.values }),
                 when: at(event.created_at),
                 highlight: label.highlight,
-                retryable: label.retryable
+                retryable: label.retryable,
+                muted: label.muted,
+                detail:
+                    label.detailKey === null
+                        ? null
+                        : t(label.detailKey, { ns: "appointmentDetail" })
             }
         })
 

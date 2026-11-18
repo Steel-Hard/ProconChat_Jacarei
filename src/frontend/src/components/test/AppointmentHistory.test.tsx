@@ -11,21 +11,27 @@ const ENTRIES = [
         text: "Falha ao avisar o cidadão do cancelamento",
         when: "19/10/2026 às 09:00",
         highlight: true,
-        retryable: true
+        retryable: true,
+        muted: false,
+        detail: null
     },
     {
         id: "2",
         text: "Assumido por Admin · Confirmado",
         when: "18/10/2026 às 10:47",
         highlight: false,
-        retryable: false
+        retryable: false,
+        muted: false,
+        detail: null
     },
     {
         id: "1",
         text: "Criado pelo chatbot como Pendente",
         when: "18/10/2026 às 10:46",
         highlight: false,
-        retryable: false
+        retryable: false,
+        muted: false,
+        detail: null
     }
 ]
 
@@ -109,7 +115,9 @@ describe("AppointmentHistory", () => {
                         text: "Falha ao avisar o cidadão do lembrete",
                         when: "19/10/2026 às 09:00",
                         highlight: true,
-                        retryable: false
+                        retryable: false,
+                        muted: false,
+                        detail: null
                     },
                     ...ENTRIES.slice(1)
                 ]}
@@ -127,5 +135,43 @@ describe("AppointmentHistory", () => {
         expect(items[0]).toHaveAttribute("data-highlight", "true")
         expect(within(items[0] as HTMLElement).queryByRole("button")).not.toBeInTheDocument()
         expect(screen.getAllByRole("button", { name: "Tentar novamente" })).toHaveLength(1)
+    })
+
+    it("mostra o motivo da falha abaixo do texto e marca o evento neutro", () => {
+        render(
+            <AppointmentHistory
+                title="Histórico"
+                entries={[
+                    {
+                        id: "7",
+                        text: "Falha ao avisar o cidadão do cancelamento",
+                        when: "19/10/2026 às 09:00",
+                        highlight: true,
+                        retryable: true,
+                        muted: false,
+                        detail: "A conta da Meta está sem forma de pagamento."
+                    },
+                    {
+                        id: "6",
+                        text: "Aviso ao cidadão desativado: cidadão não avisado pelo sistema",
+                        when: "19/10/2026 às 08:59",
+                        highlight: false,
+                        retryable: false,
+                        muted: true,
+                        detail: null
+                    }
+                ]}
+            />
+        )
+
+        const items = within(screen.getByRole("list")).getAllByRole("listitem")
+        expect(
+            within(items[0] as HTMLElement).getByText(
+                "A conta da Meta está sem forma de pagamento."
+            )
+        ).toBeInTheDocument()
+        expect(items[1]).toHaveAttribute("data-muted", "true")
+        expect(items[1]).not.toHaveAttribute("data-highlight")
+        expect(items[0]).not.toHaveAttribute("data-muted")
     })
 })
