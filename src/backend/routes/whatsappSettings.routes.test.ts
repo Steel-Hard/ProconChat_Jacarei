@@ -59,6 +59,7 @@ const routes = [
     { method: "put", path: "/api/v1/whatsapp/settings" },
     { method: "post", path: "/api/v1/whatsapp/settings/pause" },
     { method: "post", path: "/api/v1/whatsapp/settings/resume" },
+    { method: "put", path: "/api/v1/whatsapp/settings/cancellation-notice" },
     { method: "get", path: "/api/v1/whatsapp/settings/history" },
 ] as const
 
@@ -84,6 +85,7 @@ function savedView(overrides: Record<string, unknown> = {}) {
         credentialsValid: null,
         credentialsCheckedAt: null,
         autoReplyPaused: false,
+        cancellationNoticeEnabled: false,
         pausedMessage: PAUSED_MESSAGE,
         updatedBy: null,
         updatedAt: NOW.toISOString(),
@@ -108,6 +110,7 @@ describe("/api/v1/whatsapp/settings", () => {
             appSecretEncrypted: encrypt(SAVED_SECRET),
             verifyToken: VERIFY_TOKEN,
             autoReplyPaused: false,
+            cancellationNoticeEnabled: false,
             credentialsCheckedAt: null,
             credentialsValid: null,
             displayPhoneNumber: null,
@@ -310,6 +313,41 @@ describe("/api/v1/whatsapp/settings", () => {
         expect(response.status).toBe(200)
         expect(response.body).toEqual({ data: savedView({ autoReplyPaused: false, updatedBy: { id: 1, name: "Admin" } }) })
         expect(settings.row?.autoReplyPaused).toBe(false)
+    })
+
+    test("GET / devolve o aviso de cancelamento desligado por padrão", async () => {
+        const response = await call("get", "/api/v1/whatsapp/settings")
+
+        expect(response.status).toBe(200)
+        expect(response.body.data.cancellationNoticeEnabled).toBe(false)
+    })
+
+    test("PUT /cancellation-notice liga o aviso na hora e devolve a leitura com quem alterou", async () => {
+        const response = await call("put", "/api/v1/whatsapp/settings/cancellation-notice").send({ enabled: true })
+
+        expect(response.status).toBe(200)
+        expect(response.body).toEqual({ data: savedView({ cancellationNoticeEnabled: true, updatedBy: { id: 1, name: "Admin" } }) })
+        expect(response.headers["cache-control"]).toBe("no-store")
+        expect(settings.row?.cancellationNoticeEnabled).toBe(true)
+    })
+
+    test("PUT /cancellation-notice desliga o aviso", async () => {
+        if (settings.row) {
+            settings.row.cancellationNoticeEnabled = true
+        }
+
+        const response = await call("put", "/api/v1/whatsapp/settings/cancellation-notice").send({ enabled: false })
+
+        expect(response.status).toBe(200)
+        expect(response.body.data.cancellationNoticeEnabled).toBe(false)
+        expect(settings.row?.cancellationNoticeEnabled).toBe(false)
+    })
+
+    test.each([{}, { enabled: "true" }, { enabled: 1 }, { enabled: null }])("PUT /cancellation-notice recusa o corpo %j com 400 e não altera o aviso", async (body) => {
+        const response = await call("put", "/api/v1/whatsapp/settings/cancellation-notice").send(body)
+
+        expect(response.status).toBe(400)
+        expect(settings.row?.cancellationNoticeEnabled).toBe(false)
     })
 
     test("GET /history devolve ao Admin as alterações com no-store, sem token nem App Secret em nenhuma forma", async () => {

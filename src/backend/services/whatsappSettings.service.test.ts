@@ -81,6 +81,7 @@ describe("whatsappSettings service", () => {
                 credentialsValid: null,
                 credentialsCheckedAt: null,
                 autoReplyPaused: false,
+                cancellationNoticeEnabled: false,
                 pausedMessage: MENSAGEM_ATENDIMENTO_PAUSADO,
                 updatedBy: { id: 1, name: "Admin" },
                 updatedAt: "2026-10-14T13:00:00.000Z",

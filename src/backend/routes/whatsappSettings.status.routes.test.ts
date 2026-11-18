@@ -67,6 +67,7 @@ describe("/api/v1/whatsapp/settings: modelos e estado do número", () => {
             appSecretEncrypted: encrypt(SAVED_SECRET),
             verifyToken: "3f9a".repeat(16),
             autoReplyPaused: false,
+            cancellationNoticeEnabled: false,
             credentialsCheckedAt: null,
             credentialsValid: null,
             displayPhoneNumber: null,

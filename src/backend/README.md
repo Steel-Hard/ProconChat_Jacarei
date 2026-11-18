@@ -253,6 +253,7 @@ em `POST`/`PUT` sem origem confiável e `400 BAD_REQUEST` `"Malformed JSON body"
 | `PUT /` | igual ao teste | `200 { data: WhatsAppSettingsView }` | `400`; `422 { error: { code: <reason>, message: "WhatsApp connection test failed" } }` |
 | `POST /pause` | — | `200 { data: WhatsAppSettingsView }` com `autoReplyPaused: true` | — |
 | `POST /resume` | — | `200 { data: WhatsAppSettingsView }` com `autoReplyPaused: false` | — |
+| `PUT /cancellation-notice` | `{ enabled: boolean }` | `200 { data: WhatsAppSettingsView }` com `cancellationNoticeEnabled` igual ao enviado | `400` se `enabled` não for booleano ou houver outro campo |
 | `GET /templates` | — | `200 { data: { checkedAt, templates: [{ kind: "CANCELLATION" \| "REMINDER", name, languageCode, status, metaStatus }] } }` | `409 WHATSAPP_NOT_CONFIGURED` (sem ID da conta, token ou App Secret); `422 { error: { code: <reason> } }` |
 | `GET /number-status` | — | `200 { data: { checkedAt, qualityRating, messagingLimit: { tier, dailyLimit, usedLast24h } } }` | `409 WHATSAPP_NOT_CONFIGURED` (sem ID do número, token ou App Secret); `422 { error: { code: <reason> } }` |
 | `GET /delivery-failures` | — | `200 { data: { since, count, items: [{ id, kind, errorCode, failedAt, appointmentId }] } }` | — |
@@ -271,6 +272,7 @@ em `POST`/`PUT` sem origem confiável e `400 BAD_REQUEST` `"Malformed JSON body"
   `kind`: `REPLY` (resposta comum; o Gateway não informa o id das respostas, então toda falha de id
   desconhecido entra assim), `CANCELLATION` (aviso de cancelamento, com o agendamento), e
   `CONFIRMATION`, `PAUSED` e `REMINDER`, reservados. Sem telefone, texto nem id da mensagem na Meta.
+- `PUT /cancellation-notice` liga ou desliga o aviso de cancelamento ao cidadão (issue #164). Só o Admin, age na hora e grava `cancellation_notice_enabled` ou `cancellation_notice_disabled` no `AuditLog` da área `whatsapp`, com quem alterou. O aviso nasce desligado (coluna `cancellation_notice_enabled`, padrão `FALSE`, na instalação nova e na atualização).
 - `GET /history` lê `AuditLog` da área `whatsapp`, da alteração mais recente para a mais antiga
   (desempate pelo `id`), no máximo 50. `action`: `credentials_saved` (com `fields`, o subconjunto de
   `phoneNumberId` e `businessAccountId` quando mudaram, e de `accessToken` e `appSecret` quando foram
@@ -308,6 +310,7 @@ O cadastro dos modelos na Meta está em [`.docs/whatsapp/modelos-de-mensagem.md`
     "credentialsValid": true,
     "credentialsCheckedAt": "2026-10-14T13:00:00.000Z",
     "autoReplyPaused": false,
+    "cancellationNoticeEnabled": false,
     "pausedMessage": "O atendimento automático do PROCON Jacareí está temporariamente indisponível. Tente novamente mais tarde.",
     "updatedBy": { "id": 1, "name": "Admin" },
     "updatedAt": "2026-10-14T13:00:00.000Z",

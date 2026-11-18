@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto"
 import BadRequestError from "../errors/BadRequestError"
+import { cancellationNoticeBodySchema } from "../schemas/cancellationNotice.schema"
 import ConflictError from "../errors/ConflictError"
 import InternalServerError from "../errors/InternalServerError"
 import WhatsAppConnectionError from "../errors/WhatsAppConnectionError"
@@ -74,6 +75,8 @@ export interface WhatsAppSettingsService {
     save(body: unknown, userId: number): Promise<WhatsAppSettingsView>
     pause(userId: number): Promise<WhatsAppSettingsView>
     resume(userId: number): Promise<WhatsAppSettingsView>
+    setCancellationNotice(body: unknown, userId: number): Promise<WhatsAppSettingsView>
+    isCancellationNoticeEnabled(): Promise<boolean>
     getInternalConfig(): Promise<WhatsAppInternalConfig>
     isAutoReplyPaused(): Promise<boolean>
     getTemplatesStatus(): Promise<TemplatesStatusView>
@@ -218,6 +221,7 @@ export function createWhatsAppSettingsService({
             credentialsValid: row.credentialsValid,
             credentialsCheckedAt: row.credentialsCheckedAt ? row.credentialsCheckedAt.toISOString() : null,
             autoReplyPaused: row.autoReplyPaused,
+            cancellationNoticeEnabled: row.cancellationNoticeEnabled,
             pausedMessage: MENSAGEM_ATENDIMENTO_PAUSADO,
             updatedBy: row.updatedBy,
             updatedAt: row.updatedAt.toISOString(),
@@ -435,6 +439,17 @@ export function createWhatsAppSettingsService({
             await ensureRow()
             return toView(await settings.setAutoReplyPaused(false, userId))
         },
+
+        async setCancellationNotice(body, userId) {
+            const parsed = cancellationNoticeBodySchema.safeParse(body)
+            if (!parsed.success) {
+                throw new BadRequestError("enabled must be a boolean")
+            }
+            await ensureRow()
+            return toView(await settings.setCancellationNoticeEnabled(parsed.data.enabled, userId))
+        },
+
+        isCancellationNoticeEnabled: () => settings.isCancellationNoticeEnabled(),
 
         async getInternalConfig() {
             const row = await settings.findRow()

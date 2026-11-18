@@ -9,6 +9,7 @@ interface SettingsRow {
     app_secret_encrypted: string | null
     verify_token: string
     auto_reply_paused: boolean
+    cancellation_notice_enabled: boolean
     credentials_checked_at: Date | null
     credentials_valid: boolean | null
     display_phone_number: string | null
@@ -23,7 +24,7 @@ interface SettingsRow {
 
 const SELECT_WITH_USER = `
     SELECT s.phone_number_id, s.business_account_id, s.access_token_encrypted, s.app_secret_encrypted,
-           s.verify_token, s.auto_reply_paused, s.credentials_checked_at, s.credentials_valid,
+           s.verify_token, s.auto_reply_paused, s.cancellation_notice_enabled, s.credentials_checked_at, s.credentials_valid,
            s.display_phone_number, s.verified_name, s.access_token_permanent, s.access_token_expires_at,
            s.last_webhook_event_at, s.updated_by, u.name AS updated_by_name, s.updated_at
     FROM settings s
@@ -57,6 +58,7 @@ function toRow(row: SettingsRow): WhatsAppSettingsRow {
         appSecretEncrypted: row.app_secret_encrypted,
         verifyToken: row.verify_token,
         autoReplyPaused: row.auto_reply_paused,
+        cancellationNoticeEnabled: row.cancellation_notice_enabled,
         credentialsCheckedAt: row.credentials_checked_at,
         credentialsValid: row.credentials_valid,
         displayPhoneNumber: row.display_phone_number,
@@ -181,6 +183,23 @@ export const whatsappSettingsRepository: WhatsAppSettingsRepository = {
              WHERE id = 1
              RETURNING *`,
             [paused, updatedBy, paused ? "auto_reply_paused" : "auto_reply_resumed", "{}"],
+            INSERT_AUDIT(2, 3, 4),
+        ),
+
+    async isCancellationNoticeEnabled() {
+        const result = await getPool().query<{ cancellation_notice_enabled: boolean }>(
+            "SELECT cancellation_notice_enabled FROM WhatsAppSettings WHERE id = 1",
+        )
+        return result.rows[0]?.cancellation_notice_enabled ?? false
+    },
+
+    setCancellationNoticeEnabled: (enabled, updatedBy) =>
+        requireSettings(
+            `UPDATE WhatsAppSettings
+             SET cancellation_notice_enabled = $1, updated_by = $2, updated_at = now()
+             WHERE id = 1
+             RETURNING *`,
+            [enabled, updatedBy, enabled ? "cancellation_notice_enabled" : "cancellation_notice_disabled", "{}"],
             INSERT_AUDIT(2, 3, 4),
         ),
 

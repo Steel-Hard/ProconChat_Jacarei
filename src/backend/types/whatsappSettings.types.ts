@@ -17,6 +17,7 @@ export interface WhatsAppSettingsRow {
     appSecretEncrypted: string | null
     verifyToken: string
     autoReplyPaused: boolean
+    cancellationNoticeEnabled: boolean
     credentialsCheckedAt: Date | null
     credentialsValid: boolean | null
     displayPhoneNumber: string | null
@@ -74,6 +75,7 @@ export interface WhatsAppSettingsView {
     credentialsValid: boolean | null
     credentialsCheckedAt: string | null
     autoReplyPaused: boolean
+    cancellationNoticeEnabled: boolean
     pausedMessage: string
     updatedBy: WhatsAppSettingsUpdatedBy | null
     updatedAt: string
