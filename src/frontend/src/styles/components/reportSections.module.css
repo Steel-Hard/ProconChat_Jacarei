@@ -92,3 +92,241 @@
     background: var(--bg-surface);
     font-size: 13px;
 }
+
+.overview {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 18px;
+}
+
+.card {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+    padding: 22px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg-surface);
+}
+
+.overview > .card {
+    flex: 999 1 560px;
+}
+
+.cardTitle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font: 700 16px var(--font-heading);
+}
+
+.conversations {
+    display: flex;
+    flex: 1 1 220px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    max-width: 100%;
+    padding: 22px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg-surface);
+}
+
+.conversationsLabel {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.conversationsTotal {
+    font: 800 44px var(--font-heading);
+    line-height: 1.05;
+    color: var(--text-body);
+}
+
+.conversationsLine {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.outcomeBar {
+    display: flex;
+    height: 16px;
+    overflow: hidden;
+    border-radius: 6px;
+    background: var(--chart-track);
+}
+
+.outcomeBar > span {
+    height: 100%;
+}
+
+.outcomeLegend {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+    gap: 4px 24px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.outcome {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+}
+
+.outcomeHighlight {
+    border-color: var(--error-border);
+    background: var(--error-soft-bg);
+}
+
+.outcomeHighlight .outcomeName {
+    font-weight: 700;
+    color: var(--error-text);
+}
+
+.swatch {
+    flex-shrink: 0;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+}
+
+.outcomeBody {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.outcomeName {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text-body);
+}
+
+.outcomeHint {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.outcomeLink {
+    margin-top: 2px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--danger);
+    white-space: nowrap;
+}
+
+.outcomeValue {
+    display: flex;
+    flex-direction: column;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.outcomeValue b {
+    font-size: 14px;
+}
+
+.outcomeValue span {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.rankings {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+    gap: 18px;
+}
+
+.rankList,
+.questionList {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.rankList {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.categoryItem {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.categoryLine {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 13px;
+}
+
+.categoryTrack {
+    height: 6px;
+    border-radius: 99px;
+    background: var(--chart-track);
+}
+
+.categoryBar {
+    height: 100%;
+    border-radius: 99px;
+    background: var(--chart-bar);
+}
+
+.questionItem {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 0;
+    border-top: 1px solid var(--divider);
+}
+
+.questionPosition {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--chart-label);
+}
+
+.questionText {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    font-size: 13.5px;
+}
+
+.questionText small {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.questionItem b {
+    font-size: 13.5px;
+}
+
+.empty {
+    margin: 0;
+    font-size: 13.5px;
+    color: var(--text-muted);
+}

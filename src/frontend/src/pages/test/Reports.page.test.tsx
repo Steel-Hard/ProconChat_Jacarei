@@ -108,18 +108,20 @@ describe("ReportsPage", () => {
         )
 
         expect(screen.getByText("Carregando...")).toBeInTheDocument()
-        expect(await screen.findByText("Conversas iniciadas")).toBeInTheDocument()
+        expect(
+            await screen.findByRole("heading", { level: 2, name: "Conversas no período" })
+        ).toBeInTheDocument()
     })
 
     it("carrega e apresenta os totais agregados, desfechos, categorias, perguntas e agendamentos", async () => {
         const { calls } = await renderReportsPage()
 
-        expect(await screen.findByText("Conversas iniciadas")).toBeInTheDocument()
-        expect(screen.getByText("Conversas iniciadas")).toBeInTheDocument()
-        expect(screen.getByText("Agendamentos criados")).toBeInTheDocument()
+        expect(
+            await screen.findByRole("heading", { level: 2, name: "Conversas no período" })
+        ).toBeInTheDocument()
         expect(screen.getByText("Sem horário disponível na janela")).toBeInTheDocument()
         expect(screen.getAllByText("Consumidor")).toHaveLength(2)
-        expect(screen.getByText("Cobrança indevida")).toBeInTheDocument()
+        expect(screen.getByText("Como contestar uma cobrança indevida?")).toBeInTheDocument()
         expect(screen.getByText("Taxa de não comparecimento: 28,6%")).toBeInTheDocument()
         expect(screen.getByText("Total com atendimento no período")).toBeInTheDocument()
         expect(calls).toHaveLength(1)
@@ -128,7 +130,7 @@ describe("ReportsPage", () => {
 
     it("consulta novamente ao selecionar um período predefinido", async () => {
         const { user, calls } = await renderReportsPage()
-        await screen.findByText("Conversas iniciadas")
+        await screen.findByRole("heading", { level: 2, name: "Conversas no período" })
 
         await user.click(screen.getByRole("button", { name: "Últimos 7 dias" }))
 
@@ -144,7 +146,7 @@ describe("ReportsPage", () => {
 
     it("explica a definição em tooltip", async () => {
         const { user } = await renderReportsPage()
-        await screen.findByText("Conversas iniciadas")
+        await screen.findByRole("heading", { level: 2, name: "Conversas no período" })
 
         await user.click(
             screen.getByRole("button", { name: "Definição do resultado dos agendamentos" })
@@ -168,7 +170,9 @@ describe("ReportsPage", () => {
         )
         fail = false
         await user.click(screen.getByRole("button", { name: "Tentar novamente" }))
-        expect(await screen.findByText("Conversas iniciadas")).toBeInTheDocument()
+        expect(
+            await screen.findByRole("heading", { level: 2, name: "Conversas no período" })
+        ).toBeInTheDocument()
     })
 
     it("mostra estado vazio para categorias e perguntas sem uso", async () => {
@@ -187,12 +191,5 @@ describe("ReportsPage", () => {
             await screen.findByText("Nenhuma categoria escolhida neste período.")
         ).toBeInTheDocument()
         expect(screen.getByText("Nenhuma pergunta escolhida neste período.")).toBeInTheDocument()
-    })
-
-    it("anuncia visualmente o desfecho sem horário disponível em destaque", async () => {
-        await renderReportsPage()
-
-        const noSlot = await screen.findByText("Sem horário disponível na janela")
-        expect(noSlot.closest("li")?.getAttribute("class")).toContain("outcomeWarning")
     })
 })

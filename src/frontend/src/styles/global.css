@@ -98,6 +98,10 @@
     --error-soft-bg: #fdf1ef;
     --error-dot: #c0392b;
     --bg-panel: #f7f6fc;
+    --chart-track: #efedf7;
+    --chart-bar: #7a6fc4;
+    --chart-label: #8a84ab;
+    --no-show-strong: #5c2508;
     --bg-accent-soft: #f3f1fb;
     --border-accent: #c9c2e6;
     --divider: #f0eef6;
