@@ -7,10 +7,11 @@ type AppointmentActionsProps = {
     title: string
     view: AppointmentActionsView
     dateNote: string
+    warning?: string | null
     onAction: (action: AppointmentAction) => void
 }
 
-function AppointmentActions({ title, view, dateNote, onAction }: AppointmentActionsProps) {
+function AppointmentActions({ title, view, dateNote, warning, onAction }: AppointmentActionsProps) {
     return (
         <section className={`${css.section} ${css.side}`}>
             <h2 className={css.title}>{title}</h2>
@@ -18,6 +19,11 @@ function AppointmentActions({ title, view, dateNote, onAction }: AppointmentActi
                 <p role="alert" className={css.alert}>
                     {view.error}
                 </p>
+            ) : null}
+            {warning ? (
+                <output className={css.warningNotice} data-tone="warning">
+                    {warning}
+                </output>
             ) : null}
             {view.notice ? <output className={css.correction}>{view.notice}</output> : null}
             {view.items.map((item) => (

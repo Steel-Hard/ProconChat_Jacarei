@@ -23,7 +23,8 @@ const ACTION_CODES: readonly string[] = [
     "CANCEL_AFTER_START",
     "NOTIFICATION_NOT_RETRYABLE",
     "CITIZEN_PHONE_UNAVAILABLE",
-    "NOTIFICATION_AFTER_START"
+    "NOTIFICATION_AFTER_START",
+    "NOTIFICATION_IN_PROGRESS"
 ] satisfies AppointmentActionCode[]
 
 function errorCodeOf(data: unknown): string | null {

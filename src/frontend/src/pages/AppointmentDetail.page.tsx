@@ -73,6 +73,7 @@ function AppointmentDetailPage() {
                                     title={t("actions.title")}
                                     view={actions.view}
                                     dateNote={t("actions.dateNote")}
+                                    warning={page.cancellation.failedNotice}
                                     onAction={onAction}
                                 />
                                 <AppointmentNotes

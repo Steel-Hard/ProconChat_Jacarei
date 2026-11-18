@@ -167,7 +167,12 @@
             "NOTIFICATION_AFTER_START": "O horário do atendimento já passou e o aviso não pode mais ser enviado.",
             "forbidden": "Sua conta não tem permissão para esta ação.",
             "notFound": "Agendamento não encontrado.",
-            "failed": "Não foi possível concluir a ação. Tente de novo."
+            "failed": "Não foi possível concluir a ação. Tente de novo.",
+            "NOTIFICATION_IN_PROGRESS": "Já há um envio deste aviso em andamento. Aguarde um instante.",
+            "retryNoticeFailed": "Não foi possível reenviar o aviso ao cidadão. Tente novamente em instantes."
+        },
+        "warnings": {
+            "cancelNoticeFailed": "Agendamento {{protocol}} cancelado, mas o aviso ao cidadão falhou. Use \"Tentar novamente\" no histórico."
         },
         "success": {
             "claim": "Agendamento {{protocol}} assumido por você.",
@@ -175,8 +180,8 @@
             "no_show": "{{protocol}} marcado como não compareceu.",
             "assign": "Agendamento {{protocol}} atribuído a {{name}}.",
             "correct_record": "Registro do agendamento {{protocol}} corrigido.",
-            "cancel": "Agendamento {{protocol}} cancelado e aviso enviado ao cidadão.",
-            "retryCancellationNotice": "Aviso de cancelamento enviado ao cidadão."
+            "cancel": "Agendamento {{protocol}} cancelado e cidadão avisado.",
+            "retryCancellationNotice": "Aviso reenviado ao cidadão."
         }
     }
 }

@@ -288,7 +288,7 @@ describe("AppointmentDetail.page: confirmação", () => {
             note: "Pedido confirmado pelo titular"
         })
         expect(
-            await screen.findByText("Agendamento F10464F0 cancelado e aviso enviado ao cidadão.")
+            await screen.findByText("Agendamento F10464F0 cancelado e cidadão avisado.")
         ).toBeInTheDocument()
     })
 
@@ -314,9 +314,7 @@ describe("AppointmentDetail.page: confirmação", () => {
                 page.requests("POST", "/api/v1/appointments/1/cancellation-notice/retry")
             ).toHaveLength(1)
         )
-        expect(
-            await screen.findByText("Aviso de cancelamento enviado ao cidadão.")
-        ).toBeInTheDocument()
+        expect(await screen.findByText("Aviso reenviado ao cidadão.")).toBeInTheDocument()
     })
 
     it.each([

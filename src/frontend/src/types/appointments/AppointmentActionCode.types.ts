@@ -13,5 +13,6 @@ type AppointmentActionCode =
     | "NOTIFICATION_NOT_RETRYABLE"
     | "CITIZEN_PHONE_UNAVAILABLE"
     | "NOTIFICATION_AFTER_START"
+    | "NOTIFICATION_IN_PROGRESS"
 
 export default AppointmentActionCode
