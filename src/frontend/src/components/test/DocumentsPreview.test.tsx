@@ -190,23 +190,33 @@ describe("DocumentsPreview", () => {
         )
     })
 
-    it.each([
-        ["com o aviso de cancelamento", holderContract.notice],
-        ["sem o aviso de cancelamento", null]
-    ])("mostra o texto do backend e a frase de avisos %s", (_label, notice) => {
-        const contract = { ...holderContract, notice } as DocumentsPreviewData
-        const text =
-            notice === null
-                ? holderContract.text.replace(holderContract.notice, "").trimEnd()
-                : holderContract.text
-        renderPreview({ preview: { ...contract, text } })
+    it("mostra só o texto devolvido pela API, sem acrescentar a frase de avisos por conta própria", () => {
+        const phrase = holderContract.notice
+        const withPhrase = holderContract.text
+        const withoutPhrase = holderContract.text.replace(phrase, "").trimEnd()
+        const { rerender } = renderPreview({
+            preview: { ...(holderContract as DocumentsPreviewData), text: withPhrase }
+        })
 
-        const bubble = screen.getByTestId("preview-bubble")
+        expect(screen.getByTestId("preview-bubble").textContent).toContain(phrase)
 
-        if (notice === null) {
-            expect(bubble.textContent).not.toContain("aviso em caso de cancelamento")
-        } else {
-            expect(bubble.textContent).toContain("aviso em caso de cancelamento")
-        }
+        rerender(
+            <DocumentsPreview
+                attendeeGroup="holder"
+                onChangeAttendeeGroup={vi.fn()}
+                sampleQuestions={sampleQuestions}
+                selectedQuestionId="1"
+                onChangeQuestionId={vi.fn()}
+                preview={
+                    { ...holderContract, text: withoutPhrase, notice: null } as DocumentsPreviewData
+                }
+                hasPreviewError={false}
+                isUnsaved={false}
+                isQuestionEmpty={false}
+                isUpdating={false}
+            />
+        )
+
+        expect(screen.getByTestId("preview-bubble").textContent).not.toContain(phrase)
     })
 })
