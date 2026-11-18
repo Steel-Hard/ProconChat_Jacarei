@@ -43,7 +43,7 @@ Regras da troca de abas:
 |---|---|
 | **Credenciais** | "Válidas" (com a data da última verificação) ou "Token inválido ou expirado", com a orientação para gerar um novo token, usar "Substituir", testar e salvar |
 | **Último evento recebido pelo webhook** | Data e hora. **Sem eventos há mais de 24 horas**, alerta para conferir se o webhook está verificado e assinado em "messages" |
-| **Qualidade do número na Meta** | Alta, Média ou Baixa, com a explicação de cada uma. Com qualidade baixa, a Meta pode limitar os envios |
+| **Qualidade do número na Meta** | Alta, Média ou Baixa, com a explicação de cada uma. Com qualidade baixa, a Meta pode limitar os envios. **Alta:** "Poucos bloqueios ou denúncias de usuários. Envio sem restrições." **Média:** "Aumento recente de bloqueios ou denúncias. Vale revisar o texto das mensagens." **Baixa:** "Muitos bloqueios ou denúncias. A Meta pode limitar o envio de mensagens." |
 | **Limite de envios da Meta** | Limite diário de conversas iniciadas pela empresa, quantas foram usadas nas últimas 24h (lembretes e avisos de cancelamento) e uma barra. **Acima de 80%**, alerta: "Perto do limite diário da Meta. Lembretes e avisos podem deixar de ser enviados" |
 
 ### Credenciais
@@ -95,8 +95,10 @@ Mensagens enviadas fora da conversa precisam de modelo aprovado pela Meta ([deci
 | Lembrete do atendimento | [Horários de atendimento](08-horarios-de-atendimento.md) |
 | Aviso de cancelamento | [Detalhe do agendamento](04-detalhe-do-agendamento.md) e cancelamento em massa |
 
-- Cada um mostra o status na Meta: **Aprovado**, **Em análise**, **Rejeitado**, **Não encontrado** ou outro status informado pela Meta, com o botão **"Atualizar status da Meta"**.
+- Cada um mostra, ao lado do nome, o **nome técnico do modelo** (por exemplo, `lembrete_atendimento`), para o Admin encontrá-lo no Gerenciador da Meta.
+- Cada um mostra o status na Meta: **Aprovado** (verde), **Em análise** (âmbar), **Rejeitado** (vermelho), **Não encontrado** (vermelho) ou outro status informado pela Meta (âmbar, com o nome do status devolvido), com o botão **"Atualizar status da Meta"**.
 - Se algum não estiver aprovado: "Enquanto este modelo não for aprovado, [lembretes / avisos de cancelamento] não serão enviados."
+- Se o modelo estiver **Rejeitado**, o alerta acrescenta, depois da frase acima: "A Meta rejeitou o modelo: revise o texto no Gerenciador do WhatsApp e envie novamente."
 
 ### Privacidade
 
