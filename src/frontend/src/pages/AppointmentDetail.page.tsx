@@ -1,18 +1,29 @@
 import { useTranslation } from "react-i18next"
 import AppointmentActions from "@/components/AppointmentActions"
+import AppointmentCancelDialog from "@/components/AppointmentCancelDialog"
+import AppointmentAssignDialog from "@/components/AppointmentAssignDialog"
 import AppointmentDetailHeader from "@/components/AppointmentDetailHeader"
 import AppointmentDocuments from "@/components/AppointmentDocuments"
 import AppointmentFacts from "@/components/AppointmentFacts"
 import AppointmentHistory from "@/components/AppointmentHistory"
+import AppointmentNotes from "@/components/AppointmentNotes"
 import AppointmentTimeline from "@/components/AppointmentTimeline"
 import ConfirmDialog from "@/components/ConfirmDialog"
 import useAppointmentDetail from "@/pages/hooks/useAppointmentDetail"
 import css from "@/styles/pages/appointmentDetail.module.css"
+import type AppointmentAction from "@/types/appointments/AppointmentAction.types"
 
 function AppointmentDetailPage() {
     const { t } = useTranslation(["appointmentDetail", "common"])
     const page = useAppointmentDetail()
     const { view, actions } = page
+    const onAction = (action: AppointmentAction) => {
+        if (action === "cancel") {
+            page.cancellation.openDialog()
+        } else {
+            actions.open(action)
+        }
+    }
 
     return (
         <>
@@ -62,17 +73,34 @@ function AppointmentDetailPage() {
                                     title={t("actions.title")}
                                     view={actions.view}
                                     dateNote={t("actions.dateNote")}
-                                    onAction={actions.open}
+                                    warning={page.cancellation.failedNotice}
+                                    onAction={onAction}
+                                />
+                                <AppointmentNotes
+                                    notes={actions.notes.items}
+                                    text={actions.notes.text}
+                                    canAdd={actions.notes.canAdd}
+                                    busy={actions.notes.busy}
+                                    onChange={actions.notes.setText}
+                                    onAdd={actions.notes.add}
                                 />
                                 <AppointmentHistory
                                     title={t("history.title")}
                                     entries={view.history}
+                                    retry={{
+                                        allowed: page.cancellation.canRetryNotice,
+                                        busy: page.cancellation.retryBusy,
+                                        label: t("history.retryNotice"),
+                                        error: page.cancellation.retryError,
+                                        onRetry: page.cancellation.retryNotice
+                                    }}
                                 />
                             </div>
                         </div>
                     </>
                 ) : null}
             </section>
+            <AppointmentAssignDialog view={actions.assign} />
             <ConfirmDialog
                 open={actions.dialog !== null}
                 title={actions.dialog?.title ?? ""}
@@ -82,6 +110,7 @@ function AppointmentDetailPage() {
                 onConfirm={actions.confirm}
                 onCancel={actions.cancel}
             />
+            <AppointmentCancelDialog view={page.cancelView} />
         </>
     )
 }

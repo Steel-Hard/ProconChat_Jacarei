@@ -16,6 +16,8 @@ const Appointments = lazy(() => import("@/pages/Appointments.page"))
 const AppointmentDetail = lazy(() => import("@/pages/AppointmentDetail.page"))
 const Users = lazy(() => import("@/pages/Users.page"))
 const Schedule = lazy(() => import("@/pages/Schedule.page"))
+const Documents = lazy(() => import("@/pages/Documents.page"))
+const Reports = lazy(() => import("@/pages/Reports.page"))
 const PrivacyPolicy = lazy(() => import("@/pages/PrivacyPolicy.page"))
 const Sessions = lazy(() => import("@/pages/Sessions.page"))
 
@@ -66,11 +68,11 @@ const routes: RouteObject[] = [
                                         path: ROUTES.appointmentDetail,
                                         element: <AppointmentDetail />
                                     },
-                                    underConstruction(ROUTES.reports, "reports"),
+                                    { path: ROUTES.reports, element: <Reports /> },
                                     underConstruction(ROUTES.content, "content"),
                                     { path: ROUTES.sessions, element: <Sessions /> },
                                     { path: ROUTES.schedule, element: <Schedule /> },
-                                    underConstruction(ROUTES.documents, "documents"),
+                                    { path: ROUTES.documents, element: <Documents /> },
                                     { path: ROUTES.users, element: <Users /> },
                                     { path: ROUTES.whatsapp, element: <WhatsApp /> }
                                 ]

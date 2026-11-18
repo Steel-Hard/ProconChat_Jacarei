@@ -10,7 +10,7 @@ Conectar o painel ao número institucional na **WhatsApp Cloud API** (oficial da
 
 ## Estado da tela
 
-**Entregue em parte (issues #54 e #69).** Já funcionam: topo com número e situação, pausa, credenciais, "Configure no painel da Meta", teste de conexão e a aba **Privacidade** (issue #69). Ainda não construídos na tela: **Modelos de mensagem** e a qualidade e o limite do **Estado do número** (API pronta na issue #67, tela na #127), o resto do **Estado do número** e o **Histórico de alterações** (API pronta na issue #88, tela na #129).
+**Entregue (issues #54, #69, #127 e #129).** Já funcionam: topo com número e situação, pausa, credenciais, "Configure no painel da Meta", teste de conexão, a aba **Privacidade** (issue #69), credenciais, webhook, qualidade e limite de envios no **Estado do número**, modelos de mensagem com atualização de status (issue #127), falhas de entrega e **Histórico de alterações** (issue #129).
 
 ## O que a tela mostra
 
@@ -37,14 +37,14 @@ Regras da troca de abas:
 
 ### Estado do número
 
-**Ainda não construído na tela.** Hoje a tela mostra só a situação geral no topo. A **qualidade** e o **limite de envios** já têm API (issue #67, `GET /api/v1/whatsapp/settings/number-status`, só Admin) e a tela fica com a #127. As **credenciais** (`credentialsStatus`), o **último evento do webhook** (`webhook.lastEventAt` e `webhook.stale`, parado acima de 24h ou sem nenhum evento) e as **falhas de entrega das últimas 24h** (`GET /api/v1/whatsapp/settings/delivery-failures`) já têm API (issue #88); a tela fica com a #129.
+**Construído nas issues #127 e #129.** A tela mostra credenciais, último evento do webhook, falhas de entrega das últimas 24 horas, qualidade e limite de envios. A seção permite atualizar a consulta à Meta e mostra alertas quando a consulta falha ou quando o uso fica acima de 80% do limite diário.
 
 | Item | O que mostra |
 |---|---|
 | **Credenciais** | "Válidas" (com a data da última verificação) ou "Token inválido ou expirado", com a orientação para gerar um novo token, usar "Substituir", testar e salvar |
 | **Último evento recebido pelo webhook** | Data e hora. **Sem eventos há mais de 24 horas**, alerta para conferir se o webhook está verificado e assinado em "messages" |
-| **Qualidade do número na Meta** | Alta, Média ou Baixa, com a explicação de cada uma. Com qualidade baixa, a Meta pode limitar os envios |
-| **Limite de envios da Meta** | Limite diário de conversas iniciadas pela empresa, quantas foram usadas nas últimas 24h (lembretes e avisos de cancelamento) e uma barra. **Acima de 80%**, alerta: "Perto do limite diário da Meta. Lembretes e avisos podem deixar de ser enviados" |
+| **Qualidade do número na Meta** | Alta, Média ou Baixa, com a explicação de cada uma. Com qualidade baixa, a Meta pode limitar os envios. **Alta:** "Poucos bloqueios ou denúncias de usuários. Envio sem restrições." **Média:** "Aumento recente de bloqueios ou denúncias. Vale revisar o texto das mensagens." **Baixa:** "Muitos bloqueios ou denúncias. A Meta pode limitar o envio de mensagens." |
+| **Limite de envios da Meta** | Limite diário de conversas iniciadas pela empresa, quantas foram usadas nas últimas 24h (lembretes e avisos de cancelamento) e uma barra. **Acima de 80%**, alerta: "Perto do limite diário da Meta. Lembretes e avisos podem deixar de ser enviados" **Formato:** "Limite diário: [N] conversas iniciadas pela empresa. Usadas nas últimas 24h: [X] de [N]", com N igual a 250, 1.000, 10.000 ou 100.000 conforme o nível da conta na Meta. Se a Meta informar que não há limite, a tela mostra "Sem limite diário", sem barra nem alerta. Se o nível for desconhecido, mostra "Limite não informado pela Meta", também sem barra nem alerta. A tela nunca mostra o código do nível (por exemplo, TIER_250). |
 
 ### Credenciais
 
@@ -86,7 +86,7 @@ E o passo a passo:
 
 ### Modelos de mensagem
 
-**API pronta (issue #67), tela na #127.** `GET /api/v1/whatsapp/settings/templates` (só Admin) consulta a Meta a cada chamada. O cadastro dos modelos na Meta está no [guia de modelos de mensagem](../whatsapp/modelos-de-mensagem.md).
+**Construído na #127.** A seção consulta os modelos na Meta ao abrir e oferece o botão **"Atualizar status da Meta"**. O cadastro dos modelos na Meta está no [guia de modelos de mensagem](../whatsapp/modelos-de-mensagem.md).
 
 Mensagens enviadas fora da conversa precisam de modelo aprovado pela Meta ([decisão 005](../decisoes/005-mensagens-ao-cidadao.md)).
 
@@ -95,8 +95,40 @@ Mensagens enviadas fora da conversa precisam de modelo aprovado pela Meta ([deci
 | Lembrete do atendimento | [Horários de atendimento](08-horarios-de-atendimento.md) |
 | Aviso de cancelamento | [Detalhe do agendamento](04-detalhe-do-agendamento.md) e cancelamento em massa |
 
-- Cada um mostra o status na Meta: **Aprovado**, **Em análise** ou **Rejeitado**, com o botão **"Atualizar status"**.
+- Cada um mostra, ao lado do nome, o **nome técnico do modelo** (por exemplo, `lembrete_atendimento`), para o Admin encontrá-lo no Gerenciador da Meta.
+- Cada um mostra o status na Meta: **Aprovado** (verde), **Em análise** (âmbar), **Rejeitado** (vermelho), **Não encontrado** (vermelho) ou outro status informado pela Meta (âmbar, com o nome do status devolvido), com o botão **"Atualizar status da Meta"**.
 - Se algum não estiver aprovado: "Enquanto este modelo não for aprovado, [lembretes / avisos de cancelamento] não serão enviados."
+- Se o modelo estiver **Rejeitado**, o alerta acrescenta, depois da frase acima: "A Meta rejeitou o modelo: revise o texto no Gerenciador do WhatsApp e envie novamente."
+
+### Aviso de cancelamento ao cidadão
+
+Issue #164, [decisão 005](../decisoes/005-mensagens-ao-cidadao.md). Um cartão com o interruptor **"Avisar o cidadão por WhatsApp quando a equipe cancelar um agendamento"**, **desligado por padrão**, que fica **antes** de "Modelos de mensagem": o Admin vê o interruptor e, logo abaixo, o status dos modelos. O cartão **não mostra "Última alteração por"**: a auditoria do interruptor fica só no Histórico de alterações.
+
+- Texto de apoio: "Cada aviso de cancelamento é uma mensagem de modelo e tem custo por mensagem cobrado pela Meta. Os avisos contam no limite diário de envios da Meta. Com o aviso desligado, o agendamento é cancelado sem avisar o cidadão e a equipe precisa avisar por outro meio."
+- **Age na hora**, sem passar pelo Salvar ([regras gerais §3](00-regras-gerais.md#3-salvar-descartar-e-registrar-quem-alterou)), e **pede confirmação nos dois sentidos**:
+  - **Ligar:** título "Ligar o aviso de cancelamento?", texto "Quando a equipe cancelar um agendamento, o cidadão receberá uma mensagem pelo WhatsApp. Cada aviso é uma mensagem de modelo e tem custo por mensagem cobrado pela Meta.", botões "Ligar aviso" e "Voltar".
+  - **Desligar:** título "Desligar o aviso de cancelamento?", texto "Quando a equipe cancelar um agendamento, o cidadão NÃO será avisado pelo sistema. A equipe precisa avisar por outro meio.", botões "Desligar aviso" e "Voltar".
+- Só o Admin muda o interruptor, validado no servidor. Cada mudança entra no **Histórico de alterações** com quem e quando, com o texto **"Aviso ao cidadão ligado"** ou **"Aviso ao cidadão desligado"**.
+- **O que muda no cancelamento:** ver [Detalhe do agendamento](04-detalhe-do-agendamento.md#modal-de-cancelamento) e o cancelamento em massa em [Horários de atendimento](08-horarios-de-atendimento.md). Não vale para o lembrete, que tem o próprio liga e desliga.
+- **Faixa "O aviso pode não chegar: [motivo]"**, no cartão e no modal de cancelar, com o aviso ligado. Só entram **problemas da conta**, não do destinatário. Aparece quando há uma falha de envio nas **últimas 24 horas** (a mesma janela das falhas de entrega) e nenhum envio bem-sucedido depois dela. No **modal de cancelar**, a faixa só aparece para os problemas que o servidor detecta pelos códigos de erro já recebidos, porque quem só gerencia agendamentos não lê as configurações da Meta (que são só do Admin). O aviso sobre o modelo não aprovado, que vem do estado atual dos modelos, aparece **só no cartão, para o Admin**, com o texto "Enquanto o modelo Aviso de cancelamento não for aprovado, os avisos não serão enviados." As frases do modal são as da tabela abaixo. Frases:
+
+  | Erro da Meta | Frase |
+  |---|---|
+  | 131042 | a conta da Meta está sem forma de pagamento |
+  | 132001 | o modelo de aviso não existe no idioma usado ou não está aprovado na Meta (é o único código para "não aprovado"; não há código dedicado) |
+  | 132000 | o número de parâmetros enviado é diferente do modelo cadastrado na Meta |
+  | 132012 | os parâmetros do modelo foram enviados com formato incorreto |
+  | 132007 | o conteúdo do modelo viola a política do WhatsApp |
+  | 132015 | o modelo de aviso foi pausado pela Meta por baixa qualidade |
+  | 132016 | o modelo de aviso foi desativado de vez pela Meta (é preciso criar um novo, com conteúdo diferente) |
+  | 132005 | a tradução do texto do modelo ficou longa demais |
+  | 190 (ou credenciais inválidas) | o token da Meta está inválido ou expirado |
+  | 131048 | o limite de envios do número foi atingido |
+  | Modelo não aprovado, pausado ou desativado no estado atual (só no cartão, para o Admin) | em vez da faixa, o cartão mostra: "Enquanto o modelo Aviso de cancelamento não for aprovado, os avisos não serão enviados." |
+
+  **Só no Histórico do agendamento, sem faixa** (dizem respeito ao cidadão ou ao momento do envio, não à conta): 131026 (mensagem não entregável: sem WhatsApp, termos não aceitos ou aplicativo desatualizado); 131049 (limite de engajamento do usuário: esperar 24 horas e não insistir); 131056 (muitos envios ao mesmo destinatário); 131047 (fora da janela de 24 horas).
+
+  **O que foi confirmado e o que é inferência** (conferido na [documentação oficial de códigos de erro da Meta](https://developers.facebook.com/documentation/business-messaging/whatsapp/support/error-codes) em 17/11/2026): o significado de cada código acima foi **confirmado**. A separação entre "problema da conta" e "problema do destinatário" **não vem da documentação da Meta: é inferência nossa**. O 132005 na documentação é "texto traduzido longo demais"; **não foi confirmado** se ele também cobre uma variável longa demais. **Não foram confirmados** o status HTTP de cada código nem os títulos curtos oficiais. O erro chega tanto na resposta síncrona da Graph API quanto no webhook de status (`entry.changes.value.statuses` e `errors`), e os dois caminhos precisam ser tratados.
 
 ### Privacidade
 
@@ -144,7 +176,7 @@ Entregue em 02/11/2026 (#69, D3). A regra de cada prazo e as salvaguardas estão
 
 ### Histórico de alterações
 
-**Ainda não construído na tela.** A API está pronta (issue #88, `GET /api/v1/whatsapp/settings/history`, só Admin, as 50 alterações mais recentes) e a tela fica com a #129. Hoje a tela mostra só "Última alteração por [nome] em [data]", que muda ao salvar credenciais e também ao pausar ou reativar as respostas.
+**Construído na issue #129.** A tela lista as 50 alterações mais recentes da API `GET /api/v1/whatsapp/settings/history` (só Admin), com quem alterou, o que mudou e quando. Para segredos, mostra apenas que foram substituídos; os valores do token e do App Secret nunca são registrados nem exibidos. A nota "Última alteração por [nome] em [data]" continua no topo.
 
 Quem alterou o quê e quando. **Os valores do token e do App Secret não são registrados.**
 
@@ -156,7 +188,8 @@ Quem alterou o quê e quando. **Os valores do token e do App Secret não são re
 | Ligar a anonimização automática ou reduzir um prazo | **Segue o padrão de salvar**, com a prévia de quantos registros passaram do prazo e a confirmação "Anonimizar" antes de gravar |
 | Editar IDs, substituir segredos | **Segue o padrão de salvar** ([regras gerais](00-regras-gerais.md#3-salvar-descartar-e-registrar-quem-alterou)). Salvar credenciais novas exige teste bem-sucedido |
 | Testar conexão | Pode ser feito a qualquer momento |
-| Atualizar status dos modelos | Consulta a Meta de novo. API pronta (issue #67), **botão na tela com a #127** |
+| Atualizar status dos modelos | Consulta os modelos e o estado do número na Meta de novo (#127) |
+| **Ligar ou desligar o aviso de cancelamento ao cidadão** | **Age na hora**, com diálogo de confirmação nos dois sentidos (issue #164). Só o Admin |
 | **Pausar respostas automáticas** | **Age na hora**, sem passar pelo Salvar, porque é de emergência. Pede confirmação: "O chatbot deixará de responder aos cidadãos até ser reativado" |
 | **Reativar respostas** | Age na hora, sem confirmação |
 

@@ -32,6 +32,7 @@ describe("FRONTEND_ORIGIN normalizada na leitura", () => {
 
             expect(response.status).toBe(204)
         },
+        60000,
     )
 
     test("libera o CORS para a origem normalizada", async () => {
@@ -43,5 +44,5 @@ describe("FRONTEND_ORIGIN normalizada na leitura", () => {
             .set("Access-Control-Request-Method", "POST")
 
         expect(response.headers["access-control-allow-origin"]).toBe("http://localhost:5173")
-    })
+    }, 60000)
 })

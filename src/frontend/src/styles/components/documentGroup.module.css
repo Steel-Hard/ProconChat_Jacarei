@@ -1,0 +1,92 @@
+.groupCard {
+    min-width: 0;
+    container-type: inline-size;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 22px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+}
+
+.title {
+    margin: 0;
+    font: 700 16px var(--font-heading);
+    color: var(--text-body);
+}
+
+.list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.emptyAlert {
+    padding: 11px 13px;
+    border-radius: 9px;
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-border);
+    color: var(--warn-text);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.5;
+    text-wrap: pretty;
+}
+
+.addForm {
+    display: flex;
+    gap: 8px;
+}
+
+.addInput {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 8px 10px;
+    border: 1px solid var(--border-input);
+    border-radius: 8px;
+    background: var(--bg-surface);
+    font-size: 13.5px;
+}
+
+.addInput:focus-visible {
+    border-color: var(--color-primary);
+}
+
+.addInput:disabled {
+    background: var(--bg-disabled);
+    cursor: not-allowed;
+}
+
+.addButton {
+    flex-shrink: 0;
+    padding: 8px 14px;
+    border: 1px solid var(--border-accent);
+    border-radius: 8px;
+    background: var(--bg-surface);
+    color: var(--color-primary);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.addButton:hover:not(:disabled) {
+    filter: brightness(0.94);
+}
+
+.addButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.warning {
+    display: block;
+    margin: 0;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--warn-text);
+}

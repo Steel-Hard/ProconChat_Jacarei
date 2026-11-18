@@ -172,7 +172,7 @@ describe("AppointmentDetail.page: cabeçalho e dados", () => {
 
         const scope = within(name.closest("header") as HTMLElement)
         expect(scope.getByText("Comparece por representante")).toBeInTheDocument()
-        expect(scope.getByText("Remarcado pelo cidadão")).toBeInTheDocument()
+        expect(scope.getByText("Remarcado pelo cidadão")).toHaveAttribute("data-tone", "info")
         expect(scope.getByText("Fora da grade atual")).toBeInTheDocument()
         expect(factValue("Data original")).toBe("15/10/2026 às 14:30")
     })
@@ -401,7 +401,7 @@ describe("AppointmentDetail.page: linha do tempo e histórico", () => {
 
         const items = within(section("Histórico")).getAllByRole("listitem")
         expect(items.map((item) => item.textContent)).toEqual([
-            "Falha ao avisar o cidadão pelo WhatsApp19/10/2026 às 09:00",
+            "Falha ao avisar o cidadão do cancelamento19/10/2026 às 09:00",
             "Evento registrado19/10/2026 às 08:30",
             "Assumido automaticamente por Admin · Confirmado18/10/2026 às 10:47",
             "Criado pelo chatbot como Pendente18/10/2026 às 10:46"

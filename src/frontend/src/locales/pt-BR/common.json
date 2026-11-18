@@ -1,6 +1,21 @@
 {
     "backHome": "Vá para a página inicial.",
     "loading": "Carregando...",
+    "cancellationNoticeProblem": {
+        "prefix": "O aviso pode não chegar: {{reason}}.",
+        "codes": {
+            "PAYMENT_METHOD": "a conta da Meta está sem forma de pagamento",
+            "TEMPLATE_NOT_FOUND": "o modelo de aviso não existe no idioma usado ou não está aprovado na Meta",
+            "TEMPLATE_PARAMETER_COUNT": "o número de parâmetros enviado é diferente do modelo cadastrado na Meta",
+            "TEMPLATE_PARAMETER_FORMAT": "os parâmetros do modelo foram enviados com formato incorreto",
+            "TEMPLATE_POLICY_VIOLATION": "o conteúdo do modelo viola a política do WhatsApp",
+            "TEMPLATE_PAUSED": "o modelo de aviso foi pausado pela Meta por baixa qualidade",
+            "TEMPLATE_DISABLED": "o modelo de aviso foi desativado de vez pela Meta",
+            "TEMPLATE_TRANSLATION_TOO_LONG": "a tradução do texto do modelo ficou longa demais",
+            "INVALID_TOKEN": "o token da Meta está inválido ou expirado",
+            "SEND_LIMIT_REACHED": "o limite de envios do número foi atingido"
+        }
+    },
     "accountMenu": {
         "trigger": "Minha conta",
         "options": "Minha conta",
@@ -84,10 +99,7 @@
                 "title": "WhatsApp"
             }
         },
-        "appointmentDetail": "Detalhe do agendamento",
-        "itemWithBadge": "<label>{{label}}</label> <count>{{count}}</count> <hidden>{{badgeLabel}}</hidden>",
-        "pendingBadge_one": "agendamento pendente",
-        "pendingBadge_other": "agendamentos pendentes"
+        "appointmentDetail": "Detalhe do agendamento"
     },
     "sidebar": {
         "label": "Menu principal",
@@ -160,14 +172,35 @@
             "APPOINTMENT_CANCELED": "Este agendamento foi cancelado.",
             "ATTENDANCE_NOT_YET_AVAILABLE": "Marcar como atendido só fica disponível a partir do dia do atendimento.",
             "NO_SHOW_NOT_YET_AVAILABLE": "Marcar como não compareceu só fica disponível depois do horário do atendimento.",
+            "INVALID_ASSIGNEE": "O funcionário selecionado não está mais disponível para receber agendamentos.",
+            "ASSIGNEE_BUSY": "O funcionário já tem outro agendamento neste horário ({{protocol}}).",
+            "RECORD_NOT_CORRECTABLE": "Este registro não pode mais ser corrigido.",
+            "PERMISSION_REQUIRED": "Sua conta não tem permissão para esta ação.",
+            "CANCEL_AFTER_START": "Não é possível cancelar depois do horário do atendimento. Registre como não compareceu.",
+            "NOTIFICATION_NOT_RETRYABLE": "Não há aviso de cancelamento com falha para reenviar.",
+            "NOTIFICATION_DISABLED": "O aviso de cancelamento está desligado.",
+            "CITIZEN_PHONE_UNAVAILABLE": "O agendamento não tem telefone para enviar o aviso.",
+            "NOTIFICATION_AFTER_START": "O horário do atendimento já passou e o aviso não pode mais ser enviado.",
             "forbidden": "Sua conta não tem permissão para esta ação.",
             "notFound": "Agendamento não encontrado.",
-            "failed": "Não foi possível concluir a ação. Tente de novo."
+            "failed": "Não foi possível concluir a ação. Tente de novo.",
+            "NOTIFICATION_IN_PROGRESS": "Já há um envio deste aviso em andamento. Aguarde um instante.",
+            "retryNoticeFailed": "Não foi possível reenviar o aviso ao cidadão. Tente novamente em instantes."
+        },
+        "warnings": {
+            "cancelNoticeFailed": "Agendamento {{protocol}} cancelado, mas o aviso ao cidadão falhou. Use \"Tentar novamente\" no histórico.",
+            "cancelNoticeDisabled": "Agendamento {{protocol}} cancelado. O cidadão não foi avisado pelo sistema: avise por outro meio.",
+            "cancelNoticeFailedDisabled": "Agendamento {{protocol}} cancelado. O aviso ao cidadão falhou e o aviso por WhatsApp está desligado: avise por outro meio.",
+            "cancelNoticeNoPhone": "Agendamento {{protocol}} cancelado, mas o cidadão não pôde ser avisado: não há telefone disponível para o envio."
         },
         "success": {
             "claim": "Agendamento {{protocol}} assumido por você.",
             "attended": "{{protocol}} marcado como atendido.",
-            "no_show": "{{protocol}} marcado como não compareceu."
+            "no_show": "{{protocol}} marcado como não compareceu.",
+            "assign": "Agendamento {{protocol}} atribuído a {{name}}.",
+            "correct_record": "Registro do agendamento {{protocol}} corrigido.",
+            "cancel": "Agendamento {{protocol}} cancelado e cidadão avisado.",
+            "retryCancellationNotice": "Aviso reenviado ao cidadão."
         }
     }
 }

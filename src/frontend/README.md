@@ -10,20 +10,22 @@ Painel administrativo do ProconChat (RF08), feito com React 19, TypeScript (`str
 
 Rode dentro de `src/frontend/`.
 
-| Comando                                   | O que faz                                                                     |
-| ----------------------------------------- | ----------------------------------------------------------------------------- |
-| `npm ci`                                  | Instala as dependências e ativa o hook de pre-commit                          |
-| `npm run dev`                             | Sobe o servidor de desenvolvimento do Vite                                    |
-| `npm run typecheck`                       | Checa os tipos com `tsc -b` (`src/` e `vite.config.ts`)                       |
-| `npm run build`                           | Roda o `typecheck` e gera `dist/`                                             |
-| `npm run preview`                         | Serve o `dist/` já gerado                                                     |
-| `npm test`                                | Vitest em modo interativo                                                     |
-| `npm run test:run`                        | Vitest uma única vez (usado no CI)                                            |
-| `npm run test:cov`                        | Suíte inteira com cobertura (`coverage/`), mínimo de 80% em todas as métricas |
-| `npm run lint` / `npm run lint:fix`       | oxlint                                                                        |
-| `npm run format` / `npm run format:check` | Prettier em `ts`, `tsx`, `css`, `json`, `md`, `yml` e `html`                  |
+| Comando                                   | O que faz                                                                   |
+| ----------------------------------------- | --------------------------------------------------------------------------- |
+| `npm ci`                                  | Instala as dependências e ativa o hook de pre-commit                        |
+| `npm run dev`                             | Sobe o servidor de desenvolvimento do Vite                                  |
+| `npm run typecheck`                       | Checa os tipos com `tsc -b` (`src/` e `vite.config.ts`)                     |
+| `npm run build`                           | Roda o `typecheck` e gera `dist/`                                           |
+| `npm run preview`                         | Serve o `dist/` já gerado                                                   |
+| `npm test`                                | Vitest em modo interativo                                                   |
+| `npm run test:run`                        | Vitest uma única vez, com 4 workers (usado no CI)                           |
+| `npm run test:cov`                        | Suíte inteira com cobertura (`coverage/`), 4 workers, mínimo de 80% em tudo |
+| `npm run lint` / `npm run lint:fix`       | oxlint                                                                      |
+| `npm run format` / `npm run format:check` | Prettier em `ts`, `tsx`, `css`, `json`, `md`, `yml` e `html`                |
 
 O CI (`.github/workflows/ci.yml`) roda `format:check`, `lint`, `build` e `test:run`.
+
+Os scripts `test:run` e `test:cov` limitam o Vitest a 4 workers (`--maxWorkers=4`). Com vários processos de teste ao mesmo tempo, o padrão (um worker por núcleo) satura a CPU e causa timeouts de 1 s em testes que passam isolados. O `test:cov` já executa todos os testes: no gate completo do frontend use só ele, sem rodar o `test:run` junto.
 
 ## Variáveis de ambiente
 

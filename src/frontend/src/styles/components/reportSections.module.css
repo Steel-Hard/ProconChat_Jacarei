@@ -1,0 +1,477 @@
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 16px;
+}
+
+.title {
+    margin: 0;
+    font: 700 26px var(--font-heading);
+    letter-spacing: -0.01em;
+}
+
+.subtitle {
+    margin: 6px 0 0;
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.periodRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    min-inline-size: 0;
+    margin: 0;
+    padding: 3px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--bg-surface);
+}
+
+.chip {
+    padding: 7px 12px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--text-strong);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.chip[aria-pressed="true"] {
+    background: var(--color-primary);
+    color: var(--bg-surface);
+}
+
+.chip[aria-pressed="false"]:hover {
+    filter: brightness(0.94);
+}
+
+.chip:focus-visible,
+.dateInput:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
+.customPeriod {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.dateField {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.dateInput {
+    padding: 7px 9px;
+    border: 1px solid var(--border-input);
+    border-radius: 8px;
+    background: var(--bg-surface);
+    font-size: 13px;
+}
+
+.overview {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 18px;
+}
+
+.card {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+    padding: 22px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg-surface);
+}
+
+.overview > .card {
+    flex: 999 1 560px;
+}
+
+.cardTitle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font: 700 16px var(--font-heading);
+}
+
+.conversations {
+    display: flex;
+    flex: 1 1 220px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    max-width: 100%;
+    padding: 22px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg-surface);
+}
+
+.conversationsLabel {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.conversationsTotal {
+    font: 800 44px var(--font-heading);
+    line-height: 1.05;
+    color: var(--text-body);
+}
+
+.conversationsLine {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.outcomeBar {
+    display: flex;
+    height: 16px;
+    overflow: hidden;
+    border-radius: 6px;
+    background: var(--chart-track);
+}
+
+.outcomeBar > span {
+    height: 100%;
+}
+
+.outcomeLegend {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+    gap: 4px 24px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.outcome {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+}
+
+.outcomeHighlight {
+    border-color: var(--error-border);
+    background: var(--error-soft-bg);
+}
+
+.outcomeHighlight .outcomeName {
+    font-weight: 700;
+    color: var(--error-text);
+}
+
+.swatch {
+    flex-shrink: 0;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+}
+
+.outcomeBody {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.outcomeName {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text-body);
+}
+
+.outcomeHint {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.outcomeLink {
+    align-self: flex-start;
+    margin-top: 2px;
+    text-decoration: none;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--danger);
+    white-space: nowrap;
+}
+
+.outcomeLink:hover {
+    color: var(--danger);
+    text-decoration: none;
+}
+
+.outcomeValue {
+    display: flex;
+    flex-direction: column;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.outcomeValue b {
+    font-size: 14px;
+}
+
+.outcomeValue span {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.rankings {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+    gap: 18px;
+}
+
+.rankList,
+.questionList {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.rankList {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.categoryItem {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.categoryLine {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 13px;
+}
+
+.categoryTrack {
+    height: 6px;
+    border-radius: 99px;
+    background: var(--chart-track);
+}
+
+.categoryBar {
+    height: 100%;
+    border-radius: 99px;
+    background: var(--chart-bar);
+}
+
+.questionItem {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 0;
+    border-top: 1px solid var(--divider);
+}
+
+.questionPosition {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--chart-label);
+}
+
+.questionText {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    font-size: 13.5px;
+}
+
+.questionText small {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.questionItem b {
+    font-size: 13.5px;
+}
+
+.empty {
+    margin: 0;
+    font-size: 13.5px;
+    color: var(--text-muted);
+}
+
+.resultGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+    align-items: start;
+    gap: 18px;
+}
+
+.rateCard {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 18px;
+    border: 1px solid;
+    border-radius: 12px;
+}
+
+.rateTitle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.rateValue {
+    font: 800 40px var(--font-heading);
+    color: var(--no-show-strong);
+}
+
+.rateDetail {
+    margin: 0;
+    font-size: 12.5px;
+}
+
+.resultList {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.resultRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 0;
+    border-top: 1px solid var(--divider);
+}
+
+.pill {
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.pillWaiting {
+    background: var(--warn-bg);
+    color: var(--warn-text);
+}
+
+.resultValue {
+    font-size: 13.5px;
+    white-space: nowrap;
+}
+
+.resultValue span {
+    color: var(--text-muted);
+}
+
+.resultTotal {
+    display: flex;
+    justify-content: space-between;
+    padding: 9px 0;
+    border-top: 1px solid var(--border);
+    font-size: 13.5px;
+    font-weight: 700;
+}
+
+.refreshing {
+    opacity: 0.6;
+}
+
+.loading {
+    display: block;
+    margin: 0;
+    font-size: 13.5px;
+    color: var(--text-muted);
+}
+
+.alert {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 11px 13px;
+    border: 1px solid var(--error-border);
+    border-radius: 9px;
+    background: var(--error-soft-bg);
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--error-text);
+}
+
+.alert p {
+    margin: 0;
+}
+
+.retry {
+    padding: 9px 14px;
+    border: 1px solid var(--border-input);
+    border-radius: 8px;
+    background: var(--bg-surface);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-strong);
+    cursor: pointer;
+}
+
+.retry:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
+.resultCard {
+    gap: 18px;
+}
+
+.questionsCard {
+    gap: 4px;
+}
+
+.questionsCard .cardTitle {
+    margin-bottom: 10px;
+}

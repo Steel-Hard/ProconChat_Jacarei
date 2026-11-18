@@ -242,6 +242,7 @@ function useWhatsAppSettings() {
 
         try {
             const result = await testWhatsAppConnection(input)
+            dispatch(whatsappSettingsApi.util.invalidateTags(["WhatsAppMeta"]))
             remember(
                 result.ok
                     ? {
@@ -294,6 +295,7 @@ function useWhatsAppSettings() {
                     { endpointName: "getWhatsAppSettings", arg: undefined, value: saved }
                 ])
             )
+            dispatch(whatsappSettingsApi.util.invalidateTags(["WhatsAppHistory", "WhatsAppMeta"]))
             setDraft(EMPTY_DRAFT)
             setStored(null)
             refreshClock()

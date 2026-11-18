@@ -7,6 +7,12 @@ const FIELD_SELECTOR = "input:not([disabled]), select:not([disabled]), textarea:
 const FOCUSABLE_SELECTOR =
     'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
+const TONE_CLASS = {
+    primary: css.confirm,
+    danger: `${css.confirm} ${css.danger}`,
+    warning: `${css.confirm} ${css.warning}`
+}
+
 type ConfirmDialogProps = {
     open: boolean
     title: string
@@ -14,10 +20,11 @@ type ConfirmDialogProps = {
     children?: ReactNode
     confirmLabel: string
     cancelLabel?: string
-    tone?: "primary" | "danger"
+    tone?: keyof typeof TONE_CLASS
     confirmDisabled?: boolean
     busy?: boolean
     submitOnEnter?: boolean
+    narrow?: boolean
     onConfirm: () => void
     onCancel: () => void
 }
@@ -33,6 +40,7 @@ function ConfirmDialog({
     confirmDisabled = false,
     busy = false,
     submitOnEnter = false,
+    narrow = false,
     onConfirm,
     onCancel
 }: ConfirmDialogProps) {
@@ -125,7 +133,7 @@ function ConfirmDialog({
         }
     }
 
-    const confirmClass = tone === "danger" ? `${css.confirm} ${css.danger}` : css.confirm
+    const confirmClass = TONE_CLASS[tone]
 
     const content = (
         <>
@@ -162,7 +170,7 @@ function ConfirmDialog({
             <dialog
                 ref={dialogRef}
                 open
-                className={css.dialog}
+                className={narrow ? `${css.dialog} ${css.narrow}` : css.dialog}
                 aria-modal="true"
                 aria-labelledby={titleId}
                 aria-describedby={description ? descriptionId : undefined}

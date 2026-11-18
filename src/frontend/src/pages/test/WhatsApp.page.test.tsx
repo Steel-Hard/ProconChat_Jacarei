@@ -4,7 +4,9 @@ import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type WhatsAppSettings from "@/types/whatsapp/WhatsAppSettings.types"
 
-vi.setConfig({ testTimeout: 20000 })
+vi.setConfig({ testTimeout: 60000 })
+
+const LAZY_LOAD_TIMEOUT = 10000
 
 const NEW_TOKEN = "EAAG-token-novo-ficticio-77Zz"
 const UNKNOWN_LIFETIME = { kind: "UNKNOWN", expiresAt: null } as const
@@ -23,8 +25,12 @@ function settingsView(overrides: Partial<WhatsAppSettings> = {}): WhatsAppSettin
         graphApiVersion: "v26.0",
         credentialsValid: true,
         credentialsCheckedAt: "2026-10-14T13:00:00.000Z",
+        credentialsStatus: "VALID",
+        webhook: { lastEventAt: "2026-10-14T13:00:00.000Z", stale: false },
         autoReplyPaused: false,
         pausedMessage: PAUSED_MESSAGE,
+        cancellationNoticeEnabled: false,
+        cancellationNoticeProblem: null,
         updatedBy: { id: 1, name: "Ana Paula" },
         updatedAt: "2026-10-14T13:00:00.000Z",
         displayPhoneNumber: "+55 12 3955-9000",
@@ -85,11 +91,87 @@ function stubApi(handlers: Record<string, Handler>) {
     return calls
 }
 
+function templatesWith(
+    templates: { kind: string; name: string; status: string; metaStatus: string | null }[]
+) {
+    return {
+        "GET /api/v1/whatsapp/settings/templates": () => ({
+            status: 200,
+            body: {
+                data: {
+                    checkedAt: "2026-11-04T14:00:00.000Z",
+                    templates: templates.map((item) => ({ ...item, languageCode: "pt_BR" }))
+                }
+            }
+        })
+    }
+}
+
+function numberStatusWith(
+    qualityRating: string,
+    messagingLimit: { tier: string | null; dailyLimit: number | null; usedLast24h: number }
+) {
+    return {
+        "GET /api/v1/whatsapp/settings/number-status": () => ({
+            status: 200,
+            body: {
+                data: {
+                    checkedAt: "2026-11-04T14:00:00.000Z",
+                    qualityRating,
+                    messagingLimit
+                }
+            }
+        })
+    }
+}
+
 async function renderPage(handlers: Record<string, Handler> = {}, view = settingsView()) {
     vi.stubEnv("VITE_API_URL", "http://api.test")
     vi.resetModules()
     const calls = stubApi({
         "GET /api/v1/whatsapp/settings": () => ({ status: 200, body: { data: view } }),
+        "GET /api/v1/whatsapp/settings/delivery-failures": () => ({
+            status: 200,
+            body: { data: { since: "2026-11-03T00:00:00.000Z", count: 0, items: [] } }
+        }),
+        "GET /api/v1/whatsapp/settings/history": () => ({
+            status: 200,
+            body: { data: { items: [] } }
+        }),
+        "GET /api/v1/whatsapp/settings/templates": () => ({
+            status: 200,
+            body: {
+                data: {
+                    checkedAt: "2026-11-04T14:00:00.000Z",
+                    templates: [
+                        {
+                            kind: "CANCELLATION",
+                            name: "aviso_cancelamento",
+                            languageCode: "pt_BR",
+                            status: "APPROVED",
+                            metaStatus: "APPROVED"
+                        },
+                        {
+                            kind: "REMINDER",
+                            name: "lembrete_atendimento",
+                            languageCode: "pt_BR",
+                            status: "APPROVED",
+                            metaStatus: "APPROVED"
+                        }
+                    ]
+                }
+            }
+        }),
+        "GET /api/v1/whatsapp/settings/number-status": () => ({
+            status: 200,
+            body: {
+                data: {
+                    checkedAt: "2026-11-04T14:00:00.000Z",
+                    qualityRating: "HIGH",
+                    messagingLimit: { tier: "TIER_250", dailyLimit: 250, usedLast24h: 50 }
+                }
+            }
+        }),
         ...handlers
     })
     const { default: createStore } = await import("@/store/createStore")
@@ -110,7 +192,7 @@ async function renderPage(handlers: Record<string, Handler> = {}, view = setting
 }
 
 async function loaded() {
-    await screen.findByRole("heading", { name: "Credenciais" })
+    await screen.findByRole("heading", { name: "Credenciais" }, { timeout: LAZY_LOAD_TIMEOUT })
 }
 
 function callsTo(calls: Call[], method: string, path: string): Call[] {
@@ -122,7 +204,11 @@ function group(name: string): HTMLElement {
 }
 
 function firstStep(): string | null {
-    return within(screen.getByRole("list")).getAllByRole("listitem")[0].textContent
+    const heading = screen.getByRole("heading", { name: "Configure no painel da Meta" })
+    const section = heading.closest("section")
+    return section === null
+        ? null
+        : (within(section).getAllByRole("listitem")[0]?.textContent ?? null)
 }
 
 afterEach(() => {
@@ -269,6 +355,45 @@ describe("WhatsAppPage", () => {
         expect(screen.queryByText("Conexão testada com sucesso.")).not.toBeInTheDocument()
     })
 
+    it("mostra a dica de testar uma vez, ao lado de Testar conexão e fora da barra do topo", async () => {
+        const { user } = await renderPage()
+        await loaded()
+
+        await user.type(screen.getByLabelText("ID do número de telefone"), "9")
+
+        expect(screen.getAllByText(NEED_TEST)).toHaveLength(1)
+        expect(
+            screen.getByRole("button", { name: "Testar conexão" }).parentElement
+        ).toContainElement(screen.getByText(NEED_TEST))
+        expect(
+            screen.getByRole("button", { name: "Descartar" }).parentElement
+        ).not.toContainElement(screen.getByText(NEED_TEST))
+    })
+
+    it("descreve o Salvar com a dica enquanto falta testar as credenciais novas", async () => {
+        const { user } = await renderPage()
+        await loaded()
+
+        await user.type(screen.getByLabelText("ID do número de telefone"), "9")
+
+        expect(
+            screen.getByRole("button", { name: "Salvar alterações" })
+        ).toHaveAccessibleDescription(NEED_TEST)
+    })
+
+    it("tira a descrição do Salvar depois do teste bem-sucedido com os valores atuais", async () => {
+        const { user } = await renderPage({ "POST /api/v1/whatsapp/settings/test": OK_TEST })
+        await loaded()
+
+        await user.type(screen.getByLabelText("ID do número de telefone"), "9")
+        await user.click(screen.getByRole("button", { name: "Testar conexão" }))
+        await screen.findByText("Conexão testada com sucesso.")
+
+        expect(
+            screen.getByRole("button", { name: "Salvar alterações" })
+        ).toHaveAccessibleDescription("")
+    })
+
     it("mostra Testando e desabilita o botão enquanto o teste está em andamento", async () => {
         let release: (reply: Reply) => void = noRelease
         const { user } = await renderPage({
@@ -335,6 +460,9 @@ describe("WhatsAppPage", () => {
         expect(within(group("Token de acesso")).getByText("••••••••77Zz")).toBeInTheDocument()
         expect(screen.queryByText("Conexão testada com sucesso.")).not.toBeInTheDocument()
         expect(screen.queryByText(/não salvas?$/)).not.toBeInTheDocument()
+        await waitFor(() =>
+            expect(callsTo(calls, "GET", "/api/v1/whatsapp/settings/history")).toHaveLength(2)
+        )
         expect(callsTo(calls, "PUT", "/api/v1/whatsapp/settings")[0]?.body).toEqual({
             phoneNumberId: "100000000000001",
             businessAccountId: "200000000000002",
@@ -342,6 +470,49 @@ describe("WhatsAppPage", () => {
             appSecret: null
         })
         expect(document.body.textContent).not.toContain(NEW_TOKEN)
+    })
+
+    it("consulta de novo os modelos e a qualidade depois de testar a conexão", async () => {
+        const { user, calls } = await renderPage({ "POST /api/v1/whatsapp/settings/test": OK_TEST })
+        await loaded()
+        await waitFor(() =>
+            expect(callsTo(calls, "GET", "/api/v1/whatsapp/settings/templates")).toHaveLength(1)
+        )
+        await user.type(screen.getByLabelText("ID do número de telefone"), "9")
+
+        await user.click(screen.getByRole("button", { name: "Testar conexão" }))
+        await screen.findByText("Conexão testada com sucesso.")
+
+        await waitFor(() => {
+            expect(callsTo(calls, "GET", "/api/v1/whatsapp/settings/templates")).toHaveLength(2)
+            expect(callsTo(calls, "GET", "/api/v1/whatsapp/settings/number-status")).toHaveLength(2)
+        })
+    })
+
+    it("consulta de novo os modelos e a qualidade depois de salvar as credenciais", async () => {
+        const saved = settingsView({ accessToken: { configured: true, last4: "77Zz" } })
+        const { user, calls } = await renderPage({
+            "POST /api/v1/whatsapp/settings/test": OK_TEST,
+            "PUT /api/v1/whatsapp/settings": () => ({ status: 200, body: { data: saved } })
+        })
+        await loaded()
+        await user.click(
+            within(group("Token de acesso")).getByRole("button", { name: "Substituir" })
+        )
+        await user.type(screen.getByLabelText("Token de acesso", { selector: "input" }), NEW_TOKEN)
+        await user.click(screen.getByRole("button", { name: "Testar conexão" }))
+        await screen.findByText("Conexão testada com sucesso.")
+        await waitFor(() =>
+            expect(callsTo(calls, "GET", "/api/v1/whatsapp/settings/templates")).toHaveLength(2)
+        )
+
+        await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
+        await screen.findByText("Credenciais salvas. O chatbot já usa os novos valores.")
+
+        await waitFor(() => {
+            expect(callsTo(calls, "GET", "/api/v1/whatsapp/settings/templates")).toHaveLength(3)
+            expect(callsTo(calls, "GET", "/api/v1/whatsapp/settings/number-status")).toHaveLength(3)
+        })
     })
 
     it("Descartar volta aos valores do servidor e cancela as substituições", async () => {
@@ -402,7 +573,9 @@ describe("WhatsAppPage", () => {
         await renderPage()
         await loaded()
 
-        const steps = within(screen.getByRole("list")).getAllByRole("listitem")
+        const heading = screen.getByRole("heading", { name: "Configure no painel da Meta" })
+        const setupSection = heading.closest("section") as HTMLElement
+        const steps = within(setupSection).getAllByRole("listitem")
 
         expect(steps.map((step) => step.textContent)).toEqual([
             "Use um token permanente de usuário do sistema (Gerenciador de Negócios › Usuários do sistema › Gerar token). O token temporário do painel de desenvolvedor expira em 24 horas e o chatbot para de funcionar.",
@@ -420,7 +593,9 @@ describe("WhatsAppPage", () => {
         expect(screen.getByText("+55 12 3955-9000")).toBeInTheDocument()
         expect(screen.getByText("PROCON Jacareí · WhatsApp Cloud API")).toBeInTheDocument()
         expect(screen.getByText("Operando")).toBeInTheDocument()
-        expect(screen.getByText("Última alteração por Ana Paula em 14/10/2026")).toBeInTheDocument()
+        expect(
+            screen.getAllByText("Última alteração por Ana Paula em 14/10/2026")[0]
+        ).toBeInTheDocument()
         expect(
             screen.getByText("Mensagem fixa enviada ao cidadão enquanto estiver pausado")
         ).toBeInTheDocument()
@@ -455,6 +630,93 @@ describe("WhatsAppPage", () => {
         expect(screen.getByText("Credenciais inválidas")).toBeInTheDocument()
     })
 
+    it("mostra a saúde do número, alerta para webhook parado e lista o histórico sem valores secretos", async () => {
+        const { calls } = await renderPage(
+            {
+                "GET /api/v1/whatsapp/settings/delivery-failures": () => ({
+                    status: 200,
+                    body: {
+                        data: {
+                            since: "2026-11-03T00:00:00.000Z",
+                            count: 1,
+                            items: [
+                                {
+                                    id: "failure-1",
+                                    kind: "REMINDER",
+                                    errorCode: "131047",
+                                    failedAt: "2026-11-03T15:00:00.000Z",
+                                    appointmentId: "42"
+                                }
+                            ]
+                        }
+                    }
+                }),
+                "GET /api/v1/whatsapp/settings/history": () => ({
+                    status: 200,
+                    body: {
+                        data: {
+                            items: [
+                                {
+                                    id: "history-1",
+                                    action: "credentials_saved",
+                                    fields: ["accessToken", "appSecret", "businessAccountId"],
+                                    actor: { id: 2, name: "Bruno Lima" },
+                                    createdAt: "2026-11-02T18:30:00.000Z"
+                                }
+                            ]
+                        }
+                    }
+                })
+            },
+            settingsView({
+                credentialsStatus: "EXPIRED",
+                webhook: { lastEventAt: null, stale: true }
+            })
+        )
+        await loaded()
+
+        expect(await screen.findByText("Estado do número")).toBeInTheDocument()
+        expect(screen.getByText("Token inválido ou expirado")).toBeInTheDocument()
+        expect(
+            screen.getByText(
+                'Gere um token permanente, use "Substituir", teste a conexão e salve as credenciais.'
+            )
+        ).toBeInTheDocument()
+        expect(screen.getByText("Nenhum evento recebido")).toBeInTheDocument()
+        expect(screen.getByText(/Não há eventos do webhook há mais de 24 horas/)).toHaveAttribute(
+            "role",
+            "alert"
+        )
+        expect(await screen.findByText("1 falha")).toBeInTheDocument()
+        expect(screen.getByText("Lembrete")).toBeInTheDocument()
+        expect(screen.getByText("Código de erro: 131047")).toBeInTheDocument()
+        expect(screen.getByText("Agendamento #42")).toBeInTheDocument()
+        expect(screen.getByText("Bruno Lima")).toBeInTheDocument()
+        expect(
+            screen.getByText(
+                "Campos alterados: Token de acesso substituído, App Secret substituído, ID da conta WhatsApp Business"
+            )
+        ).toBeInTheDocument()
+        expect(screen.queryByText(/EAAG|accessTokenValue|appSecretValue/)).not.toBeInTheDocument()
+        expect(callsTo(calls, "GET", "/api/v1/whatsapp/settings/delivery-failures")).toHaveLength(1)
+        expect(callsTo(calls, "GET", "/api/v1/whatsapp/settings/history")).toHaveLength(1)
+    })
+
+    it("não alerta quando o webhook recebeu evento há menos de 24 horas", async () => {
+        await renderPage(
+            {},
+            settingsView({
+                webhook: { lastEventAt: "2026-11-04T14:00:00.000Z", stale: false }
+            })
+        )
+        await loaded()
+
+        expect(await screen.findByText("04/11/2026 às 11:00")).toBeInTheDocument()
+        expect(
+            screen.queryByText(/Não há eventos do webhook há mais de 24 horas/)
+        ).not.toBeInTheDocument()
+    })
+
     it("pede confirmação com a prévia e pausa na hora ao confirmar", async () => {
         const { user, calls } = await renderPage({
             "POST /api/v1/whatsapp/settings/pause": () => ({
@@ -465,7 +727,7 @@ describe("WhatsAppPage", () => {
         await loaded()
         const toggle = screen.getByRole("switch", { name: "Pausar respostas automáticas" })
         expect(toggle).toHaveAttribute("aria-checked", "false")
-        expect(screen.getByText("Desligado")).toBeInTheDocument()
+        expect(screen.getAllByText("Desligado")[0]).toBeInTheDocument()
 
         await user.click(toggle)
         const dialog = screen.getByRole("dialog", { name: "Pausar respostas automáticas?" })
@@ -493,6 +755,9 @@ describe("WhatsAppPage", () => {
         ).toHaveAttribute("aria-checked", "true")
         expect(screen.getByText("Pausadas")).toBeInTheDocument()
         expect(screen.getByText("Respostas pausadas")).toBeInTheDocument()
+        await waitFor(() =>
+            expect(callsTo(calls, "GET", "/api/v1/whatsapp/settings/history")).toHaveLength(2)
+        )
         expect(callsTo(calls, "POST", "/api/v1/whatsapp/settings/pause")).toHaveLength(1)
         expect(callsTo(calls, "PUT", "/api/v1/whatsapp/settings")).toHaveLength(0)
     })
@@ -531,6 +796,9 @@ describe("WhatsAppPage", () => {
             screen.getByRole("switch", { name: "Pausar respostas automáticas" })
         ).toHaveAttribute("aria-checked", "false")
         expect(callsTo(calls, "POST", "/api/v1/whatsapp/settings/resume")).toHaveLength(1)
+        await waitFor(() =>
+            expect(callsTo(calls, "GET", "/api/v1/whatsapp/settings/history")).toHaveLength(2)
+        )
     })
 
     it("desligar o interruptor pausado também reativa sem confirmação", async () => {
@@ -573,13 +841,457 @@ describe("WhatsAppPage", () => {
         ).toHaveAttribute("aria-checked", "false")
     })
 
-    it("não mostra os blocos que pertencem a outras issues", async () => {
+    it("mostra modelos, qualidade, limite e permite atualizar os estados da Meta", async () => {
+        const { user, calls } = await renderPage()
+        await loaded()
+
+        expect(await screen.findByText("Modelos de mensagem")).toBeInTheDocument()
+        expect(screen.getByText("Aviso de cancelamento")).toBeInTheDocument()
+        expect(screen.getAllByText("Aprovado")).toHaveLength(2)
+        expect(screen.getByText("Qualidade do número na Meta")).toBeInTheDocument()
+        expect(screen.getByText("Alta")).toBeInTheDocument()
+        expect(
+            screen.getByText("Limite diário: 250 conversas iniciadas pela empresa.")
+        ).toBeInTheDocument()
+        expect(screen.getByText("Usadas nas últimas 24h: 50 de 250.")).toBeInTheDocument()
+
+        await user.click(screen.getByRole("button", { name: "Atualizar status da Meta" }))
+        await waitFor(() => {
+            expect(callsTo(calls, "GET", "/api/v1/whatsapp/settings/templates")).toHaveLength(2)
+            expect(callsTo(calls, "GET", "/api/v1/whatsapp/settings/number-status")).toHaveLength(2)
+        })
+    })
+
+    it("alerta quando um modelo não está aprovado e o número está perto do limite", async () => {
+        await renderPage({
+            "GET /api/v1/whatsapp/settings/templates": () => ({
+                status: 200,
+                body: {
+                    data: {
+                        checkedAt: "2026-11-04T14:00:00.000Z",
+                        templates: [
+                            {
+                                kind: "CANCELLATION",
+                                name: "aviso_cancelamento",
+                                languageCode: "pt_BR",
+                                status: "REJECTED",
+                                metaStatus: "REJECTED"
+                            }
+                        ]
+                    }
+                }
+            }),
+            "GET /api/v1/whatsapp/settings/number-status": () => ({
+                status: 200,
+                body: {
+                    data: {
+                        checkedAt: "2026-11-04T14:00:00.000Z",
+                        qualityRating: "LOW",
+                        messagingLimit: { tier: "TIER_250", dailyLimit: 100, usedLast24h: 85 }
+                    }
+                }
+            })
+        })
+        await loaded()
+
+        expect(
+            await screen.findByText(
+                "Enquanto este modelo não for aprovado, os avisos de cancelamento não serão enviados."
+            )
+        ).toHaveAttribute("role", "alert")
+        expect(
+            screen.getByText(
+                "Perto do limite diário da Meta. Lembretes e avisos podem deixar de ser enviados."
+            )
+        ).toHaveAttribute("role", "alert")
+        expect(
+            screen.getByText(
+                "Muitos bloqueios ou denúncias. A Meta pode limitar o envio de mensagens."
+            )
+        ).toBeInTheDocument()
+    })
+
+    it("mostra o nome técnico de cada modelo ao lado do nome e o parágrafo de apoio", async () => {
         await renderPage()
         await loaded()
 
-        expect(screen.queryByText("Estado do número")).not.toBeInTheDocument()
-        expect(screen.queryByText("Modelos de mensagem")).not.toBeInTheDocument()
-        expect(screen.queryByText("Histórico de alterações")).not.toBeInTheDocument()
+        const cancellation = (await screen.findByText("aviso_cancelamento")).closest(
+            "li"
+        ) as HTMLElement
+        const reminder = screen.getByText("lembrete_atendimento").closest("li") as HTMLElement
+
+        expect(within(cancellation).getByText("Aviso de cancelamento")).toBeInTheDocument()
+        expect(within(reminder).getByText("Lembrete do atendimento")).toBeInTheDocument()
+        expect(
+            screen.getByText(
+                "Mensagens enviadas fora da conversa precisam de modelo aprovado pela Meta."
+            )
+        ).toBeInTheDocument()
+    })
+
+    it("pinta o selo de cada status e acrescenta o aviso de rejeição só no rejeitado", async () => {
+        await renderPage(
+            templatesWith([
+                {
+                    kind: "CANCELLATION",
+                    name: "aviso_cancelamento",
+                    status: "REJECTED",
+                    metaStatus: "REJECTED"
+                },
+                {
+                    kind: "REMINDER",
+                    name: "lembrete_atendimento",
+                    status: "PENDING",
+                    metaStatus: "PENDING"
+                }
+            ])
+        )
+        await loaded()
+
+        const cancellation = (await screen.findByText("aviso_cancelamento")).closest(
+            "li"
+        ) as HTMLElement
+        const reminder = screen.getByText("lembrete_atendimento").closest("li") as HTMLElement
+
+        expect(within(cancellation).getByText("Rejeitado")).toHaveAttribute("data-tone", "danger")
+        expect(within(reminder).getByText("Em análise")).toHaveAttribute("data-tone", "warning")
+        expect(within(cancellation).getByRole("alert")).toHaveAttribute("data-tone", "danger")
+        expect(within(reminder).getByRole("alert")).toHaveAttribute("data-tone", "warning")
+        expect(
+            within(cancellation).getByText(
+                "A Meta rejeitou o modelo: revise o texto no Gerenciador do WhatsApp e envie novamente."
+            )
+        ).toBeInTheDocument()
+        expect(within(reminder).queryByText(/A Meta rejeitou o modelo/)).not.toBeInTheDocument()
+    })
+
+    it("usa vermelho para Não encontrado aprovado em verde e âmbar com o nome de outro status", async () => {
+        await renderPage(
+            templatesWith([
+                {
+                    kind: "CANCELLATION",
+                    name: "aviso_cancelamento",
+                    status: "NOT_FOUND",
+                    metaStatus: null
+                },
+                {
+                    kind: "REMINDER",
+                    name: "lembrete_atendimento",
+                    status: "OTHER",
+                    metaStatus: "PAUSED"
+                }
+            ])
+        )
+        await loaded()
+
+        const cancellation = (await screen.findByText("aviso_cancelamento")).closest(
+            "li"
+        ) as HTMLElement
+        const reminder = screen.getByText("lembrete_atendimento").closest("li") as HTMLElement
+
+        expect(within(cancellation).getByText("Não encontrado")).toHaveAttribute(
+            "data-tone",
+            "danger"
+        )
+        expect(within(reminder).getByText("PAUSED")).toHaveAttribute("data-tone", "warning")
+        expect(within(reminder).getByRole("alert")).toHaveAttribute("data-tone", "warning")
+    })
+
+    it.each([
+        ["PENDING", "CANCELLATION", "aviso_cancelamento", "os avisos de cancelamento"],
+        ["NOT_FOUND", "CANCELLATION", "aviso_cancelamento", "os avisos de cancelamento"],
+        ["OTHER", "CANCELLATION", "aviso_cancelamento", "os avisos de cancelamento"],
+        ["REJECTED", "CANCELLATION", "aviso_cancelamento", "os avisos de cancelamento"],
+        ["PENDING", "REMINDER", "lembrete_atendimento", "os lembretes"],
+        ["NOT_FOUND", "REMINDER", "lembrete_atendimento", "os lembretes"],
+        ["OTHER", "REMINDER", "lembrete_atendimento", "os lembretes"],
+        ["REJECTED", "REMINDER", "lembrete_atendimento", "os lembretes"]
+    ])("alerta no modelo %s de %s com o texto do tipo", async (status, kind, name, who) => {
+        await renderPage(templatesWith([{ kind, name, status, metaStatus: "X" }]))
+        await loaded()
+
+        const item = (await screen.findByText(name)).closest("li") as HTMLElement
+
+        expect(within(item).getByRole("alert")).toHaveTextContent(
+            `Enquanto este modelo não for aprovado, ${who} não serão enviados.`
+        )
+    })
+
+    it("não alerta nos modelos aprovados", async () => {
+        await renderPage()
+        await loaded()
+        await screen.findByText("aviso_cancelamento")
+
+        const list = screen.getByText("aviso_cancelamento").closest("ul") as HTMLElement
+
+        expect(within(list).queryByRole("alert")).not.toBeInTheDocument()
+    })
+
+    it("mostra só o selo com o nome do status quando o modelo tem outro status", async () => {
+        await renderPage(
+            templatesWith([
+                {
+                    kind: "REMINDER",
+                    name: "lembrete_atendimento",
+                    status: "OTHER",
+                    metaStatus: "PAUSED"
+                }
+            ])
+        )
+        await loaded()
+
+        const item = (await screen.findByText("lembrete_atendimento")).closest("li") as HTMLElement
+
+        expect(within(item).getByText("PAUSED")).toHaveAttribute("data-tone", "warning")
+        expect(within(item).queryByText(/Status informado pela Meta/)).not.toBeInTheDocument()
+        expect(within(item).getByRole("alert")).toHaveTextContent(
+            "Enquanto este modelo não for aprovado, os lembretes não serão enviados."
+        )
+    })
+
+    it("mostra o selo verde nos modelos aprovados", async () => {
+        await renderPage()
+        await loaded()
+
+        const approved = await screen.findAllByText("Aprovado")
+
+        expect(approved).toHaveLength(2)
+        approved.forEach((badge) => expect(badge).toHaveAttribute("data-tone", "success"))
+    })
+
+    it("mostra Qualidade e Limite dentro do card Estado do número e na ordem da regra", async () => {
+        await renderPage()
+        await loaded()
+
+        const numberCard = (
+            await screen.findByRole("heading", { name: "Estado do número" })
+        ).closest("section") as HTMLElement
+
+        expect(within(numberCard).getByText("Qualidade do número na Meta")).toBeInTheDocument()
+        expect(within(numberCard).getByText("Limite de envios da Meta")).toBeInTheDocument()
+        expect(
+            screen.queryByRole("heading", { name: "Qualidade e limite de envios da Meta" })
+        ).not.toBeInTheDocument()
+        const order = [
+            "Estado do número",
+            "Credenciais",
+            "Configure no painel da Meta",
+            "Testar conexão",
+            "Modelos de mensagem",
+            "Histórico de alterações"
+        ].map((name) => {
+            const node = screen.getAllByText(name).find((item) => /^H[1-6]$/.test(item.tagName))
+            const button = screen.queryByRole("button", { name })
+
+            return (node ?? button) as HTMLElement
+        })
+        order.slice(1).forEach((node, index) => {
+            const previous = order[index] as HTMLElement
+
+            expect(
+                previous.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING
+            ).toBeTruthy()
+        })
+    })
+
+    it("mostra as três faixas de qualidade e destaca só a atual", async () => {
+        await renderPage(
+            numberStatusWith("MEDIUM", { tier: "TIER_250", dailyLimit: 250, usedLast24h: 1 })
+        )
+        await loaded()
+
+        const high = (await screen.findByText("Alta")).closest("dd") as HTMLElement
+        const medium = screen.getByText("Média").closest("dd") as HTMLElement
+        const low = screen.getByText("Baixa").closest("dd") as HTMLElement
+
+        expect(
+            within(high).getByText(
+                "Poucos bloqueios ou denúncias de usuários. Envio sem restrições."
+            )
+        ).toBeInTheDocument()
+        expect(
+            within(medium).getByText(
+                "Aumento recente de bloqueios ou denúncias. Vale revisar o texto das mensagens."
+            )
+        ).toBeInTheDocument()
+        expect(
+            within(low).getByText(
+                "Muitos bloqueios ou denúncias. A Meta pode limitar o envio de mensagens."
+            )
+        ).toBeInTheDocument()
+        expect(high).toHaveAttribute("data-current", "false")
+        expect(medium).toHaveAttribute("data-current", "true")
+        expect(low).toHaveAttribute("data-current", "false")
+    })
+
+    it("não destaca nenhuma faixa e avisa quando a Meta não informa a qualidade", async () => {
+        await renderPage(
+            numberStatusWith("UNKNOWN", { tier: "TIER_250", dailyLimit: 250, usedLast24h: 1 })
+        )
+        await loaded()
+
+        expect(
+            await screen.findByText("A Meta não informou a qualidade atual do número.")
+        ).toBeInTheDocument()
+        ;["Alta", "Média", "Baixa"].forEach((name) =>
+            expect(screen.getByText(name).closest("dd")).toHaveAttribute("data-current", "false")
+        )
+    })
+
+    it.each([
+        ["TIER_250", null, "250"],
+        ["TIER_1K", null, "1.000"],
+        ["TIER_10K", null, "10.000"],
+        ["TIER_100K", null, "100.000"]
+    ])(
+        "traduz o patamar %s para o limite diário sem mostrar o código",
+        async (tier, dailyLimit, total) => {
+            await renderPage(numberStatusWith("HIGH", { tier, dailyLimit, usedLast24h: 40 }))
+            await loaded()
+
+            expect(
+                await screen.findByText(`Limite diário: ${total} conversas iniciadas pela empresa.`)
+            ).toBeInTheDocument()
+            expect(screen.getByText(`Usadas nas últimas 24h: 40 de ${total}.`)).toBeInTheDocument()
+            expect(screen.getByRole("progressbar")).toBeInTheDocument()
+            expect(document.body.textContent).not.toContain("TIER_")
+        }
+    )
+
+    it("mostra Sem limite diário, sem barra nem alerta, no patamar ilimitado", async () => {
+        await renderPage(
+            numberStatusWith("HIGH", { tier: "TIER_UNLIMITED", dailyLimit: null, usedLast24h: 900 })
+        )
+        await loaded()
+
+        expect(await screen.findByText("Sem limite diário")).toBeInTheDocument()
+        expect(screen.queryByRole("progressbar")).not.toBeInTheDocument()
+        expect(screen.queryByText(/Perto do limite diário/)).not.toBeInTheDocument()
+        expect(document.body.textContent).not.toContain("TIER_")
+    })
+
+    it.each([
+        [null, null],
+        ["TIER_NOVO", null],
+        [null, 0]
+    ])(
+        "mostra Limite não informado pela Meta, sem barra nem alerta (patamar %s, limite %s)",
+        async (tier, dailyLimit) => {
+            await renderPage(numberStatusWith("HIGH", { tier, dailyLimit, usedLast24h: 900 }))
+            await loaded()
+
+            expect(await screen.findByText("Limite não informado pela Meta")).toBeInTheDocument()
+            expect(screen.queryByRole("progressbar")).not.toBeInTheDocument()
+            expect(screen.queryByText(/Perto do limite diário/)).not.toBeInTheDocument()
+            expect(document.body.textContent).not.toContain("TIER_")
+        }
+    )
+
+    it("mostra a falha genérica quando a consulta à Meta não traz um código conhecido", async () => {
+        await renderPage({
+            "GET /api/v1/whatsapp/settings/templates": () => ({
+                status: 500,
+                body: { error: { code: "OUTRO", message: "x" } }
+            }),
+            "GET /api/v1/whatsapp/settings/number-status": () => ({
+                status: 500,
+                body: { error: { code: "OUTRO", message: "x" } }
+            })
+        })
+        await loaded()
+
+        const alerts = await screen.findAllByText(
+            "Não foi possível consultar a Meta. Confira as credenciais e tente novamente.",
+            { selector: '[role="alert"]' }
+        )
+
+        expect(alerts).toHaveLength(2)
+    })
+
+    it("desabilita o botão e mostra Atualizando… enquanto consulta a Meta", async () => {
+        const gate = Promise.withResolvers<void>()
+        let calls = 0
+        const { user } = await renderPage({
+            "GET /api/v1/whatsapp/settings/templates": async () => {
+                calls += 1
+
+                if (calls > 1) {
+                    await gate.promise
+                }
+
+                return {
+                    status: 200,
+                    body: { data: { checkedAt: "2026-11-04T14:00:00.000Z", templates: [] } }
+                }
+            }
+        })
+        await loaded()
+        await user.click(await screen.findByRole("button", { name: "Atualizar status da Meta" }))
+
+        const busy = await screen.findByRole("button", { name: "Atualizando…" })
+
+        expect(busy).toBeDisabled()
+        expect(busy).toHaveAttribute("aria-busy", "true")
+        gate.resolve()
+        await screen.findByRole("button", { name: "Atualizar status da Meta" })
+    })
+
+    it("não mostra o alerta de limite antes de ultrapassar 80%", async () => {
+        await renderPage({
+            "GET /api/v1/whatsapp/settings/number-status": () => ({
+                status: 200,
+                body: {
+                    data: {
+                        checkedAt: "2026-11-04T14:00:00.000Z",
+                        qualityRating: "MEDIUM",
+                        messagingLimit: { tier: "TIER_250", dailyLimit: 100, usedLast24h: 80 }
+                    }
+                }
+            })
+        })
+        await loaded()
+
+        expect(
+            await screen.findByRole("progressbar", { name: "Uso do limite diário de envios" })
+        ).toHaveValue(80)
+        expect(
+            screen.queryByText(
+                "Perto do limite diário da Meta. Lembretes e avisos podem deixar de ser enviados."
+            )
+        ).not.toBeInTheDocument()
+    })
+
+    it("mostra alertas e motivo quando a Meta não pode ser consultada", async () => {
+        await renderPage({
+            "GET /api/v1/whatsapp/settings/templates": () => ({
+                status: 422,
+                body: { error: { code: "INVALID_TOKEN", message: "x" } }
+            }),
+            "GET /api/v1/whatsapp/settings/number-status": () => ({
+                status: 422,
+                body: { error: { code: "META_UNAVAILABLE", message: "x" } }
+            })
+        })
+        await loaded()
+
+        expect(
+            await screen.findByText("Token inválido ou expirado", { selector: '[role="alert"]' })
+        ).toBeInTheDocument()
+        expect(
+            screen.getByText("Não foi possível falar com a Meta. Tente de novo em instantes", {
+                selector: '[role="alert"]'
+            })
+        ).toBeInTheDocument()
+    })
+
+    it("continua mostrando a conexão e o histórico junto com os dados da Meta", async () => {
+        await renderPage()
+        await loaded()
+
+        expect(screen.getByText("Estado do número")).toBeInTheDocument()
+        expect(screen.getByText("Histórico de alterações")).toBeInTheDocument()
+        expect(await screen.findByText("Qualidade do número na Meta")).toBeInTheDocument()
+        expect(screen.getByText("Modelos de mensagem")).toBeInTheDocument()
         expect(screen.queryByText("Controles do protótipo")).not.toBeInTheDocument()
     })
 

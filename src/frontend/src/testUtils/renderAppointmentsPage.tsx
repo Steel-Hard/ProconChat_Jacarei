@@ -59,7 +59,7 @@ async function renderAppointmentsPage({
     let waiting = 0
     const replies: Record<string, Handler> = {
         [`GET ${LIST_PATH}`]: () => ({ status: 200, body: { data: buildAppointmentList([]) } }),
-        [`GET ${LIST_PATH}/pending-count`]: () => ({ status: 200, body: { data: { count: 0 } } }),
+        [`GET ${LIST_PATH}/staff`]: () => ({ status: 200, body: { data: [] } }),
         ...handlers
     }
     vi.stubGlobal(

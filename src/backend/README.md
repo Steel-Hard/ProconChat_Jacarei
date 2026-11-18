@@ -253,6 +253,7 @@ em `POST`/`PUT` sem origem confiável e `400 BAD_REQUEST` `"Malformed JSON body"
 | `PUT /` | igual ao teste | `200 { data: WhatsAppSettingsView }` | `400`; `422 { error: { code: <reason>, message: "WhatsApp connection test failed" } }` |
 | `POST /pause` | — | `200 { data: WhatsAppSettingsView }` com `autoReplyPaused: true` | — |
 | `POST /resume` | — | `200 { data: WhatsAppSettingsView }` com `autoReplyPaused: false` | — |
+| `PUT /cancellation-notice` | `{ enabled: boolean }` | `200 { data: WhatsAppSettingsView }` com `cancellationNoticeEnabled` igual ao enviado | `400` se `enabled` não for booleano ou houver outro campo |
 | `GET /templates` | — | `200 { data: { checkedAt, templates: [{ kind: "CANCELLATION" \| "REMINDER", name, languageCode, status, metaStatus }] } }` | `409 WHATSAPP_NOT_CONFIGURED` (sem ID da conta, token ou App Secret); `422 { error: { code: <reason> } }` |
 | `GET /number-status` | — | `200 { data: { checkedAt, qualityRating, messagingLimit: { tier, dailyLimit, usedLast24h } } }` | `409 WHATSAPP_NOT_CONFIGURED` (sem ID do número, token ou App Secret); `422 { error: { code: <reason> } }` |
 | `GET /delivery-failures` | — | `200 { data: { since, count, items: [{ id, kind, errorCode, failedAt, appointmentId }] } }` | — |
@@ -271,6 +272,7 @@ em `POST`/`PUT` sem origem confiável e `400 BAD_REQUEST` `"Malformed JSON body"
   `kind`: `REPLY` (resposta comum; o Gateway não informa o id das respostas, então toda falha de id
   desconhecido entra assim), `CANCELLATION` (aviso de cancelamento, com o agendamento), e
   `CONFIRMATION`, `PAUSED` e `REMINDER`, reservados. Sem telefone, texto nem id da mensagem na Meta.
+- `PUT /cancellation-notice` liga ou desliga o aviso de cancelamento ao cidadão (issue #164). Só o Admin, age na hora e grava `cancellation_notice_enabled` ou `cancellation_notice_disabled` no `AuditLog` da área `whatsapp`, com quem alterou. O aviso nasce desligado (coluna `cancellation_notice_enabled`, padrão `FALSE`, na instalação nova e na atualização).
 - `GET /history` lê `AuditLog` da área `whatsapp`, da alteração mais recente para a mais antiga
   (desempate pelo `id`), no máximo 50. `action`: `credentials_saved` (com `fields`, o subconjunto de
   `phoneNumberId` e `businessAccountId` quando mudaram, e de `accessToken` e `appSecret` quando foram
@@ -308,6 +310,8 @@ O cadastro dos modelos na Meta está em [`.docs/whatsapp/modelos-de-mensagem.md`
     "credentialsValid": true,
     "credentialsCheckedAt": "2026-10-14T13:00:00.000Z",
     "autoReplyPaused": false,
+    "cancellationNoticeEnabled": false,
+    "cancellationNoticeProblem": null,
     "pausedMessage": "O atendimento automático do PROCON Jacareí está temporariamente indisponível. Tente novamente mais tarde.",
     "updatedBy": { "id": 1, "name": "Admin" },
     "updatedAt": "2026-10-14T13:00:00.000Z",
@@ -651,14 +655,14 @@ repositório dentro da transação, pelo mock e pelo detalhe.
 
 | Rota | Permissão | O que faz | Sucesso | Erros |
 | --- | --- | --- | --- | --- |
-| `GET /api/v1/appointments/pending-count` | `appointments.view` | Quantidade de agendamentos `PENDING` (badge do menu). Como `chk_appointments_pending_unassigned` impede pendente com responsável, é o mesmo que "pendentes sem responsável" | `200 { data: { count } }` | `401 UNAUTHORIZED`, `403 FORBIDDEN` |
-| `GET /api/v1/appointments/staff` | `appointments.view` | Funcionários que podem ser responsáveis: o Admin e as contas com `appointments.manage`, ativas e inativas, por nome. Serve ao filtro "Um funcionário específico" (todas) e ao seletor de "Atribuir" (só as ativas, sem o responsável atual) | `200 { data: [{ id, name, active }] }` | `401`, `403 FORBIDDEN` |
+| `GET /api/v1/appointments/pending-count` | `appointments.view` | Quantidade de agendamentos `PENDING` (o painel não chama mais esta rota; ela continua disponível). Como `chk_appointments_pending_unassigned` impede pendente com responsável, é o mesmo que "pendentes sem responsável" | `200 { data: { count } }` | `401 UNAUTHORIZED`, `403 FORBIDDEN` |
+| `GET /api/v1/appointments/staff` | `appointments.view` | Funcionários que podem ser responsáveis: o Admin e as contas com `appointments.manage`, ativas e inativas, por nome. Serve ao filtro "Um funcionário específico" (todas) e ao seletor de "Atribuir" (só as ativas, sem o responsável atual) | `200 { data: [{ id, name, active, email }] }`. `email` só vem preenchido (`string`) para quem tem `appointments.manage` (ou é Admin) e só nas contas ativas; para quem só tem `appointments.view`, e nas contas inativas, vem `null`. Nunca traz telefone, CPF nem dado do cidadão | `401`, `403 FORBIDDEN` |
 | `GET /api/v1/appointments/calendar` | `appointments.view` | Calendário semanal (seção abaixo). Query: `date` (`AAAA-MM-DD`, padrão hoje em São Paulo), `status` e `responsible` com os mesmos valores da lista | `200 { data: Calendar }` | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN` |
 | `GET /api/v1/appointments` | `appointments.view` | Lista com busca, filtros, ordenação, paginação e contagem dos chips (query abaixo) | `200 { data: { items, total, page, limit, totalPages, chipCounts } }` | `400 BAD_REQUEST`, `401`, `403` |
 | `GET /api/v1/appointments/:id` | `appointments.view` | Detalhe com histórico (`events`), linha do tempo da conversa de origem (`timeline`) e ações disponíveis (`available_actions`) | `200 { data: AppointmentDetail }` | `400 BAD_REQUEST` (id que não é inteiro positivo ou passa do limite do `bigint`), `401`, `403`, `404 NOT_FOUND` |
 | `PATCH /api/v1/appointments/:id/status` | `appointments.manage` | Executa uma ação. Corpo: `{ "action": "claim" \| "attended" \| "no_show" \| "correct_record" }`, `{ "action": "assign", "assigneeUserId": <id> }` (número ou texto numérico) ou `{ "action": "cancel", "reason": "UNIT_CLOSED" \| "CITIZEN_REQUEST" \| "DUPLICATE" \| "OTHER", "note"?: "..." }` (seção "Cancelamento pela equipe") | `200 { data: AppointmentDetail }`, o mesmo objeto que um `GET /:id` feito em seguida. `correct_record` pode trazer também `warning` (abaixo) | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN`, `403 INVALID_ORIGIN`, `404 NOT_FOUND`, `409` (codes na tabela de ações) |
-| `GET /api/v1/appointments/:id/cancellation-preview` | `appointments.manage` | A mensagem exata que o cidadão recebe para cada motivo, na ordem `UNIT_CLOSED`, `CITIZEN_REQUEST`, `DUPLICATE`, `OTHER` | `200 { data: { previews: [{ reason, message }] } }` | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN`, `404 NOT_FOUND` |
-| `POST /api/v1/appointments/:id/cancellation-notice/retry` | `appointments.manage` | Reenvia o aviso de cancelamento que falhou | `200 { data: AppointmentDetail }` | `401`, `403 FORBIDDEN`, `403 INVALID_ORIGIN`, `404 NOT_FOUND`, `409 NOTIFICATION_NOT_RETRYABLE`, `409 CITIZEN_PHONE_UNAVAILABLE`, `409 NOTIFICATION_AFTER_START`, `409 NOTIFICATION_IN_PROGRESS` |
+| `GET /api/v1/appointments/:id/cancellation-preview` | `appointments.manage` | A mensagem exata que o cidadão recebe para cada motivo, na ordem `UNIT_CLOSED`, `CITIZEN_REQUEST`, `DUPLICATE`, `OTHER` | `200 { data: { noticeEnabled: boolean, problem: NoticeProblem \| null, previews: [{ reason, message }] } }` (com o aviso desligado: `noticeEnabled: false`, `problem: null` e `previews: []`; se o estado do aviso não puder ser lido, responde erro e o front não libera a confirmação) | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN`, `404 NOT_FOUND` |
+| `POST /api/v1/appointments/:id/cancellation-notice/retry` | `appointments.manage` | Reenvia o aviso de cancelamento que falhou | `200 { data: AppointmentDetail }` | `401`, `403 FORBIDDEN`, `403 INVALID_ORIGIN`, `404 NOT_FOUND`, `409 NOTIFICATION_NOT_RETRYABLE`, `409 NOTIFICATION_DISABLED`, `409 CITIZEN_PHONE_UNAVAILABLE`, `409 NOTIFICATION_AFTER_START`, `409 NOTIFICATION_IN_PROGRESS` |
 | `POST /api/v1/appointments/:id/notes` | `appointments.manage` | Grava uma observação interna. Corpo: `{ "text": "..." }`, de 1 a 2000 caracteres depois de aparar. Não há rota de edição nem de exclusão, e o trigger `trg_appointment_notes_immutable` recusa `UPDATE` e `DELETE` | `201 { data: AppointmentDetail }` | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN`, `403 INVALID_ORIGIN`, `404 NOT_FOUND` |
 
 Erros sempre no envelope `{ "error": { "code": "...", "message": "..." } }`. O painel traduz pelo
@@ -970,17 +974,57 @@ marcado (no horário ou depois, `409 CANCEL_AFTER_START`).
   maior que os 10 s do gateway). Os parâmetros vêm de `parametrosAvisoCancelamento` (nome, protocolo,
   data e hora em Brasília e a frase do motivo), os mesmos da prévia. A observação interna nunca vai ao
   cidadão.
+- **Aviso desligado (issue #164, padrão):** antes de cancelar, o service lê a configuração
+  (`PUT /api/v1/whatsapp/settings/cancellation-notice`). Se não conseguir ler, o cancelamento nem
+  começa e o erro sobe. Com o aviso desligado, o `COMMIT` do cancelamento já inclui o evento
+  `CITIZEN_NOTICE_DISABLED` (`data: { kind: "CANCELLATION" }`, com quem cancelou), o gateway e a Meta
+  não são chamados e nenhuma falha é gravada, nem de telefone ausente. O horário volta a ficar livre
+  do mesmo jeito. Esse evento não é falha e não vira reenvio, mesmo que o Admin ligue o aviso depois:
+  `retry_cancellation_notice` fica recusado com `NOTIFICATION_NOT_RETRYABLE`. Com o aviso desligado, o
+  reenvio de uma falha antiga responde `409 NOTIFICATION_DISABLED` e não chama a Meta.
+- `AppointmentDetail.cancellation_notice_status` (`"NOTIFIED" | "FAILED" | "DISABLED" | null`) traz o
+  último registro do aviso de cancelamento quando a equipe cancelou o agendamento, e `null` nos demais
+  casos. É a marca para a faixa que não some ao recarregar.
 - O resultado vira `CITIZEN_NOTIFIED` ou `CITIZEN_NOTIFICATION_FAILED`, com `data: { kind:
   "CANCELLATION" }` e quem agiu. Falha do gateway, gateway não configurado ou telefone ausente ou
   ilegível gravam a falha, e o cancelamento continua respondendo `200`. A pausa das respostas
   automáticas não bloqueia o aviso.
+- **Problema conhecido da Meta** (`cancellationNoticeProblem` em `GET /api/v1/whatsapp/settings` e `problem` em `cancellation-preview`): objeto `{ code, metaErrorCode, message }` ou `null`. Só existe com o aviso ligado, para erros da **conta** com uma falha de envio nas últimas 24 horas e nenhum envio bem-sucedido depois dela (o do aviso de cancelamento, no caso de erro de modelo; de qualquer tipo, no caso de erro de conta), ou com `credentialsValid = false`. A frase vem da regra 11:
+
+  | `metaErrorCode` | `code` |
+  |---|---|
+  | `131042` | `PAYMENT_METHOD` |
+  | `132001` | `TEMPLATE_NOT_FOUND` |
+  | `132000` | `TEMPLATE_PARAMETER_COUNT` |
+  | `132012` | `TEMPLATE_PARAMETER_FORMAT` |
+  | `132007` | `TEMPLATE_POLICY_VIOLATION` |
+  | `132015` | `TEMPLATE_PAUSED` |
+  | `132016` | `TEMPLATE_DISABLED` |
+  | `132005` | `TEMPLATE_TRANSLATION_TOO_LONG` |
+  | `190` ou credenciais inválidas (`metaErrorCode: null`) | `INVALID_TOKEN` |
+  | `131048` | `SEND_LIMIT_REACHED` |
+
+  Os códigos do destinatário (`131026`, `131049`, `131056`, `131047`) não geram faixa e aparecem só no Histórico do agendamento. O estado atual do modelo (não aprovado, pausado ou desativado) exige uma consulta à Meta: o front combina `GET /api/v1/whatsapp/settings/templates` e mostra "o modelo de aviso não está aprovado na Meta".
+- Quando a Meta recusa o envio, ou avisa depois pelo webhook de status que a entrega falhou, o evento
+  `CITIZEN_NOTIFICATION_FAILED` traz também `data.errorCode` (texto só com dígitos, por exemplo
+  `"131042"`) e a mensagem em `OutboundMessages.error_code` guarda o mesmo código. O código vindo do webhook só é aceito com 1 a 7 dígitos; qualquer outro valor é gravado como
+  nulo (a falha continua registrada). Só o código é
+  guardado: a mensagem e os detalhes da Meta podem conter o telefone e nunca são lidos. Sem código
+  (rede fora do ar, gateway não configurado), o evento fica só com `kind`.
 - Se o próprio aviso lança depois do `COMMIT` (por exemplo, a gravação do resultado falha), o
   cancelamento responde `200` com o detalhe `CANCELED` e o log registra só o id do agendamento e o
   código do erro, sem telefone. Se a leitura do detalhe também falhar, a resposta é `500`, mas o
   cancelamento continua gravado.
 - `available_actions.retry_cancellation_notice` só fica `allowed` quando o agendamento foi cancelado
   pela equipe, o último aviso de `kind` `CANCELLATION` (por `created_at, id`) falhou ou não existe, há
-  telefone e o horário ainda não passou. O reenvio tem uma trava em memória por agendamento
+  telefone, o aviso está ligado e o horário ainda não passou. A ordem das recusas é
+  `NOTIFICATION_NOT_RETRYABLE`, `NOTIFICATION_AFTER_START`, `NOTIFICATION_DISABLED` e
+  `CITIZEN_PHONE_UNAVAILABLE`: depois do horário do atendimento vale sempre `NOTIFICATION_AFTER_START`,
+  com o aviso ligado ou desligado, e o front não mostra as faixas de aviso ao cidadão (falha com aviso
+  desligado, "cancelado sem aviso" e falta de telefone) quando `appointment_datetime` já passou. Com o aviso desligado, uma falha antiga
+  continua com `cancellation_notice_status: "FAILED"`, mas a ação vem `{ allowed: false, code:
+  "NOTIFICATION_DISABLED" }` (o front não lê as configurações, que são só do Admin, então o botão segue
+  só esta ação). O reenvio tem uma trava em memória por agendamento
   (`409 NOTIFICATION_IN_PROGRESS`), suficiente porque o backend roda numa instância só. Dentro da trava
   o alvo é relido, e um aviso que já saiu (`CITIZEN_NOTIFIED`) recusa o reenvio com
   `409 NOTIFICATION_NOT_RETRYABLE`.
@@ -1071,6 +1115,7 @@ conferir nada. Duas correções simultâneas: uma grava, a outra recebe `409 REC
         "weekStart": "2026-10-18",
         "weekEnd": "2026-10-24",
         "weekStartDay": 0,
+        "seatsPerSlot": 2,
         "days": [
             {
                 "date": "2026-10-22",
@@ -1089,6 +1134,10 @@ conferir nada. Duas correções simultâneas: uma grava, a outra recebe `409 REC
   `weekStartDay` para o painel não fixar o dia. Trocar o dia inicial (tela ou banco) é tarefa futura.
 - `days` traz só os dias com grade configurada, na ordem da semana; `slots` são os horários da grade
   do dia (`freeSlotStartsOfDay`, a mesma função do bot). Sem `ScheduleSettings`, `days` vem vazio.
+- `seatsPerSlot` é o número de vagas por horário configurado em Horários de atendimento, para a
+  legenda do calendário. Se uma mudança de horários agendada começa no meio da semana e as vagas por
+  horário diferem entre os dias com grade, não há número único e vem `null` (o painel omite o número).
+  Também vem `null` quando a semana não tem nenhum dia com grade (decisão 012).
 - `blocked` descreve os bloqueios do dia: `fullDay` e `description` (o texto do bloqueio de dia
   inteiro, por exemplo "Feriado municipal", ou `null` quando não há) e `periods` com os bloqueios de
   parte do dia (`start`, `end`, `description`).
@@ -1334,6 +1383,30 @@ checagem de duplicidade por CPF e horário, documentos, `INSERT` do agendamento 
 `insertConversationEvent(client, ...)` e encerramento por `finishSessionWith(client, ...)` com
 `APPOINTMENT_CREATED`/`SCHEDULED`. Qualquer falha desfaz tudo.
 
+## Documentos para atendimento presencial (`/api/v1/documents`, #65)
+
+As rotas exigem sessão autenticada e `documents.configure`, aplicam a proteção CSRF nos métodos com
+corpo e respondem com `Cache-Control: no-store`. A configuração salva em `AttendanceDocuments` é
+usada nos próximos agendamentos; os dados de agenda vêm de `ScheduleSettings` e os documentos das
+perguntas de `RequiredDocuments`.
+
+| Rota | Entrada | Sucesso | Erros |
+| --- | --- | --- | --- |
+| `GET /api/v1/documents` | — | `200 { data: DocumentsViewOutput }`, com os grupos `holder` e `representative`, última alteração (`updatedBy` fica `{ id: null, name: "usuário removido" }` quando o autor não existe mais), endereço/lembrete de `ScheduleSettings` e todas as perguntas ativas (`id`, `title`, `categoryTitle`, `documents`), na ordem da tela Conteúdo | `401 UNAUTHORIZED`, `403 FORBIDDEN`, `500` se faltar a configuração de horários |
+| `PUT /api/v1/documents` | `{ holder: string[], representative: string[] }` (até 10 itens por grupo, de 1 a 255 caracteres, sem item repetido no mesmo grupo ignorando acento e maiúscula) | `200 { data: DocumentsViewOutput }`; substitui os dois grupos e registra a alteração em `AuditLog`. Salvar a mesma lista não grava `AuditLog` nem troca "Última alteração por" (mudar só a ordem conta como alteração). Saves simultâneos são serializados por trava no banco | `400 BAD_REQUEST` com mensagem em português citando o item e o motivo, `401`, `403` |
+| `POST /api/v1/documents/preview` | `{ byRepresentative: boolean, groupDocuments: string[], questionId?: inteiro positivo ou texto numérico }`, com as mesmas regras de itens do `PUT` | `200 { data }` com `text` (saída de `formatarConfirmacaoAgendamento`, a mesma do bot), `example` (`protocol`, `dateTime` fixos), `title`, `details[]` (`label`, `value`), `groupBlock` e `questionBlock` (`heading`, `items[]` com `text` e `repeated`, ou `null` se a lista estiver vazia), `notice` (`string` ou `null`: com o lembrete e o aviso de cancelamento desligados não há frase, e `text` termina nos documentos sem a linha em branco que a precederia) e `repeatedCount`. Sem salvar alterações | `400 BAD_REQUEST` (inclui `questionId` inválido: "Pergunta inválida."), `401`, `403`, `404 NOT_FOUND` se a pergunta não existe ou está inativa |
+
+Um item é `repeated` quando aparece nas duas listas: igual ignorando acento, maiúscula e espaços, ou
+um contido no outro por palavras inteiras (por exemplo, "RG" e "RG ou outro documento oficial com
+foto"). `repeatedCount` conta os itens do grupo repetidos. A regra vive só no backend
+(`utils/documentMatch.ts`). Perguntas e categorias inativas ficam fora do seletor e da prévia.
+
+As respostas da prévia usadas pelos testes do painel ficam em `src/frontend/src/testUtils/documentsPreview*.json`.
+O teste `services/documents.previewFixtures.test.ts` compara cada arquivo com a saída real de
+`previewConfirmation` e falha se o contrato mudar. A frase de avisos acompanha o que está ligado (lembrete em Horários de atendimento e aviso de cancelamento na tela de WhatsApp, lido a cada confirmação, sem cache): as quatro combinações e o `1 hora` estão em `.docs/regras/09-documentos.md`, e valem para o bot (agendamento e remarcação) e para esta prévia, que usam a mesma função. Quando a mudança for intencional, regenere os
+JSON com `npm run fixtures:documents-preview` (em `src/backend`, define `REGENERATE_PREVIEW_FIXTURES=1`
+e reescreve os arquivos em vez de comparar) e commite-os junto com a alteração do backend. As entradas de cada
+arquivo ficam em `services/mock/documentsPreviewFixtures.ts`.
 
 ## Retorno de quem já tem agendamento (#59)
 
@@ -1546,4 +1619,39 @@ A migration `13` garante no banco que `current_step = 'FINISHED'` só existe em 
 Esta regra roda quando o mesmo número volta a escrever. A **varredura periódica**
 (`services/abandonedSessionsSweep.service.ts`, iniciada em `index.ts`) cuida das sessões de quem nunca
 volta e aplica exatamente a mesma regra. A correspondência entre
-etapa e os nomes de abandono dos Relatórios é da #68.
+etapa e os 6 nomes de abandono dos Relatórios fica na aplicação (#73).
+
+
+## Conteúdo do chatbot (/api/v1/content)
+
+Rotas do painel para gerenciamento de categorias e perguntas do chatbot (#63, `.docs/regras/06-conteudo.md`). Todas exigem sessão (`requireAuth`), permissão `content.manage` (`requirePermission("content.manage")`, concedida também ao Admin) e devolvem `Cache-Control: no-store`. As rotas de escrita passam pela proteção CSRF (`403 INVALID_ORIGIN` quando `Origin` difere de `FRONTEND_ORIGIN`) e usam validação Zod com erros por campo (`details.issues` com `{ path, message }`).
+
+| Rota | Método | O que faz |
+| --- | --- | --- |
+| `/api/v1/content/categories` | `GET` | Lista todas as categorias em `position ASC, id ASC` com `questionsCount`, `activeQuestionsCount`, `hiddenInChatbot` (`active && activeQuestionsCount === 0`), `whatsappPage`, `pageBreak` (`"Página 2 no WhatsApp"` etc.), `updatedBy` e `updatedAt` |
+| `/api/v1/content/categories` | `POST` | Cria categoria ativa no fim da lista (`201 Created`). Recusa `title` duplicado sem diferenciar maiúsculas nem acentos (`409 CATEGORY_TITLE_CONFLICT`) |
+| `/api/v1/content/categories/:id` | `PUT` | Edita `title`, `shortTitle` (1..24 caracteres), `description` e opcionalmente `active`, gravando `updated_by` e `updated_at` |
+| `/api/v1/content/categories/:id/active` | `PATCH` | Ativa ou desativa a categoria (`{ active: boolean }`) |
+| `/api/v1/content/categories/reorder` | `PUT` | Reordena todas as categorias (`{ categoryIds: number[] }`) em transação e devolve a lista recalculada |
+| `/api/v1/content/questions` | `GET` | Lista perguntas da categoria (`?categoryId=<id>`, com `whatsappPage` e `pageBreak`) ou busca em todas as categorias (`?search=<termo>`, sem diferenciar maiúsculas nem acentos em `question`, `answer` e `short_title`) |
+| `/api/v1/content/categories/:id/questions` | `GET` | Atalho para listar as perguntas da categoria `:id` |
+| `/api/v1/content/questions` | `POST` | Cria pergunta no fim da categoria (`201 Created`), sincronizando `RequiredDocuments` em transação e calculando `answerLengthWarning` (`answer.length >= 1000`) |
+| `/api/v1/content/questions/:id` | `PUT` | Edita pergunta e sincroniza `RequiredDocuments` em transação (recusa mudança de `categoryId`; campos opcionais omitidos voltam ao padrão: `llmAllowed = true`, `legalBasis = null`, `requiredDocuments = []`) |
+| `/api/v1/content/questions/:id/active` | `PATCH` | Ativa ou desativa a pergunta (`{ active: boolean }`) |
+| `/api/v1/content/categories/:id/questions/reorder` | `PUT` | Reordena todas as perguntas da categoria `:id` (`{ questionIds: number[] }`) |
+| `/api/v1/content/preview` e `/api/v1/content/questions/preview` | `POST` | Gera a prévia "Ver como o cidadão recebe" usando `AVISO_NAO_VINCULANTE`, `PERGUNTA_RESOLVIDA`, `OFERTA_AGENDAMENTO`, `formatarRespostaFinal` e `paginarItens` de `services/messageFormatter.service.ts` |
+
+## Relatórios mínimos (#68)
+
+`GET /api/v1/reports` exige `requireAuth` e `requirePermission("reports.view")` (ou conta Admin), responde com `Cache-Control: no-store` e devolve os indicadores agregados do período selecionado em `America/Sao_Paulo`, sem expor nenhum dado pessoal (sem nome, CPF, telefone, protocolo ou código de sessão).
+
+- **Período (`query` validada por `schemas/report.schema.ts` com `withIssues: true`):**
+  - `period`: `7d` (7 dias fechados antes de hoje), `30d` (padrão — 30 dias fechados antes de hoje), `90d` (90 dias fechados antes de hoje), `current_month` (do dia `01` do mês atual até hoje), `previous_month` (mês anterior completo) ou `custom` (`startDate` e `endDate` obrigatórios no formato `AAAA-MM-DD`, com `startDate <= endDate` e `endDate <= hoje`).
+  - Se `period` for omitido e `startDate`/`endDate` forem informados, assume `custom`. Datas personalizadas junto com um preset fixo (`7d`, `30d`, `90d`, `current_month`, `previous_month`) retornam `400 BAD_REQUEST` com `details.issues`.
+- **Indicadores devolvidos em `data` (`types/report.types.ts`):**
+  - `period`: `{ preset, startDate, endDate, daysCount, today }`.
+  - `conversations`: `{ total, dailyAverage, appointmentsCreated }` — conversas iniciadas (`Sessions.started_at`) no período, média por dia arredondada a 1 casa decimal e agendamentos criados no período (`Appointments.request_datetime`).
+  - `outcomes`: lista de `{ outcome, label, count, percentage }` na ordem dos desfechos da decisão 008 (`RESOLVED`, `SCHEDULED`, `OUT_OF_SCOPE`, `NO_SLOT`, `DECLINED`, `MANAGED_APPOINTMENT`, `ABANDONED`, e `IN_PROGRESS` apenas quando `count > 0`), com percentuais distribuídos pelo método do maior resto em décimos de ponto percentual para somar 100% quando `total > 0`.
+  - `topCategories`: `{ categoryId, title, conversationsCount }[]` — quantidade de **conversas distintas** (`COUNT(DISTINCT ce.session_id)`) iniciadas no período que registraram `CATEGORY_CHOSEN`.
+  - `topQuestions`: `{ questionId, question, shortTitle, categoryId, categoryTitle, conversationsCount }[]` — ranking por **conversas distintas** que registraram `QUESTION_CHOSEN`.
+  - `appointmentsResult`: `{ attended, noShow, canceled, waitingRecord, upcoming, total, recordedTotal, noShowRate }` — agendamentos cuja **data do atendimento** (`Appointments.appointment_datetime`) está no período, independentemente de quando foram criados (`request_datetime`). `waitingRecord` conta pendentes e confirmados com `appointment_datetime < agora`; `upcoming` conta pendentes e confirmados futuros (`appointment_datetime >= agora`). `noShowRate` é `noShow / (attended + noShow)` em percentual com 1 casa decimal (`0` quando `recordedTotal === 0`).

@@ -50,7 +50,12 @@ function WhatsAppTabs({ label, tabs, selected, onSelect, children }: WhatsAppTab
                     />
                 ))}
             </div>
-            <div id={panelId} role="tabpanel" aria-labelledby={tabId(selected)}>
+            <div
+                id={panelId}
+                role="tabpanel"
+                aria-labelledby={tabId(selected)}
+                className={css.panel}
+            >
                 {children}
             </div>
         </div>

@@ -1,6 +1,7 @@
 import { useId } from "react"
 import { useTranslation } from "react-i18next"
 import AppointmentListFilters from "@/components/AppointmentListFilters"
+import AppointmentCalendar from "@/components/AppointmentCalendar"
 import AppointmentSortSelect from "@/components/AppointmentSortSelect"
 import AppointmentStatusChips from "@/components/AppointmentStatusChips"
 import AppointmentTable from "@/components/AppointmentTable"
@@ -44,9 +45,30 @@ function AppointmentsPage() {
         <>
             <title>{t("meta.title")}</title>
             <section className={css.page}>
-                <div className={css.header}>
-                    <h1 className={css.title}>{t("heading")}</h1>
-                    <p className={css.subtitle}>{t("subtitle")}</p>
+                <div className={css.headerRow}>
+                    <div className={css.header}>
+                        <h1 className={css.title}>{t("heading")}</h1>
+                        <p className={css.subtitle}>{t("subtitle")}</p>
+                    </div>
+                    {!page.searching ? (
+                        <fieldset className={css.viewToggle}>
+                            <legend>{t("view.label")}</legend>
+                            <button
+                                type="button"
+                                aria-pressed={!page.calendar.enabled}
+                                onClick={() => page.calendar.setEnabled(false)}
+                            >
+                                {t("view.list")}
+                            </button>
+                            <button
+                                type="button"
+                                aria-pressed={page.calendar.enabled}
+                                onClick={() => page.calendar.setEnabled(true)}
+                            >
+                                {t("view.calendar")}
+                            </button>
+                        </fieldset>
+                    ) : null}
                 </div>
                 <div className={css.searchArea}>
                     <div className={css.searchBox}>
@@ -61,11 +83,21 @@ function AppointmentsPage() {
                             autoComplete="off"
                             aria-describedby={hintId}
                             value={page.search.term}
-                            onChange={(event) => page.search.changeTerm(event.target.value)}
+                            onChange={(event) => {
+                                page.calendar.setEnabled(false)
+                                page.search.changeTerm(event.target.value)
+                            }}
                             onKeyDown={page.handleSearchKeyDown}
                         />
                         {page.search.term !== "" ? (
-                            <button type="button" className={css.clear} onClick={page.search.clear}>
+                            <button
+                                type="button"
+                                className={css.clear}
+                                onClick={() => {
+                                    page.calendar.setEnabled(false)
+                                    page.search.clear()
+                                }}
+                            >
                                 {t("search.clear")}
                             </button>
                         ) : null}
@@ -83,20 +115,56 @@ function AppointmentsPage() {
                             onSelect={page.selectStatus}
                         />
                         <AppointmentListFilters
+                            showPeriod={!page.calendar.enabled}
                             periodLabel={t("filters.period")}
                             responsibleLabel={t("filters.responsible")}
                             period={filters.period}
                             responsible={filters.responsible}
                             periodOptions={page.periodOptions}
                             responsibleOptions={page.responsibleOptions}
+                            responsibleError={page.responsibleError ?? undefined}
+                            responsibleRetryLabel={t("retry")}
+                            onRetryResponsible={page.retryResponsible}
                             onPeriodChange={page.selectPeriod}
                             onResponsibleChange={page.selectResponsible}
                         />
                     </div>
                 )}
                 <div className={css.card}>
-                    {page.loading ? <p className={css.status}>{t("common:loading")}</p> : null}
-                    {page.error ? (
+                    {page.calendar.enabled ? (
+                        <>
+                            {page.calendar.loading && !page.calendar.data ? (
+                                <p className={css.status}>{t("common:loading")}</p>
+                            ) : null}
+                            {page.calendar.error ? (
+                                <div className={css.status}>
+                                    <p role="alert" className={css.alert}>
+                                        {t("loadFailed")}
+                                    </p>
+                                    <button
+                                        type="button"
+                                        className={css.retry}
+                                        onClick={page.calendar.retry}
+                                    >
+                                        {t("retry")}
+                                    </button>
+                                </div>
+                            ) : null}
+                            {page.calendar.data ? (
+                                <AppointmentCalendar
+                                    data={page.calendar.data}
+                                    onPrevious={page.calendar.previous}
+                                    onNext={page.calendar.next}
+                                    onCurrent={page.calendar.current}
+                                    onOpen={page.openCalendarAppointment}
+                                />
+                            ) : null}
+                        </>
+                    ) : null}
+                    {!page.calendar.enabled && page.loading ? (
+                        <p className={css.status}>{t("common:loading")}</p>
+                    ) : null}
+                    {!page.calendar.enabled && page.error ? (
                         <div className={css.status}>
                             <p role="alert" className={css.alert}>
                                 {t("loadFailed")}
@@ -106,7 +174,7 @@ function AppointmentsPage() {
                             </button>
                         </div>
                     ) : null}
-                    {!page.error && page.empty ? (
+                    {!page.calendar.enabled && !page.error && page.empty ? (
                         <EmptyState
                             title={page.empty.title}
                             description={page.empty.description}
@@ -117,7 +185,7 @@ function AppointmentsPage() {
                             }
                         />
                     ) : null}
-                    {!page.error && data && data.total > 0 ? (
+                    {!page.calendar.enabled && !page.error && data && data.total > 0 ? (
                         <>
                             {page.compact ? (
                                 <AppointmentSortSelect

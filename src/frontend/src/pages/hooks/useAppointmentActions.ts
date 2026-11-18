@@ -9,8 +9,14 @@ import type AppointmentActionsView from "@/types/appointments/AppointmentActions
 import type AppointmentDetail from "@/types/appointments/AppointmentDetail.types"
 import type AppointmentStatus from "@/types/status/AppointmentStatus.types"
 import appointmentActionErrorKey from "@/utils/appointmentActionErrorKey"
+import appointmentActionErrorDetails from "@/utils/appointmentActionErrorDetails"
+import errorStatusOf from "@/utils/errorStatusOf"
 
-type ActionKey = "claim" | "attended" | "noShow"
+type ConfirmableAction = Extract<
+    AppointmentAction,
+    "claim" | "attended" | "no_show" | "correct_record"
+>
+type ActionKey = "claim" | "attended" | "noShow" | "correctRecord"
 type ErrorKey = ReturnType<typeof appointmentActionErrorKey>
 
 type Options = {
@@ -18,12 +24,13 @@ type Options = {
     canManage: boolean
 }
 
-const ACTIONS: AppointmentAction[] = ["claim", "attended", "no_show"]
+const ACTIONS: ConfirmableAction[] = ["claim", "attended", "no_show", "correct_record"]
 
-const ACTION_KEYS: Record<AppointmentAction, ActionKey> = {
+const ACTION_KEYS: Record<ConfirmableAction, ActionKey> = {
     claim: "claim",
     attended: "attended",
-    no_show: "noShow"
+    no_show: "noShow",
+    correct_record: "correctRecord"
 }
 
 const WAITING_CODES: Partial<Record<AppointmentAction, string>> = {
@@ -42,8 +49,13 @@ const FINAL_KEYS: Record<
     CANCELED: "actions.final.canceled"
 }
 
-function statusOf(error: unknown): unknown {
-    return typeof error === "object" && error !== null && "status" in error ? error.status : null
+function isConfirmableAction(action: AppointmentAction): action is ConfirmableAction {
+    return (
+        action === "claim" ||
+        action === "attended" ||
+        action === "no_show" ||
+        action === "correct_record"
+    )
 }
 
 function useAppointmentActions({ detail, canManage }: Options) {
@@ -51,9 +63,21 @@ function useAppointmentActions({ detail, canManage }: Options) {
     const { showToast } = useToast()
     const dispatch = useAppDispatch()
     const [updateStatus] = appointmentsApi.useUpdateAppointmentStatusMutation()
-    const [pending, setPending] = useState<AppointmentAction | null>(null)
+    const [addNoteMutation] = appointmentsApi.useAddAppointmentNoteMutation()
+    const staffQuery = appointmentsApi.useGetAppointmentStaffQuery(undefined, {
+        skip: !canManage || detail?.available_actions.assign.allowed !== true
+    })
+    const [pending, setPending] = useState<ConfirmableAction | null>(null)
+    const [selectedStaffId, setSelectedStaffId] = useState("")
+    const [noteText, setNoteText] = useState("")
+    const [noteBusy, setNoteBusy] = useState(false)
     const [busy, setBusy] = useState(false)
-    const [errorKey, setErrorKey] = useState<ErrorKey | null>(null)
+    const [assignOpen, setAssignOpen] = useState(false)
+    const [notice, setNotice] = useState<string | null>(null)
+    const [actionError, setActionError] = useState<{
+        key: ErrorKey
+        protocol: string
+    } | null>(null)
     const inFlight = useRef(false)
     const mounted = useRef(false)
 
@@ -65,13 +89,54 @@ function useAppointmentActions({ detail, canManage }: Options) {
         }
     }, [])
 
-    const open = useCallback((action: AppointmentAction) => setPending(action), [])
+    const open = useCallback((action: AppointmentAction) => {
+        if (action === "assign") {
+            setNotice(null)
+            setActionError(null)
+            setSelectedStaffId("")
+            setAssignOpen(true)
+        } else if (isConfirmableAction(action)) {
+            setNotice(null)
+            setPending(action)
+        }
+    }, [])
 
     const cancel = useCallback(() => {
         if (!inFlight.current) {
             setPending(null)
         }
     }, [])
+
+    function correctionNotice(corrected: AppointmentDetail): string {
+        const warning = corrected.correction_warning
+
+        if (warning?.code === "RESPONSIBLE_BUSY") {
+            const count = warning.details.freeStaffCount
+            const protocol =
+                warning.details.conflictingProtocol ??
+                t("actions.correctRecord.result.unknownProtocol")
+
+            if (count === 0) {
+                return t("actions.correctRecord.result.busyNone", { protocol })
+            }
+
+            return count === 1
+                ? t("actions.correctRecord.result.busyOne", { protocol })
+                : t("actions.correctRecord.result.busyMany", { protocol, count })
+        }
+
+        if (warning?.code === "RESPONSIBLE_UNAVAILABLE") {
+            const count = warning.details.freeStaffCount
+
+            return count === 0
+                ? t("actions.correctRecord.result.unavailableNone")
+                : t("actions.correctRecord.result.unavailableSome", { count })
+        }
+
+        return corrected.status === "CONFIRMED" && corrected.assigned_user_name
+            ? t("actions.correctRecord.result.confirmed", { name: corrected.assigned_user_name })
+            : t("actions.correctRecord.result.pending")
+    }
 
     async function confirm() {
         if (detail === undefined || pending === null || inFlight.current) {
@@ -81,15 +146,22 @@ function useAppointmentActions({ detail, canManage }: Options) {
         const action = pending
         inFlight.current = true
         setBusy(true)
-        setErrorKey(null)
+        setActionError(null)
+        setNotice(null)
         const result = await updateStatus({ id: detail.id, action })
 
-        if ("data" in result) {
-            showToast(
-                t(`common:appointmentActions.success.${action}`, { protocol: detail.protocol })
-            )
+        if ("data" in result && result.data !== undefined) {
+            if (action === "correct_record") {
+                if (mounted.current) {
+                    setNotice(correctionNotice(result.data))
+                }
+            } else {
+                showToast(
+                    t(`common:appointmentActions.success.${action}`, { protocol: detail.protocol })
+                )
+            }
         } else {
-            const status = statusOf(result.error)
+            const status = errorStatusOf(result.error)
 
             if (status !== 403 && status !== 404) {
                 await dispatch(
@@ -101,7 +173,11 @@ function useAppointmentActions({ detail, canManage }: Options) {
             }
 
             if (mounted.current) {
-                setErrorKey(appointmentActionErrorKey(result.error))
+                const errorDetails = appointmentActionErrorDetails(result.error)
+                setActionError({
+                    key: appointmentActionErrorKey(result.error),
+                    protocol: errorDetails.conflictingProtocol ?? ""
+                })
             }
         }
 
@@ -110,6 +186,91 @@ function useAppointmentActions({ detail, canManage }: Options) {
         if (mounted.current) {
             setBusy(false)
             setPending(null)
+        }
+    }
+
+    async function assign() {
+        if (
+            detail === undefined ||
+            selectedStaffId === "" ||
+            inFlight.current ||
+            !detail.available_actions.assign.allowed
+        ) {
+            return
+        }
+
+        inFlight.current = true
+        setBusy(true)
+        setNotice(null)
+        setActionError(null)
+        const result = await updateStatus({
+            id: detail.id,
+            action: "assign",
+            assigneeUserId: selectedStaffId
+        })
+
+        if ("data" in result && result.data !== undefined) {
+            const staff = staffQuery.currentData?.find((person) => person.id === selectedStaffId)
+            showToast(
+                t("common:appointmentActions.success.assign", {
+                    protocol: detail.protocol,
+                    name: staff?.name ?? ""
+                })
+            )
+        } else {
+            const status = errorStatusOf(result.error)
+
+            if (status !== 403 && status !== 404) {
+                await Promise.all([
+                    dispatch(
+                        appointmentsApi.endpoints.getAppointment.initiate(detail.id, {
+                            subscribe: false,
+                            forceRefetch: true
+                        })
+                    ),
+                    staffQuery.refetch()
+                ])
+            }
+
+            if (mounted.current) {
+                const errorDetails = appointmentActionErrorDetails(result.error)
+                setActionError({
+                    key: appointmentActionErrorKey(result.error),
+                    protocol: errorDetails.conflictingProtocol ?? ""
+                })
+            }
+        }
+
+        inFlight.current = false
+        if (mounted.current) {
+            setBusy(false)
+            setSelectedStaffId("")
+            setAssignOpen(false)
+        }
+    }
+
+    async function addNote() {
+        const text = noteText.trim()
+        if (
+            detail === undefined ||
+            text === "" ||
+            noteBusy ||
+            !detail.available_actions.add_note.allowed
+        ) {
+            return
+        }
+
+        setNoteBusy(true)
+        setNotice(null)
+        const result = await addNoteMutation({ id: detail.id, text })
+        if ("data" in result && result.data !== undefined) {
+            setNoteText("")
+            showToast(t("notes.success"))
+        } else {
+            showToast(t("notes.error"))
+        }
+        if (mounted.current) {
+            setNoteBusy(false)
         }
     }
 
@@ -123,11 +284,25 @@ function useAppointmentActions({ detail, canManage }: Options) {
                   const key = ACTION_KEYS[action]
 
                   if (availability.allowed) {
-                      return [{ kind: "button", action, label: t(`actions.buttons.${key}`) }]
+                      return [
+                          {
+                              kind: "button",
+                              action,
+                              label: t(`actions.buttons.${key}`),
+                              hint:
+                                  action === "correct_record"
+                                      ? t("actions.correctRecord.hint")
+                                      : undefined
+                          }
+                      ]
                   }
 
-                  if (key !== "claim" && availability.code === WAITING_CODES[action]) {
-                      return [{ kind: "waiting", action, text: t(`actions.waiting.${key}`) }]
+                  if (
+                      (action === "attended" || action === "no_show") &&
+                      availability.code === WAITING_CODES[action]
+                  ) {
+                      const waitingKey = action === "attended" ? "attended" : "noShow"
+                      return [{ kind: "waiting", action, text: t(`actions.waiting.${waitingKey}`) }]
                   }
 
                   return []
@@ -135,11 +310,32 @@ function useAppointmentActions({ detail, canManage }: Options) {
             : []
         const finalKey = FINAL_KEYS[detail.status]
 
+        if (canManage && detail.available_actions.assign.allowed) {
+            items.push({ kind: "button", action: "assign", label: t("actions.buttons.assign") })
+        }
+
+        if (canManage && detail.available_actions.cancel.allowed) {
+            items.push({
+                kind: "button",
+                action: "cancel",
+                label: t("actions.buttons.cancel")
+            })
+        }
+
         view = {
             items,
             finalText: finalKey ? t(finalKey) : null,
             readOnlyText: !canManage && active ? t("actions.readOnly") : null,
-            error: errorKey ? t(`common:${errorKey}`) : null
+            cancelUnavailableText:
+                canManage &&
+                detail.available_actions.cancel.allowed === false &&
+                detail.available_actions.cancel.code === "CANCEL_AFTER_START"
+                    ? t("actions.cancel.afterStart")
+                    : null,
+            notice,
+            error: actionError
+                ? t(`common:${actionError.key}`, { protocol: actionError.protocol })
+                : null
         }
     }
 
@@ -152,14 +348,52 @@ function useAppointmentActions({ detail, canManage }: Options) {
         dialog = {
             title: t(`actions.confirm.${key}.title`),
             description:
-                pending !== "claim" && detail.status === "PENDING"
+                pending !== "claim" && pending !== "correct_record" && detail.status === "PENDING"
                     ? t("actions.confirm.alsoClaim", { description })
                     : description,
             confirmLabel: t(`actions.confirm.${key}.confirm`)
         }
     }
 
-    return { view, dialog, busy, open, cancel, confirm: () => void confirm() }
+    const assignDialog = {
+        open: assignOpen,
+        title: detail ? t("assignment.title", { protocol: detail.protocol }) : "",
+        staff: (staffQuery.currentData ?? []).filter(
+            (person) => person.active && person.id !== detail?.assigned_user_id
+        ),
+        loading: staffQuery.isFetching,
+        failed: staffQuery.isError,
+        busy,
+        selectedId: selectedStaffId,
+        onSelect: setSelectedStaffId,
+        onRetry: () => void staffQuery.refetch(),
+        onConfirm: () => void assign(),
+        onClose: () => {
+            if (!inFlight.current) {
+                setAssignOpen(false)
+            }
+        }
+    }
+
+    const notes = {
+        text: noteText,
+        setText: setNoteText,
+        items: detail?.notes ?? [],
+        canAdd: canManage && detail?.available_actions.add_note.allowed === true,
+        busy: noteBusy,
+        add: () => void addNote()
+    }
+
+    return {
+        view,
+        dialog,
+        busy,
+        open,
+        cancel,
+        confirm: () => void confirm(),
+        assign: assignDialog,
+        notes
+    }
 }
 
 export default useAppointmentActions

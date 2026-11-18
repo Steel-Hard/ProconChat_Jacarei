@@ -14,6 +14,19 @@ const SORT_BYS: readonly AppointmentSortBy[] = [
 ]
 const SORT_ORDERS: readonly AppointmentSortOrder[] = ["asc", "desc"]
 const PAGE = /^[1-9]\d*$/
+const STAFF_ID = /^\d+$/
+
+function parseResponsible(value: string | null): AppointmentListFilters["responsible"] {
+    const knownFilter = pick(APPOINTMENT_RESPONSIBLE_FILTERS, value)
+
+    if (knownFilter) {
+        return knownFilter
+    }
+
+    return value !== null && STAFF_ID.test(value)
+        ? (value as AppointmentListFilters["responsible"])
+        : APPOINTMENT_LIST_DEFAULTS.responsible
+}
 
 function pick<T extends string>(allowed: readonly T[], value: string | null): T | undefined {
     return allowed.find((option) => option === value)
@@ -35,9 +48,7 @@ function parseAppointmentListParams(params: URLSearchParams): AppointmentListFil
             pick(APPOINTMENT_STATUS_FILTERS, params.get("status")) ??
             APPOINTMENT_LIST_DEFAULTS.status,
         period: pick(APPOINTMENT_PERIODS, params.get("period")) ?? APPOINTMENT_LIST_DEFAULTS.period,
-        responsible:
-            pick(APPOINTMENT_RESPONSIBLE_FILTERS, params.get("responsible")) ??
-            APPOINTMENT_LIST_DEFAULTS.responsible,
+        responsible: parseResponsible(params.get("responsible")),
         page: parsePage(params.get("page"))
     }
     const sortBy = pick(SORT_BYS, params.get("sortBy"))

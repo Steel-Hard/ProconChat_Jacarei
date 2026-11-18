@@ -10,11 +10,11 @@ Analisar o uso do chatbot e dos agendamentos: quais assuntos mais aparecem, onde
 
 ## Estado da tela
 
-**Ainda não construída (issues #68 e #73).**
+**Relatórios mínimos entregues na #128** com a API `GET /api/v1/reports` (#68). A tela inclui seletor de período, total de conversas e agendamentos criados, desfechos, categorias e perguntas mais usadas e resultado dos agendamentos com taxa de não comparecimento. Os gráficos por dia, perguntas não resolvidas, abandono por etapa, horário de pico e exportação seguem como itens bônus da #73.
 
 ## Período
 
-Chips: **Últimos 7 dias**, **Últimos 30 dias**, **Últimos 90 dias**, **Mês atual**, **Mês anterior** e **Personalizado** (data inicial e final, até hoje). O período vale para todas as seções da tela.
+Chips: **Últimos 7 dias**, **Últimos 30 dias**, **Últimos 90 dias**, **Mês atual**, **Mês anterior** e **Personalizado** (data inicial e final, até hoje). Os períodos de 7, 30 e 90 dias consideram os N dias fechados anteriores a hoje (terminando em ontem, para não distorcer a média diária com o dia ainda em aberto); **Mês atual** e **Personalizado** vão até hoje. O período vale para todas as seções da tela.
 
 ## Seções
 

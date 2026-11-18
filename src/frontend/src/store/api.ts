@@ -9,11 +9,14 @@ const api = createApi({
         "SessionList",
         "Appointment",
         "AppointmentList",
-        "AppointmentPendingCount",
         "UserList",
         "SchedulePreview",
         "ScheduleEffective",
-        "ScheduleVersions"
+        "ScheduleVersions",
+        "Documents",
+        "DocumentsPreview",
+        "WhatsAppHistory",
+        "WhatsAppMeta"
     ],
     endpoints: () => ({})
 })

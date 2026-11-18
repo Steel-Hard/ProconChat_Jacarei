@@ -11,6 +11,7 @@ import {
     CloudApiTypingBody,
     CloudApiWebhookPayload,
 } from "../types/cloudApi.types"
+import ProviderRequestError from "../errors/ProviderRequestError"
 import { whatsappConfigStore } from "../services/whatsappConfigStore"
 
 const SIGNATURE_PATTERN = /^sha256=([0-9a-f]{64})$/i
@@ -180,6 +181,16 @@ async function readProviderMessageId(response: Pick<Response, "json">): Promise<
     }
 }
 
+async function readProviderErrorCode(response: Pick<Response, "json">): Promise<string | null> {
+    try {
+        const body = (await response.json()) as { error?: { code?: unknown } } | null
+        const code = body?.error?.code
+        return typeof code === "number" && Number.isInteger(code) && code >= 0 && code <= 9_999_999 ? String(code) : null
+    } catch {
+        return null
+    }
+}
+
 function buildTemplateBody(to: string, template: OutgoingTemplate): CloudApiTemplateBody {
     return {
         messaging_product: "whatsapp",
@@ -221,7 +232,7 @@ export function createCloudApiProvider({
         )
 
         if (!response.ok) {
-            throw new Error(`Cloud API returned HTTP ${response.status}`)
+            throw new ProviderRequestError(response.status, await readProviderErrorCode(response))
         }
         return response
     }

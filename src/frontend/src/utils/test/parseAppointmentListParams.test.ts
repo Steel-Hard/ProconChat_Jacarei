@@ -38,13 +38,17 @@ describe("parseAppointmentListParams", () => {
         ["status=pending", "status"],
         ["period=", "period"],
         ["period=semana", "period"],
-        ["responsible=7", "responsible"],
+        ["responsible=invalid", "responsible"],
         ["page=0", "page"],
         ["page=-2", "page"],
         ["page=abc", "page"],
         ["page=1.5", "page"]
     ])("cai no padrão com %s", (query) => {
         expect(parse(query)).toEqual(DEFAULTS)
+    })
+
+    it("preserva o id numérico de funcionário no filtro", () => {
+        expect(parse("responsible=7")).toEqual({ ...DEFAULTS, responsible: "7" })
     })
 
     it("ignora sortBy fora da lista e o sortOrder que vem sozinho", () => {

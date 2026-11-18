@@ -7,10 +7,18 @@ type WhatsAppMetaSetupProps = {
     items: WhatsAppCopyItem[]
     copyLabel: string
     steps: string[]
+    highlightedStep?: number
     onCopy: (value: string) => void
 }
 
-function WhatsAppMetaSetup({ heading, items, copyLabel, steps, onCopy }: WhatsAppMetaSetupProps) {
+function WhatsAppMetaSetup({
+    heading,
+    items,
+    copyLabel,
+    steps,
+    highlightedStep,
+    onCopy
+}: WhatsAppMetaSetupProps) {
     return (
         <div className={css.panel}>
             <h3 className={css.heading}>{heading}</h3>
@@ -23,8 +31,13 @@ function WhatsAppMetaSetup({ heading, items, copyLabel, steps, onCopy }: WhatsAp
                 />
             ))}
             <ol className={css.steps}>
-                {steps.map((step) => (
-                    <li key={step}>{step}</li>
+                {steps.map((step, index) => (
+                    <li
+                        key={step}
+                        className={index === highlightedStep ? css.highlighted : undefined}
+                    >
+                        {step}
+                    </li>
                 ))}
             </ol>
         </div>

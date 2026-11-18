@@ -17,6 +17,7 @@ type UnsavedChangesBarProps = {
     saveLabel?: string
     saveDisabled?: boolean
     saveHint?: string
+    saveDescriptionId?: string
 }
 
 function UnsavedChangesBar({
@@ -26,7 +27,8 @@ function UnsavedChangesBar({
     saving = false,
     saveLabel,
     saveDisabled = false,
-    saveHint
+    saveHint,
+    saveDescriptionId
 }: UnsavedChangesBarProps) {
     const { t } = useTranslation()
     const listId = useId()
@@ -109,7 +111,7 @@ function UnsavedChangesBar({
                 className={css.save}
                 disabled={!hasChanges || saving || saveDisabled}
                 aria-busy={saving || undefined}
-                aria-describedby={showHint ? hintId : undefined}
+                aria-describedby={showHint ? hintId : saveDescriptionId}
                 onClick={onSave}
             >
                 {saveLabel ?? t("unsavedChangesBar.save")}

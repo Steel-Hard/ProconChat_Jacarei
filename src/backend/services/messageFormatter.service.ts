@@ -3,6 +3,7 @@ import { Categoria, Pergunta, RespostaFinalOutput } from "../types/motorDecisao.
 import { AvailableSlot } from "../types/schedule.types"
 import { CancellationReason } from "../types/appointment.types"
 import { getLocalParts } from "../utils/date.utils"
+import { isRepeatedDocument } from "../utils/documentMatch"
 
 export const SAUDACAO =
     "Olá! Sou o assistente virtual do PROCON Jacareí. As orientações a seguir têm caráter informativo e não substituem o atendimento formal."
@@ -91,6 +92,7 @@ export interface ConfirmacaoAgendamentoInput {
     questionDocuments: string[]
     reminderEnabled: boolean
     reminderHours: number
+    cancellationNoticeEnabled: boolean
     titulo?: string
 }
 
@@ -324,43 +326,102 @@ export function formatarErroSlot(
     return formatarSlotsComCabecalho(slots, pagina, ERRO_SLOTS)
 }
 
-export function formatarConfirmacaoAgendamento(input: ConfirmacaoAgendamentoInput): string {
-    const linhas: string[] = [
-        input.titulo ?? "Agendamento realizado",
-        `Protocolo: ${input.protocol}`,
-        `Data e hora: ${input.quando}`,
-    ]
+export interface ConfirmacaoItem {
+    text: string
+    repeated: boolean
+}
 
+export interface ConfirmacaoBloco {
+    heading: string
+    items: ConfirmacaoItem[]
+}
+
+export interface ConfirmacaoAgendamentoEstrutura {
+    title: string
+    details: Array<{ label: string; value: string }>
+    groupBlock: ConfirmacaoBloco | null
+    questionBlock: ConfirmacaoBloco | null
+    notice: string | null
+    repeatedCount: number
+}
+
+function marcarItens(items: string[], outros: string[]): ConfirmacaoItem[] {
+    return items.map((text) => ({
+        text,
+        repeated: outros.some((outro) => isRepeatedDocument(text, outro))
+    }))
+}
+
+function montarFraseDeAvisos(input: ConfirmacaoAgendamentoInput): string | null {
+    const horasTexto = input.reminderHours === 1 ? "1 hora" : `${input.reminderHours} horas`
+    const lembrete = `um lembrete ${horasTexto} antes do atendimento`
+    const cancelamento = "o aviso em caso de cancelamento"
+    const prefixo = "Você receberá neste número avisos sobre este agendamento, como "
+    if (input.reminderEnabled && input.cancellationNoticeEnabled) {
+        return `${prefixo}${lembrete} e ${cancelamento}.`
+    }
+    if (input.reminderEnabled) {
+        return `${prefixo}${lembrete}.`
+    }
+    if (input.cancellationNoticeEnabled) {
+        return `${prefixo}${cancelamento}.`
+    }
+    return null
+}
+
+export function montarConfirmacaoAgendamento(
+    input: ConfirmacaoAgendamentoInput
+): ConfirmacaoAgendamentoEstrutura {
     const endereco =
         input.unitAddress.trim() +
         (input.unitAddressComplement?.trim() ? ` (${input.unitAddressComplement.trim()})` : "")
-    linhas.push(`Endereço: ${endereco}`)
 
-    if (input.groupDocuments.length > 0) {
-        linhas.push("")
-        const tituloGrupo = input.byRepresentative
-            ? "A pessoa que comparecer em seu nome deve levar:"
-            : "Leve ao atendimento:"
-        linhas.push(tituloGrupo)
-        for (const doc of input.groupDocuments) {
-            linhas.push(`• ${doc}`)
+    const groupItems = marcarItens(input.groupDocuments, input.questionDocuments)
+    const questionItems = marcarItens(input.questionDocuments, input.groupDocuments)
+
+    const notice = montarFraseDeAvisos(input)
+
+    return {
+        title: input.titulo ?? "Agendamento realizado",
+        details: [
+            { label: "Protocolo", value: input.protocol },
+            { label: "Data e hora", value: input.quando },
+            { label: "Endereço", value: endereco }
+        ],
+        groupBlock:
+            groupItems.length > 0
+                ? {
+                      heading: input.byRepresentative
+                          ? "A pessoa que comparecer em seu nome deve levar:"
+                          : "Leve ao atendimento:",
+                      items: groupItems
+                  }
+                : null,
+        questionBlock:
+            questionItems.length > 0
+                ? { heading: "Documentos úteis para esta dúvida:", items: questionItems }
+                : null,
+        notice,
+        repeatedCount: groupItems.filter((item) => item.repeated).length
+    }
+}
+
+export function formatarConfirmacaoAgendamento(input: ConfirmacaoAgendamentoInput): string {
+    const estrutura = montarConfirmacaoAgendamento(input)
+    const linhas: string[] = [
+        estrutura.title,
+        ...estrutura.details.map((detail) => `${detail.label}: ${detail.value}`)
+    ]
+
+    for (const bloco of [estrutura.groupBlock, estrutura.questionBlock]) {
+        if (bloco) {
+            linhas.push("", bloco.heading, ...bloco.items.map((item) => `• ${item.text}`))
         }
     }
 
-    if (input.questionDocuments.length > 0) {
-        linhas.push("")
-        linhas.push("Documentos úteis para esta dúvida:")
-        for (const doc of input.questionDocuments) {
-            linhas.push(`• ${doc}`)
-        }
+    if (estrutura.notice !== null) {
+        linhas.push("", estrutura.notice)
     }
-
-    linhas.push("")
-    const horasTexto = input.reminderHours === 1 ? "1 hora" : `${input.reminderHours} horas`
-    const avisoTexto = input.reminderEnabled
-        ? `Você receberá neste número avisos sobre este agendamento, como um lembrete ${horasTexto} antes do atendimento e o aviso em caso de cancelamento.`
-        : "Você receberá neste número avisos sobre este agendamento, como o aviso em caso de cancelamento."
-    linhas.push(avisoTexto)
 
     return linhas.join("\n")
 }

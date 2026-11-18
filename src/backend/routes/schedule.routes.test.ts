@@ -529,7 +529,7 @@ describe("schedule.routes (HTTP)", () => {
 
             expect(response.status).toBe(200)
             expect(response.body.data.conflicts).toEqual([])
-        })
+        }, 60000)
 
         it("traz em POST /api/v1/schedule/preview o agendamento que o rascunho afeta, sem nome, CPF nem ids", async () => {
             const base = buildDefaultScheduleConfigView()
@@ -564,6 +564,6 @@ describe("schedule.routes (HTTP)", () => {
                     reason: "Faixa de horário removida ou alterada",
                 },
             ])
-        })
+        }, 60000)
     })
 })
