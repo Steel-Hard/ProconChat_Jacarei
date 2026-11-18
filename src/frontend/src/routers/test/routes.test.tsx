@@ -50,8 +50,7 @@ function renderRoutes(initialEntries: string[], preloadedState?: Partial<RootSta
 
 const underConstructionRoutes: Array<[string, string]> = [
     [ROUTES.content, "Conteúdo"],
-    [ROUTES.documents, "Documentos"]
-    [ROUTES.sessions, "Sessões"]
+    [ROUTES.documents, "Documentos"][(ROUTES.sessions, "Sessões")]
 ]
 
 const protectedRoutes: Array<[string, string]> = [
@@ -91,79 +90,77 @@ function stubFetchByUrl(respond: (url: string) => Response) {
 }
 
 function stubLoginAs(permissions: PermissionKey[]) {
+    stubFetchByUrl((url) => {
+        if (url.endsWith("/api/v1/auth/login")) {
+            return new Response(JSON.stringify({ data: { user: staffWith(permissions) } }), {
+                status: 200
+            })
+        }
 
-stubFetchByUrl((url) => {
-    if (url.endsWith("/api/v1/auth/login")) {
-        return new Response(
-            JSON.stringify({ data: { user: staffWith(permissions) } }),
-            { status: 200 }
-        )
-    }
-
-    if (url.includes("/api/v1/sessions")) {
-        return new Response(
-            JSON.stringify({
-                data: {
-                    items: [],
-                    total: 0,
-                    page: 1,
-                    limit: 20,
-                    totalPages: 0,
-                    chipCounts: {
-                        all: 0,
-                        resolved: 0,
-                        scheduled: 0,
-                        out_of_scope: 0,
-                        no_slot: 0,
-                        declined: 0,
-                        managed_appointment: 0,
-                        abandoned: 0,
-                        in_progress: 0
-                    },
-                    categories: []
-                }
-            }),
-            { status: 200, headers: { "Content-Type": "application/json" } }
-        )
-    }
-
-    if (url.includes("/api/v1/reports?")) {
-        return new Response(
-            JSON.stringify({
-                data: {
-                    period: {
-                        preset: "30d",
-                        startDate: "2026-10-08",
-                        endDate: "2026-11-06",
-                        daysCount: 30,
-                        today: "2026-11-07"
-                    },
-                    conversations: {
+        if (url.includes("/api/v1/sessions")) {
+            return new Response(
+                JSON.stringify({
+                    data: {
+                        items: [],
                         total: 0,
-                        dailyAverage: 0,
-                        appointmentsCreated: 0
-                    },
-                    outcomes: [],
-                    topCategories: [],
-                    topQuestions: [],
-                    appointmentsResult: {
-                        attended: 0,
-                        noShow: 0,
-                        canceled: 0,
-                        waitingRecord: 0,
-                        upcoming: 0,
-                        total: 0,
-                        recordedTotal: 0,
-                        noShowRate: 0
+                        page: 1,
+                        limit: 20,
+                        totalPages: 0,
+                        chipCounts: {
+                            all: 0,
+                            resolved: 0,
+                            scheduled: 0,
+                            out_of_scope: 0,
+                            no_slot: 0,
+                            declined: 0,
+                            managed_appointment: 0,
+                            abandoned: 0,
+                            in_progress: 0
+                        },
+                        categories: []
                     }
-                }
-            }),
-            { status: 200, headers: { "Content-Type": "application/json" } }
-        )
-    }
+                }),
+                { status: 200, headers: { "Content-Type": "application/json" } }
+            )
+        }
 
-    return new Response(null, { status: 204 })
-})
+        if (url.includes("/api/v1/reports?")) {
+            return new Response(
+                JSON.stringify({
+                    data: {
+                        period: {
+                            preset: "30d",
+                            startDate: "2026-10-08",
+                            endDate: "2026-11-06",
+                            daysCount: 30,
+                            today: "2026-11-07"
+                        },
+                        conversations: {
+                            total: 0,
+                            dailyAverage: 0,
+                            appointmentsCreated: 0
+                        },
+                        outcomes: [],
+                        topCategories: [],
+                        topQuestions: [],
+                        appointmentsResult: {
+                            attended: 0,
+                            noShow: 0,
+                            canceled: 0,
+                            waitingRecord: 0,
+                            upcoming: 0,
+                            total: 0,
+                            recordedTotal: 0,
+                            noShowRate: 0
+                        }
+                    }
+                }),
+                { status: 200, headers: { "Content-Type": "application/json" } }
+            )
+        }
+
+        return new Response(null, { status: 204 })
+    })
 }
 
 async function submitLogin(user: ReturnType<typeof userEvent.setup>) {
