@@ -70,6 +70,7 @@ function buildAppointmentDetail(overrides: Partial<AppointmentDetail> = {}): App
             retry_cancellation_notice: { allowed: false, code: null },
             add_note: { allowed: false, code: "PERMISSION_REQUIRED" }
         },
+        cancellation_notice_status: null,
         ...overrides
     }
 }

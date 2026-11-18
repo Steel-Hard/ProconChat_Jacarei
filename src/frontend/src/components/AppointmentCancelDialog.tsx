@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import APPOINTMENT_NOTE_MAX_LENGTH from "@/utils/appointmentNoteMaxLength"
+import AppointmentNotice from "@/components/AppointmentNotice"
 import ConfirmDialog from "@/components/ConfirmDialog"
 import css from "@/styles/components/appointmentCancelDialog.module.css"
 import type AppointmentCancelView from "@/types/appointments/AppointmentCancelView.types"
@@ -93,9 +94,9 @@ function AppointmentCancelDialog({ view }: Props) {
                 ) : (
                     <>
                         {view.problem ? (
-                            <output className={css.problem}>
+                            <AppointmentNotice>
                                 {t("actions.cancel.problemPrefix", { reason: view.problem })}
-                            </output>
+                            </AppointmentNotice>
                         ) : null}
                         <div className={css.previewBlock}>
                             <div className={css.previewHeader}>

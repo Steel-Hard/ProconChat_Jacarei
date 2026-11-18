@@ -140,14 +140,3 @@
     font-size: 13.5px;
     line-height: 1.5;
 }
-
-.problem {
-    display: block;
-    padding: 9px 11px;
-    border: 1px solid var(--warn-border);
-    border-radius: 8px;
-    background: var(--warn-bg);
-    color: var(--warn-text);
-    font-size: 13px;
-    line-height: 1.45;
-}

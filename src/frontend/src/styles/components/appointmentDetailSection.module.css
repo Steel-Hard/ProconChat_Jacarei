@@ -317,17 +317,6 @@
     line-height: 1.45;
 }
 
-.warningNotice {
-    display: block;
-    padding: 9px 11px;
-    border: 1px solid #e9c98a;
-    border-radius: 8px;
-    background: #fcf4e3;
-    color: #7a4f00;
-    font-size: 13px;
-    line-height: 1.45;
-}
-
 .secondary {
     border: 1px solid var(--border-input);
     background: var(--bg-surface);

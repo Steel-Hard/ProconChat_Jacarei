@@ -173,6 +173,7 @@
         },
         "warnings": {
             "cancelNoticeFailed": "Agendamento {{protocol}} cancelado, mas o aviso ao cidadão falhou. Use \"Tentar novamente\" no histórico.",
+            "cancelNoticeDisabled": "Agendamento {{protocol}} cancelado. O cidadão não foi avisado pelo sistema: avise por outro meio.",
             "cancelNoticeNoPhone": "Agendamento {{protocol}} cancelado, mas o cidadão não pôde ser avisado: não há telefone disponível para o envio."
         },
         "success": {

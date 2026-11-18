@@ -6,6 +6,7 @@ import useAppDispatch from "@/store/useAppDispatch"
 import type AppointmentDetail from "@/types/appointments/AppointmentDetail.types"
 import type CancellationReason from "@/types/appointments/CancellationReason.types"
 import appointmentActionErrorKey from "@/utils/appointmentActionErrorKey"
+import cancellationNoticeOutcomeOf from "@/utils/cancellationNoticeOutcomeOf"
 import errorStatusOf from "@/utils/errorStatusOf"
 
 type Options = {
@@ -13,11 +14,12 @@ type Options = {
     canManage: boolean
 }
 
-function noticeFailedIn(detail: AppointmentDetail): boolean {
-    const retry = detail.available_actions.retry_cancellation_notice
-
-    return retry.allowed || retry.code !== "NOTIFICATION_NOT_RETRYABLE"
-}
+const WARNING_KEYS = {
+    failed: "cancelNoticeFailed",
+    noPhone: "cancelNoticeNoPhone",
+    disabled: "cancelNoticeDisabled",
+    ok: "cancelNoticeFailed"
+} as const
 
 function useAppointmentCancellation({ detail, canManage }: Options) {
     const { t } = useTranslation(["appointmentDetail", "common"])
@@ -29,7 +31,6 @@ function useAppointmentCancellation({ detail, canManage }: Options) {
     const [busy, setBusy] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [retryError, setRetryError] = useState<string | null>(null)
-    const [failedProtocol, setFailedProtocol] = useState<string | null>(null)
     const inFlight = useRef(false)
     const previewQuery = appointmentsApi.useGetCancellationPreviewQuery(detail?.id ?? "", {
         skip: !open || !canManage || detail === undefined
@@ -93,10 +94,7 @@ function useAppointmentCancellation({ detail, canManage }: Options) {
         })
 
         if ("data" in result && result.data !== undefined) {
-            if (noticeFailedIn(result.data)) {
-                setFailedProtocol(detail.protocol)
-            } else {
-                setFailedProtocol(null)
+            if (cancellationNoticeOutcomeOf(result.data) === "ok") {
                 showToast(
                     t("common:appointmentActions.success.cancel", { protocol: detail.protocol })
                 )
@@ -126,11 +124,10 @@ function useAppointmentCancellation({ detail, canManage }: Options) {
         const result = await retryMutation(detail.id)
 
         if ("data" in result && result.data !== undefined) {
-            if (noticeFailedIn(result.data)) {
-                setRetryError(t("common:appointmentActions.errors.retryNoticeFailed"))
-            } else {
-                setFailedProtocol(null)
+            if (cancellationNoticeOutcomeOf(result.data) === "ok") {
                 showToast(t("common:appointmentActions.success.retryCancellationNotice"))
+            } else {
+                setRetryError(t("common:appointmentActions.errors.retryNoticeFailed"))
             }
         } else {
             setRetryError(t(`common:${appointmentActionErrorKey(result.error)}`))
@@ -164,14 +161,17 @@ function useAppointmentCancellation({ detail, canManage }: Options) {
         retryPreview: () => void previewQuery.refetch(),
         cancelAppointment: () => void cancelAppointment(),
         canRetryNotice:
-            canManage && detail?.available_actions.retry_cancellation_notice.allowed === true,
+            canManage &&
+            detail?.available_actions.retry_cancellation_notice.allowed === true &&
+            detail.cancellation_notice_status !== "DISABLED" &&
+            detail.cancellation_notice_status !== "NOTIFIED",
         failedNotice:
-            failedProtocol !== null && detail !== undefined && noticeFailedIn(detail)
+            detail !== undefined && cancellationNoticeOutcomeOf(detail) !== "ok"
                 ? t(
-                      detail.available_actions.retry_cancellation_notice.allowed
-                          ? "common:appointmentActions.warnings.cancelNoticeFailed"
-                          : "common:appointmentActions.warnings.cancelNoticeNoPhone",
-                      { protocol: failedProtocol }
+                      `common:appointmentActions.warnings.${WARNING_KEYS[cancellationNoticeOutcomeOf(detail)]}`,
+                      {
+                          protocol: detail.protocol
+                      }
                   )
                 : null,
         retryBusy: retryState.isLoading,
