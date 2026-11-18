@@ -51,7 +51,6 @@ function renderRoutes(initialEntries: string[], preloadedState?: Partial<RootSta
 const underConstructionRoutes: Array<[string, string]> = [
     [ROUTES.reports, "Relatórios"],
     [ROUTES.content, "Conteúdo"],
-    [ROUTES.sessions, "Sessões"],
     [ROUTES.documents, "Documentos"]
 ]
 
@@ -60,6 +59,7 @@ const protectedRoutes: Array<[string, string]> = [
     ...underConstructionRoutes,
     [ROUTES.appointments, "Agendamentos"],
     ["/agendamentos/1", "Detalhe do agendamento"],
+    [ROUTES.sessions, "Sessões"],
     [ROUTES.schedule, "Horários de atendimento"],
     [ROUTES.users, "Usuários"],
     [ROUTES.whatsapp, "WhatsApp"]
@@ -94,7 +94,32 @@ function stubLoginAs(permissions: PermissionKey[]) {
             ? new Response(JSON.stringify({ data: { user: staffWith(permissions) } }), {
                   status: 200
               })
-            : new Response(null, { status: 204 })
+            : url.includes("/api/v1/sessions")
+              ? new Response(
+                    JSON.stringify({
+                        data: {
+                            items: [],
+                            total: 0,
+                            page: 1,
+                            limit: 20,
+                            totalPages: 0,
+                            chipCounts: {
+                                all: 0,
+                                resolved: 0,
+                                scheduled: 0,
+                                out_of_scope: 0,
+                                no_slot: 0,
+                                declined: 0,
+                                managed_appointment: 0,
+                                abandoned: 0,
+                                in_progress: 0
+                            },
+                            categories: []
+                        }
+                    }),
+                    { status: 200, headers: { "Content-Type": "application/json" } }
+                )
+              : new Response(null, { status: 204 })
     )
 }
 
@@ -389,11 +414,12 @@ describe("routes", () => {
     it("mostra o aviso quando a conta que só vê sessões entra sem redirect", async () => {
         const user = userEvent.setup()
         stubLoginAs(["sessions.view"])
-        renderRoutes([ROUTES.login], withoutSession)
+        const { router } = renderRoutes([ROUTES.login], withoutSession)
 
         await submitLogin(user)
 
-        expect(await screen.findByRole("heading", { name: NO_ACCESS_HEADING })).toBeInTheDocument()
+        expect(await screen.findByRole("heading", { name: "Sessões" })).toBeInTheDocument()
+        expect(router.state.location.pathname).toBe(ROUTES.sessions)
         expect(screen.queryByRole("heading", { name: "404 - Not Found" })).not.toBeInTheDocument()
     })
 
