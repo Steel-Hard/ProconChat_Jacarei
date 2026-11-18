@@ -109,6 +109,52 @@ describe("Reports: estados", () => {
     })
 })
 
+describe("Reports: subtítulo e primeira carga", () => {
+    it("volta ao subtítulo base quando a consulta falha, sem mostrar o período anterior", async () => {
+        let fail = false
+        const page = await renderReportsPage({
+            handler: () =>
+                fail
+                    ? { status: 500, body: { error: { code: "INTERNAL_SERVER_ERROR" } } }
+                    : { status: 200, body: { data: buildReportsSummary() } }
+        })
+        await page.loaded()
+        expect(screen.getByText(/· 08\/10 a 06\/11\/2026/)).toBeInTheDocument()
+        fail = true
+
+        await page.user.click(screen.getByRole("button", { name: "Últimos 7 dias" }))
+        await screen.findByRole("alert")
+
+        expect(
+            screen.getByText("Uso do chatbot e dos agendamentos presenciais")
+        ).toBeInTheDocument()
+        expect(screen.queryByText(/08\/10/)).toBeNull()
+    })
+
+    it("durante a nova tentativa depois de um erro mostra Carregando… e não um quadro vazio", async () => {
+        let fail = true
+        const page = await renderReportsPage({
+            handler: async () => {
+                if (fail) {
+                    return { status: 500, body: { error: { code: "INTERNAL_SERVER_ERROR" } } }
+                }
+
+                await sleep(500)
+
+                return { status: 200, body: { data: buildReportsSummary() } }
+            }
+        })
+        await screen.findByRole("alert")
+        fail = false
+
+        await page.user.click(screen.getByRole("button", { name: "Tentar novamente" }))
+
+        expect(screen.getByRole("status")).toHaveTextContent("Carregando…")
+        expect(screen.queryByRole("alert")).toBeNull()
+        await page.loaded()
+    })
+})
+
 describe("Reports: acessibilidade", () => {
     it("define o título da aba", async () => {
         const page = await renderReportsPage()

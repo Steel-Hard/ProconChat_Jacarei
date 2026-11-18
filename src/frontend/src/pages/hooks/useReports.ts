@@ -17,9 +17,17 @@ function useReports() {
     const [arg, setArg] = useState<ReportsQuery>(DEFAULT_QUERY)
     const [startDate, setStartDate] = useState("")
     const [endDate, setEndDate] = useState("")
+    const [retrying, setRetrying] = useState(false)
     const query = reportsApi.useGetReportsQuery(arg)
     const report = query.data
     const today = report?.period.today ?? todayInSaoPaulo()
+
+    const failed = query.isError && !query.isFetching && !retrying
+
+    function retry() {
+        setRetrying(true)
+        void query.refetch().finally(() => setRetrying(false))
+    }
 
     function selectPreset(value: ReportPeriodPreset) {
         setPreset(value)
@@ -56,10 +64,10 @@ function useReports() {
 
     return {
         report,
-        firstLoading: report === undefined && query.isFetching,
+        firstLoading: report === undefined && !failed,
         refreshing: report !== undefined && query.isFetching,
-        failed: query.isError && !query.isFetching,
-        refetch: () => void query.refetch(),
+        failed,
+        refetch: retry,
         preset,
         selectPreset,
         startDate,
@@ -67,9 +75,14 @@ function useReports() {
         changeStartDate,
         changeEndDate,
         today,
-        range: report
-            ? reportPeriodRange(report.period.startDate, report.period.endDate, report.period.today)
-            : null,
+        range:
+            report && !failed
+                ? reportPeriodRange(
+                      report.period.startDate,
+                      report.period.endDate,
+                      report.period.today
+                  )
+                : null,
         canOpenSchedule: canAccess(account, "schedule") && NAV_ITEMS_READY.schedule
     }
 }
