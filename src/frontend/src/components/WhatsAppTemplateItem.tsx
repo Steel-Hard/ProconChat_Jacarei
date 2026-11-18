@@ -38,11 +38,6 @@ function WhatsAppTemplateItem({ template }: Props) {
                     {statusText}
                 </span>
             </div>
-            {template.status === "OTHER" && template.metaStatus ? (
-                <p className={css.note}>
-                    {t("metaStatus.templates.metaStatus", { status: template.metaStatus })}
-                </p>
-            ) : null}
             {template.status !== "APPROVED" ? (
                 <p role="alert" className={ALERT_CLASS[tone]} data-tone={tone}>
                     {t(`metaStatus.templates.notApproved.${template.kind}`)}

@@ -106,7 +106,6 @@
             "empty": "A Meta não retornou modelos configurados.",
             "support": "Mensagens enviadas fora da conversa precisam de modelo aprovado pela Meta.",
             "rejectedNote": "A Meta rejeitou o modelo: revise o texto no Gerenciador do WhatsApp e envie novamente.",
-            "metaStatus": "Status informado pela Meta: {{status}}",
             "kind": {
                 "CANCELLATION": "Aviso de cancelamento",
                 "REMINDER": "Lembrete do atendimento"

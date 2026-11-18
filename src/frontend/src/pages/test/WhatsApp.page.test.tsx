@@ -1023,7 +1023,7 @@ describe("WhatsAppPage", () => {
         expect(within(list).queryByRole("alert")).not.toBeInTheDocument()
     })
 
-    it("mostra o status informado pela Meta quando o modelo tem outro status", async () => {
+    it("mostra só o selo com o nome do status quando o modelo tem outro status", async () => {
         await renderPage(
             templatesWith([
                 {
@@ -1036,7 +1036,13 @@ describe("WhatsAppPage", () => {
         )
         await loaded()
 
-        expect(await screen.findByText("Status informado pela Meta: PAUSED")).toBeInTheDocument()
+        const item = (await screen.findByText("lembrete_atendimento")).closest("li") as HTMLElement
+
+        expect(within(item).getByText("PAUSED")).toHaveAttribute("data-tone", "warning")
+        expect(within(item).queryByText(/Status informado pela Meta/)).not.toBeInTheDocument()
+        expect(within(item).getByRole("alert")).toHaveTextContent(
+            "Enquanto este modelo não for aprovado, os lembretes não serão enviados."
+        )
     })
 
     it("mostra o selo verde nos modelos aprovados", async () => {
