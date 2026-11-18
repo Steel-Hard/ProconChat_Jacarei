@@ -36,6 +36,31 @@ const admin: PanelAccount = {
 const LAZY_TIMEOUT_MS = 4000
 
 const NeverResolves = lazy(() => new Promise<never>(() => {}))
+const EMPTY_SESSIONS_RESPONSE = {
+    data: {
+        items: [],
+        total: 0,
+        page: 1,
+        limit: 20,
+        totalPages: 0,
+        chipCounts: {
+            all: 0,
+            resolved: 0,
+            scheduled: 0,
+            out_of_scope: 0,
+            no_slot: 0,
+            declined: 0,
+            managed_appointment: 0,
+            abandoned: 0,
+            in_progress: 0
+        },
+        categories: []
+    }
+}
+
+function requestUrl(input: RequestInfo | URL): string {
+    return input instanceof Request ? input.url : String(input)
+}
 
 let panel: Awaited<ReturnType<typeof loadPanelRoutes>>
 let PanelLayout: typeof PanelLayoutComponent
@@ -48,15 +73,24 @@ async function renderPanel(path: string = ROUTES.sessions) {
         preloadedState: { account: { current: admin, status: "authenticated" } }
     })
 
-    await screen.findByText("Em construção.", {}, { timeout: LAZY_TIMEOUT_MS })
+    await screen.findByRole("heading", { name: "Sessões" }, { timeout: LAZY_TIMEOUT_MS })
 
     return { ...result, router }
 }
 
 function stubLogout(response: () => Response) {
-    const fetchMock = vi.fn((_url: RequestInfo | URL, _init?: RequestInit) =>
-        Promise.resolve(response())
-    )
+    const fetchMock = vi.fn((input: RequestInfo | URL, _init?: RequestInit) => {
+        if (requestUrl(input).includes("/api/v1/sessions")) {
+            return Promise.resolve(
+                new Response(JSON.stringify(EMPTY_SESSIONS_RESPONSE), {
+                    status: 200,
+                    headers: { "Content-Type": "application/json" }
+                })
+            )
+        }
+
+        return Promise.resolve(response())
+    })
     vi.stubGlobal("fetch", fetchMock)
     return fetchMock
 }
@@ -72,6 +106,7 @@ describe("PanelLayout", { timeout: 15000 }, () => {
     beforeAll(async () => {
         panel = await loadPanelRoutes([
             () => import("@/pages/UnderConstruction.page"),
+            () => import("@/pages/Sessions.page"),
             () => import("@/pages/Login.page"),
             () => import("@/pages/NotFound.page")
         ])
@@ -82,7 +117,18 @@ describe("PanelLayout", { timeout: 15000 }, () => {
     beforeEach(() => {
         vi.stubGlobal(
             "fetch",
-            vi.fn(() => new Promise<Response>(() => {}))
+            vi.fn((input: RequestInfo | URL) => {
+                if (requestUrl(input).includes("/api/v1/sessions")) {
+                    return Promise.resolve(
+                        new Response(JSON.stringify(EMPTY_SESSIONS_RESPONSE), {
+                            status: 200,
+                            headers: { "Content-Type": "application/json" }
+                        })
+                    )
+                }
+
+                return new Promise<Response>(() => {})
+            })
         )
     })
 
@@ -102,12 +148,16 @@ describe("PanelLayout", { timeout: 15000 }, () => {
     })
 
     it("mostra Agendamentos no menu sem selo de pendentes e sem pedir a contagem", async () => {
-        const fetchMock = vi.fn((_url: RequestInfo | URL, _init?: RequestInit) =>
+        const fetchMock = vi.fn((input: RequestInfo | URL, _init?: RequestInit) =>
             Promise.resolve(
-                new Response(JSON.stringify({ data: { count: 375 } }), {
-                    status: 200,
-                    headers: { "Content-Type": "application/json" }
-                })
+                new Response(
+                    JSON.stringify(
+                        requestUrl(input).includes("/api/v1/sessions")
+                            ? EMPTY_SESSIONS_RESPONSE
+                            : { data: { count: 375 } }
+                    ),
+                    { status: 200, headers: { "Content-Type": "application/json" } }
+                )
             )
         )
         vi.stubGlobal("fetch", fetchMock)
@@ -117,7 +167,7 @@ describe("PanelLayout", { timeout: 15000 }, () => {
         const link = screen.getByRole("link", { name: "Agendamentos" })
         expect(link).toHaveTextContent(/^Agendamentos$/)
         expect(
-            fetchMock.mock.calls.filter(([url]) => String(url).includes("pending-count"))
+            fetchMock.mock.calls.filter(([url]) => requestUrl(url).includes("pending-count"))
         ).toHaveLength(0)
     })
 

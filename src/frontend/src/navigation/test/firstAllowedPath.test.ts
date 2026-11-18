@@ -20,8 +20,8 @@ describe("firstAllowedPath", () => {
         expect(firstAllowedPath(account([]))).toBeNull()
     })
 
-    it("devolve null para quem só vê sessões", () => {
-        expect(firstAllowedPath(account(["sessions.view"]))).toBeNull()
+    it("devolve Sessões para quem só tem permissão para ver sessões", () => {
+        expect(firstAllowedPath(account(["sessions.view"]))).toBe("/sessoes")
     })
 
     it("devolve Relatórios primeiro para quem vê relatórios e gerencia usuários", () => {

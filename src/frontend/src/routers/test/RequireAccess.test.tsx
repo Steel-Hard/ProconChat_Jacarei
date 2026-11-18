@@ -58,6 +58,7 @@ describe("RequireAccess", () => {
         panel = await loadPanelRoutes([
             () => import("@/pages/NotFound.page"),
             () => import("@/pages/UnderConstruction.page"),
+            () => import("@/pages/Sessions.page"),
             () => import("@/pages/Appointments.page"),
             () => import("@/pages/Schedule.page"),
             () => import("@/pages/Reports.page")
@@ -226,10 +227,10 @@ describe("RequireAccess", () => {
         await expectNotFound()
     })
 
-    it("mostra o aviso em /usuarios a quem só vê sessões", async () => {
+    it("mostra a NotFound em /usuarios a quem só vê sessões", async () => {
         renderAs("/usuarios", ["sessions.view"])
 
-        await expectNoAccess()
+        await expectNotFound()
     })
 
     it("mostra o aviso em /conteudo a quem só gerencia conteúdo", async () => {
@@ -266,10 +267,14 @@ describe("RequireAccess", () => {
         await expectNotFound()
     })
 
-    it("mostra o aviso em /sessoes a quem só vê sessões", async () => {
-        renderAs("/sessoes", ["sessions.view"])
+    it("mostra Sessões no painel a quem só vê sessões", async () => {
+        const { router } = renderAs("/sessoes", ["sessions.view"])
 
-        await expectNoAccess()
+        expect(
+            await screen.findByRole("heading", { name: "Sessões" }, { timeout: LAZY_LOAD_TIMEOUT })
+        ).toBeInTheDocument()
+        expect(router.state.location.pathname).toBe("/sessoes")
+        expect(screen.getByRole("navigation", { name: "Menu principal" })).toBeInTheDocument()
     })
 
     it("aplica a regra de Agendamentos ao detalhe do agendamento", async () => {

@@ -79,6 +79,7 @@ describe("readyPermissionKeys", () => {
             "appointments.manage",
             "schedule.configure",
             "documents.configure",
+            "sessions.view",
             "reports.view",
             "users.manage"
         ])
