@@ -3,7 +3,7 @@
         "title": "Documentos para atendimento presencial · PROCON Jacareí"
     },
     "heading": "Documentos para atendimento presencial",
-    "subtitle": "Defina os documentos pedidos ao cidadão no agendamento presencial.",
+    "subtitle": "Listas que o chatbot envia ao cidadão ao criar o agendamento, somadas aos documentos úteis da pergunta.",
     "notice": "As alterações valem só para os próximos agendamentos. Os já criados mantêm a lista que foi enviada ao cidadão na época.",
     "loadFailed": "Não foi possível carregar os documentos para atendimento presencial.",
     "saveToast": "Documentos atualizados com sucesso.",
@@ -11,22 +11,24 @@
     "groups": {
         "holder": {
             "title": "Quando o próprio titular comparece",
-            "description": "Documentos pedidos quando o próprio consumidor comparece ao atendimento.",
-            "emptyAlert": "Nenhum documento será pedido quando o titular comparecer. O cidadão pode chegar sem o necessário para o atendimento."
+            "emptyAlert": "Nenhum documento será pedido quando o titular comparecer. O cidadão pode chegar sem o necessário para o atendimento.",
+            "short": "Titular"
         },
         "representative": {
             "title": "Quando um representante comparece em nome do titular",
-            "description": "Documentos pedidos quando outra pessoa comparece em nome do consumidor.",
-            "emptyAlert": "Nenhum documento será pedido quando um representante comparecer. O cidadão pode chegar sem o necessário para o atendimento."
+            "emptyAlert": "Nenhum documento será pedido quando um representante comparecer. O cidadão pode chegar sem o necessário para o atendimento.",
+            "short": "Representante"
         }
     },
     "items": {
-        "addPlaceholder": "Digite um documento e pressione Enter...",
+        "addPlaceholder": "Novo documento",
         "addButton": "Adicionar",
         "editButton": "Editar",
-        "saveEditButton": "Salvar",
+        "saveEditButton": "OK",
         "cancelEditButton": "Cancelar",
         "removeButton": "Remover",
+        "removeIcon": "×",
+        "editHint": "Enter confirma · Esc cancela",
         "moveUp": "Mover para cima",
         "moveDown": "Mover para baixo",
         "moveUpIcon": "↑",
@@ -34,24 +36,44 @@
         "editItemAria": "Editar {{item}}",
         "removeItemAria": "Remover {{item}}",
         "moveUpAria": "Mover {{item}} para cima",
-        "moveDownAria": "Mover {{item}} para baixo"
+        "moveDownAria": "Mover {{item}} para baixo",
+        "limitReached": "Limite de {{max}} documentos por grupo atingido.",
+        "duplicate": "Esse documento já está na lista."
     },
     "preview": {
-        "title": "Prévia da mensagem de confirmação",
-        "subtitle": "Mensagem recebida pelo cidadão logo depois de escolher o horário.",
+        "title": "Prévia da mensagem de confirmação do agendamento",
+        "subtitle": "Enviada pelo chatbot no WhatsApp logo após o cidadão escolher o horário. O endereço vem de Horários de atendimento.",
         "attendeeLabel": "Quem comparece",
-        "attendeeHolder": "O próprio titular",
-        "attendeeRepresentative": "Um representante",
+        "attendee": {
+            "holder": "Titular comparece",
+            "representative": "Representante comparece"
+        },
         "questionLabel": "Pergunta de exemplo",
-        "bullet": "• ",
-        "unsavedNotice": "Mostrando alterações ainda não salvas",
-        "noQuestionDocsNotice": "A pergunta escolhida não tem documentos úteis cadastrados",
+        "noQuestionsNotice": "Nenhuma pergunta ativa cadastrada na tela Conteúdo",
+        "unsavedNotice": "A prévia já inclui as alterações não salvas.",
+        "noQuestionDocsNotice": "Esta pergunta não tem documentos úteis cadastrados. A mensagem mostra só a lista do grupo.",
         "loadFailed": "Não foi possível gerar a prévia da mensagem. Tente novamente.",
-        "duplicateTooltip": "Este item também está nos documentos da pergunta",
-        "duplicateBadge": "Repetido na pergunta"
+        "repeatedLegend_one": "{{count}} item aparece nas duas listas. O cidadão recebe o pedido repetido.",
+        "repeatedLegend_other": "{{count}} itens aparecem nas duas listas. O cidadão recebe o pedido repetido.",
+        "messageTime": "10:15",
+        "exampleNote": "Protocolo, data e hora são exemplos.",
+        "updating": "Atualizando a prévia…"
     },
     "changes": {
-        "holderGroup": "Documentos do titular alterados",
-        "representativeGroup": "Documentos do representante alterados"
+        "group": {
+            "holder": "titular",
+            "representative": "representante"
+        },
+        "added": "Adicionado: {{item}} ({{group}})",
+        "removed": "Removido: {{item}} ({{group}})",
+        "edited": "Editado: {{from}} → {{to}} ({{group}})",
+        "reordered": "Ordem dos documentos do {{group}} alterada"
+    },
+    "saveErrors": {
+        "invalid": "Confira os documentos informados antes de salvar.",
+        "unauthorized": "Sua sessão expirou. Entre novamente para salvar.",
+        "forbidden": "Você não tem permissão para alterar os documentos.",
+        "issueWithPosition": "{{group}}, item {{position}}: {{message}}",
+        "issueWithGroup": "{{group}}: {{message}}"
     }
 }

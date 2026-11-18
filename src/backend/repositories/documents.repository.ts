@@ -1,5 +1,6 @@
 import { Pool } from "pg"
 import getPool from "../db/connection"
+import InternalServerError from "../errors/InternalServerError"
 import {
     DocumentsConfigData,
     DocumentsLastChange,
@@ -8,6 +9,8 @@ import {
     SampleQuestionRow
 } from "./documents.repository.interface"
 
+const REMOVED_USER_NAME = "usuário removido"
+
 export class DocumentsRepository implements IDocumentsRepository {
     private pool: Pool
 
@@ -15,8 +18,8 @@ export class DocumentsRepository implements IDocumentsRepository {
         this.pool = pool
     }
 
-    async getDocumentsConfig(): Promise<DocumentsConfigData> {
-        const result = await this.pool.query<{
+    private async readConfig(db: Pick<Pool, "query">): Promise<DocumentsConfigData> {
+        const result = await db.query<{
             attendee_group: "HOLDER" | "REPRESENTATIVE"
             description: string
         }>(
@@ -39,11 +42,15 @@ export class DocumentsRepository implements IDocumentsRepository {
         return { holder, representative }
     }
 
+    async getDocumentsConfig(): Promise<DocumentsConfigData> {
+        return this.readConfig(this.pool)
+    }
+
     async getLastChange(): Promise<DocumentsLastChange | null> {
         const result = await this.pool.query<{
             created_at: Date
-            user_id: number
-            user_name: string
+            user_id: string | null
+            user_name: string | null
         }>(
             `SELECT a.created_at, u.id as user_id, u.name as user_name
              FROM AuditLog a
@@ -54,13 +61,13 @@ export class DocumentsRepository implements IDocumentsRepository {
         )
 
         const row = result.rows[0]
-        if (!row || !row.user_name) {
+        if (!row) {
             return null
         }
 
         return {
-            id: Number(row.user_id),
-            name: row.user_name,
+            id: row.user_id === null ? null : Number(row.user_id),
+            name: row.user_name ?? REMOVED_USER_NAME,
             at: new Date(row.created_at).toISOString()
         }
     }
@@ -78,13 +85,15 @@ export class DocumentsRepository implements IDocumentsRepository {
         )
 
         const row = result.rows[0]
+        if (!row) {
+            throw new InternalServerError("Configuração de horários de atendimento não encontrada")
+        }
+
         return {
-            unitAddress:
-                row?.unit_address ??
-                "Avenida Capitão Joaquim Pinheiro do Prado, 222 - Centro, Jacareí - SP, CEP 12327-160",
-            unitAddressComplement: row?.unit_address_complement ?? null,
-            reminderEnabled: row?.reminder_enabled ?? false,
-            reminderHours: row?.reminder_hours ?? 24
+            unitAddress: row.unit_address,
+            unitAddressComplement: row.unit_address_complement,
+            reminderEnabled: row.reminder_enabled,
+            reminderHours: row.reminder_hours
         }
     }
 
@@ -92,13 +101,13 @@ export class DocumentsRepository implements IDocumentsRepository {
         const qResult = await this.pool.query<{
             id: string
             title: string
+            category_title: string
         }>(
-            `SELECT q.id, COALESCE(q.short_title, q.question) as title
+            `SELECT q.id, COALESCE(q.short_title, q.question) as title, c.title as category_title
              FROM Questions q
              INNER JOIN Categories c ON c.id = q.category_id
              WHERE q.active = TRUE AND c.active = TRUE
-             ORDER BY q.position ASC, q.id ASC
-             LIMIT 10`
+             ORDER BY c.position ASC, c.id ASC, q.position ASC, q.id ASC`
         )
 
         if (qResult.rows.length === 0) {
@@ -129,11 +138,23 @@ export class DocumentsRepository implements IDocumentsRepository {
         return qResult.rows.map((q) => ({
             id: String(q.id),
             title: q.title,
+            categoryTitle: q.category_title,
             documents: docsByQuestion[String(q.id)] ?? []
         }))
     }
 
-    async getQuestionDocuments(questionId: number): Promise<string[]> {
+    async getQuestionDocuments(questionId: number): Promise<string[] | null> {
+        const question = await this.pool.query(
+            `SELECT 1
+             FROM Questions q
+             INNER JOIN Categories c ON c.id = q.category_id
+             WHERE q.id = $1 AND q.active = TRUE AND c.active = TRUE`,
+            [questionId]
+        )
+        if (question.rows.length === 0) {
+            return null
+        }
+
         const result = await this.pool.query<{ description: string }>(
             `SELECT description
              FROM RequiredDocuments
@@ -151,6 +172,13 @@ export class DocumentsRepository implements IDocumentsRepository {
         const client = await this.pool.connect()
         try {
             await client.query("BEGIN")
+            await client.query("SELECT pg_advisory_xact_lock(hashtext('documents_config'))")
+
+            const current = await this.readConfig(client)
+            if (JSON.stringify(current) === JSON.stringify(data)) {
+                await client.query("ROLLBACK")
+                return
+            }
 
             await client.query("DELETE FROM AttendanceDocuments")
 

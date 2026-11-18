@@ -1,0 +1,3 @@
+const MAX_DOCUMENT_LENGTH = 255
+
+export default MAX_DOCUMENT_LENGTH

@@ -50,6 +50,7 @@ export function createCitizenNotificationService({
         }
         let outcome: CitizenNotificationOutcome = "FAILED"
         let providerMessageId: string | null = null
+        let errorCode: string | null = null
         const to = phoneOf(target.phoneEncrypted)
         if (to === null) {
             logFailure(id, "PHONE_UNAVAILABLE")
@@ -70,9 +71,10 @@ export function createCitizenNotificationService({
                 providerMessageId = result.providerMessageId
             } else {
                 logFailure(id, result.reason)
+                errorCode = result.errorCode ?? null
             }
         }
-        await appointments.recordCitizenNotification(id, outcome, "CANCELLATION", actorUserId, now, providerMessageId)
+        await appointments.recordCitizenNotification(id, outcome, "CANCELLATION", actorUserId, now, providerMessageId, errorCode)
         return outcome
     }
 

@@ -10,7 +10,7 @@ Qualquer conta **ativa**. Uma conta desativada não consegue entrar.
 
 ## Estado da tela
 
-**Entregue (issue #84).** O contador de agendamentos pendentes no menu chegou com a tela de Agendamentos (issue #85).
+**Entregue (issue #84).** O item Agendamentos do menu chegou com a tela de Agendamentos (issue #85).
 
 ## Login
 
@@ -31,7 +31,7 @@ Agrupado em três seções:
 
 - **Só aparecem os itens que a conta pode acessar** ([regras gerais](00-regras-gerais.md#2-contas-e-permissões)).
 - **Enquanto uma tela não está pronta, o item dela não aparece no menu**, mesmo para quem tem a permissão. Aberta pelo endereço, a tela mostra "Em construção.". Hoje o menu mostra Agendamentos, Usuários e WhatsApp, conforme a permissão. Isso vale para quem tem ao menos uma tela pronta. Quem só tem telas que ainda não estão prontas vê o aviso de conta sem tela disponível, descrito abaixo.
-- O item **Agendamentos** mostra um contador com a quantidade de **agendamentos pendentes**. Sem pendentes, o contador não aparece.
+- O item **Agendamentos** do menu **não mostra contador** de agendamentos pendentes. Os pendentes são acompanhados dentro da tela de Agendamentos (chip "Pendentes", com contagem).
 - **A tela inicial do painel abre na primeira tela que a conta pode acessar e que já está pronta**, na ordem do menu. Hoje isso é Agendamentos para quem pode vê-los. Quando o Dashboard (issue #71) ficar pronto, quem pode vê-lo passa a entrar por ele.
 - **Quem não tem acesso a nenhuma tela pronta** (por exemplo, uma conta recém-criada, que nasce sem permissões, ou uma conta que só tem permissão em telas ainda em construção) vê o aviso "Sua conta ainda não tem acesso a nenhuma tela", com a orientação de pedir acesso a um administrador do sistema, e o botão **Voltar para o login**, que encerra a sessão. O aviso aparece fora do painel, sem menu, em qualquer endereço. Quem tem ao menos uma tela pronta continua vendo "404 - Not Found" ao abrir um endereço que não existe ou uma tela sem permissão.
 

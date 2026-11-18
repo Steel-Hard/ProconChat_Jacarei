@@ -1,11 +1,20 @@
+import NotFoundError from "../errors/NotFoundError"
 import { documentsRepository } from "../repositories/documents.repository"
 import { IDocumentsRepository } from "../repositories/documents.repository.interface"
-import { formatarConfirmacaoAgendamento } from "./messageFormatter.service"
+import { whatsappSettingsService } from "./whatsappSettings.service"
+import {
+    ConfirmacaoAgendamentoEstrutura,
+    formatarConfirmacaoAgendamento,
+    montarConfirmacaoAgendamento
+} from "./messageFormatter.service"
+
+const EXAMPLE_PROTOCOL = "A3F9C21B"
+const EXAMPLE_DATE_TIME = "Ter, 10/11 às 14:00"
 
 export interface DocumentsViewOutput {
     holder: string[]
     representative: string[]
-    updatedBy: { id: number; name: string } | null
+    updatedBy: { id: number | null; name: string } | null
     updatedAt: string | null
     unitAddress: string
     unitAddressComplement: string | null
@@ -14,6 +23,7 @@ export interface DocumentsViewOutput {
     sampleQuestions: Array<{
         id: string
         title: string
+        categoryTitle: string
         documents: string[]
     }>
 }
@@ -21,22 +31,35 @@ export interface DocumentsViewOutput {
 export interface PreviewConfirmationArgs {
     byRepresentative: boolean
     groupDocuments: string[]
-    questionId?: string | number
+    questionId?: number
 }
 
-export class DocumentsService {
-    private repository: IDocumentsRepository
+export interface PreviewConfirmationOutput extends ConfirmacaoAgendamentoEstrutura {
+    text: string
+    example: { protocol: string; dateTime: string }
+}
 
-    constructor(repository: IDocumentsRepository = documentsRepository) {
-        this.repository = repository
-    }
+export interface DocumentsService {
+    getDocumentsView(): Promise<DocumentsViewOutput>
+    saveDocuments(
+        data: { holder: string[]; representative: string[] },
+        actorUserId: number
+    ): Promise<DocumentsViewOutput>
+    previewConfirmation(args: PreviewConfirmationArgs): Promise<PreviewConfirmationOutput>
+}
 
-    async getDocumentsView(): Promise<DocumentsViewOutput> {
+export function createDocumentsService(deps: {
+    documents: IDocumentsRepository
+    isCancellationNoticeEnabled: () => Promise<boolean>
+}): DocumentsService {
+    const repository = deps.documents
+
+    async function getDocumentsView(): Promise<DocumentsViewOutput> {
         const [config, lastChange, scheduleContext, sampleQuestions] = await Promise.all([
-            this.repository.getDocumentsConfig(),
-            this.repository.getLastChange(),
-            this.repository.getScheduleContext(),
-            this.repository.getSampleQuestions()
+            repository.getDocumentsConfig(),
+            repository.getLastChange(),
+            repository.getScheduleContext(),
+            repository.getSampleQuestions()
         ])
 
         return {
@@ -52,39 +75,55 @@ export class DocumentsService {
         }
     }
 
-    async saveDocuments(
+    async function saveDocuments(
         data: { holder: string[]; representative: string[] },
         actorUserId: number
     ): Promise<DocumentsViewOutput> {
-        await this.repository.saveDocumentsConfig(data, actorUserId)
-        return this.getDocumentsView()
+        await repository.saveDocumentsConfig(data, actorUserId)
+        return getDocumentsView()
     }
 
-    async previewConfirmation(args: PreviewConfirmationArgs): Promise<{ text: string }> {
-        const scheduleContext = await this.repository.getScheduleContext()
+    async function previewConfirmation(
+        args: PreviewConfirmationArgs
+    ): Promise<PreviewConfirmationOutput> {
+        const [scheduleContext, cancellationNoticeEnabled] = await Promise.all([
+            repository.getScheduleContext(),
+            deps.isCancellationNoticeEnabled()
+        ])
         let questionDocuments: string[] = []
 
-        if (args.questionId !== undefined && args.questionId !== "") {
-            const qId = Number(args.questionId)
-            if (!isNaN(qId) && qId > 0) {
-                questionDocuments = await this.repository.getQuestionDocuments(qId)
+        if (args.questionId !== undefined) {
+            const found = await repository.getQuestionDocuments(args.questionId)
+            if (found === null) {
+                throw new NotFoundError("Pergunta não encontrada.")
             }
+            questionDocuments = found
         }
 
-        const text = formatarConfirmacaoAgendamento({
-            protocol: "A3F9C21B",
-            quando: "Ter, 10/11 às 14:00",
+        const input = {
+            protocol: EXAMPLE_PROTOCOL,
+            quando: EXAMPLE_DATE_TIME,
             unitAddress: scheduleContext.unitAddress,
             unitAddressComplement: scheduleContext.unitAddressComplement,
             byRepresentative: args.byRepresentative,
             groupDocuments: args.groupDocuments,
             questionDocuments,
             reminderEnabled: scheduleContext.reminderEnabled,
-            reminderHours: scheduleContext.reminderHours
-        })
+            reminderHours: scheduleContext.reminderHours,
+            cancellationNoticeEnabled
+        }
 
-        return { text }
+        return {
+            text: formatarConfirmacaoAgendamento(input),
+            example: { protocol: EXAMPLE_PROTOCOL, dateTime: EXAMPLE_DATE_TIME },
+            ...montarConfirmacaoAgendamento(input)
+        }
     }
+
+    return { getDocumentsView, saveDocuments, previewConfirmation }
 }
 
-export const documentsService = new DocumentsService()
+export const documentsService = createDocumentsService({
+    documents: documentsRepository,
+    isCancellationNoticeEnabled: () => whatsappSettingsService.isCancellationNoticeEnabled()
+})

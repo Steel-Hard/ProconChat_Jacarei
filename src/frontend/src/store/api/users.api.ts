@@ -43,13 +43,7 @@ const usersApi = api.injectEndpoints({
                 )
 
                 if (redistributed > 0) {
-                    dispatch(
-                        api.util.invalidateTags([
-                            "AppointmentList",
-                            "AppointmentPendingCount",
-                            "Appointment"
-                        ])
-                    )
+                    dispatch(api.util.invalidateTags(["AppointmentList", "Appointment"]))
                 }
             }
         }),

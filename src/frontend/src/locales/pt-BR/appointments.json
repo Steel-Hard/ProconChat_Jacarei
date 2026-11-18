@@ -11,16 +11,28 @@
     },
     "calendar": {
         "week": "Semana de {{start}} a {{end}}",
-        "previous": "‹ Semana anterior",
-        "next": "Próxima semana ›",
-        "current": "Semana atual",
+        "previous": "Semana anterior",
+        "previousIcon": "‹",
+        "next": "Próxima semana",
+        "nextIcon": "›",
+        "current": "Esta semana",
         "noDays": "Não há horários configurados para esta semana.",
+        "dayLabel": "{{weekday}} {{date}}",
         "fullDay": "Dia bloqueado",
-        "freeSeats": "{{count}} vaga(s) livre(s)",
-        "slots": "Horários e vagas",
-        "blockedPeriod": "Bloqueado",
-        "offGrid": "Fora da grade",
-        "openAppointment": "Abrir agendamento de {{name}} às {{time}}"
+        "blocked": {
+            "fullDay": "Bloqueado · {{description}}",
+            "periods": "Bloqueado {{periods}}",
+            "period": "{{start}}–{{end}}"
+        },
+        "freeSeats_one": "{{count}} vaga livre",
+        "freeSeats_other": "{{count}} vagas livres",
+        "openAppointment": "Abrir agendamento de {{name}} às {{time}} ({{status}})",
+        "legend": {
+            "label": "Legenda do calendário",
+            "seats_one": "{{count}} vaga por horário · vagas livres só onde o chatbot pode oferecer (janela, antecedência, bloqueios)",
+            "seats_other": "{{count}} vagas por horário · vagas livres só onde o chatbot pode oferecer (janela, antecedência, bloqueios)",
+            "freeSeatsOnly": "Vagas livres só onde o chatbot pode oferecer (janela, antecedência, bloqueios)"
+        }
     },
     "search": {
         "label": "Buscar",

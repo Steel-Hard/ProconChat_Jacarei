@@ -1,135 +1,84 @@
+import { useTranslation } from "react-i18next"
+import AppointmentCalendarCell from "@/components/AppointmentCalendarCell"
+import AppointmentCalendarDayHeader from "@/components/AppointmentCalendarDayHeader"
+import AppointmentCalendarToolbar from "@/components/AppointmentCalendarToolbar"
 import type AppointmentCalendarData from "@/types/appointments/AppointmentCalendar.types"
-import type AppointmentStatus from "@/types/status/AppointmentStatus.types"
+import appointmentCalendarGrid from "@/utils/appointmentCalendarGrid"
+import dayMonthOfDate from "@/utils/dayMonthOfDate"
 import formatDate from "@/utils/formatDate"
-import weekdayOf from "@/utils/weekdayOf"
+import todayInSaoPaulo from "@/utils/schedule/todayInSaoPaulo"
 import css from "@/styles/components/appointmentCalendar.module.css"
 
 type Props = {
     data: AppointmentCalendarData
-    labels: {
-        week: string
-        previous: string
-        next: string
-        current: string
-        noDays: string
-        fullDay: string
-        freeSeats: string
-        slots: string
-        blockedPeriod: string
-        offGrid: string
-        openAppointment: string
-        status: Record<AppointmentStatus, string>
-        weekdays: Record<string, string>
-    }
     onPrevious: () => void
     onNext: () => void
     onCurrent: () => void
     onOpen: (id: string) => void
 }
 
-function statusClass(status: AppointmentStatus): string {
-    return `${css.status} ${css[`status${status}`]}`
-}
-
-function AppointmentCalendar({ data, labels, onPrevious, onNext, onCurrent, onOpen }: Props) {
-    const weekLabel = labels.week
-        .replace("{{start}}", formatDate(data.weekStart) ?? data.weekStart)
-        .replace("{{end}}", formatDate(data.weekEnd) ?? data.weekEnd)
+function AppointmentCalendar({ data, onPrevious, onNext, onCurrent, onOpen }: Props) {
+    const { t } = useTranslation(["appointments", "common"])
+    const weekLabel = t("calendar.week", {
+        start: dayMonthOfDate(data.weekStart),
+        end: formatDate(data.weekEnd) ?? data.weekEnd
+    })
+    const grid = appointmentCalendarGrid(data)
+    const today = todayInSaoPaulo()
+    const dayByDate = new Map(data.days.map((day) => [day.date, day]))
 
     return (
-        <section className={css.calendar} aria-label={weekLabel}>
-            <header className={css.toolbar}>
-                <h2>{weekLabel}</h2>
-                <div className={css.navigation}>
-                    <button type="button" onClick={onPrevious}>
-                        {labels.previous}
-                    </button>
-                    <button type="button" onClick={onCurrent}>
-                        {labels.current}
-                    </button>
-                    <button type="button" onClick={onNext}>
-                        {labels.next}
-                    </button>
-                </div>
-            </header>
-            {data.days.length === 0 ? (
-                <p className={css.empty}>{labels.noDays}</p>
+        <section className={css.calendar}>
+            <AppointmentCalendarToolbar
+                weekLabel={weekLabel}
+                seatsPerSlot={data.seatsPerSlot}
+                onPrevious={onPrevious}
+                onNext={onNext}
+                onCurrent={onCurrent}
+            />
+            {grid.dates.length === 0 ? (
+                <p className={css.empty}>{t("calendar.noDays")}</p>
             ) : (
-                <div className={css.days}>
-                    {data.days.map((day) => {
-                        const weekday = weekdayOf(`${day.date}T12:00:00-03:00`)
-                        const appointments = data.appointments.filter(
-                            (item) => item.date === day.date
-                        )
-                        const dayLabel = `${labels.weekdays[weekday] ?? weekday} · ${formatDate(day.date) ?? day.date}`
-
-                        return (
-                            <section className={css.day} key={day.date}>
-                                <h3 className={css.dayTitle}>{dayLabel}</h3>
-                                {day.blocked.fullDay ? (
-                                    <p className={css.blocked}>
-                                        {day.blocked.description ?? labels.fullDay}
-                                    </p>
-                                ) : null}
-                                {day.blocked.periods.map((period) => {
-                                    const periodLabel = `${labels.blockedPeriod} ${period.start}–${period.end}: ${period.description}`
-                                    return (
-                                        <p
-                                            className={css.period}
-                                            key={`${period.start}-${period.end}`}
-                                        >
-                                            {periodLabel}
-                                        </p>
-                                    )
-                                })}
-                                <div className={css.slots} aria-label={labels.slots}>
-                                    {day.slots.map((slot) => (
-                                        <span
-                                            className={
-                                                slot.freeSeats === null
-                                                    ? css.unavailable
-                                                    : css.available
-                                            }
-                                            key={slot.time}
-                                        >
-                                            {slot.time}
-                                            {slot.freeSeats !== null
-                                                ? ` · ${labels.freeSeats.replace("{{count}}", String(slot.freeSeats))}`
-                                                : ""}
-                                        </span>
+                <div className={css.scroll}>
+                    <table className={css.grid}>
+                        <caption className={css.visuallyHidden}>{weekLabel}</caption>
+                        <thead>
+                            <tr>
+                                <td className={css.corner} aria-hidden="true" />
+                                {grid.dates.map((date) => (
+                                    <AppointmentCalendarDayHeader
+                                        key={date}
+                                        date={date}
+                                        day={dayByDate.get(date)}
+                                        today={date === today}
+                                    />
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {grid.times.map((time) => (
+                                <tr key={time}>
+                                    <th scope="row" className={css.hour}>
+                                        {time}
+                                    </th>
+                                    {grid.dates.map((date) => (
+                                        <AppointmentCalendarCell
+                                            key={date}
+                                            slot={dayByDate
+                                                .get(date)
+                                                ?.slots.find((slot) => slot.time === time)}
+                                            appointments={data.appointments.filter(
+                                                (appointment) =>
+                                                    appointment.date === date &&
+                                                    appointment.time === time
+                                            )}
+                                            onOpen={onOpen}
+                                        />
                                     ))}
-                                </div>
-                                <ul className={css.appointments}>
-                                    {appointments.map((appointment) => {
-                                        const appointmentLabel = `${appointment.time} · ${appointment.shortName}`
-                                        return (
-                                            <li key={appointment.id}>
-                                                <button
-                                                    className={css.appointment}
-                                                    type="button"
-                                                    aria-label={labels.openAppointment
-                                                        .replace("{{name}}", appointment.shortName)
-                                                        .replace("{{time}}", appointment.time)}
-                                                    onClick={() => onOpen(appointment.id)}
-                                                >
-                                                    <strong>{appointmentLabel}</strong>
-                                                    <span>{appointment.protocol}</span>
-                                                    <span
-                                                        className={statusClass(appointment.status)}
-                                                    >
-                                                        {labels.status[appointment.status]}
-                                                    </span>
-                                                    {appointment.off_grid ? (
-                                                        <span>{labels.offGrid}</span>
-                                                    ) : null}
-                                                </button>
-                                            </li>
-                                        )
-                                    })}
-                                </ul>
-                            </section>
-                        )
-                    })}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             )}
         </section>

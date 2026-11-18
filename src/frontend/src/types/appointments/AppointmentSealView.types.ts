@@ -1,6 +1,6 @@
 type AppointmentSealView = {
     label: string
-    tone: "neutral" | "warning"
+    tone: "neutral" | "warning" | "info"
 }
 
 export default AppointmentSealView

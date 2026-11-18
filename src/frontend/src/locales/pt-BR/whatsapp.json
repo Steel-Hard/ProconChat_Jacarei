@@ -98,12 +98,14 @@
     },
     "metaStatus": {
         "refresh": "Atualizar status da Meta",
+        "refreshing": "Atualizando…",
         "checkedAt": "Consultado em {{date}} às {{time}}",
         "loadFailed": "Não foi possível consultar a Meta. Confira as credenciais e tente novamente.",
         "templates": {
             "heading": "Modelos de mensagem",
             "empty": "A Meta não retornou modelos configurados.",
-            "metaStatus": "Status informado pela Meta: {{status}}",
+            "support": "Mensagens enviadas fora da conversa precisam de modelo aprovado pela Meta.",
+            "rejectedNote": "A Meta rejeitou o modelo: revise o texto no Gerenciador do WhatsApp e envie novamente.",
             "kind": {
                 "CANCELLATION": "Aviso de cancelamento",
                 "REMINDER": "Lembrete do atendimento"
@@ -121,7 +123,6 @@
             }
         },
         "number": {
-            "heading": "Qualidade e limite de envios da Meta",
             "qualityLabel": "Qualidade do número na Meta",
             "quality": {
                 "HIGH": "Alta",
@@ -130,17 +131,16 @@
                 "UNKNOWN": "Desconhecida"
             },
             "qualityDescription": {
-                "HIGH": "A qualidade está alta e não há indicação atual de restrição.",
-                "MEDIUM": "Acompanhe a qualidade: avaliações negativas podem reduzir a capacidade de envio.",
-                "LOW": "A Meta pode limitar os envios deste número.",
+                "HIGH": "Poucos bloqueios ou denúncias de usuários. Envio sem restrições.",
+                "MEDIUM": "Aumento recente de bloqueios ou denúncias. Vale revisar o texto das mensagens.",
+                "LOW": "Muitos bloqueios ou denúncias. A Meta pode limitar o envio de mensagens.",
                 "UNKNOWN": "A Meta não informou a qualidade atual do número."
             },
             "limitLabel": "Limite de envios da Meta",
-            "limitUnknown": "Limite diário não informado pela Meta.",
-            "tierUnknown": "categoria não informada",
-            "dailyLimit": "Limite diário: {{count}} conversas iniciadas pela empresa ({{tier}}).",
-            "used_one": "{{count}} conversa iniciada pela empresa usada nas últimas 24 horas.",
-            "used_other": "{{count}} conversas iniciadas pela empresa usadas nas últimas 24 horas.",
+            "limitUnknown": "Limite não informado pela Meta",
+            "unlimited": "Sem limite diário",
+            "dailyLimit": "Limite diário: {{total}} conversas iniciadas pela empresa.",
+            "used": "Usadas nas últimas 24h: {{used}} de {{total}}.",
             "usageProgress": "Uso do limite diário de envios",
             "nearLimit": "Perto do limite diário da Meta. Lembretes e avisos podem deixar de ser enviados."
         }
@@ -173,6 +173,8 @@
             "credentials_saved": "Credenciais atualizadas",
             "auto_reply_paused": "Respostas automáticas pausadas",
             "auto_reply_resumed": "Respostas automáticas reativadas",
+            "cancellation_notice_enabled": "Aviso ao cidadão ligado",
+            "cancellation_notice_disabled": "Aviso ao cidadão desligado",
             "other": "Configuração atualizada"
         },
         "field": {
@@ -239,6 +241,34 @@
         "MISSING_PERMISSION": "O token não tem permissão para gerenciar este número",
         "META_UNAVAILABLE": "Não foi possível falar com a Meta. Tente de novo em instantes",
         "META_ERROR": "A Meta recusou as credenciais"
+    },
+    "cancellationNotice": {
+        "heading": "Avisos ao cidadão",
+        "label": "Avisar o cidadão por WhatsApp quando a equipe cancelar um agendamento",
+        "support": "Cada aviso de cancelamento é uma mensagem de modelo e tem custo por mensagem cobrado pela Meta. Os avisos contam no limite diário de envios da Meta. Com o aviso desligado, o agendamento é cancelado sem avisar o cidadão e a equipe precisa avisar por outro meio.",
+        "state": {
+            "on": "Ligado",
+            "off": "Desligado",
+            "saving": "Salvando…"
+        },
+        "saveFailed": "Não foi possível salvar o aviso ao cidadão. Tente de novo.",
+        "modelNotApproved": "Enquanto o modelo Aviso de cancelamento não for aprovado, os avisos não serão enviados.",
+        "toasts": {
+            "on": "Aviso ao cidadão ligado.",
+            "off": "Aviso ao cidadão desligado."
+        },
+        "dialog": {
+            "on": {
+                "title": "Ligar o aviso de cancelamento?",
+                "description": "Quando a equipe cancelar um agendamento, o cidadão receberá uma mensagem pelo WhatsApp. Cada aviso é uma mensagem de modelo e tem custo por mensagem cobrado pela Meta.",
+                "confirm": "Ligar aviso"
+            },
+            "off": {
+                "title": "Desligar o aviso de cancelamento?",
+                "description": "Quando a equipe cancelar um agendamento, o cidadão NÃO será avisado pelo sistema. A equipe precisa avisar por outro meio.",
+                "confirm": "Desligar aviso"
+            }
+        }
     },
     "pauseDialog": {
         "title": "Pausar respostas automáticas?",

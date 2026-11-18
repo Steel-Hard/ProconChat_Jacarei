@@ -4,6 +4,7 @@ import type SelectOption from "@/types/form/SelectOption.types"
 import css from "@/styles/components/appointmentListFilters.module.css"
 
 type AppointmentListFiltersProps = {
+    showPeriod?: boolean
     periodLabel: string
     responsibleLabel: string
     period: AppointmentPeriod
@@ -18,6 +19,7 @@ type AppointmentListFiltersProps = {
 }
 
 function AppointmentListFilters({
+    showPeriod = true,
     periodLabel,
     responsibleLabel,
     period,
@@ -32,20 +34,24 @@ function AppointmentListFilters({
 }: AppointmentListFiltersProps) {
     return (
         <div className={css.filters}>
-            <label className={css.field}>
-                {periodLabel}
-                <select
-                    className={css.select}
-                    value={period}
-                    onChange={(event) => onPeriodChange(event.target.value as AppointmentPeriod)}
-                >
-                    {periodOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                            {option.label}
-                        </option>
-                    ))}
-                </select>
-            </label>
+            {showPeriod ? (
+                <label className={css.field}>
+                    {periodLabel}
+                    <select
+                        className={css.select}
+                        value={period}
+                        onChange={(event) =>
+                            onPeriodChange(event.target.value as AppointmentPeriod)
+                        }
+                    >
+                        {periodOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                                {option.label}
+                            </option>
+                        ))}
+                    </select>
+                </label>
+            ) : null}
             <div className={css.responsible}>
                 <label className={css.field}>
                     {responsibleLabel}

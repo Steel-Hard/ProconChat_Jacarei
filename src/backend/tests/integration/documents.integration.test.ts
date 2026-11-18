@@ -1,0 +1,390 @@
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest"
+import getPool from "../../db/connection"
+import InternalServerError from "../../errors/InternalServerError"
+import { DocumentsRepository } from "../../repositories/documents.repository"
+import {
+    restoreScheduleConfig,
+    ScheduleConfigSnapshot,
+    snapshotScheduleConfig,
+    useScheduleConfig,
+} from "./helpers/scheduleDb"
+
+const repository = new DocumentsRepository()
+
+const createdCategoryIds: number[] = []
+const createdQuestionIds: number[] = []
+const createdAuditIds: number[] = []
+const createdUserIds: number[] = []
+
+async function countDocumentsAudit(): Promise<number> {
+    const result = await getPool().query<{ total: string }>(
+        "SELECT COUNT(*) AS total FROM AuditLog WHERE area = 'documents'",
+    )
+    return Number(result.rows[0]!.total)
+}
+
+async function createAuditEntry(actorUserId: number | null, createdAt: string): Promise<number> {
+    const result = await getPool().query<{ id: string }>(
+        `INSERT INTO AuditLog (area, action, actor_user_id, data, created_at)
+         VALUES ('documents', 'documents_updated', $1, '{}'::jsonb, $2)
+         RETURNING id`,
+        [actorUserId, createdAt],
+    )
+    const id = Number(result.rows[0]!.id)
+    createdAuditIds.push(id)
+    return id
+}
+
+async function createUser(name: string): Promise<number> {
+    const result = await getPool().query<{ id: string }>(
+        `INSERT INTO Users (name, email, password_hash)
+         VALUES ($1, $2, 'hash') RETURNING id`,
+        [name, `docs-${process.pid}-${Date.now()}-${createdUserIds.length}@teste.local`],
+    )
+    const id = Number(result.rows[0]!.id)
+    createdUserIds.push(id)
+    return id
+}
+
+async function createCategory(position: number, active = true): Promise<number> {
+    const result = await getPool().query<{ id: string }>(
+        `INSERT INTO Categories (title, short_title, position, active)
+         VALUES ('Categoria documentos teste', 'Cat docs teste', $1, $2)
+         RETURNING id`,
+        [position, active],
+    )
+    const id = Number(result.rows[0]!.id)
+    createdCategoryIds.push(id)
+    return id
+}
+
+async function createQuestion(
+    categoryId: number,
+    position: number,
+    options: { active?: boolean; documents?: string[] } = {},
+): Promise<number> {
+    const result = await getPool().query<{ id: string }>(
+        `INSERT INTO Questions (category_id, question, answer, short_title, position, active)
+         VALUES ($1, 'Pergunta teste', 'Resposta teste', 'Pergunta docs teste', $2, $3)
+         RETURNING id`,
+        [categoryId, position, options.active ?? true],
+    )
+    const id = Number(result.rows[0]!.id)
+    createdQuestionIds.push(id)
+    const documents = options.documents ?? []
+    for (let index = 0; index < documents.length; index++) {
+        await getPool().query(
+            "INSERT INTO RequiredDocuments (question_id, description, position) VALUES ($1, $2, $3)",
+            [id, documents[index], index],
+        )
+    }
+    return id
+}
+
+afterEach(async () => {
+    await getPool().query("DELETE FROM AuditLog WHERE id = ANY($1::bigint[])", [createdAuditIds])
+})
+
+afterAll(async () => {
+    const pool = getPool()
+    await pool.query(
+        "DELETE FROM AuditLog WHERE id = ANY($1::bigint[]) OR (area = 'documents' AND actor_user_id = ANY($2::bigint[]))",
+        [createdAuditIds, createdUserIds],
+    )
+    await pool.query("DELETE FROM Users WHERE id = ANY($1::bigint[])", [createdUserIds])
+    await pool.query("DELETE FROM RequiredDocuments WHERE question_id = ANY($1::bigint[])", [
+        createdQuestionIds,
+    ])
+    await pool.query("DELETE FROM Questions WHERE id = ANY($1::bigint[])", [createdQuestionIds])
+    await pool.query("DELETE FROM Categories WHERE id = ANY($1::bigint[])", [createdCategoryIds])
+    await pool.end()
+})
+
+describe("DocumentsRepository (Postgres)", () => {
+    describe("getSampleQuestions", () => {
+        it("lista todas as perguntas ativas, sem limite, na ordem da tela Conteúdo", async () => {
+            const lateCategory = await createCategory(9002)
+            const earlyCategory = await createCategory(9001)
+            const lateIds: number[] = []
+            for (let position = 11; position >= 0; position--) {
+                lateIds.unshift(await createQuestion(lateCategory, position))
+            }
+            const earlyId = await createQuestion(earlyCategory, 99)
+
+            const rows = await repository.getSampleQuestions()
+            const mine = new Set([earlyId, ...lateIds].map(String))
+            const ids = rows.filter((row) => mine.has(row.id)).map((row) => Number(row.id))
+
+            expect(ids).toEqual([earlyId, ...lateIds])
+        })
+
+        it("não lista pergunta inativa nem pergunta de categoria inativa", async () => {
+            const activeCategory = await createCategory(9003)
+            const inactiveCategory = await createCategory(9004, false)
+            const visibleId = await createQuestion(activeCategory, 0)
+            const inactiveQuestionId = await createQuestion(activeCategory, 1, { active: false })
+            const inactiveCategoryQuestionId = await createQuestion(inactiveCategory, 0)
+
+            const ids = (await repository.getSampleQuestions()).map((row) => Number(row.id))
+
+            expect(ids).toContain(visibleId)
+            expect(ids).not.toContain(inactiveQuestionId)
+            expect(ids).not.toContain(inactiveCategoryQuestionId)
+        })
+
+        it("devolve o título da categoria e os documentos de cada pergunta", async () => {
+            const categoryId = await createCategory(9005)
+            const questionId = await createQuestion(categoryId, 0, {
+                documents: ["Nota fiscal", "Contrato"],
+            })
+
+            const row = (await repository.getSampleQuestions()).find(
+                (item) => Number(item.id) === questionId,
+            )
+
+            expect(row?.categoryTitle).toBe("Categoria documentos teste")
+            expect(row?.documents).toEqual(["Nota fiscal", "Contrato"])
+        })
+    })
+
+    describe("getQuestionDocuments", () => {
+        it("devolve os documentos da pergunta ativa na ordem cadastrada", async () => {
+            const categoryId = await createCategory(9006)
+            const questionId = await createQuestion(categoryId, 0, { documents: ["B", "A"] })
+
+            expect(await repository.getQuestionDocuments(questionId)).toEqual(["B", "A"])
+        })
+
+        it("devolve nulo para pergunta inexistente, inativa ou de categoria inativa", async () => {
+            const activeCategory = await createCategory(9007)
+            const inactiveCategory = await createCategory(9008, false)
+            const inactiveQuestionId = await createQuestion(activeCategory, 0, {
+                active: false,
+                documents: ["X"],
+            })
+            const inactiveCategoryQuestionId = await createQuestion(inactiveCategory, 0, {
+                documents: ["Y"],
+            })
+
+            expect(await repository.getQuestionDocuments(inactiveQuestionId)).toBeNull()
+            expect(await repository.getQuestionDocuments(inactiveCategoryQuestionId)).toBeNull()
+            expect(await repository.getQuestionDocuments(2147483647)).toBeNull()
+        })
+
+        it("devolve lista vazia para pergunta ativa sem documentos", async () => {
+            const categoryId = await createCategory(9009)
+            const questionId = await createQuestion(categoryId, 0)
+
+            expect(await repository.getQuestionDocuments(questionId)).toEqual([])
+        })
+    })
+
+    describe("getLastChange", () => {
+        it("devolve quem alterou por último e quando", async () => {
+            const userId = await createUser("Ana Documentos")
+            await createAuditEntry(userId, "2999-01-01T10:00:00Z")
+
+            expect(await repository.getLastChange()).toEqual({
+                id: userId,
+                name: "Ana Documentos",
+                at: "2999-01-01T10:00:00.000Z",
+            })
+        })
+
+        it("mostra usuário removido quando a alteração não tem mais autor", async () => {
+            await createAuditEntry(null, "2999-01-02T10:00:00Z")
+
+            expect(await repository.getLastChange()).toEqual({
+                id: null,
+                name: "usuário removido",
+                at: "2999-01-02T10:00:00.000Z",
+            })
+        })
+    })
+
+    describe("getScheduleContext", () => {
+        let snapshot: ScheduleConfigSnapshot
+
+        beforeAll(async () => {
+            snapshot = await snapshotScheduleConfig()
+        })
+
+        afterAll(async () => {
+            await restoreScheduleConfig(snapshot)
+        })
+
+        it("devolve endereço e lembrete configurados em Horários de atendimento", async () => {
+            await useScheduleConfig({
+                settings: {
+                    slot_minutes: 30,
+                    seats_per_slot: 2,
+                    window_days: 30,
+                    min_notice_days: 1,
+                    wait_alert_days: 7,
+                    unit_address: "Rua Teste, 10",
+                    unit_address_complement: "Sala 2",
+                    reminder_enabled: true,
+                    reminder_hours: 12,
+                },
+                ranges: [],
+            })
+
+            expect(await repository.getScheduleContext()).toEqual({
+                unitAddress: "Rua Teste, 10",
+                unitAddressComplement: "Sala 2",
+                reminderEnabled: true,
+                reminderHours: 12,
+            })
+        })
+
+        it("falha em vez de inventar um endereço quando não há configuração", async () => {
+            await getPool().query("DELETE FROM ScheduleChanges")
+            await getPool().query("DELETE FROM ScheduleSettings")
+
+            await expect(repository.getScheduleContext()).rejects.toBeInstanceOf(
+                InternalServerError,
+            )
+        })
+    })
+
+    describe("saveDocumentsConfig", () => {
+        let original: { holder: string[]; representative: string[] }
+
+        beforeAll(async () => {
+            original = await repository.getDocumentsConfig()
+        })
+
+        afterAll(async () => {
+            const client = await getPool().connect()
+            try {
+                await client.query("DELETE FROM AttendanceDocuments")
+                for (const [group, list] of [
+                    ["HOLDER", original.holder],
+                    ["REPRESENTATIVE", original.representative],
+                ] as const) {
+                    for (let index = 0; index < list.length; index++) {
+                        await client.query(
+                            "INSERT INTO AttendanceDocuments (attendee_group, description, position) VALUES ($1, $2, $3)",
+                            [group, list[index], index],
+                        )
+                    }
+                }
+            } finally {
+                client.release()
+            }
+        })
+
+        it("grava as listas na ordem enviada e registra quem alterou na auditoria", async () => {
+            const userId = await createUser("Bia Documentos")
+            const auditBefore = await countDocumentsAudit()
+
+            await repository.saveDocumentsConfig(
+                { holder: ["B", "A"], representative: ["C"] },
+                userId,
+            )
+
+            expect(await repository.getDocumentsConfig()).toEqual({
+                holder: ["B", "A"],
+                representative: ["C"],
+            })
+            expect(await countDocumentsAudit()).toBe(auditBefore + 1)
+            expect((await repository.getLastChange())?.id).toBe(userId)
+        })
+
+        it("não grava auditoria nem troca o autor ao salvar sem mudança", async () => {
+            const first = await createUser("Caio Documentos")
+            const second = await createUser("Duda Documentos")
+            await repository.saveDocumentsConfig({ holder: ["X"], representative: ["Y"] }, first)
+            const auditBefore = await countDocumentsAudit()
+            const lastBefore = await repository.getLastChange()
+
+            await repository.saveDocumentsConfig({ holder: ["X"], representative: ["Y"] }, second)
+
+            expect(await countDocumentsAudit()).toBe(auditBefore)
+            expect(await repository.getLastChange()).toEqual(lastBefore)
+        })
+
+        it("trata mudança só de ordem como alteração", async () => {
+            const userId = await createUser("Edu Documentos")
+            await repository.saveDocumentsConfig({ holder: ["X", "Z"], representative: [] }, userId)
+            const auditBefore = await countDocumentsAudit()
+
+            await repository.saveDocumentsConfig({ holder: ["Z", "X"], representative: [] }, userId)
+
+            expect(await countDocumentsAudit()).toBe(auditBefore + 1)
+        })
+
+        it("serializa dois saves simultâneos e termina com uma única lista", async () => {
+            const userId = await createUser("Gabi Documentos")
+            await repository.saveDocumentsConfig({ holder: ["Base"], representative: [] }, userId)
+            const auditBefore = await countDocumentsAudit()
+            const first = { holder: ["A1", "A2", "A3"], representative: ["A4"] }
+            const second = { holder: ["B1", "B2"], representative: ["B3", "B4"] }
+
+            await Promise.all([
+                repository.saveDocumentsConfig(first, userId),
+                repository.saveDocumentsConfig(second, userId),
+            ])
+
+            const final = await repository.getDocumentsConfig()
+            expect([first, second]).toContainEqual(final)
+            expect(await countDocumentsAudit()).toBe(auditBefore + 2)
+        })
+
+        it("espera a trava de Documentos liberada por outra transação antes de gravar", async () => {
+            const userId = await createUser("Hugo Documentos")
+            await repository.saveDocumentsConfig({ holder: ["Antes"], representative: [] }, userId)
+            const auditBefore = await countDocumentsAudit()
+            const holder = await getPool().connect()
+            let finished = false
+
+            try {
+                await holder.query("BEGIN")
+                await holder.query("SELECT pg_advisory_xact_lock(hashtext('documents_config'))")
+
+                const pending = repository
+                    .saveDocumentsConfig({ holder: ["Depois"], representative: [] }, userId)
+                    .then(() => {
+                        finished = true
+                    })
+                await new Promise((resolve) => setTimeout(resolve, 300))
+
+                expect(finished).toBe(false)
+                expect(await repository.getDocumentsConfig()).toEqual({
+                    holder: ["Antes"],
+                    representative: [],
+                })
+
+                await holder.query("COMMIT")
+                await pending
+            } finally {
+                holder.release()
+            }
+
+            expect(await repository.getDocumentsConfig()).toEqual({
+                holder: ["Depois"],
+                representative: [],
+            })
+            expect(await countDocumentsAudit()).toBe(auditBefore + 1)
+        })
+
+        it("desfaz tudo quando a gravação falha no meio", async () => {
+            const userId = await createUser("Fabi Documentos")
+            await repository.saveDocumentsConfig({ holder: ["K"], representative: [] }, userId)
+            const auditBefore = await countDocumentsAudit()
+
+            await expect(
+                repository.saveDocumentsConfig(
+                    { holder: ["M", "a".repeat(256)], representative: [] },
+                    userId,
+                ),
+            ).rejects.toThrow()
+
+            expect(await repository.getDocumentsConfig()).toEqual({
+                holder: ["K"],
+                representative: [],
+            })
+            expect(await countDocumentsAudit()).toBe(auditBefore)
+        })
+    })
+})

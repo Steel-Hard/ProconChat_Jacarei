@@ -132,6 +132,31 @@ describe("gateway client: sendTemplate", () => {
         expect(JSON.parse(String(logger.log.mock.calls[0]?.[0]))).toEqual({ event: "gateway_template_send_failed", status })
     })
 
+    it("devolve o código de erro da Meta que o gateway repassa em details, sem registrá-lo no log além do status", async () => {
+        const fetchFn = vi.fn<GatewayFetchFn>().mockResolvedValue({
+            ok: false,
+            status: 502,
+            json: () => Promise.resolve({ error: { code: "PROVIDER_ERROR", message: "x", details: { providerErrorCode: "131042" } } }),
+        })
+        const logger = { log: vi.fn() }
+
+        const result = await createGatewayClient({ fetchFn, env, logger }).sendTemplate(input)
+
+        expect(result).toEqual({ ok: false, reason: "REJECTED", errorCode: "131042" })
+    })
+
+    it.each([
+        { label: "sem corpo", json: undefined },
+        { label: "com corpo inválido", json: () => Promise.reject(new SyntaxError("x")) },
+        { label: "com código que não é só dígitos", json: () => Promise.resolve({ error: { details: { providerErrorCode: "13; DROP" } } }) },
+    ])("não devolve errorCode quando o gateway recusa $label", async ({ json }) => {
+        const fetchFn = vi.fn<GatewayFetchFn>().mockResolvedValue({ ok: false, status: 502, json })
+
+        const result = await createGatewayClient({ fetchFn, env, logger: { log: vi.fn() } }).sendTemplate(input)
+
+        expect(result).toEqual({ ok: false, reason: "REJECTED" })
+    })
+
     it("devolve UNREACHABLE quando a chamada lança", async () => {
         const fetchFn = vi.fn<GatewayFetchFn>().mockRejectedValue(new Error("ECONNREFUSED"))
         const logger = { log: vi.fn() }

@@ -11,7 +11,7 @@ import {
     listAppointmentsQuerySchema,
     updateStatusBodySchema,
 } from "../schemas/appointment.schema"
-import { createAppointmentService } from "../services/appointment.service"
+import { CancellationNoticeSwitch, createAppointmentService } from "../services/appointment.service"
 import { AppointmentCalendarService, createAppointmentCalendarService } from "../services/appointmentCalendar.service"
 import { createScheduleService } from "../services/schedule.service"
 import { scheduleRepository } from "../repositories/schedule.repository"
@@ -24,6 +24,7 @@ interface AppointmentRoutesDependencies {
     authMiddleware?: RequestHandler
     calendar?: AppointmentCalendarService
     notifications?: CitizenNotificationService
+    cancellationNotice?: CancellationNoticeSwitch
 }
 
 export class AppointmentRoutes {
@@ -40,8 +41,9 @@ export class AppointmentRoutes {
             appointments: repository,
         }),
         notifications,
+        cancellationNotice,
     }: AppointmentRoutesDependencies = {}) {
-        const service = createAppointmentService({ repository, conversationEvents, notifications })
+        const service = createAppointmentService({ repository, conversationEvents, notifications, cancellationNotice })
         this.appointmentController = new AppointmentController({ service, calendar })
         const controller = this.appointmentController
 

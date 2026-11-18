@@ -74,6 +74,16 @@ export class MockWhatsAppSettingsRepository implements WhatsAppSettingsRepositor
         return { ...this.row }
     }
 
+    async isCancellationNoticeEnabled(): Promise<boolean> {
+        return this.row?.cancellationNoticeEnabled ?? false
+    }
+
+    async setCancellationNoticeEnabled(enabled: boolean, updatedBy: number): Promise<WhatsAppSettingsRow> {
+        const row = this.requireRow()
+        this.row = { ...row, cancellationNoticeEnabled: enabled, updatedBy: this.userOf(updatedBy), updatedAt: this.clock() }
+        return { ...this.row }
+    }
+
     async touchLastWebhookEvent(at: Date): Promise<void> {
         this.webhookEventTouches.push(at)
     }
@@ -97,6 +107,7 @@ export class MockWhatsAppSettingsRepository implements WhatsAppSettingsRepositor
             appSecretEncrypted: null,
             verifyToken,
             autoReplyPaused: false,
+            cancellationNoticeEnabled: false,
             credentialsCheckedAt: null,
             credentialsValid: null,
             displayPhoneNumber: null,

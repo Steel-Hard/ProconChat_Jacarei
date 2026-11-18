@@ -34,6 +34,7 @@ type AppointmentDetail = {
     notes: AppointmentNote[]
     timeline: AppointmentTimelineStep[]
     available_actions: AppointmentAvailableActions
+    cancellation_notice_status: "NOTIFIED" | "FAILED" | "DISABLED" | null
     correction_warning?: {
         code: "RESPONSIBLE_BUSY" | "RESPONSIBLE_UNAVAILABLE"
         details: {

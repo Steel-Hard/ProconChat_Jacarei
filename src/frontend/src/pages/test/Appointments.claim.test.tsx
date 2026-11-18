@@ -113,19 +113,12 @@ describe("Appointments.page: Assumir", () => {
         expect(patch?.url.pathname).toBe("/api/v1/appointments/11/status")
         expect(patch?.body).toEqual({ action: "claim" })
         await waitFor(() => expect(page.listRequests().length).toBe(before + 1))
-        await waitFor(() =>
-            expect(
-                page.calls.filter(
-                    (call) => call.url.pathname === "/api/v1/appointments/pending-count"
-                )
-            ).toHaveLength(2)
-        )
     })
 
     it.each([
         ["APPOINTMENT_ALREADY_CLAIMED", "Outra pessoa já assumiu este agendamento."],
         ["APPOINTMENT_CANCELED", "Este agendamento foi cancelado."]
-    ])("com 409 %s avisa a mensagem do code e rebusca a lista e o contador", async (code, text) => {
+    ])("com 409 %s avisa a mensagem do code e rebusca a lista", async (code, text) => {
         const page = await renderClaim(conflict(code))
         await screen.findByText("Maria Aparecida Santos")
         const before = page.listRequests().length
@@ -134,13 +127,6 @@ describe("Appointments.page: Assumir", () => {
 
         expect(await screen.findByText(text)).toBeInTheDocument()
         await waitFor(() => expect(page.listRequests().length).toBe(before + 1))
-        await waitFor(() =>
-            expect(
-                page.calls.filter(
-                    (call) => call.url.pathname === "/api/v1/appointments/pending-count"
-                )
-            ).toHaveLength(2)
-        )
         expect(screen.getByRole("button", { name: "Assumir" })).toBeEnabled()
     })
 

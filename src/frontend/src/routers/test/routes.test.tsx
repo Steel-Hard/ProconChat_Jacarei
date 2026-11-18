@@ -162,6 +162,8 @@ describe("routes antes de carregar as páginas", () => {
     })
 })
 
+const LAZY_LOAD_TIMEOUT = 10000
+
 describe("routes", () => {
     beforeAll(async () => {
         panel = await loadPanelRoutes([
@@ -240,15 +242,18 @@ describe("routes", () => {
     it("renderiza a tela de Agendamentos com sessão, pedindo a lista e o contador", async () => {
         renderRoutes([ROUTES.appointments], withSession)
 
-        expect(await screen.findByRole("heading", { name: "Agendamentos" })).toBeInTheDocument()
+        expect(
+            await screen.findByRole(
+                "heading",
+                { name: "Agendamentos" },
+                { timeout: LAZY_LOAD_TIMEOUT }
+            )
+        ).toBeInTheDocument()
         expect(screen.queryByText("Em construção.")).not.toBeInTheDocument()
         expect(screen.getByRole("searchbox", { name: "Buscar" })).toBeInTheDocument()
         await waitFor(() =>
             expect(requestedUrls().some((url) => url.includes("/api/v1/appointments?"))).toBe(true)
         )
-        expect(
-            requestedUrls().some((url) => url.endsWith("/api/v1/appointments/pending-count"))
-        ).toBe(true)
     })
 
     it("renderiza a tela de Usuários para o Admin, carregando as contas", async () => {
@@ -406,7 +411,13 @@ describe("routes", () => {
 
         await user.click(await screen.findByRole("link", { name: "Vá para a página inicial." }))
 
-        expect(await screen.findByRole("heading", { name: "Agendamentos" })).toBeInTheDocument()
+        expect(
+            await screen.findByRole(
+                "heading",
+                { name: "Agendamentos" },
+                { timeout: LAZY_LOAD_TIMEOUT }
+            )
+        ).toBeInTheDocument()
     })
 
     it("volta do aviso para a tela de entrada sem redirect quando o logout dá certo", async () => {

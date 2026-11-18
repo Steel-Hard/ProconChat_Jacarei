@@ -275,6 +275,34 @@ describe("Repositorio da configuracao do WhatsApp com Postgres", () => {
         ])
     })
 
+    test("o aviso de cancelamento nasce desligado e setCancellationNoticeEnabled liga e desliga gravando quem alterou", async () => {
+        const created = await whatsappSettingsRepository.ensureRow(VERIFY_TOKEN)
+        expect(created.cancellationNoticeEnabled).toBe(false)
+        expect(await whatsappSettingsRepository.isCancellationNoticeEnabled()).toBe(false)
+
+        const enabled = await whatsappSettingsRepository.setCancellationNoticeEnabled(true, userId)
+        const enabledRead = await whatsappSettingsRepository.isCancellationNoticeEnabled()
+        const disabled = await whatsappSettingsRepository.setCancellationNoticeEnabled(false, userId)
+
+        expect(enabled.cancellationNoticeEnabled).toBe(true)
+        expect(enabled.updatedBy).toEqual({ id: userId, name: "Admin Integracao WhatsApp" })
+        expect(enabledRead).toBe(true)
+        expect(disabled.cancellationNoticeEnabled).toBe(false)
+        expect(await whatsappSettingsRepository.isCancellationNoticeEnabled()).toBe(false)
+    })
+
+    test("setCancellationNoticeEnabled grava no historico cancellation_notice_enabled e cancellation_notice_disabled sem dados", async () => {
+        await whatsappSettingsRepository.ensureRow(VERIFY_TOKEN)
+
+        await whatsappSettingsRepository.setCancellationNoticeEnabled(true, userId)
+        await whatsappSettingsRepository.setCancellationNoticeEnabled(false, userId)
+
+        expect(await auditRows()).toEqual([
+            { area: "whatsapp", action: "cancellation_notice_enabled", actor_user_id: String(userId), data: {} },
+            { area: "whatsapp", action: "cancellation_notice_disabled", actor_user_id: String(userId), data: {} },
+        ])
+    })
+
     test("listByArea traz da alteracao mais recente para a mais antiga, desempata pelo id, limita e mostra o autor", async () => {
         const base = Date.UTC(2099, 5, 1)
         for (let second = 1; second <= 49; second += 1) {

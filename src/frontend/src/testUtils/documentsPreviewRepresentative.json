@@ -1,0 +1,46 @@
+{
+    "text": "Agendamento realizado\nProtocolo: A3F9C21B\nData e hora: Ter, 10/11 às 14:00\nEndereço: Avenida Central, 100 (Térreo)\n\nA pessoa que comparecer em seu nome deve levar:\n• Procuração assinada\n\nDocumentos úteis para esta dúvida:\n• RG\n• Fatura do cartão\n\nVocê receberá neste número avisos sobre este agendamento, como um lembrete 24 horas antes do atendimento e o aviso em caso de cancelamento.",
+    "example": {
+        "protocol": "A3F9C21B",
+        "dateTime": "Ter, 10/11 às 14:00"
+    },
+    "title": "Agendamento realizado",
+    "details": [
+        {
+            "label": "Protocolo",
+            "value": "A3F9C21B"
+        },
+        {
+            "label": "Data e hora",
+            "value": "Ter, 10/11 às 14:00"
+        },
+        {
+            "label": "Endereço",
+            "value": "Avenida Central, 100 (Térreo)"
+        }
+    ],
+    "groupBlock": {
+        "heading": "A pessoa que comparecer em seu nome deve levar:",
+        "items": [
+            {
+                "text": "Procuração assinada",
+                "repeated": false
+            }
+        ]
+    },
+    "questionBlock": {
+        "heading": "Documentos úteis para esta dúvida:",
+        "items": [
+            {
+                "text": "RG",
+                "repeated": false
+            },
+            {
+                "text": "Fatura do cartão",
+                "repeated": false
+            }
+        ]
+    },
+    "notice": "Você receberá neste número avisos sobre este agendamento, como um lembrete 24 horas antes do atendimento e o aviso em caso de cancelamento.",
+    "repeatedCount": 0
+}

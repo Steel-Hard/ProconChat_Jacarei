@@ -4,11 +4,13 @@ import ConfirmDialog from "@/components/ConfirmDialog"
 import LastChangeNote from "@/components/LastChangeNote"
 import StatusBadge from "@/components/StatusBadge"
 import UnsavedChangesBar from "@/components/UnsavedChangesBar"
+import WhatsAppCancellationNotice from "@/components/WhatsAppCancellationNotice"
 import WhatsAppConnectionTest from "@/components/WhatsAppConnectionTest"
 import WhatsAppDeliveryFailures from "@/components/WhatsAppDeliveryFailures"
 import WhatsAppMessageBubble from "@/components/WhatsAppMessageBubble"
 import WhatsAppMetaSetup from "@/components/WhatsAppMetaSetup"
 import WhatsAppMetaStatus from "@/components/WhatsAppMetaStatus"
+import WhatsAppNumberMeta from "@/components/WhatsAppNumberMeta"
 import WhatsAppNumberStatus from "@/components/WhatsAppNumberStatus"
 import WhatsAppPauseSwitch from "@/components/WhatsAppPauseSwitch"
 import WhatsAppPrivacyForm from "@/components/WhatsAppPrivacyForm"
@@ -171,9 +173,9 @@ function WhatsAppPage() {
                                         status={activity.failures.status}
                                         failures={activity.failures.data}
                                     />
+                                    <WhatsAppNumberMeta />
                                 </WhatsAppNumberStatus>
                             ) : null}
-                            {view ? <WhatsAppMetaStatus /> : null}
                             {view ? (
                                 <section className={css.card}>
                                     <h2 className={css.sectionTitle}>{t("credentials.heading")}</h2>
@@ -271,6 +273,8 @@ function WhatsAppPage() {
                                     />
                                 </section>
                             ) : null}
+                            {view ? <WhatsAppCancellationNotice settings={view} /> : null}
+                            {view ? <WhatsAppMetaStatus /> : null}
                             {view ? (
                                 <WhatsAppSettingsHistory
                                     status={activity.history.status}

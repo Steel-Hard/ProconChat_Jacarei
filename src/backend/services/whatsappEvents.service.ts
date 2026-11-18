@@ -22,6 +22,7 @@ export type RecordWhatsAppEvents = (body: unknown) => Promise<void>
 
 const PROVIDER_MESSAGE_ID_MAX = 128
 const ERROR_CODE_MAX = 40
+const ERROR_CODE_PATTERN = /^\d{1,7}$/
 const TIMESTAMP_MAX = 253402300799
 const DELIVERY_STATUSES: readonly string[] = ["sent", "delivered", "read", "failed"]
 
@@ -58,7 +59,7 @@ function toUpdate(status: IncomingStatus): DeliveryStatusUpdate {
         providerMessageId: status.providerMessageId,
         status: status.status.toUpperCase() as OutboundStatus,
         statusAt: status.timestamp === null ? null : new Date(status.timestamp * 1000),
-        errorCode: status.errorCode,
+        errorCode: status.errorCode !== null && ERROR_CODE_PATTERN.test(status.errorCode) ? status.errorCode : null,
     }
 }
 

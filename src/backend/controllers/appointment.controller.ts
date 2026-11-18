@@ -60,9 +60,9 @@ class AppointmentController {
         }
     }
 
-    public async listStaff(_req: Request, res: Response, next: NextFunction): Promise<void> {
+    public async listStaff(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const result = await this.service.listStaff()
+            const result = await this.service.listStaff(accessOf(req.authUser))
             res.status(200).json({ data: result })
         } catch (error) {
             next(error)

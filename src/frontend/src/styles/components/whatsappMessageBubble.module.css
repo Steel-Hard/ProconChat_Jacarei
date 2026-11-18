@@ -18,3 +18,8 @@
     line-height: 1;
     color: var(--text-muted);
 }
+
+.text {
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+}

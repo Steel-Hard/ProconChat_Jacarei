@@ -52,6 +52,15 @@ describe("whatsappEvents.service", () => {
         ])
     })
 
+    test.each(["13104a", "131042; DROP", "-1", "1".repeat(8), "", " 131042"])(
+        "errorCode não numérico ou fora de 1 a 7 dígitos (%j) é gravado como nulo, mantendo a falha",
+        async (errorCode) => {
+            await service()({ statuses: [{ providerMessageId: "wamid.falhou", status: "failed", timestamp: 1730000000, errorCode }] })
+
+            expect(outbound.appliedCalls[0]?.statuses[0]).toMatchObject({ status: "FAILED", errorCode: null })
+        },
+    )
+
     test.each([
         { label: "corpo sem statuses", body: {} },
         { label: "corpo que nao e objeto", body: "statuses" },

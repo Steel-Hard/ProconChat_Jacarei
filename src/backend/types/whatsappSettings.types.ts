@@ -1,4 +1,4 @@
-import { OutboundKind } from "./outboundMessage.types"
+import { CancellationNoticeProblem, OutboundKind } from "./outboundMessage.types"
 
 export type AccessTokenLifetime =
     | { kind: "PERMANENT"; expiresAt: null }
@@ -17,6 +17,7 @@ export interface WhatsAppSettingsRow {
     appSecretEncrypted: string | null
     verifyToken: string
     autoReplyPaused: boolean
+    cancellationNoticeEnabled: boolean
     credentialsCheckedAt: Date | null
     credentialsValid: boolean | null
     displayPhoneNumber: string | null
@@ -74,6 +75,8 @@ export interface WhatsAppSettingsView {
     credentialsValid: boolean | null
     credentialsCheckedAt: string | null
     autoReplyPaused: boolean
+    cancellationNoticeEnabled: boolean
+    cancellationNoticeProblem: CancellationNoticeProblem | null
     pausedMessage: string
     updatedBy: WhatsAppSettingsUpdatedBy | null
     updatedAt: string
@@ -184,3 +187,8 @@ export interface NumberStatusView {
     messagingLimit: { tier: string | null; dailyLimit: number | null; usedLast24h: number }
 }
 
+
+export interface CancellationNoticeSetting {
+    enabled: boolean
+    problem: CancellationNoticeProblem | null
+}

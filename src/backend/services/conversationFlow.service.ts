@@ -80,6 +80,7 @@ interface ConversationFlowDependencies {
     hashPhone: (phone: string) => string
     logger: ConversationEventLogger
     isAutoReplyPaused: () => Promise<boolean>
+    isCancellationNoticeEnabled: () => Promise<boolean>
     privacyLink?: () => Promise<string | null>
     deliverAnswer: (job: LlmAnswerJob) => Promise<void>
     answerLogger: Pick<Console, "log">
@@ -184,6 +185,7 @@ export function createConversationFlowService({
     hashPhone: hashPhoneOf,
     logger,
     isAutoReplyPaused,
+    isCancellationNoticeEnabled,
     privacyLink = async () => null,
     deliverAnswer,
     answerLogger,
@@ -202,6 +204,7 @@ export function createConversationFlowService({
         schedule,
         logger,
         closer,
+        isCancellationNoticeEnabled,
     })
 
     async function startOver(
@@ -231,7 +234,7 @@ export function createConversationFlowService({
         }
     }
 
-    const returnFlow = createReturnFlow({ sessions, events, schedule, logger, startOver })
+    const returnFlow = createReturnFlow({ sessions, events, schedule, logger, startOver, isCancellationNoticeEnabled })
 
     async function categoryPageReply(
         sessionId: string,
@@ -869,6 +872,7 @@ export const processIncomingMessage = createConversationFlowService({
     hashPhone,
     logger: console,
     isAutoReplyPaused: () => whatsappSettingsService.isAutoReplyPaused(),
+    isCancellationNoticeEnabled: () => whatsappSettingsService.isCancellationNoticeEnabled(),
     privacyLink: createPrivacyLinkProvider({
         settings: privacySettingsRepository,
         baseUrl: process.env.PUBLIC_BASE_URL,

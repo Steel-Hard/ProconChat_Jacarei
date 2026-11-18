@@ -66,11 +66,6 @@ const appointmentsApi = api.injectEndpoints({
             transformResponse: unwrap<AppointmentList>,
             providesTags: ["AppointmentList"]
         }),
-        getPendingAppointmentsCount: build.query<number, void>({
-            query: () => `${APPOINTMENTS_PATH}/pending-count`,
-            transformResponse: (response: Envelope<{ count: number }>) => response.data.count,
-            providesTags: ["AppointmentPendingCount"]
-        }),
         getAppointment: build.query<AppointmentDetail, string>({
             query: (id) => `${APPOINTMENTS_PATH}/${encodeURIComponent(id)}`,
             transformResponse: unwrap<AppointmentDetail>,
@@ -108,7 +103,7 @@ const appointmentsApi = api.injectEndpoints({
                 response.warning
                     ? { ...response.data, correction_warning: response.warning }
                     : response.data,
-            invalidatesTags: ["AppointmentList", "AppointmentPendingCount"],
+            invalidatesTags: ["AppointmentList"],
             async onQueryStarted({ id }, { dispatch, queryFulfilled }) {
                 const result = await queryFulfilled.catch(() => null)
 
@@ -127,7 +122,7 @@ const appointmentsApi = api.injectEndpoints({
                 method: "POST"
             }),
             transformResponse: unwrap<AppointmentDetail>,
-            invalidatesTags: ["AppointmentList", "AppointmentPendingCount"],
+            invalidatesTags: ["AppointmentList"],
             async onQueryStarted(id, { dispatch, queryFulfilled }) {
                 const result = await queryFulfilled.catch(() => null)
 

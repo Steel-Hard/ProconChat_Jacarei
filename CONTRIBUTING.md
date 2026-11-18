@@ -62,3 +62,14 @@ Chore :see_no_evil: Atualiza .gitignore
 - Referencie a issue relacionada na descrição (ex.: `Closes #13`). Como a `develop` não é a branch padrão do repositório, o GitHub não liga nem fecha a issue sozinho no merge: comente `PR: #<número-do-PR>` na issue e feche-a depois do merge.
 - O título do PR segue o mesmo padrão do commit principal (`<Tipo> <ícone> [#<número>] <descrição>`).
 - Ao fazer merge, mova o item correspondente para `Done` no board do [Project 6DSM](https://github.com/orgs/Steel-Hard/projects/2).
+
+## Quando rodar cada verificação
+
+Rodar tudo em toda alteração gasta tempo e satura a máquina. Rode só o que o diff justifica:
+
+- **Frontend:** `format:check`, `lint`, `typecheck` e os testes dos arquivos alterados a cada tarefa. O gate completo usa `npm run test:cov`, que já executa todos os testes e a cobertura: não rode `test:run` junto (são cerca de 95 s por passada).
+- **Backend e gateway:** `lint`, `build`, `typecheck:test` (só no backend) e `npm test`.
+- **Backend, `test:integration`:** só quando o diff mexer em repositórios, consultas SQL ou migrations.
+- **Backend, `test:db`** (cerca de 125 s): só quando o diff tocar `src/backend/db/migrations`, `src/backend/db/schema`, `src/backend/db/seeds`, `src/backend/db/verify-migrations.cjs` ou os repositórios.
+- **Validação independente (tester ou revisão):** não repita lint, build e testes que o executor já registrou como verdes no mesmo SHA. O relatório do executor registra o SHA em que rodou os gates; só rode de novo se houver commits depois dele ou se o diff justificar.
+- O CI (`.github/workflows/ci.yml`) roda tudo a cada PR e é a verificação final.

@@ -15,7 +15,7 @@ type AppointmentHistoryProps = {
 }
 
 function AppointmentHistory({ title, entries, retry }: AppointmentHistoryProps) {
-    const retryEntryId = entries.find((entry) => entry.highlight)?.id
+    const retryEntryId = entries.find((entry) => entry.retryable)?.id
     const hasFailureEntry = retryEntryId !== undefined
 
     return (

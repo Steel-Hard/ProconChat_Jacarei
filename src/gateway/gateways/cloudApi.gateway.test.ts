@@ -521,6 +521,44 @@ describe("Cloud API provider: send", () => {
         expect((error as Error).message).not.toContain(config.accessToken)
     })
 
+    test("guarda só o código numérico de erro da Meta no erro rejeitado, sem a mensagem nem os detalhes da Meta", async () => {
+        const fetchFn = vi.fn().mockResolvedValue({
+            ok: false,
+            status: 400,
+            json: () =>
+                Promise.resolve({
+                    error: {
+                        message: "Falha ao enviar para 5500000000001",
+                        type: "OAuthException",
+                        code: 131042,
+                        error_data: { messaging_product: "whatsapp", details: "Detalhe com 5500000000001" },
+                    },
+                }),
+        })
+        const provider = createCloudApiProvider({ getConfig: () => config, fetchFn })
+
+        const error = await provider.sendTemplate("5500000000001", { name: "aviso_cancelamento", languageCode: "pt_BR", bodyParameters: ["a"] }).catch((e: Error) => e)
+
+        expect((error as Error).message).toBe("Cloud API returned HTTP 400")
+        expect((error as { providerErrorCode?: string | null }).providerErrorCode).toBe("131042")
+        expect(JSON.stringify({ message: (error as Error).message, ...(error as object) })).not.toContain("5500000000001")
+    })
+
+    test.each([
+        { label: "o corpo não é JSON", json: () => Promise.reject(new SyntaxError("Unexpected token")) },
+        { label: "o corpo não traz error.code", json: () => Promise.resolve({ error: { message: "x" } }) },
+        { label: "o código não é um número", json: () => Promise.resolve({ error: { code: "131042; DROP" } }) },
+        { label: "o código é decimal", json: () => Promise.resolve({ error: { code: 131042.5 } }) },
+    ])("deixa o código de erro da Meta nulo quando $label", async ({ json }) => {
+        const fetchFn = vi.fn().mockResolvedValue({ ok: false, status: 500, json })
+        const provider = createCloudApiProvider({ getConfig: () => config, fetchFn })
+
+        const error = await provider.send("5500000000001", { type: "text", text: "Ola" }).catch((e: Error) => e)
+
+        expect((error as Error).message).toBe("Cloud API returned HTTP 500")
+        expect((error as { providerErrorCode?: string | null }).providerErrorCode).toBeNull()
+    })
+
     test("nao envia mensagem fora dos limites e rejeita com erro de validacao", async () => {
         const fetchFn = okFetch()
         const provider = createCloudApiProvider({ getConfig: () => config, fetchFn })

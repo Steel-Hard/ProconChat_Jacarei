@@ -2,18 +2,33 @@ import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import useToast from "@/hooks/useToast"
 import appointmentsApi from "@/store/api/appointments.api"
+import useAppDispatch from "@/store/useAppDispatch"
 import type AppointmentDetail from "@/types/appointments/AppointmentDetail.types"
 import type CancellationReason from "@/types/appointments/CancellationReason.types"
 import appointmentActionErrorKey from "@/utils/appointmentActionErrorKey"
+import useNowMs from "@/hooks/useNowMs"
+import appointmentHasPassed from "@/utils/appointmentHasPassed"
+import cancellationNoticeOutcomeOf from "@/utils/cancellationNoticeOutcomeOf"
+import errorStatusOf from "@/utils/errorStatusOf"
 
 type Options = {
     detail: AppointmentDetail | undefined
     canManage: boolean
 }
 
+const WARNING_KEYS = {
+    failed: "cancelNoticeFailed",
+    noPhone: "cancelNoticeNoPhone",
+    disabled: "cancelNoticeDisabled",
+    failedDisabled: "cancelNoticeFailedDisabled",
+    ok: "cancelNoticeFailed"
+} as const
+
 function useAppointmentCancellation({ detail, canManage }: Options) {
+    const nowMs = useNowMs()
     const { t } = useTranslation(["appointmentDetail", "common"])
     const { showToast } = useToast()
+    const dispatch = useAppDispatch()
     const [open, setOpen] = useState(false)
     const [reason, setReason] = useState<CancellationReason | "">("")
     const [note, setNote] = useState("")
@@ -26,6 +41,19 @@ function useAppointmentCancellation({ detail, canManage }: Options) {
     })
     const [updateStatus] = appointmentsApi.useUpdateAppointmentStatusMutation()
     const [retryMutation, retryState] = appointmentsApi.useRetryCancellationNoticeMutation()
+
+    async function reloadDetail(id: string, failure: unknown) {
+        const status = errorStatusOf(failure)
+
+        if (status !== 403 && status !== 404) {
+            await dispatch(
+                appointmentsApi.endpoints.getAppointment.initiate(id, {
+                    subscribe: false,
+                    forceRefetch: true
+                })
+            )
+        }
+    }
 
     function openDialog() {
         if (canManage && detail?.available_actions.cancel.allowed) {
@@ -44,13 +72,17 @@ function useAppointmentCancellation({ detail, canManage }: Options) {
     }
 
     async function cancelAppointment() {
+        const config = previewQuery.currentData
+        const hasPreview =
+            config?.noticeEnabled === false ||
+            config?.previews.find((preview) => preview.reason === reason) !== undefined
+
         if (
             detail === undefined ||
             reason === "" ||
             !detail.available_actions.cancel.allowed ||
             inFlight.current ||
-            previewQuery.currentData?.previews.find((preview) => preview.reason === reason) ===
-                undefined
+            !hasPreview
         ) {
             return
         }
@@ -66,10 +98,16 @@ function useAppointmentCancellation({ detail, canManage }: Options) {
         })
 
         if ("data" in result && result.data !== undefined) {
-            showToast(t("common:appointmentActions.success.cancel", { protocol: detail.protocol }))
+            if (cancellationNoticeOutcomeOf(result.data) === "ok") {
+                showToast(
+                    t("common:appointmentActions.success.cancel", { protocol: detail.protocol })
+                )
+            }
+
             setOpen(false)
         } else {
             setError(t(`common:${appointmentActionErrorKey(result.error)}`))
+            await reloadDetail(detail.id, result.error)
         }
 
         inFlight.current = false
@@ -90,9 +128,14 @@ function useAppointmentCancellation({ detail, canManage }: Options) {
         const result = await retryMutation(detail.id)
 
         if ("data" in result && result.data !== undefined) {
-            showToast(t("common:appointmentActions.success.retryCancellationNotice"))
+            if (cancellationNoticeOutcomeOf(result.data) === "ok") {
+                showToast(t("common:appointmentActions.success.retryCancellationNotice"))
+            } else {
+                setRetryError(t("common:appointmentActions.errors.retryNoticeFailed"))
+            }
         } else {
             setRetryError(t(`common:${appointmentActionErrorKey(result.error)}`))
+            await reloadDetail(detail.id, result.error)
         }
 
         inFlight.current = false
@@ -115,10 +158,28 @@ function useAppointmentCancellation({ detail, canManage }: Options) {
                       ?.message,
         previewLoading: previewQuery.isFetching,
         previewFailed: previewQuery.isError,
+        noticeDisabled: previewQuery.currentData?.noticeEnabled === false,
+        problemCode: previewQuery.currentData?.noticeEnabled
+            ? (previewQuery.currentData.problem?.code ?? null)
+            : null,
         retryPreview: () => void previewQuery.refetch(),
         cancelAppointment: () => void cancelAppointment(),
         canRetryNotice:
-            canManage && detail?.available_actions.retry_cancellation_notice.allowed === true,
+            canManage &&
+            detail?.available_actions.retry_cancellation_notice.allowed === true &&
+            detail.cancellation_notice_status !== "DISABLED" &&
+            detail.cancellation_notice_status !== "NOTIFIED",
+        failedNotice:
+            detail !== undefined &&
+            !appointmentHasPassed(detail.appointment_datetime, nowMs) &&
+            cancellationNoticeOutcomeOf(detail) !== "ok"
+                ? t(
+                      `common:appointmentActions.warnings.${WARNING_KEYS[cancellationNoticeOutcomeOf(detail)]}`,
+                      {
+                          protocol: detail.protocol
+                      }
+                  )
+                : null,
         retryBusy: retryState.isLoading,
         retryError,
         retryNotice: () => void retryNotice()

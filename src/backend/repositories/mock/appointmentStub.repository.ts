@@ -6,6 +6,7 @@ import type {
     AppointmentDetailRecord,
     AppointmentListFilters,
     AppointmentListItem,
+    CancelOptions,
     CancellationNoticeTarget,
     CancellationReason,
     CitizenNotificationKind,
@@ -13,7 +14,7 @@ import type {
     CorrectionResult,
     CalendarFilters,
     CorrectionWarning,
-    StaffMember,
+    StaffRecord,
     WeekAppointmentRecord,
 } from "../../types/appointment.types"
 import type { AppointmentRepository } from "../appointment.repository.interface"
@@ -51,6 +52,7 @@ export interface AppointmentCancelCall {
     reason: CancellationReason
     note: string | undefined
     now: Date | undefined
+    noticeDisabled: boolean
 }
 
 export interface CitizenNotificationCall {
@@ -60,6 +62,7 @@ export interface CitizenNotificationCall {
     actorUserId: number
     now: Date | undefined
     providerMessageId: string | null
+    errorCode?: string
 }
 
 export type AppointmentCorrectionWarning = (call: AppointmentActionCall) => CorrectionWarning | null
@@ -75,7 +78,7 @@ export interface AppointmentStubScenario {
     details?: AppointmentDetailRecord[]
     list?: AppointmentStubList
     pendingCount?: number
-    staff?: StaffMember[]
+    staff?: StaffRecord[]
     week?: WeekAppointmentRecord[]
     titles?: AppointmentStubTitles
     afterAction?: AppointmentAfterAction
@@ -96,7 +99,7 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
     private details: AppointmentDetailRecord[]
     private readonly list: AppointmentStubList
     private readonly pendingCount: number
-    private readonly staff: StaffMember[]
+    private readonly staff: StaffRecord[]
     private readonly week: WeekAppointmentRecord[]
     private readonly titles: AppointmentStubTitles
     private readonly afterAction: AppointmentAfterAction | undefined
@@ -134,7 +137,7 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
         return structuredClone(this.week)
     }
 
-    async findStaff(): Promise<StaffMember[]> {
+    async findStaff(): Promise<StaffRecord[]> {
         return structuredClone(this.staff)
     }
 
@@ -190,9 +193,10 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
         reason: CancellationReason,
         note: string | undefined,
         now?: Date,
+        options?: CancelOptions,
     ): Promise<void> {
         this.callOrder.push("cancel")
-        this.cancelCalls.push({ id, actorUserId, reason, note, now })
+        this.cancelCalls.push({ id, actorUserId, reason, note, now, noticeDisabled: options?.noticeDisabled ?? false })
         this.applyAction({ action: "cancel", id, actorUserId, now })
     }
 
@@ -209,16 +213,17 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
         actorUserId: number,
         now?: Date,
         providerMessageId: string | null = null,
+        errorCode: string | null = null,
     ): Promise<void> {
         this.callOrder.push("recordCitizenNotification")
-        this.notificationCalls.push({ id, outcome, kind, actorUserId, now, providerMessageId })
+        this.notificationCalls.push({ id, outcome, kind, actorUserId, now, providerMessageId, ...(errorCode === null ? {} : { errorCode }) })
         const current = this.details.find((record) => record.id === id)
         current?.events.unshift({
             id: String(current.events.length + 1),
             type: outcome === "NOTIFIED" ? "CITIZEN_NOTIFIED" : "CITIZEN_NOTIFICATION_FAILED",
             actor_user_id: String(actorUserId),
             actor_user_name: null,
-            data: { kind },
+            data: outcome === "FAILED" && errorCode !== null ? { kind, errorCode } : { kind },
             created_at: (now ?? new Date()).toISOString(),
         })
     }

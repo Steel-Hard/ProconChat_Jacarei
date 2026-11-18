@@ -11,7 +11,9 @@ type AppointmentActionCode =
     | "PERMISSION_REQUIRED"
     | "CANCEL_AFTER_START"
     | "NOTIFICATION_NOT_RETRYABLE"
+    | "NOTIFICATION_DISABLED"
     | "CITIZEN_PHONE_UNAVAILABLE"
     | "NOTIFICATION_AFTER_START"
+    | "NOTIFICATION_IN_PROGRESS"
 
 export default AppointmentActionCode

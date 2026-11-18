@@ -7,8 +7,15 @@ type AppointmentActionItemProps = {
     onAction: (action: AppointmentAction) => void
 }
 
+const VARIANT: Partial<Record<AppointmentAction, string>> = {
+    no_show: css.attention,
+    cancel: css.danger,
+    assign: css.secondary,
+    correct_record: css.secondary
+}
+
 function buttonClass(action: AppointmentAction): string {
-    return action === "no_show" ? `${css.action} ${css.actionWarning}` : css.action
+    return `${css.action} ${VARIANT[action] ?? ""}`.trim()
 }
 
 function AppointmentActionItem({ item, onAction }: AppointmentActionItemProps) {
@@ -17,13 +24,16 @@ function AppointmentActionItem({ item, onAction }: AppointmentActionItemProps) {
     }
 
     return (
-        <button
-            type="button"
-            className={buttonClass(item.action)}
-            onClick={() => onAction(item.action)}
-        >
-            {item.label}
-        </button>
+        <>
+            <button
+                type="button"
+                className={buttonClass(item.action)}
+                onClick={() => onAction(item.action)}
+            >
+                {item.label}
+            </button>
+            {item.hint ? <p className={css.hint}>{item.hint}</p> : null}
+        </>
     )
 }
 

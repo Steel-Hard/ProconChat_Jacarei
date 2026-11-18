@@ -5,7 +5,6 @@ import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import LANGUAGE_STORAGE_KEY from "@/i18n/languageStorageKey"
 import buildAppointmentList from "@/testUtils/buildAppointmentList"
 import loadPanelRoutes from "@/testUtils/loadPanelRoutes"
-import withPendingCount from "@/testUtils/withPendingCount"
 import type RootState from "@/types/store/RootState.types"
 
 type FetchHandler = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
@@ -36,7 +35,7 @@ function stubLogin(response: () => Response | Promise<Response>) {
 
         return fetchMock()
     }
-    vi.stubGlobal("fetch", vi.fn(withPendingCount(handler)))
+    vi.stubGlobal("fetch", handler)
     return fetchMock
 }
 
@@ -65,7 +64,10 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn(withPendingCount()))
+    vi.stubGlobal(
+        "fetch",
+        vi.fn(() => new Promise<Response>(() => {}))
+    )
 })
 
 afterEach(() => {
@@ -75,6 +77,8 @@ afterEach(() => {
 afterAll(() => {
     vi.unstubAllEnvs()
 })
+
+const LAZY_LOAD_TIMEOUT = 10000
 
 describe("LoginPage", () => {
     it("mostra a marca, os campos, o botão e o texto de apoio, sem recuperação de senha", async () => {
@@ -157,7 +161,13 @@ describe("LoginPage", () => {
 
         await signIn()
 
-        expect(await screen.findByRole("heading", { name: "Agendamentos" })).toBeInTheDocument()
+        expect(
+            await screen.findByRole(
+                "heading",
+                { name: "Agendamentos" },
+                { timeout: LAZY_LOAD_TIMEOUT }
+            )
+        ).toBeInTheDocument()
         expect(router.state.location.pathname).toBe("/agendamentos")
     })
 
@@ -167,7 +177,13 @@ describe("LoginPage", () => {
 
         await signIn()
 
-        expect(await screen.findByRole("heading", { name: "Agendamentos" })).toBeInTheDocument()
+        expect(
+            await screen.findByRole(
+                "heading",
+                { name: "Agendamentos" },
+                { timeout: LAZY_LOAD_TIMEOUT }
+            )
+        ).toBeInTheDocument()
     })
 
     it("não grava sessão nem conta no navegador depois de entrar", async () => {
@@ -175,7 +191,7 @@ describe("LoginPage", () => {
         renderLogin()
 
         await signIn()
-        await screen.findByRole("heading", { name: "Agendamentos" })
+        await screen.findByRole("heading", { name: "Agendamentos" }, { timeout: LAZY_LOAD_TIMEOUT })
 
         const keys = Object.keys(window.localStorage)
         expect(keys.filter((key) => key !== LANGUAGE_STORAGE_KEY)).toEqual([])

@@ -36,9 +36,10 @@ function setup(row: Partial<WhatsAppSettingsRow> | null = savedRow(), env: Recor
     const meta = new MockMetaGraphClient()
     const gateway = { notifyConfigChanged: vi.fn(async () => undefined) }
     const logger = { log: vi.fn() }
+    const outbound = new OutboundMessageStubRepository()
     const service = createWhatsAppSettingsService({
         settings,
-        outbound: new OutboundMessageStubRepository(),
+        outbound,
         audit: new AuditLogStubRepository(),
         meta,
         gateway,
@@ -50,7 +51,7 @@ function setup(row: Partial<WhatsAppSettingsRow> | null = savedRow(), env: Recor
         logger,
         generateVerifyToken: () => "b".repeat(64),
     })
-    return { settings, meta, gateway, logger, service }
+    return { settings, outbound, meta, gateway, logger, service }
 }
 
 function serialized(value: unknown): string {
@@ -81,6 +82,8 @@ describe("whatsappSettings service", () => {
                 credentialsValid: null,
                 credentialsCheckedAt: null,
                 autoReplyPaused: false,
+                cancellationNoticeEnabled: false,
+                cancellationNoticeProblem: null,
                 pausedMessage: MENSAGEM_ATENDIMENTO_PAUSADO,
                 updatedBy: { id: 1, name: "Admin" },
                 updatedAt: "2026-10-14T13:00:00.000Z",
@@ -157,6 +160,85 @@ describe("whatsappSettings service", () => {
                 verifyToken: "b".repeat(64),
                 updatedBy: null,
             })
+        })
+    })
+
+    describe("problema conhecido da Meta no aviso de cancelamento (#164)", () => {
+        const failedAt = new Date(NOW.getTime() - 60 * 60 * 1000)
+
+        it("com o aviso ligado e uma falha de conta nas últimas 24 horas, a visão traz o código estável, o código da Meta e a frase", async () => {
+            const { service, outbound } = setup(savedRow({ cancellationNoticeEnabled: true }))
+            outbound.problemSignals = { failures: [{ kind: "CANCELLATION", errorCode: "131042", failedAt }], lastSuccessByKind: {} }
+
+            const view = await service.getView()
+
+            expect(view.cancellationNoticeProblem).toEqual({
+                code: "PAYMENT_METHOD",
+                metaErrorCode: "131042",
+                message: "a conta da Meta está sem forma de pagamento",
+            })
+            expect(outbound.problemQueries[0]?.since).toEqual(new Date(NOW.getTime() - 24 * 60 * 60 * 1000))
+            expect(outbound.problemQueries[0]?.errorCodes).toEqual(expect.arrayContaining(["131042", "132001", "190", "131048"]))
+            expect(outbound.problemQueries[0]?.errorCodes).not.toContain("131047")
+        })
+
+        it("com o aviso desligado não há faixa nem consulta às mensagens", async () => {
+            const { service, outbound } = setup(savedRow({ cancellationNoticeEnabled: false }))
+            outbound.problemSignals = { failures: [{ kind: "CANCELLATION", errorCode: "131042", failedAt }], lastSuccessByKind: {} }
+
+            const view = await service.getView()
+
+            expect(view.cancellationNoticeProblem).toBeNull()
+            expect(outbound.problemQueries).toEqual([])
+        })
+
+        it("um envio bem-sucedido depois da falha apaga a faixa", async () => {
+            const { service, outbound } = setup(savedRow({ cancellationNoticeEnabled: true }))
+            outbound.problemSignals = {
+                failures: [{ kind: "CANCELLATION", errorCode: "131042", failedAt }],
+                lastSuccessByKind: { CANCELLATION: NOW },
+            }
+
+            expect((await service.getView()).cancellationNoticeProblem).toBeNull()
+        })
+
+        it("credenciais inválidas viram o problema do token mesmo sem falha registrada", async () => {
+            const { service } = setup(savedRow({ cancellationNoticeEnabled: true, credentialsValid: false }))
+
+            expect((await service.getView()).cancellationNoticeProblem).toEqual({
+                code: "INVALID_TOKEN",
+                metaErrorCode: null,
+                message: "o token da Meta está inválido ou expirado",
+            })
+        })
+
+        it("ligar o aviso devolve a visão já com a faixa calculada", async () => {
+            const { service, outbound } = setup(savedRow({ cancellationNoticeEnabled: false }))
+            outbound.problemSignals = { failures: [{ kind: "CANCELLATION", errorCode: "190", failedAt }], lastSuccessByKind: {} }
+
+            const view = await service.setCancellationNotice({ enabled: true }, 1)
+
+            expect(view.cancellationNoticeProblem?.code).toBe("INVALID_TOKEN")
+        })
+
+        it("getCancellationNoticeState devolve o interruptor e o problema juntos", async () => {
+            const { service, outbound } = setup(savedRow({ cancellationNoticeEnabled: true }))
+            outbound.problemSignals = { failures: [{ kind: "CANCELLATION", errorCode: "132015", failedAt }], lastSuccessByKind: {} }
+
+            expect(await service.getCancellationNoticeState()).toEqual({
+                enabled: true,
+                problem: {
+                    code: "TEMPLATE_PAUSED",
+                    metaErrorCode: "132015",
+                    message: "o modelo de aviso foi pausado pela Meta por baixa qualidade",
+                },
+            })
+        })
+
+        it("getCancellationNoticeState com o aviso desligado devolve problema nulo", async () => {
+            const { service } = setup(savedRow({ cancellationNoticeEnabled: false }))
+
+            expect(await service.getCancellationNoticeState()).toEqual({ enabled: false, problem: null })
         })
     })
 

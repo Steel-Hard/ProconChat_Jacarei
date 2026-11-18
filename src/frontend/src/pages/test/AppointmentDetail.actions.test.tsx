@@ -78,7 +78,7 @@ const CANCELED = buildAppointmentDetail({
         ...PENDING.available_actions,
         claim: { allowed: false, code: "APPOINTMENT_CANCELED" },
         cancel: { allowed: false, code: null },
-        retry_cancellation_notice: { allowed: false, code: null }
+        retry_cancellation_notice: { allowed: false, code: "NOTIFICATION_NOT_RETRYABLE" }
     }
 })
 
@@ -172,7 +172,7 @@ describe("AppointmentDetail.page: botões e mensagens", () => {
         expect(box.queryByRole("button", { name: "Cancelar agendamento" })).not.toBeInTheDocument()
         expect(
             box.getByText(
-                "Não é possível cancelar depois do horário do atendimento. Registre como não compareceu."
+                "O horário já passou; não é possível cancelar. Registre como atendido ou não compareceu."
             )
         ).toBeInTheDocument()
     })
@@ -234,6 +234,8 @@ describe("AppointmentDetail.page: confirmação", () => {
                 status: 200,
                 body: {
                     data: {
+                        noticeEnabled: true,
+                        problem: null,
                         previews: [
                             { reason: "UNIT_CLOSED", message: "Mensagem para unidade fechada" },
                             { reason: "CITIZEN_REQUEST", message },
@@ -246,23 +248,35 @@ describe("AppointmentDetail.page: confirmação", () => {
         })
 
         await page.user.click(screen.getByRole("button", { name: "Cancelar agendamento" }))
-        const dialog = screen.getByRole("dialog", { name: "Cancelar agendamento?" })
+        const dialog = screen.getByRole("dialog", { name: "Cancelar o agendamento F10464F0?" })
         expect(
-            await within(dialog).findByText("Selecione o motivo para ver a mensagem.")
+            within(dialog).getByText(
+                "Maria Fictícia · 19/10/2026 às 08:00. O horário volta a ficar disponível no chatbot e o cidadão é avisado pelo WhatsApp. Esta ação não pode ser desfeita."
+            )
         ).toBeInTheDocument()
+        expect(
+            await within(dialog).findByText("Escolha um motivo para ver a prévia.")
+        ).toBeInTheDocument()
+        expect(within(dialog).getAllByRole("radio")).toHaveLength(4)
+        expect(within(dialog).getByText("Modelo fixo")).toBeInTheDocument()
 
         const confirm = within(dialog).getByRole("button", {
             name: "Cancelar e avisar o cidadão"
         })
-        expect(confirm).toBeDisabled()
-        await page.user.selectOptions(
-            within(dialog).getByRole("combobox", { name: "Motivo obrigatório" }),
-            "CITIZEN_REQUEST"
-        )
+        expect(
+            within(dialog).getByRole("group", { name: /Motivo do cancelamento/ })
+        ).toBeInTheDocument()
+        expect(confirm).toBeEnabled()
+        await page.user.click(confirm)
+        expect(await within(dialog).findByRole("alert")).toHaveTextContent("Escolha um motivo")
+        expect(page.requests("PATCH", STATUS_PATH)).toHaveLength(0)
+        await page.user.click(within(dialog).getByRole("radio", { name: "A pedido do cidadão" }))
         expect(await within(dialog).findByText(message)).toBeInTheDocument()
         expect(confirm).toBeEnabled()
         await page.user.type(
-            within(dialog).getByRole("textbox", { name: "Observação interna (opcional)" }),
+            within(dialog).getByRole("textbox", {
+                name: "Observação interna (opcional, não é enviada ao cidadão)"
+            }),
             "Pedido confirmado pelo titular"
         )
         await page.user.click(confirm)
@@ -276,7 +290,7 @@ describe("AppointmentDetail.page: confirmação", () => {
             note: "Pedido confirmado pelo titular"
         })
         expect(
-            await screen.findByText("Agendamento F10464F0 cancelado e aviso enviado ao cidadão.")
+            await screen.findByText("Agendamento F10464F0 cancelado e cidadão avisado.")
         ).toBeInTheDocument()
     })
 
@@ -302,9 +316,7 @@ describe("AppointmentDetail.page: confirmação", () => {
                 page.requests("POST", "/api/v1/appointments/1/cancellation-notice/retry")
             ).toHaveLength(1)
         )
-        expect(
-            await screen.findByText("Aviso de cancelamento enviado ao cidadão.")
-        ).toBeInTheDocument()
+        expect(await screen.findByText("Aviso reenviado ao cidadão.")).toBeInTheDocument()
     })
 
     it.each([
@@ -446,6 +458,30 @@ describe("AppointmentDetail.page: erros da ação", () => {
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
         expect(page.requests("GET", DETAIL_PATH)).toHaveLength(2)
         expect(screen.getByText("Assumido por Bruno Lima · Confirmado")).toBeInTheDocument()
+    })
+
+    it("com 409 ASSIGNEE_BUSY mostra o protocolo do conflito na caixa Ações, sem placeholder e sem toast repetido", async () => {
+        const page = await renderActions(PENDING, () => ({
+            status: 409,
+            body: {
+                error: {
+                    code: "ASSIGNEE_BUSY",
+                    message: "x",
+                    details: { conflictingProtocol: "AG-0099" }
+                }
+            }
+        }))
+        await page.user.click(screen.getByRole("button", { name: "Assumir para mim" }))
+        await page.user.click(
+            within(screen.getByRole("dialog")).getByRole("button", { name: "Assumir para mim" })
+        )
+
+        const alert = await within(
+            actionsBox().getByRole("alert").parentElement as HTMLElement
+        ).findByText("O funcionário já tem outro agendamento neste horário (AG-0099).")
+        expect(alert).toBeInTheDocument()
+        expect(document.body).not.toHaveTextContent("{{")
+        expect(screen.getAllByText(/AG-0099/)).toHaveLength(1)
     })
 
     it("com 500 espera reler o detalhe antes de mostrar o erro", async () => {
