@@ -309,7 +309,28 @@ describe("appointmentTransitions", () => {
             lastCancellationNotice: "FAILED",
             hasPhone: true,
             appointmentDatetime: future,
+            noticeEnabled: true,
         }
+
+        it("recusa o reenvio de falha antiga com o aviso desligado com NOTIFICATION_DISABLED", () => {
+            const decision = decideRetryCancellationNotice({ ...failedNotice, noticeEnabled: false }, now)
+
+            expect(decision.allowed).toBe(false)
+            if (!decision.allowed) {
+                expect(decision.error.statusCode).toBe(409)
+                expect(decision.error.code).toBe("NOTIFICATION_DISABLED")
+                expect(decision.error.message).toBe("O aviso de cancelamento está desligado")
+            }
+        })
+
+        it("mantém NOTIFICATION_NOT_RETRYABLE para o que não é reenviável mesmo com o aviso desligado", () => {
+            const decision = decideRetryCancellationNotice({ ...failedNotice, lastCancellationNotice: "NOTIFIED", noticeEnabled: false }, now)
+
+            expect(decision.allowed).toBe(false)
+            if (!decision.allowed) {
+                expect(decision.error.code).toBe("NOTIFICATION_NOT_RETRYABLE")
+            }
+        })
 
         it.each([
             { label: "sem CANCELED_BY_STAFF", state: { ...failedNotice, hasStaffCancellation: false } },
@@ -480,17 +501,30 @@ describe("appointmentTransitions", () => {
                     hasStaffCancellation: true,
                     lastCancellationNotice,
                     hasPhone,
+                    noticeEnabled: true,
                 })
 
                 expect(actions.retry_cancellation_notice).toEqual(expected)
             },
         )
 
+        it("com appointments.manage e o aviso desligado, retry_cancellation_notice de um cancelado com aviso FAILED dá NOTIFICATION_DISABLED", () => {
+            const actions = availableActions({ status: "CANCELED", appointmentDatetime: future }, now, { canManage: true }, {
+                hasStaffCancellation: true,
+                lastCancellationNotice: "FAILED",
+                hasPhone: true,
+                noticeEnabled: false,
+            })
+
+            expect(actions.retry_cancellation_notice).toEqual({ allowed: false, code: "NOTIFICATION_DISABLED" })
+        })
+
         it("com appointments.manage, retry_cancellation_notice de um cancelado com aviso FAILED, sem telefone e horário passado dá NOTIFICATION_AFTER_START", () => {
             const actions = availableActions({ status: "CANCELED", appointmentDatetime: past }, now, { canManage: true }, {
                 hasStaffCancellation: true,
                 lastCancellationNotice: "FAILED",
                 hasPhone: false,
+                noticeEnabled: true,
             })
 
             expect(actions.retry_cancellation_notice).toEqual({ allowed: false, code: "NOTIFICATION_AFTER_START" })

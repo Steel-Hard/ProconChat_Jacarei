@@ -27,6 +27,7 @@ export interface CancellationNoticeState {
     lastCancellationNotice: CancellationNoticeStatus | null
     hasPhone: boolean
     appointmentDatetime: Date
+    noticeEnabled: boolean
 }
 
 export type CancellationNoticeFacts = Omit<CancellationNoticeState, "status" | "appointmentDatetime">
@@ -35,6 +36,7 @@ const NO_CANCELLATION_NOTICE: CancellationNoticeFacts = {
     hasStaffCancellation: false,
     lastCancellationNotice: null,
     hasPhone: false,
+    noticeEnabled: true,
 }
 
 export type TransitionDecision =
@@ -161,6 +163,9 @@ export function decideTransition(
 export function decideRetryCancellationNotice(state: CancellationNoticeState, now: Date): TransitionDecision {
     if (state.status !== "CANCELED" || !state.hasStaffCancellation || state.lastCancellationNotice === "NOTIFIED" || state.lastCancellationNotice === "DISABLED") {
         return refuse("Não há aviso de cancelamento com falha para reenviar", "NOTIFICATION_NOT_RETRYABLE")
+    }
+    if (!state.noticeEnabled) {
+        return refuse("O aviso de cancelamento está desligado", "NOTIFICATION_DISABLED")
     }
     if (isDatetimePast(state.appointmentDatetime, now)) {
         return refuse("O horário do atendimento já passou e o aviso não serve mais", "NOTIFICATION_AFTER_START")

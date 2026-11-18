@@ -133,10 +133,31 @@ describe("appointment.service: cancelamento pela equipe", () => {
 
         await expect(service.retryCancellationNotice("1", 42, MANAGER, FIXED_NOW)).rejects.toMatchObject({
             statusCode: 409,
-            code: "NOTIFICATION_NOT_RETRYABLE",
+            code: "NOTIFICATION_DISABLED",
         })
 
         expect(sendTemplate).not.toHaveBeenCalled()
+    })
+
+    it("o detalhe de falha antiga com o aviso desligado mantém FAILED e bloqueia o reenvio com NOTIFICATION_DISABLED", async () => {
+        const { service } = setup({
+            status: "CANCELED",
+            notice: noticeTarget({ lastCancellationNotice: "FAILED" }),
+            isEnabled: async () => false,
+        })
+
+        const detail = await service.getAppointmentDetail("1", MANAGER, FIXED_NOW)
+
+        expect(detail.cancellation_notice_status).toBe("FAILED")
+        expect(detail.available_actions.retry_cancellation_notice).toEqual({ allowed: false, code: "NOTIFICATION_DISABLED" })
+    })
+
+    it("o detalhe de falha antiga com o aviso ligado libera o reenvio", async () => {
+        const { service } = setup({ status: "CANCELED", notice: noticeTarget({ lastCancellationNotice: "FAILED" }) })
+
+        const detail = await service.getAppointmentDetail("1", MANAGER, FIXED_NOW)
+
+        expect(detail.available_actions.retry_cancellation_notice).toEqual({ allowed: true, code: null })
     })
 
     it("o detalhe não oferece o reenvio quando o último registro é de aviso desativado e informa o estado do aviso", async () => {

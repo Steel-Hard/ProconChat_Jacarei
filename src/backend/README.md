@@ -662,7 +662,7 @@ repositório dentro da transação, pelo mock e pelo detalhe.
 | `GET /api/v1/appointments/:id` | `appointments.view` | Detalhe com histórico (`events`), linha do tempo da conversa de origem (`timeline`) e ações disponíveis (`available_actions`) | `200 { data: AppointmentDetail }` | `400 BAD_REQUEST` (id que não é inteiro positivo ou passa do limite do `bigint`), `401`, `403`, `404 NOT_FOUND` |
 | `PATCH /api/v1/appointments/:id/status` | `appointments.manage` | Executa uma ação. Corpo: `{ "action": "claim" \| "attended" \| "no_show" \| "correct_record" }`, `{ "action": "assign", "assigneeUserId": <id> }` (número ou texto numérico) ou `{ "action": "cancel", "reason": "UNIT_CLOSED" \| "CITIZEN_REQUEST" \| "DUPLICATE" \| "OTHER", "note"?: "..." }` (seção "Cancelamento pela equipe") | `200 { data: AppointmentDetail }`, o mesmo objeto que um `GET /:id` feito em seguida. `correct_record` pode trazer também `warning` (abaixo) | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN`, `403 INVALID_ORIGIN`, `404 NOT_FOUND`, `409` (codes na tabela de ações) |
 | `GET /api/v1/appointments/:id/cancellation-preview` | `appointments.manage` | A mensagem exata que o cidadão recebe para cada motivo, na ordem `UNIT_CLOSED`, `CITIZEN_REQUEST`, `DUPLICATE`, `OTHER` | `200 { data: { noticeEnabled: boolean, problem: NoticeProblem \| null, previews: [{ reason, message }] } }` (com o aviso desligado: `noticeEnabled: false`, `problem: null` e `previews: []`; se o estado do aviso não puder ser lido, responde erro e o front não libera a confirmação) | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN`, `404 NOT_FOUND` |
-| `POST /api/v1/appointments/:id/cancellation-notice/retry` | `appointments.manage` | Reenvia o aviso de cancelamento que falhou | `200 { data: AppointmentDetail }` | `401`, `403 FORBIDDEN`, `403 INVALID_ORIGIN`, `404 NOT_FOUND`, `409 NOTIFICATION_NOT_RETRYABLE`, `409 CITIZEN_PHONE_UNAVAILABLE`, `409 NOTIFICATION_AFTER_START`, `409 NOTIFICATION_IN_PROGRESS` |
+| `POST /api/v1/appointments/:id/cancellation-notice/retry` | `appointments.manage` | Reenvia o aviso de cancelamento que falhou | `200 { data: AppointmentDetail }` | `401`, `403 FORBIDDEN`, `403 INVALID_ORIGIN`, `404 NOT_FOUND`, `409 NOTIFICATION_NOT_RETRYABLE`, `409 NOTIFICATION_DISABLED`, `409 CITIZEN_PHONE_UNAVAILABLE`, `409 NOTIFICATION_AFTER_START`, `409 NOTIFICATION_IN_PROGRESS` |
 | `POST /api/v1/appointments/:id/notes` | `appointments.manage` | Grava uma observação interna. Corpo: `{ "text": "..." }`, de 1 a 2000 caracteres depois de aparar. Não há rota de edição nem de exclusão, e o trigger `trg_appointment_notes_immutable` recusa `UPDATE` e `DELETE` | `201 { data: AppointmentDetail }` | `400 BAD_REQUEST`, `401`, `403 FORBIDDEN`, `403 INVALID_ORIGIN`, `404 NOT_FOUND` |
 
 Erros sempre no envelope `{ "error": { "code": "...", "message": "..." } }`. O painel traduz pelo
@@ -981,7 +981,7 @@ marcado (no horário ou depois, `409 CANCEL_AFTER_START`).
   não são chamados e nenhuma falha é gravada, nem de telefone ausente. O horário volta a ficar livre
   do mesmo jeito. Esse evento não é falha e não vira reenvio, mesmo que o Admin ligue o aviso depois:
   `retry_cancellation_notice` fica recusado com `NOTIFICATION_NOT_RETRYABLE`. Com o aviso desligado, o
-  reenvio de uma falha antiga também responde `409 NOTIFICATION_NOT_RETRYABLE` e não chama a Meta.
+  reenvio de uma falha antiga responde `409 NOTIFICATION_DISABLED` e não chama a Meta.
 - `AppointmentDetail.cancellation_notice_status` (`"NOTIFIED" | "FAILED" | "DISABLED" | null`) traz o
   último registro do aviso de cancelamento quando a equipe cancelou o agendamento, e `null` nos demais
   casos. É a marca para a faixa que não some ao recarregar.
@@ -1017,7 +1017,10 @@ marcado (no horário ou depois, `409 CANCEL_AFTER_START`).
   cancelamento continua gravado.
 - `available_actions.retry_cancellation_notice` só fica `allowed` quando o agendamento foi cancelado
   pela equipe, o último aviso de `kind` `CANCELLATION` (por `created_at, id`) falhou ou não existe, há
-  telefone e o horário ainda não passou. O reenvio tem uma trava em memória por agendamento
+  telefone, o aviso está ligado e o horário ainda não passou. Com o aviso desligado, uma falha antiga
+  continua com `cancellation_notice_status: "FAILED"`, mas a ação vem `{ allowed: false, code:
+  "NOTIFICATION_DISABLED" }` (o front não lê as configurações, que são só do Admin, então o botão segue
+  só esta ação). O reenvio tem uma trava em memória por agendamento
   (`409 NOTIFICATION_IN_PROGRESS`), suficiente porque o backend roda numa instância só. Dentro da trava
   o alvo é relido, e um aviso que já saiu (`CITIZEN_NOTIFIED`) recusa o reenvio com
   `409 NOTIFICATION_NOT_RETRYABLE`.

@@ -1,5 +1,4 @@
 import { gatewayClient } from "../clients/gateway.client"
-import ConflictError from "../errors/ConflictError"
 import NotFoundError from "../errors/NotFoundError"
 import { AppointmentRepository } from "../repositories/appointment.repository.interface"
 import { appointmentRepository as defaultAppointmentRepository } from "../repositories/appointment.repository"
@@ -179,8 +178,9 @@ function buildTimeline(
     })
 }
 
-function noticeStateOf(target: CancellationNoticeTarget): CancellationNoticeState {
+function noticeStateOf(target: CancellationNoticeTarget, noticeEnabled: boolean): CancellationNoticeState {
     return {
+        noticeEnabled,
         status: target.status,
         hasStaffCancellation: target.lastStaffCancelReason !== null,
         lastCancellationNotice: target.lastCancellationNotice,
@@ -267,6 +267,7 @@ export function createAppointmentService(deps?: {
         }
 
         const notice = await repository.findCancellationNoticeTarget(appointment.id)
+        const noticeEnabled = cancellationNoticeStatusOf(notice) === null ? true : await cancellationNotice.isEnabled()
 
         return {
             ...appointment,
@@ -277,7 +278,7 @@ export function createAppointmentService(deps?: {
                 },
                 now,
                 access,
-                notice ? noticeStateOf(notice) : undefined,
+                notice ? noticeStateOf(notice, noticeEnabled) : undefined,
             ),
             cancellation_notice_status: cancellationNoticeStatusOf(notice),
         }
@@ -419,12 +420,9 @@ export function createAppointmentService(deps?: {
             if (!target) {
                 throw new NotFoundError("Agendamento não encontrado")
             }
-            const decision = decideRetryCancellationNotice(noticeStateOf(target), now)
+            const decision = decideRetryCancellationNotice(noticeStateOf(target, await cancellationNotice.isEnabled()), now)
             if (!decision.allowed) {
                 throw decision.error
-            }
-            if (!(await cancellationNotice.isEnabled())) {
-                throw new ConflictError("O aviso de cancelamento está desligado", "NOTIFICATION_NOT_RETRYABLE")
             }
             await notifications.notifyCancellation(String(idOrCode), actorUserId, now)
             return getAppointmentDetail(idOrCode, access, now)

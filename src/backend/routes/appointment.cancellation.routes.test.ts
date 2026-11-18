@@ -344,7 +344,7 @@ describe("appointment.routes: cancelamento pela equipe (HTTP)", () => {
         expect(sendTemplate).not.toHaveBeenCalled()
     })
 
-    it("C3 com o aviso desligado responde 409 NOTIFICATION_NOT_RETRYABLE sem chamar o gateway", async () => {
+    it("C3 com o aviso desligado responde 409 NOTIFICATION_DISABLED sem chamar o gateway", async () => {
         repository = scenario(noticeTarget({ lastCancellationNotice: "FAILED" }))
         noticeEnabled = false
         app = buildApp()
@@ -354,9 +354,25 @@ describe("appointment.routes: cancelamento pela equipe (HTTP)", () => {
             .set("Cookie", cookieFor(OPERATOR))
 
         expect(res.status).toBe(409)
-        expect(res.body.error.code).toBe("NOTIFICATION_NOT_RETRYABLE")
+        expect(res.body.error.code).toBe("NOTIFICATION_DISABLED")
         expect(sendTemplate).not.toHaveBeenCalled()
         expect(repository.notificationCalls).toEqual([])
+    })
+
+    it("o detalhe pela rota com falha antiga e aviso desligado traz FAILED e retry bloqueado com NOTIFICATION_DISABLED; ligado libera", async () => {
+        repository = scenario(noticeTarget({ lastCancellationNotice: "FAILED" }))
+        noticeEnabled = false
+        app = buildApp()
+
+        const off = await request(app).get("/api/v1/appointments/6").set("Cookie", cookieFor(OPERATOR))
+
+        expect(off.body.data.cancellation_notice_status).toBe("FAILED")
+        expect(off.body.data.available_actions.retry_cancellation_notice).toEqual({ allowed: false, code: "NOTIFICATION_DISABLED" })
+
+        noticeEnabled = true
+        const on = await request(app).get("/api/v1/appointments/6").set("Cookie", cookieFor(OPERATOR))
+
+        expect(on.body.data.available_actions.retry_cancellation_notice).toEqual({ allowed: true, code: null })
     })
 
     it("C3 responde 200 com o detalhe quando o último aviso falhou", async () => {
