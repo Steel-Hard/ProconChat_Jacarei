@@ -10,7 +10,7 @@ Consultar as conversas do chatbot, uma a uma: que caminho o cidadão percorreu e
 
 ## Estado da tela
 
-**Ainda não construída (issues #72 e #76).** O sistema já registra as sessões, os passos e os desfechos que esta tela vai mostrar.
+**Entregue (#72).** A tela mostra as sessões, os passos e os desfechos que o sistema registra. A lista "Outras conversas deste número" também já aparece no detalhe (#76).
 
 ## O que é uma sessão
 
@@ -22,21 +22,21 @@ Uma conversa de um cidadão com o chatbot, do início até o desfecho. **Uma ses
 
 ### Busca
 
-Por **código da sessão** ou **protocolo do agendamento**. Buscar por um protocolo encontra tanto a conversa que criou o agendamento quanto as conversas de retorno em que ele foi remarcado ou cancelado. A busca ignora os filtros.
+Por **código da sessão** ou **protocolo do agendamento**, ao vivo e **a partir de 2 caracteres**. Buscar por um protocolo encontra tanto a conversa que criou o agendamento quanto as conversas de retorno em que ele foi consultado, remarcado ou cancelado. A busca ignora os filtros e a dica abaixo do campo passa a dizer "N resultados em todos os períodos, categorias e desfechos".
 
 ### Filtros
 
-- **Período:** os mesmos de Relatórios (7/30/90 dias, Mês atual, Mês anterior, Personalizado).
-- **Categoria.**
+- **Período:** os mesmos de Relatórios (7/30/90 dias, Mês atual, Mês anterior, Personalizado). Não existe a opção "Todos". Os dias contam pelo **fuso de Brasília**, e **"Últimos N dias" inclui hoje** (os últimos 7 dias são hoje e os 6 dias anteriores). "Mês atual" vai do dia 1º até hoje. No Personalizado, o fim nunca passa de hoje e, se as datas vierem trocadas, o sistema as inverte.
+- **Categoria.** Uma conversa de retorno entra na categoria do agendamento que ela consultou, remarcou ou cancelou.
 - **Desfecho**, em chips com contagem e as mesmas cores de Relatórios: Resolvida sem agendamento, Terminou em agendamento, Fora do escopo do PROCON, Sem horário disponível na janela, Não quis agendar, Remarcou ou cancelou agendamento existente, Abandonada, Em andamento.
 
 ### Lista
 
-Colunas: código e início, desfecho (e, para as sessões em andamento, a **etapa atual**), categoria e pergunta finais, e agendamento (protocolo com "Criado", "Remarcou" ou "Cancelou", ou "Não"). **20 por página**, da mais recente para a mais antiga.
+Colunas: código completo e início, desfecho (e, para as sessões em andamento, a **etapa atual**), categoria e pergunta finais, e agendamento (protocolo com "Criado", "Remarcou" ou "Cancelou", ou "Não"). Nas conversas de retorno, a categoria é a do agendamento e a pergunta mostra "Conversa de retorno sobre o agendamento" com o protocolo. **20 por página**, da mais recente para a mais antiga. O rodapé mostra o intervalo exibido e o período aplicado, por exemplo "1–20 de 45 sessões · Período: 21/10/2026 a 19/11/2026". Na busca, o período não é mostrado.
 
-### Detalhe da sessão (janela)
+### Detalhe da sessão (gaveta)
 
-**Linha do tempo** com os passos e horários:
+Abre numa **gaveta à direita**, com o código, o selo do desfecho e "Iniciada em" no cabeçalho, o aviso "Somente leitura" e a **linha do tempo** com os passos e horários. Cada passo tem um ponto colorido, e o último ganha a cor do desfecho:
 
 | Passo | Detalhe |
 |---|---|
@@ -57,7 +57,7 @@ Colunas: código e início, desfecho (e, para as sessões em andamento, a **etap
 
 **Outras conversas deste número:** lista das outras sessões do mesmo cidadão (código, data e desfecho), com link. A tela explica: "Identificadas pelo mesmo número de WhatsApp, que não é exibido nem armazenado de forma legível." Uma conversa **anonimizada** por prazo ([decisão 002](../decisoes/002-lgpd-dados-pessoais.md#anonimização-por-prazo)) não tem mais o número guardado: ela não aparece nas "outras conversas" de ninguém e, aberta, mostra o estado vazio desse bloco, sem erro.
 
-Os links para agendamentos só aparecem para quem tem **Ver agendamentos**.
+Os links para agendamentos, inclusive o botão "Abrir agendamento" no rodapé da gaveta (só nas conversas que criaram o agendamento), só aparecem para quem tem **Ver agendamentos**.
 
 ## O que não existe de propósito
 
