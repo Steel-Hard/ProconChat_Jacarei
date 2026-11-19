@@ -54,6 +54,7 @@ const EMPTY_SESSIONS_RESPONSE = {
             abandoned: 0,
             in_progress: 0
         },
+        range: { from: "2026-10-21", to: "2026-11-19" },
         categories: []
     }
 }
