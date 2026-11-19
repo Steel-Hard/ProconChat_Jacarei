@@ -22,12 +22,20 @@ const staffWithAllPermissions: PanelAccount = {
 }
 
 describe("sidebarNavGroups com as flags de produção", () => {
-    it("Agendamentos, Relatórios, Horários de atendimento, Documentos, Usuários e WhatsApp estão liberados", () => {
+    it("as telas de produção prontas incluem Sessões", () => {
         expect(
             Object.entries(NAV_ITEMS_READY)
                 .filter(([, ready]) => ready)
                 .map(([key]) => key)
-        ).toEqual(["appointments", "reports", "schedule", "documents", "users", "whatsapp"])
+        ).toEqual([
+            "appointments",
+            "reports",
+            "sessions",
+            "schedule",
+            "documents",
+            "users",
+            "whatsapp"
+        ])
     })
 
     it("o Admin vê Agendamentos e Relatórios em Operação e as outras telas prontas em Configurações", () => {
@@ -38,6 +46,10 @@ describe("sidebarNavGroups com as flags de produção", () => {
                     { key: "appointments", path: ROUTES.appointments },
                     { key: "reports", path: ROUTES.reports }
                 ]
+            },
+            {
+                key: "chatbot",
+                items: [{ key: "sessions", path: ROUTES.sessions }]
             },
             {
                 key: "settings",
@@ -59,6 +71,10 @@ describe("sidebarNavGroups com as flags de produção", () => {
                     { key: "appointments", path: ROUTES.appointments },
                     { key: "reports", path: ROUTES.reports }
                 ]
+            },
+            {
+                key: "chatbot",
+                items: [{ key: "sessions", path: ROUTES.sessions }]
             },
             {
                 key: "settings",
@@ -89,6 +105,10 @@ describe("sidebarNavGroups com as flags de produção", () => {
                     { key: "appointments", path: ROUTES.appointments },
                     { key: "reports", path: ROUTES.reports }
                 ]
+            },
+            {
+                key: "chatbot",
+                items: [{ key: "sessions", path: ROUTES.sessions }]
             }
         ])
     })

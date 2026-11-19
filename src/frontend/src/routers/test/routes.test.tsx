@@ -48,10 +48,7 @@ function renderRoutes(initialEntries: string[], preloadedState?: Partial<RootSta
     return { ...result, router }
 }
 
-const underConstructionRoutes: Array<[string, string]> = [
-    [ROUTES.content, "Conteúdo"],
-    [ROUTES.sessions, "Sessões"]
-]
+const underConstructionRoutes: Array<[string, string]> = [[ROUTES.content, "Conteúdo"]]
 
 const protectedRoutes: Array<[string, string]> = [
     [ROUTES.dashboard, "Painel"],
@@ -59,6 +56,7 @@ const protectedRoutes: Array<[string, string]> = [
     [ROUTES.reports, "Relatórios"],
     [ROUTES.appointments, "Agendamentos"],
     ["/agendamentos/1", "Detalhe do agendamento"],
+    [ROUTES.sessions, "Sessões"],
     [ROUTES.schedule, "Horários de atendimento"],
     [ROUTES.documents, "Documentos para atendimento presencial"],
     [ROUTES.users, "Usuários"],
@@ -96,6 +94,33 @@ function stubLoginAs(permissions: PermissionKey[]) {
             })
         }
 
+        if (url.includes("/api/v1/sessions")) {
+            return new Response(
+                JSON.stringify({
+                    data: {
+                        items: [],
+                        total: 0,
+                        page: 1,
+                        limit: 20,
+                        totalPages: 0,
+                        chipCounts: {
+                            all: 0,
+                            resolved: 0,
+                            scheduled: 0,
+                            out_of_scope: 0,
+                            no_slot: 0,
+                            declined: 0,
+                            managed_appointment: 0,
+                            abandoned: 0,
+                            in_progress: 0
+                        },
+                        categories: []
+                    }
+                }),
+                { status: 200, headers: { "Content-Type": "application/json" } }
+            )
+        }
+
         if (url.includes("/api/v1/reports?")) {
             return new Response(
                 JSON.stringify({
@@ -107,7 +132,11 @@ function stubLoginAs(permissions: PermissionKey[]) {
                             daysCount: 30,
                             today: "2026-11-07"
                         },
-                        conversations: { total: 0, dailyAverage: 0, appointmentsCreated: 0 },
+                        conversations: {
+                            total: 0,
+                            dailyAverage: 0,
+                            appointmentsCreated: 0
+                        },
                         outcomes: [],
                         topCategories: [],
                         topQuestions: [],
@@ -475,11 +504,12 @@ describe("routes", () => {
     it("mostra o aviso quando a conta que só vê sessões entra sem redirect", async () => {
         const user = userEvent.setup()
         stubLoginAs(["sessions.view"])
-        renderRoutes([ROUTES.login], withoutSession)
+        const { router } = renderRoutes([ROUTES.login], withoutSession)
 
         await submitLogin(user)
 
-        expect(await screen.findByRole("heading", { name: NO_ACCESS_HEADING })).toBeInTheDocument()
+        expect(await screen.findByRole("heading", { name: "Sessões" })).toBeInTheDocument()
+        expect(router.state.location.pathname).toBe(ROUTES.sessions)
         expect(screen.queryByRole("heading", { name: "404 - Not Found" })).not.toBeInTheDocument()
     })
 

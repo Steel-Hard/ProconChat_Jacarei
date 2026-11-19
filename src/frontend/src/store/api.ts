@@ -5,6 +5,8 @@ const api = createApi({
     reducerPath: "api",
     baseQuery: baseQueryWithSessionRenewal,
     tagTypes: [
+        "Session",
+        "SessionList",
         "Appointment",
         "AppointmentList",
         "UserList",

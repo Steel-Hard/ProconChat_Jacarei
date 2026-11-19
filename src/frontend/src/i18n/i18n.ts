@@ -31,6 +31,7 @@ void i18n.init({
         "notFound",
         "privacyPolicy",
         "schedule",
+        "sessions",
         "underConstruction",
         "users",
         "whatsapp"

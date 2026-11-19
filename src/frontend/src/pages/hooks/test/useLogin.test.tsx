@@ -78,14 +78,14 @@ describe("useLogin", () => {
         })
     })
 
-    it("leva à tela inicial a conta que só vê sessões", async () => {
+    it("leva para Sessões a conta que só tem permissão para ver sessões", async () => {
         stubFetch(() => jsonResponse(200, { data: { user: userWith(["sessions.view"]) } }))
         const { result, store } = renderLogin()
 
         await fillAndSubmit(result)
 
         expect(store.getState().account.status).toBe("authenticated")
-        expect(result.current.login.destination).toBe("/")
+        expect(result.current.login.destination).toBe("/sessoes")
     })
 
     it("leva à tela inicial a conta que só gerencia conteúdo", async () => {

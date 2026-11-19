@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react"
 import type AppointmentTimelineStepView from "@/types/appointments/AppointmentTimelineStepView.types"
 import css from "@/styles/components/appointmentDetailSection.module.css"
 
@@ -6,10 +7,18 @@ type AppointmentTimelineStepProps = {
     aiLabel: string
 }
 
+function toneStyle(tone: AppointmentTimelineStepView["tone"]): CSSProperties | undefined {
+    if (tone === undefined) {
+        return undefined
+    }
+
+    return { "--step-dot": tone.dot, "--step-ring": tone.ring } as CSSProperties
+}
+
 function AppointmentTimelineStep({ step, aiLabel }: AppointmentTimelineStepProps) {
     return (
         <li className={css.step}>
-            <span className={css.dot} aria-hidden="true" />
+            <span className={css.dot} style={toneStyle(step.tone)} aria-hidden="true" />
             <div className={css.stepBody}>
                 <div className={css.stepHead}>
                     <span className={css.stepTitle}>{step.title}</span>
@@ -17,6 +26,11 @@ function AppointmentTimelineStep({ step, aiLabel }: AppointmentTimelineStepProps
                     {step.ai ? <span className={css.ai}>{aiLabel}</span> : null}
                 </div>
                 {step.detail ? <p className={css.stepDetail}>{step.detail}</p> : null}
+                {step.action ? (
+                    <button type="button" className={css.stepAction} onClick={step.action.onClick}>
+                        {step.action.label}
+                    </button>
+                ) : null}
             </div>
         </li>
     )
