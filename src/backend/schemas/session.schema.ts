@@ -19,12 +19,12 @@ export const listSessionsQuerySchema = z.object({
     .transform((value) => (value === "" ? undefined : value))
     .optional(),
   period: z
-    .enum(["all", "7", "30", "90", "current_month", "previous_month", "custom"])
+    .enum(["7", "30", "90", "current_month", "previous_month", "custom"])
     .default("30"),
   category: z.coerce.number().int().positive().optional(),
   outcome: z.enum(outcomes).default("all"),
-  from: z.string().trim().optional(),
-  to: z.string().trim().optional(),
+  from: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  to: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });

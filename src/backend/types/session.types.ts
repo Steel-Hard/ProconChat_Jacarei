@@ -9,7 +9,7 @@ export type SessionOutcome =
   | "ABANDONED";
 
 export type SessionPeriod =
-  "all" | "7" | "30" | "90" | "current_month" | "previous_month" | "custom";
+  "7" | "30" | "90" | "current_month" | "previous_month" | "custom";
 
 export interface SessionListFilters {
   search?: string;

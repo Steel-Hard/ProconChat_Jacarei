@@ -1,5 +1,10 @@
 import getPool from "../db/connection";
 import NotFoundError from "../errors/NotFoundError";
+import {
+  addDaysToDateString,
+  parseLocalDate,
+  toLocalDateString,
+} from "../utils/date.utils";
 import type {
   SessionDetail,
   SessionListFilters,
@@ -7,41 +12,84 @@ import type {
   SessionOutcome,
 } from "../types/session.types";
 
+export function resolveSessionRange(
+  filters: Pick<SessionListFilters, "period" | "from" | "to">,
+  now: Date,
+): { start: Date; end: Date } {
+  const today = toLocalDateString(now);
+  const dayStart = (day: string) => parseLocalDate(day, "00:00");
+  const firstOfMonth = (day: string) => `${day.slice(0, 8)}01`;
+  const tomorrow = dayStart(addDaysToDateString(today, 1));
+
+  if (filters.period === "current_month") {
+    return { start: dayStart(firstOfMonth(today)), end: tomorrow };
+  }
+  if (filters.period === "previous_month") {
+    const currentFirst = firstOfMonth(today);
+    const previousLast = addDaysToDateString(currentFirst, -1);
+    return {
+      start: dayStart(firstOfMonth(previousLast)),
+      end: dayStart(currentFirst),
+    };
+  }
+  if (filters.period === "custom") {
+    let first = filters.from || addDaysToDateString(today, -30);
+    let last = filters.to || today;
+    if (last > today) last = today;
+    if (first > last) [first, last] = [last, first];
+    return {
+      start: dayStart(first),
+      end: dayStart(addDaysToDateString(last, 1)),
+    };
+  }
+  const days = Number(filters.period);
+  return {
+    start: dayStart(addDaysToDateString(today, -(days - 1))),
+    end: tomorrow,
+  };
+}
+
 function periodCondition(
   filters: SessionListFilters,
   now: Date,
   params: unknown[],
-): string | null {
-  if (filters.period === "all") return null;
-  if (filters.period === "custom") {
-    const parts: string[] = [];
-    if (filters.from) {
-      params.push(new Date(`${filters.from}T00:00:00.000Z`));
-      parts.push(`s.started_at >= $${params.length}`);
-    }
-    if (filters.to) {
-      params.push(new Date(`${filters.to}T23:59:59.999Z`));
-      parts.push(`s.started_at <= $${params.length}`);
-    }
-    return parts.length ? parts.join(" AND ") : null;
-  }
-  if (filters.period === "current_month") {
-    params.push(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)));
-    params.push(
-      new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)),
-    );
-    return `s.started_at >= $${params.length - 1} AND s.started_at < $${params.length}`;
-  }
-  if (filters.period === "previous_month") {
-    params.push(
-      new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)),
-    );
-    params.push(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)));
-    return `s.started_at >= $${params.length - 1} AND s.started_at < $${params.length}`;
-  }
-  const days = Number(filters.period);
-  params.push(new Date(now.getTime() - days * 24 * 60 * 60 * 1000));
-  return `s.started_at >= $${params.length}`;
+): string {
+  const range = resolveSessionRange(filters, now);
+  params.push(range.start);
+  params.push(range.end);
+  return `s.started_at >= $${params.length - 1} AND s.started_at < $${params.length}`;
+}
+
+function searchCondition(paramIndex: number): string {
+  return `(
+                UPPER(REPLACE(s.session_code::text, '-', '')) LIKE UPPER('%' || REPLACE($${paramIndex}, '-', '') || '%')
+                OR EXISTS (
+                    SELECT 1 FROM Appointments apt
+                    WHERE UPPER(SUBSTRING(apt.appointment_code::text, 1, 8)) LIKE UPPER('%' || $${paramIndex} || '%')
+                      AND (
+                        apt.session_id = s.id
+                        OR EXISTS (
+                            SELECT 1 FROM ConversationEvents ce
+                            WHERE ce.session_id = s.id AND ce.appointment_id = apt.id
+                        )
+                      )
+                )
+            )`;
+}
+
+function categoryCondition(paramIndex: number): string {
+  return `(
+                EXISTS (
+                    SELECT 1 FROM ConversationEvents ce
+                    WHERE ce.session_id = s.id AND ce.category_id = $${paramIndex}
+                )
+                OR EXISTS (
+                    SELECT 1 FROM ConversationEvents ce
+                    JOIN Appointments apt ON apt.id = ce.appointment_id
+                    JOIN Questions aq ON aq.id = apt.question_id
+                    WHERE ce.session_id = s.id AND aq.category_id = $${paramIndex}
+                )
+            )`;
 }
 
 function appointmentAction(
@@ -62,24 +110,12 @@ export class SessionQueryRepository {
     const search = filters.search?.trim();
     if (search) {
       params.push(search);
-      const searchParam = `$${params.length}`;
-      conditions.push(`(
-                UPPER(REPLACE(s.session_code::text, '-', '')) LIKE UPPER('%' || REPLACE(${searchParam}, '-', '') || '%')
-                OR EXISTS (
-                    SELECT 1 FROM Appointments apt
-                    WHERE apt.session_id = s.id
-                      AND UPPER(SUBSTRING(apt.appointment_code::text, 1, 8)) LIKE UPPER('%' || ${searchParam} || '%')
-                )
-            )`);
+      conditions.push(searchCondition(params.length));
     } else {
-      const period = periodCondition(filters, now, params);
-      if (period) conditions.push(period);
+      conditions.push(periodCondition(filters, now, params));
       if (filters.categoryId) {
         params.push(filters.categoryId);
-        conditions.push(`EXISTS (
-                    SELECT 1 FROM ConversationEvents ce
-                    WHERE ce.session_id = s.id AND ce.category_id = $${params.length}
-                )`);
+        conditions.push(categoryCondition(params.length));
       }
       if (filters.outcome !== "all") {
         params.push(filters.outcome);
@@ -118,7 +154,7 @@ export class SessionQueryRepository {
             )
             SELECT s.id::text AS id, s.session_code::text AS code, s.started_at, s.outcome,
                    CASE WHEN s.status = 'IN_PROGRESS' THEN s.current_step ELSE NULL END AS current_step,
-                   c.title AS category_name, q.question AS question_title,
+                   COALESCE(c.title, ac.title) AS category_name, q.question AS question_title,
                    apt.id::text AS appointment_id,
                    UPPER(SUBSTRING(apt.appointment_code::text, 1, 8)) AS protocol,
                    (SELECT ce.type::text FROM ConversationEvents ce
@@ -146,6 +182,8 @@ export class SessionQueryRepository {
                 )
                 ORDER BY a.id DESC LIMIT 1
             ) apt ON TRUE
+            LEFT JOIN Questions aq ON aq.id = apt.question_id
+            LEFT JOIN Categories ac ON ac.id = aq.category_id
             ORDER BY s.started_at DESC, s.id DESC
             LIMIT ${limitParam} OFFSET ${offsetParam}`,
       params,
@@ -154,25 +192,14 @@ export class SessionQueryRepository {
     const chipParams: unknown[] = [];
     const chipConditions: string[] = [];
     if (!search) {
-      const period = periodCondition(filters, now, chipParams);
-      if (period) chipConditions.push(period);
+      chipConditions.push(periodCondition(filters, now, chipParams));
       if (filters.categoryId) {
         chipParams.push(filters.categoryId);
-        chipConditions.push(`EXISTS (
-                    SELECT 1 FROM ConversationEvents ce
-                    WHERE ce.session_id = s.id AND ce.category_id = $${chipParams.length}
-                )`);
+        chipConditions.push(categoryCondition(chipParams.length));
       }
     } else {
       chipParams.push(search);
-      chipConditions.push(`(
-                UPPER(REPLACE(s.session_code::text, '-', '')) LIKE UPPER('%' || REPLACE($1, '-', '') || '%')
-                OR EXISTS (
-                    SELECT 1 FROM Appointments apt
-                    WHERE apt.session_id = s.id
-                      AND UPPER(SUBSTRING(apt.appointment_code::text, 1, 8)) LIKE UPPER('%' || $1 || '%')
-                )
-            )`);
+      chipConditions.push(searchCondition(chipParams.length));
     }
     const chipWhere = chipConditions.length
       ? `WHERE ${chipConditions.join(" AND ")}`
@@ -316,8 +343,11 @@ export class SessionQueryRepository {
       id: string;
       protocol: string;
       action: string;
+      category_name: string | null;
     }>(
       `SELECT a.id::text AS id, UPPER(SUBSTRING(a.appointment_code::text, 1, 8)) AS protocol,
+                    (SELECT c.title FROM Questions aq JOIN Categories c ON c.id = aq.category_id
+                     WHERE aq.id = a.question_id) AS category_name,
                     (SELECT ce.type::text FROM ConversationEvents ce
                      WHERE ce.session_id = $1 AND ce.appointment_id = a.id
                        AND ce.type IN ('APPOINTMENT_CREATED','APPOINTMENT_RESCHEDULED','APPOINTMENT_CANCELED')
@@ -339,7 +369,7 @@ export class SessionQueryRepository {
       ended_at: row.ended_at ? new Date(row.ended_at).toISOString() : null,
       outcome: row.outcome,
       current_step: row.outcome === "IN_PROGRESS" ? row.current_step : null,
-      category_name: row.category_name,
+      category_name: row.category_name ?? appointmentRow?.category_name ?? null,
       question_title: row.question_title,
       appointment: appointmentRow
         ? {
