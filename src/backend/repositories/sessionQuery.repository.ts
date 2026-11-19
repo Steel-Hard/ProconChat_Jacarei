@@ -122,6 +122,7 @@ export class SessionQueryRepository {
         conditions.push(`s.outcome = $${params.length}::session_outcome`);
       }
     }
+    const range = resolveSessionRange(filters, now);
     const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
 
     const countParams = [...params];
@@ -261,6 +262,10 @@ export class SessionQueryRepository {
       limit,
       totalPages: Math.ceil(total / limit),
       chipCounts,
+      range: {
+        from: toLocalDateString(range.start),
+        to: toLocalDateString(new Date(range.end.getTime() - 1)),
+      },
       categories: categories.rows.map((row) => ({
         id: Number(row.id),
         name: row.name,

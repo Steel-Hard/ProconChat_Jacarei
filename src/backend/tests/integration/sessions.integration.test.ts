@@ -32,6 +32,7 @@ interface ListBody {
         limit: number
         totalPages: number
         chipCounts: Record<string, number>
+        range: { from: string; to: string }
         categories: { id: number; name: string }[]
     }
 }
@@ -400,6 +401,7 @@ describe("Sessions integration tests (Postgres)", () => {
         )
         expect(data.total).toBe(2)
         expect(codesOf(data.items).sort()).toEqual([code("s1"), code("sAnon")].sort())
+        expect(data.range).toEqual({ from: "2021-05-10", to: "2021-05-14" })
         expect(data.chipCounts).toEqual({
             all: 7,
             resolved: 2,
@@ -485,7 +487,9 @@ describe("Sessions integration tests (Postgres)", () => {
     })
 
     it("conta os últimos N dias incluindo hoje", async () => {
-        const seven = codesOf((await list(`period=7&category=${catRelId}&limit=100`)).items)
+        const sevenData = await list(`period=7&category=${catRelId}&limit=100`)
+        expect(sevenData.range).toEqual({ from: addDaysToDateString(today, -6), to: today })
+        const seven = codesOf(sevenData.items)
         expect(seven).toContain(code("rel0"))
         expect(seven).toContain(code("rel6"))
         expect(seven).not.toContain(code("rel7"))

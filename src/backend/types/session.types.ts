@@ -56,6 +56,7 @@ export interface SessionListResponse {
   limit: number;
   totalPages: number;
   chipCounts: SessionChipCounts;
+  range: { from: string; to: string };
   categories: { id: number; name: string }[];
 }
 
