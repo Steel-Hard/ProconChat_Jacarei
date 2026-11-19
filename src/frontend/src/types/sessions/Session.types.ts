@@ -9,8 +9,7 @@ export type SessionOutcome =
     | "ABANDONED"
 
 export type SessionOutcomeFilter = "all" | SessionOutcome
-export type SessionPeriod =
-    "all" | "7" | "30" | "90" | "current_month" | "previous_month" | "custom"
+export type SessionPeriod = "7" | "30" | "90" | "current_month" | "previous_month" | "custom"
 
 export type SessionAppointment = {
     id: string
@@ -72,6 +71,7 @@ export type SessionList = {
         | "in_progress",
         number
     >
+    range: { from: string; to: string }
     categories: { id: number; name: string }[]
 }
 
