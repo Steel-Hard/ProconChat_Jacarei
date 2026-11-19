@@ -377,6 +377,9 @@ function useSchedule() {
             toggleReminder: draft.toggleReminder,
             setNewBlockDate: draft.setNewBlockDate,
             setNewBlockDescription: draft.setNewBlockDescription,
+            setNewBlockFullDay: draft.setNewBlockFullDay,
+            setNewBlockStartTime: draft.setNewBlockStartTime,
+            setNewBlockEndTime: draft.setNewBlockEndTime,
             addBlock: draft.addBlock,
             removeBlock: draft.removeBlock
         }

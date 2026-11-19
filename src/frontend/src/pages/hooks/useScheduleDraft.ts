@@ -22,7 +22,7 @@ type TextField =
 const MAX_RANGES = 3
 const FIRST_RANGE = { startTime: "08:30", endTime: "11:30" }
 const NEXT_RANGE = { startTime: "13:30", endTime: "16:30" }
-const EMPTY_BLOCK = { date: "", description: "" }
+const EMPTY_BLOCK = { date: "", description: "", fullDay: true, startTime: "", endTime: "" }
 
 function useScheduleDraft(view: ScheduleConfigView | undefined, bookedDays: BookedDay[]) {
     const [draft, setDraft] = useState<ScheduleDraft | null>(null)
@@ -117,7 +117,12 @@ function useScheduleDraft(view: ScheduleConfigView | undefined, bookedDays: Book
             return
         }
 
-        const problem = validateNewBlock(current.blockedDates, bookedDays, newBlock)
+        const problem = validateNewBlock(
+            current.blockedDates,
+            bookedDays,
+            newBlock,
+            current.slotMinutes
+        )
         setNewBlockProblem(problem)
 
         if (problem !== null) {
@@ -130,8 +135,8 @@ function useScheduleDraft(view: ScheduleConfigView | undefined, bookedDays: Book
                 ...base.blockedDates,
                 {
                     date: newBlock.date,
-                    startTime: null,
-                    endTime: null,
+                    startTime: newBlock.fullDay ? null : newBlock.startTime,
+                    endTime: newBlock.fullDay ? null : newBlock.endTime,
                     description: newBlock.description.trim()
                 }
             ]
@@ -183,6 +188,10 @@ function useScheduleDraft(view: ScheduleConfigView | undefined, bookedDays: Book
         setNewBlockDate: (date: string) => setNewBlock((value) => ({ ...value, date })),
         setNewBlockDescription: (description: string) =>
             setNewBlock((value) => ({ ...value, description })),
+        setNewBlockFullDay: (fullDay: boolean) => setNewBlock((value) => ({ ...value, fullDay })),
+        setNewBlockStartTime: (startTime: string) =>
+            setNewBlock((value) => ({ ...value, startTime })),
+        setNewBlockEndTime: (endTime: string) => setNewBlock((value) => ({ ...value, endTime })),
         addBlock,
         removeBlock,
         discard,

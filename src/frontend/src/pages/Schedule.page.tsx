@@ -104,9 +104,15 @@ function SchedulePage() {
                                 blocks={page.blocks}
                                 newDate={page.newBlock.date}
                                 newDescription={page.newBlock.description}
+                                newFullDay={page.newBlock.fullDay}
+                                newStartTime={page.newBlock.startTime}
+                                newEndTime={page.newBlock.endTime}
                                 newError={page.newBlockError}
                                 onChangeNewDate={actions.setNewBlockDate}
                                 onChangeNewDescription={actions.setNewBlockDescription}
+                                onChangeNewFullDay={actions.setNewBlockFullDay}
+                                onChangeNewStartTime={actions.setNewBlockStartTime}
+                                onChangeNewEndTime={actions.setNewBlockEndTime}
                                 onAdd={actions.addBlock}
                                 onRemove={actions.removeBlock}
                             />

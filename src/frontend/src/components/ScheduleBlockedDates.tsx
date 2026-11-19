@@ -8,9 +8,15 @@ type ScheduleBlockedDatesProps = {
     blocks: ScheduleBlockedDateView[]
     newDate: string
     newDescription: string
+    newFullDay: boolean
+    newStartTime: string
+    newEndTime: string
     newError: string | null
     onChangeNewDate: (value: string) => void
     onChangeNewDescription: (value: string) => void
+    onChangeNewFullDay: (value: boolean) => void
+    onChangeNewStartTime: (value: string) => void
+    onChangeNewEndTime: (value: string) => void
     onAdd: () => void
     onRemove: (index: number) => void
 }
@@ -19,17 +25,29 @@ function ScheduleBlockedDates({
     blocks,
     newDate,
     newDescription,
+    newFullDay,
+    newStartTime,
+    newEndTime,
     newError,
     onChangeNewDate,
     onChangeNewDescription,
+    onChangeNewFullDay,
+    onChangeNewStartTime,
+    onChangeNewEndTime,
     onAdd,
     onRemove
 }: ScheduleBlockedDatesProps) {
     const { t } = useTranslation("schedule")
     const dateId = useId()
     const descriptionId = useId()
+    const fullDayId = useId()
+    const startTimeId = useId()
+    const endTimeId = useId()
     const errorId = useId()
     const invalid = newError !== null
+    const periodInvalid =
+        newError === t("blocked.problems.periodRequired") ||
+        newError === t("blocked.problems.periodInvalid")
 
     return (
         <section className={css.section}>
@@ -83,6 +101,48 @@ function ScheduleBlockedDates({
                         {t("blocked.add")}
                     </button>
                 </div>
+                <label htmlFor={fullDayId} className={css.fullDayToggle}>
+                    <input
+                        id={fullDayId}
+                        type="checkbox"
+                        className={css.checkbox}
+                        checked={newFullDay}
+                        onChange={(event) => onChangeNewFullDay(event.target.checked)}
+                    />
+                    {t("blocked.fullDayToggle")}
+                </label>
+                {!newFullDay ? (
+                    <div className={css.periodFields}>
+                        <div className={css.field}>
+                            <label htmlFor={startTimeId} className={css.label}>
+                                {t("blocked.startTime")}
+                            </label>
+                            <input
+                                id={startTimeId}
+                                type="time"
+                                className={css.textInput}
+                                value={newStartTime}
+                                aria-invalid={periodInvalid || undefined}
+                                aria-describedby={periodInvalid ? errorId : undefined}
+                                onChange={(event) => onChangeNewStartTime(event.target.value)}
+                            />
+                        </div>
+                        <div className={css.field}>
+                            <label htmlFor={endTimeId} className={css.label}>
+                                {t("blocked.endTime")}
+                            </label>
+                            <input
+                                id={endTimeId}
+                                type="time"
+                                className={css.textInput}
+                                value={newEndTime}
+                                aria-invalid={periodInvalid || undefined}
+                                aria-describedby={periodInvalid ? errorId : undefined}
+                                onChange={(event) => onChangeNewEndTime(event.target.value)}
+                            />
+                        </div>
+                    </div>
+                ) : null}
                 {invalid ? (
                     <p id={errorId} role="alert" className={css.rangeError}>
                         {newError}
