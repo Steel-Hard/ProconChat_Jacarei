@@ -8,22 +8,29 @@ Produção: <https://3.150.166.93.sslip.io>. Operação e deploy: [`.docs/infra/
 Documentação do projeto: [`.docs/README.md`](.docs/README.md) (requisitos, decisões, regras das telas,
 arquitetura, banco e protótipo do painel).
 
-# Chatbot para Orientação ao Consumidor via WhatsApp
+**Chatbot para Orientação ao Consumidor via WhatsApp**
 
-<div align="center">
-<h1>
-<a href="#descrição">Descrição</a> || 
-<a href="#tecnologias">Tecnologias</a> || 
-<a href="#dev-team">Dev Team</a> || 
-<a href="#product-backlog">Product Backlog</a> || 
-<a href="#scrum">Scrum</a> || 
-<a href="#instalação">Instalação</a>
-</h1>
-</div>
+## Sumário
+
+- [Descrição](#descrição)
+- [Objetivos](#objetivos)
+- [Tecnologias](#tecnologias)
+- [Scrum](#scrum)
+- [Product Backlog](#product-backlog)
+- [Restrições do Projeto](#restrições-do-projeto)
+- [Definition of Done](#definition-of-done)
+- [User Stories](#user-stories)
+- [Instalação](#instalação)
+- [Testes e validação](#testes-e-validação)
+- [Documentação](#documentação)
+- [Dev Team](#dev-team)
+- [Parceiro](#parceiro)
+- [Convenções de Commit](#convenções-de-commit)
+- [Licença](#licença)
 
 ---
 
-## 📝 Descrição
+## Descrição
 
 O **ProconChat Jacareí** é um projeto acadêmico desenvolvido no 6º
 semestre do curso de Desenvolvimento de Software Multiplataforma da
@@ -57,7 +64,7 @@ para a consulta.
 
 ---
 
-## 🎯 Objetivos
+## Objetivos
 
 O projeto busca:
 
@@ -78,36 +85,51 @@ O projeto busca:
 
 ---
 
-## 🛠️ Tecnologias
+## Tecnologias
+
+Estado do código integrado à `develop`, revisado em **19/11/2026**.
 
 | Camada | Tecnologia | Estado |
 |---|---|---|
 | Backend e Gateway | Node.js + TypeScript (Express), Vitest | Implementado |
 | Banco | PostgreSQL 15, migrations com `node-pg-migrate` | Implementado |
-| LLM | Ollama + `llama3.2:3b`, local (RP05: nenhuma API externa de LLM) | Serviço implementado; ligado ao fluxo na Sprint 3 |
+| LLM | Ollama + `llama3.2:3b`, local (RP05: nenhuma API externa de LLM) | Integrado ao fluxo; uso opcional por pergunta, identificação de IA e fallback para a resposta oficial |
 | WhatsApp | **WhatsApp Cloud API** oficial | Implementado |
-| Painel web | React 19 + Vite + TypeScript, a partir do `template-react` | Parcial: login, "Minha conta", Agendamentos, Detalhe do agendamento e WhatsApp; demais telas na Sprint 3 |
+| Painel web | React 19 + Vite + TypeScript, a partir do `template-react` | Login, "Minha conta", Agendamentos, Detalhe, Relatórios básicos, Horários, Documentos, Usuários e WhatsApp implementados; Dashboard, Conteúdo e Sessões pendentes |
 | Infraestrutura | Docker Compose, GitHub Actions (CI/CD), VM na nuvem com HTTPS | Implementado |
 
-Detalhes em [`.docs/architecture/architecture.md`](.docs/architecture/architecture.md).
+O LLM reescreve somente a explicação da resposta oficial; as decisões do fluxo continuam no
+Motor de Decisão. Quando a IA não pode ser usada, o cidadão recebe a resposta oficial completa.
+O ambiente local sobe o Ollama; na VM de produção, o modo padrão documentado é **sem IA**, por
+limitação de memória. A geração depende de um Ollama disponível e pode esgotar o tempo limite em CPU.
+Veja a [decisão sobre o LLM](.docs/decisoes/009-complemento-por-llm.md) e os
+[modos de operação em produção](.docs/infra/deploy.md).
+
+Detalhes da arquitetura em [`.docs/architecture/architecture.md`](.docs/architecture/architecture.md).
 
 ---
 
-## 🔄 Scrum
+## Scrum
 
 | Sprint |  Início  |    Fim    |     Status     |          📉 Burndown Chart          | Sprint Backlog/Review |
 | :----: | :--------: | :--------: | :-------------: | :----------------------------------: | :-------------------: |
 |   1   | 10/08/2026 | 14/09/2026 | 🟢 Concluída | [Ver Gráfico](.docs/sprints/sprint1/burndown.svg) | [Ver](.docs/sprints/sprint1/README.md) |
 |   2   | 15/09/2026 | 19/10/2026 | 🟢 Concluída | [Ver Gráfico](.docs/sprints/sprint2/burndown.svg) | [Ver](.docs/sprints/sprint2/README.md) |
-|   3   | 20/10/2026 | 23/11/2026 |   ⚪ Pendente   | — | — |
+|   3   | 20/10/2026 | 23/11/2026 | 🟡 Em andamento | — | — |
 
 > O gráfico e as tabelas de origem do burndown da Sprint 1 estão em
 > [`.docs/sprints/sprint1/05-burndown.md`](.docs/sprints/sprint1/05-burndown.md). Os da Sprint 2 (18 de 18
 > issues concluídas) estão em [`.docs/sprints/sprint2/burndown.md`](.docs/sprints/sprint2/burndown.md).
 
+A Sprint 3 está em andamento em 19/11/2026, com review final prevista para 23/11/2026.
+O backlog e o acompanhamento das tarefas estão no [Project 6DSM](https://github.com/orgs/Steel-Hard/projects/2).
+
 ---
 
-## 📋 Product Backlog
+## Product Backlog
+
+Os status abaixo refletem o código em 19/11/2026. **Implementado** indica que a funcionalidade
+está integrada à `develop`; a homologação com o PROCON e a ativação em produção são etapas distintas.
 
 | Número | Recurso Funcional         |                                  Síntese do Requisito                                  |   Status   |
 | :-----: | ------------------------- | :--------------------------------------------------------------------------------------: | :---------: |
@@ -115,29 +137,31 @@ Detalhes em [`.docs/architecture/architecture.md`](.docs/architecture/architectu
 |  RF02  | Tabela de Decisões       |       Apresentar opções de resposta com base nos fluxos fornecidos pelo PROCON.       | 🟢 Concluído |
 |  RF03  | Fluxos Decisórios        |       Apresentar perguntas e alternativas de maneira sequencial e compreensível.       | 🟢 Concluído |
 |  RF04  | Resposta Orientadora      |      Gerar ao final do fluxo um resumo do caso e os próximos passos recomendados.      | 🟢 Concluído |
-|  RF05  | Complemento com LLM       | Permitir geração textual explicativa por LLM dentro dos limites definidos pelo PROCON. | 🟡 Parcial |
-|  RF06  | Registro de Interações  |       Registrar interações para análise posterior dos fluxos mais utilizados.       | 🟡 Parcial |
-|  RF07  | Agendamento Presencial    |       Realizar agendamento quando o chatbot não solucionar a dúvida do cidadão.       | 🟡 Parcial |
-|  RF08  | Gerenciamento Web         |       Disponibilizar interface web para gerenciamento dos atendimentos agendados.       | 🟡 Parcial |
+|  RF05  | Complemento com LLM       | Gerar explicação por LLM local quando permitido pela pergunta, com identificação de IA e fallback oficial. | 🟢 Implementado |
+|  RF06  | Registro de Interações  | Registrar eventos e desfechos e oferecer relatórios básicos; telas de Sessões e Dashboard pendentes. | 🟡 Parcial |
+|  RF07  | Agendamento Presencial    | Agendar quando a orientação não resolver a dúvida, com cancelamento e remarcação pelo cidadão e horários configuráveis no painel. | 🟢 Implementado |
+|  RF08  | Gerenciamento Web         | Gerenciar atendimentos no painel, com calendário, atribuição, observações e cancelamento; Dashboard, Conteúdo e Sessões pendentes. | 🟡 Parcial |
 
 | Número | Recurso Não-Funcional |                                   Síntese do Requisito                                   |   Status   |
 | :-----: | ---------------------- | :---------------------------------------------------------------------------------------: | :---------: |
 |  RNF01  | Usabilidade            |            Utilizar linguagem clara, objetiva e acessível ao público geral.            | 🟡 Parcial |
-|  RNF02  | Disponibilidade        | Garantir alta disponibilidade e tempo de resposta adequado para conversas em tempo real. | ⚪ Pendente |
+|  RNF02  | Disponibilidade        | Healthchecks, reinício dos serviços e fallback implementados; disponibilidade e latência do LLM ainda exigem validação. | 🟡 Parcial |
 |  RNF03  | LGPD                   |        Garantir tratamento adequado e proteção das informações dos usuários.        | 🟢 Concluído |
 |  RNF04  | Caráter Orientativo   |        Informar explicitamente que as respostas não substituem atendimento formal        | 🟢 Concluído |
-|  RNF05  | Transparência LLM     |      Identificar claramente respostas geradas com auxílio de modelos de linguagem.      | ⚪ Pendente |
+|  RNF05  | Transparência LLM     | Identificar a mensagem com "Gerado com auxílio de IA" e registrar o uso na linha do tempo do painel. | 🟢 Implementado |
 |  RNF06  | Docker                 |                      Garantir a execução da aplicação em Docker                      | 🟢 Concluído |
 |  RNF07  | Documentação         |         Documentar instalação e requisitos necessários de hardware e software.         | 🟢 Concluído |
 |  RNF08  | Boas Práticas         | Adotar metodologia ágil, CI/CD, versionamento, testes e documentação técnica mínima. | 🟢 Concluído |
 
-> Detalhamento completo do que foi entregue, testado e do que ficou pendente/em risco no
-> [fechamento da Sprint 1](.docs/sprints/sprint1/README.md): [issues e PRs](.docs/sprints/sprint1/04-issues-e-prs.md),
-> [entregas de 14/09](.docs/sprints/sprint1/06-entregas-14-09.md) e [riscos](.docs/sprints/sprint1/07-riscos-e-proximos-passos.md).
+Os fechamentos da [Sprint 1](.docs/sprints/sprint1/README.md) e da
+[Sprint 2](.docs/sprints/sprint2/README.md) registram as entregas de cada período.
+As [decisões aceitas](.docs/decisoes/README.md) detalham as regras atuais do produto.
+Os documentos de arquitetura, rastreabilidade e regras das telas ainda contêm estados de entregas
+anteriores; para identificar o que está integrado, confira também o código da `develop`.
 
 ---
 
-## 🔒 Restrições do Projeto
+## Restrições do Projeto
 
 - A integração com o WhatsApp deverá ocorrer preferencialmente pela
   **WhatsApp Business Platform (Cloud API)**;
@@ -157,7 +181,7 @@ Detalhes em [`.docs/architecture/architecture.md`](.docs/architecture/architectu
 
 ---
 
-## ✅ Definition of Done
+## Definition of Done
 
 Uma entrega será considerada concluída quando:
 
@@ -171,37 +195,76 @@ Uma entrega será considerada concluída quando:
 
 ---
 
-## 📖 User Stories
+## User Stories
 
-As **User Stories** e seus respectivos critérios de aceitação serão
-definidos e refinados pela equipe durante o planejamento das Sprints,
-com base nos requisitos e fluxos decisórios fornecidos pelo PROCON.
+As tarefas e seus critérios de aceitação são acompanhados nas
+[issues do repositório](https://github.com/Steel-Hard/ProconChat_Jacarei/issues) e no
+[Project 6DSM](https://github.com/orgs/Steel-Hard/projects/2), com base nos
+[requisitos do desafio](.docs/desafio/desafio-6dsm-2026-2.md), nos fluxos fornecidos pelo PROCON
+e nas [decisões de produto](.docs/decisoes/README.md).
 
 ---
 
-## ⚙️ Instalação
+## Instalação
 
 ### Pré-requisitos
 
-- [Docker](https://docs.docker.com/get-docker/) e Docker Compose v2 (`docker compose`, sem hífen);
-- Nenhuma outra dependência de host é necessária — Node.js, PostgreSQL e o
-  modelo de linguagem rodam todos dentro dos containers.
+- Git para clonar o repositório;
+- [Docker](https://docs.docker.com/get-docker/) em execução e Docker Compose v2 (`docker compose`, sem hífen);
+- Para o modelo padrão em CPU, a referência do projeto recomenda pelo menos 8 GB de RAM no computador
+  e cerca de 2 GB em disco para o modelo, além das imagens e dos dados dos serviços.
+  Veja [requisitos e medições do LLM](.docs/llm/modelo.md).
 
-### Passo a passo
+Node.js, PostgreSQL e Ollama rodam nos containers. Node.js 24 é necessário no host apenas para
+desenvolver ou executar os testes fora do Docker; no frontend, siga a versão de `src/frontend/.nvmrc`.
+
+### 1. Clonar e preparar a configuração
 
 ```bash
-git clone <URL_DO_REPOSITORIO>
-cd <NOME_DO_REPOSITORIO>
-cp .env.example .env   # ajuste os valores se necessário; os defaults servem para desenvolvimento
-docker compose up --build
+git clone --branch develop https://github.com/Steel-Hard/ProconChat_Jacarei.git
+cd ProconChat_Jacarei
 ```
 
-Antes do `up`, preencha `ENCRYPTION_KEY` no `.env` com o resultado de `openssl rand -hex 32`
-(64 caracteres hexadecimais). Ela não tem valor padrão: sem ela, o Docker Compose recusa subir com
-`defina ENCRYPTION_KEY no .env`. Ela cifra as credenciais da Meta guardadas no banco; depois que
-houver credenciais salvas, não a troque (README do backend, "Trocar a `ENCRYPTION_KEY`").
+Copie o arquivo de exemplo. No Bash:
 
-Isso sobe, com um único comando, todo o ambiente do MVP:
+```bash
+cp .env.example .env
+```
+
+No PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+### 2. Preencher a chave e revisar o `.env`
+
+Gere uma chave usando apenas o Docker, no Bash ou no PowerShell:
+
+```text
+docker run --rm node:24-alpine node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
+```
+
+Copie os 64 caracteres hexadecimais gerados para `ENCRYPTION_KEY=` no `.env` antes de subir
+os serviços. Se já tiver OpenSSL, `openssl rand -hex 32` também gera uma chave válida.
+Sem essa variável, o Compose recusa a inicialização com `defina ENCRYPTION_KEY no .env`.
+
+A chave cifra as credenciais da Meta e o telefone de contato dos agendamentos. Depois que houver
+dados cifrados, mantenha a mesma chave; consulte
+[como trocar a `ENCRYPTION_KEY`](src/backend/README.md#trocar-a-encryption_key) para os cuidados necessários.
+
+Revise `ROOT_EMAIL` e `ROOT_PASSWORD`, usados para criar a conta Admin no primeiro seed.
+Os demais valores de exemplo atendem ao desenvolvimento local. Ao mudar `BACKEND_PORT`, ajuste
+também `VITE_API_URL`, pois ela é incorporada ao build do frontend.
+
+### 3. Subir o ambiente
+
+```bash
+docker compose up --build -d
+```
+
+Na primeira execução, aguarde os builds, as migrations, o seed e o download do modelo.
+O Compose local sobe os seguintes serviços:
 
 | Serviço         | Papel                                                              | Porta padrão (host) |
 | --------------- | ------------------------------------------------------------------- | :------------------: |
@@ -214,21 +277,70 @@ Isso sobe, com um único comando, todo o ambiente do MVP:
 | `ollama`        | LLM local (modelo definido por `LLM_MODEL` no `.env`)               |           —           |
 | `llm-pull`      | Baixa o modelo do Ollama e encerra                                  |           —           |
 
-As variáveis sensíveis (senhas, tokens, segredos) vêm do `.env`. O `compose.yaml` só traz valores
-padrão de desenvolvimento para algumas delas (e nenhum para `ENCRYPTION_KEY`); no `compose.prod.yaml`
-todas são obrigatórias no `.env`. Veja `.env.example` para a lista completa.
+As variáveis sensíveis vêm do `.env`, que não deve ser versionado. O `compose.yaml` oferece padrões
+de desenvolvimento para algumas delas e exige `ENCRYPTION_KEY`. A produção usa `compose.prod.yaml`
+e possui configuração própria, descrita no [guia de deploy](.docs/infra/deploy.md).
 
-### Documentação detalhada por serviço
+### 4. Conferir os serviços e acessar o painel
+
+```bash
+docker compose ps --all
+docker compose logs --tail=100 backend gateway llm-pull
+```
+
+`migrate`, `seed` e `llm-pull` são tarefas de execução única: terminar com código **0** é esperado.
+Os endereços abaixo usam as portas padrão do `.env.example`:
+
+- Painel: <http://localhost:8081>;
+- Saúde do backend: <http://localhost:3000/health>;
+- Saúde do gateway: <http://localhost:3001/health>.
+
+Entre no painel com `ROOT_EMAIL` e `ROOT_PASSWORD` definidos no `.env`. Esses valores criam o Admin
+somente quando a conta ainda não existe; alterá-los depois não redefine a conta.
+Para recuperar o acesso, veja a [redefinição da senha do Admin](src/backend/README.md#conta-admin-e-redefinição-da-senha).
+
+Abra o painel usando `localhost`: trocar por `127.0.0.1` muda a origem aceita pela API.
+Os detalhes de autenticação local estão no [README do frontend](src/frontend/README.md#autenticação-no-cliente).
+
+### Configurar o WhatsApp
+
+Para conversar pelo WhatsApp, configure as credenciais da Cloud API e um webhook HTTPS acessível
+pela Meta. Siga o [guia do app de teste](.docs/whatsapp/app-de-teste.md) e o
+[README do gateway](src/gateway/README.md). O painel e suas APIs podem ser iniciados antes dessa integração.
+
+---
+
+## Testes e validação
+
+Para executar as verificações fora do Docker, use Node.js 24 e rode `npm ci` dentro de cada serviço.
+No frontend, use a versão indicada por `src/frontend/.nvmrc`. Execute os comandos da tabela no
+diretório correspondente; eles seguem as verificações do [CI](.github/workflows/ci.yml).
+
+| Diretório | Verificações |
+|---|---|
+| `src/frontend` | `npm run format:check`, `npm run lint`, `npm run build`, `npm run test:run` |
+| `src/backend` | `npm run lint`, `npm run build`, `npm run typecheck:test`, `npm test` |
+| `src/gateway` | `npm run lint`, `npm run build`, `npm test` |
+
+O backend também oferece `npm run test:integration` e `npm run test:db`. Use um **banco de testes
+separado**, com as migrations aplicadas, para a integração. O verificador de migrations usa
+`DB_TEST_URL` e precisa de permissão para criar bancos temporários. A preparação está no
+[README do backend](src/backend/README.md#como-rodar).
+
+---
+
+## Documentação
 
 - [`.docs/database/migrations.md`](.docs/database/migrations.md) — schema, migrations e como resetar o banco.
 - [`src/backend/README.md`](src/backend/README.md) — rodar o backend fora do Docker, rotas disponíveis, testes.
+- [`src/frontend/README.md`](src/frontend/README.md) — desenvolver o painel, configurar a API e executar testes e verificações.
 - [`src/gateway/README.md`](src/gateway/README.md) — subir e validar o Gateway WhatsApp com a Cloud API.
 - [`.docs/llm/contrato.md`](.docs/llm/contrato.md) — contrato de entrada/saída do serviço LLM.
 - [`.docs/README.md`](.docs/README.md) — índice de toda a documentação: requisitos, decisões, regras das telas e protótipo.
 
 ---
 
-## 👨‍💻 Dev Team
+## Dev Team
 
 |                 Nome                 |   Função   |                     GitHub                     |
 | :----------------------------------: | :-----------: | :--------------------------------------------: |
@@ -240,7 +352,7 @@ todas são obrigatórias no `.env`. Veja `.env.example` para a lista completa.
 |      Victor Hugo Dantas Carbajo      |   Dev Team   | [GitHub](https://github.com/Victor-Carbajo-DSM) |
 |  Vitor Francisco de Azevedo Zonzini  |   Dev Team   |      [GitHub](https://github.com/frevisto)      |
 
-## 🤝 Parceiro
+## Parceiro
 
 **PROCON --- Fundação de Proteção e Defesa do Consumidor de Jacareí-SP**
 
@@ -250,13 +362,13 @@ Multiplataforma da **FATEC Jacareí**.
 
 ---
 
-## 📌 Convenções de Commit
+## Convenções de Commit
 
 Os padrões de branch, commit e Pull Request estão em
 [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ---
 
-## 📄 Licença
+## Licença
 
 Distribuído sob a licença Apache 2.0. Veja [`LICENSE`](LICENSE).
