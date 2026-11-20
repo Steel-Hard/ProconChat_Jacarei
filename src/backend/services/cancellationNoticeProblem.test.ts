@@ -19,12 +19,12 @@ function decide(
 describe("decideCancellationNoticeProblem", () => {
     it.each([
         ["131042", "PAYMENT_METHOD", "a conta da Meta está sem forma de pagamento"],
-        ["132001", "TEMPLATE_NOT_FOUND", "o modelo de aviso não existe no idioma usado ou não está aprovado na Meta"],
+        ["132001", "TEMPLATE_NOT_FOUND", "o modelo da mensagem não existe no idioma usado ou não está aprovado na Meta"],
         ["132000", "TEMPLATE_PARAMETER_COUNT", "o número de parâmetros enviado é diferente do modelo cadastrado na Meta"],
         ["132012", "TEMPLATE_PARAMETER_FORMAT", "os parâmetros do modelo foram enviados com formato incorreto"],
         ["132007", "TEMPLATE_POLICY_VIOLATION", "o conteúdo do modelo viola a política do WhatsApp"],
-        ["132015", "TEMPLATE_PAUSED", "o modelo de aviso foi pausado pela Meta por baixa qualidade"],
-        ["132016", "TEMPLATE_DISABLED", "o modelo de aviso foi desativado de vez pela Meta (é preciso criar um novo, com conteúdo diferente)"],
+        ["132015", "TEMPLATE_PAUSED", "o modelo da mensagem foi pausado pela Meta por baixa qualidade"],
+        ["132016", "TEMPLATE_DISABLED", "o modelo da mensagem foi desativado de vez pela Meta (é preciso criar um novo, com conteúdo diferente)"],
         ["132005", "TEMPLATE_TRANSLATION_TOO_LONG", "a tradução do texto do modelo ficou longa demais"],
         ["190", "INVALID_TOKEN", "o token da Meta está inválido ou expirado"],
         ["131048", "SEND_LIMIT_REACHED", "o limite de envios do número foi atingido"],

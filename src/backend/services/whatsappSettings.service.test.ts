@@ -230,7 +230,7 @@ describe("whatsappSettings service", () => {
                 problem: {
                     code: "TEMPLATE_PAUSED",
                     metaErrorCode: "132015",
-                    message: "o modelo de aviso foi pausado pela Meta por baixa qualidade",
+                    message: "o modelo da mensagem foi pausado pela Meta por baixa qualidade",
                 },
             })
         })
