@@ -724,13 +724,13 @@ describe("messageFormatter.service", () => {
             expect(parametros[6]).toBe("RG ou CNH; CPF do titular; Nota fiscal")
         })
 
-        test("usa documento oficial com foto quando a lista de documentos do agendamento está vazia", () => {
+        test("usa um documento oficial com foto quando a lista de documentos do agendamento está vazia", () => {
             const parametros = parametrosLembreteAtendimento({
                 ...lembrete,
                 documentsSent: { group: [], question: [] },
             })
 
-            expect(parametros[6]).toBe("documento oficial com foto")
+            expect(parametros[6]).toBe("um documento oficial com foto")
         })
     })
 

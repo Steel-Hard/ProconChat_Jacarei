@@ -176,7 +176,7 @@ export function parametrosLembreteAtendimento(input: LembreteAtendimentoInput): 
         timeStr,
         normalizarParametroModelo(input.protocol),
         endereco,
-        documentos || "documento oficial com foto",
+        documentos || "um documento oficial com foto",
     ]
 }
 
