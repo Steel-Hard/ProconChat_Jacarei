@@ -7,14 +7,14 @@ const api = createApi({
     tagTypes: [
         "Appointment",
         "AppointmentList",
-        "AppointmentPendingCount",
         "UserList",
         "SchedulePreview",
         "ScheduleEffective",
         "ScheduleVersions",
         "Documents",
         "DocumentsPreview",
-        "WhatsAppHistory"
+        "WhatsAppHistory",
+        "WhatsAppMeta"
     ],
     endpoints: () => ({})
 })

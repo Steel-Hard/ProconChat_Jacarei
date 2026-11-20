@@ -1,3 +1,4 @@
+import { createSafeNoticeReader } from "./noticeSwitchReader"
 import AppointmentNotChangeableError from "../errors/AppointmentNotChangeableError"
 import DuplicateAppointmentError from "../errors/DuplicateAppointmentError"
 import SlotFullError from "../errors/SlotFullError"
@@ -44,6 +45,7 @@ interface ReturnFlowDependencies {
     schedule: ScheduleProvider
     logger: ConversationEventLogger
     startOver: (sessionId: string, newSession: boolean) => Promise<ConversationFlowResult>
+    isCancellationNoticeEnabled: () => Promise<boolean>
 }
 
 export interface ReturnFlow {
@@ -146,7 +148,9 @@ function targetIdOf(session: ActiveSession): number | null {
     return typeof id === "number" && Number.isSafeInteger(id) && id > 0 ? id : null
 }
 
-export function createReturnFlow({ sessions, events, schedule, logger, startOver }: ReturnFlowDependencies): ReturnFlow {
+export function createReturnFlow({ sessions, events, schedule, logger, startOver, isCancellationNoticeEnabled }: ReturnFlowDependencies): ReturnFlow {
+    const readNotice = createSafeNoticeReader(isCancellationNoticeEnabled, logger)
+
     async function offerReturnMenu(sessionId: string, phoneHash: string): Promise<ConversationFlowResult | null> {
         let returning: ReturningAppointment | null
         try {
@@ -384,6 +388,7 @@ export function createReturnFlow({ sessions, events, schedule, logger, startOver
         slots: AvailableSlot[],
         currentPage: number,
     ): Promise<ConversationFlowResult> {
+        const cancellationNoticeEnabled = await readNotice(session.id)
         let result: CitizenRescheduleResult
         try {
             result = await schedule.rescheduleByCitizen({
@@ -423,6 +428,7 @@ export function createReturnFlow({ sessions, events, schedule, logger, startOver
             questionDocuments: result.documentsSent.question,
             reminderEnabled: result.reminderEnabled,
             reminderHours: result.reminderHours,
+            cancellationNoticeEnabled,
         })
         return replyOf(session.id, "FINISHED", confirmation, [{ type: "text", text: confirmation }])
     }

@@ -21,6 +21,8 @@ import {
     AppointmentNote,
     AppointmentStatus,
     CalendarFilters,
+    CancelOptions,
+    CancellationNoticeStatus,
     CancellationNoticeTarget,
     CancellationReason,
     CitizenNotificationKind,
@@ -29,7 +31,7 @@ import {
     CorrectionHistoryEvent,
     CorrectionResult,
     CorrectionWarning,
-    StaffMember,
+    StaffRecord,
     WeekAppointmentRecord,
 } from "../types/appointment.types"
 import { cleanCpf, hashCpf } from "../utils/cpf.utils"
@@ -268,6 +270,16 @@ async function ensureActorCanTake(
     }
 }
 
+function noticeStatusOf(type: string | null): CancellationNoticeStatus | null {
+    if (type === null) {
+        return null
+    }
+    if (type === "CITIZEN_NOTIFIED") {
+        return "NOTIFIED"
+    }
+    return type === "CITIZEN_NOTICE_DISABLED" ? "DISABLED" : "FAILED"
+}
+
 export function createAppointmentRepository(pool: Pool = getPool()): AppointmentRepository {
     async function getCurrentDocumentsConfig(
         byRepresentative: boolean,
@@ -349,9 +361,9 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             }))
         },
 
-        async findStaff(): Promise<StaffMember[]> {
-            const result = await pool.query<{ id: string; name: string; active: boolean }>(
-                `SELECT u.id, u.name, u.active
+        async findStaff(): Promise<StaffRecord[]> {
+            const result = await pool.query<{ id: string; name: string; active: boolean; email: string }>(
+                `SELECT u.id, u.name, u.active, u.email
                  FROM Users u
                  WHERE u.is_admin
                     OR EXISTS (
@@ -360,7 +372,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                     )
                  ORDER BY u.name ASC, u.id ASC`,
             )
-            return result.rows.map((row) => ({ id: String(row.id), name: row.name, active: row.active }))
+            return result.rows.map((row) => ({ id: String(row.id), name: row.name, active: row.active, email: row.email }))
         },
 
         async findById(idOrCode: number | string): Promise<AppointmentDetailRecord | null> {
@@ -877,6 +889,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             reason: CancellationReason,
             note: string | undefined,
             now: Date = new Date(),
+            options: CancelOptions = { noticeDisabled: false },
         ): Promise<void> {
             return inTransaction(pool, async (client) => {
                 await lockAccounts(client, [actorUserId])
@@ -887,6 +900,13 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                      VALUES ($1, 'CANCELED_BY_STAFF', $2, $3::jsonb, $4)`,
                     [id, actorUserId, JSON.stringify({ reason }), now],
                 )
+                if (options.noticeDisabled) {
+                    await client.query(
+                        `INSERT INTO AppointmentEvents (appointment_id, type, actor_user_id, data, created_at)
+                         VALUES ($1, 'CITIZEN_NOTICE_DISABLED', $2, $3::jsonb, $4)`,
+                        [id, actorUserId, JSON.stringify({ kind: "CANCELLATION" }), now],
+                    )
+                }
                 if (note !== undefined) {
                     await client.query(
                         `INSERT INTO AppointmentNotes (appointment_id, author_user_id, text, created_at)
@@ -908,7 +928,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                 protocol: string
                 phone_encrypted: string | null
                 last_staff_cancel_reason: CancellationReason | null
-                last_notice_type: "CITIZEN_NOTIFIED" | "CITIZEN_NOTIFICATION_FAILED" | null
+                last_notice_type: "CITIZEN_NOTIFIED" | "CITIZEN_NOTIFICATION_FAILED" | "CITIZEN_NOTICE_DISABLED" | null
             }>(
                 `SELECT a.status, a.appointment_datetime, a.name, ${PROTOCOL_SQL} AS protocol, a.phone_encrypted,
                         (SELECT e.data->>'reason' FROM AppointmentEvents e
@@ -916,7 +936,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                          ORDER BY e.created_at DESC, e.id DESC LIMIT 1) AS last_staff_cancel_reason,
                         (SELECT e.type::text FROM AppointmentEvents e
                          WHERE e.appointment_id = a.id
-                           AND e.type IN ('CITIZEN_NOTIFIED', 'CITIZEN_NOTIFICATION_FAILED')
+                           AND e.type IN ('CITIZEN_NOTIFIED', 'CITIZEN_NOTIFICATION_FAILED', 'CITIZEN_NOTICE_DISABLED')
                            AND e.data->>'kind' = 'CANCELLATION'
                          ORDER BY e.created_at DESC, e.id DESC LIMIT 1) AS last_notice_type
                  FROM Appointments a
@@ -934,8 +954,7 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
                 protocol: row.protocol,
                 phoneEncrypted: row.phone_encrypted,
                 lastStaffCancelReason: row.last_staff_cancel_reason,
-                lastCancellationNotice:
-                    row.last_notice_type === null ? null : row.last_notice_type === "CITIZEN_NOTIFIED" ? "NOTIFIED" : "FAILED",
+                lastCancellationNotice: noticeStatusOf(row.last_notice_type),
             }
         },
 
@@ -946,37 +965,39 @@ export function createAppointmentRepository(pool: Pool = getPool()): Appointment
             actorUserId: number,
             now: Date = new Date(),
             providerMessageId: string | null = null,
+            errorCode: string | null = null,
         ): Promise<void> {
             await inTransaction(pool, async (client) => {
+                const eventData = outcome === "FAILED" && errorCode !== null ? { kind, errorCode } : { kind }
                 await client.query(
                     `INSERT INTO AppointmentEvents (appointment_id, type, actor_user_id, data, created_at)
                      VALUES ($1, $2::appointment_event_type, $3, $4::jsonb, $5)`,
-                    [id, outcome === "NOTIFIED" ? "CITIZEN_NOTIFIED" : "CITIZEN_NOTIFICATION_FAILED", actorUserId, JSON.stringify({ kind }), now],
+                    [id, outcome === "NOTIFIED" ? "CITIZEN_NOTIFIED" : "CITIZEN_NOTIFICATION_FAILED", actorUserId, JSON.stringify(eventData), now],
                 )
                 if (outcome === "FAILED") {
                     await client.query(
-                        `INSERT INTO OutboundMessages (kind, appointment_id, status, status_at)
-                         VALUES ($1::outbound_kind, $2, 'FAILED', $3)`,
-                        [kind, id, now],
+                        `INSERT INTO OutboundMessages (kind, appointment_id, status, error_code, status_at)
+                         VALUES ($1::outbound_kind, $2, 'FAILED', $3, $4)`,
+                        [kind, id, errorCode, now],
                     )
                     return
                 }
                 if (providerMessageId === null) {
                     return
                 }
-                const sent = await client.query<{ status: string }>(
+                const sent = await client.query<{ status: string; error_code: string | null }>(
                     `INSERT INTO OutboundMessages (provider_message_hash, kind, appointment_id, status, status_at)
                      VALUES ($1, $2::outbound_kind, $3, 'SENT', $4)
                      ON CONFLICT (provider_message_hash) DO UPDATE
                      SET kind = EXCLUDED.kind, appointment_id = EXCLUDED.appointment_id
-                     RETURNING status`,
+                     RETURNING status, error_code`,
                     [hashProviderMessageId(providerMessageId), kind, id, now],
                 )
                 if (sent.rows[0]?.status === "FAILED") {
                     await client.query(
                         `INSERT INTO AppointmentEvents (appointment_id, type, actor_user_id, data, created_at)
                          VALUES ($1, 'CITIZEN_NOTIFICATION_FAILED', NULL, $2::jsonb, $3)`,
-                        [id, JSON.stringify({ kind }), new Date(now.getTime() + 1)],
+                        [id, JSON.stringify(sent.rows[0].error_code === null ? { kind } : { kind, errorCode: sent.rows[0].error_code }), new Date(now.getTime() + 1)],
                     )
                 }
             })

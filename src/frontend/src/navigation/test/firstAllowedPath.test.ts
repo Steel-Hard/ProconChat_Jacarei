@@ -12,8 +12,8 @@ describe("firstAllowedPath", () => {
         expect(firstAllowedPath(account(["content.manage"]))).toBeNull()
     })
 
-    it("devolve null para quem só vê relatórios enquanto o Dashboard não está pronto", () => {
-        expect(firstAllowedPath(account(["reports.view"]))).toBeNull()
+    it("devolve Relatórios para quem só tem permissão para ver relatórios", () => {
+        expect(firstAllowedPath(account(["reports.view"]))).toBe("/relatorios")
     })
 
     it("devolve null quando a conta não tem nenhuma permissão", () => {
@@ -24,8 +24,8 @@ describe("firstAllowedPath", () => {
         expect(firstAllowedPath(account(["sessions.view"]))).toBeNull()
     })
 
-    it("devolve Usuários para quem vê relatórios e gerencia usuários", () => {
-        expect(firstAllowedPath(account(["reports.view", "users.manage"]))).toBe("/usuarios")
+    it("devolve Relatórios primeiro para quem vê relatórios e gerencia usuários", () => {
+        expect(firstAllowedPath(account(["reports.view", "users.manage"]))).toBe("/relatorios")
     })
 
     it("devolve Usuários para quem gerencia conteúdo e usuários", () => {

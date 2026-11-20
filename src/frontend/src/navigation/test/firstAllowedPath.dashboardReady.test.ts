@@ -7,7 +7,7 @@ vi.mock("@/navigation/navItemsReady", () => ({
     default: {
         dashboard: true,
         appointments: true,
-        reports: false,
+        reports: true,
         content: false,
         sessions: false,
         schedule: false,
@@ -28,7 +28,7 @@ function account(permissions: PermissionKey[]): PanelAccount {
 }
 
 describe("firstAllowedPath com o Dashboard pronto", () => {
-    it("devolve o Dashboard para quem só vê relatórios", () => {
+    it("devolve o Dashboard para quem só vê relatórios, por ser a primeira tela", () => {
         expect(firstAllowedPath(account(["reports.view"]))).toBe("/")
     })
 

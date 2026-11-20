@@ -4,12 +4,13 @@ import {
     AppointmentListFilters,
     AppointmentListItem,
     CalendarFilters,
+    CancelOptions,
     CancellationNoticeTarget,
     CancellationReason,
     CitizenNotificationKind,
     CitizenNotificationOutcome,
     CorrectionResult,
-    StaffMember,
+    StaffRecord,
     WeekAppointmentRecord,
 } from "../types/appointment.types"
 
@@ -27,7 +28,7 @@ export interface AppointmentRepository {
 
     findWeek(from: Date, to: Date, filters: CalendarFilters, now?: Date): Promise<WeekAppointmentRecord[]>
 
-    findStaff(): Promise<StaffMember[]>
+    findStaff(): Promise<StaffRecord[]>
 
     findById(id: number | string): Promise<AppointmentDetailRecord | null>
 
@@ -75,6 +76,7 @@ export interface AppointmentRepository {
         reason: CancellationReason,
         note: string | undefined,
         now?: Date,
+        options?: CancelOptions,
     ): Promise<void>
 
     findCancellationNoticeTarget(id: string): Promise<CancellationNoticeTarget | null>
@@ -86,6 +88,7 @@ export interface AppointmentRepository {
         actorUserId: number,
         now?: Date,
         providerMessageId?: string | null,
+        errorCode?: string | null,
     ): Promise<void>
 
     countNotifiedPhonesBetween(from: Date, to: Date): Promise<number>

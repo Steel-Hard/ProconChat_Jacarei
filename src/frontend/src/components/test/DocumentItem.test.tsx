@@ -8,7 +8,8 @@ describe("DocumentItem", () => {
         render(
             <DocumentItem
                 description="RG ou documento com foto"
-                index={0}
+                position={1}
+                isTaken={() => false}
                 isFirst={true}
                 isLast={false}
                 onEdit={vi.fn()}
@@ -32,7 +33,8 @@ describe("DocumentItem", () => {
         render(
             <DocumentItem
                 description="CPF"
-                index={0}
+                position={1}
+                isTaken={() => false}
                 isFirst={false}
                 isLast={false}
                 onEdit={onEdit}
@@ -60,7 +62,8 @@ describe("DocumentItem", () => {
         render(
             <DocumentItem
                 description="Comprovante de endereço"
-                index={0}
+                position={1}
+                isTaken={() => false}
                 isFirst={false}
                 isLast={false}
                 onEdit={onEdit}
@@ -86,7 +89,8 @@ describe("DocumentItem", () => {
         render(
             <DocumentItem
                 description="Comprovante"
-                index={0}
+                position={1}
+                isTaken={() => false}
                 isFirst={false}
                 isLast={false}
                 onEdit={vi.fn()}
@@ -108,7 +112,8 @@ describe("DocumentItem", () => {
         render(
             <DocumentItem
                 description="Item do meio"
-                index={1}
+                position={1}
+                isTaken={() => false}
                 isFirst={false}
                 isLast={false}
                 onEdit={vi.fn()}
@@ -123,5 +128,102 @@ describe("DocumentItem", () => {
 
         await user.click(screen.getByTitle("Mover para baixo"))
         expect(onMoveDown).toHaveBeenCalledTimes(1)
+    })
+
+    it("limita o texto em edição a 255 caracteres", async () => {
+        const user = userEvent.setup()
+        render(
+            <DocumentItem
+                description="CPF"
+                position={1}
+                isTaken={() => false}
+                isFirst={false}
+                isLast={false}
+                onEdit={vi.fn()}
+                onRemove={vi.fn()}
+                onMoveUp={vi.fn()}
+                onMoveDown={vi.fn()}
+            />
+        )
+
+        await user.click(screen.getByTitle("Editar"))
+
+        expect(screen.getByRole("textbox")).toHaveAttribute("maxlength", "255")
+    })
+
+    it("avisa e impede salvar quando o texto editado repete outro item do grupo", async () => {
+        const user = userEvent.setup()
+        const onEdit = vi.fn()
+        render(
+            <DocumentItem
+                description="CPF"
+                position={1}
+                isTaken={(text) => text.trim().toLowerCase() === "rg"}
+                isFirst={false}
+                isLast={false}
+                onEdit={onEdit}
+                onRemove={vi.fn()}
+                onMoveUp={vi.fn()}
+                onMoveDown={vi.fn()}
+            />
+        )
+
+        await user.click(screen.getByTitle("Editar"))
+        const input = screen.getByRole("textbox")
+        await user.clear(input)
+        await user.type(input, "RG{enter}")
+
+        expect(screen.getByRole("status")).toHaveTextContent("Esse documento já está na lista.")
+        expect(screen.getByRole("textbox")).toHaveAccessibleDescription(
+            "Esse documento já está na lista."
+        )
+        expect(screen.getByRole("button", { name: "OK" })).toBeDisabled()
+        expect(onEdit).not.toHaveBeenCalled()
+        expect(screen.getByRole("textbox")).toBeInTheDocument()
+    })
+
+    it("mostra o número da posição e os botões na ordem Editar, subir, descer e remover", () => {
+        render(
+            <DocumentItem
+                description="CPF"
+                position={3}
+                isTaken={() => false}
+                isFirst={false}
+                isLast={false}
+                onEdit={vi.fn()}
+                onRemove={vi.fn()}
+                onMoveUp={vi.fn()}
+                onMoveDown={vi.fn()}
+            />
+        )
+
+        expect(screen.getByText("3")).toBeInTheDocument()
+        const buttons = screen.getAllByRole("button").map((button) => button.textContent)
+        expect(buttons).toEqual(["CPF", "Editar", "↑", "↓", "×"])
+        expect(screen.getByRole("button", { name: "Remover CPF" })).toHaveTextContent("×")
+    })
+
+    it("mostra a dica de Enter e Esc e os botões OK e Cancelar durante a edição", async () => {
+        const user = userEvent.setup()
+        render(
+            <DocumentItem
+                description="CPF"
+                position={1}
+                isTaken={() => false}
+                isFirst={false}
+                isLast={false}
+                onEdit={vi.fn()}
+                onRemove={vi.fn()}
+                onMoveUp={vi.fn()}
+                onMoveDown={vi.fn()}
+            />
+        )
+
+        await user.click(screen.getByTitle("Editar"))
+
+        expect(screen.getByText("Enter confirma · Esc cancela")).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "OK" })).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "Cancelar" })).toBeInTheDocument()
+        expect(screen.getByText("1")).toBeInTheDocument()
     })
 })

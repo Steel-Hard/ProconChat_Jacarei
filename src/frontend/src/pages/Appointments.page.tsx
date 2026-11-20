@@ -45,29 +45,31 @@ function AppointmentsPage() {
         <>
             <title>{t("meta.title")}</title>
             <section className={css.page}>
-                <div className={css.header}>
-                    <h1 className={css.title}>{t("heading")}</h1>
-                    <p className={css.subtitle}>{t("subtitle")}</p>
+                <div className={css.headerRow}>
+                    <div className={css.header}>
+                        <h1 className={css.title}>{t("heading")}</h1>
+                        <p className={css.subtitle}>{t("subtitle")}</p>
+                    </div>
+                    {!page.searching ? (
+                        <fieldset className={css.viewToggle}>
+                            <legend>{t("view.label")}</legend>
+                            <button
+                                type="button"
+                                aria-pressed={!page.calendar.enabled}
+                                onClick={() => page.calendar.setEnabled(false)}
+                            >
+                                {t("view.list")}
+                            </button>
+                            <button
+                                type="button"
+                                aria-pressed={page.calendar.enabled}
+                                onClick={() => page.calendar.setEnabled(true)}
+                            >
+                                {t("view.calendar")}
+                            </button>
+                        </fieldset>
+                    ) : null}
                 </div>
-                {!page.searching ? (
-                    <fieldset className={css.viewToggle}>
-                        <legend>{t("view.label")}</legend>
-                        <button
-                            type="button"
-                            aria-pressed={!page.calendar.enabled}
-                            onClick={() => page.calendar.setEnabled(false)}
-                        >
-                            {t("view.list")}
-                        </button>
-                        <button
-                            type="button"
-                            aria-pressed={page.calendar.enabled}
-                            onClick={() => page.calendar.setEnabled(true)}
-                        >
-                            {t("view.calendar")}
-                        </button>
-                    </fieldset>
-                ) : null}
                 <div className={css.searchArea}>
                     <div className={css.searchBox}>
                         <label htmlFor={searchId} className={css.searchLabel}>
@@ -113,6 +115,7 @@ function AppointmentsPage() {
                             onSelect={page.selectStatus}
                         />
                         <AppointmentListFilters
+                            showPeriod={!page.calendar.enabled}
                             periodLabel={t("filters.period")}
                             responsibleLabel={t("filters.responsible")}
                             period={filters.period}
@@ -150,41 +153,6 @@ function AppointmentsPage() {
                             {page.calendar.data ? (
                                 <AppointmentCalendar
                                     data={page.calendar.data}
-                                    labels={{
-                                        week: t("calendar.week", {
-                                            start: "{{start}}",
-                                            end: "{{end}}"
-                                        }),
-                                        previous: t("calendar.previous"),
-                                        next: t("calendar.next"),
-                                        current: t("calendar.current"),
-                                        noDays: t("calendar.noDays"),
-                                        fullDay: t("calendar.fullDay"),
-                                        freeSeats: t("calendar.freeSeats", { count: "{{count}}" }),
-                                        slots: t("calendar.slots"),
-                                        blockedPeriod: t("calendar.blockedPeriod"),
-                                        offGrid: t("calendar.offGrid"),
-                                        openAppointment: t("calendar.openAppointment", {
-                                            name: "{{name}}",
-                                            time: "{{time}}"
-                                        }),
-                                        status: {
-                                            PENDING: t("common:status.appointment.PENDING"),
-                                            CONFIRMED: t("common:status.appointment.CONFIRMED"),
-                                            ATTENDED: t("common:status.appointment.ATTENDED"),
-                                            NO_SHOW: t("common:status.appointment.NO_SHOW"),
-                                            CANCELED: t("common:status.appointment.CANCELED")
-                                        },
-                                        weekdays: {
-                                            sunday: t("common:weekdays.long.sunday"),
-                                            monday: t("common:weekdays.long.monday"),
-                                            tuesday: t("common:weekdays.long.tuesday"),
-                                            wednesday: t("common:weekdays.long.wednesday"),
-                                            thursday: t("common:weekdays.long.thursday"),
-                                            friday: t("common:weekdays.long.friday"),
-                                            saturday: t("common:weekdays.long.saturday")
-                                        }
-                                    }}
                                     onPrevious={page.calendar.previous}
                                     onNext={page.calendar.next}
                                     onCurrent={page.calendar.current}

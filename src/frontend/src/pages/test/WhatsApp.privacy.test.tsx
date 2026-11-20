@@ -23,6 +23,8 @@ const SETTINGS: WhatsAppSettings = {
     webhook: { lastEventAt: "2026-10-14T13:00:00.000Z", stale: false },
     autoReplyPaused: false,
     pausedMessage: "Mensagem fixa",
+    cancellationNoticeEnabled: false,
+    cancellationNoticeProblem: null,
     updatedBy: { id: 1, name: "Ana Paula" },
     updatedAt: "2026-10-14T13:00:00.000Z",
     displayPhoneNumber: "+55 12 3955-9000",
@@ -319,7 +321,9 @@ describe("WhatsAppPage, aba Privacidade", () => {
         ).toBeInTheDocument()
 
         await user.click(screen.getByRole("tab", { name: "Conexão" }))
-        expect(screen.getByText("Última alteração por Ana Paula em 14/10/2026")).toBeInTheDocument()
+        expect(
+            screen.getAllByText("Última alteração por Ana Paula em 14/10/2026")[0]
+        ).toBeInTheDocument()
         expect(screen.queryByText("1 alteração não salva")).not.toBeInTheDocument()
         await user.click(screen.getByRole("tab", { name: "Privacidade" }))
 

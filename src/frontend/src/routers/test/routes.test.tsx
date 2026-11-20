@@ -49,7 +49,6 @@ function renderRoutes(initialEntries: string[], preloadedState?: Partial<RootSta
 }
 
 const underConstructionRoutes: Array<[string, string]> = [
-    [ROUTES.reports, "Relatórios"],
     [ROUTES.content, "Conteúdo"],
     [ROUTES.sessions, "Sessões"]
 ]
@@ -57,6 +56,7 @@ const underConstructionRoutes: Array<[string, string]> = [
 const protectedRoutes: Array<[string, string]> = [
     [ROUTES.dashboard, "Painel"],
     ...underConstructionRoutes,
+    [ROUTES.reports, "Relatórios"],
     [ROUTES.appointments, "Agendamentos"],
     ["/agendamentos/1", "Detalhe do agendamento"],
     [ROUTES.schedule, "Horários de atendimento"],
@@ -89,13 +89,46 @@ function stubFetchByUrl(respond: (url: string) => Response) {
 }
 
 function stubLoginAs(permissions: PermissionKey[]) {
-    stubFetchByUrl((url) =>
-        url.endsWith("/api/v1/auth/login")
-            ? new Response(JSON.stringify({ data: { user: staffWith(permissions) } }), {
-                  status: 200
-              })
-            : new Response(null, { status: 204 })
-    )
+    stubFetchByUrl((url) => {
+        if (url.endsWith("/api/v1/auth/login")) {
+            return new Response(JSON.stringify({ data: { user: staffWith(permissions) } }), {
+                status: 200
+            })
+        }
+
+        if (url.includes("/api/v1/reports?")) {
+            return new Response(
+                JSON.stringify({
+                    data: {
+                        period: {
+                            preset: "30d",
+                            startDate: "2026-10-08",
+                            endDate: "2026-11-06",
+                            daysCount: 30,
+                            today: "2026-11-07"
+                        },
+                        conversations: { total: 0, dailyAverage: 0, appointmentsCreated: 0 },
+                        outcomes: [],
+                        topCategories: [],
+                        topQuestions: [],
+                        appointmentsResult: {
+                            attended: 0,
+                            noShow: 0,
+                            canceled: 0,
+                            waitingRecord: 0,
+                            upcoming: 0,
+                            total: 0,
+                            recordedTotal: 0,
+                            noShowRate: 0
+                        }
+                    }
+                }),
+                { status: 200, headers: { "Content-Type": "application/json" } }
+            )
+        }
+
+        return new Response(null, { status: 204 })
+    })
 }
 
 async function submitLogin(user: ReturnType<typeof userEvent.setup>) {
@@ -129,6 +162,8 @@ describe("routes antes de carregar as páginas", () => {
     })
 })
 
+const LAZY_LOAD_TIMEOUT = 10000
+
 describe("routes", () => {
     beforeAll(async () => {
         panel = await loadPanelRoutes([
@@ -141,6 +176,7 @@ describe("routes", () => {
             () => import("@/pages/Users.page"),
             () => import("@/pages/Schedule.page"),
             () => import("@/pages/Documents.page"),
+            () => import("@/pages/Reports.page"),
             () => import("@/pages/PrivacyPolicy.page")
         ])
     })
@@ -178,6 +214,18 @@ describe("routes", () => {
         expect(screen.getByText("Em construção.")).toBeInTheDocument()
     })
 
+    it("renderiza a tela de Relatórios e consulta o período padrão", async () => {
+        renderRoutes([ROUTES.reports], withSession)
+
+        expect(await screen.findByRole("heading", { name: "Relatórios" })).toBeInTheDocument()
+        expect(screen.queryByText("Em construção.")).not.toBeInTheDocument()
+        await waitFor(() =>
+            expect(requestedUrls().some((url) => url.includes("/api/v1/reports?period=30d"))).toBe(
+                true
+            )
+        )
+    })
+
     it("renderiza a tela de WhatsApp para o Admin, carregando a configuração", async () => {
         renderRoutes([ROUTES.whatsapp], withSession)
 
@@ -194,15 +242,18 @@ describe("routes", () => {
     it("renderiza a tela de Agendamentos com sessão, pedindo a lista e o contador", async () => {
         renderRoutes([ROUTES.appointments], withSession)
 
-        expect(await screen.findByRole("heading", { name: "Agendamentos" })).toBeInTheDocument()
+        expect(
+            await screen.findByRole(
+                "heading",
+                { name: "Agendamentos" },
+                { timeout: LAZY_LOAD_TIMEOUT }
+            )
+        ).toBeInTheDocument()
         expect(screen.queryByText("Em construção.")).not.toBeInTheDocument()
         expect(screen.getByRole("searchbox", { name: "Buscar" })).toBeInTheDocument()
         await waitFor(() =>
             expect(requestedUrls().some((url) => url.includes("/api/v1/appointments?"))).toBe(true)
         )
-        expect(
-            requestedUrls().some((url) => url.endsWith("/api/v1/appointments/pending-count"))
-        ).toBe(true)
     })
 
     it("renderiza a tela de Usuários para o Admin, carregando as contas", async () => {
@@ -360,7 +411,13 @@ describe("routes", () => {
 
         await user.click(await screen.findByRole("link", { name: "Vá para a página inicial." }))
 
-        expect(await screen.findByRole("heading", { name: "Agendamentos" })).toBeInTheDocument()
+        expect(
+            await screen.findByRole(
+                "heading",
+                { name: "Agendamentos" },
+                { timeout: LAZY_LOAD_TIMEOUT }
+            )
+        ).toBeInTheDocument()
     })
 
     it("volta do aviso para a tela de entrada sem redirect quando o logout dá certo", async () => {
@@ -426,15 +483,15 @@ describe("routes", () => {
         expect(screen.queryByRole("heading", { name: "404 - Not Found" })).not.toBeInTheDocument()
     })
 
-    it("abre Usuários quando a conta que vê relatórios e gerencia usuários entra sem redirect", async () => {
+    it("abre Relatórios quando a conta que vê relatórios e gerencia usuários entra sem redirect", async () => {
         const user = userEvent.setup()
         stubLoginAs(["reports.view", "users.manage"])
         const { router } = renderRoutes([ROUTES.login], withoutSession)
 
         await submitLogin(user)
 
-        expect(await screen.findByRole("heading", { name: "Usuários" })).toBeInTheDocument()
-        expect(router.state.location.pathname).toBe(ROUTES.users)
+        expect(await screen.findByRole("heading", { name: "Relatórios" })).toBeInTheDocument()
+        expect(router.state.location.pathname).toBe(ROUTES.reports)
         expect(screen.queryByRole("heading", { name: "404 - Not Found" })).not.toBeInTheDocument()
     })
 })

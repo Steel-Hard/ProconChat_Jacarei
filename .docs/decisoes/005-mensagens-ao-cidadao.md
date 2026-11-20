@@ -16,7 +16,7 @@ Na Cloud API ([003](003-migracao-whatsapp-cloud-api.md)), mensagens de texto liv
 |---|---|---|---|
 | **Confirmação do agendamento** | Logo após o cidadão escolher o horário | Texto fixo no código, dentro da janela | Gratuita |
 | **Lembrete** | X horas antes do atendimento, configurável; pode ser desligado | Modelo aprovado | Paga |
-| **Aviso de cancelamento pela equipe** | Quando a equipe cancela, a qualquer momento antes do horário | Modelo aprovado | Paga |
+| **Aviso de cancelamento pela equipe** | Quando a equipe cancela, a qualquer momento antes do horário, **se o interruptor de aviso estiver ligado** (desligado por padrão) | Modelo aprovado | Paga |
 | **Chatbot pausado** | Quando alguém escreve durante a pausa | Texto fixo, dentro da janela | Gratuita |
 
 Regras:
@@ -29,9 +29,10 @@ Regras:
    - "Outro motivo".
 
    O funcionário vê a prévia exata da mensagem antes de confirmar. Pode também escrever uma observação interna, que não é enviada.
-3. **A confirmação traz:** protocolo, data e hora, endereço da unidade, a lista de documentos do grupo (titular ou representante), os documentos úteis da pergunta e o aviso de que o cidadão receberá lembrete e avisos de cancelamento naquele número. O título é **"Agendamento realizado"**, e não "confirmado", para não confundir com o status interno "Confirmado".
+3. **A confirmação traz:** protocolo, data e hora, endereço da unidade, a lista de documentos do grupo (titular ou representante), os documentos úteis da pergunta e o aviso de que o cidadão receberá, naquele número, o lembrete e o aviso de cancelamento **que estiverem ligados** (a frase muda com cada combinação e some quando os dois estão desligados; textos em [Documentos](../regras/09-documentos.md)). O título é **"Agendamento realizado"**, e não "confirmado", para não confundir com o status interno "Confirmado".
 4. **Os documentos do lembrete são os que foram enviados na confirmação**, guardados no agendamento, e não a configuração atual.
 5. **Se o envio falhar**, o histórico do agendamento registra a falha em destaque, com a opção "Tentar novamente".
+7. **O aviso de cancelamento é opcional e nasce desligado** (issue #164). O Admin liga e desliga o interruptor na tela de WhatsApp, **na hora e com diálogo de confirmação** (como o "Pausar respostas automáticas"), e cada mudança fica registrada com quem e quando. O motivo: a Meta cobra cada mensagem de modelo, e o aviso de cancelamento não é requisito do desafio. Com o aviso desligado, o cancelamento funciona igual (o horário volta a ficar livre), mas **o sistema não envia nada ao cidadão**: a tela diz que ele não será avisado e a equipe deve avisá-lo por outro meio. O histórico registra "Aviso ao cidadão desativado: cidadão não avisado pelo sistema", sem destaque de erro e sem "Tentar novamente". O interruptor vale para todo cancelamento feito pela equipe, inclusive o cancelamento em massa, e **não vale para o lembrete**, que tem o próprio liga e desliga em Horários de atendimento.
 6. **Se o cidadão responder a um lembrete**, a janela de 24h reabre e o bot volta a conversar normalmente (remarcar, cancelar).
 
 ## Consequências
@@ -39,4 +40,4 @@ Regras:
 - Precisa haver um jeito de o Backend pedir ao Gateway "envie esta mensagem para este número". Hoje o Gateway só responde.
 - Os modelos de lembrete e de cancelamento precisam ser cadastrados e aprovados na Meta antes do uso. A tela de WhatsApp mostra o status de cada um.
 - O telefone passa a ser guardado criptografado no agendamento. Ver [002](002-lgpd-dados-pessoais.md).
-- **Custo:** o PROCON precisa decidir se aceita o custo por mensagem dos lembretes. Como o lembrete pode ser desligado, o sistema funciona nos dois cenários.
+- **Custo:** o PROCON precisa decidir se aceita o custo por mensagem dos lembretes e dos avisos de cancelamento. Como os dois podem ser desligados (o aviso de cancelamento nasce desligado), o sistema funciona em todos os cenários. Detalhes de cobrança no [guia de modelos de mensagem](../whatsapp/modelos-de-mensagem.md).

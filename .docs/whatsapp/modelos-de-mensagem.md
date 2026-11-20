@@ -7,8 +7,18 @@ dois modelos: o **aviso de cancelamento** (issue #67) e o **lembrete do atendime
 Este guia mostra como cadastrar os dois no WhatsApp Manager da conta do número da equipe. A aprovação
 leva de horas a dias, então cadastre os modelos assim que a conta estiver pronta.
 
-**Custo:** cada mensagem de modelo enviada pela Cloud API é cobrada pela Meta. Cadastrar e aprovar o
-modelo não é cobrado; o envio de cada aviso ou lembrete é.
+**O aviso de cancelamento é opcional e nasce desligado** (issue #164, [decisão 005](../decisoes/005-mensagens-ao-cidadao.md)).
+O modelo de cancelamento só precisa ser cadastrado se o Admin ligar o aviso na tela de WhatsApp.
+
+## Custo e cobrança (levantamento de 17/11/2026, na documentação oficial da Meta)
+
+- Cadastrar e aprovar um modelo não é cobrado; **o envio de cada mensagem de modelo é**.
+- **Dentro da janela de 24 horas** da conversa: até 30/09/2026, o modelo de **utilidade** não era cobrado (isenção válida desde 01/07/2025). **Desde 01/10/2026, passou a ser cobrado por mensagem**, mesmo dentro da janela.
+- **Fora da janela de 24 horas**, o modelo é sempre cobrado.
+- Valor para o Brasil: cerca de **0,68 centavo de dólar** por mensagem de utilidade (tabela de 01/07/2026). **Não foi confirmado** se o valor mudou depois dessa data; consulte a tabela de preços atual da Meta.
+- A cota gratuita de 1.000 conversas por mês vale **só para mensagens de serviço** (texto livre, dentro da janela). **Não vale para modelos.**
+- O erro **131042** da Meta significa **problema de pagamento da conta** (forma de pagamento não ligada ou linha de crédito indisponível). Para corrigir: no Gerenciador de Negócios da Meta, abra **Billing Hub → Formas de pagamento** e cadastre uma forma de pagamento.
+- Não confirmado: se a Meta oferece alguma isenção para projetos acadêmicos ou sem fins lucrativos. Sem forma de pagamento, os avisos por modelo falham com o erro 131042.
 
 ## Regras que não podem mudar
 

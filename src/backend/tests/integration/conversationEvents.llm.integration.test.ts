@@ -72,6 +72,7 @@ describe("Resposta escrita pela IA com Postgres", () => {
             hashPhone,
             logger: console,
             isAutoReplyPaused: async () => false,
+            isCancellationNoticeEnabled: async () => false,
             deliverAnswer: (job) => {
                 delivery = deliver(job)
                 return delivery

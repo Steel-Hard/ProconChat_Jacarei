@@ -117,10 +117,13 @@
 }
 
 .responsible {
+    min-width: 120px;
     color: var(--text-body);
 }
 
 .unassigned {
+    min-width: 120px;
+    white-space: nowrap;
     color: var(--unassigned-text);
     font-style: italic;
 }

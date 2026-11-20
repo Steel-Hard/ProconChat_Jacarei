@@ -1,3 +1,4 @@
+import type { CancellationNoticeProblem } from "./outboundMessage.types"
 export type AppointmentStatus =
     | "PENDING"
     | "CONFIRMED"
@@ -66,7 +67,15 @@ export type CitizenNotificationKind = "CANCELLATION"
 
 export type CitizenNotificationOutcome = "NOTIFIED" | "FAILED"
 
+export interface CancelOptions {
+    noticeDisabled: boolean
+}
+
+export type CancellationNoticeStatus = CitizenNotificationOutcome | "DISABLED"
+
 export interface CancellationPreview {
+    noticeEnabled: boolean
+    problem: CancellationNoticeProblem | null
     previews: { reason: CancellationReason; message: string }[]
 }
 
@@ -77,7 +86,7 @@ export interface CancellationNoticeTarget {
     protocol: string
     phoneEncrypted: string | null
     lastStaffCancelReason: CancellationReason | null
-    lastCancellationNotice: CitizenNotificationOutcome | null
+    lastCancellationNotice: CancellationNoticeStatus | null
 }
 
 export type AppointmentActionType = "claim" | "attended" | "no_show" | "assign" | "correct_record" | "cancel"
@@ -159,6 +168,7 @@ export type TransitionErrorCode =
     | "PERMISSION_REQUIRED"
     | "CANCEL_AFTER_START"
     | "NOTIFICATION_NOT_RETRYABLE"
+    | "NOTIFICATION_DISABLED"
     | "CITIZEN_PHONE_UNAVAILABLE"
     | "NOTIFICATION_AFTER_START"
 
@@ -212,9 +222,10 @@ export interface AppointmentDetail {
     notes: AppointmentNote[]
     timeline: ConversationTimelineStep[]
     available_actions: AppointmentAvailableActions
+    cancellation_notice_status: CancellationNoticeStatus | null
 }
 
-export type AppointmentDetailRecord = Omit<AppointmentDetail, "available_actions">
+export type AppointmentDetailRecord = Omit<AppointmentDetail, "available_actions" | "cancellation_notice_status">
 
 export interface AppointmentListFilters {
     search?: string
@@ -228,10 +239,18 @@ export interface AppointmentListFilters {
     currentUserId?: number
 }
 
+export interface StaffRecord {
+    id: string
+    name: string
+    active: boolean
+    email: string
+}
+
 export interface StaffMember {
     id: string
     name: string
     active: boolean
+    email: string | null
 }
 
 export interface CorrectionWarningDetails {
@@ -302,5 +321,6 @@ export interface AppointmentCalendar {
     weekEnd: string
     weekStartDay: number
     days: CalendarDay[]
+    seatsPerSlot: number | null
     appointments: CalendarAppointment[]
 }

@@ -43,18 +43,22 @@ function respond({ status, body }: Reply): Response {
     })
 }
 
-async function setup(patchReply: Reply = { status: 200, body: { data: DETAIL } }) {
+async function setup(
+    patchReply: Reply = { status: 200, body: { data: DETAIL } },
+    extraReplies: Record<string, Reply> = {}
+) {
     vi.stubEnv("VITE_API_URL", "https://api.example.com")
     vi.resetModules()
     const fetchMock = vi.fn(async (input: Request) => {
         const path = new URL(input.url).pathname
+        const reply = extraReplies[`${input.method} ${path}`]
+
+        if (reply) {
+            return respond(reply)
+        }
 
         if (input.method === "PATCH") {
             return respond(patchReply)
-        }
-
-        if (path.endsWith("/pending-count")) {
-            return respond({ status: 200, body: { data: { count: 4 } } })
         }
 
         if (path === "/api/v1/appointments") {
@@ -156,19 +160,6 @@ describe("appointmentsApi", () => {
         expect(params.get("limit")).toBe("20")
     })
 
-    it("devolve o número de pendentes de data.count", async () => {
-        const { appointmentsApi, store, fetchMock } = await setup()
-
-        const result = await store.dispatch(
-            appointmentsApi.endpoints.getPendingAppointmentsCount.initiate()
-        )
-
-        expect(result.data).toBe(4)
-        expect(requestAt(fetchMock, 0).url).toBe(
-            "https://api.example.com/api/v1/appointments/pending-count"
-        )
-    })
-
     it("lê o detalhe em GET /api/v1/appointments/:id", async () => {
         const { appointmentsApi, store, fetchMock } = await setup()
 
@@ -176,6 +167,32 @@ describe("appointmentsApi", () => {
 
         expect(result.data?.status).toBe("PENDING")
         expect(requestAt(fetchMock, 0).url).toBe("https://api.example.com/api/v1/appointments/7")
+    })
+
+    it("lê a prévia de cancelamento gerada pelo backend", async () => {
+        const preview = {
+            noticeEnabled: true,
+            problem: null,
+            previews: [{ reason: "CITIZEN_REQUEST", message: "Mensagem oficial de cancelamento" }]
+        }
+        const { appointmentsApi, store, fetchMock } = await setup(
+            { status: 200, body: { data: DETAIL } },
+            {
+                "GET /api/v1/appointments/7/cancellation-preview": {
+                    status: 200,
+                    body: { data: preview }
+                }
+            }
+        )
+
+        const result = await store.dispatch(
+            appointmentsApi.endpoints.getCancellationPreview.initiate("7")
+        )
+
+        expect(result.data).toEqual(preview)
+        expect(requestAt(fetchMock, 0).url).toBe(
+            "https://api.example.com/api/v1/appointments/7/cancellation-preview"
+        )
     })
 
     it("manda PATCH /:id/status com o corpo da ação e devolve o detalhe", async () => {
@@ -193,16 +210,46 @@ describe("appointmentsApi", () => {
         expect(await requestAt(fetchMock, 0).text()).toBe('{"action":"claim"}')
     })
 
-    it("no sucesso grava o detalhe no cache sem novo GET e refaz a lista e o contador", async () => {
+    it("manda PATCH /:id/status com o motivo e a observação do cancelamento", async () => {
+        const { appointmentsApi, store, fetchMock } = await setup()
+
+        await store.dispatch(
+            appointmentsApi.endpoints.updateAppointmentStatus.initiate({
+                id: "7",
+                action: "cancel",
+                reason: "CITIZEN_REQUEST",
+                note: "Pedido confirmado pelo titular"
+            })
+        )
+
+        expect(requestAt(fetchMock, 0).method).toBe("PATCH")
+        expect(requestAt(fetchMock, 0).url).toBe(
+            "https://api.example.com/api/v1/appointments/7/status"
+        )
+        expect(await requestAt(fetchMock, 0).text()).toBe(
+            '{"action":"cancel","reason":"CITIZEN_REQUEST","note":"Pedido confirmado pelo titular"}'
+        )
+    })
+
+    it("envia POST para tentar novamente o aviso de cancelamento", async () => {
+        const { appointmentsApi, store, fetchMock } = await setup()
+
+        await store.dispatch(appointmentsApi.endpoints.retryCancellationNotice.initiate("7"))
+
+        expect(requestAt(fetchMock, 0).method).toBe("POST")
+        expect(requestAt(fetchMock, 0).url).toBe(
+            "https://api.example.com/api/v1/appointments/7/cancellation-notice/retry"
+        )
+        expect(await requestAt(fetchMock, 0).text()).toBe("")
+    })
+
+    it("no sucesso grava o detalhe no cache sem novo GET e refaz a lista", async () => {
         const { appointmentsApi, store, fetchMock } = await setup()
         const detail = store.dispatch(appointmentsApi.endpoints.getAppointment.initiate("7"))
         const list = store.dispatch(
             appointmentsApi.endpoints.getAppointments.initiate(DEFAULT_FILTERS)
         )
-        const count = store.dispatch(
-            appointmentsApi.endpoints.getPendingAppointmentsCount.initiate()
-        )
-        await Promise.all([detail, list, count])
+        await Promise.all([detail, list])
 
         await store.dispatch(
             appointmentsApi.endpoints.updateAppointmentStatus.initiate({ id: "7", action: "claim" })
@@ -210,7 +257,6 @@ describe("appointmentsApi", () => {
 
         await vi.waitFor(() => {
             expect(requestsTo(fetchMock, "GET", "/api/v1/appointments")).toBe(2)
-            expect(requestsTo(fetchMock, "GET", "/api/v1/appointments/pending-count")).toBe(2)
         })
         expect(requestsTo(fetchMock, "GET", "/api/v1/appointments/7")).toBe(1)
         expect(
@@ -218,10 +264,9 @@ describe("appointmentsApi", () => {
         ).toBe("CONFIRMED")
         detail.unsubscribe()
         list.unsubscribe()
-        count.unsubscribe()
     })
 
-    it("com 409 refaz a lista e o contador, mas não o detalhe", async () => {
+    it("com 409 refaz a lista, mas não o detalhe", async () => {
         const { appointmentsApi, store, fetchMock } = await setup({
             status: 409,
             body: { error: { code: "APPOINTMENT_ALREADY_CLAIMED", message: "x" } }
@@ -230,10 +275,7 @@ describe("appointmentsApi", () => {
         const list = store.dispatch(
             appointmentsApi.endpoints.getAppointments.initiate(DEFAULT_FILTERS)
         )
-        const count = store.dispatch(
-            appointmentsApi.endpoints.getPendingAppointmentsCount.initiate()
-        )
-        await Promise.all([detail, list, count])
+        await Promise.all([detail, list])
 
         const result = await store.dispatch(
             appointmentsApi.endpoints.updateAppointmentStatus.initiate({ id: "7", action: "claim" })
@@ -242,7 +284,6 @@ describe("appointmentsApi", () => {
         expect(result.error).toMatchObject({ status: 409 })
         await vi.waitFor(() => {
             expect(requestsTo(fetchMock, "GET", "/api/v1/appointments")).toBe(2)
-            expect(requestsTo(fetchMock, "GET", "/api/v1/appointments/pending-count")).toBe(2)
         })
         expect(requestsTo(fetchMock, "GET", "/api/v1/appointments/7")).toBe(1)
         expect(
@@ -250,6 +291,5 @@ describe("appointmentsApi", () => {
         ).toBe("PENDING")
         detail.unsubscribe()
         list.unsubscribe()
-        count.unsubscribe()
     })
 })

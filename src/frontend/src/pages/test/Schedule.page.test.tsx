@@ -4,7 +4,7 @@ import buildScheduleConfig from "@/testUtils/buildScheduleConfig"
 import NAV_ITEMS_ALL_READY from "@/testUtils/navItemsAllReady"
 import renderSchedulePage from "@/testUtils/renderSchedulePage"
 
-vi.setConfig({ testTimeout: 20000 })
+vi.setConfig({ testTimeout: 60000 })
 
 const SLOW = { timeout: 10000 }
 

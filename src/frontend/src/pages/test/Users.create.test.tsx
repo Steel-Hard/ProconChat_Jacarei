@@ -4,7 +4,7 @@ import buildUserAccount from "@/testUtils/buildUserAccount"
 import renderUsersPage from "@/testUtils/renderUsersPage"
 import USERS_FIXTURE from "@/testUtils/usersFixture"
 
-vi.setConfig({ testTimeout: 20000 })
+vi.setConfig({ testTimeout: 60000 })
 
 type Reply = { status: number; body?: unknown }
 

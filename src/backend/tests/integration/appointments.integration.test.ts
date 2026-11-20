@@ -662,6 +662,7 @@ describe("Agendamentos com Postgres (integração)", () => {
             "assigned_user_name",
             "available_actions",
             "by_representative",
+            "cancellation_notice_status",
             "category_id",
             "category_name",
             "cpf_masked",

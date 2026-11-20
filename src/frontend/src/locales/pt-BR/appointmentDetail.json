@@ -38,7 +38,7 @@
         },
         "original": "Data original",
         "origin": "Origem no chatbot",
-        "originValue": "{{category}} → {{question}}",
+        "originPrefix": "{{category}} →",
         "representativeNotice": "O titular indicou no chatbot que outra pessoa comparecerá em seu nome. Nome e CPF acima são sempre do titular; confira os documentos exigidos para representante."
     },
     "documents": {
@@ -98,6 +98,23 @@
     },
     "history": {
         "title": "Histórico",
+        "retryNotice": "Tentar novamente",
+        "metaErrors": {
+            "131042": "A conta da Meta está sem forma de pagamento.",
+            "132001": "O modelo de aviso não existe no idioma usado ou não está aprovado na Meta.",
+            "132000": "O número de parâmetros enviado é diferente do modelo cadastrado na Meta.",
+            "132012": "Os parâmetros do modelo foram enviados com formato incorreto.",
+            "132007": "O conteúdo do modelo viola a política do WhatsApp.",
+            "132015": "O modelo de aviso foi pausado pela Meta por baixa qualidade.",
+            "132016": "O modelo de aviso foi desativado de vez pela Meta.",
+            "132005": "A tradução do texto do modelo ficou longa demais.",
+            "190": "O token da Meta está inválido ou expirado.",
+            "131048": "O limite de envios do número foi atingido.",
+            "131026": "Mensagem não entregável: o número pode não ter WhatsApp, não ter aceitado os termos ou estar com o aplicativo desatualizado.",
+            "131049": "Limite de engajamento do usuário: esperar 24 horas e não insistir.",
+            "131056": "Muitos envios ao mesmo destinatário.",
+            "131047": "Fora da janela de 24 horas."
+        },
         "events": {
             "created": {
                 "withActor": "Criado pelo chatbot como Pendente",
@@ -144,16 +161,24 @@
                 "withoutActor": "Cancelado no painel"
             },
             "citizenNotified": {
-                "withActor": "Cidadão avisado pelo WhatsApp",
-                "withoutActor": "Cidadão avisado pelo WhatsApp"
+                "withActor": "Cidadão avisado do cancelamento",
+                "withoutActor": "Cidadão avisado do cancelamento"
             },
             "citizenNotificationFailed": {
-                "withActor": "Falha ao avisar o cidadão pelo WhatsApp",
-                "withoutActor": "Falha ao avisar o cidadão pelo WhatsApp"
+                "withActor": "Falha ao avisar o cidadão do cancelamento",
+                "withoutActor": "Falha ao avisar o cidadão do cancelamento"
+            },
+            "noticeDisabled": {
+                "withActor": "Aviso ao cidadão desativado: cidadão não avisado pelo sistema",
+                "withoutActor": "Aviso ao cidadão desativado: cidadão não avisado pelo sistema"
+            },
+            "reminderFailed": {
+                "withActor": "Falha ao avisar o cidadão do lembrete",
+                "withoutActor": "Falha ao avisar o cidadão do lembrete"
             },
             "reminderSent": {
-                "withActor": "Lembrete enviado pelo WhatsApp",
-                "withoutActor": "Lembrete enviado pelo WhatsApp"
+                "withActor": "Lembrete enviado",
+                "withoutActor": "Lembrete enviado"
             },
             "keptOffGrid": {
                 "withActor": "Mantido fora da grade atual após alteração de horários",
@@ -171,7 +196,9 @@
             "claim": "Assumir para mim",
             "attended": "Marcar como atendido",
             "noShow": "Marcar como não compareceu",
-            "correctRecord": "Corrigir registro"
+            "correctRecord": "Corrigir registro",
+            "assign": "Atribuir a outro funcionário",
+            "cancel": "Cancelar agendamento"
         },
         "waiting": {
             "attended": "Marcar como atendido: disponível a partir do dia do atendimento.",
@@ -181,6 +208,34 @@
             "attended": "Atendimento concluído.",
             "noShow": "O cidadão não compareceu ao atendimento.",
             "canceled": "Agendamento cancelado. O horário foi liberado no chatbot."
+        },
+        "cancel": {
+            "title": "Cancelar o agendamento {{protocol}}?",
+            "subtitle": "{{name}} · {{date}} às {{time}}. O horário volta a ficar disponível no chatbot e o cidadão é avisado pelo WhatsApp. Esta ação não pode ser desfeita.",
+            "subtitleNoNotice": "{{name}} · {{date}} às {{time}}. O horário volta a ficar disponível no chatbot. O cidadão não será avisado pelo sistema. Esta ação não pode ser desfeita.",
+            "confirm": "Cancelar e avisar o cidadão",
+            "confirmNoNotice": "Cancelar agendamento",
+            "noticeOff": "O aviso por WhatsApp está desligado. O cidadão não será avisado pelo sistema. Avise por outro meio.",
+            "dismiss": "Voltar",
+            "reasonLabel": "Motivo do cancelamento",
+            "required": "*",
+            "reasonRequired": "Escolha um motivo",
+            "fixedTag": "Modelo fixo",
+            "reasons": {
+                "UNIT_CLOSED": "Unidade fechada nesta data",
+                "CITIZEN_REQUEST": "A pedido do cidadão",
+                "DUPLICATE": "Agendamento duplicado",
+                "OTHER": "Outro motivo"
+            },
+            "previewLabel": "Mensagem que o cidadão receberá",
+            "chooseReason": "Escolha um motivo para ver a prévia.",
+            "previewFailed": "Não foi possível verificar o aviso ao cidadão. Tente de novo.",
+            "retryPreview": "Tentar de novo",
+            "verifying": "Verificando o aviso ao cidadão…",
+            "fixedMessageHint": "As mensagens enviadas pelo chatbot seguem modelos fixos e não podem ser editadas livremente. Por isso o aviso pode ser enviado a qualquer momento antes do horário do atendimento.",
+            "noteLabel": "Observação interna ",
+            "noteOptional": "(opcional, não é enviada ao cidadão)",
+            "afterStart": "O horário já passou; não é possível cancelar. Registre como atendido ou não compareceu."
         },
         "readOnly": "Sua conta pode apenas visualizar agendamentos.",
         "dateNote": "A data não pode ser alterada pelo painel. Remarcações são feitas pelo cidadão no chatbot.",
@@ -208,28 +263,35 @@
             "alsoClaim": "{{description}} Ele também será assumido por você."
         },
         "correctRecord": {
-            "warning": {
-                "busy": "Registro corrigido, mas o responsável está ocupado em outro agendamento ({{protocol}}).",
-                "unavailable": "Registro corrigido, mas o responsável anterior está indisponível. {{count}} funcionário(s) estão livres nesse horário.",
-                "noStaff": "Registro corrigido, mas ninguém está livre para atender nesse horário."
+            "hint": "Volta ao estado anterior ao registro (Pendente ou Confirmado).",
+            "result": {
+                "confirmed": "Registro corrigido. O agendamento voltou a Confirmado com {{name}}.",
+                "pending": "Registro corrigido. O agendamento voltou a Pendente.",
+                "busyNone": "Registro corrigido. O agendamento voltou a Pendente sem responsável, porque o responsável anterior já tem outro agendamento neste horário (protocolo {{protocol}}). Ninguém está livre neste horário no momento.",
+                "busyOne": "Registro corrigido. O agendamento voltou a Pendente sem responsável, porque o responsável anterior já tem outro agendamento neste horário (protocolo {{protocol}}). Há 1 funcionário livre neste horário.",
+                "busyMany": "Registro corrigido. O agendamento voltou a Pendente sem responsável, porque o responsável anterior já tem outro agendamento neste horário (protocolo {{protocol}}). Há {{count}} funcionários livres neste horário.",
+                "unavailableNone": "Registro corrigido. O agendamento voltou a Pendente sem responsável, porque o responsável anterior não pode mais assumir (conta desativada ou sem Gerenciar agendamentos). Ninguém está livre neste horário no momento.",
+                "unavailableSome": "Registro corrigido. O agendamento voltou a Pendente sem responsável, porque o responsável anterior não pode mais assumir (conta desativada ou sem Gerenciar agendamentos). Funcionários livres neste horário: {{count}}.",
+                "unknownProtocol": "não informado"
             }
         }
     },
     "assignment": {
-        "title": "Atribuir a outro funcionário",
-        "chooseStaff": "Selecione um funcionário",
-        "assign": "Atribuir agendamento",
+        "title": "Atribuir {{protocol}}",
+        "description": "Escolha o funcionário responsável. O status passa a Confirmado.",
+        "assign": "Atribuir",
+        "back": "Voltar",
         "staffError": "Não foi possível carregar a lista de funcionários."
     },
     "notes": {
         "title": "Observações internas",
-        "visibility": "Visíveis apenas para a equipe do PROCON e nunca enviadas ao cidadão.",
-        "placeholder": "Escreva uma observação interna",
-        "add": "Adicionar observação",
+        "label": "Observação interna",
+        "placeholder": "Visível apenas para a equipe do PROCON",
+        "add": "Salvar observação",
         "success": "Observação adicionada.",
         "error": "Não foi possível adicionar a observação. Tente novamente.",
-        "empty": "Nenhuma observação interna.",
-        "author": "Autor",
-        "date": "Data"
+        "empty": "Nenhuma observação registrada.",
+        "removedAuthor": "Conta removida",
+        "dateTime": "{{date}} {{time}}"
     }
 }

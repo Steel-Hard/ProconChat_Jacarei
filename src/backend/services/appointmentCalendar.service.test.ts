@@ -198,6 +198,91 @@ describe("appointmentCalendar.service", () => {
         ])
     })
 
+    it("devolve seatsPerSlot com as vagas por horário configuradas para a semana", async () => {
+        const result = await build().calendar.getCalendar({ date: "2026-10-21" })
+
+        expect(result.seatsPerSlot).toBe(2)
+    })
+
+    it("devolve seatsPerSlot nulo quando uma mudança agendada no meio da semana troca as vagas por horário", async () => {
+        const baseline = buildDefaultScheduleConfigView({
+            windowDays: 30,
+            minNoticeDays: 0,
+            seatsPerSlot: 2,
+            ranges: [{ weekday: 3, slotIndex: 1, startTime: "08:00", endTime: "10:00" }],
+        })
+        const scheduled = buildDefaultScheduleConfigView({
+            windowDays: 30,
+            minNoticeDays: 0,
+            seatsPerSlot: 5,
+            ranges: [{ weekday: 4, slotIndex: 1, startTime: "08:00", endTime: "10:00" }],
+        })
+        vi.mocked(scheduleRepository.getScheduleVersions).mockResolvedValueOnce([
+            { effectiveFrom: null, config: baseline },
+            { effectiveFrom: "2026-10-22", config: scheduled },
+        ])
+
+        const result = await build().calendar.getCalendar({ date: "2026-10-21" })
+
+        expect(result.days.map((day) => day.date)).toEqual(["2026-10-21", "2026-10-22"])
+        expect(result.seatsPerSlot).toBeNull()
+    })
+
+    it("mantém seatsPerSlot quando a mudança agendada no meio da semana não altera as vagas por horário", async () => {
+        const baseline = buildDefaultScheduleConfigView({
+            windowDays: 30,
+            minNoticeDays: 0,
+            seatsPerSlot: 3,
+            ranges: [{ weekday: 3, slotIndex: 1, startTime: "08:00", endTime: "10:00" }],
+        })
+        const scheduled = buildDefaultScheduleConfigView({
+            windowDays: 30,
+            minNoticeDays: 0,
+            seatsPerSlot: 3,
+            ranges: [{ weekday: 4, slotIndex: 1, startTime: "14:00", endTime: "16:00" }],
+        })
+        vi.mocked(scheduleRepository.getScheduleVersions).mockResolvedValueOnce([
+            { effectiveFrom: null, config: baseline },
+            { effectiveFrom: "2026-10-22", config: scheduled },
+        ])
+
+        const result = await build().calendar.getCalendar({ date: "2026-10-21" })
+
+        expect(result.seatsPerSlot).toBe(3)
+    })
+
+    it("ignora uma versão sem horários na semana ao decidir seatsPerSlot", async () => {
+        const baseline = buildDefaultScheduleConfigView({
+            windowDays: 30,
+            minNoticeDays: 0,
+            seatsPerSlot: 2,
+            ranges: [{ weekday: 3, slotIndex: 1, startTime: "08:00", endTime: "10:00" }],
+        })
+        const scheduled = buildDefaultScheduleConfigView({
+            windowDays: 30,
+            minNoticeDays: 0,
+            seatsPerSlot: 9,
+            ranges: [],
+        })
+        vi.mocked(scheduleRepository.getScheduleVersions).mockResolvedValueOnce([
+            { effectiveFrom: null, config: baseline },
+            { effectiveFrom: "2026-10-22", config: scheduled },
+        ])
+
+        const result = await build().calendar.getCalendar({ date: "2026-10-21" })
+
+        expect(result.seatsPerSlot).toBe(2)
+    })
+
+    it("devolve seatsPerSlot nulo quando a semana não tem nenhum dia com horários", async () => {
+        vi.mocked(scheduleRepository.getScheduleVersions).mockResolvedValueOnce([])
+
+        const result = await build().calendar.getCalendar({ date: "2026-10-21" })
+
+        expect(result.days).toEqual([])
+        expect(result.seatsPerSlot).toBeNull()
+    })
+
     it("pede ao repositório os agendamentos da semana com os filtros e devolve data e hora locais", async () => {
         appointments.findWeek.mockResolvedValue([
             weekRecord(),

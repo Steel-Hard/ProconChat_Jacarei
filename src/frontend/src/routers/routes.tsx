@@ -17,6 +17,7 @@ const AppointmentDetail = lazy(() => import("@/pages/AppointmentDetail.page"))
 const Users = lazy(() => import("@/pages/Users.page"))
 const Schedule = lazy(() => import("@/pages/Schedule.page"))
 const Documents = lazy(() => import("@/pages/Documents.page"))
+const Reports = lazy(() => import("@/pages/Reports.page"))
 const PrivacyPolicy = lazy(() => import("@/pages/PrivacyPolicy.page"))
 
 function previewRoutes(): RouteObject[] {
@@ -66,7 +67,7 @@ const routes: RouteObject[] = [
                                         path: ROUTES.appointmentDetail,
                                         element: <AppointmentDetail />
                                     },
-                                    underConstruction(ROUTES.reports, "reports"),
+                                    { path: ROUTES.reports, element: <Reports /> },
                                     underConstruction(ROUTES.content, "content"),
                                     underConstruction(ROUTES.sessions, "sessions"),
                                     { path: ROUTES.schedule, element: <Schedule /> },

@@ -1,105 +1,102 @@
 .item {
-    display: flex;
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr) auto;
     align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 8px 12px;
-    background: var(--bg-surface);
-    border: 1px solid var(--border-subtle);
-    border-radius: 8px;
-    transition:
-        background 0.15s ease,
-        border-color 0.15s ease;
+    gap: 10px;
+    min-height: 44px;
+    box-sizing: border-box;
+    padding: 7px 10px;
+    background: var(--bg-subtle);
+    border: 1px solid var(--divider);
+    border-radius: 9px;
 }
 
-.item:hover {
-    border-color: var(--border-accent);
-}
-
-.textWrapper {
-    flex: 1 1 auto;
-    min-width: 0;
+.position {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--sidebar-label);
 }
 
 .textButton {
-    background: none;
+    min-width: 0;
+    margin: -3px -5px;
+    padding: 3px 5px;
     border: none;
-    padding: 0;
-    font-size: 14px;
-    color: var(--text-primary);
+    border-radius: 5px;
+    background: none;
+    color: var(--text-body);
+    font-size: 13.5px;
+    line-height: 1.4;
     text-align: left;
-    cursor: pointer;
-    width: 100%;
-    word-break: break-word;
+    text-wrap: pretty;
+    overflow-wrap: break-word;
+    word-break: normal;
+    cursor: text;
 }
 
 .textButton:hover {
-    color: var(--color-primary);
+    background: var(--seal-neutral-bg);
 }
 
 .editForm {
+    display: contents;
+}
+
+.editField {
     display: flex;
-    align-items: center;
-    gap: 6px;
-    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
 }
 
 .editInput {
-    flex: 1 1 auto;
-    padding: 6px 10px;
-    border: 1px solid var(--color-primary);
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 6px 8px;
+    border: 1px solid var(--input-edit-border);
     border-radius: 6px;
-    font-size: 14px;
-    outline: none;
+    background: var(--bg-surface);
+    font-size: 13.5px;
+    outline: 2px solid var(--seal-neutral-bg);
 }
 
-.saveButton {
-    padding: 5px 10px;
-    border: none;
-    border-radius: 6px;
-    background: var(--color-primary);
-    color: #fff;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
+.editInput:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 0;
 }
 
-.cancelButton {
-    padding: 5px 10px;
-    border: 1px solid var(--border-subtle);
-    border-radius: 6px;
-    background: none;
-    font-size: 12px;
-    cursor: pointer;
+.editHint {
+    font-size: 11.5px;
+    color: var(--text-muted);
 }
 
 .actions {
     display: flex;
     align-items: center;
-    gap: 4px;
-    flex-shrink: 0;
+    align-self: center;
+    gap: 2px;
 }
 
 .actionButton {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
     min-width: 28px;
     height: 28px;
-    padding: 2px 6px;
-    border: 1px solid var(--border-subtle);
+    padding: 0;
+    border: 1px solid var(--border);
     border-radius: 6px;
     background: var(--bg-surface);
-    color: var(--text-muted);
-    font-size: 12px;
+    color: var(--text-strong);
+    font-size: 12.5px;
     cursor: pointer;
-    transition: all 0.15s ease;
+    white-space: nowrap;
 }
 
 .actionButton:hover:not(:disabled) {
-    color: var(--text-primary);
-    border-color: var(--border-strong);
-    background: var(--bg-subtle);
+    filter: brightness(0.94);
 }
 
 .actionButton:disabled {
@@ -107,12 +104,74 @@
     cursor: not-allowed;
 }
 
-.removeButton {
-    color: var(--error-text);
+.editButton {
+    padding: 0 9px;
+    font-weight: 600;
 }
 
-.removeButton:hover:not(:disabled) {
-    color: var(--error-text);
-    border-color: var(--error-border, #fca5a5);
-    background: var(--error-bg);
+.removeButton {
+    border-color: var(--error-border);
+    color: var(--danger);
+}
+
+.saveButton,
+.cancelButton {
+    height: 30px;
+    flex-shrink: 0;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.saveButton {
+    padding: 0 11px;
+    border: 0;
+    background: var(--color-primary);
+    color: #ffffff;
+}
+
+.saveButton:hover:not(:disabled) {
+    background: var(--color-primary-dark);
+}
+
+.saveButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.cancelButton {
+    padding: 0 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    color: var(--text-strong);
+}
+
+.cancelButton:hover {
+    filter: brightness(0.94);
+}
+
+.warning {
+    display: block;
+    margin: 0;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--warn-text);
+}
+
+@container (max-width: 440px) {
+    .item {
+        grid-template-columns: 24px minmax(0, 1fr);
+        row-gap: 6px;
+    }
+
+    .actions {
+        grid-column: 2;
+        justify-self: end;
+    }
+
+    .editField {
+        grid-column: 2;
+    }
 }
