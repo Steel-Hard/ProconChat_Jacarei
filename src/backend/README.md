@@ -1039,21 +1039,37 @@ marcado (no horário ou depois, `409 CANCEL_AFTER_START`).
   - versão efetiva da agenda na data local do atendimento (`ScheduleChanges` com a maior
     `effective_from <= data local`, ou `ScheduleSettings` sem mudança agendada) com
     `reminder_enabled = true` e `appointment_datetime <= now + reminder_hours`;
-  - sem nenhum evento anterior de lembrete (`REMINDER_SENT`, ou `CITIZEN_NOTIFIED` /
-    `CITIZEN_NOTIFICATION_FAILED` com `data->>'kind' = 'REMINDER'`).
-- Para cada alvo, decifra `phone_encrypted`, monta os 7 parâmetros de `MODELO_LEMBRETE_ATENDIMENTO`
-  (`lembrete_atendimento`, `pt_BR`) por `parametrosLembreteAtendimento` (usando os documentos gravados
-  no agendamento em `Appointments.documents_sent`, nunca a configuração atual de `AttendanceDocuments`,
-  e o endereço da versão efetiva na data do atendimento) e chama `gatewayClient.sendTemplate`.
-- `recordReminderOutcome` trava a linha do agendamento (`FOR UPDATE`), confere de novo que continua
-  `PENDING` ou `CONFIRMED` e sem evento de lembrete, e grava:
-  - no sucesso (`SENT`): `REMINDER_SENT` em `AppointmentEvents` (com `actor_user_id NULL`) e
-    `REMINDER`/`SENT` em `OutboundMessages` com o hash do `providerMessageId` (se o webhook `FAILED`
-    chegou antes da gravação, preserva `FAILED` e acrescenta `CITIZEN_NOTIFICATION_FAILED` 1 ms depois);
-  - na falha síncrona (`FAILED`, inclusive telefone ausente ou ilegível, ou Gateway não configurado):
-    `CITIZEN_NOTIFICATION_FAILED` (`{ kind: "REMINDER" }`) em `AppointmentEvents` e
-    `REMINDER`/`FAILED` sem hash em `OutboundMessages`. Cada agendamento tem uma única tentativa de
-    envio (não há reenvio automático nem botão de reenvio para lembretes).
+  - o agendamento recebeu a data atual (último `CREATED` ou `RESCHEDULED`) antes de abrir a janela do
+    lembrete (`appointment_datetime - reminder_hours`): quem nasce ou é remarcado já dentro da janela não
+    recebe lembrete;
+  - sem evento anterior de lembrete **para a mesma data marcada**: `REMINDER_SENT`, ou `CITIZEN_NOTIFIED` /
+    `CITIZEN_NOTIFICATION_FAILED` com `data->>'kind' = 'REMINDER'`, com `data.appointmentDatetime` igual à
+    data atual do agendamento. Quem remarca recebe um novo lembrete para a nova data; a data antiga nunca
+    recebe. Eventos antigos sem `appointmentDatetime` bloqueiam, exceto a falha do webhook, que sempre
+    vem depois de um `REMINDER_SENT`.
+- Para cada alvo, `isStillDue` confere de novo (status, data e ausência de lembrete) antes de enviar;
+  um erro em um agendamento é registrado no log e não interrompe os demais. Decifra `phone_encrypted`,
+  monta os 7 parâmetros de `MODELO_LEMBRETE_ATENDIMENTO` (`lembrete_atendimento`, `pt_BR`) por
+  `parametrosLembreteAtendimento` (usando os documentos gravados no agendamento em
+  `Appointments.documents_sent`, nunca a configuração atual de `AttendanceDocuments`, e o endereço da
+  versão efetiva na data do atendimento; sem documentos, `um documento oficial com foto`) e chama
+  `gatewayClient.sendTemplate`.
+- `recordReminderOutcome` trava a linha do agendamento (`FOR UPDATE`) e grava sempre, mesmo que o
+  agendamento tenha sido cancelado depois do envio:
+  - no sucesso (`SENT`): `REMINDER_SENT` em `AppointmentEvents` (`actor_user_id NULL`, `data.appointmentDatetime`)
+    e `REMINDER`/`SENT` em `OutboundMessages` com o hash do `providerMessageId` (se o webhook `FAILED`
+    chegou antes da gravação, preserva `FAILED` e acrescenta `CITIZEN_NOTIFICATION_FAILED` 1 ms depois,
+    com o `errorCode` da Meta);
+  - na falha definitiva (telefone ausente ou ilegível, ou `REJECTED` do Gateway):
+    `CITIZEN_NOTIFICATION_FAILED` (`{ kind: "REMINDER", appointmentDatetime, errorCode? }`) em
+    `AppointmentEvents` e `REMINDER`/`FAILED` com `error_code` e sem hash em `OutboundMessages`. Não
+    repete e não há botão de reenvio para lembretes;
+  - na falha passageira (`UNREACHABLE` ou `NOT_CONFIGURED`): nada é gravado e a próxima varredura tenta
+    de novo, enquanto o horário do atendimento não passou.
+- Ligar ou desligar o lembrete (`PUT /schedule` ou `PUT /schedule/versions/:data`) grava
+  `reminder_enabled` ou `reminder_disabled` no `AuditLog` da área `whatsapp` (aparece em
+  `GET /whatsapp/settings/history`), na mesma transação, comparando com a versão anterior; mudar só
+  horas ou endereço não grava.
 
 Se duas ações chegam juntas (por exemplo, Atendido e Não compareceu), a segunda espera a trava, lê o
 status já alterado e recebe o `409` coerente com a ação que ganhou (`ALREADY_ATTENDED` ou
