@@ -133,7 +133,7 @@ describe("appointmentEventLabel", () => {
 
     it.each([
         ["131042", "A conta da Meta está sem forma de pagamento."],
-        ["132001", "O modelo de aviso não existe no idioma usado ou não está aprovado na Meta."],
+        ["132001", "O modelo da mensagem não existe no idioma usado ou não está aprovado na Meta."],
         [
             "131026",
             "Mensagem não entregável: o número pode não ter WhatsApp, não ter aceitado os termos ou estar com o aplicativo desatualizado."
