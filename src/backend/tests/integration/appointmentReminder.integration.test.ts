@@ -643,12 +643,15 @@ describe("Varredura periódica de lembretes antes do atendimento com Postgres (#
                 throw new Error("Existe versão de Horários vigente antes de 2031; o teste não exercitaria a configuração atual")
             }
             const updated = await client.query(
-                `UPDATE ScheduleSettings
+                `INSERT INTO ScheduleSettings (
+                    id, slot_minutes, seats_per_slot, window_days, min_notice_days, wait_alert_days,
+                    unit_address, unit_address_complement, reminder_enabled, reminder_hours
+                 ) VALUES (1, 30, 1, 30, 1, 5, 'Endereço Atual, 77', 'Sala 7', TRUE, 24)
+                 ON CONFLICT (id) DO UPDATE
                  SET reminder_enabled = TRUE,
                      reminder_hours = 24,
                      unit_address = 'Endereço Atual, 77',
-                     unit_address_complement = 'Sala 7'
-                 WHERE id = 1`,
+                     unit_address_complement = 'Sala 7'`,
             )
             expect(updated.rowCount).toBe(1)
             const insertAppointment = async (at: Date, status: AppointmentStatus): Promise<string> => {
