@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto"
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 import type { SendTemplateInput, SendTemplateResult } from "../../clients/gateway.client"
+import type { Pool } from "pg"
 import getPool from "../../db/connection"
 import { createAppointmentReminderRepository } from "../../repositories/appointmentReminder.repository"
 import { outboundMessageRepository } from "../../repositories/outboundMessage.repository"
@@ -628,5 +629,70 @@ describe("Varredura periódica de lembretes antes do atendimento com Postgres (#
                 appointmentId: String(afterId),
             },
         ])
+    })
+
+    it("usa a configuração atual de Horários quando não há versão agendada vigente na data do atendimento", async () => {
+        const settingsNow = new Date("2030-06-14T17:00:00.000Z")
+        const client = await getPool().connect()
+        try {
+            await client.query("BEGIN")
+            const versions = await client.query(
+                "SELECT 1 FROM ScheduleChanges WHERE effective_from <= '2030-12-31'::date",
+            )
+            if ((versions.rowCount ?? 0) > 0) {
+                throw new Error("Existe versão de Horários vigente antes de 2031; o teste não exercitaria a configuração atual")
+            }
+            const updated = await client.query(
+                `UPDATE ScheduleSettings
+                 SET reminder_enabled = TRUE,
+                     reminder_hours = 24,
+                     unit_address = 'Endereço Atual, 77',
+                     unit_address_complement = 'Sala 7'
+                 WHERE id = 1`,
+            )
+            expect(updated.rowCount).toBe(1)
+            const insertAppointment = async (at: Date, status: AppointmentStatus): Promise<string> => {
+                const result = await client.query<{ id: string }>(
+                    `INSERT INTO Appointments (
+                        session_id, question_id, reason, name, cpf_hash, cpf_masked,
+                        by_representative, documents_sent, appointment_datetime, status, assigned_user_id,
+                        appointment_code
+                     ) VALUES (
+                        $1, $2, 'NOT_RESOLVED', 'Maria da Silva', $3, '***.982.247-**',
+                        false, '{"group":[],"question":[]}'::jsonb, $4, $5, $6, gen_random_uuid()
+                     ) RETURNING id::text AS id`,
+                    [
+                        scope.sessionId,
+                        scope.questionId,
+                        randomBytes(32).toString("hex"),
+                        at,
+                        status,
+                        status === "PENDING" ? null : scope.adminUserId,
+                    ],
+                )
+                return firstRow(result.rows).id
+            }
+            const eligibleId = await insertAppointment(new Date(settingsNow.getTime() + 6 * HOUR_MS), "PENDING")
+            const canceledId = await insertAppointment(new Date(settingsNow.getTime() + 6 * HOUR_MS), "CANCELED")
+            const afterWindowId = await insertAppointment(
+                new Date(settingsNow.getTime() + 25 * HOUR_MS),
+                "PENDING",
+            )
+            const owned = new Set([eligibleId, canceledId, afterWindowId])
+
+            const targets = await createAppointmentReminderRepository(client as unknown as Pool).findDueTargets(
+                settingsNow,
+            )
+
+            const ownedTargets = targets.filter((target) => owned.has(target.id))
+            expect(ownedTargets.map((target) => target.id)).toEqual([eligibleId])
+            expect(ownedTargets[0]).toMatchObject({
+                unitAddress: "Endereço Atual, 77",
+                unitAddressComplement: "Sala 7",
+            })
+        } finally {
+            await client.query("ROLLBACK")
+            client.release()
+        }
     })
 })
