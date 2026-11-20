@@ -31,6 +31,7 @@ const BASE_VERSION_DATE = "2034-01-01"
 describe("Varredura periódica de lembretes antes do atendimento com Postgres (#74)", () => {
     const createdUserIds: (number | null)[] = []
     const createdWamids: string[] = []
+    const createdScheduleDates: string[] = []
     let admin: TestUser
     let scope: OwnedAppointmentScope
     const realRepository = createAppointmentReminderRepository()
@@ -49,7 +50,7 @@ describe("Varredura periódica de lembretes antes do atendimento com Postgres (#
         unit_address?: string
         unit_address_complement?: string | null
     } = {}): Promise<void> {
-        await insertScheduleChange(
+        const date = await insertScheduleChange(
             BASE_VERSION_DATE,
             {
                 slotMinutes: 30,
@@ -67,6 +68,17 @@ describe("Varredura periódica de lembretes antes do atendimento com Postgres (#
             },
             admin.id,
         )
+        createdScheduleDates.push(date)
+    }
+
+    async function deleteOwnedScheduleChanges(): Promise<void> {
+        if (createdScheduleDates.length === 0) {
+            return
+        }
+        await getPool().query("DELETE FROM ScheduleChanges WHERE effective_from = ANY($1::date[])", [
+            createdScheduleDates,
+        ])
+        createdScheduleDates.length = 0
     }
 
     async function appointment(input: {
@@ -184,18 +196,14 @@ describe("Varredura periódica de lembretes antes do atendimento com Postgres (#
             await pool.query("DELETE FROM Appointments WHERE id = ANY($1::bigint[])", [scope.createdAppointmentIds])
             scope.createdAppointmentIds.length = 0
         }
-        await pool.query("DELETE FROM ScheduleChanges WHERE updated_by = $1 AND effective_from >= $2::date", [
-            admin.id,
-            BASE_VERSION_DATE,
-        ])
+        await deleteOwnedScheduleChanges()
     })
 
     afterAll(async () => {
-        await getPool().query("DELETE FROM ScheduleChanges WHERE updated_by = $1 AND effective_from >= $2::date", [
-            admin.id,
-            BASE_VERSION_DATE,
-        ])
-        await deleteAppointmentScope(scope)
+        await deleteOwnedScheduleChanges()
+        if (scope) {
+            await deleteAppointmentScope(scope)
+        }
         await deleteTestUsers(createdUserIds)
         await getPool().end()
     })
@@ -517,7 +525,7 @@ describe("Varredura periódica de lembretes antes do atendimento com Postgres (#
             unit_address: "Endereço Base, 10",
             unit_address_complement: "Bloco A",
         })
-        await insertScheduleChange(
+        createdScheduleDates.push(await insertScheduleChange(
             "2034-06-15",
             {
                 slotMinutes: 30,
@@ -533,7 +541,7 @@ describe("Varredura periódica de lembretes antes do atendimento com Postgres (#
                 blockedDates: [],
             },
             admin.id,
-        )
+        ))
         const onBaseDateId = await appointment({
             at: new Date("2034-06-14T18:00:00.000Z"),
             status: "PENDING",

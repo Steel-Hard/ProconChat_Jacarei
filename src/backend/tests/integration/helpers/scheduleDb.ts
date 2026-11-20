@@ -143,12 +143,14 @@ export async function insertScheduleChange(
     effectiveFrom: string,
     config: object,
     updatedBy: number | string,
-): Promise<void> {
-    await getPool().query(
+): Promise<string> {
+    const result = await getPool().query<{ effective_from: string }>(
         `INSERT INTO ScheduleChanges (effective_from, config, updated_by)
-         VALUES ($1, $2::jsonb, $3)`,
+         VALUES ($1, $2::jsonb, $3)
+         RETURNING effective_from::text AS effective_from`,
         [effectiveFrom, JSON.stringify(config), updatedBy],
     )
+    return result.rows[0]!.effective_from
 }
 
 export async function createTestQuestion(): Promise<{ categoryId: number; questionId: number }> {
