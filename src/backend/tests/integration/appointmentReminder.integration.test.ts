@@ -20,26 +20,28 @@ import {
     firstRow,
     OwnedAppointmentScope,
 } from "./helpers/appointmentsDb"
-import {
-    insertScheduleChange,
-    restoreScheduleConfig,
-    ScheduleConfigSnapshot,
-    snapshotScheduleConfig,
-    useScheduleConfig,
-} from "./helpers/scheduleDb"
+import { insertScheduleChange } from "./helpers/scheduleDb"
 import { createTestUser, deleteTestUsers, TestUser } from "./helpers/usersDb"
 
 const NOW = new Date("2034-06-14T17:00:00.000Z")
 const HOUR_MS = 60 * 60 * 1000
 const PHONE = "5512999990740"
+const BASE_VERSION_DATE = "2034-01-01"
 
 describe("Varredura periódica de lembretes antes do atendimento com Postgres (#74)", () => {
     const createdUserIds: (number | null)[] = []
     const createdWamids: string[] = []
     let admin: TestUser
     let scope: OwnedAppointmentScope
-    let scheduleSnapshot: ScheduleConfigSnapshot
-    const repository = createAppointmentReminderRepository()
+    const realRepository = createAppointmentReminderRepository()
+    const repository = {
+        ...realRepository,
+        async findDueTargets(now: Date) {
+            const targets = await realRepository.findDueTargets(now)
+            const owned = new Set(scope.createdAppointmentIds.map(String))
+            return targets.filter((target) => owned.has(target.id))
+        },
+    }
 
     async function configureBaseSchedule(overrides: {
         reminder_enabled?: boolean
@@ -47,21 +49,24 @@ describe("Varredura periódica de lembretes antes do atendimento com Postgres (#
         unit_address?: string
         unit_address_complement?: string | null
     } = {}): Promise<void> {
-        await useScheduleConfig({
-            settings: {
-                slot_minutes: 30,
-                seats_per_slot: 4,
-                window_days: 30,
-                min_notice_days: 0,
-                wait_alert_days: 7,
-                unit_address: overrides.unit_address ?? "Av. Nove de Julho, 215",
-                unit_address_complement:
+        await insertScheduleChange(
+            BASE_VERSION_DATE,
+            {
+                slotMinutes: 30,
+                seatsPerSlot: 4,
+                windowDays: 30,
+                minNoticeDays: 0,
+                waitAlertDays: 7,
+                unitAddress: overrides.unit_address ?? "Av. Nove de Julho, 215",
+                unitAddressComplement:
                     overrides.unit_address_complement === undefined ? "Sala 2" : overrides.unit_address_complement,
-                reminder_enabled: overrides.reminder_enabled ?? true,
-                reminder_hours: overrides.reminder_hours ?? 24,
+                reminderEnabled: overrides.reminder_enabled ?? true,
+                reminderHours: overrides.reminder_hours ?? 24,
+                ranges: [],
+                blockedDates: [],
             },
-            ranges: [],
-        })
+            admin.id,
+        )
     }
 
     async function appointment(input: {
@@ -152,7 +157,13 @@ describe("Varredura periódica de lembretes antes do atendimento com Postgres (#
         admin = await createTestUser({ isAdmin: true })
         createdUserIds.push(admin.createdId)
         scope = await createAppointmentScope(admin.id, "reminder_sweep")
-        scheduleSnapshot = await snapshotScheduleConfig()
+        const occupied = await getPool().query(
+            "SELECT effective_from::text AS effective_from FROM ScheduleChanges WHERE effective_from >= $1::date",
+            [BASE_VERSION_DATE],
+        )
+        if ((occupied.rowCount ?? 0) > 0) {
+            throw new Error("Já existe versão agendada de Horários a partir de 2034-01-01; o teste não vai sobrescrevê-la")
+        }
     })
 
     afterEach(async () => {
@@ -177,7 +188,7 @@ describe("Varredura periódica de lembretes antes do atendimento com Postgres (#
     })
 
     afterAll(async () => {
-        await restoreScheduleConfig(scheduleSnapshot)
+        await getPool().query("DELETE FROM ScheduleChanges WHERE updated_by = $1", [admin.id])
         await deleteAppointmentScope(scope)
         await deleteTestUsers(createdUserIds)
         await getPool().end()
