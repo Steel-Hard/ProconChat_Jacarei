@@ -21,12 +21,15 @@ export interface AppointmentReminderTarget {
 
 export interface AppointmentReminderRepository {
     findDueTargets(now: Date): Promise<AppointmentReminderTarget[]>
+    isStillDue(id: string, appointmentDatetime: Date, now: Date): Promise<boolean>
     recordReminderOutcome(
         id: string,
         outcome: AppointmentReminderOutcome,
         now: Date,
+        appointmentDatetime: Date,
         providerMessageId?: string | null,
-    ): Promise<boolean>
+        errorCode?: string | null,
+    ): Promise<void>
 }
 
 interface ReminderTargetRow {
@@ -54,6 +57,21 @@ const PRIOR_REMINDER_EVENT_SQL = `EXISTS (
               AND e.data->>'kind' = 'REMINDER'
           )
       )
+      AND CASE
+          WHEN e.data->>'appointmentDatetime' IS NOT NULL
+              THEN (e.data->>'appointmentDatetime')::timestamptz = a.appointment_datetime
+          ELSE e.type <> 'CITIZEN_NOTIFICATION_FAILED'
+      END
+)`
+
+const SET_AT_SQL = `COALESCE(
+    (
+        SELECT MAX(e.created_at)
+        FROM AppointmentEvents e
+        WHERE e.appointment_id = a.id
+          AND e.type IN ('CREATED', 'RESCHEDULED')
+    ),
+    '-infinity'::timestamptz
 )`
 
 export function createAppointmentReminderRepository(pool: Pool = getPool()): AppointmentReminderRepository {
@@ -88,6 +106,7 @@ export function createAppointmentReminderRepository(pool: Pool = getPool()): App
                    AND a.appointment_datetime > $1
                    AND COALESCE(ver.reminder_enabled, ss.reminder_enabled, FALSE) = TRUE
                    AND a.appointment_datetime <= $1::timestamptz + make_interval(hours => COALESCE(ver.reminder_hours, ss.reminder_hours)::int)
+                   AND ${SET_AT_SQL} <= a.appointment_datetime - make_interval(hours => COALESCE(ver.reminder_hours, ss.reminder_hours)::int)
                    AND NOT ${PRIOR_REMINDER_EVENT_SQL}
                  ORDER BY a.appointment_datetime ASC, a.id ASC`,
                 [now],
@@ -107,62 +126,74 @@ export function createAppointmentReminderRepository(pool: Pool = getPool()): App
             }))
         },
 
+        async isStillDue(id: string, appointmentDatetime: Date, now: Date): Promise<boolean> {
+            const result = await pool.query(
+                `SELECT 1
+                 FROM Appointments a
+                 WHERE a.id = $1
+                   AND a.status IN ('PENDING', 'CONFIRMED')
+                   AND a.anonymized_at IS NULL
+                   AND a.appointment_datetime = $2
+                   AND a.appointment_datetime > $3
+                   AND NOT ${PRIOR_REMINDER_EVENT_SQL}`,
+                [id, appointmentDatetime, now],
+            )
+            return (result.rowCount ?? 0) > 0
+        },
+
         async recordReminderOutcome(
             id: string,
             outcome: AppointmentReminderOutcome,
             now: Date,
+            appointmentDatetime: Date,
             providerMessageId: string | null = null,
-        ): Promise<boolean> {
-            return inTransaction(pool, async (client) => {
-                const locked = await client.query<{ id: string }>(
-                    `SELECT a.id::text AS id
-                     FROM Appointments a
-                     WHERE a.id = $1
-                       AND a.status IN ('PENDING', 'CONFIRMED')
-                       AND NOT ${PRIOR_REMINDER_EVENT_SQL}
-                     FOR UPDATE OF a`,
-                    [id],
-                )
-                if ((locked.rowCount ?? 0) === 0) {
-                    return false
-                }
+            errorCode: string | null = null,
+        ): Promise<void> {
+            const target = appointmentDatetime.toISOString()
+            await inTransaction(pool, async (client) => {
+                await client.query("SELECT id FROM Appointments WHERE id = $1 FOR UPDATE", [id])
                 if (outcome === "FAILED") {
+                    const data = errorCode === null ? { kind: "REMINDER", appointmentDatetime: target } : { kind: "REMINDER", appointmentDatetime: target, errorCode }
                     await client.query(
                         `INSERT INTO AppointmentEvents (appointment_id, type, actor_user_id, data, created_at)
-                         VALUES ($1, 'CITIZEN_NOTIFICATION_FAILED', NULL, '{"kind":"REMINDER"}'::jsonb, $2)`,
-                        [id, now],
+                         VALUES ($1, 'CITIZEN_NOTIFICATION_FAILED', NULL, $2::jsonb, $3)`,
+                        [id, JSON.stringify(data), now],
                     )
                     await client.query(
-                        `INSERT INTO OutboundMessages (kind, appointment_id, status, status_at)
-                         VALUES ('REMINDER', $1, 'FAILED', $2)`,
-                        [id, now],
+                        `INSERT INTO OutboundMessages (kind, appointment_id, status, error_code, status_at)
+                         VALUES ('REMINDER', $1, 'FAILED', $2, $3)`,
+                        [id, errorCode, now],
                     )
-                    return true
+                    return
                 }
                 await client.query(
                     `INSERT INTO AppointmentEvents (appointment_id, type, actor_user_id, data, created_at)
-                     VALUES ($1, 'REMINDER_SENT', NULL, '{}'::jsonb, $2)`,
-                    [id, now],
+                     VALUES ($1, 'REMINDER_SENT', NULL, $2::jsonb, $3)`,
+                    [id, JSON.stringify({ appointmentDatetime: target }), now],
                 )
                 if (providerMessageId === null) {
-                    return true
+                    return
                 }
-                const sent = await client.query<{ status: string }>(
+                const sent = await client.query<{ status: string; error_code: string | null }>(
                     `INSERT INTO OutboundMessages (provider_message_hash, kind, appointment_id, status, status_at)
                      VALUES ($1, 'REMINDER', $2, 'SENT', $3)
                      ON CONFLICT (provider_message_hash) DO UPDATE
                      SET kind = EXCLUDED.kind, appointment_id = EXCLUDED.appointment_id
-                     RETURNING status`,
+                     RETURNING status, error_code`,
                     [hashProviderMessageId(providerMessageId), id, now],
                 )
-                if (sent.rows[0]?.status === "FAILED") {
+                const row = sent.rows[0]
+                if (row?.status === "FAILED") {
+                    const data =
+                        row.error_code === null
+                            ? { kind: "REMINDER", appointmentDatetime: target }
+                            : { kind: "REMINDER", appointmentDatetime: target, errorCode: row.error_code }
                     await client.query(
                         `INSERT INTO AppointmentEvents (appointment_id, type, actor_user_id, data, created_at)
-                         VALUES ($1, 'CITIZEN_NOTIFICATION_FAILED', NULL, '{"kind":"REMINDER"}'::jsonb, $2)`,
-                        [id, new Date(now.getTime() + 1)],
+                         VALUES ($1, 'CITIZEN_NOTIFICATION_FAILED', NULL, $2::jsonb, $3)`,
+                        [id, JSON.stringify(data), new Date(now.getTime() + 1)],
                     )
                 }
-                return true
             })
         },
     }

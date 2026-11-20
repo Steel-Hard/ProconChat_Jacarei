@@ -80,7 +80,14 @@ describe("appointmentReminder.service", () => {
             }),
         })
         expect(repository.recordCalls).toEqual([
-            { id: "1", outcome: "SENT", now: FIXED_NOW, providerMessageId: "wamid.lembrete" },
+            {
+                id: "1",
+                outcome: "SENT",
+                now: FIXED_NOW,
+                appointmentDatetime: new Date("2026-11-05T17:00:00.000Z"),
+                providerMessageId: "wamid.lembrete",
+                errorCode: null,
+            },
         ])
     })
 
@@ -111,8 +118,22 @@ describe("appointmentReminder.service", () => {
         expect(count).toBe(0)
         expect(sendTemplate).not.toHaveBeenCalled()
         expect(repository.recordCalls).toEqual([
-            { id: "1", outcome: "FAILED", now: FIXED_NOW, providerMessageId: null },
-            { id: "2", outcome: "FAILED", now: FIXED_NOW, providerMessageId: null },
+            {
+                id: "1",
+                outcome: "FAILED",
+                now: FIXED_NOW,
+                appointmentDatetime: new Date("2026-11-05T17:00:00.000Z"),
+                providerMessageId: null,
+                errorCode: null,
+            },
+            {
+                id: "2",
+                outcome: "FAILED",
+                now: FIXED_NOW,
+                appointmentDatetime: new Date("2026-11-05T17:00:00.000Z"),
+                providerMessageId: null,
+                errorCode: null,
+            },
         ])
         expect(logger.log.mock.calls.map((call) => JSON.parse(String(call[0])))).toEqual([
             { event: "appointment_reminder_failed", appointmentId: "1", reason: "PHONE_UNAVAILABLE" },
@@ -120,28 +141,126 @@ describe("appointmentReminder.service", () => {
         ])
     })
 
-    it.each(["REJECTED", "UNREACHABLE", "NOT_CONFIGURED"] as const)(
-        "grava FAILED sem lançar e sem expor o telefone no log quando o gateway devolve %s",
+    it("grava FAILED com o código da Meta sem lançar e sem expor o telefone no log quando o gateway rejeita", async () => {
+        const sendTemplate = vi
+            .fn<(input: SendTemplateInput) => Promise<SendTemplateResult>>()
+            .mockResolvedValue({ ok: false, reason: "REJECTED", errorCode: "132001" })
+        const { repository, logger, sweep } = setup({ sendTemplate })
+
+        const count = await sweep()
+
+        expect(count).toBe(0)
+        expect(repository.recordCalls).toEqual([
+            {
+                id: "1",
+                outcome: "FAILED",
+                now: FIXED_NOW,
+                appointmentDatetime: new Date("2026-11-05T17:00:00.000Z"),
+                providerMessageId: null,
+                errorCode: "132001",
+            },
+        ])
+        expect(JSON.parse(String(logger.log.mock.calls[0]?.[0]))).toEqual({
+            event: "appointment_reminder_failed",
+            appointmentId: "1",
+            reason: "REJECTED",
+        })
+        expect(JSON.stringify(logger.log.mock.calls)).not.toContain(PHONE)
+    })
+
+    it("grava FAILED sem código quando a rejeição não traz o código da Meta", async () => {
+        const sendTemplate = vi
+            .fn<(input: SendTemplateInput) => Promise<SendTemplateResult>>()
+            .mockResolvedValue({ ok: false, reason: "REJECTED" })
+        const { repository, sweep } = setup({ sendTemplate })
+
+        await sweep()
+
+        expect(repository.recordCalls.map((call) => [call.outcome, call.errorCode])).toEqual([["FAILED", null]])
+    })
+
+    it.each(["UNREACHABLE", "NOT_CONFIGURED"] as const)(
+        "não grava falha definitiva e tenta de novo na varredura seguinte quando o gateway devolve %s",
         async (reason) => {
             const sendTemplate = vi
                 .fn<(input: SendTemplateInput) => Promise<SendTemplateResult>>()
-                .mockResolvedValue({ ok: false, reason })
+                .mockResolvedValueOnce({ ok: false, reason })
+                .mockResolvedValueOnce({ ok: true, providerMessageId: "wamid.depois" })
             const { repository, logger, sweep } = setup({ sendTemplate })
 
-            const count = await sweep()
-
-            expect(count).toBe(0)
-            expect(repository.recordCalls).toEqual([
-                { id: "1", outcome: "FAILED", now: FIXED_NOW, providerMessageId: null },
-            ])
+            const first = await sweep()
+            expect(first).toBe(0)
+            expect(repository.recordCalls).toEqual([])
             expect(JSON.parse(String(logger.log.mock.calls[0]?.[0]))).toEqual({
                 event: "appointment_reminder_failed",
                 appointmentId: "1",
                 reason,
             })
-            expect(JSON.stringify(logger.log.mock.calls)).not.toContain(PHONE)
+
+            const second = await sweep()
+            expect(second).toBe(1)
+            expect(repository.recordCalls.map((call) => call.outcome)).toEqual(["SENT"])
+            expect(sendTemplate).toHaveBeenCalledTimes(2)
         },
     )
+
+    it("não envia quando o agendamento deixou de estar elegível entre a busca e o envio", async () => {
+        const { repository, sendTemplate, sweep } = setup()
+        repository.stillDue = () => false
+
+        const count = await sweep()
+
+        expect(count).toBe(0)
+        expect(sendTemplate).not.toHaveBeenCalled()
+        expect(repository.recordCalls).toEqual([])
+    })
+
+    it("não grava falha de telefone para agendamento que deixou de estar elegível", async () => {
+        const { repository, sweep } = setup({ targets: [target({ phoneEncrypted: null })] })
+        repository.stillDue = () => false
+
+        await sweep()
+
+        expect(repository.recordCalls).toEqual([])
+    })
+
+    it("conta o envio e segue com os demais quando a gravação do resultado falha em um agendamento", async () => {
+        const { repository, sendTemplate, logger, sweep } = setup({
+            targets: [target({ id: "1" }), target({ id: "2" })],
+        })
+        repository.failRecordFor.add("1")
+
+        const count = await sweep()
+
+        expect(count).toBe(2)
+        expect(sendTemplate).toHaveBeenCalledTimes(2)
+        expect(repository.recordCalls.map((call) => call.id)).toEqual(["1", "2"])
+        expect(
+            logger.log.mock.calls.map((call) => JSON.parse(String(call[0]))).map((entry) => entry.event),
+        ).toEqual(["appointment_reminder_record_failed"])
+    })
+
+    it("segue com os demais agendamentos quando um deles lança erro antes do envio", async () => {
+        const { repository, sendTemplate, logger, sweep } = setup({
+            targets: [target({ id: "1" }), target({ id: "2" })],
+        })
+        repository.stillDue = (id) => {
+            if (id === "1") {
+                throw new Error("banco indisponível")
+            }
+            return true
+        }
+
+        const count = await sweep()
+
+        expect(count).toBe(1)
+        expect(sendTemplate).toHaveBeenCalledTimes(1)
+        expect(JSON.parse(String(logger.log.mock.calls[0]?.[0]))).toEqual({
+            event: "appointment_reminder_error",
+            appointmentId: "1",
+            reason: "banco indisponível",
+        })
+    })
 
     it("ignora agendamento cujo envio já está em andamento em chamada concorrente", async () => {
         let release: (result: SendTemplateResult) => void = () => undefined
