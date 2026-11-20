@@ -106,6 +106,7 @@ function SchedulePage() {
                                 hours={draft.reminderHours}
                                 address={draft.unitAddress}
                                 complement={draft.unitAddressComplement}
+                                isAdmin={page.isAdmin}
                                 onToggle={actions.toggleReminder}
                                 onChangeHours={actions.setReminderHours}
                             />
