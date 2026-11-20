@@ -184,11 +184,17 @@ describe("Varredura periódica de lembretes antes do atendimento com Postgres (#
             await pool.query("DELETE FROM Appointments WHERE id = ANY($1::bigint[])", [scope.createdAppointmentIds])
             scope.createdAppointmentIds.length = 0
         }
-        await pool.query("DELETE FROM ScheduleChanges WHERE updated_by = $1", [admin.id])
+        await pool.query("DELETE FROM ScheduleChanges WHERE updated_by = $1 AND effective_from >= $2::date", [
+            admin.id,
+            BASE_VERSION_DATE,
+        ])
     })
 
     afterAll(async () => {
-        await getPool().query("DELETE FROM ScheduleChanges WHERE updated_by = $1", [admin.id])
+        await getPool().query("DELETE FROM ScheduleChanges WHERE updated_by = $1 AND effective_from >= $2::date", [
+            admin.id,
+            BASE_VERSION_DATE,
+        ])
         await deleteAppointmentScope(scope)
         await deleteTestUsers(createdUserIds)
         await getPool().end()
