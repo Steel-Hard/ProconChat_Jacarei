@@ -89,6 +89,26 @@ describe("Varredura periódica de lembretes antes do atendimento com Postgres (#
         return id
     }
 
+    async function addEvent(appointmentId: number, type: "CREATED" | "RESCHEDULED", at: Date): Promise<void> {
+        await getPool().query(
+            `INSERT INTO AppointmentEvents (appointment_id, type, actor_user_id, data, created_at)
+             VALUES ($1, $2::appointment_event_type, NULL, '{}'::jsonb, $3)`,
+            [appointmentId, type, at],
+        )
+    }
+
+    function newSweep(
+        gateway: Parameters<typeof createSweepAppointmentReminders>[0]["gateway"],
+        repo: Parameters<typeof createSweepAppointmentReminders>[0]["repository"] = repository,
+    ) {
+        return createSweepAppointmentReminders({
+            repository: repo,
+            gateway,
+            clock: () => NOW,
+            logger: { log: vi.fn() },
+        })
+    }
+
     async function eventsOf(appointmentId: number) {
         const result = await getPool().query<{
             type: string
@@ -153,7 +173,7 @@ describe("Varredura periódica de lembretes antes do atendimento com Postgres (#
             await pool.query("DELETE FROM Appointments WHERE id = ANY($1::bigint[])", [scope.createdAppointmentIds])
             scope.createdAppointmentIds.length = 0
         }
-        await pool.query("DELETE FROM ScheduleChanges")
+        await pool.query("DELETE FROM ScheduleChanges WHERE updated_by = $1", [admin.id])
     })
 
     afterAll(async () => {
@@ -220,7 +240,7 @@ describe("Varredura periódica de lembretes antes do atendimento com Postgres (#
         }
     })
 
-    it("garante envio único por agendamento e usa os documentos guardados no agendamento em vez da configuração atual", async () => {
+    it("envia uma vez por data marcada, usa os documentos guardados no agendamento e manda novo lembrete se o cidadão remarcar", async () => {
         await configureBaseSchedule({
             reminder_enabled: true,
             reminder_hours: 24,
@@ -262,15 +282,7 @@ describe("Varredura periódica de lembretes antes do atendimento com Postgres (#
         })
 
         const firstRun = await sweep()
-        await getPool().query("UPDATE Appointments SET appointment_datetime = $2 WHERE id = $1", [
-            id,
-            new Date("2034-06-15T18:00:00.000Z"),
-        ])
-        const secondRun = await sweep()
-
-        expect(firstRun).toBe(1)
-        expect(secondRun).toBe(0)
-        expect(sendTemplate).toHaveBeenCalledTimes(1)
+        const repeatedRun = await sweep()
         const sentInput = sendTemplate.mock.calls[0]?.[0]
         expect(sentInput).toEqual({
             to: PHONE,
@@ -289,11 +301,14 @@ describe("Varredura periódica de lembretes antes do atendimento com Postgres (#
         expect(renderizarModelo(CORPO_LEMBRETE_ATENDIMENTO, sentInput?.bodyParameters ?? [])).toBe(
             `Olá, Maria. Lembrete do seu atendimento no PROCON Jacareí: quinta-feira, 15/06, às 14:00 (protocolo ${protocol}). Endereço: Rua do Procon, 100 (Sala 1). Traga: RG ou CNH; comprovante de residência. Se não puder comparecer, remarque ou cancele respondendo a esta mensagem.`,
         )
+        expect(firstRun).toBe(1)
+        expect(repeatedRun).toBe(0)
+        expect(sendTemplate).toHaveBeenCalledTimes(1)
         expect(await eventsOf(id)).toEqual([
             {
                 type: "REMINDER_SENT",
                 actor_user_id: null,
-                data: {},
+                data: { appointmentDatetime: apptDatetime.toISOString() },
                 created_at: NOW,
             },
         ])
@@ -306,7 +321,176 @@ describe("Varredura periódica de lembretes antes do atendimento com Postgres (#
                 status_at: NOW,
             },
         ])
+
+        const farDatetime = new Date("2034-06-17T17:00:00.000Z")
+        await getPool().query("UPDATE Appointments SET appointment_datetime = $2 WHERE id = $1", [id, farDatetime])
+        await getPool().query("UPDATE Appointments SET appointment_datetime = $2 WHERE id = $1", [id, apptDatetime])
+        const backToOldDate = await sweep()
+
+        expect(backToOldDate).toBe(0)
+        expect(sendTemplate).toHaveBeenCalledTimes(1)
+
+        await getPool().query("UPDATE Appointments SET appointment_datetime = $2 WHERE id = $1", [id, farDatetime])
+        await addEvent(id, "RESCHEDULED", NOW)
+        const sweepOnEve = createSweepAppointmentReminders({
+            repository,
+            gateway: { sendTemplate },
+            clock: () => new Date("2034-06-16T18:00:00.000Z"),
+            logger: { log: vi.fn() },
+        })
+        const afterReschedule = await sweepOnEve()
+        const afterRescheduleAgain = await sweepOnEve()
+
+        expect(afterReschedule).toBe(1)
+        expect(afterRescheduleAgain).toBe(0)
+        expect(sendTemplate).toHaveBeenCalledTimes(2)
+        expect(sendTemplate.mock.calls[1]?.[0]?.bodyParameters.slice(2, 4)).toEqual(["17/06", "14:00"])
+        expect(
+            (await eventsOf(id)).filter((e) => e.type === "REMINDER_SENT").map((e) => e.data.appointmentDatetime),
+        ).toEqual([apptDatetime.toISOString(), farDatetime.toISOString()])
         await getPool().query("DELETE FROM RequiredDocuments WHERE question_id = $1", [scope.questionId])
+    })
+
+    it("não envia lembrete para agendamento criado ou remarcado para dentro da janela do lembrete", async () => {
+        await configureBaseSchedule({ reminder_enabled: true, reminder_hours: 6 })
+        const bornInsideId = await appointment({ at: new Date(NOW.getTime() + 3 * HOUR_MS) })
+        await addEvent(bornInsideId, "CREATED", new Date(NOW.getTime() - HOUR_MS))
+        const movedInsideId = await appointment({ at: new Date(NOW.getTime() + 4 * HOUR_MS) })
+        await addEvent(movedInsideId, "CREATED", new Date(NOW.getTime() - 48 * HOUR_MS))
+        await addEvent(movedInsideId, "RESCHEDULED", new Date(NOW.getTime() - HOUR_MS))
+        const bornOutsideId = await appointment({ at: new Date(NOW.getTime() + 5 * HOUR_MS) })
+        await addEvent(bornOutsideId, "CREATED", new Date(NOW.getTime() - 48 * HOUR_MS))
+        const sendTemplate = vi
+            .fn<(input: SendTemplateInput) => Promise<SendTemplateResult>>()
+            .mockImplementation(async () => ({ ok: true, providerMessageId: wamid() }))
+
+        const sent = await newSweep({ sendTemplate })()
+
+        expect(sent).toBe(1)
+        expect(sendTemplate).toHaveBeenCalledTimes(1)
+        expect((await eventsOf(bornOutsideId)).map((e) => e.type)).toEqual(["CREATED", "REMINDER_SENT"])
+        expect((await eventsOf(bornInsideId)).map((e) => e.type)).toEqual(["CREATED"])
+        expect((await eventsOf(movedInsideId)).map((e) => e.type)).toEqual(["CREATED", "RESCHEDULED"])
+    })
+
+    it("falha passageira do gateway não grava nada e o lembrete sai na varredura seguinte", async () => {
+        await configureBaseSchedule({ reminder_enabled: true, reminder_hours: 24 })
+        const id = await appointment({ at: new Date(NOW.getTime() + 3 * HOUR_MS) })
+        const sendTemplate = vi
+            .fn<(input: SendTemplateInput) => Promise<SendTemplateResult>>()
+            .mockResolvedValueOnce({ ok: false, reason: "UNREACHABLE" })
+            .mockResolvedValueOnce({ ok: false, reason: "NOT_CONFIGURED" })
+            .mockImplementation(async () => ({ ok: true, providerMessageId: wamid() }))
+        const sweep = newSweep({ sendTemplate })
+
+        expect(await sweep()).toBe(0)
+        expect(await sweep()).toBe(0)
+        expect(await eventsOf(id)).toEqual([])
+        expect(await outboundOf(id)).toEqual([])
+        expect(await sweep()).toBe(1)
+        expect((await eventsOf(id)).map((e) => e.type)).toEqual(["REMINDER_SENT"])
+        expect(sendTemplate).toHaveBeenCalledTimes(3)
+    })
+
+    it("falha definitiva da Meta grava o código no evento e em OutboundMessages e não repete", async () => {
+        await configureBaseSchedule({ reminder_enabled: true, reminder_hours: 24 })
+        const id = await appointment({ at: new Date(NOW.getTime() + 3 * HOUR_MS) })
+        const sendTemplate = vi
+            .fn<(input: SendTemplateInput) => Promise<SendTemplateResult>>()
+            .mockResolvedValue({ ok: false, reason: "REJECTED", errorCode: "132001" })
+        const sweep = newSweep({ sendTemplate })
+
+        expect(await sweep()).toBe(0)
+        expect(await sweep()).toBe(0)
+
+        expect(sendTemplate).toHaveBeenCalledTimes(1)
+        expect(await eventsOf(id)).toEqual([
+            {
+                type: "CITIZEN_NOTIFICATION_FAILED",
+                actor_user_id: null,
+                data: {
+                    kind: "REMINDER",
+                    errorCode: "132001",
+                    appointmentDatetime: new Date(NOW.getTime() + 3 * HOUR_MS).toISOString(),
+                },
+                created_at: NOW,
+            },
+        ])
+        expect(await outboundOf(id)).toEqual([
+            { provider_message_hash: null, kind: "REMINDER", status: "FAILED", error_code: "132001", status_at: NOW },
+        ])
+    })
+
+    it("não envia se o agendamento foi cancelado depois da busca, e registra a mensagem se o cancelamento vier durante o envio", async () => {
+        await configureBaseSchedule({ reminder_enabled: true, reminder_hours: 24 })
+        const canceledBeforeId = await appointment({ at: new Date(NOW.getTime() + 3 * HOUR_MS) })
+        const canceledDuringId = await appointment({ at: new Date(NOW.getTime() + 4 * HOUR_MS) })
+        const cancel = (id: number) =>
+            getPool().query("UPDATE Appointments SET status = 'CANCELED' WHERE id = $1", [id])
+        const sendTemplate = vi.fn<(input: SendTemplateInput) => Promise<SendTemplateResult>>().mockImplementation(async () => {
+            await cancel(canceledDuringId)
+            return { ok: true, providerMessageId: wamid() }
+        })
+        const racingRepository = {
+            ...repository,
+            async findDueTargets(now: Date) {
+                const targets = await repository.findDueTargets(now)
+                await cancel(canceledBeforeId)
+                return targets
+            },
+        }
+
+        const sent = await newSweep({ sendTemplate }, racingRepository)()
+
+        expect(sent).toBe(1)
+        expect(sendTemplate).toHaveBeenCalledTimes(1)
+        expect(await eventsOf(canceledBeforeId)).toEqual([])
+        expect(await outboundOf(canceledBeforeId)).toEqual([])
+        expect((await eventsOf(canceledDuringId)).map((e) => e.type)).toEqual(["REMINDER_SENT"])
+        expect((await outboundOf(canceledDuringId)).map((o) => o.status)).toEqual(["SENT"])
+    })
+
+    it("um erro em um agendamento não interrompe os demais da varredura", async () => {
+        await configureBaseSchedule({ reminder_enabled: true, reminder_hours: 24 })
+        const brokenId = await appointment({ at: new Date(NOW.getTime() + 3 * HOUR_MS) })
+        const healthyId = await appointment({ at: new Date(NOW.getTime() + 4 * HOUR_MS) })
+        const sendTemplate = vi
+            .fn<(input: SendTemplateInput) => Promise<SendTemplateResult>>()
+            .mockImplementation(async () => ({ ok: true, providerMessageId: wamid() }))
+        const brokenRepository = {
+            ...repository,
+            async isStillDue(id: string, appointmentDatetime: Date, now: Date) {
+                if (id === String(brokenId)) {
+                    throw new Error("falha simulada")
+                }
+                return repository.isStillDue(id, appointmentDatetime, now)
+            },
+        }
+
+        const sent = await newSweep({ sendTemplate }, brokenRepository)()
+
+        expect(sent).toBe(1)
+        expect(await eventsOf(brokenId)).toEqual([])
+        expect((await eventsOf(healthyId)).map((e) => e.type)).toEqual(["REMINDER_SENT"])
+    })
+
+    it("grava um lembrete sem documentos com a frase de documento oficial com foto", async () => {
+        await configureBaseSchedule({ reminder_enabled: true, reminder_hours: 24 })
+        await appointment({
+            at: new Date(NOW.getTime() + 3 * HOUR_MS),
+            documentsSent: { group: [], question: [] },
+        })
+        const sendTemplate = vi
+            .fn<(input: SendTemplateInput) => Promise<SendTemplateResult>>()
+            .mockImplementation(async () => ({ ok: true, providerMessageId: wamid() }))
+
+        await newSweep({ sendTemplate })()
+
+        const body = renderizarModelo(
+            CORPO_LEMBRETE_ATENDIMENTO,
+            sendTemplate.mock.calls[0]?.[0]?.bodyParameters ?? [],
+        )
+        expect(body).toContain("Traga: um documento oficial com foto.")
     })
 
     it("segue a versão agendada vigente na data local do atendimento para lembrete, horas e endereço", async () => {
@@ -362,8 +546,10 @@ describe("Varredura periódica de lembretes antes do atendimento com Postgres (#
 
     it("registra falha de entrega quando o webhook FAILED chega antes ou depois da gravação do lembrete", async () => {
         await configureBaseSchedule({ reminder_enabled: true, reminder_hours: 24 })
-        const afterId = await appointment({ at: new Date(NOW.getTime() + 3 * HOUR_MS), status: "PENDING" })
-        const beforeId = await appointment({ at: new Date(NOW.getTime() + 4 * HOUR_MS), status: "CONFIRMED" })
+        const afterAt = new Date(NOW.getTime() + 3 * HOUR_MS)
+        const beforeAt = new Date(NOW.getTime() + 4 * HOUR_MS)
+        const afterId = await appointment({ at: afterAt, status: "PENDING" })
+        const beforeId = await appointment({ at: beforeAt, status: "CONFIRMED" })
         const wamidAfter = wamid()
         const wamidBefore = wamid()
         const failedAt = new Date(NOW.getTime() + 5_000)
@@ -372,28 +558,38 @@ describe("Varredura periódica de lembretes antes do atendimento com Postgres (#
             [{ providerMessageId: wamidBefore, status: "FAILED", statusAt: NOW, errorCode: "131026" }],
             NOW,
         )
-        await repository.recordReminderOutcome(String(afterId), "SENT", NOW, wamidAfter)
-        await repository.recordReminderOutcome(String(beforeId), "SENT", NOW, wamidBefore)
+        await repository.recordReminderOutcome(String(afterId), "SENT", NOW, afterAt, wamidAfter)
+        await repository.recordReminderOutcome(String(beforeId), "SENT", NOW, beforeAt, wamidBefore)
         await outboundMessageRepository.applyStatuses(
             [{ providerMessageId: wamidAfter, status: "FAILED", statusAt: failedAt, errorCode: "131047" }],
             failedAt,
         )
 
         expect(await eventsOf(afterId)).toEqual([
-            { type: "REMINDER_SENT", actor_user_id: null, data: {}, created_at: NOW },
+            {
+                type: "REMINDER_SENT",
+                actor_user_id: null,
+                data: { appointmentDatetime: afterAt.toISOString() },
+                created_at: NOW,
+            },
             {
                 type: "CITIZEN_NOTIFICATION_FAILED",
                 actor_user_id: null,
-                data: { kind: "REMINDER" },
+                data: { kind: "REMINDER", errorCode: "131047" },
                 created_at: failedAt,
             },
         ])
         expect(await eventsOf(beforeId)).toEqual([
-            { type: "REMINDER_SENT", actor_user_id: null, data: {}, created_at: NOW },
+            {
+                type: "REMINDER_SENT",
+                actor_user_id: null,
+                data: { appointmentDatetime: beforeAt.toISOString() },
+                created_at: NOW,
+            },
             {
                 type: "CITIZEN_NOTIFICATION_FAILED",
                 actor_user_id: null,
-                data: { kind: "REMINDER" },
+                data: { kind: "REMINDER", appointmentDatetime: beforeAt.toISOString(), errorCode: "131026" },
                 created_at: new Date(NOW.getTime() + 1),
             },
         ])

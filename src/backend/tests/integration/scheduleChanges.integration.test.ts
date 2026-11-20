@@ -162,6 +162,7 @@ describe("mudanças de horário agendadas com Postgres", () => {
         tuesdayBefore = addDaysToDateString(changeDate, -6)
         tuesdayAfter = addDaysToDateString(changeDate, 1)
         await clearScopeAppointments()
+        await getPool().query("DELETE FROM AuditLog WHERE actor_user_id = $1", [configurer.id])
         await useScheduleConfig({
             settings: {
                 slot_minutes: 30,
@@ -187,6 +188,9 @@ describe("mudanças de horário agendadas com Postgres", () => {
         try {
             await cleanupScheduleTestData({ phoneHashes: [hashPhone(BOOKING_PHONE)], appointmentIds: [] })
             await deleteAppointmentScope(scope)
+            await getPool().query("DELETE FROM AuditLog WHERE actor_user_id = ANY($1::bigint[])", [
+                [configurer.id, author.id, admin.id],
+            ])
             if (savedSnapshot) {
                 await restoreScheduleConfig(savedSnapshot)
             }
@@ -225,6 +229,52 @@ describe("mudanças de horário agendadas com Postgres", () => {
             [today, 5, String(configurer.id)],
         ])
         expect(rows[0]).toEqual(before)
+    })
+
+    async function reminderAuditActions(): Promise<string[]> {
+        const result = await getPool().query<{ action: string }>(
+            `SELECT action FROM AuditLog
+             WHERE area = 'whatsapp' AND actor_user_id = $1 AND action LIKE 'reminder_%'
+             ORDER BY id`,
+            [configurer.id],
+        )
+        return result.rows.map((row) => row.action)
+    }
+
+    it("registra no histórico de alterações do WhatsApp quando o lembrete é ligado ou desligado em Horários, sem registrar outras mudanças", async () => {
+        const yesterday = addDaysToDateString(today, -1)
+        await insertScheduleChange(yesterday, weekdayConfig({ reminderEnabled: true }), author.id)
+        const save = (config: NormalizedScheduleConfig) =>
+            request(app)
+                .put("/api/v1/schedule")
+                .set("Cookie", configurer.cookie)
+                .set("Origin", ORIGIN)
+                .send(bodyOf(config))
+
+        expect((await save(weekdayConfig({ reminderEnabled: true, seatsPerSlot: 3 }))).status).toBe(200)
+        expect(await reminderAuditActions()).toEqual([])
+
+        expect((await save(weekdayConfig({ reminderEnabled: false }))).status).toBe(200)
+        expect((await save(weekdayConfig({ reminderEnabled: false, reminderHours: 12 }))).status).toBe(200)
+        expect((await save(weekdayConfig({ reminderEnabled: true }))).status).toBe(200)
+
+        expect(await reminderAuditActions()).toEqual(["reminder_disabled", "reminder_enabled"])
+        const history = await getPool().query<{ data: object }>(
+            "SELECT data FROM AuditLog WHERE area = 'whatsapp' AND actor_user_id = $1 AND action LIKE 'reminder_%'",
+            [configurer.id],
+        )
+        expect(history.rows.every((row) => Object.keys(row.data).length === 0)).toBe(true)
+    })
+
+    it("registra no histórico a mudança agendada que liga ou desliga o lembrete, comparando com a versão anterior", async () => {
+        const yesterday = addDaysToDateString(today, -1)
+        await insertScheduleChange(yesterday, weekdayConfig({ reminderEnabled: true }), author.id)
+
+        expect((await putVersion(changeDate, weekdayConfig({ reminderEnabled: true, seatsPerSlot: 3 }))).status).toBe(200)
+        expect(await reminderAuditActions()).toEqual([])
+
+        expect((await putVersion(changeDate, weekdayConfig({ reminderEnabled: false }))).status).toBe(200)
+        expect(await reminderAuditActions()).toEqual(["reminder_disabled"])
     })
 
     it("recusa com 400 no campo o bloqueio novo da configuração de hoje numa data que segue uma mudança distante", async () => {
