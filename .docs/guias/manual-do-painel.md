@@ -446,7 +446,7 @@ A tela **WhatsApp** mostra a conexão do número do PROCON com o WhatsApp e perm
 
 **Quem usa:** só a conta Admin. Se o seu menu não mostra **WhatsApp**, você não está usando a conta Admin.
 
-> **Atenção:** este manual apresenta a tela. O passo a passo para conectar o número pela primeira vez está no Guia de configuração do atendimento por WhatsApp, que acompanha este manual.
+> **Atenção:** este manual apresenta a tela. O passo a passo para conectar o número pela primeira vez está no Guia de configuração do atendimento por WhatsApp, que fica ao lado deste manual, na mesma pasta dos guias.
 
 A tela tem duas abas: **Conexão** e **Privacidade**.
 
