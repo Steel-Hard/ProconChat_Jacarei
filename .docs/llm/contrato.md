@@ -19,7 +19,7 @@ export interface RespostaFinalOutput {
 }
 ```
 
-Esses campos são embutidos dentro de um prompt de instrução fixo (`JSON.stringify` do objeto inteiro, inclusive `proximos_passos` quando existe), enviado a `POST /api/generate` do Ollama (`OLLAMA_URL`, padrão `http://ollama:11434`) com `"stream": false`, o modelo de `LLM_MODEL` (padrão `llama3.2:3b`) e `"options": { "num_predict": 300 }`, que limita a saída a 300 tokens.
+Esses campos são embutidos dentro de um prompt de instrução fixo (`JSON.stringify` do objeto, inclusive `proximos_passos` quando existe, menos `observacao_presencial`: a observação sobre o atendimento presencial não vai para a IA e só entra na mensagem montada pelo Backend), enviado a `POST /api/generate` do Ollama (`OLLAMA_URL`, padrão `http://ollama:11434`) com `"stream": false`, o modelo de `LLM_MODEL` (padrão `llama3.2:3b`) e `"options": { "num_predict": 300 }`, que limita a saída a 300 tokens.
 
 ### Exemplo de requisição completa
 
