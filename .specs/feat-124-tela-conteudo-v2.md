@@ -752,13 +752,13 @@ Valem as mesmas regras das tarefas de código acima: nunca escrever comentários
 - Dev: Itadori (dev-frontend)
 - Depende de: M3 (só para ligar as classes; os testes de comportamento podem começar antes)
 - Reaproveita: `ContentCategoryActions` (já tem editar, ativar/desativar e nova pergunta da categoria selecionada), `StatusBadge`, `Seal`, `InfoTooltip` (dica com "i" já usada no painel) e a busca atual do hook.
-- Atende: RN-12, RN-30, RN-31, RN-34, RN-35, CA-29, CA-72, CA-73, CA-74, CA-75, CA-76, CA-77, CA-78, CA-79, CA-84, CA-85, CA-87 (acrescentado depois do Status desta tarefa; a evidência de CA-87 ainda falta); no celular, CA-64 sem rolagem horizontal; no computador, CA-65
+- Atende: RN-12, RN-30, RN-31, RN-34, RN-35, CA-29, CA-72, CA-73, CA-74, CA-75, CA-76, CA-77, CA-78, CA-79, CA-84, CA-85, CA-87; no celular, CA-64 sem rolagem horizontal; no computador, CA-65
 - Passos: (1) testes: linha de categoria sem editar nem ativar/desativar; cabeçalho com "Editar categoria", "Desativar categoria" (e "Ativar categoria" na inativa) e "Nova pergunta", nessa ordem; sem categoria selecionada, sem as ações de categoria; "Limpar" só com termo e limpando a busca; ações da pergunta na ordem setas, "Desativar", "Editar"; dica do "i" ao focar e ao passar o mouse; aviso com rótulo, texto exato e nota, sem "FIXO"; (2) textos novos em `content.json`; (3) cabeçalho, linhas e busca; (4) aviso, caixas, classes de M3 e gate completo; (5) commit `Feat :sparkles: [#124] Alinha cabeçalho, listas, busca e aviso da tela de Conteúdo ao protótipo`.
 - Pronto quando: os testes passam; nenhuma linha de categoria tem editar ou ativar/desativar; o aviso entre o rótulo e a nota é só o texto de RN-03; gate rápido e gate completo passam.
 - Teste: unitário de componente e integração da tela. Falha primeiro "a linha da categoria não tem os botões de editar nem de ativar/desativar".
 - Gate: rápido e completo
 - Modelo: padrao
-- Status: feita (commit f5d2d0a; gate: tsc -b e lint limpos; vitest de src com 2092 testes passando, rodado antes do último commit)
+- Status: feita (commit f5d2d0a; gate: tsc -b e lint limpos; vitest de src com 2092 testes passando, rodado antes do último commit; CA-87 entrou depois e tem evidência no commit 5f59f2c: teste escrito antes que cria a categoria, salva e confere que o cabeçalho continua nela, falhou e passou com a correção; vitest de src com 2101 testes passando)
 
 #### T23 [P] Formulário em painel lateral
 - O quê: desenhar o formulário da pergunta como painel lateral com rodapé fixo ("Cancelar", "Ver como o cidadão recebe" e "Salvar pergunta", nessa ordem) e o formulário da categoria como diálogo central estreito, como no protótipo ("Cancelar" e "Salvar categoria"), mantendo nos dois o foco, o Esc, a confirmação de descarte, o fundo inerte e a rolagem travada.
