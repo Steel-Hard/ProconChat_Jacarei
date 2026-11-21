@@ -207,7 +207,7 @@ Ao clicar num agendamento da lista ou do calendário, abre a tela de detalhe. O 
 ![Linha do tempo da conversa de origem](images/manual-do-painel/08-detalhe-linha-do-tempo.png)
 *Figura 8 – Linha do tempo da conversa de origem*
 
-> **Atenção:** ainda não é possível abrir a conversa completa a partir do detalhe.
+> **Atenção:** abrir a conversa completa a partir do detalhe ainda não está disponível.
 
 <h2 id="s04-02">Ações</h2>
 
