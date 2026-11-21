@@ -10,7 +10,16 @@ if [ "$#" -gt 0 ]; then
         arquivos+=("$DIR/${nome%.md}.md")
     done
 else
-    arquivos=("$DIR"/*.md)
+    arquivos=()
+    for arquivo in "$DIR"/*.md; do
+        if head -n 1 "$arquivo" | grep -q '^---' && grep -q '^titulo:' "$arquivo"; then
+            arquivos+=("$arquivo")
+        fi
+    done
+    if [ "${#arquivos[@]}" -eq 0 ]; then
+        echo "nenhum guia com front matter (titulo:) encontrado em $DIR" >&2
+        exit 1
+    fi
 fi
 
 for arquivo in "${arquivos[@]}"; do

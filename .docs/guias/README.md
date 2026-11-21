@@ -14,7 +14,9 @@ Os guias são escritos em Markdown e gerados em PDF por um script. Os dois forma
 .docs/guias/gerar-pdfs.sh guia-configuracao-do-bot
 ```
 
-Sem argumento, gera todos os `.md` desta pasta. O PDF sai ao lado do `.md`, com o mesmo nome. Precisa de Node.js 20 ou mais novo (o `npx` baixa o `marked`, com versão fixa) e de Chrome ou Chromium. Se o navegador não estiver no `PATH`, aponte com `CHROME_PATH=/caminho/do/chrome`. Nada é instalado na máquina.
+Sem argumento, gera todos os `.md` desta pasta que têm front matter com `titulo:` (o `README.md` é ignorado). O PDF sai ao lado do `.md`, com o mesmo nome. O gerador para com uma mensagem clara se faltar `npx`, Node.js 20 ou mais novo, ou Chrome/Chromium, se uma imagem referenciada não existir ou se o PDF não for gravado.
+
+Precisa de Node.js 20 ou mais novo e de Chrome ou Chromium. Se o navegador não estiver no `PATH`, aponte com `CHROME_PATH=/caminho/do/chrome`. Nada é instalado globalmente na máquina, mas o `npx` baixa o `marked` (versão fixa) para o cache em `~/.npm`, o que exige internet na primeira execução.
 
 ## Contrato do gerador
 

@@ -1,10 +1,20 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const MARKED_VERSION = "18.2.1";
+
+const falhar = (mensagem) => {
+  console.error(mensagem);
+  process.exit(1);
+};
+
+if (Number(process.versions.node.split(".")[0]) < 20) {
+  falhar(`Node.js ${process.versions.node} é antigo demais; use o 20 ou mais novo`);
+}
+
 const [origem, destino, chrome] = process.argv.slice(2);
 
 if (!origem || !destino || !chrome) {
@@ -33,8 +43,17 @@ if (encontrado) {
 const corpo = encontrado ? bruto.slice(encontrado[0].length) : bruto;
 
 if (!meta.titulo) {
-  console.error(`${basename(origem)}: falta "titulo" no front matter`);
-  process.exit(1);
+  falhar(`${basename(origem)}: falta "titulo" no front matter`);
+}
+
+const imagensAusentes = [];
+for (const par of corpo.matchAll(/!\[[^\]]*\]\(\s*<?([^)\s>]+)/g)) {
+  const caminho = decodeURIComponent(par[1]);
+  if (/^[a-z][a-z0-9+.-]*:/i.test(caminho)) continue;
+  if (!existsSync(resolve(pastaGuias, caminho))) imagensAusentes.push(caminho);
+}
+if (imagensAusentes.length > 0) {
+  falhar(`${basename(origem)}: imagem não encontrada em .docs/guias/: ${imagensAusentes.join(", ")}`);
 }
 
 const convertido = spawnSync(
@@ -42,9 +61,11 @@ const convertido = spawnSync(
   ["--yes", `marked@${MARKED_VERSION}`, "--gfm"],
   { input: corpo, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }
 );
+if (convertido.error) {
+  falhar(`não foi possível rodar o npx (${convertido.error.message}); instale o Node.js 20 ou mais novo`);
+}
 if (convertido.status !== 0) {
-  console.error(convertido.stderr);
-  process.exit(1);
+  falhar(`falha ao converter o Markdown com o marked:\n${convertido.stderr}`);
 }
 
 const conteudo = convertido.stdout
@@ -73,9 +94,11 @@ ${conteudo}
 `;
 
 const temporaria = mkdtempSync(join(tmpdir(), "guia-pdf-"));
+let erro = null;
 try {
   const arquivoHtml = join(temporaria, "guia.html");
   writeFileSync(arquivoHtml, html);
+  rmSync(resolve(destino), { force: true });
   const resultado = spawnSync(
     chrome,
     [
@@ -90,10 +113,17 @@ try {
     ],
     { encoding: "utf8" }
   );
-  if (resultado.status !== 0) {
-    console.error(resultado.stderr);
-    process.exit(1);
+  if (resultado.error) {
+    erro = `não foi possível rodar o Chrome em ${chrome} (${resultado.error.message})`;
+  } else if (resultado.status !== 0) {
+    erro = `o Chrome terminou com erro:\n${resultado.stderr}`;
+  } else if (!existsSync(resolve(destino)) || statSync(resolve(destino)).size === 0) {
+    erro = `o PDF não foi gravado ou ficou vazio: ${destino}`;
   }
 } finally {
   rmSync(temporaria, { recursive: true, force: true });
+}
+
+if (erro) {
+  falhar(erro);
 }
