@@ -494,7 +494,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário de componente. Falha primeiro "com IA ligada aparece a alternativa Se a IA estiver indisponível".
 - Gate: rápido
 - Modelo: padrao
-- Status: feita (gate rápido: 11 testes passam; reajustada ao contrato botMessages no commit f697c45; commit original 6b60a5f)
+- Status: feita (gate rápido: 11 testes passam; reajustada ao contrato botMessages no commit d209f1c; commit original 6b60a5f)
 
 ### T15 [P] Montagem da prévia
 - O quê: funções puras que montam a lista (1) a partir do rascunho da categoria com o formulário aplicado e a regra de páginas, e convertem a resposta da prévia da API no modelo de balões de T1: balão oficial com o texto formatado da API, passo seguinte com texto e botões da API e o botão de aceitar a oferta "Agendar presencial", alternativa "Se a IA estiver indisponível" quando a IA está ligada, e o caso de categoria não salva sem chamada à API. Balão com IA e fora do escopo ficam como a API devolve até T20.
@@ -508,7 +508,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário. Falha primeiro "o balão oficial é exatamente o texto formatado devolvido pela API".
 - Gate: rápido
 - Modelo: padrao
-- Status: feita (gate rápido: 20 testes passam; usa direto o contrato botMessages da B1, sem ler answerBubble/nextStepBubble; commit 490b27b)
+- Status: feita (gate rápido: 20 testes passam; usa direto o contrato botMessages da B1, sem ler answerBubble/nextStepBubble; commit 0dac01d)
 
 ### T16 [P] Executor do Salvar
 - O quê: hook que executa o plano de T7 em sequência, guarda o mapa de ids criados, para na primeira falha, aplica o mapa ao rascunho, recarrega o retrato do servidor uma única vez no fim (sucesso ou falha), sem descartar o rascunho em caso de falha, e devolve o resultado (sucesso; falha na primeira gravação; falha parcial com quantas foram salvas, quantas faltam, o item e a mensagem; sem permissão), com trava contra clique duplo.
@@ -536,7 +536,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: integração do hook. Falha primeiro "trocar de categoria mantém as alterações pendentes da anterior".
 - Gate: rápido
 - Modelo: padrao
-- Status: feita (gate rápido: 10 testes passam; commit 7edd13b)
+- Status: feita (gate rápido: 10 testes passam; commit ef056fe)
 
 ### T18 Montagem da página e testes da tela
 - O quê: página completa com cabeçalho, última alteração do topo, barra de alterações não salvas, bloco fixo, busca, coluna de categorias, área de perguntas, formulários e prévia, nos tamanhos de computador e de celular, e os testes de integração da tela.
@@ -550,7 +550,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: integração. Falha primeiro "criar categoria, criar pergunta nela e salvar grava as duas na ordem".
 - Gate: completo
 - Modelo: padrao
-- Status: feita (gate completo: lint, typecheck, test:run e prettier passam, 253 arquivos e 2018 testes; 12 testes de tela; commit 5f82fbb)
+- Status: feita (gate completo: lint, typecheck, test:run e prettier passam, 253 arquivos e 2018 testes; 12 testes de tela; commit 9417204)
 
 ### T20 Ajuste da prévia conforme o bot real
 - O quê: completar o balão com IA, os textos do passo seguinte, a navegação da lista e o caso fora do escopo conforme as respostas de D-U-04, D-U-05 e D-U-06, sem inventar texto.
@@ -564,7 +564,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário e de componente. Falha primeiro o teste do ponto P5 conforme a decisão.
 - Gate: completo
 - Modelo: padrao
-- Status: em-andamento. Evidência parcial: o painel já consome só `botMessages` e envia `listRows` desde T14/T15 (commits f697c45 e 490b27b), e os tipos antigos de `answerBubble`/`nextStepBubble` já saíram do frontend. Falta conferir a tela com a API depois de B2, B3 e B4 (fora do escopo em dois balões e linha da observação presencial, que o painel mostra como vêm) e fechar com o gate completo
+- Status: em-andamento. Evidência parcial: o painel já consome só `botMessages` e envia `listRows` desde T14/T15 (commits d209f1c e 0dac01d), e os tipos antigos de `answerBubble`/`nextStepBubble` já saíram do frontend. Falta conferir a tela com a API depois de B2, B3 e B4 (fora do escopo em dois balões e linha da observação presencial, que o painel mostra como vêm) e fechar com o gate completo
 
 ### T19 [P] Verificação final no Docker
 - O quê: rodar a suíte completa e o build do painel, também pelo compose, e conferir a tela aberta no container.
