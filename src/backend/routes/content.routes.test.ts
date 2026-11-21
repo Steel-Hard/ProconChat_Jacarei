@@ -142,8 +142,8 @@ describe("content.routes", () => {
                 llmAllowed: true,
             })
         expect(previewRes.status).toBe(200)
-        expect(previewRes.body.data.answerBubble.aiSampleLabel).toBe("Gerado com auxílio de IA")
-        expect(previewRes.body.data.nextStepBubble.type).toBe("resolution")
+        expect(previewRes.body.data.botMessages.aiMessage.footer).toBe("Gerado com auxílio de IA")
+        expect(previewRes.body.data.botMessages.officialMessages[1].text).toBe("A dúvida foi resolvida?")
     })
     describe("preview", () => {
         async function appWithCategory() {
@@ -167,7 +167,7 @@ describe("content.routes", () => {
             llmAllowed: true,
         }
 
-        it("returns botMessages together with the old fields", async () => {
+        it("returns botMessages and the answer length warning and none of the old fields", async () => {
             const { app, categoryId } = await appWithCategory()
 
             const res = await request(app)
@@ -185,10 +185,11 @@ describe("content.routes", () => {
                 limit: 1024,
                 message: null,
             })
-            expect(res.body.data.fixedDisclaimer).toEqual(expect.any(String))
-            expect(res.body.data.categoryList.rows).toHaveLength(1)
-            expect(res.body.data.answerBubble.formattedText).toEqual(expect.any(String))
-            expect(res.body.data.nextStepBubble.type).toBe("resolution")
+            expect(res.body.data.answerLengthWarning).toBe(false)
+            expect(res.body.data.answerLengthWarningMessage).toBeNull()
+            for (const removed of ["answerBubble", "nextStepBubble", "categoryList", "fixedDisclaimer"]) {
+                expect(res.body.data).not.toHaveProperty(removed)
+            }
         })
 
         it("follows the order of listRows when it is sent", async () => {

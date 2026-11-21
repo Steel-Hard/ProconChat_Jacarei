@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
     AVISO_NAO_VINCULANTE,
-    OFERTA_AGENDAMENTO,
-    PERGUNTA_RESOLVIDA,
     LIMITE_CORPO_BOTOES,
     ROTULO_IA,
     criarMensagensPerguntas,
@@ -186,25 +184,51 @@ describe("contentRules", () => {
                 llmAllowed: true,
             })
 
-            expect(preview.fixedDisclaimer).toBe(AVISO_NAO_VINCULANTE)
-            expect(preview.categoryList.rows).toHaveLength(2)
-            expect(preview.categoryList.rows[0]).toEqual({
-                id: 10,
-                shortTitle: "Defeito atualizado",
-                shortDescription: "Prazo de 30 dias",
-                isCurrent: true,
+            const { categoryList, officialMessages, aiMessage } = preview.botMessages
+            expect(categoryList.message.rows).toHaveLength(2)
+            expect(categoryList.message.rows[0]).toMatchObject({
+                title: "Defeito atualizado",
+                description: "Prazo de 30 dias",
             })
-            expect(preview.answerBubble.aiSampleLabel).toBe(ROTULO_IA)
-            expect(preview.answerBubble.outOfScopeNotice).toBeNull()
-            expect(preview.answerBubble.formattedText).toContain(AVISO_NAO_VINCULANTE)
-            expect(preview.nextStepBubble).toEqual({
-                type: "resolution",
+            expect(categoryList.currentRowIndex).toBe(0)
+            expect(aiMessage?.footer).toBe(ROTULO_IA)
+            expect(officialMessages[0]).toMatchObject({ type: "text" })
+            expect(officialMessages[0]?.type === "text" && officialMessages[0].text).toContain(AVISO_NAO_VINCULANTE)
+            expect(officialMessages[1]).toEqual({
+                type: "buttons",
                 text: "A dúvida foi resolvida?",
-                inPersonNote: null,
-                prompt: "A dúvida foi resolvida?",
-                buttons: ["Sim", "Não"],
-                formattedText: PERGUNTA_RESOLVIDA,
+                buttons: [
+                    { id: "resolved_yes", title: "Sim" },
+                    { id: "resolved_no", title: "Não" },
+                ],
             })
+        })
+
+        it("returns only botMessages and the answer length warning", () => {
+            const preview = buildQuestionPreview(category, existingQuestions, {
+                questionId: 10,
+                categoryId: 1,
+                shortTitle: "Defeito atualizado",
+                shortDescription: null,
+                question: "Comprei um produto com defeito, o que fazer?",
+                answer: "a".repeat(1000),
+                legalBasis: null,
+                requiredDocuments: [],
+                requiresInPerson: false,
+                inPersonNote: null,
+                outOfScope: false,
+                llmAllowed: true,
+            })
+
+            expect(Object.keys(preview).sort()).toEqual(["answerLengthWarning", "answerLengthWarningMessage", "botMessages"])
+            expect(preview.answerLengthWarning).toBe(true)
+            expect(preview.answerLengthWarningMessage).toBe(ANSWER_WARNING_MESSAGE)
+            expect(Object.keys(preview.botMessages).sort()).toEqual([
+                "aiLengthWarning",
+                "aiMessage",
+                "categoryList",
+                "officialMessages",
+            ])
         })
 
         it("builds preview for a question that requires in-person attendance with schedule offer", () => {
@@ -222,20 +246,21 @@ describe("contentRules", () => {
                 llmAllowed: false,
             })
 
-            expect(preview.categoryList.rows).toHaveLength(3)
-            expect(preview.categoryList.rows[2]?.isCurrent).toBe(true)
-            expect(preview.answerBubble.aiSampleLabel).toBeNull()
-            expect(preview.nextStepBubble).toEqual({
-                type: "schedule_offer",
+            const { categoryList, officialMessages, aiMessage } = preview.botMessages
+            expect(categoryList.message.rows).toHaveLength(3)
+            expect(categoryList.currentRowIndex).toBe(2)
+            expect(aiMessage).toBeNull()
+            expect(officialMessages[1]).toEqual({
+                type: "buttons",
                 text: "Deseja agendar um atendimento presencial no PROCON Jacareí?",
-                inPersonNote: "Traga as 3 últimas faturas impressas.",
-                prompt: "Deseja agendar um atendimento presencial no PROCON Jacareí?",
-                buttons: ["Agendar presencial", "Agora não"],
-                formattedText: OFERTA_AGENDAMENTO,
+                buttons: [
+                    { id: "schedule_yes", title: "Agendar presencial" },
+                    { id: "schedule_no", title: "Agora não" },
+                ],
             })
         })
 
-        it("builds preview for an out-of-scope question without nextStepBubble and without a notice of its own", () => {
+        it("builds preview for an out-of-scope question with two text messages and no buttons", () => {
             const preview = buildQuestionPreview(category, existingQuestions, {
                 categoryId: 1,
                 shortTitle: "Multa de trânsito",
@@ -250,9 +275,10 @@ describe("contentRules", () => {
                 llmAllowed: false,
             })
 
-            expect(preview.answerBubble.outOfScopeNotice).toBeNull()
-            expect(preview.answerBubble.aiSampleLabel).toBeNull()
-            expect(preview.nextStepBubble).toBeNull()
+            const { officialMessages, aiMessage } = preview.botMessages
+            expect(aiMessage).toBeNull()
+            expect(officialMessages).toHaveLength(2)
+            expect(officialMessages.every((message) => message.type === "text")).toBe(true)
         })
 
         it("displays the WhatsApp page where the edited question actually falls when category has > 10 questions", () => {
@@ -274,15 +300,13 @@ describe("contentRules", () => {
                 llmAllowed: false,
             })
 
-            expect(preview.categoryList.rows).toHaveLength(2)
-            expect(preview.categoryList.rows[0]).toEqual({
-                id: 109,
-                shortTitle: "Décima pergunta",
-                shortDescription: null,
-                isCurrent: true,
-            })
-            expect(preview.categoryList.hasMoreOptions).toBe(false)
-            expect(preview.categoryList.totalActiveQuestions).toBe(11)
+            const { categoryList } = preview.botMessages
+            expect(categoryList.message.rows).toHaveLength(3)
+            expect(categoryList.message.rows[0]).toMatchObject({ title: "Décima pergunta" })
+            expect(categoryList.currentRowIndex).toBe(0)
+            expect(categoryList.page).toBe(2)
+            expect(categoryList.totalPages).toBe(2)
+            expect(categoryList.message.rows.at(-1)?.title).toBe("Voltar opções")
         })
     })
     describe("buildQuestionPreview botMessages", () => {
@@ -385,23 +409,6 @@ describe("contentRules", () => {
             expect(preview.botMessages.aiMessage).toBeNull()
             expect(preview.botMessages.officialMessages).toEqual(mensagensRespostaOficial(respostaDe(input)))
             expect(preview.botMessages.officialMessages).toHaveLength(2)
-            expect(preview.nextStepBubble).toBeNull()
-        })
-
-        it("fills the old bubbles from the bot messages", () => {
-            const input = { ...baseInput, llmAllowed: true, requiresInPerson: true, inPersonNote: "Traga as faturas." }
-            const preview = buildQuestionPreview(category, [], input)
-            const [oficial, passoSeguinte] = preview.botMessages.officialMessages
-
-            expect(oficial?.type).toBe("text")
-            expect(passoSeguinte?.type).toBe("buttons")
-            expect(preview.answerBubble.formattedText).toBe(oficial?.type === "text" ? oficial.text : null)
-            expect(preview.answerBubble.aiSampleLabel).toBe(preview.botMessages.aiMessage?.footer)
-            expect(preview.nextStepBubble?.text).toBe(passoSeguinte?.type === "buttons" ? passoSeguinte.text : null)
-            expect(preview.nextStepBubble?.buttons).toEqual(
-                passoSeguinte?.type === "buttons" ? passoSeguinte.buttons.map((b) => b.title) : null,
-            )
-            expect(preview.nextStepBubble?.inPersonNote).toBe("Traga as faturas.")
         })
 
         it("builds the list of the first page for a category with 11 questions", () => {
@@ -560,8 +567,6 @@ describe("contentRules", () => {
             expect(lista.message.rows.map((r) => r.title)).toEqual(["Terceira", "Defeito", "Primeira"])
             expect(lista.currentRowIndex).toBe(1)
             expect(lista.message.rows[1]?.description).toBe("Prazo de 30 dias")
-            expect(preview.categoryList.rows.map((r) => r.shortTitle)).toEqual(["Terceira", "Defeito", "Primeira"])
-            expect(preview.categoryList.totalActiveQuestions).toBe(3)
         })
     })
 })

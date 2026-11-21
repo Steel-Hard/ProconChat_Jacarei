@@ -123,45 +123,6 @@ export interface QuestionPreviewInput {
     listRows?: PreviewListRowInput[]
 }
 
-export interface PreviewCategoryListRow {
-    id: number | null
-    shortTitle: string
-    shortDescription: string | null
-    isCurrent: boolean
-}
-
-export interface PreviewCategoryListSection {
-    categoryTitle: string
-    categoryShortTitle: string
-    rows: PreviewCategoryListRow[]
-    hasMoreOptions: boolean
-    totalActiveQuestions: number
-}
-
-export interface PreviewAnswerBubble {
-    question: string
-    answer: string
-    legalBasis: string | null
-    requiredDocuments: string[]
-    llmAllowed: boolean
-    aiSampleLabel: string | null
-    aiSampleText: string | null
-    outOfScopeNotice: string | null
-    disclaimer: string
-    formattedText: string
-}
-
-export type PreviewNextStepType = "resolution" | "schedule_offer"
-
-export interface PreviewNextStepBubble {
-    type: PreviewNextStepType
-    text: string
-    inPersonNote: string | null
-    prompt: string
-    buttons: string[]
-    formattedText: string
-}
-
 export interface PreviewBotList {
     message: Extract<OutgoingMessage, { type: "list" }>
     currentRowIndex: number
@@ -184,11 +145,7 @@ export interface PreviewBotMessages {
 }
 
 export interface QuestionPreviewResult {
-    fixedDisclaimer: string
     answerLengthWarning: boolean
     answerLengthWarningMessage: string | null
-    categoryList: PreviewCategoryListSection
-    answerBubble: PreviewAnswerBubble
-    nextStepBubble: PreviewNextStepBubble | null
     botMessages: PreviewBotMessages
 }

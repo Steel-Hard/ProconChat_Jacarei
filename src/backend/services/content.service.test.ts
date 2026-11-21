@@ -179,8 +179,8 @@ describe("ContentService", () => {
         })
 
         expect(preview.answerLengthWarning).toBe(true)
-        expect(preview.categoryList.rows[0]?.shortTitle).toBe("Produto com vício")
-        expect(preview.nextStepBubble?.type).toBe("resolution")
+        expect(preview.botMessages.categoryList.message.rows[0]?.title).toBe("Produto com vício")
+        expect(preview.botMessages.officialMessages[1]).toMatchObject({ type: "buttons", text: "A dúvida foi resolvida?" })
     })
     it("does not write anything when previewing a question", async () => {
         const repository = new ContentStubRepository()

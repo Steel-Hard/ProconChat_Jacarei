@@ -270,10 +270,10 @@ describe("Content API integration tests (Postgres)", () => {
             })
 
         expect(previewRes.status).toBe(200)
-        expect(previewRes.body.data.nextStepBubble.type).toBe("schedule_offer")
-        expect(previewRes.body.data.nextStepBubble.inPersonNote).toBe(
-            "Traga todos os boletos impressos.",
-        )
+        const [official, offer] = previewRes.body.data.botMessages.officialMessages
+        expect(offer.buttons.map((b: { title: string }) => b.title)).toEqual(["Agendar presencial", "Agora não"])
+        expect(official.text).toContain("Sobre o atendimento presencial: Traga todos os boletos impressos.")
+        expect(previewRes.body.data).not.toHaveProperty("nextStepBubble")
     })
 
     it("previews with the same messages the bot sends, including the in-person note and the out-of-scope referral", async () => {

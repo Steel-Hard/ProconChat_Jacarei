@@ -1,7 +1,4 @@
 import {
-    AVISO_NAO_VINCULANTE,
-    OFERTA_AGENDAMENTO,
-    PERGUNTA_RESOLVIDA,
     LIMITE_CORPO_BOTOES,
     criarMensagensPerguntas,
     mensagensRespostaOficial,
@@ -15,8 +12,6 @@ import {
     CategoryRecord,
     PreviewAiLengthWarning,
     PreviewBotList,
-    PreviewCategoryListRow,
-    PreviewNextStepBubble,
     QuestionItem,
     QuestionPreviewInput,
     QuestionPreviewResult,
@@ -31,6 +26,13 @@ export const AI_LENGTH_WARNING_MESSAGE =
 
 export const AI_SAMPLE_TEXT =
     "Exemplo ilustrativo de complemento redigido pela IA a partir da orientação oficial acima, sem alterar prazos, documentos nem fundamento legal."
+
+interface PreviewRow {
+    id: number | null
+    shortTitle: string
+    shortDescription: string | null
+    isCurrent: boolean
+}
 
 interface WhatsappPagePlacement {
     whatsappPage: number
@@ -131,8 +133,8 @@ export function enrichQuestionList(
 function buildPreviewRows(
     existingQuestions: QuestionRecord[],
     input: QuestionPreviewInput,
-): PreviewCategoryListRow[] {
-    const currentRow = (questionId: number | null): PreviewCategoryListRow => ({
+): PreviewRow[] {
+    const currentRow = (questionId: number | null): PreviewRow => ({
         id: questionId,
         shortTitle: input.shortTitle,
         shortDescription: input.shortDescription,
@@ -152,7 +154,7 @@ function buildPreviewRows(
         )
     }
 
-    const rows: PreviewCategoryListRow[] = []
+    const rows: PreviewRow[] = []
     let insertedCurrent = false
 
     for (const q of existingQuestions) {
@@ -176,7 +178,7 @@ function buildPreviewRows(
     return rows
 }
 
-function rowToPergunta(row: PreviewCategoryListRow, categoryId: number): Pergunta {
+function rowToPergunta(row: PreviewRow, categoryId: number): Pergunta {
     return {
         id: row.id ?? 0,
         category_id: categoryId,
@@ -193,14 +195,14 @@ function rowToPergunta(row: PreviewCategoryListRow, categoryId: number): Pergunt
 }
 
 function buildBotCategoryList(
-    rows: PreviewCategoryListRow[],
+    rows: PreviewRow[],
     categoryId: number,
-): { botList: PreviewBotList; pageRows: PreviewCategoryListRow[]; hasMoreOptions: boolean } {
+): { botList: PreviewBotList } {
     const firstPage = paginarItens(rows, 1)
     let targetPage = firstPage
     for (let page = 1; page <= firstPage.totalPaginas; page++) {
         const pageResult = page === 1 ? firstPage : paginarItens(rows, page)
-        if (pageResult.itensPagina.some((r: PreviewCategoryListRow) => r.isCurrent)) {
+        if (pageResult.itensPagina.some((r: PreviewRow) => r.isCurrent)) {
             targetPage = pageResult
             break
         }
@@ -220,12 +222,10 @@ function buildBotCategoryList(
     return {
         botList: {
             message,
-            currentRowIndex: targetPage.itensPagina.findIndex((r: PreviewCategoryListRow) => r.isCurrent),
+            currentRowIndex: targetPage.itensPagina.findIndex((r: PreviewRow) => r.isCurrent),
             page: targetPage.paginaAtual,
             totalPages: targetPage.totalPaginas,
         },
-        pageRows: [...targetPage.itensPagina],
-        hasMoreOptions: targetPage.temProxima,
     }
 }
 
@@ -242,35 +242,13 @@ function buildAiLengthWarning(
     }
 }
 
-function buildNextStepBubble(
-    resposta: RespostaFinalOutput,
-    officialMessages: OutgoingMessage[],
-    inPersonNote: string | null,
-): PreviewNextStepBubble | null {
-    const step = officialMessages.find(
-        (m): m is Extract<OutgoingMessage, { type: "buttons" }> => m.type === "buttons",
-    )
-    if (!step || resposta.fora_de_escopo) {
-        return null
-    }
-
-    return {
-        type: resposta.requer_presencial ? "schedule_offer" : "resolution",
-        text: step.text,
-        inPersonNote: resposta.requer_presencial ? inPersonNote : null,
-        prompt: step.text,
-        buttons: step.buttons.map((button) => button.title),
-        formattedText: resposta.requer_presencial ? OFERTA_AGENDAMENTO : PERGUNTA_RESOLVIDA,
-    }
-}
-
 export function buildQuestionPreview(
     category: CategoryRecord,
     existingQuestions: QuestionRecord[],
     input: QuestionPreviewInput,
 ): QuestionPreviewResult {
     const allActiveRows = buildPreviewRows(existingQuestions, input)
-    const { botList, pageRows, hasMoreOptions } = buildBotCategoryList(allActiveRows, category.id)
+    const { botList } = buildBotCategoryList(allActiveRows, category.id)
 
     const resposta: RespostaFinalOutput = {
         categoria: category.title,
@@ -289,36 +267,11 @@ export function buildQuestionPreview(
     const aiCandidate =
         input.llmAllowed && !input.outOfScope ? montarMensagemIa(AI_SAMPLE_TEXT, resposta) : null
     const aiMessage = aiCandidate?.type === "buttons" ? aiCandidate : null
-    const officialText = officialMessages.find(
-        (m): m is Extract<OutgoingMessage, { type: "text" }> => m.type === "text",
-    )
-
     const answerLengthWarning = input.answer.length >= ANSWER_WARNING_THRESHOLD
 
     return {
-        fixedDisclaimer: AVISO_NAO_VINCULANTE,
         answerLengthWarning,
         answerLengthWarningMessage: answerLengthWarning ? ANSWER_WARNING_MESSAGE : null,
-        categoryList: {
-            categoryTitle: category.title,
-            categoryShortTitle: category.shortTitle,
-            rows: pageRows,
-            hasMoreOptions,
-            totalActiveQuestions: allActiveRows.length,
-        },
-        answerBubble: {
-            question: input.question,
-            answer: input.answer,
-            legalBasis: input.legalBasis,
-            requiredDocuments: input.requiredDocuments,
-            llmAllowed: input.llmAllowed,
-            aiSampleLabel: aiMessage?.footer ?? null,
-            aiSampleText: input.llmAllowed ? AI_SAMPLE_TEXT : null,
-            outOfScopeNotice: null,
-            disclaimer: AVISO_NAO_VINCULANTE,
-            formattedText: officialText?.text ?? "",
-        },
-        nextStepBubble: buildNextStepBubble(resposta, officialMessages, input.inPersonNote),
         botMessages: {
             categoryList: botList,
             officialMessages,
