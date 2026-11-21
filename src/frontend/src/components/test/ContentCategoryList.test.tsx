@@ -141,4 +141,18 @@ describe("ContentCategoryList", () => {
         expect(screen.getByText("Alteração não salva")).toBeInTheDocument()
         expect(screen.queryByText("Não salva")).not.toBeInTheDocument()
     })
+
+    it("categoria oculta mostra o estado com a dica do ícone de informação", async () => {
+        const user = userEvent.setup()
+        renderList([item({ state: "hidden" })])
+
+        expect(screen.getByText("Ativa · oculta no chatbot")).toBeInTheDocument()
+        expect(screen.queryByText("Ativa")).not.toBeInTheDocument()
+
+        await user.hover(screen.getByRole("button", { name: "Mais informações" }))
+
+        expect(screen.getByRole("tooltip")).toHaveTextContent(
+            "Categorias só aparecem ao cidadão quando têm ao menos uma pergunta ativa"
+        )
+    })
 })

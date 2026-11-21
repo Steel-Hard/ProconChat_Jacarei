@@ -24,9 +24,14 @@
         "label": "Buscar nas perguntas",
         "placeholder": "Buscar no texto da pergunta, na resposta e no título curto",
         "clear": "Limpar busca",
+        "clearButton": "Limpar",
+        "boxLabel": "Buscar",
         "noResults": "Nenhuma pergunta encontrada.",
         "inCategory": "Categoria: {{category}}"
     },
+    "noticeLabel": "Aviso obrigatório, ao final de todas as respostas:",
+    "noticeNote": "Este aviso não é configurável.",
+    "pagingNotice": "Com mais de 10 itens, o chatbot mostra a lista em páginas: 9 opções por vez e a opção 'Ver mais opções'. Listas curtas são mais fáceis para o cidadão.",
     "pageBreak": "Página {{page}} no WhatsApp",
     "categories": {
         "heading": "Categorias",
@@ -35,6 +40,9 @@
         "activate": "Ativar",
         "deactivate": "Desativar",
         "activateCategory": "Ativar categoria",
+        "hiddenTip": "Categorias só aparecem ao cidadão quando têm ao menos uma pergunta ativa",
+        "help": "Ordem do menu de categorias no WhatsApp. Em negrito, o título curto exibido na lista tocável. Use ↑↓ para reordenar.",
+        "headerShort": "Título curto: {{value}}",
         "deactivateCategory": "Desativar categoria",
         "moveUp": "Mover para cima",
         "moveDown": "Mover para baixo",
@@ -61,6 +69,7 @@
         "headingOf": "Perguntas de {{category}}",
         "searchHeading": "Resultados da busca",
         "new": "Nova pergunta",
+        "orderHelp": "Ordem em que as perguntas aparecem ao cidadão no WhatsApp após escolher esta categoria. Em negrito, o título curto exibido na lista tocável. Use ↑↓ para reordenar.",
         "newDisabledSearching": "Limpe a busca para criar uma pergunta.",
         "edit": "Editar",
         "activate": "Ativar",
@@ -192,6 +201,7 @@
         "up": "↑",
         "down": "↓",
         "separator": " · ",
+        "dot": "·",
         "remove": "×"
     },
     "page": {

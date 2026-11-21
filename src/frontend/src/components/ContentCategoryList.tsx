@@ -20,7 +20,7 @@ function ContentCategoryList({ items, onSelect, onMove, onNew }: ContentCategory
     }
 
     return (
-        <ul className={css.list}>
+        <ul className={css.lines}>
             {items.map((item) => (
                 <Fragment key={item.key}>
                     {item.pageBreak !== null ? <ContentPageBreak page={item.pageBreak} /> : null}

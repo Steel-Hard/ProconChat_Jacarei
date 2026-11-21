@@ -166,4 +166,29 @@ describe("ContentQuestionList", () => {
         expect(screen.getByText("Alteração não salva")).toBeInTheDocument()
         expect(screen.queryByText("Não salva")).not.toBeInTheDocument()
     })
+
+    it("as ações da linha ficam na ordem Desativar e Editar, depois das setas", () => {
+        renderList([item()])
+
+        const names = screen
+            .getAllByRole("button")
+            .map((button) => button.getAttribute("aria-label"))
+
+        expect(names).toEqual([
+            "Mover Troca de produto para cima",
+            "Mover Troca de produto para baixo",
+            "Desativar Troca de produto",
+            "Editar Troca de produto"
+        ])
+    })
+
+    it("presencial é neutro e fora do escopo é âmbar", () => {
+        renderList([item({ requiresInPerson: true }), item({ key: "11", outOfScope: true })])
+
+        expect(screen.getByText("Exige atendimento presencial")).toHaveAttribute(
+            "data-tone",
+            "neutral"
+        )
+        expect(screen.getByText("Fora do escopo do PROCON")).toHaveAttribute("data-tone", "warning")
+    })
 })

@@ -29,10 +29,12 @@ function ContentQuestionList({
     }
 
     return (
-        <ul className={css.list}>
+        <ul className={css.lines}>
             {items.map((item) => (
                 <Fragment key={`${item.categoryKey}:${item.key}`}>
-                    {item.pageBreak !== null ? <ContentPageBreak page={item.pageBreak} /> : null}
+                    {item.pageBreak !== null ? (
+                        <ContentPageBreak page={item.pageBreak} wide />
+                    ) : null}
                     <ContentQuestionRow
                         item={item}
                         showArrows={!searching}

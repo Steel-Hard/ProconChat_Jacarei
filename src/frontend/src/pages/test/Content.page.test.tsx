@@ -248,7 +248,9 @@ describe("ContentPage", () => {
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
 
         const alerts = await screen.findAllByRole("alert")
-        const row = screen.getByText("Categoria nova").closest("li") as HTMLElement
+        const row = screen
+            .getByRole("button", { name: "Ver as perguntas de Nova" })
+            .closest("li") as HTMLElement
 
         expect(alerts.length).toBeGreaterThan(0)
         expect(within(row).getByRole("alert")).toBeInTheDocument()
@@ -446,6 +448,49 @@ describe("ContentPage", () => {
         expect(screen.queryByText("Descartar as alterações?")).not.toBeInTheDocument()
         expect(screen.getByLabelText(/Título curto/)).toBeInTheDocument()
         expect(previewButton).toHaveFocus()
+    })
+
+    it("o aviso fixo tem rótulo antes, texto exato e nota depois, sem selo FIXO", async () => {
+        await loaded()
+
+        expect(
+            screen.getByText("Aviso obrigatório, ao final de todas as respostas:")
+        ).toBeInTheDocument()
+        expect(screen.getByText(FIXED_NOTICE)).toBeInTheDocument()
+        expect(screen.getByText("Este aviso não é configurável.")).toBeInTheDocument()
+        expect(screen.queryByText("FIXO")).not.toBeInTheDocument()
+    })
+
+    it("o painel de perguntas mostra o cabeçalho da categoria, a busca e a ordem; Limpar só com termo", async () => {
+        const user = userEvent.setup()
+        await loaded()
+
+        expect(screen.getByRole("heading", { name: "Categoria 1", level: 2 })).toBeInTheDocument()
+        expect(screen.getByText("Título curto: C1")).toBeInTheDocument()
+        expect(screen.getByText(/Ordem em que as perguntas aparecem/)).toBeInTheDocument()
+        expect(screen.queryByRole("button", { name: "Limpar" })).not.toBeInTheDocument()
+
+        await user.type(screen.getByRole("searchbox", { name: "Buscar nas perguntas" }), "dev")
+
+        expect(screen.getByRole("button", { name: "Editar categoria" })).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "Nova pergunta" })).toBeDisabled()
+        expect(screen.queryByText(/Ordem em que as perguntas aparecem/)).not.toBeInTheDocument()
+
+        await user.click(screen.getByRole("button", { name: "Limpar" }))
+
+        expect(screen.getByRole("searchbox", { name: "Buscar nas perguntas" })).toHaveValue("")
+        expect(screen.getByText(/Ordem em que as perguntas aparecem/)).toBeInTheDocument()
+        expect(screen.queryByRole("button", { name: "Limpar" })).not.toBeInTheDocument()
+    })
+
+    it("o botão Nova categoria fica no cabeçalho da coluna de categorias", async () => {
+        await loaded()
+
+        const heading = screen.getByRole("heading", { name: "Categorias", level: 2 })
+
+        expect(heading.parentElement).toContainElement(
+            screen.getAllByRole("button", { name: "Nova categoria" })[0]
+        )
     })
 
     it("a busca procura em todas as categorias e esconde as setas", async () => {

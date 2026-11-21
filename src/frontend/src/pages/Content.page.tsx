@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next"
-import ContentCategoryActions from "@/components/ContentCategoryActions"
+import ContentCategoryHeader from "@/components/ContentCategoryHeader"
 import ContentCategoryForm from "@/components/ContentCategoryForm"
 import ContentCategoryList from "@/components/ContentCategoryList"
 import ContentPreviewWindow from "@/components/ContentPreviewWindow"
@@ -10,8 +10,10 @@ import UnsavedChangesBar from "@/components/UnsavedChangesBar"
 import useContent from "@/pages/hooks/useContent"
 import css from "@/styles/pages/content.module.css"
 
+const SPACE = " "
 const SKELETON_ROWS = [0, 1, 2]
 const NEW_QUESTION_HINT_ID = "content-new-question-hint"
+const SEARCH_INPUT_ID = "content-search-input"
 
 export default function ContentPage() {
     const { t } = useTranslation("content")
@@ -44,7 +46,13 @@ export default function ContentPage() {
                 </div>
 
                 <div className={css.fixedNotice}>
-                    <p className={css.fixedNoticeText}>{t("notice")}</p>
+                    <p className={css.fixedNoticeText}>
+                        <strong className={css.fixedNoticeLabel}>{t("noticeLabel")}</strong>
+                        {SPACE}
+                        {t("notice")}
+                        {SPACE}
+                        <span className={css.fixedNoticeNote}>{t("noticeNote")}</span>
+                    </p>
                 </div>
 
                 {page.status === "loading" ? (
@@ -79,91 +87,104 @@ export default function ContentPage() {
                 ) : null}
 
                 {ready ? (
-                    <>
-                        <div className={css.toolbar}>
-                            <div className={css.searchField}>
-                                <input
-                                    type="search"
-                                    className={css.searchInput}
-                                    value={page.searchTerm}
-                                    aria-label={t("search.label")}
-                                    placeholder={t("search.placeholder")}
-                                    onChange={(event) => page.setSearchTerm(event.target.value)}
-                                />
-                                {page.searching ? (
-                                    <button
-                                        type="button"
-                                        className={css.searchClear}
-                                        aria-label={t("search.clear")}
-                                        onClick={() => page.setSearchTerm("")}
-                                    >
-                                        {t("icons.remove")}
-                                    </button>
-                                ) : null}
+                    <div className={css.columns}>
+                        <section className={`${css.panel} ${css.categoriesPanel}`}>
+                            <div className={css.categoriesHeader}>
+                                <h2 className={css.categoriesLabel}>{t("categories.heading")}</h2>
+                                <button
+                                    type="button"
+                                    className={`${css.outlineButton} ${css.newCategoryButton}`}
+                                    onClick={page.openNewCategory}
+                                >
+                                    {t("categories.new")}
+                                </button>
                             </div>
-                            {page.searching ? (
-                                <span className={css.searchSummary}>
-                                    {t("page.searchResults", { count: page.questionRows.length })}
-                                </span>
+                            <p className={css.categoriesHelp}>{t("categories.help")}</p>
+                            {page.categoryRows.some((row) => row.pageBreak !== null) ? (
+                                <p className={css.pagingNotice}>{t("pagingNotice")}</p>
                             ) : null}
-                        </div>
+                            <ContentCategoryList
+                                items={page.categoryRows}
+                                onSelect={page.selectCategory}
+                                onMove={page.moveCategory}
+                                onNew={page.openNewCategory}
+                            />
+                        </section>
 
-                        <div className={css.columns}>
-                            <div className={css.column}>
-                                <div className={css.columnHeader}>
-                                    <h2 className={css.columnTitle}>{t("categories.heading")}</h2>
-                                    <button
-                                        type="button"
-                                        className={css.primaryAction}
-                                        onClick={page.openNewCategory}
-                                    >
-                                        {t("categories.new")}
-                                    </button>
-                                </div>
-                                <ContentCategoryList
-                                    items={page.categoryRows}
-                                    onSelect={page.selectCategory}
-                                    onMove={page.moveCategory}
-                                    onNew={page.openNewCategory}
+                        <section className={`${css.panel} ${css.questionsPanel}`}>
+                            {page.selectedCategory !== null ? (
+                                <ContentCategoryHeader
+                                    category={page.selectedCategory}
+                                    state={
+                                        page.categoryRows.find((row) => row.selected)?.state ??
+                                        "active"
+                                    }
+                                    newQuestionDisabled={page.searching}
+                                    newQuestionDescribedBy={
+                                        page.searching ? NEW_QUESTION_HINT_ID : undefined
+                                    }
+                                    onEdit={page.openEditCategory}
+                                    onToggle={page.toggleCategory}
+                                    onNewQuestion={page.openNewQuestion}
                                 />
-                            </div>
-
-                            <div className={css.column}>
-                                <div className={css.columnHeader}>
-                                    <h2 className={css.columnTitle}>
-                                        {page.searching
-                                            ? t("questions.searchHeading")
-                                            : page.selectedCategory
-                                              ? t("questions.headingOf", {
-                                                    category: page.selectedCategory.shortTitle
-                                                })
-                                              : t("questions.heading")}
-                                    </h2>
-                                    <ContentCategoryActions
-                                        category={page.searching ? null : page.selectedCategory}
-                                        newQuestionDisabled={
-                                            page.searching || page.selectedCategory === null
-                                        }
-                                        newQuestionDescribedBy={
-                                            page.searching || page.selectedCategory === null
-                                                ? NEW_QUESTION_HINT_ID
-                                                : undefined
-                                        }
-                                        onEdit={page.openEditCategory}
-                                        onToggle={page.toggleCategory}
-                                        onNewQuestion={page.openNewQuestion}
-                                    />
+                            ) : null}
+                            {page.categoryRows.length > 0 ? (
+                                <div className={css.searchBar}>
+                                    <div className={css.searchBox}>
+                                        <label
+                                            htmlFor={SEARCH_INPUT_ID}
+                                            className={css.searchLabel}
+                                        >
+                                            {t("search.boxLabel")}
+                                        </label>
+                                        <input
+                                            id={SEARCH_INPUT_ID}
+                                            type="search"
+                                            className={css.searchBoxInput}
+                                            value={page.searchTerm}
+                                            aria-label={t("search.label")}
+                                            placeholder={t("search.placeholder")}
+                                            onChange={(event) =>
+                                                page.setSearchTerm(event.target.value)
+                                            }
+                                        />
+                                        {page.searching ? (
+                                            <button
+                                                type="button"
+                                                className={css.clearButton}
+                                                onClick={() => page.setSearchTerm("")}
+                                            >
+                                                {t("search.clearButton")}
+                                            </button>
+                                        ) : null}
+                                    </div>
+                                    {page.searching ? (
+                                        <span className={css.searchSummary}>
+                                            {t("page.searchResults", {
+                                                count: page.questionRows.length
+                                            })}
+                                        </span>
+                                    ) : null}
                                 </div>
-                                {page.searching ? (
-                                    <p id={NEW_QUESTION_HINT_ID} className={css.placeholder}>
-                                        {t("questions.newDisabledSearching")}
-                                    </p>
-                                ) : null}
-                                {page.selectedCategory === null && !page.searching ? (
-                                    <p id={NEW_QUESTION_HINT_ID} className={css.placeholder}>
-                                        {t("questions.noCategorySelected")}
-                                    </p>
-                                ) : (
+                            ) : null}
+                            {page.searching ? (
+                                <p id={NEW_QUESTION_HINT_ID} className={css.placeholder}>
+                                    {t("questions.newDisabledSearching")}
+                                </p>
+                            ) : null}
+                            {page.selectedCategory === null && !page.searching ? (
+                                <p className={css.panelEmpty}>
+                                    {t("questions.noCategorySelected")}
+                                </p>
+                            ) : (
+                                <>
+                                    {!page.searching ? (
+                                        <p className={css.orderHelp}>{t("questions.orderHelp")}</p>
+                                    ) : null}
+                                    {!page.searching &&
+                                    page.questionRows.some((row) => row.pageBreak !== null) ? (
+                                        <p className={css.pagingNotice}>{t("pagingNotice")}</p>
+                                    ) : null}
                                     <ContentQuestionList
                                         items={page.questionRows}
                                         searching={page.searching}
@@ -172,10 +193,10 @@ export default function ContentPage() {
                                         onMove={page.moveQuestion}
                                         onNew={page.openNewQuestion}
                                     />
-                                )}
-                            </div>
-                        </div>
-                    </>
+                                </>
+                            )}
+                        </section>
+                    </div>
                 ) : null}
 
                 {dialog?.kind === "category" ? (

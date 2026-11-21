@@ -26,14 +26,14 @@ function ContentCategoryActions({
                 <>
                     <button
                         type="button"
-                        className={css.primaryAction}
+                        className={css.outlineButton}
                         onClick={() => onEdit(category.key)}
                     >
                         {t("categories.edit")}
                     </button>
                     <button
                         type="button"
-                        className={css.primaryAction}
+                        className={css.neutralButton}
                         onClick={() => onToggle(category.key)}
                     >
                         {category.active
