@@ -198,7 +198,7 @@ Ambiente do gerador: Node.js 20 ou mais novo e Chrome ou Chromium (ou `CHROME_PA
 - **Teste:** nenhum (documentação).
 - **Gate:** não se aplica typecheck, lint nem suíte. Conferência: os links novos abrem depois da T6.
 - **Modelo:** economico
-- **Status:** pendente
+- **Status:** concluída em 2026-11-21. Evidência: linha da pasta `guias/` em `.docs/README.md` e linha nova na tabela de `.docs/guias/README.md` apontam para `manual-do-painel.md`, `manual-do-painel.pdf` e `images/manual-do-painel/`; o exemplo de geração não mudou. Os links passam a abrir depois da T6.
 - **Commit:** `Docs :bulb: [#119] Indexa o manual do painel nos índices da documentação`
 
 ### T5 Escrever o Markdown do manual

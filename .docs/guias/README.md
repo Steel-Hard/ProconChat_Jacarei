@@ -6,6 +6,7 @@ Os guias são escritos em Markdown e gerados em PDF por um script. Os dois forma
 | --- | --- | --- | --- |
 | Configuração do bot | `guia-configuracao-do-bot.md` | `guia-configuracao-do-bot.pdf` | `images/configuracao-do-bot/` |
 | Documento do software | `documento-do-software.md` | `documento-do-software.pdf` | `images/documento-do-software/` |
+| Manual do painel | `manual-do-painel.md` | `manual-do-painel.pdf` | `images/manual-do-painel/` |
 
 ## Gerar os PDFs
 
