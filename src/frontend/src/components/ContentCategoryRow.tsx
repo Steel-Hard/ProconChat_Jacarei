@@ -5,8 +5,6 @@ import css from "@/styles/components/contentLists.module.css"
 type ContentCategoryRowProps = {
     item: ContentCategoryRowView
     onSelect: (key: string) => void
-    onEdit: (key: string) => void
-    onToggle: (key: string) => void
     onMove: (key: string, direction: "up" | "down") => void
 }
 
@@ -22,7 +20,7 @@ const STATE_LABEL = {
     hidden: "categories.stateHidden"
 } as const
 
-function ContentCategoryRow({ item, onSelect, onEdit, onToggle, onMove }: ContentCategoryRowProps) {
+function ContentCategoryRow({ item, onSelect, onMove }: ContentCategoryRowProps) {
     const { t } = useTranslation("content")
     const classes = [css.row]
 
@@ -99,29 +97,6 @@ function ContentCategoryRow({ item, onSelect, onEdit, onToggle, onMove }: Conten
                             {t("icons.down")}
                         </button>
                     </div>
-                    <button
-                        type="button"
-                        className={css.actionButton}
-                        aria-label={t("categories.editFor", { title: item.shortTitle })}
-                        onClick={() => onEdit(item.key)}
-                    >
-                        {t("categories.edit")}
-                    </button>
-                    <button
-                        type="button"
-                        className={css.actionButton}
-                        aria-label={t(
-                            item.state === "inactive"
-                                ? "categories.activateFor"
-                                : "categories.deactivateFor",
-                            { title: item.shortTitle }
-                        )}
-                        onClick={() => onToggle(item.key)}
-                    >
-                        {item.state === "inactive"
-                            ? t("categories.activate")
-                            : t("categories.deactivate")}
-                    </button>
                 </div>
             </div>
         </li>

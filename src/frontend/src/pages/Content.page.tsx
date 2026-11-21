@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next"
+import ContentCategoryActions from "@/components/ContentCategoryActions"
 import ContentCategoryForm from "@/components/ContentCategoryForm"
 import ContentCategoryList from "@/components/ContentCategoryList"
 import ContentPreview from "@/components/ContentPreview"
@@ -122,8 +123,6 @@ export default function ContentPage() {
                                 <ContentCategoryList
                                     items={page.categoryRows}
                                     onSelect={page.selectCategory}
-                                    onEdit={page.openEditCategory}
-                                    onToggle={page.toggleCategory}
                                     onMove={page.moveCategory}
                                     onNew={page.openNewCategory}
                                 />
@@ -140,19 +139,20 @@ export default function ContentPage() {
                                                 })
                                               : t("questions.heading")}
                                     </h2>
-                                    <button
-                                        type="button"
-                                        className={css.primaryAction}
-                                        disabled={page.searching || page.selectedCategory === null}
-                                        aria-describedby={
+                                    <ContentCategoryActions
+                                        category={page.searching ? null : page.selectedCategory}
+                                        newQuestionDisabled={
+                                            page.searching || page.selectedCategory === null
+                                        }
+                                        newQuestionDescribedBy={
                                             page.searching || page.selectedCategory === null
                                                 ? NEW_QUESTION_HINT_ID
                                                 : undefined
                                         }
-                                        onClick={page.openNewQuestion}
-                                    >
-                                        {t("questions.new")}
-                                    </button>
+                                        onEdit={page.openEditCategory}
+                                        onToggle={page.toggleCategory}
+                                        onNewQuestion={page.openNewQuestion}
+                                    />
                                 </div>
                                 {page.searching ? (
                                     <p id={NEW_QUESTION_HINT_ID} className={css.placeholder}>

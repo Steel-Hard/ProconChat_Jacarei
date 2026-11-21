@@ -34,6 +34,8 @@
         "edit": "Editar categoria",
         "activate": "Ativar",
         "deactivate": "Desativar",
+        "activateCategory": "Ativar categoria",
+        "deactivateCategory": "Desativar categoria",
         "moveUp": "Mover para cima",
         "moveDown": "Mover para baixo",
         "editFor": "Editar categoria {{title}}",

@@ -139,7 +139,7 @@ describe("ContentPage", () => {
         const { server } = await loaded()
         server.failNext("PATCH", /active$/)
 
-        await user.click(screen.getAllByRole("button", { name: /^Desativar / })[0])
+        await user.click(screen.getByRole("button", { name: "Desativar categoria" }))
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
 
         expect(
@@ -156,7 +156,8 @@ describe("ContentPage", () => {
         server.failNext("PATCH", /\/categories\/2\/active$/)
 
         await createCategory(user)
-        await user.click(screen.getAllByRole("button", { name: /^Desativar / })[1])
+        await user.click(screen.getByRole("button", { name: "Ver as perguntas de C2" }))
+        await user.click(screen.getByRole("button", { name: "Desativar categoria" }))
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
 
         expect(
@@ -182,7 +183,8 @@ describe("ContentPage", () => {
         server.failNext("GET", /^\/categories$/)
 
         await createCategory(user)
-        await user.click(screen.getAllByRole("button", { name: /^Desativar / })[1])
+        await user.click(screen.getByRole("button", { name: "Ver as perguntas de C2" }))
+        await user.click(screen.getByRole("button", { name: "Desativar categoria" }))
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
 
         expect(
@@ -289,7 +291,8 @@ describe("ContentPage", () => {
         const { server } = await loaded()
         server.failNext("PUT", /^\/categories\/reorder$/, 400)
 
-        await user.click(screen.getAllByRole("button", { name: /^Desativar / })[1])
+        await user.click(screen.getByRole("button", { name: "Ver as perguntas de C2" }))
+        await user.click(screen.getByRole("button", { name: "Desativar categoria" }))
         await user.click(screen.getAllByRole("button", { name: /^Mover .+ para baixo$/ })[0])
         expect(screen.getByText("2 alterações não salvas")).toBeInTheDocument()
         const readsBefore = server.log.filter((entry) => entry === "GET /categories").length
@@ -393,7 +396,8 @@ describe("ContentPage", () => {
         await loaded()
 
         await createCategory(user)
-        await user.click(screen.getAllByRole("button", { name: /^Desativar / })[0])
+        await user.click(screen.getByRole("button", { name: "Ver as perguntas de C1" }))
+        await user.click(screen.getByRole("button", { name: "Desativar categoria" }))
         expect(screen.getByText("Não salva")).toBeInTheDocument()
         expect(screen.getByText("Alteração não salva")).toBeInTheDocument()
 
@@ -412,7 +416,8 @@ describe("ContentPage", () => {
         server.failNext("PATCH", /\/categories\/2\/active$/)
 
         await createCategory(user)
-        await user.click(screen.getAllByRole("button", { name: /^Desativar / })[1])
+        await user.click(screen.getByRole("button", { name: "Ver as perguntas de C2" }))
+        await user.click(screen.getByRole("button", { name: "Desativar categoria" }))
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
 
         await screen.findByText("1 salvas e 1 pendentes.")
