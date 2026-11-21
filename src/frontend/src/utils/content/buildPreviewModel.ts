@@ -36,8 +36,6 @@ export default function buildPreviewModel(result: ContentPreviewResult): Content
         },
         primaryBubbles: aiMessage ? [bubbleOf(aiMessage, "ai")] : official,
         fallbackBubbles: aiMessage ? official : [],
-        lengthWarning: aiLengthWarning.exceedsLimit
-            ? { length: aiLengthWarning.length, limit: aiLengthWarning.limit }
-            : null
+        lengthWarning: aiLengthWarning.exceedsLimit ? aiLengthWarning.message : null
     }
 }

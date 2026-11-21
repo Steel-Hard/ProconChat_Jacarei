@@ -37,7 +37,7 @@ function ContentPreview({ status, model, onClose, onRetry }: ContentPreviewProps
                 ) : null}
                 {showChat && model.lengthWarning !== null ? (
                     <output className={`${css.notice} ${css.unsavedNotice}`}>
-                        {t("preview.lengthWarning", model.lengthWarning)}
+                        {model.lengthWarning}
                     </output>
                 ) : null}
             </div>

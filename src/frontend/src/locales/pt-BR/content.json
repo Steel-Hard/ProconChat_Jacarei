@@ -150,8 +150,7 @@
         "fullAfterSave": "A prévia completa fica disponível depois de salvar",
         "moreOptions": "Ver mais opções ›",
         "aiLabel": "Gerado com auxílio de IA",
-        "fallbackTitle": "Se a IA estiver indisponível",
-        "lengthWarning": "A resposta com IA ficaria com {{length}} caracteres e passaria do limite de {{limit}} do WhatsApp. Nesse caso, o bot envia a resposta oficial."
+        "fallbackTitle": "Se a IA estiver indisponível"
     },
     "changes": {
         "categoryNew": "Categoria nova: {{name}}",

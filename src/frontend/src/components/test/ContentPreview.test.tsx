@@ -200,16 +200,21 @@ describe("ContentPreview", () => {
     })
 
     it("avisa que a IA passaria do limite e que o bot manda a resposta oficial", () => {
-        renderPreview({ model: model({ lengthWarning: { length: 1300, limit: 1024 } }) })
+        renderPreview({
+            model: model({
+                lengthWarning:
+                    "Com o complemento por IA, esta mensagem passaria de 1.024 caracteres. Neste caso o bot envia só a resposta oficial."
+            })
+        })
 
         expect(screen.getByRole("status")).toHaveTextContent(
-            "A resposta com IA ficaria com 1300 caracteres e passaria do limite de 1024 do WhatsApp. Nesse caso, o bot envia a resposta oficial."
+            "Com o complemento por IA, esta mensagem passaria de 1.024 caracteres. Neste caso o bot envia só a resposta oficial."
         )
     })
 
     it("não mostra o aviso de tamanho quando não passa do limite", () => {
         renderPreview()
 
-        expect(screen.queryByText(/passaria do limite/)).not.toBeInTheDocument()
+        expect(screen.queryByText(/passaria de 1.024/)).not.toBeInTheDocument()
     })
 })

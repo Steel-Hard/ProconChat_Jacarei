@@ -187,18 +187,18 @@ describe("buildPreviewArgs", () => {
         expect(buildPreviewModel(result()).lengthWarning).toBeNull()
     })
 
-    it("com excesso, devolve o tamanho e o limite para o aviso", () => {
+    it("com excesso, repassa a mensagem de aviso como a API devolveu", () => {
         const model = buildPreviewModel(
             result({
                 aiLengthWarning: {
                     exceedsLimit: true,
                     length: 1300,
                     limit: 1024,
-                    message: "x"
+                    message: "Aviso da API"
                 }
             })
         )
 
-        expect(model.lengthWarning).toEqual({ length: 1300, limit: 1024 })
+        expect(model.lengthWarning).toBe("Aviso da API")
     })
 })
