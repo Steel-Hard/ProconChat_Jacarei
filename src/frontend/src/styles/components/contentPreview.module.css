@@ -182,30 +182,6 @@
     font-weight: 700;
 }
 
-.blockTitle {
-    display: block;
-    margin-top: 6px;
-    font-weight: 700;
-}
-
-.bulletList {
-    margin: 2px 0 0;
-    padding: 0;
-    list-style: none;
-}
-
-.bulletList li {
-    position: relative;
-    padding-left: 14px;
-    overflow-wrap: break-word;
-}
-
-.bulletList li::before {
-    content: "\2022";
-    position: absolute;
-    left: 3px;
-}
-
 .bubbleFooter {
     display: flex;
     flex-wrap: wrap;
