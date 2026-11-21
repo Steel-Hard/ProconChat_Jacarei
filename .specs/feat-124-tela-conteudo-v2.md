@@ -1022,7 +1022,7 @@ Regras para todas as tarefas do acréscimo: nunca escrever comentários; TDD (o 
 - Testes que mudam: nenhum por comportamento; `content.routes.test.ts` e `content.integration.test.ts` só ganham casos (os que conferem `nextStepBubble.type` e `nextStepBubble.inPersonNote` continuam valendo).
 - Gate: completo e integração backend
 - Modelo: padrao
-- Status: pendente
+- Status: feita. Evidência: teste "prévia igual ao bot" (7 casos) conferido por mutação (tirar a observação da prévia faz falhar); rotas da prévia (4 casos novos); integração com 1 caso novo; gate completo backend 140 arquivos e 1988 testes; integração em banco separado proconchat_test (47 arquivos, 413 testes); nenhum teste existente alterado. Os testes passaram de primeira porque B1 a B3 já estavam feitas
 
 #### B5 [P] Documentação do acréscimo
 - O quê: registrar na documentação que a prévia mostra exatamente o que o bot envia, o fora do escopo com a resposta da equipe e balão separado, e a observação presencial enviada ao cidadão.
