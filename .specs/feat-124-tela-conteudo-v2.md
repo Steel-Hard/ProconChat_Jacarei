@@ -368,7 +368,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário. Falha primeiro "categoria nova entra no fim, ativa, com chave provisória".
 - Gate: rápido
 - Modelo: padrao
-- Status: feita (gate rápido: 17 testes passam; commit d3328bc)
+- Status: feita (gate rápido: 17 testes passam; commit d3328bc; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
 
 ### T6 [P] Lista de alterações não salvas e última alteração
 - O quê: funções puras que comparam rascunho e retrato e devolvem a lista de alterações para a barra comum, conforme RN-05, e que escolhem a última alteração do topo conforme RN-14.
@@ -382,7 +382,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário. Falha primeiro "mover para cima e para baixo não conta alteração".
 - Gate: rápido
 - Modelo: padrao
-- Status: feita (gate rápido: 14 testes passam; commit 4e19ee0)
+- Status: feita (gate rápido: 14 testes passam; commit 4e19ee0; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
 
 ### T7 [P] Plano de Salvar
 - O quê: função pura que, a partir do retrato e do rascunho, devolve a lista ordenada de passos do Salvar descrita no Desenho.
@@ -396,7 +396,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário. Falha primeiro "pergunta nova em categoria nova vem depois da criação da categoria e aponta a chave provisória".
 - Gate: rápido
 - Modelo: padrao
-- Status: feita (gate rápido: 8 testes passam; tipo ContentSavePlanStep passou a usar chaves em vez de ids, resolvidas pelo executor; commit 13e5271)
+- Status: feita (gate rápido: 8 testes passam; tipo ContentSavePlanStep passou a usar chaves em vez de ids, resolvidas pelo executor; commit 13e5271; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
 
 ### T8 [P] Busca no rascunho
 - O quê: função pura que busca o termo no texto da pergunta, na resposta e no título curto de todas as perguntas do rascunho, sem acento nem maiúscula, devolvendo cada resultado com a sua categoria, na ordem das categorias e das perguntas.
@@ -410,7 +410,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário. Falha primeiro "devolucao acha Devolução".
 - Gate: rápido
 - Modelo: economico
-- Status: feita (gate rápido: 6 testes passam; commit ab180bb)
+- Status: feita (gate rápido: 6 testes passam; commit ab180bb; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
 
 ### T9 [P] Componente da lista de categorias
 - O quê: lista de categorias com posição, título curto em negrito, nome completo, contagens, estado, separador de página, setas e ações, recebendo tudo pronto por props.
@@ -424,7 +424,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário de componente. Falha primeiro "a primeira categoria não tem ↑".
 - Gate: rápido
 - Modelo: economico
-- Status: feita (gate rápido: 8 testes passam; commit cda3775)
+- Status: feita (gate rápido: 8 testes passam; commit cda3775; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
 
 ### T10 [P] Componente da lista de perguntas
 - O quê: lista de perguntas com os dados de RN-13, selos, separador, setas que somem na busca, categoria em cada resultado de busca, linha de última alteração ("Carga inicial do sistema" sem autor, nada em item não salvo) e estado vazio.
@@ -438,7 +438,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário de componente. Falha primeiro "em modo busca não há setas".
 - Gate: rápido
 - Modelo: economico
-- Status: feita (gate rápido: 11 testes passam; commit 90d49df)
+- Status: feita (gate rápido: 11 testes passam; commit 90d49df; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
 
 ### T11 [P] Formulário da categoria
 - O quê: formulário de categoria (nova e edição) com título curto com contador, nome completo e descrição, mostrando os erros recebidos por props e devolvendo os valores ao confirmar.
@@ -452,7 +452,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário de componente. Falha primeiro "contador mostra 24/24 com 24 caracteres".
 - Gate: rápido
 - Modelo: economico
-- Status: feita (gate rápido: 6 testes passam; inclui ContentFormDialog e ContentTextField; commit 527533a)
+- Status: feita (gate rápido: 6 testes passam; inclui ContentFormDialog e ContentTextField; commit 527533a; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
 
 ### T12 [P] Campo de documentos úteis
 - O quê: campo de lista para "Documentos úteis para esta dúvida", que permite adicionar, editar, remover e reordenar itens, com limite de 30 itens de até 255 caracteres e aviso "Este documento já está na lista." para repetidos, sem bloquear.
@@ -466,7 +466,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário de componente. Falha primeiro "documento repetido entra na lista com o aviso".
 - Gate: rápido
 - Modelo: economico
-- Status: feita (gate rápido: 8 testes passam; commit 1fa9962)
+- Status: feita (gate rápido: 8 testes passam; commit 1fa9962; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
 
 ### T13 [P] Formulário da pergunta
 - O quê: formulário de pergunta (nova e edição) com contadores (inclusive o do texto da pergunta, sempre visível), alerta de 1.000 caracteres, exclusividade presencial/fora do escopo, bloqueio da IA em fora do escopo e religação ao desmarcar, observação presencial, documentos, "Pergunta ativa no chatbot" valendo só ao confirmar, orientação de edição e botão "Ver como o cidadão recebe".
@@ -494,7 +494,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário de componente. Falha primeiro "com IA ligada aparece a alternativa Se a IA estiver indisponível".
 - Gate: rápido
 - Modelo: padrao
-- Status: feita (gate rápido: 11 testes passam; reajustada ao contrato botMessages no commit d209f1c; commit original 6b60a5f)
+- Status: feita (gate rápido: 11 testes passam; reajustada ao contrato botMessages no commit d209f1c; commit original 6b60a5f; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
 
 ### T15 [P] Montagem da prévia
 - O quê: funções puras que montam a lista (1) a partir do rascunho da categoria com o formulário aplicado e a regra de páginas, e convertem a resposta da prévia da API no modelo de balões de T1: balão oficial com o texto formatado da API, passo seguinte com texto e botões da API e o botão de aceitar a oferta "Agendar presencial", alternativa "Se a IA estiver indisponível" quando a IA está ligada, e o caso de categoria não salva sem chamada à API. Balão com IA e fora do escopo ficam como a API devolve até T20.
@@ -508,7 +508,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário. Falha primeiro "o balão oficial é exatamente o texto formatado devolvido pela API".
 - Gate: rápido
 - Modelo: padrao
-- Status: feita (gate rápido: 20 testes passam; usa direto o contrato botMessages da B1, sem ler answerBubble/nextStepBubble; commit 0dac01d)
+- Status: feita (gate rápido: 20 testes passam; usa direto o contrato botMessages da B1, sem ler answerBubble/nextStepBubble; commit 0dac01d; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
 
 ### T16 [P] Executor do Salvar
 - O quê: hook que executa o plano de T7 em sequência, guarda o mapa de ids criados, para na primeira falha, aplica o mapa ao rascunho, recarrega o retrato do servidor uma única vez no fim (sucesso ou falha), sem descartar o rascunho em caso de falha, e devolve o resultado (sucesso; falha na primeira gravação; falha parcial com quantas foram salvas, quantas faltam, o item e a mensagem; sem permissão), com trava contra clique duplo.
@@ -522,7 +522,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: integração do hook. Falha primeiro "depois de falha parcial, o segundo Salvar não recria a categoria já criada".
 - Gate: rápido
 - Modelo: padrao
-- Status: feita (gate rápido: 12 testes passam entre executor e hook; commit e829597)
+- Status: feita (gate rápido: 12 testes passam entre executor e hook; commit e829597; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
 
 ### T17 Hook da página de Conteúdo
 - O quê: hook que carrega o retrato completo, guarda o rascunho, a seleção, a busca e o formulário aberto (com cópia própria até confirmar), calcula contagens, estados, separadores, alterações, última alteração do topo e validação, pede a prévia com pausa na digitação (sem pedir em categoria não salva) e chama o Salvar, escolhendo a mensagem de RN-07.
@@ -536,7 +536,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: integração do hook. Falha primeiro "trocar de categoria mantém as alterações pendentes da anterior".
 - Gate: rápido
 - Modelo: padrao
-- Status: feita (gate rápido: 10 testes passam; commit ef056fe)
+- Status: feita (gate rápido: 10 testes passam; commit ef056fe; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
 
 ### T18 Montagem da página e testes da tela
 - O quê: página completa com cabeçalho, última alteração do topo, barra de alterações não salvas, bloco fixo, busca, coluna de categorias, área de perguntas, formulários e prévia, nos tamanhos de computador e de celular, e os testes de integração da tela.
