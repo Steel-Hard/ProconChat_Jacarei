@@ -25,6 +25,8 @@ export class MotorDecisaoService {
 
         const documentos = await this.repository.getDocumentosPorPergunta(perguntaId)
 
+        const observacaoPresencial = pergunta.requires_in_person ? pergunta.in_person_note?.trim() : undefined
+
         return {
             categoria: categoria.title,
             pergunta: pergunta.question,
@@ -33,6 +35,7 @@ export class MotorDecisaoService {
             documentos_necessarios: documentos.map((d) => d.description),
             requer_presencial: pergunta.requires_in_person,
             fora_de_escopo: pergunta.out_of_scope,
+            ...(observacaoPresencial ? { observacao_presencial: observacaoPresencial } : {}),
         }
     }
 }

@@ -13,6 +13,7 @@ import {
     mensagensRespostaOficial,
     paginarItens,
     criarBotoesAttendee,
+    criarBotoesOfertaAgendamento,
     criarMensagensCategorias,
     criarMensagensPerguntas,
     criarMensagensSlots,
@@ -135,6 +136,52 @@ describe("messageFormatter.service", () => {
         const texto = formatarRespostaFinal(respostaBase)
 
         expect(texto).not.toContain("Esta situação pode exigir atendimento presencial")
+    })
+
+    describe("observação do atendimento presencial", () => {
+        const linhaPresencial =
+            "Esta situação pode exigir atendimento presencial no PROCON Jacareí para andamento formal."
+
+        test("aparece em linha própria logo depois da linha de atendimento presencial", () => {
+            const texto = formatarRespostaFinal({
+                ...respostaBase,
+                requer_presencial: true,
+                observacao_presencial: "Traga o contrato impresso.",
+            })
+
+            expect(texto).toContain(
+                `${linhaPresencial}\nSobre o atendimento presencial: Traga o contrato impresso.\n\n${AVISO_NAO_VINCULANTE}`,
+            )
+        })
+
+        test("sem observação o texto é igual ao de antes", () => {
+            const semCampo = formatarRespostaFinal({ ...respostaBase, requer_presencial: true })
+            const vazia = formatarRespostaFinal({ ...respostaBase, requer_presencial: true, observacao_presencial: null })
+
+            expect(vazia).toBe(semCampo)
+            expect(semCampo).not.toContain("Sobre o atendimento presencial")
+            expect(semCampo).toContain(`${linhaPresencial}\n\n${AVISO_NAO_VINCULANTE}`)
+        })
+
+        test("não aparece na pergunta que não exige atendimento presencial", () => {
+            const texto = formatarRespostaFinal({ ...respostaBase, observacao_presencial: "Traga o contrato." })
+
+            expect(texto).not.toContain("Sobre o atendimento presencial")
+        })
+
+        test("não é repetida no balão da oferta de agendamento", () => {
+            const mensagens = mensagensRespostaOficial({
+                ...respostaBase,
+                requer_presencial: true,
+                observacao_presencial: "Traga o contrato impresso.",
+            })
+
+            expect(mensagens[1]).toEqual({
+                type: "buttons",
+                text: "Deseja agendar um atendimento presencial no PROCON Jacareí?",
+                buttons: criarBotoesOfertaAgendamento(),
+            })
+        })
     })
 
     describe("fora do escopo", () => {

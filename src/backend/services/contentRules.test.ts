@@ -310,6 +310,9 @@ describe("contentRules", () => {
                 documentos_necessarios: input.requiredDocuments,
                 requer_presencial: input.requiresInPerson,
                 fora_de_escopo: input.outOfScope,
+                ...(input.requiresInPerson && input.inPersonNote
+                    ? { observacao_presencial: input.inPersonNote }
+                    : {}),
             }
         }
 
@@ -347,6 +350,16 @@ describe("contentRules", () => {
             const preview = buildQuestionPreview(category, [], input)
 
             expect(preview.botMessages.officialMessages).toEqual(mensagensRespostaOficial(respostaDe(input)))
+        })
+
+        it("shows the in-person note in the official and AI messages and not in the offer", () => {
+            const input = { ...baseInput, llmAllowed: true, requiresInPerson: true, inPersonNote: "Traga as faturas." }
+            const preview = buildQuestionPreview(category, [], input)
+            const [oficial, oferta] = preview.botMessages.officialMessages
+
+            expect(oficial?.type === "text" && oficial.text).toContain("Sobre o atendimento presencial: Traga as faturas.")
+            expect(preview.botMessages.aiMessage?.text).toContain("Sobre o atendimento presencial: Traga as faturas.")
+            expect(oferta?.type === "buttons" && oferta.text).not.toContain("Traga as faturas.")
         })
 
         it("returns the AI message built by the bot formatter with the sample text when AI is allowed", () => {

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest"
+import { describe, it, expect, beforeEach, vi } from "vitest"
 import { MotorDecisaoService } from "./motorDecisao.service"
 import { MockMotorDecisaoRepository } from "../repositories/mock/motorDecisaoMock.repository"
 
@@ -53,6 +53,33 @@ describe("MotorDecisaoService", () => {
         expect(resposta.resposta).toBe("Procure a delegacia de polícia mais próxima.")
         expect(resposta.documentos_necessarios).toEqual(["Documento de identificação"])
         expect(resposta.requer_presencial).toBe(false)
+    })
+
+    describe("observação do atendimento presencial", () => {
+        async function respostaComNota(overrides: { requires_in_person: boolean; in_person_note: string | null | undefined }) {
+            const original = await repository.getPerguntaById(3)
+            vi.spyOn(repository, "getPerguntaById").mockResolvedValue({ ...original!, ...overrides })
+            return service.processarPergunta(3)
+        }
+
+        it("preenche a observação em pergunta presencial com texto, sem espaços nas pontas", async () => {
+            const resposta = await respostaComNota({ requires_in_person: true, in_person_note: "  Traga o contrato impresso.  " })
+
+            expect(resposta.observacao_presencial).toBe("Traga o contrato impresso.")
+        })
+
+        it("deixa o campo ausente quando a observação está vazia, em branco ou ausente", async () => {
+            for (const in_person_note of ["", "   ", null, undefined]) {
+                const resposta = await respostaComNota({ requires_in_person: true, in_person_note })
+                expect(resposta).not.toHaveProperty("observacao_presencial")
+            }
+        })
+
+        it("deixa o campo ausente quando a pergunta não exige atendimento presencial", async () => {
+            const resposta = await respostaComNota({ requires_in_person: false, in_person_note: "Traga o contrato." })
+
+            expect(resposta).not.toHaveProperty("observacao_presencial")
+        })
     })
 
     it("deve identificar casos que exigem atendimento presencial", async () => {

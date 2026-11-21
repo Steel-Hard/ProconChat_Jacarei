@@ -262,6 +262,9 @@ export function buildQuestionPreview(
         documentos_necessarios: input.requiredDocuments,
         requer_presencial: input.requiresInPerson,
         fora_de_escopo: input.outOfScope,
+        ...(input.requiresInPerson && input.inPersonNote?.trim()
+            ? { observacao_presencial: input.inPersonNote.trim() }
+            : {}),
     }
 
     const officialMessages = mensagensRespostaOficial(resposta)

@@ -482,6 +482,16 @@ export function formatarConfirmacaoAgendamento(input: ConfirmacaoAgendamentoInpu
 export const ENCAMINHAMENTO_FORA_DO_ESCOPO =
     "Como esta demanda não compete ao PROCON, dirija-se ao órgão indicado na orientação acima portando seus documentos e comprovantes para atendimento especializado."
 
+export const ROTULO_OBSERVACAO_PRESENCIAL = "Sobre o atendimento presencial:"
+
+function linhaObservacaoPresencial(resposta: RespostaFinalOutput): string[] {
+    const observacao = resposta.observacao_presencial?.trim()
+    if (!resposta.requer_presencial || !observacao) {
+        return []
+    }
+    return [`${ROTULO_OBSERVACAO_PRESENCIAL} ${observacao}`]
+}
+
 const LINHA_ATENDIMENTO_PRESENCIAL =
     "Esta situação pode exigir atendimento presencial no PROCON Jacareí para andamento formal."
 
@@ -521,7 +531,7 @@ export function formatarRespostaFinal(resposta: RespostaFinalOutput): string {
     linhas.push(`\nO que fazer agora:\n${textoProximosPassos(resposta)}`)
 
     if (resposta.requer_presencial) {
-        linhas.push(`\n${LINHA_ATENDIMENTO_PRESENCIAL}`)
+        linhas.push(`\n${LINHA_ATENDIMENTO_PRESENCIAL}`, ...linhaObservacaoPresencial(resposta))
     }
 
     return `${linhas.join("\n")}\n\n${AVISO_NAO_VINCULANTE}`
@@ -759,7 +769,7 @@ function blocoOficialIa(resposta: RespostaFinalOutput): string {
     }
     linhas.push("O que fazer agora:", textoProximosPassos(resposta))
     if (resposta.requer_presencial) {
-        linhas.push("", LINHA_ATENDIMENTO_PRESENCIAL)
+        linhas.push("", LINHA_ATENDIMENTO_PRESENCIAL, ...linhaObservacaoPresencial(resposta))
     }
     return linhas.join("\n")
 }
