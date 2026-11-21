@@ -23,10 +23,10 @@ A referência visual é o protótipo navegável aprovado no Claude Design, copia
 | [03-agendamentos.md](03-agendamentos.md) | Agendamentos: lista, calendário e busca | Entregue (#85). Calendário semanal: API na #87, tela na #126 |
 | [04-detalhe-do-agendamento.md](04-detalhe-do-agendamento.md) | Detalhe do agendamento | Entregue (#86). Atribuir, observações internas e corrigir registro: tela na #126. Cancelar com aviso ao cidadão: tela na #127 (API #67) |
 | [05-relatorios.md](05-relatorios.md) | Relatórios | Mínimo entregue (#68, #128). Itens bônus e exportação: #73 |
-| [06-conteudo.md](06-conteudo.md) | Conteúdo do chatbot | Pendente (#63) |
+| [06-conteudo.md](06-conteudo.md) | Conteúdo do chatbot | Entregue (#63, #124) |
 | [07-sessoes.md](07-sessoes.md) | Sessões | Pendente (#72, #76) |
 | [08-horarios-de-atendimento.md](08-horarios-de-atendimento.md) | Horários de atendimento | Entregue em parte (#64, #125, #134, #74). Pendente (#75, #77) |
-| [09-documentos.md](09-documentos.md) | Documentos para atendimento presencial | Pendente (#65) |
+| [09-documentos.md](09-documentos.md) | Documentos para atendimento presencial | Entregue (#65) |
 | [10-usuarios.md](10-usuarios.md) | Usuários | Entregue (#62, #123) |
 | [11-whatsapp.md](11-whatsapp.md) | WhatsApp | Entregue (#54, #69, #127, #129). Modelos, qualidade e limite de envios integrados à Meta; credenciais, webhook e histórico de alterações |
 

@@ -846,14 +846,14 @@ describe("WhatsAppPage", () => {
         await loaded()
 
         expect(await screen.findByText("Modelos de mensagem")).toBeInTheDocument()
-        expect(screen.getByText("Aviso de cancelamento")).toBeInTheDocument()
-        expect(screen.getAllByText("Aprovado")).toHaveLength(2)
-        expect(screen.getByText("Qualidade do número na Meta")).toBeInTheDocument()
-        expect(screen.getByText("Alta")).toBeInTheDocument()
+        expect(await screen.findByText("Aviso de cancelamento")).toBeInTheDocument()
+        expect(await screen.findAllByText("Aprovado")).toHaveLength(2)
+        expect(await screen.findByText("Qualidade do número na Meta")).toBeInTheDocument()
+        expect(await screen.findByText("Alta")).toBeInTheDocument()
         expect(
-            screen.getByText("Limite diário: 250 conversas iniciadas pela empresa.")
+            await screen.findByText("Limite diário: 250 conversas iniciadas pela empresa.")
         ).toBeInTheDocument()
-        expect(screen.getByText("Usadas nas últimas 24h: 50 de 250.")).toBeInTheDocument()
+        expect(await screen.findByText("Usadas nas últimas 24h: 50 de 250.")).toBeInTheDocument()
 
         await user.click(screen.getByRole("button", { name: "Atualizar status da Meta" }))
         await waitFor(() => {

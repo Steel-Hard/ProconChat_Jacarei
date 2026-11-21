@@ -3,6 +3,13 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import app from "../../app"
 import getPool from "../../db/connection"
 import { seedContent } from "../../db/seeds/content.seed"
+import { PgMotorDecisaoRepository } from "../../repositories/motorDecisao.repository"
+import { MotorDecisaoService } from "../../services/motorDecisao.service"
+import {
+    restoreScheduleConfig,
+    snapshotScheduleConfig,
+    useScheduleConfig,
+} from "./helpers/scheduleDb"
 import { createTestUser, deleteTestUsers, TestUser } from "./helpers/usersDb"
 
 const ORIGIN = process.env.FRONTEND_ORIGIN as string
@@ -270,10 +277,94 @@ describe("Content API integration tests (Postgres)", () => {
             })
 
         expect(previewRes.status).toBe(200)
-        expect(previewRes.body.data.nextStepBubble.type).toBe("schedule_offer")
-        expect(previewRes.body.data.nextStepBubble.inPersonNote).toBe(
-            "Traga todos os boletos impressos.",
+        const [official, offer] = previewRes.body.data.botMessages.officialMessages
+        expect(offer.buttons.map((b: { title: string }) => b.title)).toEqual(["Agendar presencial", "Agora não"])
+        expect(official.text).toContain("Sobre o atendimento presencial: Traga todos os boletos impressos.")
+        expect(previewRes.body.data).not.toHaveProperty("nextStepBubble")
+    })
+
+    it("previews with the same messages the bot sends, including the in-person note and the out-of-scope referral", async () => {
+        const catId = createdCategoryIds[0]!
+        const basePreview = {
+            categoryId: catId,
+            shortTitle: "Prévia",
+            shortDescription: null,
+            question: "Como funciona o prazo?",
+            answer: "O prazo é de 7 dias.",
+            legalBasis: "CDC",
+            requiredDocuments: ["Nota fiscal"],
+            requiresInPerson: false,
+            outOfScope: false,
+            llmAllowed: false,
+        }
+
+        const inPersonRes = await request(app)
+            .post("/api/v1/content/questions/preview")
+            .set("Origin", ORIGIN)
+            .set("Cookie", editor.cookie)
+            .send({ ...basePreview, requiresInPerson: true, inPersonNote: "Traga os boletos." })
+
+        expect(inPersonRes.status).toBe(200)
+        const [official, offer] = inPersonRes.body.data.botMessages.officialMessages
+        expect(official.text).toContain(
+            "Esta situação pode exigir atendimento presencial no PROCON Jacareí para andamento formal.\nSobre o atendimento presencial: Traga os boletos.",
         )
+        expect(offer.text).toBe("Deseja agendar um atendimento presencial no PROCON Jacareí?")
+        expect(offer.buttons.map((b: { title: string }) => b.title)).toEqual(["Agendar presencial", "Agora não"])
+
+        const outOfScopeRes = await request(app)
+            .post("/api/v1/content/questions/preview")
+            .set("Origin", ORIGIN)
+            .set("Cookie", editor.cookie)
+            .send({ ...basePreview, outOfScope: true })
+
+        expect(outOfScopeRes.status).toBe(200)
+        const [scopeOfficial, referral] = outOfScopeRes.body.data.botMessages.officialMessages
+        expect(scopeOfficial.text).toContain("Resposta: O prazo é de 7 dias.")
+        expect(scopeOfficial.text).not.toContain("O que fazer agora")
+        expect(referral).toEqual({
+            type: "text",
+            text: "Como esta demanda não compete ao PROCON, dirija-se ao órgão indicado na orientação acima portando seus documentos e comprovantes para atendimento especializado.",
+        })
+        expect(outOfScopeRes.body.data.botMessages.aiMessage).toBeNull()
+    })
+
+    it("does not write anything when previewing and reports the AI balloon length warning", async () => {
+        const pool = getPool()
+        const catId = createdCategoryIds[0]!
+        const snapshot = async () => {
+            const questions = await pool.query(
+                "SELECT * FROM Questions WHERE category_id = $1 ORDER BY id",
+                [catId],
+            )
+            const categories = await pool.query("SELECT * FROM Categories ORDER BY id")
+            const documents = await pool.query("SELECT * FROM RequiredDocuments ORDER BY id")
+            return { questions: questions.rows, categories: categories.rows, documents: documents.rows }
+        }
+        const before = await snapshot()
+
+        const res = await request(app)
+            .post("/api/v1/content/questions/preview")
+            .set("Origin", ORIGIN)
+            .set("Cookie", editor.cookie)
+            .send({
+                categoryId: catId,
+                shortTitle: "Prévia longa",
+                shortDescription: null,
+                question: "Pergunta com base legal longa?",
+                answer: "Resposta.",
+                legalBasis: "a".repeat(500),
+                requiredDocuments: ["b".repeat(250), "c".repeat(250)],
+                requiresInPerson: false,
+                outOfScope: false,
+                llmAllowed: true,
+            })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.botMessages.aiLengthWarning.exceedsLimit).toBe(true)
+        expect(res.body.data.botMessages.aiLengthWarning.limit).toBe(1024)
+        expect(res.body.data.botMessages.aiLengthWarning.message).toEqual(expect.any(String))
+        expect(await snapshot()).toEqual(before)
     })
 
     it("preserves panel-edited seeded questions when seedContent runs again (updated_by IS NOT NULL)", async () => {
@@ -338,5 +429,82 @@ describe("Content API integration tests (Postgres)", () => {
             [seededRow.id],
         )
         expect(afterSeedRes.rows[0]?.answer).toBe(customAnswer)
+    })
+
+    it("resolves {endereco} and {horarios} from the active schedule in Postgres for both preview and bot (#78)", async () => {
+        const scheduleSnapshot = await snapshotScheduleConfig()
+        const catId = createdCategoryIds[0]!
+        try {
+            await useScheduleConfig({
+                settings: {
+                    slot_minutes: 30,
+                    seats_per_slot: 2,
+                    window_days: 30,
+                    min_notice_days: 1,
+                    wait_alert_days: 7,
+                    unit_address: "Av. Nove de Julho, 215 - Centro, Jacareí - SP",
+                    unit_address_complement: "Sala 2",
+                    reminder_enabled: true,
+                    reminder_hours: 24,
+                },
+                ranges: [1, 2, 3, 4, 5].flatMap((weekday) => [
+                    { weekday, slot_index: 1, start_time: "08:30", end_time: "11:30" },
+                    { weekday, slot_index: 2, start_time: "13:30", end_time: "16:30" },
+                ]),
+            })
+
+            const createRes = await request(app)
+                .post("/api/v1/content/questions")
+                .set("Origin", ORIGIN)
+                .set("Cookie", editor.cookie)
+                .send({
+                    categoryId: catId,
+                    shortTitle: "Horário e endereço",
+                    shortDescription: "Atendimento presencial",
+                    question: "Qual é o horário e o endereço do PROCON?",
+                    answer: "Atendemos de {horarios}, em {endereco}.",
+                    legalBasis: null,
+                    requiredDocuments: [],
+                    requiresInPerson: false,
+                    outOfScope: false,
+                    llmAllowed: true,
+                    active: true,
+                })
+            expect(createRes.status).toBe(201)
+            const questionId = createRes.body.data.id as number
+            createdQuestionIds.push(questionId)
+            expect(createRes.body.data.answer).toBe("Atendemos de {horarios}, em {endereco}.")
+
+            const expectedResolved =
+                "Atendemos de segunda a sexta, das 08:30 às 11:30 e das 13:30 às 16:30, em Av. Nove de Julho, 215 - Centro, Jacareí - SP (Sala 2)."
+
+            const previewRes = await request(app)
+                .post("/api/v1/content/preview")
+                .set("Origin", ORIGIN)
+                .set("Cookie", editor.cookie)
+                .send({
+                    questionId,
+                    categoryId: catId,
+                    shortTitle: "Horário e endereço",
+                    shortDescription: "Atendimento presencial",
+                    question: "Qual é o horário e o endereço do PROCON?",
+                    answer: "Atendemos de {horarios}, em {endereco}.",
+                    legalBasis: null,
+                    requiredDocuments: [],
+                    requiresInPerson: false,
+                    outOfScope: false,
+                    llmAllowed: true,
+                })
+            expect(previewRes.status).toBe(200)
+            expect(previewRes.body.data.botMessages.officialMessages[0].text).toContain(
+                `Resposta: ${expectedResolved}`,
+            )
+
+            const motor = new MotorDecisaoService(new PgMotorDecisaoRepository())
+            const botOutput = await motor.processarPergunta(questionId)
+            expect(botOutput.resposta).toBe(expectedResolved)
+        } finally {
+            await restoreScheduleConfig(scheduleSnapshot)
+        }
     })
 })

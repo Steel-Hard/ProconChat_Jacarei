@@ -25,7 +25,8 @@ interface OllamaGenerateResponse {
 }
 
 function montarPrompt(resumo: RespostaFinalOutput): string {
-    return `${PROMPT_INSTRUCTION}\n\nDados estruturados:\n${JSON.stringify(resumo, null, 2)}`
+    const { observacao_presencial: _observacaoPresencial, ...dadosParaIa } = resumo
+    return `${PROMPT_INSTRUCTION}\n\nDados estruturados:\n${JSON.stringify(dadosParaIa, null, 2)}`
 }
 
 export class OllamaLlmClient implements ILlmClient {

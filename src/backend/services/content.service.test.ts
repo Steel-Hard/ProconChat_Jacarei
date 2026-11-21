@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import BadRequestError from "../errors/BadRequestError"
 import ConflictError from "../errors/ConflictError"
 import NotFoundError from "../errors/NotFoundError"
@@ -179,7 +179,129 @@ describe("ContentService", () => {
         })
 
         expect(preview.answerLengthWarning).toBe(true)
-        expect(preview.categoryList.rows[0]?.shortTitle).toBe("Produto com vício")
-        expect(preview.nextStepBubble?.type).toBe("resolution")
+        expect(preview.botMessages.categoryList.message.rows[0]?.title).toBe("Produto com vício")
+        expect(preview.botMessages.officialMessages[1]).toMatchObject({ type: "buttons", text: "A dúvida foi resolvida?" })
+    })
+    it("does not write anything when previewing a question", async () => {
+        const repository = new ContentStubRepository()
+        const service = new ContentService({ repository })
+        const cat = await service.createCategory(
+            { title: "Compras e Garantias", shortTitle: "Compras e garantia", description: null },
+            1,
+        )
+        const q1 = await service.createQuestion(
+            {
+                categoryId: cat.id,
+                shortTitle: "Produto com defeito",
+                shortDescription: null,
+                question: "Comprei um produto com defeito, o que fazer?",
+                answer: "O fornecedor tem até 30 dias para reparar.",
+                legalBasis: null,
+                requiredDocuments: [],
+                requiresInPerson: false,
+                inPersonNote: null,
+                outOfScope: false,
+                llmAllowed: true,
+                active: true,
+            },
+            1,
+        )
+        const categoriesBefore = await repository.listCategories()
+        const questionsBefore = await repository.listQuestionsByCategory(cat.id)
+        const writers = [
+            "createCategory",
+            "updateCategory",
+            "setCategoryActive",
+            "reorderCategories",
+            "createQuestion",
+            "updateQuestion",
+            "setQuestionActive",
+            "reorderQuestions",
+        ] as const
+        const spies = writers.map((name) => vi.spyOn(repository, name))
+
+        await service.previewQuestion({
+            questionId: q1.id,
+            categoryId: cat.id,
+            shortTitle: "Outro título",
+            shortDescription: "Outra descrição",
+            question: "Outra pergunta?",
+            answer: "Outra resposta.",
+            legalBasis: "CDC",
+            requiredDocuments: ["Nota fiscal"],
+            requiresInPerson: true,
+            inPersonNote: "Traga os documentos.",
+            outOfScope: false,
+            llmAllowed: true,
+        })
+
+        for (const spy of spies) {
+            expect(spy).not.toHaveBeenCalled()
+        }
+        expect(await repository.listCategories()).toEqual(categoriesBefore)
+        expect(await repository.listQuestionsByCategory(cat.id)).toEqual(questionsBefore)
+    })
+
+    it("resolves {endereco} and {horarios} from the current schedule in previewQuestion without querying schedule when absent", async () => {
+        const repository = new ContentStubRepository()
+        const getConfig = vi.fn().mockResolvedValue({
+            slotMinutes: 30,
+            seatsPerSlot: 2,
+            windowDays: 30,
+            minNoticeDays: 1,
+            waitAlertDays: 7,
+            unitAddress: "Av. Nove de Julho, 215 - Centro, Jacareí - SP",
+            unitAddressComplement: "Sala 2",
+            reminderEnabled: true,
+            reminderHours: 24,
+            ranges: [1, 2, 3, 4, 5].map((weekday) => ({
+                weekday,
+                slotIndex: 1,
+                startTime: "08:00",
+                endTime: "17:00",
+            })),
+            blockedDates: [],
+            updatedBy: null,
+            updatedAt: null,
+        })
+        const service = new ContentService({ repository, scheduleRepo: { getConfig } })
+        const cat = await service.createCategory(
+            { title: "Atendimento", shortTitle: "Atendimento", description: null },
+            1,
+        )
+
+        await service.previewQuestion({
+            categoryId: cat.id,
+            shortTitle: "Prazo",
+            shortDescription: null,
+            question: "Qual o prazo?",
+            answer: "O prazo é de 10 dias.",
+            legalBasis: null,
+            requiredDocuments: [],
+            requiresInPerson: false,
+            inPersonNote: null,
+            outOfScope: false,
+            llmAllowed: false,
+        })
+        expect(getConfig).not.toHaveBeenCalled()
+
+        const preview = await service.previewQuestion({
+            categoryId: cat.id,
+            shortTitle: "Horário e endereço",
+            shortDescription: null,
+            question: "Qual é o horário e o endereço do PROCON?",
+            answer: "O PROCON atende de {horarios}, em {endereco}.",
+            legalBasis: null,
+            requiredDocuments: [],
+            requiresInPerson: false,
+            inPersonNote: null,
+            outOfScope: false,
+            llmAllowed: true,
+        })
+
+        expect(getConfig).toHaveBeenCalledTimes(1)
+        const expectedText =
+            "O PROCON atende de segunda a sexta, das 08:00 às 17:00, em Av. Nove de Julho, 215 - Centro, Jacareí - SP (Sala 2)."
+        expect(preview.botMessages.officialMessages[0]?.text).toContain(expectedText)
     })
 })

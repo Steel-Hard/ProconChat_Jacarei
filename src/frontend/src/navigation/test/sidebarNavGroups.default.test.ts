@@ -22,15 +22,23 @@ const staffWithAllPermissions: PanelAccount = {
 }
 
 describe("sidebarNavGroups com as flags de produção", () => {
-    it("Agendamentos, Relatórios, Horários de atendimento, Documentos, Usuários e WhatsApp estão liberados", () => {
+    it("Agendamentos, Relatórios, Conteúdo, Horários de atendimento, Documentos, Usuários e WhatsApp estão liberados", () => {
         expect(
             Object.entries(NAV_ITEMS_READY)
                 .filter(([, ready]) => ready)
                 .map(([key]) => key)
-        ).toEqual(["appointments", "reports", "schedule", "documents", "users", "whatsapp"])
+        ).toEqual([
+            "appointments",
+            "reports",
+            "content",
+            "schedule",
+            "documents",
+            "users",
+            "whatsapp"
+        ])
     })
 
-    it("o Admin vê Agendamentos e Relatórios em Operação e as outras telas prontas em Configurações", () => {
+    it("o Admin vê Agendamentos e Relatórios em Operação, Conteúdo em Chatbot e as outras telas prontas em Configurações", () => {
         expect(sidebarNavGroups(admin)).toEqual([
             {
                 key: "operation",
@@ -39,6 +47,7 @@ describe("sidebarNavGroups com as flags de produção", () => {
                     { key: "reports", path: ROUTES.reports }
                 ]
             },
+            { key: "chatbot", items: [{ key: "content", path: ROUTES.content }] },
             {
                 key: "settings",
                 items: [
@@ -51,7 +60,7 @@ describe("sidebarNavGroups com as flags de produção", () => {
         ])
     })
 
-    it("um funcionário com todas as permissões vê Agendamentos e Relatórios em Operação", () => {
+    it("um funcionário com todas as permissões vê Operação, Chatbot e Configurações sem WhatsApp", () => {
         expect(sidebarNavGroups(staffWithAllPermissions)).toEqual([
             {
                 key: "operation",
@@ -60,6 +69,7 @@ describe("sidebarNavGroups com as flags de produção", () => {
                     { key: "reports", path: ROUTES.reports }
                 ]
             },
+            { key: "chatbot", items: [{ key: "content", path: ROUTES.content }] },
             {
                 key: "settings",
                 items: [
@@ -71,11 +81,12 @@ describe("sidebarNavGroups com as flags de produção", () => {
         ])
     })
 
-    it("um funcionário sem Gerenciar usuários nem Configurar atendimento nem Documentos não vê o grupo Configurações", () => {
+    it("um funcionário sem Gerenciar conteúdo, usuários, atendimento nem Documentos vê só Operação", () => {
         const staffWithoutUsers: PanelAccount = {
             ...staffWithAllPermissions,
             permissions: PERMISSION_KEYS.filter(
                 (key) =>
+                    key !== "content.manage" &&
                     key !== "users.manage" &&
                     key !== "schedule.configure" &&
                     key !== "documents.configure"
@@ -90,6 +101,17 @@ describe("sidebarNavGroups com as flags de produção", () => {
                     { key: "reports", path: ROUTES.reports }
                 ]
             }
+        ])
+    })
+
+    it("um funcionário só com Gerenciar conteúdo vê só Conteúdo", () => {
+        const contentOnly: PanelAccount = {
+            ...staffWithAllPermissions,
+            permissions: ["content.manage"]
+        }
+
+        expect(sidebarNavGroups(contentOnly)).toEqual([
+            { key: "chatbot", items: [{ key: "content", path: ROUTES.content }] }
         ])
     })
 
