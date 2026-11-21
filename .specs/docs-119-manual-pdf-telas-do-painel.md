@@ -180,7 +180,7 @@ Ambiente do gerador: Node.js 20 ou mais novo e Chrome ou Chromium (ou `CHROME_PA
 - **Teste:** nenhum (documentação).
 - **Gate:** não se aplica typecheck, lint nem suíte. Conferência: `docker compose ps` com `backend` saudável e `frontend` no ar; entrada no painel com a Admin local; `git status --short` sem arquivo alterado pela T2 (os dois README da T4 podem aparecer).
 - **Modelo:** padrao
-- **Status:** pendente
+- **Status:** concluída em 2026-11-21. Evidência: sistema no ar na worktree pelo Compose com nome de projeto `docs119` e portas próprias (painel em `http://localhost:8119`, API em 3119, banco em 5519), porque 3000, 5173 e 5433 já estavam em uso por outros ambientes; backend saudável e entrada com a conta Admin local confirmada. Contas fictícias criadas pela API de Usuários (e-mails `@exemplo.invalid`): estagiário (Rafael Nogueira, só Ver agendamentos), atendente (Marina Teixeira, só Gerenciar agendamentos), líder (Helena Prado, seis permissões, sem Gerenciar usuários), uma conta inativa (Paulo Mendes) e uma sem permissões (Carolina Vieira). 20 agendamentos fictícios cobrindo Pendente, Confirmado, Atendido, Não compareceu, Cancelado e Aguardando registro, com 60 conversas fictícias para os Relatórios, inseridos por SQL no banco local; o script ficou fora do repositório. Na tela de WhatsApp, o ID do número, o ID da conta, o token de verificação e o número exibido foram trocados por valores inventados, e o token e o App Secret guardados são texto sem valor; a URL do webhook usa um domínio inexistente (`painel.exemplo.invalid`). Os dois quadros de status da Meta (modelos e qualidade do número) foram simulados no navegador, com dados fictícios, só para a captura. `git status --short` sem arquivo alterado pela T2.
 
 ### T3 Tirar as capturas
 
@@ -194,7 +194,7 @@ Ambiente do gerador: Node.js 20 ou mais novo e Chrome ou Chromium (ou `CHROME_PA
 - **Teste:** nenhum (documentação).
 - **Gate:** não se aplica typecheck, lint nem suíte. Conferência: a lista de arquivos da pasta bate com a lista de capturas planejada na T1.
 - **Modelo:** padrao
-- **Status:** pendente
+- **Status:** concluída em 2026-11-21. Evidência: 34 capturas em `.docs/guias/images/manual-do-painel/` (máximo de 35), todas em tamanho de computador (1280 pixels de largura), numeradas na ordem do manual, uma ou mais por tela de RN-02. Cada imagem foi conferida a olho contra CA-11: só nomes inventados, CPFs mascarados com dígitos fictícios, e-mails `@exemplo.invalid` (mais a conta Admin local `admin@procon.local`), sem barra de endereço, sem senha e sem os menus de Sessões e Dashboard. Os menus que aparecem são os de cada combinação sugerida (capturas 32 a 34).
 - **Commit:** `Docs :bulb: [#119] Adiciona as capturas do manual do painel`
 
 ### T4 [P] Indexar o manual nos dois README
