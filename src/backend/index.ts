@@ -4,6 +4,7 @@ import {
     DEFAULT_SWEEP_INTERVAL_MS,
     startAbandonedSessionsSweep,
 } from "./services/abandonedSessionsSweep.service"
+import { sweepAppointmentReminders } from "./services/appointmentReminder.service"
 import { sweepPastAppointmentPhones } from "./services/appointmentRetention.service"
 import { sweepAbandonedSessions } from "./services/conversationFlow.service"
 import { startPeriodicSweep } from "./services/periodicSweep.service"
@@ -43,6 +44,13 @@ const stopPastAppointmentPhonesSweep = startPeriodicSweep({
     failureMessage: "Failed to erase phones of past appointments",
 })
 
+const stopAppointmentRemindersSweep = startPeriodicSweep({
+    sweep: sweepAppointmentReminders,
+    intervalMs: DEFAULT_SWEEP_INTERVAL_MS,
+    logger: console,
+    failureMessage: "Failed to send appointment reminders",
+})
+
 const stopRetentionSweep = startPeriodicSweep({
     sweep: sweepRetention,
     intervalMs: RETENTION_SWEEP_INTERVAL_MS,
@@ -60,6 +68,7 @@ function shutdown(signal: NodeJS.Signals): void {
     shuttingDown = true
     stopAbandonedSessionsSweep()
     stopPastAppointmentPhonesSweep()
+    stopAppointmentRemindersSweep()
     stopRetentionSweep()
 
     console.log(`Recebido ${signal}, encerrando servidor...`)

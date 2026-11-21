@@ -62,6 +62,33 @@ function scheduleApiStub({ handlers = {}, bookedDays = [] }: StubOptions = {}) {
             status: 200,
             body: { data: { days: bookedDays } }
         }),
+        "GET /api/v1/whatsapp/settings/templates": () => ({
+            status: 200,
+            body: {
+                data: {
+                    checkedAt: "2026-11-04T14:00:00.000Z",
+                    templates: [
+                        {
+                            kind: "REMINDER",
+                            name: "lembrete_atendimento",
+                            languageCode: "pt_BR",
+                            status: "APPROVED",
+                            metaStatus: "APPROVED"
+                        }
+                    ]
+                }
+            }
+        }),
+        "GET /api/v1/whatsapp/settings/number-status": () => ({
+            status: 200,
+            body: {
+                data: {
+                    checkedAt: "2026-11-04T14:00:00.000Z",
+                    qualityRating: "HIGH",
+                    messagingLimit: { tier: "TIER_250", dailyLimit: 250, usedLast24h: 50 }
+                }
+            }
+        }),
         "POST /api/v1/auth/refresh": () => ({ status: 401 }),
         ...handlers
     }

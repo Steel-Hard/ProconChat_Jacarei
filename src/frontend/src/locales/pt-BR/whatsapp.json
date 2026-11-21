@@ -175,6 +175,8 @@
             "auto_reply_resumed": "Respostas automáticas reativadas",
             "cancellation_notice_enabled": "Aviso ao cidadão ligado",
             "cancellation_notice_disabled": "Aviso ao cidadão desligado",
+            "reminder_enabled": "Lembrete ao cidadão ligado",
+            "reminder_disabled": "Lembrete ao cidadão desligado",
             "other": "Configuração atualizada"
         },
         "field": {

@@ -115,16 +115,18 @@ Issue #164, [decisão 005](../decisoes/005-mensagens-ao-cidadao.md). Um cartão 
   | Erro da Meta | Frase |
   |---|---|
   | 131042 | a conta da Meta está sem forma de pagamento |
-  | 132001 | o modelo de aviso não existe no idioma usado ou não está aprovado na Meta (é o único código para "não aprovado"; não há código dedicado) |
+  | 132001 | o modelo da mensagem não existe no idioma usado ou não está aprovado na Meta (é o único código para "não aprovado"; não há código dedicado) |
   | 132000 | o número de parâmetros enviado é diferente do modelo cadastrado na Meta |
   | 132012 | os parâmetros do modelo foram enviados com formato incorreto |
   | 132007 | o conteúdo do modelo viola a política do WhatsApp |
-  | 132015 | o modelo de aviso foi pausado pela Meta por baixa qualidade |
-  | 132016 | o modelo de aviso foi desativado de vez pela Meta (é preciso criar um novo, com conteúdo diferente) |
+  | 132015 | o modelo da mensagem foi pausado pela Meta por baixa qualidade |
+  | 132016 | o modelo da mensagem foi desativado de vez pela Meta (é preciso criar um novo, com conteúdo diferente) |
   | 132005 | a tradução do texto do modelo ficou longa demais |
   | 190 (ou credenciais inválidas) | o token da Meta está inválido ou expirado |
   | 131048 | o limite de envios do número foi atingido |
   | Modelo não aprovado, pausado ou desativado no estado atual (só no cartão, para o Admin) | em vez da faixa, o cartão mostra: "Enquanto o modelo Aviso de cancelamento não for aprovado, os avisos não serão enviados." |
+
+  **As frases dos códigos valem para o aviso de cancelamento e para o lembrete**, tanto na faixa quanto no Histórico do agendamento ("o modelo da mensagem" é o modelo que falhou). A faixa do cartão e do modal continua só para o aviso de cancelamento; a falha de um lembrete aparece no Histórico do agendamento e entra na lista de falhas de entrega.
 
   **Só no Histórico do agendamento, sem faixa** (dizem respeito ao cidadão ou ao momento do envio, não à conta): 131026 (mensagem não entregável: sem WhatsApp, termos não aceitos ou aplicativo desatualizado); 131049 (limite de engajamento do usuário: esperar 24 horas e não insistir); 131056 (muitos envios ao mesmo destinatário); 131047 (fora da janela de 24 horas).
 
@@ -189,6 +191,7 @@ Quem alterou o quê e quando. **Os valores do token e do App Secret não são re
 | Editar IDs, substituir segredos | **Segue o padrão de salvar** ([regras gerais](00-regras-gerais.md#3-salvar-descartar-e-registrar-quem-alterou)). Salvar credenciais novas exige teste bem-sucedido |
 | Testar conexão | Pode ser feito a qualquer momento |
 | Atualizar status dos modelos | Consulta os modelos e o estado do número na Meta de novo (#127) |
+| **Ligar ou desligar o lembrete ao cidadão** | Feito em [Horários de atendimento](08-horarios-de-atendimento.md#lembrete-ao-cidadão), com confirmação. Cada mudança entra no Histórico de alterações desta tela: "Lembrete ao cidadão ligado" ou "Lembrete ao cidadão desligado" |
 | **Ligar ou desligar o aviso de cancelamento ao cidadão** | **Age na hora**, com diálogo de confirmação nos dois sentidos (issue #164). Só o Admin |
 | **Pausar respostas automáticas** | **Age na hora**, sem passar pelo Salvar, porque é de emergência. Pede confirmação: "O chatbot deixará de responder aos cidadãos até ser reativado" |
 | **Reativar respostas** | Age na hora, sem confirmação |

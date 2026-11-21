@@ -11,6 +11,7 @@ function renderReminder(overrides: Partial<Parameters<typeof ScheduleReminderFie
         hours: 24 as const,
         address: "Rua do Procon, 100",
         complement: "Sala 2",
+        isAdmin: false,
         onToggle: vi.fn(),
         onChangeHours: vi.fn(),
         ...overrides
@@ -61,13 +62,15 @@ describe("ScheduleReminderFields", () => {
     it("liga e desliga o lembrete e troca as horas", async () => {
         const { onToggle, onChangeHours, user } = renderReminder()
 
-        await user.click(screen.getByRole("checkbox", { name: "Enviar lembrete ao cidadão" }))
+        await user.click(screen.getByRole("checkbox", { name: "Lembrete ao cidadão" }))
+        expect(onToggle).not.toHaveBeenCalled()
+        await user.click(screen.getByRole("button", { name: "Desligar lembrete" }))
         await user.selectOptions(
             screen.getByRole("combobox", { name: "Antecedência do lembrete" }),
             "48"
         )
 
-        expect(onToggle).toHaveBeenCalled()
+        expect(onToggle).toHaveBeenCalledTimes(1)
         expect(onChangeHours).toHaveBeenCalledWith(48)
     })
 })

@@ -10,7 +10,7 @@ Definir **quando o PROCON atende presencialmente**. É daqui que o chatbot tira 
 
 ## Estado da tela
 
-**Pronta (backend na issue #64, tela na issue #125, mudanças agendadas na issue #134).** O chatbot oferece os horários da configuração salva aqui, seguindo em cada data a versão que vale nela (seção "Mudanças agendadas"). Ainda faltam: o envio do lembrete (issue #74; até lá a tela esconde a seção "Lembrete ao cidadão", e o salvamento mantém o liga/desliga e as horas como estão gravados), a janela de manter ou cancelar os agendamentos afetados (issue #75) e a criação de bloqueio de parte do dia (issue #77; a tela cria só bloqueio de dia inteiro, mas mostra e deixa remover os bloqueios parciais que já existirem).
+**Pronta (backend na issue #64, tela na issue #125, mudanças agendadas na issue #134, envio do lembrete na issue #74).** O chatbot oferece os horários da configuração salva aqui, seguindo em cada data a versão que vale nela (seção "Mudanças agendadas"). Ainda faltam: a janela de manter ou cancelar os agendamentos afetados (issue #75) e a criação de bloqueio de parte do dia (issue #77; a tela cria só bloqueio de dia inteiro, mas mostra e deixa remover os bloqueios parciais que já existirem).
 
 ## Regras gerais da tela
 
@@ -51,10 +51,21 @@ Definir **quando o PROCON atende presencialmente**. É daqui que o chatbot tira 
 
 ### Lembrete ao cidadão
 
-**Escondida até a issue #74.** Como nada envia o lembrete ainda, a tela não mostra esta seção. Salvar a tela mantém o liga/desliga e as horas exatamente como estão gravados. Quando o envio existir, a seção volta como descrita abaixo.
-
 - **Ligado/desligado** e **quantas horas antes** do atendimento: 2, 6, 12, 24 ou 48.
 - Enviado para agendamentos **Pendentes e Confirmados**.
+- **Um lembrete por data marcada.** Se o cidadão remarcar depois de receber o lembrete, ele recebe um **novo lembrete para a nova data**. Nunca sai lembrete para a data antiga, e voltar para uma data que já recebeu lembrete não gera outro.
+- **Agendamento marcado (ou remarcado) já dentro da janela do lembrete não recebe lembrete.** Exemplo: com lembrete de 6 horas, um atendimento marcado para daqui a 3 horas não recebe.
+- **Agendamento cancelado antes do envio não recebe lembrete.** Se a mensagem já saiu e o cancelamento veio logo depois, o envio fica registrado no histórico do agendamento do mesmo jeito.
+- **Falha passageira** (o sistema de envio fora do ar ou não configurado): não vira falha no histórico. O sistema tenta de novo na varredura seguinte, enquanto o horário do atendimento não passou. **Erro definitivo da Meta** (modelo não aprovado, conta sem forma de pagamento etc.): grava a falha no histórico, com o código da Meta, e **não repete**.
+- **Sem documentos na lista**, o lembrete diz "Traga: um documento oficial com foto."
+- **Avisos na seção:** todos que abrem a tela veem o custo ("Cada lembrete é uma mensagem de modelo e tem custo por mensagem cobrado pela Meta."), o aviso de que o lembrete só é enviado com o modelo aprovado na Meta ("O lembrete só é enviado com o modelo Lembrete do atendimento aprovado na Meta, na tela WhatsApp. Sem essa aprovação, nenhum lembrete é enviado.") e o aviso de que os lembretes contam no limite diário ("Os lembretes contam no limite diário de envios da Meta."). Quem não é Admin vê também a dica para procurar o Admin ("O estado do modelo e o limite diário ficam na tela WhatsApp, que é só do Admin. Se os lembretes não chegarem, fale com quem administra o WhatsApp."). **Só o Admin** vê o estado real do modelo e o uso do limite diário, com os mesmos dados e textos da tela de [WhatsApp](11-whatsapp.md#modelos-de-mensagem).
+- **Ligar ou desligar o lembrete pede confirmação** (como o aviso de cancelamento na tela de WhatsApp). A troca fica no rascunho da tela e **só vale depois de "Salvar alterações"**. Ao ligar, o diálogo diz:
+  > **"Ligar o lembrete?"** "O cidadão receberá uma mensagem pelo WhatsApp [N] horas antes do atendimento. Cada lembrete é uma mensagem de modelo e tem custo por mensagem cobrado pela Meta. A mudança só vale depois de Salvar alterações." Botão de confirmar: "Ligar lembrete".
+
+  Ao desligar, o diálogo diz:
+  > **"Desligar o lembrete?"** "O cidadão deixará de receber a mensagem de lembrete antes do atendimento. A mudança só vale depois de Salvar alterações." Botão de confirmar: "Desligar lembrete".
+
+  **Cada mudança salva entra no Histórico de alterações** da tela de WhatsApp, com quem e quando: "Lembrete ao cidadão ligado" ou "Lembrete ao cidadão desligado". Mudar só as horas ou o endereço não entra.
 - **Prévia do modelo fixo:**
   > "Olá, [primeiro nome]. Lembrete do seu atendimento no PROCON Jacareí: [dia da semana], [dd/mm], às [hh:mm] (protocolo [protocolo]). Endereço: [endereço (complemento)]. Traga: [documentos]. Se não puder comparecer, remarque ou cancele respondendo a esta mensagem."
 - **Os documentos do lembrete são os que foram enviados na confirmação**, guardados no agendamento, e não a configuração atual.

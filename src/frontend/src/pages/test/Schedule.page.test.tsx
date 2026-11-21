@@ -48,6 +48,7 @@ describe("SchedulePage", () => {
         ;[
             "Janela de agendamento",
             "Dados da unidade",
+            "Lembrete ao cidadão",
             "Datas bloqueadas",
             "Prévia da grade"
         ].forEach((name) => expect(screen.getByRole("heading", { name })).toBeInTheDocument())
@@ -296,21 +297,141 @@ describe("SchedulePage", () => {
         ).toHaveLength(2)
     })
 
-    it("não mostra a seção do lembrete até o envio existir", async () => {
-        await loaded()
+    it("esconde a prévia do lembrete só depois de confirmar o desligamento", async () => {
+        const { user } = await loaded()
 
-        expect(
-            screen.queryByRole("heading", { name: "Lembrete ao cidadão" })
-        ).not.toBeInTheDocument()
-        expect(
-            screen.queryByRole("checkbox", { name: "Enviar lembrete ao cidadão" })
-        ).not.toBeInTheDocument()
+        expect(screen.getByText("Prévia da mensagem")).toBeInTheDocument()
+        await user.click(screen.getByRole("checkbox", { name: "Lembrete ao cidadão" }))
+
+        expect(screen.getByRole("heading", { name: "Desligar o lembrete?" })).toBeInTheDocument()
+        expect(screen.getByText("Prévia da mensagem")).toBeInTheDocument()
+
+        await user.click(screen.getByRole("button", { name: "Desligar lembrete" }))
+
         expect(screen.queryByText("Prévia da mensagem")).not.toBeInTheDocument()
+        expect(screen.getByRole("checkbox", { name: "Lembrete ao cidadão" })).not.toBeChecked()
         expect(
-            screen.queryByText(
+            screen.getByText(
                 "Cada lembrete é uma mensagem de modelo e tem custo por mensagem cobrado pela Meta."
             )
-        ).not.toBeInTheDocument()
+        ).toBeInTheDocument()
+    })
+
+    it("não troca o lembrete quando o diálogo é fechado com Voltar", async () => {
+        const { user } = await loaded()
+
+        await user.click(screen.getByRole("checkbox", { name: "Lembrete ao cidadão" }))
+        await user.click(screen.getByRole("button", { name: "Voltar" }))
+
+        expect(screen.queryByRole("heading", { name: "Desligar o lembrete?" })).toBeNull()
+        expect(screen.getByRole("checkbox", { name: "Lembrete ao cidadão" })).toBeChecked()
+        expect(screen.getByText("Prévia da mensagem")).toBeInTheDocument()
+    })
+
+    it("pede confirmação com o custo ao ligar o lembrete e conta como alteração não salva", async () => {
+        const { user } = await loaded({
+            handlers: {
+                "GET /api/v1/schedule": () => ({
+                    status: 200,
+                    body: { data: buildScheduleConfig({ reminderEnabled: false }) }
+                })
+            }
+        })
+
+        await user.click(screen.getByRole("checkbox", { name: "Lembrete ao cidadão" }))
+
+        expect(screen.getByRole("heading", { name: "Ligar o lembrete?" })).toBeInTheDocument()
+        expect(
+            screen.getByText(
+                /O cidadão receberá uma mensagem pelo WhatsApp 24 horas antes do atendimento\. Cada lembrete é uma mensagem de modelo e tem custo por mensagem cobrado pela Meta\./
+            )
+        ).toBeInTheDocument()
+
+        await user.click(screen.getByRole("button", { name: "Ligar lembrete" }))
+
+        expect(screen.getByRole("checkbox", { name: "Lembrete ao cidadão" })).toBeChecked()
+        expect(screen.getByText("1 alteração não salva")).toBeInTheDocument()
+    })
+
+    it("mostra ao Admin o aviso do modelo, o estado real do modelo e o limite diário", async () => {
+        const { callsTo } = await loaded()
+
+        expect(
+            screen.getByText(/só é enviado com o modelo Lembrete do atendimento aprovado/)
+        ).toBeVisible()
+        expect(
+            screen.getByText("Os lembretes contam no limite diário de envios da Meta.")
+        ).toBeVisible()
+        expect(await screen.findByText("lembrete_atendimento", {}, SLOW)).toBeInTheDocument()
+        expect(screen.getByText("Aprovado")).toBeInTheDocument()
+        expect(
+            screen.getByText("Limite diário: 250 conversas iniciadas pela empresa.")
+        ).toBeInTheDocument()
+        expect(screen.getByRole("link", { name: "Abrir a tela WhatsApp" })).toHaveAttribute(
+            "href",
+            "/whatsapp"
+        )
+        expect(callsTo("GET", "/api/v1/whatsapp/settings/templates")).toHaveLength(1)
+        expect(callsTo("GET", "/api/v1/whatsapp/settings/number-status")).toHaveLength(1)
+    })
+
+    it("avisa o Admin quando o modelo do lembrete não está aprovado, sem bloquear o interruptor", async () => {
+        const { user } = await loaded({
+            handlers: {
+                "GET /api/v1/whatsapp/settings/templates": () => ({
+                    status: 200,
+                    body: {
+                        data: {
+                            checkedAt: "2026-11-04T14:00:00.000Z",
+                            templates: [
+                                {
+                                    kind: "REMINDER",
+                                    name: "lembrete_atendimento",
+                                    languageCode: "pt_BR",
+                                    status: "PENDING",
+                                    metaStatus: "PENDING"
+                                }
+                            ]
+                        }
+                    }
+                })
+            }
+        })
+
+        expect(
+            await screen.findByText(
+                "Enquanto este modelo não for aprovado, os lembretes não serão enviados.",
+                {},
+                SLOW
+            )
+        ).toBeInTheDocument()
+
+        await user.click(screen.getByRole("checkbox", { name: "Lembrete ao cidadão" }))
+
+        expect(screen.getByRole("button", { name: "Desligar lembrete" })).toBeEnabled()
+    })
+
+    it("mostra a quem não é Admin só o texto fixo e não consulta a Meta", async () => {
+        const { callsTo } = await loaded({
+            account: {
+                id: 2,
+                name: "Bruno Lima",
+                email: "bruno@exemplo.gov.br",
+                isAdmin: false,
+                permissions: ["schedule.configure"]
+            }
+        })
+
+        expect(
+            screen.getByText(/só é enviado com o modelo Lembrete do atendimento aprovado/)
+        ).toBeVisible()
+        expect(
+            screen.getByText("Os lembretes contam no limite diário de envios da Meta.")
+        ).toBeVisible()
+        expect(screen.getByText(/ficam na tela WhatsApp, que é só do Admin/)).toBeVisible()
+        expect(screen.queryByRole("link", { name: "Abrir a tela WhatsApp" })).toBeNull()
+        expect(callsTo("GET", "/api/v1/whatsapp/settings/templates")).toHaveLength(0)
+        expect(callsTo("GET", "/api/v1/whatsapp/settings/number-status")).toHaveLength(0)
     })
 
     it.each([

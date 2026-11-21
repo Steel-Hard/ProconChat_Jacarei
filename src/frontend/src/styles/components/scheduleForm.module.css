@@ -437,3 +437,27 @@
         grid-row: 2;
     }
 }
+
+.reminderMeta {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 12px;
+    border-top: 1px solid var(--divider);
+}
+
+.reminderMetaList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0;
+    list-style: none;
+}
+
+.reminderMetaLink {
+    align-self: flex-start;
+    color: var(--text-link);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+}
