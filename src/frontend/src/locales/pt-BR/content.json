@@ -163,5 +163,11 @@
         "questionDeactivated": "Pergunta desativada: {{name}}",
         "categoriesOrder": "Ordem das categorias",
         "questionsOrder": "Ordem das perguntas de {{name}}"
+    },
+    "icons": {
+        "up": "↑",
+        "down": "↓",
+        "separator": " · ",
+        "remove": "×"
     }
 }
