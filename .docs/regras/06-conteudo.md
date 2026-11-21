@@ -92,7 +92,7 @@ A tela mostra essa informação e marca, com um separador **"Página N no WhatsA
 | Texto da pergunta | Obrigatório, **até 500 caracteres**, com contador sempre visível |
 | Resposta | Obrigatória, **até 3.000 caracteres**, com contador. **A partir de 1.000**, alerta: "Respostas longas ficam difíceis de ler no celular", que não impede salvar |
 | Base legal | Opcional, até 500 caracteres. Ex.: "CDC, art. 49" |
-| Documentos úteis para esta dúvida | Lista opcional de até 30 itens, cada um obrigatório e de até 255 caracteres. São somados à lista de documentos do agendamento. Um documento repetido na mesma pergunta (sem diferenciar acentos nem maiúsculas) mostra o aviso "Este documento já está na lista." e **não impede salvar** |
+| Documentos úteis para esta dúvida | Lista opcional de até 30 itens, cada um obrigatório e de até 255 caracteres. Adicionar com o campo vazio não acrescenta nada e mostra o aviso "Informe o documento.". São somados à lista de documentos do agendamento. Um documento repetido na mesma pergunta (sem diferenciar acentos nem maiúsculas) mostra o aviso "Este documento já está na lista." e **não impede salvar** |
 | Exige atendimento presencial | O chatbot **oferece agendamento direto**, sem perguntar se a dúvida foi resolvida. Tem uma observação opcional sobre o atendimento presencial (até 500 caracteres), que o cidadão recebe na resposta, só existe com a opção marcada e é descartada se ela for desmarcada |
 | Fora do escopo do PROCON | A resposta orienta a procurar outro órgão. **Nunca oferece agendamento** |
 | Permitir complemento por IA nesta pergunta | Ligada por padrão. Desligada: o chatbot envia só o texto oficial |
