@@ -1097,7 +1097,7 @@ Regras para todas as tarefas do acréscimo: nunca escrever comentários; TDD (o 
 - Teste: unitário de componente. Falha primeiro "com exceedsLimit verdadeiro a mensagem da API aparece junto ao balão com IA".
 - Gate: completo frontend (`cd src/frontend && npm run lint && npm run typecheck && npm run test:run`)
 - Modelo: economico
-- Status: pendente
+- Status: feita (gate completo frontend: lint, typecheck (tsc -b) e test:run passam, 255 arquivos e 2047 testes; o teste do modelo da prévia foi escrito primeiro e visto falhar (lengthWarning ausente), o teste do componente foi escrito junto com o código e passou de primeira; o painel mostra `aiLengthWarning.message` como a API devolve, sem texto próprio, usando o aviso já existente da prévia sem classe nova; commits c564314, 58111e6 e 5350de8, este último corrige o tipo da prévia da categoria não salva que o typecheck apontou)
 
 ### Impacto nos testes existentes do bot
 
