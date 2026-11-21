@@ -25,14 +25,6 @@
     background: var(--bg-subtle);
 }
 
-.rowSelectable {
-    cursor: pointer;
-}
-
-.rowSelectable:hover {
-    border-color: var(--border-accent);
-}
-
 .rowSelected {
     border-color: var(--color-primary);
     background: var(--bg-accent-soft);
@@ -42,7 +34,7 @@
 .rowInactive .shortTitle,
 .rowInactive .fullName,
 .rowInactive .questionText {
-    color: var(--text-soft);
+    color: var(--text-muted);
 }
 
 .rowInactive {
@@ -63,7 +55,7 @@
     padding-top: 1px;
     font-size: 12.5px;
     font-weight: 700;
-    color: var(--sidebar-label);
+    color: var(--text-muted);
 }
 
 .body {
@@ -188,7 +180,7 @@
 
 .author {
     font-size: 12px;
-    color: var(--text-soft);
+    color: var(--text-muted);
 }
 
 .searchCategory {

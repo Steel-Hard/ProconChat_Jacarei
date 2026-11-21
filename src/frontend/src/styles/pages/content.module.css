@@ -32,7 +32,7 @@
 .lastChange {
     margin: 6px 0 0;
     font-size: 12.5px;
-    color: var(--text-soft);
+    color: var(--text-muted);
 }
 
 .fixedNotice {
@@ -176,7 +176,7 @@
 
 .savingNote {
     font-size: 12.5px;
-    color: var(--text-soft);
+    color: var(--text-muted);
 }
 
 .toolbar {

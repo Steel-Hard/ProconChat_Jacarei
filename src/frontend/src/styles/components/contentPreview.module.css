@@ -172,6 +172,10 @@
     overflow-wrap: break-word;
 }
 
+.bubbleText:empty::before {
+    content: "\00a0";
+}
+
 .bubbleText strong {
     font-weight: 700;
 }

@@ -99,13 +99,13 @@
     margin-left: 6px;
     font-size: 12px;
     font-weight: 400;
-    color: var(--text-soft);
+    color: var(--text-muted);
 }
 
 .counter {
     font-size: 12px;
     font-variant-numeric: tabular-nums;
-    color: var(--text-soft);
+    color: var(--text-muted);
 }
 
 .counterNear {
@@ -157,7 +157,7 @@
 .input:disabled,
 .textarea:disabled {
     background: var(--bg-disabled);
-    color: var(--text-soft);
+    color: var(--text-muted);
     cursor: not-allowed;
 }
 
@@ -213,7 +213,7 @@
 }
 
 .checkDisabled {
-    color: var(--text-soft);
+    color: var(--text-muted);
     cursor: not-allowed;
 }
 
