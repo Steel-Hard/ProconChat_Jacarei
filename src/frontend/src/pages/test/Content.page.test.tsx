@@ -123,7 +123,7 @@ describe("ContentPage", () => {
         const user = userEvent.setup()
         const { server } = await loaded()
 
-        await user.click(screen.getAllByRole("button", { name: "Mover para baixo" })[0])
+        await user.click(screen.getAllByRole("button", { name: /^Mover .+ para baixo$/ })[0])
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
 
         await waitFor(() =>
@@ -139,7 +139,7 @@ describe("ContentPage", () => {
         const { server } = await loaded()
         server.failNext("PATCH", /active$/)
 
-        await user.click(screen.getAllByRole("button", { name: "Desativar" })[0])
+        await user.click(screen.getAllByRole("button", { name: /^Desativar / })[0])
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
 
         expect(
@@ -156,7 +156,7 @@ describe("ContentPage", () => {
         server.failNext("PATCH", /\/categories\/2\/active$/)
 
         await createCategory(user)
-        await user.click(screen.getAllByRole("button", { name: "Desativar" })[1])
+        await user.click(screen.getAllByRole("button", { name: /^Desativar / })[1])
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
 
         expect(
@@ -189,7 +189,7 @@ describe("ContentPage", () => {
         expect(screen.queryByText("P10")).not.toBeInTheDocument()
         const list = screen.getAllByRole("list").at(-1) as HTMLElement
         expect(
-            within(list).queryByRole("button", { name: "Mover para cima" })
+            within(list).queryByRole("button", { name: /^Mover .+ para cima$/ })
         ).not.toBeInTheDocument()
     })
 
@@ -219,7 +219,7 @@ describe("ContentPage", () => {
             }
         } as ReturnType<typeof baseOptions>)
 
-        await user.click(screen.getAllByRole("button", { name: "Editar" })[0])
+        await user.click(screen.getAllByRole("button", { name: /^Editar (?!categoria)/ })[0])
         await user.click(screen.getByRole("button", { name: "Ver como o cidadão recebe" }))
 
         expect(

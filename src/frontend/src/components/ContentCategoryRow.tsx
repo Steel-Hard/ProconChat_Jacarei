@@ -76,7 +76,7 @@ function ContentCategoryRow({ item, onSelect, onEdit, onToggle, onMove }: Conten
                         <button
                             type="button"
                             className={`${css.actionButton} ${css.arrowButton}`}
-                            aria-label={t("categories.moveUp")}
+                            aria-label={t("categories.moveUpFor", { title: item.shortTitle })}
                             disabled={!item.canMoveUp}
                             onClick={() => onMove(item.key, "up")}
                         >
@@ -85,7 +85,7 @@ function ContentCategoryRow({ item, onSelect, onEdit, onToggle, onMove }: Conten
                         <button
                             type="button"
                             className={`${css.actionButton} ${css.arrowButton}`}
-                            aria-label={t("categories.moveDown")}
+                            aria-label={t("categories.moveDownFor", { title: item.shortTitle })}
                             disabled={!item.canMoveDown}
                             onClick={() => onMove(item.key, "down")}
                         >
@@ -95,6 +95,7 @@ function ContentCategoryRow({ item, onSelect, onEdit, onToggle, onMove }: Conten
                     <button
                         type="button"
                         className={css.actionButton}
+                        aria-label={t("categories.editFor", { title: item.shortTitle })}
                         onClick={() => onEdit(item.key)}
                     >
                         {t("categories.edit")}
@@ -102,6 +103,12 @@ function ContentCategoryRow({ item, onSelect, onEdit, onToggle, onMove }: Conten
                     <button
                         type="button"
                         className={css.actionButton}
+                        aria-label={t(
+                            item.state === "inactive"
+                                ? "categories.activateFor"
+                                : "categories.deactivateFor",
+                            { title: item.shortTitle }
+                        )}
                         onClick={() => onToggle(item.key)}
                     >
                         {item.state === "inactive"

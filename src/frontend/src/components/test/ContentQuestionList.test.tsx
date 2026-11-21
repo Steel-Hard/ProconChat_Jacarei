@@ -83,22 +83,26 @@ describe("ContentQuestionList", () => {
         renderList([item({ active: false })])
 
         expect(screen.getByText("Inativa")).toBeInTheDocument()
-        expect(screen.getByRole("button", { name: "Ativar" })).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: /^Ativar / })).toBeInTheDocument()
     })
 
     it("em modo busca não há setas e mostra a categoria do resultado", () => {
         renderList([item({ categoryTitle: "Compras" })], true)
 
-        expect(screen.queryByRole("button", { name: "Mover para cima" })).not.toBeInTheDocument()
-        expect(screen.queryByRole("button", { name: "Mover para baixo" })).not.toBeInTheDocument()
+        expect(
+            screen.queryByRole("button", { name: /^Mover .+ para cima$/ })
+        ).not.toBeInTheDocument()
+        expect(
+            screen.queryByRole("button", { name: /^Mover .+ para baixo$/ })
+        ).not.toBeInTheDocument()
         expect(screen.getByText("Categoria: Compras")).toBeInTheDocument()
     })
 
     it("fora da busca mostra as setas e respeita as pontas", () => {
         renderList([item({ canMoveUp: false })])
 
-        expect(screen.getByRole("button", { name: "Mover para cima" })).toBeDisabled()
-        expect(screen.getByRole("button", { name: "Mover para baixo" })).toBeEnabled()
+        expect(screen.getByRole("button", { name: /^Mover .+ para cima$/ })).toBeDisabled()
+        expect(screen.getByRole("button", { name: /^Mover .+ para baixo$/ })).toBeEnabled()
     })
 
     it("mostra o separador de página", () => {
@@ -111,9 +115,9 @@ describe("ContentQuestionList", () => {
         const user = userEvent.setup()
         const handlers = renderList([item()])
 
-        await user.click(screen.getByRole("button", { name: "Editar" }))
-        await user.click(screen.getByRole("button", { name: "Desativar" }))
-        await user.click(screen.getByRole("button", { name: "Mover para baixo" }))
+        await user.click(screen.getByRole("button", { name: /^Editar / }))
+        await user.click(screen.getByRole("button", { name: /^Desativar / }))
+        await user.click(screen.getByRole("button", { name: /^Mover .+ para baixo$/ }))
 
         expect(handlers.onEdit).toHaveBeenCalledWith("1", "10")
         expect(handlers.onToggle).toHaveBeenCalledWith("1", "10")
@@ -133,5 +137,18 @@ describe("ContentQuestionList", () => {
         renderList([], true)
 
         expect(screen.getByText("Nenhuma pergunta encontrada.")).toBeInTheDocument()
+    })
+
+    it("os botões da linha levam o título da pergunta no nome", () => {
+        renderList([item()])
+
+        expect(screen.getByRole("button", { name: "Editar Troca de produto" })).toBeVisible()
+        expect(screen.getByRole("button", { name: "Desativar Troca de produto" })).toBeVisible()
+        expect(
+            screen.getByRole("button", { name: "Mover Troca de produto para cima" })
+        ).toBeVisible()
+        expect(
+            screen.getByRole("button", { name: "Mover Troca de produto para baixo" })
+        ).toBeVisible()
     })
 })

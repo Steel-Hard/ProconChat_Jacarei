@@ -99,7 +99,7 @@ function ContentQuestionRow({
                             <button
                                 type="button"
                                 className={`${css.actionButton} ${css.arrowButton}`}
-                                aria-label={t("questions.moveUp")}
+                                aria-label={t("questions.moveUpFor", { title: item.shortTitle })}
                                 disabled={!item.canMoveUp}
                                 onClick={() => onMove(item.categoryKey, item.key, "up")}
                             >
@@ -108,7 +108,7 @@ function ContentQuestionRow({
                             <button
                                 type="button"
                                 className={`${css.actionButton} ${css.arrowButton}`}
-                                aria-label={t("questions.moveDown")}
+                                aria-label={t("questions.moveDownFor", { title: item.shortTitle })}
                                 disabled={!item.canMoveDown}
                                 onClick={() => onMove(item.categoryKey, item.key, "down")}
                             >
@@ -119,6 +119,7 @@ function ContentQuestionRow({
                     <button
                         type="button"
                         className={css.actionButton}
+                        aria-label={t("questions.editFor", { title: item.shortTitle })}
                         onClick={() => onEdit(item.categoryKey, item.key)}
                     >
                         {t("questions.edit")}
@@ -126,6 +127,10 @@ function ContentQuestionRow({
                     <button
                         type="button"
                         className={css.actionButton}
+                        aria-label={t(
+                            item.active ? "questions.deactivateFor" : "questions.activateFor",
+                            { title: item.shortTitle }
+                        )}
                         onClick={() => onToggle(item.categoryKey, item.key)}
                     >
                         {item.active ? t("questions.deactivate") : t("questions.activate")}
