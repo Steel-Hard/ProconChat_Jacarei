@@ -79,8 +79,21 @@ describe("RequireAccess", () => {
         vi.unstubAllGlobals()
     })
 
-    it("mostra o aviso em / a quem só gerencia conteúdo", async () => {
+    it("leva quem só gerencia conteúdo de / para Conteúdo", async () => {
         const { router } = renderAs("/", ["content.manage"])
+
+        expect(
+            await screen.findByRole(
+                "heading",
+                { name: "Conteúdo do chatbot" },
+                { timeout: LAZY_LOAD_TIMEOUT }
+            )
+        ).toBeInTheDocument()
+        expect(router.state.location.pathname).toBe("/conteudo")
+    })
+
+    it("mostra o aviso em / a quem só vê sessões", async () => {
+        const { router } = renderAs("/", ["sessions.view"])
 
         await expectNoAccess()
         expect(router.state.location.pathname).toBe("/")
@@ -101,13 +114,17 @@ describe("RequireAccess", () => {
         expect(screen.queryByRole("heading", { name: "404 - Not Found" })).not.toBeInTheDocument()
     })
 
-    it("leva quem gerencia conteúdo e usuários de / para /usuarios", async () => {
+    it("leva quem gerencia conteúdo e usuários de / para /conteudo", async () => {
         const { router } = renderAs("/", ["content.manage", "users.manage"])
 
         expect(
-            await screen.findByRole("heading", { name: "Usuários" }, { timeout: LAZY_LOAD_TIMEOUT })
+            await screen.findByRole(
+                "heading",
+                { name: "Conteúdo do chatbot" },
+                { timeout: LAZY_LOAD_TIMEOUT }
+            )
         ).toBeInTheDocument()
-        expect(router.state.location.pathname).toBe("/usuarios")
+        expect(router.state.location.pathname).toBe("/conteudo")
     })
 
     it("mostra Relatórios dentro do painel a quem vê relatórios", async () => {
@@ -232,10 +249,22 @@ describe("RequireAccess", () => {
         await expectNoAccess()
     })
 
-    it("mostra o aviso em /conteudo a quem só gerencia conteúdo", async () => {
+    it("mostra a tela de Conteúdo em /conteudo a quem gerencia conteúdo", async () => {
         renderAs("/conteudo", ["content.manage"])
 
-        await expectNoAccess()
+        expect(
+            await screen.findByRole(
+                "heading",
+                { name: "Conteúdo do chatbot" },
+                { timeout: LAZY_LOAD_TIMEOUT }
+            )
+        ).toBeInTheDocument()
+    })
+
+    it("mostra a NotFound em /conteudo a quem tem outra tela mas não gerencia conteúdo", async () => {
+        renderAs("/conteudo", ["reports.view"])
+
+        await expectNotFound()
     })
 
     it("redireciona quem só vê relatórios para a tela permitida", async () => {

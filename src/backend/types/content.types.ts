@@ -1,3 +1,5 @@
+import type { OutgoingMessage } from "./message.types"
+
 export interface ContentUpdatedBy {
     id: number
     name: string
@@ -98,6 +100,13 @@ export interface QuestionReorderInput {
     questionIds: number[]
 }
 
+export interface PreviewListRowInput {
+    questionId: number | null
+    shortTitle: string
+    shortDescription: string | null
+    isCurrent: boolean
+}
+
 export interface QuestionPreviewInput {
     questionId?: number
     categoryId: number
@@ -111,52 +120,32 @@ export interface QuestionPreviewInput {
     inPersonNote: string | null
     outOfScope: boolean
     llmAllowed: boolean
+    listRows?: PreviewListRowInput[]
 }
 
-export interface PreviewCategoryListRow {
-    id: number | null
-    shortTitle: string
-    shortDescription: string | null
-    isCurrent: boolean
+export interface PreviewBotList {
+    message: Extract<OutgoingMessage, { type: "list" }>
+    currentRowIndex: number
+    page: number
+    totalPages: number
 }
 
-export interface PreviewCategoryListSection {
-    categoryTitle: string
-    categoryShortTitle: string
-    rows: PreviewCategoryListRow[]
-    hasMoreOptions: boolean
-    totalActiveQuestions: number
+export interface PreviewAiLengthWarning {
+    exceedsLimit: boolean
+    length: number
+    limit: number
+    message: string | null
 }
 
-export interface PreviewAnswerBubble {
-    question: string
-    answer: string
-    legalBasis: string | null
-    requiredDocuments: string[]
-    llmAllowed: boolean
-    aiSampleLabel: string | null
-    aiSampleText: string | null
-    outOfScopeNotice: string | null
-    disclaimer: string
-    formattedText: string
-}
-
-export type PreviewNextStepType = "resolution" | "schedule_offer"
-
-export interface PreviewNextStepBubble {
-    type: PreviewNextStepType
-    text: string
-    inPersonNote: string | null
-    prompt: string
-    buttons: string[]
-    formattedText: string
+export interface PreviewBotMessages {
+    categoryList: PreviewBotList
+    officialMessages: OutgoingMessage[]
+    aiMessage: Extract<OutgoingMessage, { type: "buttons" }> | null
+    aiLengthWarning: PreviewAiLengthWarning
 }
 
 export interface QuestionPreviewResult {
-    fixedDisclaimer: string
     answerLengthWarning: boolean
     answerLengthWarningMessage: string | null
-    categoryList: PreviewCategoryListSection
-    answerBubble: PreviewAnswerBubble
-    nextStepBubble: PreviewNextStepBubble | null
+    botMessages: PreviewBotMessages
 }

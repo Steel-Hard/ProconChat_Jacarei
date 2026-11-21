@@ -202,3 +202,25 @@ describe("conferirNumerosIa", () => {
         expect(conferirNumerosIa(texto, respostaComum)).toBe(esperado)
     })
 })
+
+describe("montarMensagemIa com observação do atendimento presencial", () => {
+    it("coloca a observação logo depois da linha de atendimento presencial no bloco oficial", () => {
+        const mensagem = montarMensagemIa("Texto da IA.", {
+            ...respostaPresencial,
+            observacao_presencial: "Traga o contrato impresso.",
+        })
+
+        expect(mensagem.type).toBe("buttons")
+        expect(mensagem.text).toContain(
+            "Esta situação pode exigir atendimento presencial no PROCON Jacareí para andamento formal.\nSobre o atendimento presencial: Traga o contrato impresso.\n\n" + AVISO_NAO_VINCULANTE,
+        )
+    })
+
+    it("sem observação a mensagem é igual à de antes", () => {
+        const semCampo = montarMensagemIa("Texto da IA.", respostaPresencial)
+        const vazia = montarMensagemIa("Texto da IA.", { ...respostaPresencial, observacao_presencial: null })
+
+        expect(vazia).toEqual(semCampo)
+        expect(semCampo.text).not.toContain("Sobre o atendimento presencial")
+    })
+})

@@ -142,7 +142,103 @@ describe("content.routes", () => {
                 llmAllowed: true,
             })
         expect(previewRes.status).toBe(200)
-        expect(previewRes.body.data.answerBubble.aiSampleLabel).toBe("Gerado com auxílio de IA")
-        expect(previewRes.body.data.nextStepBubble.type).toBe("resolution")
+        expect(previewRes.body.data.botMessages.aiMessage.footer).toBe("Gerado com auxílio de IA")
+        expect(previewRes.body.data.botMessages.officialMessages[1].text).toBe("A dúvida foi resolvida?")
+    })
+    describe("preview", () => {
+        async function appWithCategory() {
+            const app = buildApp(contentManagerUser)
+            const created = await request(app)
+                .post("/api/v1/content/categories")
+                .send({ title: "Compras e Garantias", shortTitle: "Compras e garantia" })
+            expect(created.status).toBe(201)
+            return { app, categoryId: created.body.data.id as number }
+        }
+
+        const previewBody = {
+            shortTitle: "Produto com defeito",
+            shortDescription: "Prazo de 30 dias",
+            question: "Comprei um produto com defeito, o que fazer?",
+            answer: "O fornecedor tem até 30 dias para reparar o produto.",
+            legalBasis: "Art. 18 do CDC",
+            requiredDocuments: ["Nota fiscal"],
+            requiresInPerson: false,
+            outOfScope: false,
+            llmAllowed: true,
+        }
+
+        it("returns botMessages and the answer length warning and none of the old fields", async () => {
+            const { app, categoryId } = await appWithCategory()
+
+            const res = await request(app)
+                .post("/api/v1/content/questions/preview")
+                .send({ ...previewBody, categoryId })
+
+            expect(res.status).toBe(200)
+            expect(res.body.data.botMessages.categoryList.message.type).toBe("list")
+            expect(res.body.data.botMessages.categoryList.currentRowIndex).toBe(0)
+            expect(res.body.data.botMessages.officialMessages).toHaveLength(2)
+            expect(res.body.data.botMessages.aiMessage.footer).toBe("Gerado com auxílio de IA")
+            expect(res.body.data.botMessages.aiLengthWarning).toEqual({
+                exceedsLimit: false,
+                length: expect.any(Number),
+                limit: 1024,
+                message: null,
+            })
+            expect(res.body.data.answerLengthWarning).toBe(false)
+            expect(res.body.data.answerLengthWarningMessage).toBeNull()
+            for (const removed of ["answerBubble", "nextStepBubble", "categoryList", "fixedDisclaimer"]) {
+                expect(res.body.data).not.toHaveProperty(removed)
+            }
+        })
+
+        it("follows the order of listRows when it is sent", async () => {
+            const { app, categoryId } = await appWithCategory()
+
+            const res = await request(app)
+                .post("/api/v1/content/preview")
+                .send({
+                    ...previewBody,
+                    categoryId,
+                    listRows: [
+                        { questionId: 7, shortTitle: "Outra", shortDescription: null, isCurrent: false },
+                        { questionId: null, shortTitle: "Nova", shortDescription: null, isCurrent: true },
+                    ],
+                })
+
+            expect(res.status).toBe(200)
+            expect(res.body.data.botMessages.categoryList.currentRowIndex).toBe(1)
+            expect(res.body.data.botMessages.categoryList.message.rows[0].title).toBe("Outra")
+        })
+
+        it("rejects invalid listRows with 400 and does not build the preview", async () => {
+            const { app, categoryId } = await appWithCategory()
+
+            for (const listRows of [
+                [],
+                [{ questionId: 7, shortTitle: "Outra", shortDescription: null, isCurrent: false }],
+                [
+                    { questionId: 7, shortTitle: "a".repeat(25), shortDescription: null, isCurrent: true },
+                ],
+            ]) {
+                const res = await request(app)
+                    .post("/api/v1/content/questions/preview")
+                    .send({ ...previewBody, categoryId, listRows })
+                expect(res.status).toBe(400)
+                expect(res.body.data).toBeUndefined()
+            }
+        })
+
+        it("keeps returning 404 for an unknown category and 403 without permission", async () => {
+            const notFound = await request(buildApp(contentManagerUser))
+                .post("/api/v1/content/questions/preview")
+                .send({ ...previewBody, categoryId: 999 })
+            expect(notFound.status).toBe(404)
+
+            const forbidden = await request(buildApp(noPermissionUser))
+                .post("/api/v1/content/questions/preview")
+                .send({ ...previewBody, categoryId: 1 })
+            expect(forbidden.status).toBe(403)
+        })
     })
 })

@@ -8,6 +8,7 @@ import { ConversationEventService, conversationEventService } from "./conversati
 import { gerarExplicacaoLlm } from "./llmExplicacao.service"
 import {
     conferirNumerosIa,
+    LIMITE_CORPO_BOTOES,
     mensagensRespostaOficial,
     montarMensagemIa,
     normalizarTextoIa,
@@ -30,8 +31,6 @@ type FallbackReason =
     | "NOT_CONFIGURED"
     | "REJECTED"
     | "UNREACHABLE"
-
-const LIMITE_CORPO_BOTOES = 1024
 
 const GERACOES_SIMULTANEAS = 1
 

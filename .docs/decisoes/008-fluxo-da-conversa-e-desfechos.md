@@ -16,7 +16,7 @@ Na Sprint 1 a conversa terminava na resposta final. Para cumprir o RF07 ("quando
 2. O cidadão escolhe a categoria e depois a pergunta.
 3. **O bot envia a resposta**, com o aviso de caráter não vinculante ao final (RNF04).
 4. Em seguida, depende da pergunta:
-   - **pergunta fora do escopo do PROCON:** encerra com a orientação de encaminhamento. **Nunca oferece agendamento**. "Fora do escopo" e "Exige atendimento presencial" são mutuamente exclusivos;
+   - **pergunta fora do escopo do PROCON:** encerra com a resposta escrita pela equipe e, em um balão separado, a orientação de encaminhamento. **Nunca oferece agendamento**. "Fora do escopo" e "Exige atendimento presencial" são mutuamente exclusivos;
    - **pergunta que exige atendimento presencial:** oferece agendamento direto, **sem perguntar se a dúvida foi resolvida**;
    - **demais perguntas:** pergunta **"A dúvida foi resolvida?"**. Se a resposta for "Não", oferece agendamento.
 5. **Agendamento:** o cidadão diz quem vai comparecer (ele mesmo ou um representante), escolhe o horário e recebe a confirmação ([005](005-mensagens-ao-cidadao.md)).

@@ -134,6 +134,25 @@ describe("OllamaLlmClient", () => {
         })
     })
 
+    it("não envia a observação do atendimento presencial ao modelo", async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            json: async () => ({ response: "Texto reescrito.", done_reason: "stop" }),
+        })
+        vi.stubGlobal("fetch", fetchMock)
+
+        await new OllamaLlmClient().gerarTextoExplicativo({
+            ...resumo,
+            requer_presencial: true,
+            observacao_presencial: "Traga o contrato impresso.",
+        })
+
+        const { prompt } = JSON.parse(fetchMock.mock.calls[0]?.[1].body)
+        expect(prompt).not.toContain("Traga o contrato impresso.")
+        expect(prompt).not.toContain("observacao_presencial")
+    })
+
     it("pede ao modelo tom de conversa em segunda pessoa e que mantenha as condições e ressalvas", async () => {
         const fetchMock = vi.fn().mockResolvedValue({
             ok: true,

@@ -23,7 +23,7 @@ A primeira versão da #66 enviava a resposta oficial na hora e o texto da IA com
    - Uma geração por vez: quem chega com a IA ocupada recebe a resposta oficial na hora.
    - A mensagem da IA é uma mensagem de botões de até 1024 caracteres (limite da Meta). Passou disso, a IA falhou, o texto veio vazio, os números não conferem ou o envio foi recusado: sai a resposta oficial.
    - O `ANSWER_SENT` é gravado na hora real do envio: `USED` quando saiu a mensagem da IA, `FAILED` quando saiu a oficial. Se o Backend reiniciar no meio, a próxima mensagem do cidadão recebe a resposta oficial.
-   - A prévia da tela de Conteúdo mostra um balão só, com a explicação da IA, o bloco oficial, o aviso, os botões e o rótulo no rodapé (#124).
+   - A prévia da tela de Conteúdo mostra um balão só, com a explicação da IA, o bloco oficial, o aviso, os botões e o rótulo no rodapé, e também a alternativa "Se a IA estiver indisponível" com as mensagens oficiais. Os textos são os do bot ([regra de Conteúdo](../regras/06-conteudo.md#ver-como-o-cidadão-recebe), #124).
 
 Detalhes do contrato em [`llm/contrato.md`](../llm/contrato.md).
 

@@ -10,8 +10,10 @@ import {
     formatarListaPerguntas,
     formatarListaSlots,
     formatarRespostaFinal,
+    mensagensRespostaOficial,
     paginarItens,
     criarBotoesAttendee,
+    criarBotoesOfertaAgendamento,
     criarMensagensCategorias,
     criarMensagensPerguntas,
     criarMensagensSlots,
@@ -134,6 +136,89 @@ describe("messageFormatter.service", () => {
         const texto = formatarRespostaFinal(respostaBase)
 
         expect(texto).not.toContain("Esta situação pode exigir atendimento presencial")
+    })
+
+    describe("observação do atendimento presencial", () => {
+        const linhaPresencial =
+            "Esta situação pode exigir atendimento presencial no PROCON Jacareí para andamento formal."
+
+        test("aparece em linha própria logo depois da linha de atendimento presencial", () => {
+            const texto = formatarRespostaFinal({
+                ...respostaBase,
+                requer_presencial: true,
+                observacao_presencial: "Traga o contrato impresso.",
+            })
+
+            expect(texto).toContain(
+                `${linhaPresencial}\nSobre o atendimento presencial: Traga o contrato impresso.\n\n${AVISO_NAO_VINCULANTE}`,
+            )
+        })
+
+        test("sem observação o texto é igual ao de antes", () => {
+            const semCampo = formatarRespostaFinal({ ...respostaBase, requer_presencial: true })
+            const vazia = formatarRespostaFinal({ ...respostaBase, requer_presencial: true, observacao_presencial: null })
+
+            expect(vazia).toBe(semCampo)
+            expect(semCampo).not.toContain("Sobre o atendimento presencial")
+            expect(semCampo).toContain(`${linhaPresencial}\n\n${AVISO_NAO_VINCULANTE}`)
+        })
+
+        test("não aparece na pergunta que não exige atendimento presencial", () => {
+            const texto = formatarRespostaFinal({ ...respostaBase, observacao_presencial: "Traga o contrato." })
+
+            expect(texto).not.toContain("Sobre o atendimento presencial")
+        })
+
+        test("não é repetida no balão da oferta de agendamento", () => {
+            const mensagens = mensagensRespostaOficial({
+                ...respostaBase,
+                requer_presencial: true,
+                observacao_presencial: "Traga o contrato impresso.",
+            })
+
+            expect(mensagens[1]).toEqual({
+                type: "buttons",
+                text: "Deseja agendar um atendimento presencial no PROCON Jacareí?",
+                buttons: criarBotoesOfertaAgendamento(),
+            })
+        })
+    })
+
+    describe("fora do escopo", () => {
+        const respostaForaDoEscopo: RespostaFinalOutput = {
+            ...respostaBase,
+            resposta: "Procure a delegacia de polícia.",
+            fora_de_escopo: true,
+        }
+        const encaminhamento =
+            "Como esta demanda não compete ao PROCON, dirija-se ao órgão indicado na orientação acima portando seus documentos e comprovantes para atendimento especializado."
+
+        test("o balão oficial traz a resposta da equipe, base legal, documentos e aviso, sem 'O que fazer agora' nem o encaminhamento", () => {
+            const texto = formatarRespostaFinal(respostaForaDoEscopo)
+
+            expect(texto).toContain("Resposta: Procure a delegacia de polícia.")
+            expect(texto).toContain("Base legal: Art. 49 do CDC")
+            expect(texto).toContain("Documentos necessários: Nota fiscal, Comprovante de pagamento")
+            expect(texto).not.toContain("O que fazer agora")
+            expect(texto).not.toContain(encaminhamento)
+            expect(texto.endsWith(AVISO_NAO_VINCULANTE)).toBe(true)
+        })
+
+        test("sem base legal e sem documentos o balão oficial não traz essas linhas", () => {
+            const texto = formatarRespostaFinal({ ...respostaForaDoEscopo, base_legal: "", documentos_necessarios: [] })
+
+            expect(texto).not.toContain("Base legal:")
+            expect(texto).not.toContain("Documentos necessários:")
+        })
+
+        test("mensagensRespostaOficial devolve o balão oficial e o balão separado de encaminhamento, sem botões", () => {
+            const mensagens = mensagensRespostaOficial(respostaForaDoEscopo)
+
+            expect(mensagens).toEqual([
+                { type: "text", text: formatarRespostaFinal(respostaForaDoEscopo) },
+                { type: "text", text: encaminhamento },
+            ])
+        })
     })
 
     test("formatarRespostaFinal inclui aviso de atendimento presencial quando requer_presencial e verdadeiro", () => {

@@ -6,6 +6,7 @@ import {
     ERRO_OFERTA_AGENDAMENTO,
     ERRO_RESOLVIDA,
     formatarListaPerguntas,
+    mensagensRespostaOficial,
     OFERTA_AGENDAMENTO,
     PERGUNTA_RESOLVIDA,
     RESPOSTA_INICIO_AGENDAMENTO,
@@ -232,9 +233,12 @@ describe("conversationFlow.service", () => {
             },
         })
         expect(result.reply.step).toBe("FINISHED")
-        expect(result.reply.text).toContain("fora do escopo")
+        expect(result.reply.messages).toEqual(mensagensRespostaOficial(respostaForaEscopo))
+        expect(result.reply.messages).toHaveLength(2)
+        expect(result.reply.messages?.every((message) => message.type === "text")).toBe(true)
         expect(result.reply.text).not.toContain(PERGUNTA_RESOLVIDA)
         expect(result.reply.text).not.toContain(OFERTA_AGENDAMENTO)
+        expect(result.reply.text).not.toContain("Esta dúvida está fora do escopo de atendimento do PROCON via WhatsApp.")
     })
 
     test("AWAITING_QUESTION: pergunta que requer presencial grava SCHEDULE_OFFERED ('REQUIRES_IN_PERSON') e avança para AWAITING_SCHEDULE_OFFER", async () => {

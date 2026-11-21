@@ -23,6 +23,8 @@ export const ERRO_PREFIXO = "Não entendi. Digite o número de uma das opções 
 export const AVISO_NAO_VINCULANTE =
     "Esta é uma orientação automatizada de caráter informativo. Ela não é vinculante e não substitui o atendimento jurídico ou administrativo formal do PROCON Jacareí."
 
+export const LIMITE_CORPO_BOTOES = 1024
+
 export const ROTULO_IA = "Gerado com auxílio de IA"
 
 export const PERGUNTA_RESOLVIDA =
@@ -479,15 +481,25 @@ export function formatarConfirmacaoAgendamento(input: ConfirmacaoAgendamentoInpu
     return linhas.join("\n")
 }
 
+export const ENCAMINHAMENTO_FORA_DO_ESCOPO =
+    "Como esta demanda não compete ao PROCON, dirija-se ao órgão indicado na orientação acima portando seus documentos e comprovantes para atendimento especializado."
+
+export const ROTULO_OBSERVACAO_PRESENCIAL = "Sobre o atendimento presencial:"
+
+function linhaObservacaoPresencial(resposta: RespostaFinalOutput): string[] {
+    const observacao = resposta.observacao_presencial?.trim()
+    if (!resposta.requer_presencial || !observacao) {
+        return []
+    }
+    return [`${ROTULO_OBSERVACAO_PRESENCIAL} ${observacao}`]
+}
+
 const LINHA_ATENDIMENTO_PRESENCIAL =
     "Esta situação pode exigir atendimento presencial no PROCON Jacareí para andamento formal."
 
 function textoProximosPassos(resposta: RespostaFinalOutput): string {
     if (resposta.proximos_passos) {
         return resposta.proximos_passos
-    }
-    if (resposta.fora_de_escopo) {
-        return "Como esta demanda não compete ao PROCON, dirija-se ao órgão indicado na orientação acima portando seus documentos e comprovantes para atendimento especializado."
     }
     if (resposta.requer_presencial) {
         return "Como este caso requer análise documental aprofundada, organize os documentos necessários indicados e agende um atendimento presencial no PROCON Jacareí."
@@ -514,10 +526,14 @@ export function formatarRespostaFinal(resposta: RespostaFinalOutput): string {
         linhas.push(`Documentos necessários: ${resposta.documentos_necessarios.join(", ")}`)
     }
 
+    if (resposta.fora_de_escopo) {
+        return `${linhas.join("\n")}\n\n${AVISO_NAO_VINCULANTE}`
+    }
+
     linhas.push(`\nO que fazer agora:\n${textoProximosPassos(resposta)}`)
 
     if (resposta.requer_presencial) {
-        linhas.push(`\n${LINHA_ATENDIMENTO_PRESENCIAL}`)
+        linhas.push(`\n${LINHA_ATENDIMENTO_PRESENCIAL}`, ...linhaObservacaoPresencial(resposta))
     }
 
     return `${linhas.join("\n")}\n\n${AVISO_NAO_VINCULANTE}`
@@ -730,6 +746,12 @@ const PERGUNTA_RESOLVIDA_BOTOES = "A dúvida foi resolvida?"
 const PERGUNTA_OFERTA_AGENDAMENTO_BOTOES = "Deseja agendar um atendimento presencial no PROCON Jacareí?"
 
 export function mensagensRespostaOficial(resposta: RespostaFinalOutput): OutgoingMessage[] {
+    if (resposta.fora_de_escopo) {
+        return [
+            { type: "text", text: formatarRespostaFinal(resposta) },
+            { type: "text", text: ENCAMINHAMENTO_FORA_DO_ESCOPO },
+        ]
+    }
     const pergunta: OutgoingMessage = resposta.requer_presencial
         ? { type: "buttons", text: PERGUNTA_OFERTA_AGENDAMENTO_BOTOES, buttons: criarBotoesOfertaAgendamento() }
         : { type: "buttons", text: PERGUNTA_RESOLVIDA_BOTOES, buttons: criarBotoesResolvida() }
@@ -749,7 +771,7 @@ function blocoOficialIa(resposta: RespostaFinalOutput): string {
     }
     linhas.push("O que fazer agora:", textoProximosPassos(resposta))
     if (resposta.requer_presencial) {
-        linhas.push("", LINHA_ATENDIMENTO_PRESENCIAL)
+        linhas.push("", LINHA_ATENDIMENTO_PRESENCIAL, ...linhaObservacaoPresencial(resposta))
     }
     return linhas.join("\n")
 }

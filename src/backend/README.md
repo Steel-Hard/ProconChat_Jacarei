@@ -1681,7 +1681,7 @@ Rotas do painel para gerenciamento de categorias e perguntas do chatbot (#63, `.
 | `/api/v1/content/questions/:id` | `PUT` | Edita pergunta e sincroniza `RequiredDocuments` em transação (recusa mudança de `categoryId`; campos opcionais omitidos voltam ao padrão: `llmAllowed = true`, `legalBasis = null`, `requiredDocuments = []`) |
 | `/api/v1/content/questions/:id/active` | `PATCH` | Ativa ou desativa a pergunta (`{ active: boolean }`) |
 | `/api/v1/content/categories/:id/questions/reorder` | `PUT` | Reordena todas as perguntas da categoria `:id` (`{ questionIds: number[] }`) |
-| `/api/v1/content/preview` e `/api/v1/content/questions/preview` | `POST` | Gera a prévia "Ver como o cidadão recebe" usando `AVISO_NAO_VINCULANTE`, `PERGUNTA_RESOLVIDA`, `OFERTA_AGENDAMENTO`, `formatarRespostaFinal` e `paginarItens` de `services/messageFormatter.service.ts` |
+| `/api/v1/content/preview` e `/api/v1/content/questions/preview` | `POST` | Gera a prévia "Ver como o cidadão recebe". `botMessages` traz as mensagens exatas do bot (lista da categoria, mensagens oficiais e balão com IA), montadas com as mesmas funções de `services/messageFormatter.service.ts`, e `botMessages.aiLengthWarning` avisa quando o balão com IA passaria do limite de 1.024 caracteres. A resposta traz só `botMessages`, `answerLengthWarning` e `answerLengthWarningMessage` |
 
 ## Relatórios mínimos (#68)
 
