@@ -47,7 +47,7 @@ A coluna da esquerda lista as categorias em ordem, de forma compacta. Cada uma m
 
 **Ações na linha:** só as setas de reordenar (↑↓), empilhadas. Clicar, tocar ou acionar a linha pelo teclado seleciona a categoria. **Nova categoria** continua disponível na coluna de categorias.
 
-**Ações no cabeçalho da categoria selecionada** (painel de perguntas, que mostra o nome e o estado dela): **Editar categoria**, **Desativar categoria** (ou **Ativar categoria**, quando ela está inativa) e **Nova pergunta**, nessa ordem. Ativar/desativar muda só o rascunho e não muda o estado das perguntas. Sem nenhuma categoria, o cabeçalho não aparece e a tela mostra o estado vazio com "Nova categoria".
+**Ações no cabeçalho da categoria selecionada** (painel de perguntas, que mostra o nome e o estado dela): **Editar categoria**, **Desativar categoria** (ou **Ativar categoria**, quando ela está inativa) e **Nova pergunta**, nessa ordem. Ativar/desativar muda só o rascunho e não muda o estado das perguntas. Durante a busca, como a lista mostra resultados de todas as categorias, o cabeçalho esconde "Editar categoria" e "Desativar categoria" e "Nova pergunta" fica desabilitada, com uma dica explicando o motivo. Sem nenhuma categoria, o cabeçalho não aparece e a tela mostra o estado vazio com "Nova categoria".
 
 **Formulário da categoria** (abre num painel lateral, ver "Formulários em painel lateral"):
 
