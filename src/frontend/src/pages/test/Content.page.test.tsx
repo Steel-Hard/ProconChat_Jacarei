@@ -36,7 +36,7 @@ async function createCategory(user: ReturnType<typeof userEvent.setup>) {
     await user.click(screen.getAllByRole("button", { name: "Nova categoria" })[0])
     await user.type(screen.getByLabelText(/Título curto/), "Nova")
     await user.type(screen.getByLabelText(/Nome da categoria/), "Categoria nova")
-    await user.click(screen.getByRole("button", { name: "Confirmar" }))
+    await user.click(screen.getByRole("button", { name: "Salvar categoria" }))
 }
 
 async function createQuestion(user: ReturnType<typeof userEvent.setup>) {

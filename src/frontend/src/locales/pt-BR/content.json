@@ -106,7 +106,7 @@
         "description": "Descrição",
         "descriptionHint": "Resumo dos assuntos da categoria.",
         "optional": "opcional",
-        "confirm": "Confirmar",
+        "confirm": "Salvar categoria",
         "cancel": "Cancelar"
     },
     "questionForm": {
