@@ -2,7 +2,8 @@ import type ContentChange from "@/types/content/ContentChange.types"
 
 type Translate = (key: string, params?: Record<string, unknown>) => string
 
-export default function labelContentChange(change: ContentChange, t: Translate): string {
+export default function labelContentChange(change: ContentChange, translate: unknown): string {
+    const t = translate as Translate
     const params = { name: change.name }
 
     if (change.kind === "categoryState") {
