@@ -152,6 +152,14 @@ function ContentFormDialog({
         }
     }, [onCancel, dirty, confirmingDiscard])
 
+    function requestClose() {
+        if (dirty) {
+            setConfirmingDiscard(true)
+        } else {
+            onCancel()
+        }
+    }
+
     function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
         onConfirm()
@@ -185,7 +193,7 @@ function ContentFormDialog({
                                 {previewLabel}
                             </button>
                         ) : null}
-                        <button type="button" className={css.cancel} onClick={onCancel}>
+                        <button type="button" className={css.cancel} onClick={requestClose}>
                             {cancelLabel}
                         </button>
                         <button type="submit" className={css.confirm}>

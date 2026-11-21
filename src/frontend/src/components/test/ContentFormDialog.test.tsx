@@ -64,6 +64,29 @@ describe("ContentFormDialog", () => {
         expect(onCancel).toHaveBeenCalledTimes(1)
     })
 
+    it("Cancelar com alterações pede confirmação antes de descartar", async () => {
+        const user = userEvent.setup()
+        const { onCancel } = renderDialog({ dirty: true })
+
+        await user.click(screen.getByRole("button", { name: "Cancelar" }))
+
+        expect(onCancel).not.toHaveBeenCalled()
+        expect(screen.getByText("Descartar as alterações?")).toBeInTheDocument()
+
+        await user.click(screen.getByRole("button", { name: "Descartar alterações" }))
+
+        expect(onCancel).toHaveBeenCalledTimes(1)
+    })
+
+    it("Cancelar sem alterações fecha direto", async () => {
+        const user = userEvent.setup()
+        const { onCancel } = renderDialog()
+
+        await user.click(screen.getByRole("button", { name: "Cancelar" }))
+
+        expect(onCancel).toHaveBeenCalledTimes(1)
+    })
+
     it("Continuar editando fecha o aviso e mantém o formulário", async () => {
         const user = userEvent.setup()
         const { onCancel } = renderDialog({ dirty: true })
