@@ -11,26 +11,19 @@ const OFFICIAL =
 function model(overrides: Partial<ContentPreviewModel> = {}): ContentPreviewModel {
     return {
         list: {
-            categoryTitle: "Compras e consumo",
-            categoryShortTitle: "Compras",
+            text: "Escolha uma das perguntas abaixo:",
+            buttonText: "Ver perguntas",
             rows: [
-                { id: 1, shortTitle: "Outra", shortDescription: null, isCurrent: false },
-                {
-                    id: 2,
-                    shortTitle: "Troca de produto",
-                    shortDescription: "Prazo",
-                    isCurrent: true
-                }
+                { key: "q_1", title: "Outra", description: null, isCurrent: false },
+                { key: "q_2", title: "Troca de produto", description: "Prazo", isCurrent: true }
             ],
-            hasMoreOptions: false,
-            totalActiveQuestions: 2
+            hasMoreOptions: false
         },
-        notice: null,
         primaryBubbles: [
             { id: "official", text: OFFICIAL, footerLabel: null, buttons: [] },
             {
                 id: "next",
-                text: "A sua dúvida foi resolvida?",
+                text: "A dúvida foi resolvida?",
                 footerLabel: null,
                 buttons: ["Sim", "Não"]
             }
@@ -67,6 +60,13 @@ describe("ContentPreview", () => {
         expect(screen.getByText("Outra").tagName).not.toBe("STRONG")
     })
 
+    it("mostra o texto e o botão da lista exatamente como vêm do modelo", () => {
+        renderPreview()
+
+        expect(screen.getByText("Escolha uma das perguntas abaixo:")).toBeInTheDocument()
+        expect(screen.getByText("Ver perguntas")).toBeInTheDocument()
+    })
+
     it("só mostra a indicação de próxima página quando a flag manda", () => {
         const { unmount } = render(
             <ContentPreview status="ready" model={model()} onClose={vi.fn()} onRetry={vi.fn()} />
@@ -101,7 +101,7 @@ describe("ContentPreview", () => {
     it("mostra o balão do passo seguinte com os botões", () => {
         renderPreview()
 
-        expect(screen.getByText("A sua dúvida foi resolvida?")).toBeInTheDocument()
+        expect(screen.getByText("A dúvida foi resolvida?")).toBeInTheDocument()
         expect(screen.getByText("Sim")).toBeInTheDocument()
         expect(screen.getByText("Não")).toBeInTheDocument()
     })

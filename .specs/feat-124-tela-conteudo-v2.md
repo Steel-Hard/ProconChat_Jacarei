@@ -665,7 +665,7 @@ Nenhuma.
 
 ## Acréscimo de backend (D-U-04, D-U-05, D-U-06)
 
-> Status do acréscimo: aprovada — aprovação do usuário repassada pela orchestrator em 2026-11-20; não bloqueia as tarefas de frontend já aprovadas (T1 a T19, M1, M2, K1 a K3), exceto T20. B2 e B3 aguardam a confirmação do usuário sobre as respostas do PO (D-PO-B01 a D-PO-B03).
+> Status do acréscimo: aprovada — aprovação do usuário repassada pela orchestrator em 2026-11-20; não bloqueia as tarefas de frontend já aprovadas (T1 a T19, M1, M2, K1 a K3), exceto T20. As respostas do PO (D-PO-B01 a D-PO-B03) foram confirmadas pelo usuário (repasse da orchestrator).
 > Tamanho do acréscimo: grande
 > Criado em: 2026-11-20
 
@@ -681,7 +681,7 @@ O usuário respondeu D-U-04, D-U-05 e D-U-06. Este acréscimo faz duas coisas:
 O texto aprovado acima não é editado. Para este acréscimo vale o seguinte:
 
 - O bullet "Qualquer mudança na API de Conteúdo ou no bot" de "Fora do escopo" deixa de valer para o que está descrito aqui. Continua valendo para o resto da tela: não existe "salvar tudo de uma vez" e as gravações seguem item a item (RN-06).
-- D-U-04, D-U-05 e D-U-06 ficam respondidas pelas decisões RN-B01 a RN-B14 abaixo. As dúvidas que sobraram dessas respostas foram respondidas pelo PO e pelo usuário (ver "Decisões registradas"); a confirmação do usuário sobre as respostas do PO ainda está pendente.
+- D-U-04, D-U-05 e D-U-06 ficam respondidas pelas decisões RN-B01 a RN-B14 abaixo. As dúvidas que sobraram dessas respostas foram respondidas pelo PO e pelo usuário (ver "Decisões registradas"), e o usuário confirmou as respostas do PO.
 - CA-53, CA-56 e CA-61 ("depende de D-U-04") passam a ser verificados com o contrato novo: nenhum texto do bot é copiado no painel, sem exceção autorizada.
 - RN-27 (composição da prévia) continua. O item "Fora do escopo: ver D-U-05" passa a ser RN-B06 a RN-B08.
 - T20 passa a depender de B1 (contrato novo disponível) e, para a conferência final dos textos, de B2 e B3. Ajuste proposto para a T20 (o corpo original não é editado):
@@ -702,12 +702,12 @@ O texto aprovado acima não é editado. Para este acréscimo vale o seguinte:
 | RN-B05 | Lista da categoria na prévia, como o bot envia: cabeçalho "Escolha uma das perguntas abaixo:", botão "Ver perguntas", linhas com título curto e descrição curta, e as linhas de navegação "Voltar opções" e "Ver mais opções" quando houver outra página. A regra de Conteúdo fala em "Ver mais opções ›" e "Voltar"; vale o bot. | usuário (D-U-04) |
 | RN-B06 | Pergunta fora do escopo: o bot usa a resposta escrita pela equipe, e não mais "Esta dúvida está fora do escopo de atendimento do PROCON via WhatsApp.". | usuário (D-U-05) |
 | RN-B07 | Pergunta fora do escopo: o balão da resposta oficial traz a resposta escrita pela equipe, a base legal (quando houver), os documentos úteis (quando houver) e, no fim, o aviso de caráter não vinculante. Esse balão não traz "O que fazer agora:". Depois dele vem um balão separado com o encaminhamento. Não há botões, não há IA, e a conversa termina como hoje (encerrada como fora do escopo). | usuário (D-U-05); product-owner (D-PO-B02); regra de Conteúdo, "Ver como o cidadão recebe", itens 3 e 4; decisão 008 |
-| RN-B08 | O balão de encaminhamento do fora do escopo traz só a frase "Como esta demanda não compete ao PROCON, dirija-se ao órgão indicado na orientação acima portando seus documentos e comprovantes para atendimento especializado.", sem botões. Essa frase não aparece em nenhum outro balão. | product-owner (D-PO-B01); confirmação do usuário pendente |
-| RN-B09 | O bot envia ao cidadão a observação sobre o atendimento presencial, quando a pergunta exige atendimento presencial e a observação está preenchida. Ela aparece no balão da resposta oficial, logo depois da linha fixa "Esta situação pode exigir atendimento presencial no PROCON Jacareí para andamento formal.", com o rótulo "Sobre o atendimento presencial:" seguido do texto da observação. Com IA, aparece no mesmo ponto do balão com IA. Não é repetida no balão da oferta de agendamento. A prévia mostra a observação onde o bot a envia. | usuário (D-U-06); product-owner (D-PO-B03); confirmação do usuário pendente |
+| RN-B08 | O balão de encaminhamento do fora do escopo traz só a frase "Como esta demanda não compete ao PROCON, dirija-se ao órgão indicado na orientação acima portando seus documentos e comprovantes para atendimento especializado.", sem botões. Essa frase não aparece em nenhum outro balão. | product-owner (D-PO-B01); confirmado pelo usuário |
+| RN-B09 | O bot envia ao cidadão a observação sobre o atendimento presencial, quando a pergunta exige atendimento presencial e a observação está preenchida. Ela aparece no balão da resposta oficial, logo depois da linha fixa "Esta situação pode exigir atendimento presencial no PROCON Jacareí para andamento formal.", numa linha só, no formato "Sobre o atendimento presencial: <observação>". Com IA, aparece no mesmo ponto do balão com IA. Não é repetida no balão da oferta de agendamento. A prévia mostra a observação onde o bot a envia. | usuário (D-U-06); product-owner (D-PO-B03); formato confirmado pelo usuário |
 | RN-B10 | Observação vazia, só com espaços ou de pergunta que não exige atendimento presencial: nada é acrescentado, nem linha em branco. | usuário (D-U-06); regra de Conteúdo (a observação só existe com "Exige atendimento presencial") |
 | RN-B11 | A observação presencial não é enviada à IA, e a conferência de números do texto da IA continua igual. A regra de IA não muda. | usuário (escopo: não mudar regra de IA); product-owner (D-PO-B03) |
 | RN-B12 | O balão com IA tem um limite de tamanho no WhatsApp (1.024 caracteres no corpo de uma mensagem com botões). Se o texto ficar maior, o bot já manda a resposta oficial no lugar, e isso continua igual. Como a observação entra no balão com IA, essa troca vai acontecer mais vezes nas perguntas presenciais com observação longa; é uma consequência esperada. | bot real; decisão 009; product-owner (D-PO-B03) |
-| RN-B13 | Os campos antigos da resposta da prévia (balão da resposta e balão do passo seguinte no formato antigo, e o que só existe por causa deles) são removidos nesta mesma issue, depois de a tela passar a usar só as mensagens do bot (T20). | usuário (D-U-B01) |
+| RN-B13 | Os campos antigos da resposta da prévia são removidos nesta mesma issue, depois de a tela passar a usar só as mensagens do bot (T20): o balão da resposta e o balão do passo seguinte no formato antigo (e o que só existe por causa deles), a lista antiga da categoria e o aviso fixo solto, desde que a T20 confirme que não os usa. O alerta de resposta longa continua na resposta da prévia. | usuário (D-U-B01, D-U-B03) |
 | RN-B14 | Pergunta numa categoria ainda não salva (RN-28): a prévia continua mostrando só a lista montada com o rascunho, sem os rótulos do bot (cabeçalho, botão "Ver perguntas", "Voltar opções", "Ver mais opções"). | usuário (D-U-B02) |
 
 ### Critérios de aceite do acréscimo
@@ -725,7 +725,7 @@ Prévia igual ao bot
 - CA-B09 QUANDO a mesma pergunta gravada é passada pelo caminho do bot (motor de decisão e formatador) e pela prévia da API ENTÃO as mensagens oficiais e o balão com IA (com o mesmo texto de IA) DEVEM ser idênticos, nos quatro casos: comum, presencial com observação, presencial sem observação e fora do escopo. Esse teste é o que impede prévia e bot de se separarem de novo. (RN-B01, RN-B02)
 - CA-B10 QUANDO o código da prévia é conferido ENTÃO não DEVEM existir nele textos próprios de balão do bot: os antigos "Para este caso é necessário atendimento presencial no PROCON Jacareí.", "Deseja agendar um horário?", "A sua dúvida foi resolvida?", "Agendar atendimento" e "Esta dúvida não faz parte do atendimento do PROCON Jacareí. Procure o órgão indicado acima." somem. Só o texto de exemplo da IA continua, porque não é texto do bot (RN-25). (RN-B02)
 - CA-B11 QUANDO, antes de B6, a prévia é pedida com os campos de antes (sem a ordem do rascunho) ENTÃO a resposta DEVE continuar trazendo todos os campos antigos com o mesmo formato, preenchidos a partir das mensagens do bot, para que o painel continue funcionando até a T20. (RN-B01)
-- CA-B24 QUANDO a B6 termina ENTÃO a resposta da prévia não DEVE trazer mais os campos antigos removidos, o painel não DEVE ter mais os tipos antigos, e a prévia na tela DEVE continuar igual à da T20. (RN-B13)
+- CA-B24 QUANDO a B6 termina ENTÃO a resposta da prévia DEVE trazer só `botMessages` e o alerta de resposta longa (sinal e mensagem), sem a lista antiga, o aviso fixo solto, o balão da resposta e o balão do passo seguinte antigos; o painel não DEVE ter mais os tipos antigos; e a prévia na tela DEVE continuar igual à da T20. (RN-B13)
 - CA-B12 QUANDO a prévia é pedida ENTÃO nada DEVE ser gravado, e as validações e mensagens de erro que já existem (categoria não encontrada, campos inválidos, sem permissão) DEVEM continuar iguais. (RN-25)
 
 Bot: fora do escopo
@@ -778,7 +778,7 @@ O que funcionava continua funcionando
 - A prévia monta, a partir dos dados do formulário, a mesma estrutura de resposta que o motor de decisão monta a partir da pergunta gravada (categoria, pergunta, base legal, resposta, documentos, presencial, fora do escopo e, a partir de B0, observação presencial). O teste de CA-B09 garante que as duas montagens dão o mesmo resultado.
 - A prévia não precisa mexer no formatador: as funções e constantes de que ela precisa já são públicas. Por isso B1 não toca os arquivos de B2 e B3 e pode rodar ao mesmo tempo.
 - Fora do escopo (B2): a função de resposta oficial do formatador passa a devolver, para fora do escopo, o balão oficial (sem "O que fazer agora:") seguido de um balão de texto com a frase do encaminhamento, sem botões. A frase sai de "O que fazer agora:" e vira uma constante do formatador usada só no balão separado. O fluxo da conversa passa a usar essa função no ramo do fora do escopo, continua encerrando a conversa como fora do escopo e o texto numerado de apoio da resposta passa a ser os dois balões juntos. O motor de decisão deixa de trocar a resposta e passa a buscar os documentos também no fora do escopo, sem mudar a consulta ao banco.
-- Observação presencial (B3): entra como campo opcional na estrutura de resposta, preenchido pelo motor só quando a pergunta é presencial e a observação não está em branco; quando não há observação, o campo fica ausente, para que as respostas de hoje continuem idênticas. O formatador a coloca logo depois da linha fixa de atendimento presencial, como "Sobre o atendimento presencial: <observação>", tanto na resposta oficial quanto no bloco oficial do balão com IA, e não a coloca no balão da oferta. O cliente da IA tira esse campo dos dados que manda à IA (RN-B11). O formato numa linha só ("rótulo: texto", como "Base legal:") é a leitura da resposta do PO e entra na confirmação do usuário.
+- Observação presencial (B3): entra como campo opcional na estrutura de resposta, preenchido pelo motor só quando a pergunta é presencial e a observação não está em branco; quando não há observação, o campo fica ausente, para que as respostas de hoje continuem idênticas. O formatador a coloca logo depois da linha fixa de atendimento presencial, como "Sobre o atendimento presencial: <observação>", tanto na resposta oficial quanto no bloco oficial do balão com IA, e não a coloca no balão da oferta. O cliente da IA tira esse campo dos dados que manda à IA (RN-B11). O formato numa linha só ("rótulo: texto", como "Base legal:") foi confirmado pelo usuário.
 
 #### Contrato novo da resposta da prévia
 
@@ -921,7 +921,7 @@ Decisão (D-U-B01): manter os campos antigos, com o mesmo formato, até a T20 te
 | `nextStepBubble.inPersonNote` | igual a hoje | não |
 | `nextStepBubble.formattedText` | a versão numerada do bot (já é texto do bot) | não |
 
-Efeito no frontend: T1 e T15 seguem compilando e passando até a T20, porque os testes deles simulam a API. A T20 troca o consumo para `botMessages` e para de ler os campos antigos. Na B6, saem da API e do painel `answerBubble`, `nextStepBubble` e seus tipos (`PreviewAnswerBubble`, `PreviewNextStepBubble`, `PreviewNextStepType`), e o que só existia para preenchê-los. O campo antigo `categoryList` (`PreviewCategoryListSection`, `PreviewCategoryListRow`), `fixedDisclaimer` e `answerLengthWarning`/`answerLengthWarningMessage` não dependem desses dois; o que fazer com eles está em D-U-B03.
+Efeito no frontend: T1 e T15 seguem compilando e passando até a T20, porque os testes deles simulam a API. A T20 troca o consumo para `botMessages` e para de ler os campos antigos. Na B6, saem da API e do painel `answerBubble`, `nextStepBubble` e seus tipos (`PreviewAnswerBubble`, `PreviewNextStepBubble`, `PreviewNextStepType`), e o que só existia para preenchê-los; saem também o campo antigo `categoryList` (`PreviewCategoryListSection`, `PreviewCategoryListRow`) e `fixedDisclaimer`, desde que a T20 confirme que não os usa (D-U-B03). Ficam `answerLengthWarning` e `answerLengthWarningMessage`. Depois da B6, a resposta da prévia é `{ botMessages, answerLengthWarning, answerLengthWarningMessage }`.
 
 ### Plano de execução do acréscimo
 
@@ -935,8 +935,8 @@ Gates do backend (rodar a partir da raiz da worktree):
 Fases (o frontend T1 a T19 não depende de nenhuma delas e roda ao mesmo tempo):
 
 - Fase B1 (sequencial): B0
-- Fase B2 (paralelo, depois de B0): B1 [P] · B2 [P] (depois da confirmação do usuário sobre D-PO-B01 e D-PO-B02) · B5 [P] (redação; fecha depois da confirmação do usuário sobre D-PO-B01 a D-PO-B03)
-- Fase B3: B3 (depois da confirmação do usuário sobre D-PO-B03; pode rodar ao mesmo tempo que B1). B2 e B3 rodam em qualquer ordem, nunca ao mesmo tempo: vai primeiro a que for liberada antes
+- Fase B2 (paralelo, depois de B0): B1 [P] · B2 [P] · B5 [P]
+- Fase B3: B3 (pode rodar ao mesmo tempo que B1). B2 e B3 rodam em qualquer ordem, nunca ao mesmo tempo
 - Fase B4: B4 (depois de B1, B2 e B3)
 - Fase B5: T20 (Itadori) pode começar quando B1 estiver feita e fecha depois de B4
 - Fase B6: B6 (Todo, com a parte do painel feita pelo Itadori), depois de T20 e B4
@@ -983,33 +983,31 @@ Regras para todas as tarefas do acréscimo: nunca escrever comentários; TDD (o 
 - O quê: o motor deixa de trocar a resposta do fora do escopo e passa a trazer os documentos; o formatador passa a devolver, no fora do escopo, o balão oficial e o balão de encaminhamento; o fluxo da conversa usa essa saída e continua encerrando como fora do escopo.
 - Onde: `src/backend/services/motorDecisao.service.ts` (`processarPergunta`); `src/backend/services/messageFormatter.service.ts` (`formatarRespostaFinal` sem "O que fazer agora:" no fora do escopo, `textoProximosPassos` sem o ramo do fora do escopo, `mensagensRespostaOficial`, constante exportada com a frase do encaminhamento); `src/backend/services/conversationFlow.service.ts` (ramo fora do escopo de `processSelectedQuestion`); `src/backend/services/mock/conversationFlow.fixtures.ts` (`respostaForaEscopo`); testes `motorDecisao.service.test.ts`, `messageFormatter.service.test.ts`, `conversationFlow.service.test.ts`.
 - Dev: Todo (dev-backend)
-- Depende de: B0; confirmação do usuário sobre D-PO-B01 e D-PO-B02
+- Depende de: B0; B3 antes ou depois, nunca ao mesmo tempo (mesmos arquivos)
 - Reaproveita: `formatarRespostaFinal`, `mensagensRespostaOficial`, `getDocumentosPorPergunta` do repositório (a consulta não muda), `finishOrLog` com `OUT_OF_SCOPE`.
 - Atende: RN-B06, RN-B07, RN-B08, CA-B04 (lado do bot), CA-B13, CA-B14, CA-B15, CA-B16, CA-B22, CA-B25
 - Passos: (1) testes: motor devolve a resposta e os documentos da equipe no fora do escopo; balão oficial sem "O que fazer agora:" e sem a frase do encaminhamento; segundo balão só com a frase do encaminhamento, sem botões; fluxo envia os dois balões, encerra com `OUT_OF_SCOPE` e IA "NOT_CALLED"; pergunta comum e presencial continuam iguais; (2) motor; (3) formatador; (4) fluxo e fixture; (5) gate completo backend e commit `Fix :bug: [#124] Envia a resposta da equipe e o encaminhamento separado no fora do escopo`.
 - Pronto quando: a frase "Esta dúvida está fora do escopo de atendimento do PROCON via WhatsApp." não existe mais no código; o fora do escopo sai em dois balões; o desfecho continua `OUT_OF_SCOPE`; gate completo backend passa.
 - Teste: unitário. Falha primeiro "motor devolve a resposta escrita pela equipe na pergunta fora do escopo".
-- Liberação: aguarda confirmação do usuário sobre D-PO-B01 e D-PO-B02.
 - Testes que mudam (comportamento): `motorDecisao.service.test.ts` (o caso que espera a frase trocada e os documentos vazios); `conversationFlow.service.test.ts` (o caso "pergunta fora do escopo encerra com OUT_OF_SCOPE" passa a conferir dois balões; o encerramento continua igual); `messageFormatter.service.test.ts` (casos de fora do escopo em `formatarRespostaFinal`/"O que fazer agora", que deixa de aparecer no fora do escopo por D-PO-B02). Ficam intactos: `conversationFlow.llm.test.ts` (o encerramento `OUT_OF_SCOPE` não muda), `llmExplicacao.service.test.ts`, `conversationFlow.fullFlow.test.ts`, `conversationFlow.pending.test.ts`, `conversationFlow.delivery.test.ts`, os testes de agendamento, retorno e pausa, e `motorDecisao.integration.test.ts`.
 - Gate: rápido e completo backend
 - Modelo: padrao
-- Status: pendente — aguarda confirmação do usuário sobre D-PO-B01 e D-PO-B02
+- Status: pendente
 
 #### B3 Bot: enviar a observação presencial
 - O quê: o motor passa a preencher a observação presencial quando a pergunta é presencial e a observação não está em branco; o formatador a coloca como "Sobre o atendimento presencial: <observação>" logo depois da linha fixa de atendimento presencial, na resposta oficial e no balão com IA, e não no balão da oferta; o cliente da IA não a envia à IA.
 - Onde: `src/backend/services/motorDecisao.service.ts`; `src/backend/services/messageFormatter.service.ts` (`formatarRespostaFinal`, `blocoOficialIa`, constante exportada com o rótulo); `src/backend/clients/ollamaLlm.client.ts` (dados do prompt sem o campo); testes `motorDecisao.service.test.ts`, `messageFormatter.service.test.ts`, `messageFormatter.ia.test.ts`, `ollamaLlm.client.test.ts`, `llmAnswer.service.test.ts`, `conversationFlow.pending.test.ts`.
 - Dev: Todo (dev-backend)
-- Depende de: B0; confirmação do usuário sobre D-PO-B03; B2 antes ou depois, nunca ao mesmo tempo (mesmos arquivos)
+- Depende de: B0; B2 antes ou depois, nunca ao mesmo tempo (mesmos arquivos)
 - Reaproveita: `in_person_note` que o repositório do motor já lê (`SELECT *`); `LIMITE_CORPO_BOTOES` e o retorno à resposta oficial já existentes no serviço de IA; `officialAnswerReply` e `recoverMissingAnswer` (passam a trazer a observação sem mudança no fluxo).
 - Atende: RN-B09 a RN-B12, CA-B17 a CA-B23, CA-B26
 - Passos: (1) testes: motor preenche a observação só em pergunta presencial com texto, e deixa o campo ausente nos outros casos; formatador mostra "Sobre o atendimento presencial: <observação>" logo depois da linha fixa, na resposta oficial e no balão com IA, sem nada quando ela está vazia; balão da oferta igual ao de hoje; balão com IA com observação e retorno à resposta oficial quando passa de 1.024; prompt da IA sem a observação; resposta recuperada traz a observação; (2) motor; (3) formatador; (4) cliente da IA; (5) gate completo backend e commit `Fix :bug: [#124] Envia ao cidadão a observação sobre o atendimento presencial`.
 - Pronto quando: os casos acima passam; sem observação, todas as mensagens são idênticas às de antes; gate completo backend passa.
 - Teste: unitário. Falha primeiro "pergunta presencial com observação mostra 'Sobre o atendimento presencial:' logo depois da linha de atendimento presencial na resposta oficial".
-- Liberação: aguarda confirmação do usuário sobre D-PO-B03.
 - Testes que mudam: nenhum por mudança de comportamento, porque sem observação tudo continua igual; os arquivos listados só ganham casos. Se algum caso existente de `motorDecisao.service.test.ts` comparar o objeto inteiro de uma pergunta presencial com observação no repositório simulado, ele muda por comportamento e deve ser citado no commit. Ficam intactos: `conversationFlow.fullFlow.test.ts`, os testes de agendamento, `llmExplicacao.service.test.ts`.
 - Gate: rápido e completo backend
 - Modelo: padrao
-- Status: pendente — aguarda confirmação do usuário sobre D-PO-B03
+- Status: pendente
 
 #### B4 Testes de rota, integração e "prévia igual ao bot"
 - O quê: teste que passa a mesma pergunta pelo motor do bot e pela prévia e exige mensagens idênticas, mais os testes de rota e de integração da prévia com o contrato novo.
@@ -1030,7 +1028,7 @@ Regras para todas as tarefas do acréscimo: nunca escrever comentários; TDD (o 
 - O quê: registrar na documentação que a prévia mostra exatamente o que o bot envia, o fora do escopo com a resposta da equipe e balão separado, e a observação presencial enviada ao cidadão.
 - Onde: `.docs/regras/06-conteudo.md` (remover o parágrafo "Pendente (alinhamento da prévia com o bot…)" e ajustar "Ver como o cidadão recebe": rótulos da lista do bot, item 4 do fora do escopo, observação presencial); `.docs/decisoes/008-fluxo-da-conversa-e-desfechos.md` e `.docs/sprints/sprint2/fluxo-conversa.md` (fora do escopo); `.docs/llm/contrato.md` e `.docs/llm/modelo.md` só se citarem a mensagem trocada ou os dados enviados à IA; `src/backend/README.md` (linha da prévia de Conteúdo e o que ela reaproveita do formatador); memória do time só se a orchestrator pedir a outro agente (o Kusakabe não grava nela sem pedido).
 - Dev: Kusakabe (dev-doc)
-- Depende de: aprovação do acréscimo; para fechar, confirmação do usuário sobre D-PO-B01 a D-PO-B03
+- Depende de: aprovação do acréscimo; para conferir os textos com o código, B2 e B3
 - Reaproveita: texto atual das regras, decisões e README.
 - Atende: RN-B01 a RN-B12
 - Passos: (1) ler o acréscimo aprovado e as respostas; (2) regra de Conteúdo; (3) decisão 008, fluxo da conversa e docs de IA, se citarem; (4) README do backend e gate doc; (5) commit `Docs :bulb: [#124] Registra a prévia igual ao bot e as correções do fora do escopo e da observação presencial`.
@@ -1038,20 +1036,20 @@ Regras para todas as tarefas do acréscimo: nunca escrever comentários; TDD (o 
 - Teste: nenhum.
 - Gate: doc
 - Modelo: economico
-- Status: pendente
+- Status: feita. Evidência: gate doc ok, sem "Pendente" sobre a prévia na regra de Conteúdo, links conferidos; texto escrito conforme as decisões do usuário e RN-B01 a RN-B12; conferência dos textos contra o código fica para depois de B2 e B3 (hoje só B0 e B1 existem no código)
 
 #### B6 Remover os campos antigos da prévia
-- O quê: tirar da resposta da prévia e do painel os campos antigos `answerBubble` e `nextStepBubble`, seus tipos e o que só existia para preenchê-los, depois de a tela passar a usar só `botMessages`.
-- Onde: API (Todo): `src/backend/types/content.types.ts` (`PreviewAnswerBubble`, `PreviewNextStepBubble`, `PreviewNextStepType` e os dois campos em `QuestionPreviewResult`); `src/backend/services/contentRules.ts` (preenchimento dos campos antigos e imports que só serviam a eles, como `OFERTA_AGENDAMENTO` e `PERGUNTA_RESOLVIDA`); testes `src/backend/services/contentRules.test.ts`, `src/backend/services/content.service.test.ts`, `src/backend/routes/content.routes.test.ts`, `src/backend/tests/integration/content.integration.test.ts`; `src/backend/README.md` (linha da prévia). Painel (Itadori, combinado com o Todo): os tipos antigos da prévia em `src/frontend/src/types/content/` e qualquer uso restante em `src/frontend/src/utils/content/` e nos testes.
+- O quê: tirar da resposta da prévia e do painel os campos antigos `answerBubble`, `nextStepBubble`, `categoryList` e `fixedDisclaimer`, seus tipos e o que só existia para preenchê-los, depois de a tela passar a usar só `botMessages`; `answerLengthWarning` e `answerLengthWarningMessage` ficam.
+- Onde: API (Todo): `src/backend/types/content.types.ts` (`PreviewAnswerBubble`, `PreviewNextStepBubble`, `PreviewNextStepType`, `PreviewCategoryListSection`, `PreviewCategoryListRow` e os quatro campos em `QuestionPreviewResult`); `src/backend/services/contentRules.ts` (preenchimento dos campos antigos e imports que só serviam a eles, como `OFERTA_AGENDAMENTO` e `PERGUNTA_RESOLVIDA`); testes `src/backend/services/contentRules.test.ts`, `src/backend/services/content.service.test.ts`, `src/backend/routes/content.routes.test.ts`, `src/backend/tests/integration/content.integration.test.ts`; `src/backend/README.md` (linha da prévia). Painel (Itadori, combinado com o Todo): os tipos antigos da prévia em `src/frontend/src/types/content/` e qualquer uso restante em `src/frontend/src/utils/content/` e nos testes.
 - Dev: Todo (dev-backend), com a parte do painel feita pelo Itadori (dev-frontend)
 - Depende de: T20 feita; B4
 - Reaproveita: `botMessages` de B1; o consumo novo da T20.
 - Atende: RN-B13, CA-B24
-- Passos: (1) nos testes da API, trocar as conferências dos campos antigos pelas de `botMessages` e acrescentar a conferência de que os campos removidos não vêm mais; (2) remover tipos e preenchimento na API e atualizar o README do backend; (3) Itadori remove os tipos antigos do painel e confirma que nada mais os usa; (4) gate completo backend, gate integração backend e gate completo frontend; (5) commits atômicos `Refactor :recycle: [#124] Remove os campos antigos da prévia do Conteúdo na API` (Todo) e `Refactor :recycle: [#124] Remove os tipos antigos da prévia do Conteúdo no painel` (Itadori).
-- Pronto quando: a resposta da prévia não tem `answerBubble` nem `nextStepBubble`; nenhum código da API ou do painel cita os tipos removidos; a prévia na tela continua igual à da T20; gates passam.
-- Teste: unitário, rota e integração. Falha primeiro "a resposta da prévia não traz answerBubble nem nextStepBubble".
-- Testes que mudam (comportamento, por D-U-B01): os casos de `contentRules.test.ts`, `content.service.test.ts` (tipo "resolution" de `nextStepBubble`), `content.routes.test.ts` (`nextStepBubble.type`) e `content.integration.test.ts` (`nextStepBubble.type` e `nextStepBubble.inPersonNote`) que conferem os campos removidos passam a conferir o mesmo pelo `botMessages`. No painel, os testes que ainda usarem os tipos antigos.
-- Gate: completo backend, integração backend e completo frontend (`cd src/frontend && npm run lint && npm run typecheck && npm run test:run`)
+- Passos: (1) Itadori confirma que a T20 não usa `categoryList` nem `fixedDisclaimer` (se usar, esses dois ficam e o motivo vai no Status); nos testes da API, trocar as conferências dos campos antigos pelas de `botMessages` e acrescentar a conferência de que os campos removidos não vêm mais e o alerta de tamanho continua; (2) remover tipos e preenchimento na API e atualizar o README do backend; (3) Itadori remove os tipos antigos do painel e confirma que nada mais os usa; (4) gate completo backend, gate integração backend e gate completo frontend; (5) commits atômicos `Refactor :recycle: [#124] Remove os campos antigos da prévia do Conteúdo na API` (Todo) e `Refactor :recycle: [#124] Remove os tipos antigos da prévia do Conteúdo no painel` (Itadori).
+- Pronto quando: a resposta da prévia é `{ botMessages, answerLengthWarning, answerLengthWarningMessage }`, sem `answerBubble`, `nextStepBubble`, `categoryList` e `fixedDisclaimer`; nenhum código da API ou do painel cita os tipos removidos; a prévia na tela continua igual à da T20; gates passam.
+- Teste: unitário, rota e integração. Falha primeiro "a resposta da prévia traz só botMessages e o alerta de tamanho".
+- Testes que mudam (comportamento, por D-U-B01 e D-U-B03): os casos de `contentRules.test.ts` (inclusive os da lista antiga e do aviso fixo), `content.service.test.ts` (tipo "resolution" de `nextStepBubble`), `content.routes.test.ts` (`nextStepBubble.type`) e `content.integration.test.ts` (`nextStepBubble.type` e `nextStepBubble.inPersonNote`) que conferem os campos removidos passam a conferir o mesmo pelo `botMessages`. No painel, os testes que ainda usarem os tipos antigos.
+- Gate: completo backend (`cd src/backend && npm run lint && npm run build && npm run typecheck:test && npm test`), integração backend (banco separado, `npm run db:migrate && npm run test:integration`) e completo frontend (`cd src/frontend && npm run lint && npm run typecheck && npm run test:run`)
 - Modelo: economico
 - Status: pendente
 
@@ -1059,7 +1057,7 @@ Regras para todas as tarefas do acréscimo: nunca escrever comentários; TDD (o 
 
 - Mudam por comportamento (justificado por D-U-05): `motorDecisao.service.test.ts` (caso fora do escopo), `conversationFlow.service.test.ts` (caso fora do escopo passa a ter dois balões), `messageFormatter.service.test.ts` (casos de fora do escopo, conforme D-PO-B02).
 - Mudam por comportamento (justificado por D-U-04): `contentRules.test.ts` (textos próprios da prévia).
-- Mudam por comportamento na B6 (justificado por D-U-B01): as conferências de `answerBubble` e `nextStepBubble` em `contentRules.test.ts`, `content.service.test.ts`, `content.routes.test.ts` e `content.integration.test.ts`.
+- Mudam por comportamento na B6 (justificado por D-U-B01 e D-U-B03): as conferências de `answerBubble`, `nextStepBubble`, `categoryList` e `fixedDisclaimer` em `contentRules.test.ts`, `content.service.test.ts`, `content.routes.test.ts` e `content.integration.test.ts`.
 - Só ganham casos: `messageFormatter.ia.test.ts`, `ollamaLlm.client.test.ts`, `llmAnswer.service.test.ts`, `conversationFlow.pending.test.ts`, `content.schema.test.ts`, `content.routes.test.ts`, `content.integration.test.ts`.
 - Intactos: `conversationFlow.llm.test.ts`, `conversationFlow.fullFlow.test.ts`, `conversationFlow.delivery.test.ts`, `conversationFlow.scheduling.test.ts`, `conversationFlow.reschedule.test.ts`, `conversationFlow.return.test.ts`, `conversationFlow.paused.test.ts`, `conversationFlow.avisosConfirmacao.test.ts`, `messageFormatter.confirmacao*.test.ts`, `llmExplicacao.service.test.ts`, `content.controller.test.ts`, `motorDecisao.integration.test.ts`, `conversationEvents.integration.test.ts`.
 
@@ -1069,19 +1067,19 @@ Regras para todas as tarefas do acréscimo: nunca escrever comentários; TDD (o 
 - Texto de exemplo da IA na prévia: continua o da API, porque RN-25 já diz que a prévia usa texto de exemplo e ele não é texto do bot.
 - Documentos úteis no fora do escopo: aparecem no balão oficial, porque a regra de Conteúdo ("Ver como o cidadão recebe", item 3) lista documentos úteis no balão oficial também para as perguntas fora do escopo.
 - Texto numerado de apoio: o bloco novo `botMessages` não traz versão numerada; os campos antigos que a trazem saem na B6. No bot, o texto numerado de apoio da resposta continua existindo e, no fora do escopo, junta os dois balões.
-- D-PO-B01 (respondida pelo PO; confirmação do usuário pendente): o balão separado de encaminhamento traz a frase atual do bot, "Como esta demanda não compete ao PROCON, dirija-se ao órgão indicado na orientação acima portando seus documentos e comprovantes para atendimento especializado.", sem botões. Vira RN-B08.
-- D-PO-B02 (respondida pelo PO; confirmação do usuário pendente): o balão oficial do fora do escopo não traz "O que fazer agora:"; traz a resposta da equipe, a base legal, os documentos se houver e o aviso no fim. Vira RN-B07.
-- D-PO-B03 (respondida pelo PO; confirmação do usuário pendente): a observação vai no balão oficial da pergunta presencial, logo depois da linha fixa "Esta situação pode exigir atendimento presencial no PROCON Jacareí para andamento formal.", com o rótulo "Sobre o atendimento presencial:"; também no balão com IA; não é repetida na oferta; não é enviada à IA. Vira RN-B09, RN-B11 e RN-B12.
+- D-PO-B01 (respondida pelo PO e confirmada pelo usuário): o balão separado de encaminhamento traz a frase atual do bot, "Como esta demanda não compete ao PROCON, dirija-se ao órgão indicado na orientação acima portando seus documentos e comprovantes para atendimento especializado.", sem botões. Vira RN-B08.
+- D-PO-B02 (respondida pelo PO e confirmada pelo usuário): o balão oficial do fora do escopo não traz "O que fazer agora:"; traz a resposta da equipe, a base legal, os documentos se houver e o aviso no fim. Vira RN-B07.
+- D-PO-B03 (respondida pelo PO e confirmada pelo usuário): a observação vai no balão oficial da pergunta presencial, logo depois da linha fixa "Esta situação pode exigir atendimento presencial no PROCON Jacareí para andamento formal.", numa linha só, no formato "Sobre o atendimento presencial: <observação>" (formato confirmado pelo usuário); também no balão com IA; não é repetida na oferta; não é enviada à IA. Vira RN-B09, RN-B11 e RN-B12.
 - D-U-B01 (decidida pelo usuário): os campos antigos da prévia são removidos nesta mesma issue, na B6, depois da T20. Vira RN-B13.
 - D-U-B02 (decidida pelo usuário): pergunta em categoria ainda não salva continua sem os rótulos do bot. Vira RN-B14.
+- D-U-B03 (decidida pelo usuário): na B6 saem também `categoryList` e `fixedDisclaimer`, se a T20 não os usar (a T20 confirma); `answerLengthWarning` e `answerLengthWarningMessage` ficam. Vira parte de RN-B13 e CA-B24.
 
 ### Dúvidas do acréscimo
 
 #### Para o product-owner
 
-Nenhuma. As respostas de D-PO-B01 a D-PO-B03 aguardam só a confirmação do usuário.
+Nenhuma.
 
 #### Para o usuário
 
-- Confirmar as respostas do PO de D-PO-B01 a D-PO-B03 (libera B2, B3 e o fechamento da B5). Junto, confirmar o formato da observação numa linha só, "Sobre o atendimento presencial: <observação>", como as linhas "Base legal:" do mesmo balão.
-- D-U-B03 Na B6, além de `answerBubble` e `nextStepBubble`, também saem os campos antigos que não dependem deles e ficaram sem uso depois da T20: a lista antiga `categoryList` (substituída por `botMessages.categoryList`), `fixedDisclaimer` (o aviso já vem nas mensagens do bot) e `answerLengthWarning`/`answerLengthWarningMessage` (a tela calcula o alerta sozinha)? Recomendação: remover `categoryList` e `fixedDisclaimer` se a T20 confirmar que não os usa, e manter o alerta de tamanho, que é barato e pode servir a outros clientes da API.
+Nenhuma.

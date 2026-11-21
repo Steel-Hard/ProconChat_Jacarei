@@ -152,7 +152,7 @@ describe("contentApi", () => {
 
     it("pede a prévia em POST /questions/preview", async () => {
         const { contentApi, store, fetchMock } = await setup(() =>
-            jsonResponse({ data: { fixedDisclaimer: "x" } })
+            jsonResponse({ data: { botMessages: { aiMessage: null } } })
         )
         const args = {
             categoryId: 1,
@@ -165,16 +165,20 @@ describe("contentApi", () => {
             requiresInPerson: false,
             inPersonNote: null,
             outOfScope: false,
-            llmAllowed: true
+            llmAllowed: true,
+            listRows: [
+                { questionId: null, shortTitle: "Troca", shortDescription: null, isCurrent: true }
+            ]
         }
 
         const result = await store.dispatch(
             contentApi.endpoints.previewContentQuestion.initiate(args)
         )
 
-        expect(result.data).toEqual({ fixedDisclaimer: "x" })
+        expect(result.data).toEqual({ botMessages: { aiMessage: null } })
         expect(requestAt(fetchMock, 0).method).toBe("POST")
         expect(requestAt(fetchMock, 0).url).toBe(`${BASE}/questions/preview`)
+        expect((await requestAt(fetchMock, 0).json()).listRows).toEqual(args.listRows)
     })
 
     it("carrega o retrato com uma chamada de categorias e uma de perguntas por categoria", async () => {

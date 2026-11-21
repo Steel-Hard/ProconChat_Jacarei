@@ -1,9 +1,9 @@
 import { useTranslation } from "react-i18next"
-import type ContentPreviewListSection from "@/types/content/ContentPreviewListSection.types"
+import type ContentPreviewListModel from "@/types/content/ContentPreviewListModel.types"
 import css from "@/styles/components/contentPreview.module.css"
 
 type ContentPreviewListProps = {
-    list: ContentPreviewListSection
+    list: ContentPreviewListModel
 }
 
 function ContentPreviewList({ list }: ContentPreviewListProps) {
@@ -11,23 +11,28 @@ function ContentPreviewList({ list }: ContentPreviewListProps) {
 
     return (
         <div className={css.list}>
-            <p className={css.listHeader}>{list.categoryShortTitle}</p>
-            {list.rows.map((row, index) => (
+            {list.text !== null ? <p className={css.listHeader}>{list.text}</p> : null}
+            {list.rows.map((row) => (
                 <div
-                    key={row.id ?? `row-${index}`}
+                    key={row.key}
                     className={
                         row.isCurrent ? `${css.listItem} ${css.listItemCurrent}` : css.listItem
                     }
                     aria-current={row.isCurrent ? "true" : undefined}
                 >
                     <span className={css.listItemTitle}>
-                        {row.isCurrent ? <strong>{row.shortTitle}</strong> : row.shortTitle}
+                        {row.isCurrent ? <strong>{row.title}</strong> : row.title}
                     </span>
-                    {row.shortDescription ? (
-                        <span className={css.listItemDescription}>{row.shortDescription}</span>
+                    {row.description ? (
+                        <span className={css.listItemDescription}>{row.description}</span>
                     ) : null}
                 </div>
             ))}
+            {list.buttonText !== null ? (
+                <div className={css.listNav}>
+                    <span className={css.listButton}>{list.buttonText}</span>
+                </div>
+            ) : null}
             {list.hasMoreOptions ? (
                 <div className={css.listNav}>
                     <span className={css.listButton}>{t("preview.moreOptions")}</span>

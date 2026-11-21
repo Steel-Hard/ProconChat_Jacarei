@@ -1,9 +1,8 @@
 import type ContentPreviewBubbleModel from "@/types/content/ContentPreviewBubbleModel.types"
-import type ContentPreviewListSection from "@/types/content/ContentPreviewListSection.types"
+import type ContentPreviewListModel from "@/types/content/ContentPreviewListModel.types"
 
 type ContentPreviewModel = {
-    list: ContentPreviewListSection
-    notice: string | null
+    list: ContentPreviewListModel
     primaryBubbles: ContentPreviewBubbleModel[]
     fallbackBubbles: ContentPreviewBubbleModel[]
 }
