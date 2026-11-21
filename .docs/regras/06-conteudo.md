@@ -91,7 +91,7 @@ A tela mostra essa informação e marca, com um separador **"Página N no WhatsA
 | Resposta | Obrigatória, **até 3.000 caracteres**, com contador. **A partir de 1.000**, alerta: "Respostas longas ficam difíceis de ler no celular", que não impede salvar |
 | Base legal | Opcional, até 500 caracteres. Ex.: "CDC, art. 49" |
 | Documentos úteis para esta dúvida | Lista opcional de até 30 itens, cada um obrigatório e de até 255 caracteres. São somados à lista de documentos do agendamento. Um documento repetido na mesma pergunta (sem diferenciar acentos nem maiúsculas) mostra o aviso "Este documento já está na lista." e **não impede salvar** |
-| Exige atendimento presencial | O chatbot **oferece agendamento direto**, sem perguntar se a dúvida foi resolvida. Tem uma observação opcional sobre o atendimento presencial (até 500 caracteres), que só existe com a opção marcada e é descartada se ela for desmarcada |
+| Exige atendimento presencial | O chatbot **oferece agendamento direto**, sem perguntar se a dúvida foi resolvida. Tem uma observação opcional sobre o atendimento presencial (até 500 caracteres), que o cidadão recebe na resposta, só existe com a opção marcada e é descartada se ela for desmarcada |
 | Fora do escopo do PROCON | A resposta orienta a procurar outro órgão. **Nunca oferece agendamento** |
 | Permitir complemento por IA nesta pergunta | Ligada por padrão. Desligada: o chatbot envia só o texto oficial |
 | Pergunta ativa no chatbot | Convive com "Ativar/Desativar" da lista e mexe no mesmo valor. No formulário, a mudança só vale quando o formulário é confirmado |
@@ -103,19 +103,20 @@ Regras entre os campos:
 
 ### "Ver como o cidadão recebe"
 
-Prévia no estilo WhatsApp, com o que está no formulário, **mesmo antes de salvar**. Não grava nada e não gera IA de verdade (usa texto de exemplo). Os textos, rótulos e botões da prévia são os que o bot envia e chegam pela API; o painel não escreve nem inventa esses textos.
+Prévia no estilo WhatsApp, com o que está no formulário, **mesmo antes de salvar**. Não grava nada e não gera IA de verdade (usa texto de exemplo). **Os textos, botões e a ordem dos balões são exatamente os que o bot envia**, montados pelo mesmo código que monta as mensagens do bot. O painel não guarda cópia desses textos.
 
-1. A **lista da categoria**, com a pergunta editada em negrito e a navegação de página quando houver paginação.
-2. **Com "Permitir complemento por IA" ligada, um balão único** com a explicação escrita pela IA (exemplo), a base legal, os documentos, "O que fazer agora", o aviso de caráter não vinculante, a pergunta do passo seguinte com os botões e o rótulo "Gerado com auxílio de IA" no rodapé desse balão ([decisão 009](../decisoes/009-complemento-por-llm.md), item 6). Com a IA ligada, a prévia mostra também a alternativa **"Se a IA estiver indisponível"**, com os balões 3 e 4.
-3. **Com a opção desligada, nas perguntas dentro do escopo, o balão da resposta oficial**, com os mesmos blocos que o bot envia: Categoria, Pergunta, Base legal, Resposta, Documentos necessários, "O que fazer agora", a linha de atendimento presencial quando houver e, **no fim do mesmo balão, o aviso de caráter não vinculante**. É também o que o cidadão recebe quando a IA não pode ser usada. Perguntas fora do escopo: pendente (D-U-05).
+1. A **lista da categoria**, como o bot envia: cabeçalho "Escolha uma das perguntas abaixo:", botão "Ver perguntas", linhas com título curto e descrição curta, com a pergunta editada em negrito, e as linhas "Voltar opções" e "Ver mais opções" quando houver outra página.
+2. **Com "Permitir complemento por IA" ligada, um balão único** com a explicação escrita pela IA (texto de exemplo), a base legal, os documentos, "O que fazer agora", a linha de atendimento presencial quando houver, o aviso de caráter não vinculante, a pergunta do passo seguinte com os botões e o rótulo "Gerado com auxílio de IA" no rodapé desse balão ([decisão 009](../decisoes/009-complemento-por-llm.md), item 6). Com a IA ligada, a prévia mostra também a alternativa **"Se a IA estiver indisponível"**, com os balões 3 e 4.
+3. **Com a opção desligada, o balão da resposta oficial**, com os mesmos blocos que o bot envia: Categoria, Pergunta, Base legal, Resposta, Documentos necessários, "O que fazer agora", a linha de atendimento presencial quando houver e, **no fim do mesmo balão, o aviso de caráter não vinculante**. É também o que o cidadão recebe quando a IA não pode ser usada.
 4. **Depois do balão oficial, um balão separado** com o passo seguinte:
-   - a pergunta de se a dúvida foi resolvida (Sim/Não), para perguntas comuns;
-   - a oferta de agendamento, com os botões **"Agendar presencial"** (decisão do usuário, vale mesmo antes do alinhamento com o bot) e "Agora não", para as que exigem atendimento presencial;
-   - fora do escopo: pendente (D-U-05).
+   - perguntas comuns: "A dúvida foi resolvida?", com os botões "Sim" e "Não";
+   - perguntas que exigem atendimento presencial: "Deseja agendar um atendimento presencial no PROCON Jacareí?", com os botões "Agendar presencial" e "Agora não".
 
-Uma pergunta numa **categoria nova ainda não salva** mostra só a lista, com o aviso "Esta categoria ainda não foi salva. Salve para que o cidadão a veja." e "A prévia completa fica disponível depois de salvar".
+**Pergunta fora do escopo:** o balão oficial traz a resposta escrita pela equipe, a base legal e os documentos úteis (quando houver) e o aviso no fim, **sem "O que fazer agora:"**. Depois vem um balão separado, sem botões e sem oferta de agendamento, com a frase "Como esta demanda não compete ao PROCON, dirija-se ao órgão indicado na orientação acima portando seus documentos e comprovantes para atendimento especializado." Não usa IA.
 
-**Pendente (alinhamento da prévia com o bot, D-U-04, D-U-05 e D-U-06 da especificação da #124):** texto exato do balão com IA, textos do passo seguinte, rótulos de navegação da lista, tratamento das perguntas fora do escopo e se a observação sobre o atendimento presencial aparece ao cidadão. Até a decisão, vale o que a API devolve, exceto o botão "Agendar presencial", que já está decidido.
+**Observação sobre o atendimento presencial:** quando a pergunta exige atendimento presencial e a observação está preenchida, o cidadão a recebe no balão da resposta (oficial e com IA), logo depois da linha "Esta situação pode exigir atendimento presencial no PROCON Jacareí para andamento formal.", na forma "Sobre o atendimento presencial: [observação]". Não é repetida na oferta de agendamento e não é enviada à IA. Observação vazia não gera linha.
+
+Uma pergunta numa **categoria nova ainda não salva** mostra só a lista, com o aviso "Esta categoria ainda não foi salva. Salve para que o cidadão a veja." e "A prévia completa fica disponível depois de salvar". Nesse caso a lista sai do rascunho, sem os rótulos do bot (cabeçalho, botão e navegação).
 
 ## O que não existe de propósito
 
