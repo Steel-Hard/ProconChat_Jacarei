@@ -79,10 +79,15 @@
 
 .labelRow {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: space-between;
     align-items: baseline;
     gap: 4px 10px;
+}
+
+.labelRow .label {
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 .label {
@@ -99,6 +104,9 @@
 }
 
 .counter {
+    flex-shrink: 0;
+    margin-left: auto;
+    white-space: nowrap;
     font-size: 12px;
     font-variant-numeric: tabular-nums;
     color: var(--text-muted);
