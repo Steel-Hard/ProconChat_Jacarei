@@ -5,18 +5,18 @@ type ContentSavePlanStep =
     | { kind: "createCategory"; categoryKey: string; input: ContentCategoryInput }
     | {
           kind: "updateCategory"
-          categoryId: number
+          categoryKey: string
           input: ContentCategoryInput & { active: boolean }
       }
-    | { kind: "setCategoryActive"; categoryId: number; active: boolean }
+    | { kind: "setCategoryActive"; categoryKey: string; active: boolean }
     | {
           kind: "createQuestion"
           questionKey: string
           categoryKey: string
           input: ContentQuestionInput
       }
-    | { kind: "updateQuestion"; questionId: number; input: ContentQuestionInput }
-    | { kind: "setQuestionActive"; questionId: number; active: boolean }
+    | { kind: "updateQuestion"; questionKey: string; input: ContentQuestionInput }
+    | { kind: "setQuestionActive"; questionKey: string; active: boolean }
     | { kind: "reorderCategories"; categoryKeys: string[] }
     | { kind: "reorderQuestions"; categoryKey: string; questionKeys: string[] }
 
