@@ -3,15 +3,20 @@ import {
     AVISO_NAO_VINCULANTE,
     OFERTA_AGENDAMENTO,
     PERGUNTA_RESOLVIDA,
+    ROTULO_IA,
+    criarMensagensPerguntas,
+    formatarRespostaFinal,
+    mensagensRespostaOficial,
+    montarMensagemIa,
 } from "./messageFormatter.service"
 import {
-    AI_SAMPLE_LABEL,
+    AI_SAMPLE_TEXT,
     ANSWER_WARNING_MESSAGE,
-    OUT_OF_SCOPE_NOTICE,
     buildQuestionPreview,
     enrichCategoryList,
     enrichQuestionList,
 } from "./contentRules"
+import type { Pergunta } from "../types/motorDecisao.types"
 import { CategoryRecord, QuestionRecord } from "../types/content.types"
 
 function makeCategory(overrides: Partial<CategoryRecord> & { id: number }): CategoryRecord {
@@ -189,14 +194,14 @@ describe("contentRules", () => {
                 shortDescription: "Prazo de 30 dias",
                 isCurrent: true,
             })
-            expect(preview.answerBubble.aiSampleLabel).toBe(AI_SAMPLE_LABEL)
+            expect(preview.answerBubble.aiSampleLabel).toBe(ROTULO_IA)
             expect(preview.answerBubble.outOfScopeNotice).toBeNull()
             expect(preview.answerBubble.formattedText).toContain(AVISO_NAO_VINCULANTE)
             expect(preview.nextStepBubble).toEqual({
                 type: "resolution",
-                text: "A sua dúvida foi resolvida?",
+                text: "A dúvida foi resolvida?",
                 inPersonNote: null,
-                prompt: "A sua dúvida foi resolvida?",
+                prompt: "A dúvida foi resolvida?",
                 buttons: ["Sim", "Não"],
                 formattedText: PERGUNTA_RESOLVIDA,
             })
@@ -222,15 +227,15 @@ describe("contentRules", () => {
             expect(preview.answerBubble.aiSampleLabel).toBeNull()
             expect(preview.nextStepBubble).toEqual({
                 type: "schedule_offer",
-                text: "Para este caso é necessário atendimento presencial no PROCON Jacareí.",
+                text: "Deseja agendar um atendimento presencial no PROCON Jacareí?",
                 inPersonNote: "Traga as 3 últimas faturas impressas.",
-                prompt: "Deseja agendar um horário?",
-                buttons: ["Agendar atendimento", "Agora não"],
+                prompt: "Deseja agendar um atendimento presencial no PROCON Jacareí?",
+                buttons: ["Agendar presencial", "Agora não"],
                 formattedText: OFERTA_AGENDAMENTO,
             })
         })
 
-        it("builds preview for an out-of-scope question without nextStepBubble", () => {
+        it("builds preview for an out-of-scope question without nextStepBubble and without a notice of its own", () => {
             const preview = buildQuestionPreview(category, existingQuestions, {
                 categoryId: 1,
                 shortTitle: "Multa de trânsito",
@@ -245,7 +250,7 @@ describe("contentRules", () => {
                 llmAllowed: false,
             })
 
-            expect(preview.answerBubble.outOfScopeNotice).toBe(OUT_OF_SCOPE_NOTICE)
+            expect(preview.answerBubble.outOfScopeNotice).toBeNull()
             expect(preview.answerBubble.aiSampleLabel).toBeNull()
             expect(preview.nextStepBubble).toBeNull()
         })
@@ -278,6 +283,188 @@ describe("contentRules", () => {
             })
             expect(preview.categoryList.hasMoreOptions).toBe(false)
             expect(preview.categoryList.totalActiveQuestions).toBe(11)
+        })
+    })
+    describe("buildQuestionPreview botMessages", () => {
+        const category = makeCategory({ id: 1, title: "Compras e Garantias", shortTitle: "Compras e garantia" })
+
+        const baseInput = {
+            categoryId: 1,
+            shortTitle: "Defeito",
+            shortDescription: "Prazo de 30 dias",
+            question: "Comprei um produto com defeito, o que fazer?",
+            answer: "O fornecedor tem até 30 dias para reparar.",
+            legalBasis: "Art. 18 do CDC",
+            requiredDocuments: ["Nota fiscal", "RG ou CNH"],
+            requiresInPerson: false,
+            inPersonNote: null as string | null,
+            outOfScope: false,
+            llmAllowed: false,
+        }
+
+        function respostaDe(input: typeof baseInput) {
+            return {
+                categoria: category.title,
+                pergunta: input.question,
+                base_legal: input.legalBasis ?? "",
+                resposta: input.answer,
+                documentos_necessarios: input.requiredDocuments,
+                requer_presencial: input.requiresInPerson,
+                fora_de_escopo: input.outOfScope,
+            }
+        }
+
+        function manyQuestions(total: number) {
+            return Array.from({ length: total }, (_, idx) =>
+                makeQuestion({ id: 100 + idx, shortTitle: `Pergunta ${idx + 1}` }),
+            )
+        }
+
+        function perguntaDeLinha(id: number, shortTitle: string, shortDescription: string | null): Pergunta {
+            return {
+                id,
+                category_id: 1,
+                question: "texto",
+                short_title: shortTitle,
+                short_description: shortDescription,
+                legal_basis: null,
+                answer: "resposta",
+                requires_in_person: false,
+                out_of_scope: false,
+                llm_allowed: false,
+                active: true,
+            }
+        }
+
+        it("returns in officialMessages the same messages the bot sends for a common question", () => {
+            const preview = buildQuestionPreview(category, [], baseInput)
+
+            expect(preview.botMessages.officialMessages).toEqual(mensagensRespostaOficial(respostaDe(baseInput)))
+            expect(preview.botMessages.aiMessage).toBeNull()
+        })
+
+        it("returns in officialMessages the same messages the bot sends for an in-person question", () => {
+            const input = { ...baseInput, requiresInPerson: true, inPersonNote: "Traga as faturas." }
+            const preview = buildQuestionPreview(category, [], input)
+
+            expect(preview.botMessages.officialMessages).toEqual(mensagensRespostaOficial(respostaDe(input)))
+        })
+
+        it("returns the AI message built by the bot formatter with the sample text when AI is allowed", () => {
+            const input = { ...baseInput, llmAllowed: true }
+            const preview = buildQuestionPreview(category, [], input)
+
+            expect(preview.botMessages.aiMessage).toEqual(montarMensagemIa(AI_SAMPLE_TEXT, respostaDe(input)))
+            expect(preview.botMessages.officialMessages).toEqual(mensagensRespostaOficial(respostaDe(input)))
+        })
+
+        it("returns the AI message with the schedule offer for in-person questions", () => {
+            const input = { ...baseInput, llmAllowed: true, requiresInPerson: true }
+            const preview = buildQuestionPreview(category, [], input)
+
+            expect(preview.botMessages.aiMessage).toEqual(montarMensagemIa(AI_SAMPLE_TEXT, respostaDe(input)))
+        })
+
+        it("returns a single official text and no AI message for out-of-scope questions", () => {
+            const input = { ...baseInput, outOfScope: true, requiredDocuments: [] }
+            const preview = buildQuestionPreview(category, [], input)
+
+            expect(preview.botMessages.aiMessage).toBeNull()
+            expect(preview.botMessages.officialMessages).toEqual([
+                { type: "text", text: formatarRespostaFinal(respostaDe(input)) },
+            ])
+        })
+
+        it("fills the old bubbles from the bot messages", () => {
+            const input = { ...baseInput, llmAllowed: true, requiresInPerson: true, inPersonNote: "Traga as faturas." }
+            const preview = buildQuestionPreview(category, [], input)
+            const [oficial, passoSeguinte] = preview.botMessages.officialMessages
+
+            expect(oficial?.type).toBe("text")
+            expect(passoSeguinte?.type).toBe("buttons")
+            expect(preview.answerBubble.formattedText).toBe(oficial?.type === "text" ? oficial.text : null)
+            expect(preview.answerBubble.aiSampleLabel).toBe(preview.botMessages.aiMessage?.footer)
+            expect(preview.nextStepBubble?.text).toBe(passoSeguinte?.type === "buttons" ? passoSeguinte.text : null)
+            expect(preview.nextStepBubble?.buttons).toEqual(
+                passoSeguinte?.type === "buttons" ? passoSeguinte.buttons.map((b) => b.title) : null,
+            )
+            expect(preview.nextStepBubble?.inPersonNote).toBe("Traga as faturas.")
+        })
+
+        it("builds the list of the first page for a category with 11 questions", () => {
+            const questions = manyQuestions(11)
+            const preview = buildQuestionPreview(category, questions, { ...baseInput, questionId: 100 })
+            const lista = preview.botMessages.categoryList
+
+            const linhas = [
+                perguntaDeLinha(100, "Defeito", "Prazo de 30 dias"),
+                ...questions.slice(1).map((q) => perguntaDeLinha(q.id, q.shortTitle, q.shortDescription)),
+            ]
+            expect(lista.message).toEqual(criarMensagensPerguntas(linhas, 1)[0])
+            expect(lista.currentRowIndex).toBe(0)
+            expect(lista.page).toBe(1)
+            expect(lista.totalPages).toBe(2)
+            expect(lista.message.rows.at(-1)?.title).toBe("Ver mais opções")
+        })
+
+        it("builds the list of the last page when the current question is there", () => {
+            const questions = manyQuestions(11)
+            const preview = buildQuestionPreview(category, questions, { ...baseInput, questionId: 109 })
+            const lista = preview.botMessages.categoryList
+
+            const linhas = questions.map((q) =>
+                q.id === 109 ? perguntaDeLinha(109, "Defeito", "Prazo de 30 dias") : perguntaDeLinha(q.id, q.shortTitle, q.shortDescription),
+            )
+            expect(lista.message).toEqual(criarMensagensPerguntas(linhas, 2)[0])
+            expect(lista.currentRowIndex).toBe(0)
+            expect(lista.page).toBe(2)
+            expect(lista.totalPages).toBe(2)
+            expect(lista.message.rows.at(-1)?.title).toBe("Voltar opções")
+        })
+
+        it("builds the list of a middle page with both navigation rows", () => {
+            const questions = manyQuestions(19)
+            const preview = buildQuestionPreview(category, questions, { ...baseInput, questionId: 112 })
+            const lista = preview.botMessages.categoryList
+
+            const linhas = questions.map((q) =>
+                q.id === 112 ? perguntaDeLinha(112, "Defeito", "Prazo de 30 dias") : perguntaDeLinha(q.id, q.shortTitle, q.shortDescription),
+            )
+            expect(lista.message).toEqual(criarMensagensPerguntas(linhas, 2)[0])
+            expect(lista.currentRowIndex).toBe(3)
+            expect(lista.page).toBe(2)
+            expect(lista.totalPages).toBe(3)
+            expect(lista.message.rows.slice(-2).map((r) => r.title)).toEqual(["Voltar opções", "Ver mais opções"])
+        })
+
+        it("appends a new question to the end of the list when it has no id", () => {
+            const questions = manyQuestions(2)
+            const preview = buildQuestionPreview(category, questions, baseInput)
+            const lista = preview.botMessages.categoryList
+
+            expect(lista.currentRowIndex).toBe(2)
+            expect(lista.message.rows[2]?.title).toBe("Defeito")
+            expect(lista.message.rows[2]?.description).toBe("Prazo de 30 dias")
+        })
+
+        it("follows the order of listRows when it is sent and uses the form titles in the current row", () => {
+            const questions = manyQuestions(3)
+            const preview = buildQuestionPreview(category, questions, {
+                ...baseInput,
+                questionId: 101,
+                listRows: [
+                    { questionId: 102, shortTitle: "Terceira", shortDescription: null, isCurrent: false },
+                    { questionId: 101, shortTitle: "Editada", shortDescription: "Nova descrição", isCurrent: true },
+                    { questionId: 100, shortTitle: "Primeira", shortDescription: null, isCurrent: false },
+                ],
+            })
+            const lista = preview.botMessages.categoryList
+
+            expect(lista.message.rows.map((r) => r.title)).toEqual(["Terceira", "Defeito", "Primeira"])
+            expect(lista.currentRowIndex).toBe(1)
+            expect(lista.message.rows[1]?.description).toBe("Prazo de 30 dias")
+            expect(preview.categoryList.rows.map((r) => r.shortTitle)).toEqual(["Terceira", "Defeito", "Primeira"])
+            expect(preview.categoryList.totalActiveQuestions).toBe(3)
         })
     })
 })

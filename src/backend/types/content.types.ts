@@ -182,4 +182,5 @@ export interface QuestionPreviewResult {
     categoryList: PreviewCategoryListSection
     answerBubble: PreviewAnswerBubble
     nextStepBubble: PreviewNextStepBubble | null
+    botMessages: PreviewBotMessages
 }
