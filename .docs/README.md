@@ -23,6 +23,7 @@ Chatbot de orientação ao consumidor via WhatsApp, desenvolvido para o PROCON d
 | [`llm/`](llm/) | Contrato e escolha do modelo do serviço de LLM | Atual |
 | [`whatsapp/`](whatsapp/) | Pesquisa de integração com o WhatsApp (issue #3), [guia do app de teste da Meta](whatsapp/app-de-teste.md) para desenvolvimento e [guia dos modelos de mensagem](whatsapp/modelos-de-mensagem.md) (aviso de cancelamento e lembrete) | Atual como pesquisa; a decisão final está em [003](decisoes/003-migracao-whatsapp-cloud-api.md) |
 | [`lgpd/`](lgpd/) | [Procedimento para pedidos do titular](lgpd/pedidos-do-titular.md) (acesso e exclusão por anonimização) | Atual |
+| [`guias/`](guias/) | Guias em PDF (texto-fonte em Markdown e PDF gerado): [configuração do bot](guias/guia-configuracao-do-bot.pdf) e [documento do software](guias/documento-do-software.pdf), com visão geral, regras de dados e de IA, requisitos medidos, instalação e atualização. O [README da pasta](guias/README.md) explica como gerar os PDFs | Atual |
 | [`sprints/`](sprints/) | Fechamento da Sprint 1 e acompanhamento da Sprint 2 (retrato de 19/10/2026, último dia da sprint) | Atual |
 | [`historico/`](historico/) | Documentos superados, mantidos só para contexto | Não usar como referência |
 | `.tasks/` | Pasta local, fora do Git, com as specs e tasks do fluxo de planejamento (`sdd` → `executor` → `reviewer`) | Local, não versionada |
