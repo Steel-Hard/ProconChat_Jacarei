@@ -155,21 +155,23 @@ A primeira geração depois que o modelo sai da memória leva cerca de 13 a 22 s
 
 ## Requisitos mínimos e recomendados
 
-| Recurso | Mínimo (média de até 10 s) | Recomendado (quase todas as respostas em até 10 s) |
+| Recurso | Mínimo | Recomendado |
 | --- | --- | --- |
-| CPU | 4 núcleos | 6 a 8 núcleos |
-| Memória (RAM) | 6 GB: 4 GB para o Ollama, 0,2 GB para os demais serviços e o restante para o sistema operacional e o Docker | 8 GB |
+| CPU | 6 núcleos | 6 núcleos: os testes não mostraram ganho acima disso |
+| Memória (RAM) | 8 GB: cerca de 3 GB para o Ollama (4 GB de limite, como testado), 0,1 GB para os demais serviços e o restante para o sistema operacional, o Docker e a compilação das imagens (caminho 2B) | 8 GB, sem outra aplicação pesada na mesma máquina |
 | Disco | 20 GB livres | 40 GB, para backups, registros e versões antigas das imagens |
 | Placa de vídeo | Não necessária | Não necessária |
 
-Com 4 núcleos, a média ficou entre 7 e 9 s, mas de 1 a 7 respostas em 20 passaram de 10 s. Com 6 núcleos, 2 em 20 passaram, e o pior caso foi de cerca de 12 s. O trecho do sistema operacional na memória (cerca de 1 GB) é estimativa, não medida.
+O mínimo é a configuração em que quase todas as respostas saíram em até 10 s: com 6 núcleos, a média foi de 6,5 s, 2 respostas em 20 passaram de 10 s e o pior caso foi de cerca de 12 s. Com 4 núcleos a média ficou entre 7 e 9 s, mas de 1 a 7 respostas em 20 passaram de 10 s, por isso 4 núcleos não atendem à meta. A memória de 8 GB deixa folga sobre o uso medido do Ollama (cerca de 3 GB). O trecho do sistema operacional e da compilação nessa folga é estimativa, não medida.
+
+Não há medição que justifique um recomendado acima do mínimo para a CPU: com 7 e 13 CPUs os tempos foram iguais aos de 6. A folga recomendada é só de disco, calculada sobre os 12,6 GB medidos mais o cache de compilação, os backups e os registros.
 
 > **Atenção:** os testes foram feitos numa máquina x86 de alto desempenho, em WSL2. A produção do projeto usa uma máquina ARM, com núcleos mais lentos, e não foi medida. Nela os tempos tendem a ser maiores. Refaça a medição na máquina de destino antes de fixar o dimensionamento.
 
 ### Se o hardware não atingir a meta de 10 s
 
 - O sistema continua funcionando: o cidadão espera pela IA até o limite de `LLM_TIMEOUT_MS` (padrão de 20 s), com o indicador "digitando…", e recebe a resposta oficial se a IA passar do limite.
-- Para ganhar tempo, aumente os núcleos (o ganho para em cerca de 6), use uma CPU e uma memória mais rápidas e dê ao Ollama pelo menos 4 GB de memória.
+- Para ganhar tempo, aumente os núcleos (o ganho para em 6), use uma CPU e uma memória mais rápidas e dê ao Ollama pelo menos 4 GB de memória (abaixo de 3 GB as gerações falham).
 - Confira que o sistema não está disputando CPU com outros programas na mesma máquina.
 - Não altere o código nem as configurações do sistema para compensar um hardware lento: a meta de 10 s é de dimensionamento da máquina.
 
@@ -290,7 +292,7 @@ As imagens publicadas pelo projeto no registro de containers do GitHub (GHCR) s�
 
 Como as imagens publicadas são ARM64, numa máquina x86 você compila as três imagens a partir do código e o `deploy.sh` usa as imagens locais.
 
-1. Instale Docker e Git e prepare a máquina como descrito acima. Garanta pelo menos 4 GB livres de memória durante a compilação.
+1. Instale Docker e Git e prepare a máquina como descrito acima. Use uma máquina que atenda ao mínimo de 8 GB de RAM.
 2. Baixe o código na pasta da aplicação (ela vira a raiz do sistema) e escolha o commit a instalar:
 
    ```bash
