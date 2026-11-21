@@ -90,7 +90,7 @@ A tela mostra essa informação e marca, com um separador **"Página N no WhatsA
 | Título curto (lista do WhatsApp) | **Obrigatório, até 24 caracteres**, com contador. Não aceita quebra de linha nem tabulação |
 | Descrição curta | Opcional, até 72 caracteres. Não aceita quebra de linha nem tabulação |
 | Texto da pergunta | Obrigatório, **até 500 caracteres**, com contador sempre visível |
-| Resposta | Obrigatória, **até 3.000 caracteres**, com contador. **A partir de 1.000**, alerta: "Respostas longas ficam difíceis de ler no celular", que não impede salvar |
+| Resposta | Obrigatória, **até 3.000 caracteres**, com contador. **A partir de 1.000**, alerta: "Respostas longas ficam difíceis de ler no celular", que não impede salvar. Aceita os marcadores `{endereco}` e `{horarios}`, substituídos automaticamente no envio pelo bot e na prévia pelo endereço (com complemento entre parênteses, quando houver) e pelos horários de atendimento da configuração vigente hoje (#78) |
 | Base legal | Opcional, até 500 caracteres. Ex.: "CDC, art. 49" |
 | Documentos úteis para esta dúvida | Lista opcional de até 30 itens, cada um obrigatório e de até 255 caracteres. Adicionar com o campo vazio não acrescenta nada e mostra o aviso "Informe o documento.". São somados à lista de documentos do agendamento. Um documento repetido na mesma pergunta (sem diferenciar acentos nem maiúsculas) mostra o aviso "Este documento já está na lista." e **não impede salvar** |
 | Exige atendimento presencial | O chatbot **oferece agendamento direto**, sem perguntar se a dúvida foi resolvida. Tem uma observação opcional sobre o atendimento presencial (até 500 caracteres), que o cidadão recebe na resposta, só existe com a opção marcada e é descartada se ela for desmarcada |
@@ -134,5 +134,5 @@ Uma pergunta numa **categoria nova ainda não salva** mostra só a lista, com o 
 
 ## Relações
 
-- Se horário ou endereço da unidade mudarem em [Horários de atendimento](08-horarios-de-atendimento.md), revise as perguntas que citam essas informações. A tela de Horários avisa isso.
+- Se horário ou endereço da unidade mudarem em [Horários de atendimento](08-horarios-de-atendimento.md), as respostas que usam os marcadores `{horarios}` e `{endereco}` refletem automaticamente os novos valores; perguntas com horário ou endereço escritos em texto fixo continuam precisando de revisão manual.
 - Complemento por IA: [decisão 009](../decisoes/009-complemento-por-llm.md).

@@ -26,7 +26,7 @@ Para o chatbot agendar sozinho (RF07), ele precisa saber quais horários existem
    - **manter**: continuam válidos, com o selo "Fora da grade atual";
    - **cancelar e avisar os cidadãos**, com o motivo "Unidade fechada nesta data" ou "Outro motivo".
 6. **Todas as alterações ficam pendentes até "Salvar"**, com "Descartar" e o registro de quem alterou e quando. Esse padrão vale para todas as telas de configuração.
-7. **Limitação conhecida:** a resposta do FAQ "Qual é o horário e o endereço do PROCON?" repete esses dados em texto. A tela avisa para revisar o Conteúdo quando horário ou endereço mudarem. Uma solução melhor (marcadores como `{endereco}` na resposta) fica para depois.
+7. **Marcadores de horário e endereço no Conteúdo (#78):** para evitar que respostas como "Qual é o horário e o endereço do PROCON?" fiquem desatualizadas quando a agenda mudar, o texto da resposta aceita os marcadores `{endereco}` e `{horarios}`, preenchidos pelo sistema no envio e na prévia de Conteúdo com os valores da configuração vigente hoje. A tela de Horários mantém o aviso para revisar perguntas que ainda citem essas informações em texto fixo.
 
 ## Consequências
 
