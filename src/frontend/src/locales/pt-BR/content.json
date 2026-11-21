@@ -151,5 +151,17 @@
         "moreOptions": "Ver mais opções ›",
         "aiLabel": "Gerado com auxílio de IA",
         "fallbackTitle": "Se a IA estiver indisponível"
+    },
+    "changes": {
+        "categoryNew": "Categoria nova: {{name}}",
+        "categoryChanged": "Categoria alterada: {{name}}",
+        "categoryActivated": "Categoria ativada: {{name}}",
+        "categoryDeactivated": "Categoria desativada: {{name}}",
+        "questionNew": "Pergunta nova: {{name}}",
+        "questionChanged": "Pergunta alterada: {{name}}",
+        "questionActivated": "Pergunta ativada: {{name}}",
+        "questionDeactivated": "Pergunta desativada: {{name}}",
+        "categoriesOrder": "Ordem das categorias",
+        "questionsOrder": "Ordem das perguntas de {{name}}"
     }
 }
