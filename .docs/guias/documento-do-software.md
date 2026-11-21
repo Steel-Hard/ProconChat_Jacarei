@@ -203,7 +203,7 @@ Roda tudo na máquina, com as portas acessíveis só por ela mesma (`127.0.0.1`)
    cp .env.example .env
    ```
 
-3. Abra o `.env` e preencha duas chaves, cada uma com o resultado de <span style="white-space: nowrap"><code>openssl rand -hex 32</code></span>:
+3. Abra o `.env` e preencha duas chaves, cada uma com o resultado de `openssl rand -hex 32`:
    - `ENCRYPTION_KEY`: obrigatória, sem ela o Docker Compose recusa subir;
    - `AUTH_TOKEN_SECRET`: assina as sessões do painel.
 4. Confira `ROOT_EMAIL` e `ROOT_PASSWORD` no `.env`. São o e-mail e a senha da conta Administrador criada na primeira subida. O `.env.example` traz valores de desenvolvimento (`admin@procon.local` e uma senha de exemplo); troque-os se a máquina for acessível por outras pessoas.
@@ -231,7 +231,7 @@ A produção usa o arquivo `compose.prod.yaml` e o proxy Caddy para o HTTPS. Ant
 
 1. Prepare a máquina: instale o Docker Engine pelo repositório oficial, ative-o na inicialização (`sudo systemctl enable --now docker`) e crie um usuário sem privilégios de administrador, no grupo `docker`, para operar o sistema. Abra no firewall só as portas 80, 443 e a de acesso remoto (SSH, 22).
 2. Garanta que o endereço público (`SITE_ADDRESS`) aponte para a máquina e que as portas 80 e 443 estejam alcançáveis. O `deploy.sh` confere o endereço público no final e falha se ele não responder.
-3. Crie o arquivo `.env` na pasta da aplicação, a partir de `deploy/.env.prod.example`, com permissão `600`. Gere cada segredo com <span style="white-space: nowrap"><code>openssl rand -hex 32</code></span>. Variáveis:
+3. Crie o arquivo `.env` na pasta da aplicação, a partir de `deploy/.env.prod.example`, com permissão `600`. Gere cada segredo com `openssl rand -hex 32`. Variáveis:
 
    | Variável | O que colocar |
    | --- | --- |
