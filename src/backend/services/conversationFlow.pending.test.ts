@@ -124,6 +124,25 @@ describe("conversationFlow: mensagem durante a resposta pendente", () => {
         expect(updateNavigationState).not.toHaveBeenCalled()
     })
 
+    test("reenvia a resposta recuperada da pergunta presencial com a observação presencial", async () => {
+        const respostaComObservacao = { ...respostaPresencial, observacao_presencial: "Traga o contrato impresso." }
+        findOrCreateActive.mockResolvedValueOnce(
+            buildActiveSession({
+                currentStep: "AWAITING_SCHEDULE_OFFER",
+                currentCategoryId: "1",
+                currentQuestionId: String(perguntaPresencialComIa.id),
+            }),
+        )
+        listEvents.mockResolvedValueOnce([{ ...questionChosen, questionId: perguntaPresencialComIa.id }])
+        processarPergunta.mockResolvedValueOnce(respostaComObservacao)
+
+        const result = await createFlow()({ phone: PHONE, optionId: "schedule_yes" })
+
+        expect(result.reply.messages).toEqual(mensagensRespostaOficial(respostaComObservacao))
+        expect(result.reply.text).toContain("Sobre o atendimento presencial: Traga o contrato impresso.")
+        expect(result.reply.text).toContain(OFERTA_AGENDAMENTO)
+    })
+
     test("reenvia as mensagens oficiais da pergunta presencial e grava SCHEDULE_OFFERED depois do ANSWER_SENT", async () => {
         findOrCreateActive.mockResolvedValueOnce(
             buildActiveSession({

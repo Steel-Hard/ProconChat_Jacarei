@@ -143,6 +143,34 @@ describe("llmAnswer.service", () => {
         ])
     })
 
+    it("envia as mensagens oficiais com a observação presencial e loga TOO_LONG quando só a observação faz o corpo passar de 1024", async () => {
+        const presencialComNota: RespostaFinalOutput = {
+            ...resposta,
+            requer_presencial: true,
+            observacao_presencial: "Traga o contrato impresso.",
+        }
+        const presencialSemNota: RespostaFinalOutput = { ...presencialComNota, observacao_presencial: null }
+        const prefixo = "Prazo de 30 dias "
+        const semTexto = Array.from((montarMensagemIa("", presencialComNota) as { text: string }).text).length
+        const texto = prefixo + "a".repeat(1025 - semTexto - Array.from(prefixo).length)
+        const comNota = { ...job, resposta: presencialComNota }
+        const { deliver, sendMessages, record, logger } = setup({ generated: used(texto) })
+
+        await deliver(comNota)
+
+        expect(Array.from((montarMensagemIa(texto, presencialComNota) as { text: string }).text).length).toBe(1025)
+        expect(Array.from((montarMensagemIa(texto, presencialSemNota) as { text: string }).text).length).toBeLessThanOrEqual(1024)
+        expect(sendMessages).toHaveBeenCalledExactlyOnceWith({ to: job.phone, messages: mensagensRespostaOficial(presencialComNota) })
+        expect(JSON.stringify(sendMessages.mock.calls[0])).toContain("Sobre o atendimento presencial: Traga o contrato impresso.")
+        expect(record.mock.calls[0]).toEqual([
+            job.sessionId,
+            { type: "ANSWER_SENT", categoryId: job.categoryId, questionId: job.questionId, llm: "FAILED" },
+        ])
+        expect(logger.log.mock.calls[0]).toEqual([
+            JSON.stringify({ event: "llm_answer_fallback", sessionId: job.sessionId, reason: "TOO_LONG" }),
+        ])
+    })
+
     it("não grava ANSWER_SENT e loga answer_delivery_failed quando a mensagem da IA e as oficiais falham", async () => {
         const { deliver, sendMessages, record, logger } = setup({
             sent: [
