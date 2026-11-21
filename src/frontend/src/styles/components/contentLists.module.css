@@ -1,21 +1,8 @@
-.item {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
 .position {
     padding-top: 1px;
     font-size: 12.5px;
     font-weight: 700;
     color: var(--text-muted);
-}
-
-.body {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 0;
 }
 
 .selectButton {
@@ -55,13 +42,6 @@
     text-wrap: pretty;
 }
 
-.shortDescription {
-    font-size: 12.5px;
-    line-height: 1.45;
-    color: var(--text-muted);
-    overflow-wrap: anywhere;
-}
-
 .questionText {
     font-size: 13px;
     line-height: 1.5;
@@ -73,13 +53,6 @@
 .counts {
     font-size: 12.5px;
     color: var(--text-muted);
-}
-
-.seals {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px;
 }
 
 .stateActive,
@@ -113,22 +86,6 @@
 .stateUnsaved {
     background: var(--seal-info-bg);
     color: var(--seal-info-text);
-}
-
-.legalBasis {
-    font-size: 12.5px;
-    color: var(--text-muted);
-    overflow-wrap: anywhere;
-}
-
-.legalBasis strong {
-    color: var(--text-strong);
-    font-weight: 600;
-}
-
-.documentsCount {
-    font-size: 12.5px;
-    color: var(--text-muted);
 }
 
 .author {
@@ -178,16 +135,6 @@
     border-radius: 999px;
     background: var(--seal-info-bg);
     white-space: nowrap;
-}
-
-.empty {
-    padding: 36px 16px;
-    border: 1px dashed var(--border-input);
-    border-radius: 10px;
-    text-align: center;
-    font-size: 13.5px;
-    line-height: 1.55;
-    color: var(--text-muted);
 }
 
 .lines {
@@ -349,7 +296,7 @@
 }
 
 .questionDesc::before {
-    content: " \00b7 ";
+    content: " \00b7\00a0";
 }
 
 .questionMeta {

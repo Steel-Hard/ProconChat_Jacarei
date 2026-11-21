@@ -125,16 +125,6 @@
     font-weight: 600;
 }
 
-.success {
-    padding: 10px 14px;
-    border: 1px solid var(--success-border);
-    border-radius: 10px;
-    background: var(--success-bg);
-    color: var(--success-text);
-    font-size: 13.5px;
-    font-weight: 600;
-}
-
 .searchSummary {
     font-size: 13px;
     color: var(--text-muted);

@@ -9,32 +9,6 @@
         no-repeat;
 }
 
-.title {
-    margin: 0;
-    scroll-margin-top: 16px;
-    scroll-margin-bottom: 96px;
-    font: 700 16px var(--font-heading);
-    color: var(--text-body);
-}
-
-.subtitle {
-    margin: 4px 0 0;
-    font-size: 13px;
-    line-height: 1.5;
-    color: var(--text-muted);
-    text-wrap: pretty;
-}
-
-.chat {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding: 16px 12px;
-    border-radius: 12px;
-    background: var(--bot-chat-bg);
-    transition: opacity 0.15s ease;
-}
-
 .chatUpdating {
     opacity: 0.55;
 }
@@ -137,7 +111,7 @@
     display: flex;
     max-width: 92%;
     flex-direction: column;
-    gap: 4px;
+    gap: 0;
     align-self: flex-start;
     padding: 8px 10px 6px;
     border-radius: 2px 10px 10px 10px;
@@ -153,8 +127,8 @@
     overflow-wrap: break-word;
 }
 
-.bubbleText:empty::before {
-    content: "\00a0";
+.bubbleText:empty {
+    height: 0.7em;
 }
 
 .bubbleText strong {
@@ -167,7 +141,7 @@
     justify-content: space-between;
     align-items: flex-end;
     gap: 2px 12px;
-    margin-top: 2px;
+    margin-top: 6px;
 }
 
 .aiLabel {
@@ -180,13 +154,6 @@
     font-weight: 700;
     line-height: 1.5;
     white-space: nowrap;
-}
-
-.time {
-    margin-left: auto;
-    font-size: 11px;
-    line-height: 1;
-    color: var(--bot-bubble-muted);
 }
 
 .buttons {
@@ -284,7 +251,6 @@
         max-width: 100%;
     }
 
-    .chat,
     .alternativeChat {
         padding: 12px 8px;
     }
