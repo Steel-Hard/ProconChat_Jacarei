@@ -27,7 +27,7 @@ export default function buildPreviewModel(result: ContentPreviewResult): Content
             text: categoryList.message.text,
             buttonText: categoryList.message.buttonText,
             rows: categoryList.message.rows.map((row, index) => ({
-                key: row.id,
+                key: `${index}-${row.id}`,
                 title: row.title,
                 description: row.description ?? null,
                 isCurrent: index === categoryList.currentRowIndex

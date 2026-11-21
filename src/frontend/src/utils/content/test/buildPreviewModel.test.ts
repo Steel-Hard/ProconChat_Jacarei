@@ -201,4 +201,28 @@ describe("buildPreviewArgs", () => {
 
         expect(model.lengthWarning).toBe("Aviso da API")
     })
+
+    it("linhas com o mesmo id da API recebem chaves diferentes", () => {
+        const model = buildPreviewModel(
+            result({
+                categoryList: {
+                    message: {
+                        type: "list",
+                        text: "Escolha",
+                        buttonText: "Ver",
+                        rows: [
+                            { id: "q_0", title: "Nova 1" },
+                            { id: "q_0", title: "Nova 2" }
+                        ]
+                    },
+                    currentRowIndex: 0,
+                    page: 1,
+                    totalPages: 1
+                }
+            })
+        )
+        const keys = model.list.rows.map((row) => row.key)
+
+        expect(new Set(keys).size).toBe(2)
+    })
 })
