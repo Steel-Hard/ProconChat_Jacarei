@@ -46,9 +46,6 @@
         "deactivateCategory": "Desativar categoria",
         "moveUp": "Mover para cima",
         "moveDown": "Mover para baixo",
-        "editFor": "Editar categoria {{title}}",
-        "activateFor": "Ativar {{title}}",
-        "deactivateFor": "Desativar {{title}}",
         "moveUpFor": "Mover {{title}} para cima",
         "moveDownFor": "Mover {{title}} para baixo",
         "select": "Ver as perguntas de {{title}}",
@@ -171,9 +168,7 @@
         "outOfScopeWithLlm": "Pergunta fora do escopo não permite complemento por IA."
     },
     "preview": {
-        "title": "Ver como o cidadão recebe",
         "subtitle": "Prévia com o que está no formulário, sem gravar e sem gerar IA de verdade.",
-        "close": "Fechar prévia",
         "closeShort": "Fechar",
         "windowTitle": "Como o cidadão recebe",
         "footerNote": "O aviso ao final da resposta é fixo e enviado em todas as respostas. A aparência real depende do aplicativo do cidadão.",
