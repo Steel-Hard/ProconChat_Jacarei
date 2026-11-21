@@ -79,7 +79,7 @@ Alterações pendentes, Salvar e Descartar
 - CA-21 QUANDO a reordenação é recusada porque outra pessoa mudou o conteúdo nesse meio tempo ENTÃO a tela DEVE recarregar, mostrar o erro e manter pendente o que não foi gravado. (RN-08)
 - CA-22 QUANDO a pessoa sai da tela com alterações pendentes ENTÃO o sistema não DEVE mostrar aviso, igual a Horários e Documentos. (RN-04)
 - CA-68 QUANDO uma categoria ou pergunta nova é confirmada no formulário, e também se ela for editada de novo antes de salvar ENTÃO a linha dela DEVE mostrar só o selo "Não salva". QUANDO uma categoria ou pergunta já gravada é editada, ativada/desativada ou reordenada ENTÃO a linha DEVE mostrar só o selo "Alteração não salva". Nenhuma linha DEVE mostrar os dois selos ao mesmo tempo, e no celular o selo DEVE aparecer na linha sem rolagem horizontal. (RN-29, RN-04)
-- CA-69 QUANDO a alteração de um item já gravado é desfeita (por exemplo, desativar e ativar de novo, ↑ seguido de ↓, ou voltar ao texto gravado) ou "Descartar" é acionado ENTÃO o selo "Alteração não salva" DEVE sumir da linha. QUANDO o Salvar grava o item ENTÃO nenhum dos dois selos DEVE continuar na linha. (RN-29, RN-05)
+- CA-69 QUANDO a alteração de um item já gravado é desfeita (por exemplo, desativar e ativar de novo, ↑ seguido de ↓, ou voltar ao texto gravado) ou "Descartar" é acionado ENTÃO o selo "Alteração não salva" DEVE sumir da linha. QUANDO um Salvar termina sem falha ENTÃO nenhuma linha DEVE ficar com selo. QUANDO um Salvar termina com falha parcial ENTÃO só os itens que continuaram pendentes DEVEM manter o selo ("Não salva" se for item novo, "Alteração não salva" se for item existente) e os já gravados não DEVEM ter selo. (RN-29, RN-05, RN-06)
 
 Categorias
 
