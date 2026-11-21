@@ -30,7 +30,7 @@ Por decisão do usuário, a tela segue o padrão das telas de configuração (Ho
 | RN-12 | Ações na lista de categorias: reordenar (↑↓), "Nova categoria", "Editar categoria", "Ativar/Desativar". | product-owner |
 | RN-13 | A lista de perguntas da categoria selecionada mostra a posição, o título curto, a descrição curta, o texto da pergunta, o estado (Ativa/Inativa), os selos "Exige atendimento presencial" ou "Fora do escopo do PROCON", a base legal, a quantidade de documentos úteis e "Última alteração por [nome] em [data]", com data no formato dd/mm/aaaa. Itens sem autor (carga inicial) mostram "Carga inicial do sistema", sem data, porque a API não informa a data de criação. | product-owner; regras gerais §9 |
 | RN-14 | O topo da tela mostra a última alteração do item alterado mais recentemente pelo painel, entre categorias e perguntas: "Última alteração por [nome] em [data]". Se nenhum item tiver autor, mostra "Ainda não alterado pelo painel". | product-owner |
-| RN-15 | Uma pergunta nova entra no fim da lista da categoria, nasce ativa e com "Permitir complemento por IA" ligada. | product-owner |
+| RN-15 | Uma pergunta nova entra no fim da lista da categoria e com "Permitir complemento por IA" ligada. Ela vem ativa por padrão: o campo "Pergunta ativa no chatbot" já aparece marcado, e a equipe pode desmarcá-lo antes de salvar. Desmarcada, a pergunta é criada inativa, já na própria criação. | product-owner; usuário (campo desmarcável) |
 | RN-16 | Formulário da pergunta: título curto obrigatório, até 24 caracteres, com contador. Descrição curta opcional, até 72 caracteres. Texto da pergunta obrigatório, até 500 caracteres, com contador sempre visível. Resposta obrigatória, até 3.000 caracteres, com contador. A partir de 1.000 caracteres aparece o alerta "Respostas longas ficam difíceis de ler no celular", que não impede salvar. Título curto e descrição curta não aceitam quebra de linha nem tabulação. | product-owner; limites e caracteres da API |
 | RN-17 | Base legal: opcional, até 500 caracteres (ex.: "CDC, art. 49"). Documentos úteis para esta dúvida: lista opcional de até 30 itens, cada um com texto obrigatório de até 255 caracteres. Observação sobre o atendimento presencial: opcional, até 500 caracteres, só existe quando "Exige atendimento presencial" está marcada. | regra de Conteúdo; limites da API |
 | RN-18 | Documento útil repetido na mesma pergunta, sem diferenciar acentos nem maiúsculas, gera o aviso "Este documento já está na lista." e não impede salvar. | usuário |
@@ -44,6 +44,7 @@ Por decisão do usuário, a tela segue o padrão das telas de configuração (Ho
 | RN-26 | Os textos, rótulos, botões e formatos da prévia são os que o bot realmente envia e chegam ao painel pela prévia da API. O painel não escreve nem inventa cópia desses textos. Onde a prévia da API diverge do bot, vale o que está em "Prévia: API x bot real" e nas Dúvidas. | usuário |
 | RN-27 | Composição da prévia: (1) a lista da categoria, com a pergunta em negrito e a navegação de página quando houver; (2) com IA ligada, o balão único com IA, como o bot envia; (3) com IA desligada, o balão da resposta oficial com o aviso no fim; (4) depois dele, o balão do passo seguinte com os botões. Com IA ligada, a prévia também mostra a alternativa "Se a IA estiver indisponível", com os balões (3) e (4). O botão de aceitar a oferta de agendamento é "Agendar presencial". Fora do escopo: ver D-U-05. | product-owner; usuário (botão); decisão 009 |
 | RN-28 | Pergunta numa categoria nova ainda não salva: a lista (1) sai do rascunho, com o aviso "Esta categoria ainda não foi salva. Salve para que o cidadão a veja.". Como a prévia da API exige categoria gravada, os balões (2) a (4) não aparecem e a prévia mostra "A prévia completa fica disponível depois de salvar". | product-owner |
+| RN-29 | Nas listas de categorias e de perguntas, cada item com alteração pendente mostra um selo, e só um: "Não salva" para item novo, ainda não gravado (inclusive se for editado antes de salvar); "Alteração não salva" para item já gravado que foi editado, ativado/desativado ou reordenado. O selo some quando a alteração é desfeita e o item volta ao que está gravado. | usuário |
 
 ## Critérios de aceite
 
@@ -77,6 +78,8 @@ Alterações pendentes, Salvar e Descartar
 - CA-20 QUANDO o rascunho tem algum item com campo inválido ENTÃO "Salvar alterações" não DEVE enviar nada e o sistema DEVE apontar o item com problema. (RN-11, RN-16, RN-17)
 - CA-21 QUANDO a reordenação é recusada porque outra pessoa mudou o conteúdo nesse meio tempo ENTÃO a tela DEVE recarregar, mostrar o erro e manter pendente o que não foi gravado. (RN-08)
 - CA-22 QUANDO a pessoa sai da tela com alterações pendentes ENTÃO o sistema não DEVE mostrar aviso, igual a Horários e Documentos. (RN-04)
+- CA-68 QUANDO uma categoria ou pergunta nova é confirmada no formulário, e também se ela for editada de novo antes de salvar ENTÃO a linha dela DEVE mostrar só o selo "Não salva". QUANDO uma categoria ou pergunta já gravada é editada, ativada/desativada ou reordenada ENTÃO a linha DEVE mostrar só o selo "Alteração não salva". Nenhuma linha DEVE mostrar os dois selos ao mesmo tempo, e no celular o selo DEVE aparecer na linha sem rolagem horizontal. (RN-29, RN-04)
+- CA-69 QUANDO a alteração de um item já gravado é desfeita (por exemplo, desativar e ativar de novo, ↑ seguido de ↓, ou voltar ao texto gravado) ou "Descartar" é acionado ENTÃO o selo "Alteração não salva" DEVE sumir da linha. QUANDO o Salvar grava o item ENTÃO nenhum dos dois selos DEVE continuar na linha. (RN-29, RN-05)
 
 Categorias
 
@@ -93,7 +96,7 @@ Categorias
 Perguntas
 
 - CA-32 QUANDO uma categoria é selecionada ENTÃO a área de perguntas DEVE listar as perguntas dela na ordem, cada uma com os dados de RN-13. Pergunta ainda não salva não DEVE mostrar a linha de última alteração. Pergunta sem autor DEVE mostrar "Carga inicial do sistema". (RN-13)
-- CA-33 QUANDO uma pergunta nova é confirmada no formulário ENTÃO ela DEVE entrar no fim da lista da categoria selecionada, ativa e com IA ligada, como alteração pendente. (RN-15)
+- CA-33 QUANDO uma pergunta nova é confirmada no formulário sem mexer em "Pergunta ativa no chatbot" ENTÃO ela DEVE entrar no fim da lista da categoria selecionada, ativa e com IA ligada, como alteração pendente. QUANDO o campo é desmarcado antes de confirmar ENTÃO ela DEVE entrar no fim da lista como inativa e, depois do Salvar, DEVE estar gravada como inativa, sem ter ficado ativa em nenhum momento. (RN-15)
 - CA-34 QUANDO o título curto da pergunta fica vazio ou passa de 24 caracteres, a descrição curta passa de 72, o texto da pergunta fica vazio ou passa de 500, ou a resposta fica vazia ou passa de 3.000 ENTÃO o sistema DEVE mostrar o erro e não aceitar o formulário. Nos limites exatos (24, 72, 500, 3.000) DEVE aceitar. O contador do texto da pergunta DEVE estar sempre visível. (RN-16)
 - CA-35 QUANDO a resposta tem 999 caracteres ENTÃO o alerta não DEVE aparecer; com 1.000 ou mais DEVE aparecer "Respostas longas ficam difíceis de ler no celular", sem impedir de confirmar. O contador DEVE mostrar quantos caracteres foram usados do limite de 3.000. (RN-16)
 - CA-36 QUANDO a base legal passa de 500 caracteres, a lista de documentos passa de 30 itens, um documento fica vazio ou passa de 255 caracteres, ou a observação presencial passa de 500 ENTÃO o sistema DEVE mostrar o erro e não aceitar o formulário. (RN-17)
@@ -102,9 +105,11 @@ Perguntas
 - CA-39 QUANDO "Fora do escopo do PROCON" é marcada ENTÃO "Permitir complemento por IA" DEVE ficar desligada e desabilitada. QUANDO é desmarcada ENTÃO a IA DEVE voltar habilitada e ligada. (RN-20)
 - CA-40 QUANDO "Exige atendimento presencial" é desmarcada ENTÃO a observação sobre o atendimento presencial DEVE sumir e não DEVE ser gravada. (RN-17)
 - CA-41 QUANDO uma pergunta existente é aberta para edição ENTÃO o formulário DEVE mostrar a orientação de RN-21 com o texto exato e não DEVE oferecer troca de categoria. Ao criar uma pergunta nova, a orientação não DEVE aparecer. (RN-21)
-- CA-42 QUANDO "Ativar/Desativar" é acionado na lista ENTÃO o campo "Pergunta ativa no chatbot" DEVE mostrar o novo valor ao abrir o formulário. QUANDO o campo é mudado no formulário ENTÃO a lista só DEVE mudar depois de o formulário ser confirmado; se o formulário for fechado sem confirmar, nada muda. (RN-22)
+- CA-42 QUANDO "Ativar/Desativar" é acionado na lista ENTÃO o campo "Pergunta ativa no chatbot" DEVE mostrar o novo valor ao abrir o formulário. QUANDO o campo é mudado no formulário ENTÃO a lista só DEVE mudar depois de o formulário ser confirmado; se o formulário for fechado sem confirmar, nada muda. QUANDO o formulário de uma pergunta nova é aberto ENTÃO o campo DEVE vir marcado e DEVE poder ser desmarcado. (RN-22, RN-15)
 - CA-43 QUANDO ↑ ou ↓ é acionado numa pergunta ENTÃO ela DEVE trocar de lugar com a vizinha dentro da categoria, com as mesmas regras de primeira e última de CA-30. (RN-02)
 - CA-44 QUANDO a categoria selecionada não tem perguntas ENTÃO a área DEVE mostrar um estado vazio com a ação "Nova pergunta". (RN-13)
+- CA-70 QUANDO "Cancelar" é acionado no formulário da categoria ou da pergunta com alguma alteração feita nele ENTÃO o sistema DEVE pedir confirmação com o diálogo "Descartar as alterações?", igual ao Esc: "Descartar alterações" fecha o formulário sem levar nada ao rascunho e "Continuar editando" volta ao formulário com o que foi digitado. QUANDO "Cancelar" é acionado sem nenhuma alteração no formulário ENTÃO ele DEVE fechar direto, sem diálogo. (RN-04, RN-22)
+- CA-71 QUANDO "Adicionar" é acionado com o campo de documento útil vazio ENTÃO o sistema não DEVE acrescentar o documento, DEVE mostrar o aviso "Informe o documento." junto do campo, DEVE anunciá-lo para leitores de tela e DEVE deixar o foco no campo. (RN-17)
 
 Busca
 
@@ -182,7 +187,7 @@ A API (#63) foi usada como referência das validações. A tabela mostra os valo
 | Documentos úteis | lista de itens | até 30 itens, cada um obrigatório e até 255; aceita repetidos | igual à API, com aviso de repetido (RN-18) |
 | Observação presencial | "com nota explicativa" | opcional, até 500, descartada se não for presencial | igual à API |
 | IA em fora do escopo | desligada e desabilitada | recusa IA ligada em fora do escopo | igual |
-| Pergunta nova ativa | não diz | ativa por padrão | ativa (decisão do PO) |
+| Pergunta nova ativa | não diz | ativa por padrão, aceita criar inativa | ativa por padrão, com o campo desmarcável antes de salvar (decisão do PO; campo desmarcável por decisão do usuário) |
 
 Outras divergências encontradas:
 
@@ -244,7 +249,7 @@ O plano é montado pela diferença entre o rascunho e o retrato e é executado e
 
 1. Criar as categorias novas, na ordem do rascunho. Cada criação devolve o id real, que entra num mapa chave provisória → id. A categoria nova nasce ativa: se ela foi desativada no rascunho, o passo 2 inclui a desativação.
 2. Categorias existentes: quem teve campo alterado recebe a edição completa com o estado junto; quem só mudou de estado recebe só a ativação/desativação.
-3. Criar as perguntas novas, com a categoria já trocada pelo id real, com o estado do rascunho e na ordem do rascunho dentro de cada categoria.
+3. Criar as perguntas novas, com a categoria já trocada pelo id real, com o estado do rascunho e na ordem do rascunho dentro de cada categoria. O estado vai na própria criação (`active`), então a pergunta nova desmarcada já nasce inativa, sem passo extra de desativação.
 4. Perguntas existentes: edição completa com o estado junto, ou só a ativação/desativação, como no passo 2.
 5. Reordenar categorias, só se a ordem do rascunho for diferente da ordem que o servidor terá depois do passo 1 (a ordem gravada, com as novas no fim, na ordem de criação). A lista vai com todas as categorias, inclusive inativas e novas, já com ids reais.
 6. Reordenar as perguntas de cada categoria em que a ordem do rascunho for diferente da que o servidor terá depois do passo 3, com todas as perguntas da categoria.
@@ -274,7 +279,7 @@ Na criação e na edição de pergunta, "Permitir complemento por IA", "Exige at
 
 ### Textos fixos da tela
 
-Todos ficam no arquivo de textos da tela, criado completo em T2: título "Conteúdo do chatbot", aviso (RN-03), "Nova categoria", "Editar categoria", "Nova pergunta", "Editar", "Ativar", "Desativar", "Ativa", "Inativa", "Ativa · oculta no chatbot", "Exige atendimento presencial", "Fora do escopo do PROCON", "Permitir complemento por IA nesta pergunta", "Pergunta ativa no chatbot", "Respostas longas ficam difíceis de ler no celular", orientação de RN-21, "Página {n} no WhatsApp", "Ver como o cidadão recebe", "Se a IA estiver indisponível", "Esta categoria ainda não foi salva. Salve para que o cidadão a veja.", "A prévia completa fica disponível depois de salvar", "Já existe uma categoria com este nome", "Este documento já está na lista.", "Carga inicial do sistema", "Ainda não alterado pelo painel", "Algumas alterações foram salvas e outras não. Revise o que ainda está pendente e salve de novo.", "Não foi possível salvar. Nenhuma alteração foi gravada. Tente de novo.", "As alterações foram enviadas, mas não foi possível atualizar a tela. Salve de novo para tentar atualizar antes de gravar mais alguma coisa." (recarga que falha, acrescentada na correção F1), "Você não tem permissão para ver o conteúdo do chatbot." (carga recusada com 403), o diálogo "Descartar as alterações?" com "Descartar alterações" e "Continuar editando" (Esc com formulário alterado), os nomes dos botões das linhas com o título ("Editar categoria {título}", "Ativar {título}", "Mover {título} para cima", entre outros), os rótulos dos campos de RN-11, RN-16 e RN-17, as mensagens de erro dos limites e as de carga, sucesso e sem permissão. "Salvar alterações", "Descartar", o contador e "Última alteração por [nome] em [data]" já existem nos textos comuns. Os textos dos balões da prévia não entram aqui: vêm da API (RN-26), salvo o que D-U-04 autorizar. As tarefas que mostram textos dependem de T2 e usam só as chaves criadas lá. Se faltar algum texto, ele é acrescentado em T17, T18 ou T20, que rodam em sequência, para que tarefas em paralelo não editem o mesmo arquivo.
+Todos ficam no arquivo de textos da tela, criado completo em T2: título "Conteúdo do chatbot", aviso (RN-03), "Nova categoria", "Editar categoria", "Nova pergunta", "Editar", "Ativar", "Desativar", "Ativa", "Inativa", "Ativa · oculta no chatbot", os selos das linhas "Não salva" e "Alteração não salva" (RN-29), "Exige atendimento presencial", "Fora do escopo do PROCON", "Permitir complemento por IA nesta pergunta", "Pergunta ativa no chatbot", "Respostas longas ficam difíceis de ler no celular", orientação de RN-21, "Página {n} no WhatsApp", "Ver como o cidadão recebe", "Se a IA estiver indisponível", "Esta categoria ainda não foi salva. Salve para que o cidadão a veja.", "A prévia completa fica disponível depois de salvar", "Já existe uma categoria com este nome", "Este documento já está na lista.", "Carga inicial do sistema", "Ainda não alterado pelo painel", "Algumas alterações foram salvas e outras não. Revise o que ainda está pendente e salve de novo.", "Não foi possível salvar. Nenhuma alteração foi gravada. Tente de novo.", "As alterações foram enviadas, mas não foi possível atualizar a tela. Salve de novo para tentar atualizar antes de gravar mais alguma coisa." (recarga que falha, acrescentada na correção F1), "Você não tem permissão para ver o conteúdo do chatbot." (carga recusada com 403), o diálogo "Descartar as alterações?" com "Descartar alterações" e "Continuar editando" (Esc ou "Cancelar" com formulário alterado, CA-70), "Informe o documento." (Adicionar com o documento vazio, CA-71), os nomes dos botões das linhas com o título ("Editar categoria {título}", "Ativar {título}", "Mover {título} para cima", entre outros), os rótulos dos campos de RN-11, RN-16 e RN-17, as mensagens de erro dos limites e as de carga, sucesso e sem permissão. "Salvar alterações", "Descartar", o contador e "Última alteração por [nome] em [data]" já existem nos textos comuns. Os textos dos balões da prévia não entram aqui: vêm da API (RN-26), salvo o que D-U-04 autorizar. As tarefas que mostram textos dependem de T2 e usam só as chaves criadas lá. Se faltar algum texto, ele é acrescentado em T17, T18 ou T20, que rodam em sequência, para que tarefas em paralelo não editem o mesmo arquivo.
 
 ## Plano de execução
 
@@ -418,13 +423,13 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Dev: Itadori (dev-frontend)
 - Depende de: T1, T2, M1
 - Reaproveita: `StatusBadge`, `EmptyState`, `ContentPageBreak` e `content.json` de T2, estilos de M1.
-- Atende: RN-09, RN-12, RN-24, CA-23, CA-24, CA-30, CA-31, CA-50
+- Atende: RN-09, RN-12, RN-24, RN-29, CA-23, CA-24, CA-30, CA-31, CA-50, CA-68, CA-69
 - Passos: (1) testes: dados da linha, estado oculto, primeira sem ↑ e última sem ↓, separador onde a prop manda, vazio com "Nova categoria"; (2) linha; (3) lista e separador; (4) gate; (5) commit `Feat :sparkles: [#124] Adiciona a lista de categorias do Conteúdo`.
 - Pronto quando: os testes passam; gate rápido passa.
 - Teste: unitário de componente. Falha primeiro "a primeira categoria não tem ↑".
 - Gate: rápido
 - Modelo: economico
-- Status: feita (gate rápido: 8 testes passam; commit cda3775; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
+- Status: feita (gate rápido: 8 testes passam; commit cda3775; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar)); ajuste aprovado pelo usuário: selos "Não salva" e "Alteração não salva" (RN-29), commit 1828d6e
 
 ### T10 [P] Componente da lista de perguntas
 - O quê: lista de perguntas com os dados de RN-13, selos, separador, setas que somem na busca, categoria em cada resultado de busca, linha de última alteração ("Carga inicial do sistema" sem autor, nada em item não salvo) e estado vazio.
@@ -432,13 +437,13 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Dev: Itadori (dev-frontend)
 - Depende de: T1, T2, M1
 - Reaproveita: `Seal`, `StatusBadge`, `EmptyState`, `formatDate`, texto de `lastChangeNote` do `common.json`, `ContentPageBreak` de T2, estilos de M1.
-- Atende: RN-13, RN-23, RN-24, CA-32, CA-44, CA-46
+- Atende: RN-13, RN-23, RN-24, RN-29, CA-32, CA-44, CA-46, CA-68, CA-69
 - Passos: (1) testes: linha completa com "Última alteração por Ana em 05/11/2026", item sem autor com "Carga inicial do sistema", item novo sem linha de alteração, selos, setas ausentes em modo busca, categoria visível no resultado, vazio com "Nova pergunta"; (2) linha; (3) lista; (4) gate; (5) commit `Feat :sparkles: [#124] Adiciona a lista de perguntas do Conteúdo`.
 - Pronto quando: os testes passam; gate rápido passa.
 - Teste: unitário de componente. Falha primeiro "em modo busca não há setas".
 - Gate: rápido
 - Modelo: economico
-- Status: feita (gate rápido: 11 testes passam; commit 90d49df; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
+- Status: feita (gate rápido: 11 testes passam; commit 90d49df; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar)); ajuste aprovado pelo usuário: selos "Não salva" e "Alteração não salva" (RN-29), commit 1828d6e
 
 ### T11 [P] Formulário da categoria
 - O quê: formulário de categoria (nova e edição) com título curto com contador, nome completo e descrição, mostrando os erros recebidos por props e devolvendo os valores ao confirmar.
@@ -446,13 +451,13 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Dev: Itadori (dev-frontend)
 - Depende de: T1, T2, M1
 - Reaproveita: `ConfirmDialog` ou o padrão de painel lateral definido por M1; campos de texto existentes (`ScheduleTextField` como referência).
-- Atende: RN-11, CA-26, CA-27, CA-28
+- Atende: RN-11, CA-26, CA-27, CA-28, CA-70
 - Passos: (1) testes: contador "24/24", erro mostrado junto do campo, "Já existe uma categoria com este nome" quando a prop manda, confirmar chama o callback com os valores; (2) campos e contador; (3) erros e confirmação; (4) gate; (5) commit `Feat :sparkles: [#124] Adiciona o formulário de categoria do Conteúdo`.
 - Pronto quando: os testes passam; gate rápido passa.
 - Teste: unitário de componente. Falha primeiro "contador mostra 24/24 com 24 caracteres".
 - Gate: rápido
 - Modelo: economico
-- Status: feita (gate rápido: 6 testes passam; inclui ContentFormDialog e ContentTextField; commit 527533a; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
+- Status: feita (gate rápido: 6 testes passam; inclui ContentFormDialog e ContentTextField; commit 527533a; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar)); ajuste aprovado pelo usuário: "Cancelar" pede confirmação de descarte como o Esc (CA-70), commit 7bdca19
 
 ### T12 [P] Campo de documentos úteis
 - O quê: campo de lista para "Documentos úteis para esta dúvida", que permite adicionar, editar, remover e reordenar itens, com limite de 30 itens de até 255 caracteres e aviso "Este documento já está na lista." para repetidos, sem bloquear.
@@ -460,13 +465,13 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Dev: Itadori (dev-frontend)
 - Depende de: T1, T2, M1
 - Reaproveita: `DocumentGroup` e `DocumentItem` como referência de interação (lá o repetido é bloqueado; aqui é só aviso).
-- Atende: RN-17, RN-18, CA-36, CA-37
+- Atende: RN-17, RN-18, CA-36, CA-37, CA-71
 - Passos: (1) testes: adicionar, remover, item vazio recusado, 31º item recusado, 256 caracteres recusado, repetido sem acento/maiúscula entra com aviso; (2) implementação; (3) gate; (4) commit `Feat :sparkles: [#124] Adiciona o campo de documentos úteis da pergunta`.
 - Pronto quando: os testes passam; gate rápido passa.
 - Teste: unitário de componente. Falha primeiro "documento repetido entra na lista com o aviso".
 - Gate: rápido
 - Modelo: economico
-- Status: feita (gate rápido: 8 testes passam; commit 1fa9962; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
+- Status: feita (gate rápido: 8 testes passam; commit 1fa9962; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar)); ajuste aprovado pelo usuário: aviso "Informe o documento." anunciado e com foco no campo ao clicar em Adicionar com o campo vazio (CA-71), commit ab9253a
 
 ### T13 [P] Formulário da pergunta
 - O quê: formulário de pergunta (nova e edição) com contadores (inclusive o do texto da pergunta, sempre visível), alerta de 1.000 caracteres, exclusividade presencial/fora do escopo, bloqueio da IA em fora do escopo e religação ao desmarcar, observação presencial, documentos, "Pergunta ativa no chatbot" valendo só ao confirmar, orientação de edição e botão "Ver como o cidadão recebe".
@@ -474,13 +479,13 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Dev: Itadori (dev-frontend)
 - Depende de: T12
 - Reaproveita: `ContentDocumentsField` de T12; estilos de M1.
-- Atende: RN-15, RN-16, RN-17, RN-19, RN-20, RN-21, RN-22, CA-34, CA-35, CA-38, CA-39, CA-40, CA-41, CA-42
+- Atende: RN-15, RN-16, RN-17, RN-19, RN-20, RN-21, RN-22, CA-33, CA-34, CA-35, CA-38, CA-39, CA-40, CA-41, CA-42, CA-70
 - Passos: (1) testes: contador do texto da pergunta visível, alerta com 1.000 e sem alerta com 999, marcar presencial desabilita fora do escopo e vice-versa, fora do escopo desliga e desabilita a IA e desmarcar religa, observação some ao desmarcar presencial, orientação só na edição, sem campo de categoria, fechar sem confirmar não devolve nada; (2) campos e contadores; (3) regras entre campos; (4) gate; (5) commit `Feat :sparkles: [#124] Adiciona o formulário de pergunta do Conteúdo`.
 - Pronto quando: os testes passam; gate rápido passa.
 - Teste: unitário de componente. Falha primeiro "marcar Fora do escopo desliga e desabilita a IA".
 - Gate: rápido
 - Modelo: padrao
-- Status: feita (gate rápido: 12 testes passam; commit dbb3845)
+- Status: feita (gate rápido: 12 testes passam; commit dbb3845); ajustes aprovados pelo usuário: pergunta nova criada inativa quando "Pergunta ativa no chatbot" é desmarcado (RN-15, CA-33), commit 31c9a5a; "Cancelar" pede confirmação de descarte como o Esc (CA-70), commit 7bdca19, com o teste do formulário de pergunta ajustado ao novo comportamento no commit 7301175
 
 ### T14 [P] Componente da prévia estilo WhatsApp
 - O quê: componente que desenha a lista (1), o balão oficial, o balão do passo seguinte com botões, o espaço do balão com IA e a alternativa "Se a IA estiver indisponível", a partir do modelo de balões de T1, com estados de carregando, erro, "corrija os campos" e categoria não salva. Os textos dos balões são os que vêm no modelo (originados da API), nunca uma cópia no componente.
@@ -489,6 +494,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Depende de: T1, T2, M1
 - Reaproveita: `WhatsAppMessageBubble` e o estilo da prévia de `DocumentsPreview` como referência; estilos de M1.
 - Atende: RN-25, RN-26, RN-27, RN-28, CA-53, CA-54, CA-56, CA-57, CA-58, CA-59, CA-60
+- Observação: as linhas da lista da prévia usam uma chave própria de renderização, única por linha mesmo quando a API repete o id da linha (o painel não usa os ids das linhas como identidade). Ajuste técnico no commit f572ad7.
 - Passos: (1) testes: pergunta em negrito, indicação de próxima página só com a flag, balão oficial mostra o texto do modelo sem alteração, rótulo de IA no rodapé, alternativa "Se a IA estiver indisponível" com os balões oficial e de passo seguinte, categoria não salva mostra só a lista e os dois avisos; (2) lista; (3) balões e alternativa; (4) gate; (5) commit `Feat :sparkles: [#124] Adiciona a prévia estilo WhatsApp do Conteúdo`.
 - Pronto quando: os testes passam; gate rápido passa.
 - Teste: unitário de componente. Falha primeiro "com IA ligada aparece a alternativa Se a IA estiver indisponível".
