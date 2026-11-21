@@ -26,14 +26,14 @@ O topo também mostra **"Última alteração por [nome] em [data]"** do item (ca
 
 ## Alterações pendentes e Salvar
 
-A tela segue o padrão das telas de configuração ([regras gerais, §3](00-regras-gerais.md)):
+A tela segue o padrão das telas de configuração ([regras gerais, §3](00-regras-gerais.md#3-salvar-descartar-e-registrar-quem-alterou)):
 
-- Criar, editar, ativar/desativar e reordenar **só ficam pendentes** até **"Salvar alterações"**. Enquanto houver pendências aparece **"N alterações não salvas"**, com a lista do que mudou. **"Descartar"** desfaz todas.
+- Criar, editar, ativar/desativar e reordenar **só ficam pendentes** até **"Salvar alterações"**. Enquanto houver pendências aparece **"N alterações não salvas"**, com a lista do que mudou ao passar o mouse ou tocar. **"Descartar"** desfaz todas.
 - O contador compara com o que está gravado: um item novo conta uma vez, mesmo editado depois; reordenar a mesma lista várias vezes conta uma; uma mudança que volta ao valor gravado deixa de contar.
 - Sair da tela com pendências **não gera aviso**, igual a Horários e Documentos.
-- O servidor grava cada item separadamente, então o Salvar envia as alterações uma a uma. Se uma falhar, o envio para: o que já foi gravado fica gravado, o que faltou continua pendente e um novo Salvar não cria de novo o que já foi criado.
+- O servidor grava cada item separadamente, então o Salvar envia as alterações uma a uma. Se uma falhar, o envio para: o que já foi gravado fica gravado, a tela recarrega, o que faltou continua pendente e um novo Salvar não cria de novo o que já foi criado.
 - Falha depois de alguma gravação: **"Algumas alterações foram salvas e outras não. Revise o que ainda está pendente e salve de novo."**, com quantas foram salvas e quantas faltam. Falha já na primeira gravação: **"Não foi possível salvar. Nenhuma alteração foi gravada. Tente de novo."**
-- Duas pessoas editando ao mesmo tempo: **vale o último Salvar**. Se a reordenação for recusada porque o conteúdo mudou nesse meio tempo, a tela recarrega e mostra o erro.
+- Duas pessoas editando ao mesmo tempo: **vale o último Salvar**. Se a reordenação for recusada porque o conteúdo mudou nesse meio tempo, a tela recarrega, mostra o erro e mantém pendente o que não foi gravado.
 
 ## Categorias
 
@@ -50,7 +50,7 @@ A coluna da esquerda lista as categorias em ordem. Cada uma mostra:
 | Campo | Regra |
 |---|---|
 | Título curto | **Obrigatório, até 24 caracteres**, com contador. É o limite das listas do WhatsApp. Não aceita quebra de linha nem tabulação |
-| Nome completo | Obrigatório, **até 150 caracteres** e **único** (sem diferenciar acentos nem maiúsculas). Nome repetido mostra "Já existe uma categoria com este nome". Não aceita quebra de linha nem tabulação |
+| Nome completo | Obrigatório, **até 150 caracteres** e **único** (sem diferenciar acentos, maiúsculas nem espaços nas pontas), comparado com todas as categorias, gravadas ou novas, ativas ou inativas. Nome repetido mostra "Já existe uma categoria com este nome". Não aceita quebra de linha nem tabulação |
 | Descrição | Opcional, até 500 caracteres. Resumo dos assuntos da categoria |
 
 Uma categoria nova é criada **ativa, no fim da lista**.
@@ -79,7 +79,7 @@ O WhatsApp mostra no máximo 10 itens por lista. Com mais de 10 itens ativos (ca
 - páginas do meio: 8 itens + "Voltar" + "Ver mais opções";
 - última página: até 9 itens + "Voltar".
 
-A tela mostra essa informação e marca, com um separador **"Página 2 no WhatsApp"**, onde cada página começa. Só itens ativos contam (nas categorias, só as ativas que têm pergunta ativa). É informação, não erro: listas curtas são mais fáceis para o cidadão.
+A tela mostra essa informação e marca, com um separador **"Página N no WhatsApp"**, no início de cada página a partir da segunda. Só itens ativos contam (nas categorias, só as ativas que têm pergunta ativa). É informação, não erro: listas curtas são mais fáceis para o cidadão.
 
 ### Formulário da pergunta
 
@@ -107,15 +107,15 @@ Prévia no estilo WhatsApp, com o que está no formulário, **mesmo antes de sal
 
 1. A **lista da categoria**, com a pergunta editada em negrito e a navegação de página quando houver paginação.
 2. **Com "Permitir complemento por IA" ligada, um balão único** com a explicação escrita pela IA (exemplo), a base legal, os documentos, "O que fazer agora", o aviso de caráter não vinculante, a pergunta do passo seguinte com os botões e o rótulo "Gerado com auxílio de IA" no rodapé desse balão ([decisão 009](../decisoes/009-complemento-por-llm.md), item 6). Com a IA ligada, a prévia mostra também a alternativa **"Se a IA estiver indisponível"**, com os balões 3 e 4.
-3. **Com a opção desligada (e nas perguntas fora do escopo), o balão da resposta oficial:** texto oficial, base legal, documentos úteis e, **no fim do mesmo balão, o aviso de caráter não vinculante**. É também o que o cidadão recebe quando a IA não pode ser usada.
+3. **Com a opção desligada, nas perguntas dentro do escopo, o balão da resposta oficial**, com os mesmos blocos que o bot envia: Categoria, Pergunta, Base legal, Resposta, Documentos necessários, "O que fazer agora", a linha de atendimento presencial quando houver e, **no fim do mesmo balão, o aviso de caráter não vinculante**. É também o que o cidadão recebe quando a IA não pode ser usada. Perguntas fora do escopo: pendente (D-U-05).
 4. **Depois do balão oficial, um balão separado** com o passo seguinte:
    - a pergunta de se a dúvida foi resolvida (Sim/Não), para perguntas comuns;
-   - a oferta de agendamento (**"Agendar presencial"** / "Agora não"), para as que exigem atendimento presencial;
-   - a orientação de encaminhamento, para as fora do escopo.
+   - a oferta de agendamento, com os botões **"Agendar presencial"** (decisão do usuário, vale mesmo antes do alinhamento com o bot) e "Agora não", para as que exigem atendimento presencial;
+   - fora do escopo: pendente (D-U-05).
 
 Uma pergunta numa **categoria nova ainda não salva** mostra só a lista, com o aviso "Esta categoria ainda não foi salva. Salve para que o cidadão a veja." e "A prévia completa fica disponível depois de salvar".
 
-**Pendente (alinhamento da prévia com o bot, D-U-04, D-U-05 e D-U-06 da especificação da #124):** texto exato do balão com IA, textos do passo seguinte, rótulos de navegação da lista, tratamento das perguntas fora do escopo e se a observação sobre o atendimento presencial aparece ao cidadão. Até a decisão, vale o que a API devolve.
+**Pendente (alinhamento da prévia com o bot, D-U-04, D-U-05 e D-U-06 da especificação da #124):** texto exato do balão com IA, textos do passo seguinte, rótulos de navegação da lista, tratamento das perguntas fora do escopo e se a observação sobre o atendimento presencial aparece ao cidadão. Até a decisão, vale o que a API devolve, exceto o botão "Agendar presencial", que já está decidido.
 
 ## O que não existe de propósito
 
