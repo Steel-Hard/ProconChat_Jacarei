@@ -388,6 +388,38 @@ describe("ContentPage", () => {
         expect(await screen.findByText("Informe o documento.")).toBeInTheDocument()
     })
 
+    it("depois de um Salvar sem falha nenhuma linha fica com selo", async () => {
+        const user = userEvent.setup()
+        await loaded()
+
+        await createCategory(user)
+        await user.click(screen.getAllByRole("button", { name: /^Desativar / })[0])
+        expect(screen.getByText("Não salva")).toBeInTheDocument()
+        expect(screen.getByText("Alteração não salva")).toBeInTheDocument()
+
+        await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
+
+        await waitFor(() =>
+            expect(screen.getByText("Conteúdo atualizado com sucesso.")).toBeInTheDocument()
+        )
+        expect(screen.queryByText("Não salva")).not.toBeInTheDocument()
+        expect(screen.queryByText("Alteração não salva")).not.toBeInTheDocument()
+    })
+
+    it("depois de uma falha parcial só o item que continuou pendente mantém o selo", async () => {
+        const user = userEvent.setup()
+        const { server } = await loaded()
+        server.failNext("PATCH", /\/categories\/2\/active$/)
+
+        await createCategory(user)
+        await user.click(screen.getAllByRole("button", { name: /^Desativar / })[1])
+        await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
+
+        await screen.findByText("1 salvas e 1 pendentes.")
+        expect(screen.queryByText("Não salva")).not.toBeInTheDocument()
+        expect(screen.getAllByText("Alteração não salva")).toHaveLength(1)
+    })
+
     it("a busca procura em todas as categorias e esconde as setas", async () => {
         const user = userEvent.setup()
         await loaded()
