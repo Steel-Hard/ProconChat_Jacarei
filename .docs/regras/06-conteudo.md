@@ -22,7 +22,7 @@ No topo, um bloco fixo, sem botão, campo ou ação de edição e sem selo, most
 
 > "Esta é uma orientação automatizada de caráter informativo. Ela não é vinculante e não substitui o atendimento jurídico ou administrativo formal do PROCON Jacareí."
 
-Categorias e perguntas ficam num cartão único, separado por filetes. "Salvar alterações", "Descartar" e o contador, assim como a última alteração, continuam no topo da tela, sem barra fixa.
+Categorias e perguntas ficam em duas caixas lado a lado, com filetes só dentro da caixa de perguntas. "Salvar alterações", "Descartar" e o contador, assim como a última alteração, continuam no topo da tela, sem barra fixa.
 
 O topo também mostra **"Última alteração por [nome] em [data]"** do item (categoria ou pergunta) alterado mais recentemente pelo painel. Se nenhum item tiver autor, mostra **"Ainda não alterado pelo painel"**.
 
@@ -64,7 +64,7 @@ Uma categoria nova é criada **ativa, no fim da lista**.
 A área da direita lista as perguntas da categoria selecionada, em ordem. Abaixo do cabeçalho da categoria vem a busca, e depois a lista. Cada pergunta mostra:
 - a posição;
 - o título curto, em negrito, com a descrição curta ao lado, e o texto completo abaixo;
-- o estado (Ativa/Inativa) e os selos **"Exige atendimento presencial"** (tom neutro) ou **"Fora do escopo do PROCON"** (tom âmbar);
+- o estado (Ativa/Inativa) e os selos **"Exige atendimento presencial"** (tom lilás) ou **"Fora do escopo do PROCON"** (tom âmbar);
 - a base legal e a quantidade de documentos úteis;
 - **"Última alteração por [nome] em [data]"**. Itens sem autor (carga inicial) mostram **"Carga inicial do sistema"**, sem data. Pergunta ainda não salva não mostra essa linha.
 
