@@ -72,6 +72,7 @@ export default function useContent() {
     const [invalidKeys, setInvalidKeys] = useState<ReadonlySet<string>>(EMPTY_SET)
     const [itemErrors, setItemErrors] = useState<Record<string, string>>({})
     const [needsReload, setNeedsReload] = useState(false)
+    const [reloading, setReloading] = useState(false)
     const draft = edited ?? baseDraft
 
     function update(change: (current: ContentDraftState) => ContentDraftState) {
@@ -397,7 +398,7 @@ export default function useContent() {
     }
 
     async function save() {
-        if (!draft || !snapshot || saving) {
+        if (!draft || !snapshot || saving || reloading) {
             return
         }
 
@@ -419,7 +420,9 @@ export default function useContent() {
         let working = draft
 
         if (needsReload) {
+            setReloading(true)
             const fresh = await reload()
+            setReloading(false)
 
             if (fresh === null) {
                 setActionError({ message: t("saveReloadFailed"), details: [], tone: "error" })
@@ -514,7 +517,7 @@ export default function useContent() {
     return {
         status: query.isLoading ? "loading" : !draft ? "error" : "success",
         loadForbidden: !draft && isForbidden(query.error),
-        saving,
+        saving: saving || reloading,
         actionError,
         changes,
         lastChange: draft ? latestContentChange(draft) : null,
