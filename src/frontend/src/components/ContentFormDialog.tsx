@@ -243,8 +243,8 @@ function ContentFormDialog({
                                 {children}
                             </div>
                             <div className={css.drawerFooter}>
-                                {previewButton}
                                 {cancelButton}
+                                {previewButton}
                                 {confirmButton}
                             </div>
                         </form>

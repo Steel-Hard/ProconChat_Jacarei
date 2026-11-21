@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import ContentFormDialog from "@/components/ContentFormDialog"
 
@@ -91,6 +91,31 @@ describe("ContentFormDialog", () => {
         expect(footer.className).toMatch(/drawerFooter/)
         expect(footer).toContainElement(screen.getByRole("button", { name: "Cancelar" }))
         expect(dialog.querySelector("form")).toContainElement(footer)
+    })
+
+    it("no modo painel lateral o rodapé segue a ordem Cancelar, Ver como o cidadão recebe, Salvar", () => {
+        render(
+            <ContentFormDialog
+                drawer
+                title="Editar pergunta"
+                confirmLabel="Salvar pergunta"
+                cancelLabel="Cancelar"
+                previewLabel="Ver como o cidadão recebe"
+                onPreview={vi.fn()}
+                onConfirm={vi.fn()}
+                onCancel={vi.fn()}
+            >
+                <input aria-label="Campo" />
+            </ContentFormDialog>
+        )
+
+        const footer = screen.getByRole("button", { name: "Cancelar" }).parentElement as HTMLElement
+
+        expect(
+            within(footer)
+                .getAllByRole("button")
+                .map((button) => button.textContent)
+        ).toEqual(["Cancelar", "Ver como o cidadão recebe", "Salvar pergunta"])
     })
 
     it("no modo painel lateral o botão de fechar do cabeçalho segue a regra do descarte", async () => {
