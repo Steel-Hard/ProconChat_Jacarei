@@ -224,7 +224,7 @@ Ambiente do gerador: Node.js 20 ou mais novo e Chrome ou Chromium (ou `CHROME_PA
 - **Teste:** nenhum (documentação).
 - **Gate:** não se aplica typecheck, lint nem suíte. Conferência: `.docs/guias/gerar-pdfs.sh manual-do-painel` sem erro.
 - **Modelo:** padrao
-- **Status:** pendente
+- **Status:** concluída em 2026-11-21 (rascunho, sem o apêndice, que é da T7). Evidência: `.docs/guias/manual-do-painel.md` com o front matter pedido, o capítulo Antes de começar (com o quadro de palavras), os capítulos 1 a 9 das telas, 10 Permissões e 11 Sugestões de combinações, e 28 figuras numeradas de 1 a 28 em sequência. Comparação mecânica da tabela de permissões com a decisão 004 sem diferença; a nota sobre a exportação de relatórios fica logo abaixo da tabela; a lista de imagens citadas é igual à da pasta. As capturas foram recortadas e reagrupadas para o PDF caber no limite de páginas, e a de Detalhe atendido foi retirada.
 - **Commit:** `Docs :bulb: [#119] Escreve o manual das telas do painel`
 
 ### T6 Gerar o PDF
@@ -239,7 +239,7 @@ Ambiente do gerador: Node.js 20 ou mais novo e Chrome ou Chromium (ou `CHROME_PA
 - **Teste:** nenhum (documentação).
 - **Gate:** não se aplica typecheck, lint nem suíte. Conferência: `.docs/guias/gerar-pdfs.sh manual-do-painel` sem erro, `ls -l .docs/guias/manual-do-painel.pdf` com até 10 MB, número de páginas conferido no leitor de PDF e `git status --short` sem `guia-configuracao-do-bot.pdf` nem `documento-do-software.pdf`.
 - **Modelo:** economico
-- **Status:** pendente
+- **Status:** rascunho gerado em 2026-11-21, versão final pendente (depende da T7 e das correções das revisões). Evidência do rascunho: `.docs/guias/gerar-pdfs.sh manual-do-painel` sem erro, 37 páginas (limite de 40; o apêndice da T7 ainda vai acrescentar páginas, então a versão final precisa de atenção ao limite), 28 capturas (limite de 35), cerca de 2,5 MB (limite de 10 MB) e nenhum outro PDF da pasta alterado.
 - **Commit:** `Docs :bulb: [#119] Gera o PDF do manual do painel` (e, na versão final, `Docs :bulb: [#119] Atualiza o PDF do manual do painel após as revisões`)
 
 ### T7 [P] Escrever o apêndice técnico
