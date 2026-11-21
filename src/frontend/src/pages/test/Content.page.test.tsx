@@ -378,6 +378,16 @@ describe("ContentPage", () => {
         expect(screen.queryByText("Alteração não salva")).not.toBeInTheDocument()
     })
 
+    it("Adicionar com o campo de documento vazio mostra o aviso no formulário de pergunta", async () => {
+        const user = userEvent.setup()
+        await loaded()
+
+        await user.click(screen.getAllByRole("button", { name: "Nova pergunta" })[0])
+        await user.click(screen.getByRole("button", { name: "Adicionar" }))
+
+        expect(await screen.findByText("Informe o documento.")).toBeInTheDocument()
+    })
+
     it("a busca procura em todas as categorias e esconde as setas", async () => {
         const user = userEvent.setup()
         await loaded()

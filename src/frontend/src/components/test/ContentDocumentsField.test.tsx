@@ -56,6 +56,16 @@ describe("ContentDocumentsField", () => {
         expect(screen.getAllByRole("textbox")).toHaveLength(1)
     })
 
+    it("o aviso de item vazio é anunciado e leva o foco ao campo de novo documento", async () => {
+        const user = userEvent.setup()
+        render(<Harness />)
+
+        await add(user, "")
+
+        expect(screen.getByRole("alert")).toHaveTextContent("Informe o documento.")
+        expect(screen.getByPlaceholderText("Novo documento")).toHaveFocus()
+    })
+
     it("recusa documento com 256 caracteres e aceita com 255", async () => {
         const user = userEvent.setup()
         render(<Harness />)

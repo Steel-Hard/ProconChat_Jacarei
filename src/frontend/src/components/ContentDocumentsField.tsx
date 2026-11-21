@@ -1,4 +1,4 @@
-import { useId, useState } from "react"
+import { useId, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import type ContentDocumentsFieldProps from "@/types/content/ContentDocumentsFieldProps.types"
 import contentErrorText from "@/utils/content/contentErrorText"
@@ -11,6 +11,7 @@ function ContentDocumentsField({ documents, errors, onChange }: ContentDocuments
     const listId = useId()
     const [draftText, setDraftText] = useState("")
     const [addError, setAddError] = useState<string | null>(null)
+    const addInputRef = useRef<HTMLInputElement>(null)
     const repeated = new Set(duplicateDocuments(documents))
     const full = documents.length >= CONTENT_LIMITS.documentsCount
 
@@ -19,6 +20,7 @@ function ContentDocumentsField({ documents, errors, onChange }: ContentDocuments
 
         if (text === "") {
             setAddError(t("errors.documentRequired"))
+            addInputRef.current?.focus()
             return
         }
 
@@ -126,6 +128,7 @@ function ContentDocumentsField({ documents, errors, onChange }: ContentDocuments
             ) : null}
             {listError ? <p className={css.error}>{contentErrorText(t, listError)}</p> : null}
             <input
+                ref={addInputRef}
                 type="text"
                 className={css.input}
                 value={draftText}
@@ -141,7 +144,11 @@ function ContentDocumentsField({ documents, errors, onChange }: ContentDocuments
                     }
                 }}
             />
-            {addError ? <p className={css.error}>{addError}</p> : null}
+            {addError ? (
+                <p role="alert" className={css.error}>
+                    {addError}
+                </p>
+            ) : null}
             <button type="button" className={css.addDocument} disabled={full} onClick={add}>
                 {t("documentsField.add")}
             </button>
