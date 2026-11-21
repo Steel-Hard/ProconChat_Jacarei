@@ -1,6 +1,6 @@
 # Tela de Conteúdo do chatbot no painel (#124)
 
-> Status: aprovada
+> Status: em-andamento
 > Tipo: funcionalidade
 > Tamanho: grande
 > Branch: feat/124-tela-conteudo-v2
@@ -311,7 +311,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário. Falha primeiro o teste que espera a criação de categoria em POST `/api/v1/content/categories` devolvendo o `data`.
 - Gate: rápido e completo
 - Modelo: padrao
-- Status: pendente
+- Status: feita (gate completo: lint, typecheck e test:run passam, 229 arquivos e 1828 testes; 13 testes novos escritos primeiro)
 
 ### T2 [P] Menu, rota, página base e textos
 - O quê: liberar "Conteúdo" no menu e na rota com uma página base (título e bloco fixo do aviso), registrar o arquivo de textos completo da tela, criar o separador "Página N no WhatsApp" usado pelas duas listas e ajustar os testes que esperavam a tela como não pronta.
