@@ -24,7 +24,7 @@ const STATE_LABEL = {
 
 function ContentCategoryRow({ item, onSelect, onEdit, onToggle, onMove }: ContentCategoryRowProps) {
     const { t } = useTranslation("content")
-    const classes = [css.row, css.rowSelectable]
+    const classes = [css.row]
 
     if (item.selected) {
         classes.push(css.rowSelected)
