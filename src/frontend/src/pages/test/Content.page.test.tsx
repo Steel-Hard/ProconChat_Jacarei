@@ -362,6 +362,22 @@ describe("ContentPage", () => {
         })
     })
 
+    it("selos: item existente alterado ou reordenado mostra Alteração não salva e some ao desfazer", async () => {
+        const user = userEvent.setup()
+        await loaded()
+
+        await user.click(screen.getAllByRole("button", { name: /^Mover .+ para baixo$/ })[0])
+        expect(screen.getAllByText("Alteração não salva")).toHaveLength(2)
+        expect(screen.queryByText("Não salva")).not.toBeInTheDocument()
+
+        await user.click(screen.getAllByRole("button", { name: /^Mover .+ para cima$/ })[1])
+        expect(screen.queryByText("Alteração não salva")).not.toBeInTheDocument()
+
+        await createCategory(user)
+        expect(screen.getByText("Não salva")).toBeInTheDocument()
+        expect(screen.queryByText("Alteração não salva")).not.toBeInTheDocument()
+    })
+
     it("a busca procura em todas as categorias e esconde as setas", async () => {
         const user = userEvent.setup()
         await loaded()

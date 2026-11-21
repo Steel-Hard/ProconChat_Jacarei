@@ -5,6 +5,7 @@ import type ContentQuestionRowView from "@/types/content/ContentQuestionRowView.
 import type ContentSnapshot from "@/types/content/ContentSnapshot.types"
 import { questionFieldsChanged } from "@/utils/content/contentFieldDiff"
 import { draftQuestionOf } from "@/utils/content/draft/deriveContentDraft"
+import movedContentKeys from "@/utils/content/movedContentKeys"
 import whatsappPages from "@/utils/content/whatsappPages"
 
 function lastChangeOf(question: ContentDraftQuestion): ContentQuestionRowView["lastChange"] {
@@ -24,6 +25,7 @@ function rowOf(
     category: ContentDraftCategory,
     position: number,
     saved: ContentDraftQuestion | undefined,
+    moved: boolean,
     options: {
         pageBreak: number | null
         canMoveUp: boolean
@@ -43,8 +45,10 @@ function rowOf(
         active: question.active,
         unsaved:
             saved === undefined ||
+            moved ||
             questionFieldsChanged(question, saved) ||
             question.active !== saved.active,
+        isNew: saved === undefined,
         invalid: options.invalidKeys.has(question.key),
         error: options.itemErrors[question.key] ?? null,
         requiresInPerson: question.requiresInPerson,
@@ -77,18 +81,43 @@ export default function buildQuestionRows(
         ? entries.map((entry) => ({ item: entry, pageBreak: null as number | null }))
         : whatsappPages(entries, (entry) => entry.question.active)
 
+    const movedByCategory = new Map<string, Set<string>>()
+
+    function movedIn(category: ContentDraftCategory): Set<string> {
+        const cached = movedByCategory.get(category.key)
+
+        if (cached) {
+            return cached
+        }
+
+        const savedKeys = [...(savedByCategory.get(category.key)?.keys() ?? [])]
+        const draftKeys = (draft.questionsByCategory[category.key] ?? []).map((item) => item.key)
+        const moved = movedContentKeys(savedKeys, draftKeys)
+
+        movedByCategory.set(category.key, moved)
+
+        return moved
+    }
+
     return pages.map(({ item: entry, pageBreak }, index) => {
         const saved = savedByCategory.get(entry.category.key)?.get(entry.question.key)
         const siblings = draft.questionsByCategory[entry.category.key] ?? []
         const siblingIndex = siblings.findIndex((question) => question.key === entry.question.key)
 
-        return rowOf(entry.question, entry.category, index + 1, saved, {
-            pageBreak,
-            canMoveUp: siblingIndex > 0,
-            canMoveDown: siblingIndex >= 0 && siblingIndex < siblings.length - 1,
-            searching,
-            invalidKeys,
-            itemErrors
-        })
+        return rowOf(
+            entry.question,
+            entry.category,
+            index + 1,
+            saved,
+            movedIn(entry.category).has(entry.question.key),
+            {
+                pageBreak,
+                canMoveUp: siblingIndex > 0,
+                canMoveDown: siblingIndex >= 0 && siblingIndex < siblings.length - 1,
+                searching,
+                invalidKeys,
+                itemErrors
+            }
+        )
     })
 }

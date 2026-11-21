@@ -50,6 +50,7 @@
         "stateInactive": "Inativa",
         "stateHidden": "Ativa · oculta no chatbot",
         "unsaved": "Não salva",
+        "unsavedChange": "Alteração não salva",
         "emptyTitle": "Nenhuma categoria cadastrada.",
         "emptyHint": "Crie a primeira categoria para o cidadão navegar no WhatsApp."
     },
@@ -72,6 +73,7 @@
         "stateActive": "Ativa",
         "stateInactive": "Inativa",
         "unsaved": "Não salva",
+        "unsavedChange": "Alteração não salva",
         "sealInPerson": "Exige atendimento presencial",
         "sealOutOfScope": "Fora do escopo do PROCON",
         "legalBasis": "Base legal: {{value}}",

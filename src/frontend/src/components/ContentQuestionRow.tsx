@@ -60,7 +60,9 @@ function ContentQuestionRow({
                                 : t("questions.stateInactive")}
                         </span>
                         {item.unsaved ? (
-                            <span className={css.stateUnsaved}>{t("questions.unsaved")}</span>
+                            <span className={css.stateUnsaved}>
+                                {t(item.isNew ? "questions.unsaved" : "questions.unsavedChange")}
+                            </span>
                         ) : null}
                         {item.requiresInPerson ? (
                             <Seal label={t("questions.sealInPerson")} tone="warning" />

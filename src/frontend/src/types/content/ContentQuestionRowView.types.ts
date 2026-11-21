@@ -7,6 +7,7 @@ type ContentQuestionRowView = {
     question: string
     active: boolean
     unsaved: boolean
+    isNew: boolean
     invalid: boolean
     error: string | null
     requiresInPerson: boolean

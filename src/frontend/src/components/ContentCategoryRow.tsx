@@ -67,7 +67,9 @@ function ContentCategoryRow({ item, onSelect, onEdit, onToggle, onMove }: Conten
                             {t(STATE_LABEL[item.state])}
                         </span>
                         {item.unsaved ? (
-                            <span className={css.stateUnsaved}>{t("categories.unsaved")}</span>
+                            <span className={css.stateUnsaved}>
+                                {t(item.isNew ? "categories.unsaved" : "categories.unsavedChange")}
+                            </span>
                         ) : null}
                     </span>
                     {item.error !== null ? (

@@ -14,6 +14,7 @@ function item(overrides: Partial<ContentQuestionRowView> = {}): ContentQuestionR
         question: "Posso trocar um produto?",
         active: true,
         unsaved: false,
+        isNew: false,
         invalid: false,
         error: null,
         requiresInPerson: false,
@@ -62,7 +63,7 @@ describe("ContentQuestionList", () => {
     })
 
     it("não mostra linha de alteração em item novo", () => {
-        renderList([item({ lastChange: null, unsaved: true })])
+        renderList([item({ lastChange: null, unsaved: true, isNew: true })])
 
         expect(screen.queryByText(/Última alteração/)).not.toBeInTheDocument()
         expect(screen.queryByText("Carga inicial do sistema")).not.toBeInTheDocument()
@@ -150,5 +151,19 @@ describe("ContentQuestionList", () => {
         expect(
             screen.getByRole("button", { name: "Mover Troca de produto para baixo" })
         ).toBeVisible()
+    })
+
+    it("item novo mostra o selo Não salva", () => {
+        renderList([item({ unsaved: true, isNew: true })])
+
+        expect(screen.getByText("Não salva")).toBeInTheDocument()
+        expect(screen.queryByText("Alteração não salva")).not.toBeInTheDocument()
+    })
+
+    it("item existente alterado mostra só o selo Alteração não salva", () => {
+        renderList([item({ unsaved: true, isNew: false })])
+
+        expect(screen.getByText("Alteração não salva")).toBeInTheDocument()
+        expect(screen.queryByText("Não salva")).not.toBeInTheDocument()
     })
 })

@@ -14,6 +14,7 @@ function item(overrides: Partial<ContentCategoryRowView> = {}): ContentCategoryR
         activeQuestionsCount: 2,
         state: "active",
         unsaved: false,
+        isNew: false,
         invalid: false,
         error: null,
         selected: false,
@@ -131,5 +132,19 @@ describe("ContentCategoryList", () => {
         expect(screen.getByRole("button", { name: "Desativar Contratos" })).toBeVisible()
         expect(screen.getByRole("button", { name: "Mover Compras para cima" })).toBeVisible()
         expect(screen.getByRole("button", { name: "Mover Contratos para baixo" })).toBeVisible()
+    })
+
+    it("categoria nova mostra o selo Não salva", () => {
+        renderList([item({ unsaved: true, isNew: true })])
+
+        expect(screen.getByText("Não salva")).toBeInTheDocument()
+        expect(screen.queryByText("Alteração não salva")).not.toBeInTheDocument()
+    })
+
+    it("categoria existente alterada mostra só o selo Alteração não salva", () => {
+        renderList([item({ unsaved: true, isNew: false })])
+
+        expect(screen.getByText("Alteração não salva")).toBeInTheDocument()
+        expect(screen.queryByText("Não salva")).not.toBeInTheDocument()
     })
 })

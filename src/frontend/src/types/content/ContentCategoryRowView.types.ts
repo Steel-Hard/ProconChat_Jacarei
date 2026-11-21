@@ -7,6 +7,7 @@ type ContentCategoryRowView = {
     activeQuestionsCount: number
     state: "active" | "inactive" | "hidden"
     unsaved: boolean
+    isNew: boolean
     invalid: boolean
     error: string | null
     selected: boolean

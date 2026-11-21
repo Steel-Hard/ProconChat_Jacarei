@@ -8,6 +8,7 @@ import {
 } from "@/utils/content/categoryVisibility"
 import { categoryFieldsChanged } from "@/utils/content/contentFieldDiff"
 import { draftCategoryOf } from "@/utils/content/draft/deriveContentDraft"
+import movedContentKeys from "@/utils/content/movedContentKeys"
 import whatsappPages from "@/utils/content/whatsappPages"
 
 export default function buildCategoryRows(
@@ -22,6 +23,11 @@ export default function buildCategoryRows(
     )
     const pages = whatsappPages(draft.categories, (category) =>
         isCategoryVisibleInChatbot(category, draft.questionsByCategory[category.key] ?? [])
+    )
+
+    const moved = movedContentKeys(
+        [...saved.keys()],
+        draft.categories.map((category) => category.key)
     )
 
     return pages.map(({ item: category, pageBreak }, index) => {
@@ -43,8 +49,10 @@ export default function buildCategoryRows(
             state,
             unsaved:
                 savedCategory === undefined ||
+                moved.has(category.key) ||
                 categoryFieldsChanged(category, savedCategory) ||
                 category.active !== savedCategory.active,
+            isNew: savedCategory === undefined,
             invalid: invalidKeys.has(category.key),
             error: itemErrors[category.key] ?? null,
             selected: category.key === selectedKey,
