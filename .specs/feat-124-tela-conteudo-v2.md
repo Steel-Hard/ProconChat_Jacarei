@@ -564,7 +564,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário e de componente. Falha primeiro o teste do ponto P5 conforme a decisão.
 - Gate: completo
 - Modelo: padrao
-- Status: em-andamento. Evidência parcial: o painel já consome só `botMessages` e envia `listRows` desde T14/T15 (commits d209f1c e 0dac01d), e os tipos antigos de `answerBubble`/`nextStepBubble` já saíram do frontend. Falta conferir a tela com a API depois de B2, B3 e B4 (fora do escopo em dois balões e linha da observação presencial, que o painel mostra como vêm) e fechar com o gate completo
+- Status: feita (o painel consome só `botMessages` e envia `listRows` desde T14/T15, commits d209f1c e 0dac01d; conferido contra a API real, subida isolada com banco e portas próprios, já derrubada: lista paginada (página 2 de 3 com 'Voltar opções' e 'Ver mais opções' vindos da API), fora do escopo em dois balões de texto, 'Agendar presencial' e a linha 'Sobre o atendimento presencial: <observação>', aviso de 1.024 caracteres vindo de `aiLengthWarning`, tudo mostrado como a API devolve; a tela abriu em /conteudo e a prévia renderizou sem erro no navegador; gate completo do frontend: lint, typecheck (tsc -b), prettier e test:run passam, 255 arquivos e 2049 testes; nenhum ajuste de código foi necessário nesta conferência)
 
 ### T19 [P] Verificação final no Docker
 - O quê: rodar a suíte completa e o build do painel, também pelo compose, e conferir a tela aberta no container.
