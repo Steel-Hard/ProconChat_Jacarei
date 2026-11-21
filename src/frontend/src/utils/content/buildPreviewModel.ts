@@ -17,7 +17,7 @@ function bubbleOf(message: ContentPreviewOutgoingMessage, id: string): ContentPr
 }
 
 export default function buildPreviewModel(result: ContentPreviewResult): ContentPreviewModel {
-    const { categoryList, officialMessages, aiMessage } = result.botMessages
+    const { categoryList, officialMessages, aiMessage, aiLengthWarning } = result.botMessages
     const official = officialMessages.map((message, index) =>
         bubbleOf(message, `official-${index}`)
     )
@@ -35,6 +35,9 @@ export default function buildPreviewModel(result: ContentPreviewResult): Content
             hasMoreOptions: false
         },
         primaryBubbles: aiMessage ? [bubbleOf(aiMessage, "ai")] : official,
-        fallbackBubbles: aiMessage ? official : []
+        fallbackBubbles: aiMessage ? official : [],
+        lengthWarning: aiLengthWarning.exceedsLimit
+            ? { length: aiLengthWarning.length, limit: aiLengthWarning.limit }
+            : null
     }
 }

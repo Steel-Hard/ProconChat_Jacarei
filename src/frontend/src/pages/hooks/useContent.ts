@@ -293,7 +293,8 @@ export default function useContent() {
                 model: {
                     list: buildLocalPreviewList(previewListRows ?? []),
                     primaryBubbles: [],
-                    fallbackBubbles: []
+                    fallbackBubbles: [],
+                    lengthWarning: null
                 }
             }
         }

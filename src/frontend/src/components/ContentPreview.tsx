@@ -35,6 +35,11 @@ function ContentPreview({ status, model, onClose, onRetry }: ContentPreviewProps
                         {t("preview.fixErrors")}
                     </output>
                 ) : null}
+                {showChat && model.lengthWarning !== null ? (
+                    <output className={`${css.notice} ${css.unsavedNotice}`}>
+                        {t("preview.lengthWarning", model.lengthWarning)}
+                    </output>
+                ) : null}
             </div>
 
             {status === "loading" ? <p className={css.loading}>{t("preview.loading")}</p> : null}

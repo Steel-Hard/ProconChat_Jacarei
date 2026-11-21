@@ -253,7 +253,13 @@ describe("useContent", () => {
                                   totalPages: 1
                               },
                               officialMessages: [{ type: "text", text: "Oficial" }],
-                              aiMessage: null
+                              aiMessage: null,
+                              aiLengthWarning: {
+                                  exceedsLimit: false,
+                                  length: 0,
+                                  limit: 1024,
+                                  message: null
+                              }
                           }
                       }
                   })

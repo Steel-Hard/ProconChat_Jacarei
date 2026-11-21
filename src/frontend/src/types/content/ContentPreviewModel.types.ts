@@ -5,6 +5,7 @@ type ContentPreviewModel = {
     list: ContentPreviewListModel
     primaryBubbles: ContentPreviewBubbleModel[]
     fallbackBubbles: ContentPreviewBubbleModel[]
+    lengthWarning: { length: number; limit: number } | null
 }
 
 export default ContentPreviewModel

@@ -39,6 +39,7 @@ function result(
                 }
             ],
             aiMessage: null,
+            aiLengthWarning: { exceedsLimit: false, length: 0, limit: 1024, message: null },
             ...overrides
         }
     }
@@ -180,5 +181,24 @@ describe("buildPreviewArgs", () => {
         const args = buildPreviewArgs(7, null, { ...fields, outOfScope: true }, [])
 
         expect(args.llmAllowed).toBe(false)
+    })
+
+    it("sem excesso, não há aviso de tamanho", () => {
+        expect(buildPreviewModel(result()).lengthWarning).toBeNull()
+    })
+
+    it("com excesso, devolve o tamanho e o limite para o aviso", () => {
+        const model = buildPreviewModel(
+            result({
+                aiLengthWarning: {
+                    exceedsLimit: true,
+                    length: 1300,
+                    limit: 1024,
+                    message: "x"
+                }
+            })
+        )
+
+        expect(model.lengthWarning).toEqual({ length: 1300, limit: 1024 })
     })
 })

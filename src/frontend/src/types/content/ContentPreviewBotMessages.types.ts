@@ -9,6 +9,12 @@ type ContentPreviewBotMessages = {
     }
     officialMessages: ContentPreviewOutgoingMessage[]
     aiMessage: Extract<ContentPreviewOutgoingMessage, { type: "buttons" }> | null
+    aiLengthWarning: {
+        exceedsLimit: boolean
+        length: number
+        limit: number
+        message: string | null
+    }
 }
 
 export default ContentPreviewBotMessages

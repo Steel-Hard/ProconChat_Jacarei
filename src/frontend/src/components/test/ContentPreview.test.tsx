@@ -29,6 +29,7 @@ function model(overrides: Partial<ContentPreviewModel> = {}): ContentPreviewMode
             }
         ],
         fallbackBubbles: [],
+        lengthWarning: null,
         ...overrides
     }
 }
@@ -196,5 +197,19 @@ describe("ContentPreview", () => {
         await user.click(screen.getByRole("button", { name: "Fechar prévia" }))
 
         expect(onClose).toHaveBeenCalledTimes(1)
+    })
+
+    it("avisa que a IA passaria do limite e que o bot manda a resposta oficial", () => {
+        renderPreview({ model: model({ lengthWarning: { length: 1300, limit: 1024 } }) })
+
+        expect(screen.getByRole("status")).toHaveTextContent(
+            "A resposta com IA ficaria com 1300 caracteres e passaria do limite de 1024 do WhatsApp. Nesse caso, o bot envia a resposta oficial."
+        )
+    })
+
+    it("não mostra o aviso de tamanho quando não passa do limite", () => {
+        renderPreview()
+
+        expect(screen.queryByText(/passaria do limite/)).not.toBeInTheDocument()
     })
 })

@@ -213,7 +213,8 @@ describe("ContentPage", () => {
                     officialMessages: [
                         { type: "text", text: `Resposta oficial\n\n${FIXED_NOTICE}` }
                     ],
-                    aiMessage: null
+                    aiMessage: null,
+                    aiLengthWarning: { exceedsLimit: false, length: 0, limit: 1024, message: null }
                 }
             }
         } as ReturnType<typeof baseOptions>)
