@@ -563,7 +563,7 @@ Em qualquer falha, o script termina com uma mensagem e a senha do Admin não é 
 | a senha não pode passar de 72 bytes; nada foi alterado | Escolha uma senha mais curta. Acentos ocupam mais de um byte |
 | nenhum deploy registrado em releases.log; defina IMAGE_TAG | O sistema não tem entrega registrada. Use o procedimento sem o script, abaixo, informando a versão em uso |
 | compose.prod.yaml e .env precisam existir em (pasta) | O script foi rodado de uma instalação incompleta. Confira a pasta `/opt/proconchat` |
-| não foi possível redefinir a senha do Admin; veja a mensagem acima | Leia a mensagem anterior. Se for "No Admin account found. Run the seed first", a conta Admin ainda não existe: rode a carga inicial do sistema e tente de novo |
+| não foi possível redefinir a senha do Admin; veja a mensagem acima | Leia a mensagem anterior. Se for "No Admin account found. Run the seed first (npm run db:seed or the seed service)", a conta Admin ainda não existe: rode a carga inicial do sistema e tente de novo |
 
 ## <a id="s13-04"></a>Sem o script
 
