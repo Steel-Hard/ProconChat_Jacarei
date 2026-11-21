@@ -30,7 +30,7 @@ Só a conta Admin vê a tela de WhatsApp. Se o seu menu não mostra o item **Wha
 | 6 | Pausar e retomar o atendimento | Painel do PROCON |
 | 7 | Resolver problemas comuns | Painel do PROCON |
 
-> **Atenção:** a aprovação dos modelos de mensagem pela Meta leva de algumas horas a alguns dias. Por isso, faça as capítulos 2, 3 e 4 primeiro e deixe o restante para depois.
+> **Atenção:** a aprovação dos modelos de mensagem pela Meta leva de algumas horas a alguns dias. Por isso, faça os capítulos 2, 3 e 4 primeiro e deixe o restante para depois.
 
 > **Atenção:** o número que for registrado na Meta para o chatbot deixa de funcionar no aplicativo WhatsApp comum do celular. Use um número dedicado ao atendimento.
 
@@ -114,7 +114,7 @@ Esta parte é feita no site da Meta, fora do nosso painel. Os nomes abaixo podem
 
 ## Guardar o ID do número e o ID da conta
 
-Você vai precisar de dois códigos na capítulo 5. Anote-os agora.
+Você vai precisar de dois códigos no capítulo 5. Anote-os agora.
 
 1. No Painel de desenvolvedores da Meta, abra o aplicativo e vá em **WhatsApp**, **Configuração da API**.
 2. Copie o **ID do número de telefone**.
@@ -228,7 +228,7 @@ Cadastrar e aprovar um modelo não custa nada. A Meta pode cobrar pelo envio das
 
 ## Os quatro status dos modelos
 
-Depois de enviar, a Meta analisa o modelo. O painel do PROCON mostra o resultado em **Modelos de mensagem** (veja a capítulo 5).
+Depois de enviar, a Meta analisa o modelo. O painel do PROCON mostra o resultado em **Modelos de mensagem** (veja o capítulo 5). Enquanto um modelo não estiver **Aprovado**, o sistema não envia a mensagem dele.
 
 | Status | O que significa | O que fazer |
 | --- | --- | --- |
@@ -236,8 +236,6 @@ Depois de enviar, a Meta analisa o modelo. O painel do PROCON mostra o resultado
 | Em análise | A Meta ainda está analisando | Aguardar, de algumas horas a alguns dias |
 | Rejeitado | A Meta recusou o modelo | Abrir o modelo no Gerenciador do WhatsApp, ler o motivo, corrigir o texto e enviar de novo |
 | Não encontrado | O modelo com esse nome e idioma não existe na conta | Conferir o nome e o idioma, ou cadastrar o modelo |
-
-Enquanto um modelo não estiver **Aprovado**, o sistema não envia a mensagem dele (lembretes ou avisos de cancelamento).
 
 # 5. Preencher a tela de WhatsApp
 
@@ -261,10 +259,10 @@ Na parte de cima, você vê o número institucional, a **situação** do atendim
 ![Seção Credenciais](images/configuracao-do-bot/06-credenciais.png)
 *Figura 5 – Seção Credenciais, ainda vazia*
 
-1. Em **ID do número de telefone**, digite o ID guardado na capítulo 2. Só números.
+1. Em **ID do número de telefone**, digite o ID guardado no capítulo 2. Só números.
 2. Em **ID da conta WhatsApp Business**, digite o ID da conta. Só números.
-3. Em **Token de acesso**, cole o token permanente da capítulo 3. Sem espaços.
-4. Em **App Secret**, cole a chave secreta da capítulo 2. Sem espaços.
+3. Em **Token de acesso**, cole o token permanente do capítulo 3. Sem espaços.
+4. Em **App Secret**, cole a chave secreta do capítulo 2. Sem espaços.
 
 Todos os quatro campos são obrigatórios.
 
@@ -273,7 +271,7 @@ Todos os quatro campos são obrigatórios.
 
 > **Atenção:** depois de salvos, o token e o App Secret nunca mais aparecem inteiros. A tela mostra só os quatro últimos caracteres, com o botão **Substituir**. Isso é de propósito, por segurança. Para trocar, clique em **Substituir** e cole o valor novo.
 
-O campo do token também avisa sobre a validade. Se você vir "Este token expira em..." ou "Use um token permanente de usuário do sistema; o token temporário expira em 24 horas", gere o token permanente da capítulo 3.
+O campo do token também avisa sobre a validade. Se você vir "Este token expira em..." ou "Use um token permanente de usuário do sistema; o token temporário expira em 24 horas", gere o token permanente do capítulo 3.
 
 ## Testar a conexão
 
@@ -293,7 +291,7 @@ O campo do token também avisa sobre a validade. Se você vir "Este token expira
 | ID do número não encontrado ou sem acesso por este token | Confira o ID do número e se o usuário do sistema tem acesso à conta |
 | ID da conta WhatsApp Business não encontrado ou sem acesso por este token | Confira o ID da conta e o acesso do usuário do sistema |
 | O número não pertence a esta conta WhatsApp Business | O ID do número e o ID da conta são de contas diferentes. Confira os dois |
-| O token não tem permissão para gerenciar este número | Gere o token de novo, marcando as duas permissões da capítulo 3 |
+| O token não tem permissão para gerenciar este número | Gere o token de novo, marcando as duas permissões do capítulo 3 |
 | Não foi possível falar com a Meta. Tente de novo em instantes | Aguarde alguns minutos e tente de novo |
 | A Meta recusou as credenciais | Confira todos os campos, um por um |
 
