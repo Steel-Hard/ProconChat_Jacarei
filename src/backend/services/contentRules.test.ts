@@ -5,7 +5,6 @@ import {
     PERGUNTA_RESOLVIDA,
     ROTULO_IA,
     criarMensagensPerguntas,
-    formatarRespostaFinal,
     mensagensRespostaOficial,
     montarMensagemIa,
 } from "./messageFormatter.service"
@@ -365,14 +364,14 @@ describe("contentRules", () => {
             expect(preview.botMessages.aiMessage).toEqual(montarMensagemIa(AI_SAMPLE_TEXT, respostaDe(input)))
         })
 
-        it("returns a single official text and no AI message for out-of-scope questions", () => {
+        it("returns the official text and the separate referral text and no AI message for out-of-scope questions", () => {
             const input = { ...baseInput, outOfScope: true, requiredDocuments: [] }
             const preview = buildQuestionPreview(category, [], input)
 
             expect(preview.botMessages.aiMessage).toBeNull()
-            expect(preview.botMessages.officialMessages).toEqual([
-                { type: "text", text: formatarRespostaFinal(respostaDe(input)) },
-            ])
+            expect(preview.botMessages.officialMessages).toEqual(mensagensRespostaOficial(respostaDe(input)))
+            expect(preview.botMessages.officialMessages).toHaveLength(2)
+            expect(preview.nextStepBubble).toBeNull()
         })
 
         it("fills the old bubbles from the bot messages", () => {

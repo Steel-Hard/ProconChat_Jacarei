@@ -479,15 +479,15 @@ export function formatarConfirmacaoAgendamento(input: ConfirmacaoAgendamentoInpu
     return linhas.join("\n")
 }
 
+export const ENCAMINHAMENTO_FORA_DO_ESCOPO =
+    "Como esta demanda não compete ao PROCON, dirija-se ao órgão indicado na orientação acima portando seus documentos e comprovantes para atendimento especializado."
+
 const LINHA_ATENDIMENTO_PRESENCIAL =
     "Esta situação pode exigir atendimento presencial no PROCON Jacareí para andamento formal."
 
 function textoProximosPassos(resposta: RespostaFinalOutput): string {
     if (resposta.proximos_passos) {
         return resposta.proximos_passos
-    }
-    if (resposta.fora_de_escopo) {
-        return "Como esta demanda não compete ao PROCON, dirija-se ao órgão indicado na orientação acima portando seus documentos e comprovantes para atendimento especializado."
     }
     if (resposta.requer_presencial) {
         return "Como este caso requer análise documental aprofundada, organize os documentos necessários indicados e agende um atendimento presencial no PROCON Jacareí."
@@ -512,6 +512,10 @@ export function formatarRespostaFinal(resposta: RespostaFinalOutput): string {
 
     if (resposta.documentos_necessarios.length > 0) {
         linhas.push(`Documentos necessários: ${resposta.documentos_necessarios.join(", ")}`)
+    }
+
+    if (resposta.fora_de_escopo) {
+        return `${linhas.join("\n")}\n\n${AVISO_NAO_VINCULANTE}`
     }
 
     linhas.push(`\nO que fazer agora:\n${textoProximosPassos(resposta)}`)
@@ -730,6 +734,12 @@ const PERGUNTA_RESOLVIDA_BOTOES = "A dúvida foi resolvida?"
 const PERGUNTA_OFERTA_AGENDAMENTO_BOTOES = "Deseja agendar um atendimento presencial no PROCON Jacareí?"
 
 export function mensagensRespostaOficial(resposta: RespostaFinalOutput): OutgoingMessage[] {
+    if (resposta.fora_de_escopo) {
+        return [
+            { type: "text", text: formatarRespostaFinal(resposta) },
+            { type: "text", text: ENCAMINHAMENTO_FORA_DO_ESCOPO },
+        ]
+    }
     const pergunta: OutgoingMessage = resposta.requer_presencial
         ? { type: "buttons", text: PERGUNTA_OFERTA_AGENDAMENTO_BOTOES, buttons: criarBotoesOfertaAgendamento() }
         : { type: "buttons", text: PERGUNTA_RESOLVIDA_BOTOES, buttons: criarBotoesResolvida() }

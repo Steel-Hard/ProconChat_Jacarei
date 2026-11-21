@@ -23,18 +23,6 @@ export class MotorDecisaoService {
             throw new Error("Categoria não encontrada.")
         }
 
-        if (pergunta.out_of_scope) {
-            return {
-                categoria: categoria.title,
-                pergunta: pergunta.question,
-                base_legal: pergunta.legal_basis || "",
-                resposta: "Esta dúvida está fora do escopo de atendimento do PROCON via WhatsApp.",
-                documentos_necessarios: [],
-                requer_presencial: pergunta.requires_in_person,
-                fora_de_escopo: true,
-            }
-        }
-
         const documentos = await this.repository.getDocumentosPorPergunta(perguntaId)
 
         return {
@@ -44,7 +32,7 @@ export class MotorDecisaoService {
             resposta: pergunta.answer,
             documentos_necessarios: documentos.map((d) => d.description),
             requer_presencial: pergunta.requires_in_person,
-            fora_de_escopo: false,
+            fora_de_escopo: pergunta.out_of_scope,
         }
     }
 }

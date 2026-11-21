@@ -560,13 +560,14 @@ export function createConversationFlowService({
             }
             await closer.finishOrLog(sessionId, closing)
 
+            const messages = mensagensRespostaOficial(resposta)
             return {
                 sessionId,
                 newSession: false,
                 reply: {
-                    text: formatarRespostaFinal(resposta),
+                    text: messages.map((message) => (message.type === "text" ? message.text : "")).join("\n\n"),
                     step: "FINISHED",
-                    messages: [{ type: "text", text: formatarRespostaFinal(resposta) }],
+                    messages,
                 },
             }
         }

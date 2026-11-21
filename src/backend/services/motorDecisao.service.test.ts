@@ -46,14 +46,12 @@ describe("MotorDecisaoService", () => {
         })
     })
 
-    it("deve identificar casos fora de escopo e retornar mensagem apropriada", async () => {
+    it("deve devolver a resposta escrita pela equipe e os documentos nos casos fora de escopo", async () => {
         const resposta = await service.processarPergunta(2)
 
         expect(resposta.fora_de_escopo).toBe(true)
-        expect(resposta.resposta).toBe(
-            "Esta dúvida está fora do escopo de atendimento do PROCON via WhatsApp."
-        )
-        expect(resposta.documentos_necessarios).toEqual([])
+        expect(resposta.resposta).toBe("Procure a delegacia de polícia mais próxima.")
+        expect(resposta.documentos_necessarios).toEqual(["Documento de identificação"])
         expect(resposta.requer_presencial).toBe(false)
     })
 

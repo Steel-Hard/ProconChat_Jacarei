@@ -6,7 +6,6 @@ import {
     mensagensRespostaOficial,
     montarMensagemIa,
     paginarItens,
-    formatarRespostaFinal,
 } from "./messageFormatter.service"
 import type { OutgoingMessage } from "../types/message.types"
 import type { Pergunta, RespostaFinalOutput } from "../types/motorDecisao.types"
@@ -225,13 +224,6 @@ function buildBotCategoryList(
     }
 }
 
-function buildPreviewOfficialMessages(resposta: RespostaFinalOutput): OutgoingMessage[] {
-    if (resposta.fora_de_escopo) {
-        return [{ type: "text", text: formatarRespostaFinal(resposta) }]
-    }
-    return mensagensRespostaOficial(resposta)
-}
-
 function buildNextStepBubble(
     resposta: RespostaFinalOutput,
     officialMessages: OutgoingMessage[],
@@ -272,7 +264,7 @@ export function buildQuestionPreview(
         fora_de_escopo: input.outOfScope,
     }
 
-    const officialMessages = buildPreviewOfficialMessages(resposta)
+    const officialMessages = mensagensRespostaOficial(resposta)
     const aiCandidate =
         input.llmAllowed && !input.outOfScope ? montarMensagemIa(AI_SAMPLE_TEXT, resposta) : null
     const aiMessage = aiCandidate?.type === "buttons" ? aiCandidate : null

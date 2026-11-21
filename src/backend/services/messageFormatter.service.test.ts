@@ -10,6 +10,7 @@ import {
     formatarListaPerguntas,
     formatarListaSlots,
     formatarRespostaFinal,
+    mensagensRespostaOficial,
     paginarItens,
     criarBotoesAttendee,
     criarMensagensCategorias,
@@ -134,6 +135,43 @@ describe("messageFormatter.service", () => {
         const texto = formatarRespostaFinal(respostaBase)
 
         expect(texto).not.toContain("Esta situação pode exigir atendimento presencial")
+    })
+
+    describe("fora do escopo", () => {
+        const respostaForaDoEscopo: RespostaFinalOutput = {
+            ...respostaBase,
+            resposta: "Procure a delegacia de polícia.",
+            fora_de_escopo: true,
+        }
+        const encaminhamento =
+            "Como esta demanda não compete ao PROCON, dirija-se ao órgão indicado na orientação acima portando seus documentos e comprovantes para atendimento especializado."
+
+        test("o balão oficial traz a resposta da equipe, base legal, documentos e aviso, sem 'O que fazer agora' nem o encaminhamento", () => {
+            const texto = formatarRespostaFinal(respostaForaDoEscopo)
+
+            expect(texto).toContain("Resposta: Procure a delegacia de polícia.")
+            expect(texto).toContain("Base legal: Art. 49 do CDC")
+            expect(texto).toContain("Documentos necessários: Nota fiscal, Comprovante de pagamento")
+            expect(texto).not.toContain("O que fazer agora")
+            expect(texto).not.toContain(encaminhamento)
+            expect(texto.endsWith(AVISO_NAO_VINCULANTE)).toBe(true)
+        })
+
+        test("sem base legal e sem documentos o balão oficial não traz essas linhas", () => {
+            const texto = formatarRespostaFinal({ ...respostaForaDoEscopo, base_legal: "", documentos_necessarios: [] })
+
+            expect(texto).not.toContain("Base legal:")
+            expect(texto).not.toContain("Documentos necessários:")
+        })
+
+        test("mensagensRespostaOficial devolve o balão oficial e o balão separado de encaminhamento, sem botões", () => {
+            const mensagens = mensagensRespostaOficial(respostaForaDoEscopo)
+
+            expect(mensagens).toEqual([
+                { type: "text", text: formatarRespostaFinal(respostaForaDoEscopo) },
+                { type: "text", text: encaminhamento },
+            ])
+        })
     })
 
     test("formatarRespostaFinal inclui aviso de atendimento presencial quando requer_presencial e verdadeiro", () => {
