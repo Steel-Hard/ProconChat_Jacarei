@@ -10,9 +10,7 @@ describe("ContentPageBreak", () => {
             </ul>
         )
 
-        const separator = screen.getByRole("separator")
-
-        expect(separator).toHaveTextContent("Página 2 no WhatsApp")
+        expect(screen.getByRole("listitem")).toHaveTextContent("Página 2 no WhatsApp")
     })
 
     it("não usa papel de alerta, porque é só informação", () => {
@@ -23,6 +21,7 @@ describe("ContentPageBreak", () => {
         )
 
         expect(screen.queryByRole("alert")).not.toBeInTheDocument()
-        expect(screen.getByRole("separator")).toHaveTextContent("Página 3 no WhatsApp")
+        expect(screen.getByRole("listitem")).toHaveTextContent("Página 3 no WhatsApp")
+        expect(screen.queryByRole("separator")).not.toBeInTheDocument()
     })
 })

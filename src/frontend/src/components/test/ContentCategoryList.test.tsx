@@ -79,7 +79,7 @@ describe("ContentCategoryList", () => {
     it("mostra o separador de página onde a prop manda", () => {
         renderList([item({ key: "1" }), item({ key: "2", position: 2, pageBreak: 2 })])
 
-        expect(screen.getByRole("separator")).toHaveTextContent("Página 2 no WhatsApp")
+        expect(screen.getByText("Página 2 no WhatsApp")).toHaveTextContent("Página 2 no WhatsApp")
     })
 
     it("chama os callbacks das ações", async () => {
