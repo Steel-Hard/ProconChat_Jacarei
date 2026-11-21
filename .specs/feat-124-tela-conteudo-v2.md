@@ -584,7 +584,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: nenhum novo.
 - Gate: build
 - Modelo: economico
-- Status: pendente
+- Status: feita (gate build: npm run build do frontend passa (tsc -b e vite build); build das imagens pelo compose em projeto isolado (nome e portas próprios, sem tocar nos containers e bancos existentes), subida de frontend, backend, migração e seed, backend saudável e /conteudo aberto no container com a conta administradora, tela e prévia renderizadas; tudo derrubado depois, com volumes e imagens do projeto removidos; sem correção de código, então sem commit de código; gate completo do frontend antes: lint, typecheck, prettier e test:run passam)
 
 ### M1 [P] Desenho visual da tela
 - O quê: decisões de layout e estados visuais da tela, entregues como descrição para o Itadori e como os arquivos de estilo da tela: bloco fixo do aviso, última alteração do topo, colunas de categorias e perguntas, linha de lista com selos e estado, separador "Página N no WhatsApp", setas, busca e resultados com categoria, formulários (painel ou diálogo), campo de documentos com aviso de repetido, contadores e alerta, prévia estilo WhatsApp (lista, balões, botões, rótulo de IA, alternativa "Se a IA estiver indisponível", aviso de categoria não salva), estados de carregando, vazio, erro, salvando, falha parcial e falha total, e comportamento no celular.
