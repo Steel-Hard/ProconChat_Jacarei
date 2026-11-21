@@ -334,7 +334,19 @@ Ambiente do gerador: Node.js 20 ou mais novo e Chrome ou Chromium (ou `CHROME_PA
 - **Teste:** nenhum (documentação).
 - **Gate:** gerador sem erro, comparação da tabela sem diferença, `git diff --stat develop...HEAD` só com os arquivos citados e `git diff develop...HEAD -- .docs/guias/gerar-pdf.mjs .docs/guias/gerar-pdfs.sh` sem saída.
 - **Modelo:** padrao
-- **Status:** pendente
+- **Status:** concluída em 2026-11-21 pela Nanami (reviewer), com a entrega aprovada e sem achado que bloqueie em aberto. Evidência, conferida no commit `84d2c00`, antes de juntar os commits de imagens:
+  - Gerador: `.docs/guias/gerar-pdfs.sh manual-do-painel` termina sem erro, e o PDF gerado de novo é igual ao commitado, página a página. O PDF tem 38 páginas (limite de 40), 28 figuras (limite de 35) e cerca de 4,7 MB (limite de 10 MB).
+  - Tabela de permissões: a comparação com a decisão 004 não mostra nenhuma diferença.
+  - Figuras: as imagens citadas são as mesmas da pasta, e a numeração vai da Figura 1 à 28 sem pular.
+  - Sumário (CA-27): os 49 itens levam à página que o sumário indica, e o PDF não tem marcadores (RN-21).
+  - Escopo: o `git diff --stat develop...HEAD` mostra só o manual, o PDF dele, as imagens dele, os dois README, esta especificação, o `guia.css` e o `estilo/README.md`. O `git diff develop...HEAD -- .docs/guias/gerar-pdf.mjs .docs/guias/gerar-pdfs.sh` não mostra nada.
+  - Estilo (D-U-10): no `guia.css`, a mudança é um único bloco no fim, e todas as regras começam com `body:has(#sumario)`. O `estilo/README.md` tem a nota sobre esse bloco.
+  - CA-26: os outros dois guias, gerados fora do repositório com o estilo anterior e com o estilo novo, ficam iguais pixel a pixel (25 e 19 páginas). Os PDFs deles não mudaram.
+  - Segurança e LGPD: as 28 capturas atuais e as capturas antigas que ficaram no histórico não mostram nenhum dado pessoal real, credencial, token, ID da Meta, telefone real nem endereço interno. Nenhum commit leva `.env` nem script SQL.
+  - Apêndice A: as mensagens citadas são as mesmas do `deploy/reset-admin-password.sh` e do `resetAdminPassword.ts`. A alternativa sem o script é a mesma do `.docs/infra/deploy.md`.
+  - Os achados B1 a B3 e as sugestões S1 a S5 das rodadas anteriores foram corrigidos e conferidos de novo.
+  - Commits: todos seguem `Docs :bulb: [#119] ...`, não têm Co-Authored-By e trazem só arquivos da tarefa.
+  - Depois de juntar os commits de imagens, `git diff <HEAD anterior> HEAD` deve sair vazio.
 
 ## Dúvidas
 
