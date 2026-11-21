@@ -359,7 +359,7 @@ Ela guarda os dados de quem responde, no PROCON, pelo tratamento dos dados pesso
 
 1. Clique na aba **Privacidade**.
 2. Preencha o **Nome do controlador** (quem responde pelos dados na instituição).
-3. Preencha o **E-mail de contato para pedidos do titular** (o e-mail onde o cidadão pede acesso, correção ou exclusão dos próprios dados).
+3. Preencha o **E-mail de contato para pedidos do titular** (o e-mail onde o cidadão pede acesso ou exclusão dos próprios dados).
 4. Se quiser, preencha os demais campos, como o nome do encarregado.
 5. Clique em **Salvar alterações**.
 
