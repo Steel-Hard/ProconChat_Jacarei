@@ -284,6 +284,35 @@ describe("ContentPage", () => {
         expect(screen.queryByText("Limpe a busca para criar uma pergunta.")).not.toBeInTheDocument()
     })
 
+    it("reordenação recusada recarrega, mostra o erro e mantém pendente o que não foi gravado", async () => {
+        const user = userEvent.setup()
+        const { server } = await loaded()
+        server.failNext("PUT", /^\/categories\/reorder$/, 400)
+
+        await user.click(screen.getAllByRole("button", { name: /^Desativar / })[1])
+        await user.click(screen.getAllByRole("button", { name: /^Mover .+ para baixo$/ })[0])
+        expect(screen.getByText("2 alterações não salvas")).toBeInTheDocument()
+        const readsBefore = server.log.filter((entry) => entry === "GET /categories").length
+
+        await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
+
+        expect(
+            await screen.findByText(
+                "Algumas alterações foram salvas e outras não. Revise o que ainda está pendente e salve de novo."
+            )
+        ).toBeInTheDocument()
+        expect(
+            screen.getByText(
+                "A ordem mudou no servidor enquanto você editava. A tela foi recarregada."
+            )
+        ).toBeInTheDocument()
+        expect(server.log.filter((entry) => entry === "GET /categories")).toHaveLength(
+            readsBefore + 1
+        )
+        expect(screen.getByText("1 alteração não salva")).toBeInTheDocument()
+        expect(screen.getByText("1 salvas e 1 pendentes.")).toBeInTheDocument()
+    })
+
     it("a busca procura em todas as categorias e esconde as setas", async () => {
         const user = userEvent.setup()
         await loaded()
