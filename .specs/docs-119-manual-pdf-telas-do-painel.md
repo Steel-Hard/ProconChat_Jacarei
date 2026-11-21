@@ -1,6 +1,6 @@
 # Manual em PDF das telas do painel (#119)
 
-> Status: aprovada
+> Status: implementada
 > Tipo: funcionalidade
 > Tamanho: media
 > Branch: docs/119-manual-pdf-telas-do-painel
