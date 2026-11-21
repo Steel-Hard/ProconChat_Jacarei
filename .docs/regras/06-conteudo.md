@@ -49,7 +49,7 @@ A coluna da esquerda lista as categorias em ordem, de forma compacta. Cada uma m
 
 **Ações no cabeçalho da categoria selecionada** (painel de perguntas, que mostra o nome e o estado dela): **Editar categoria**, **Desativar categoria** (ou **Ativar categoria**, quando ela está inativa) e **Nova pergunta**, nessa ordem. Ativar/desativar muda só o rascunho e não muda o estado das perguntas. Durante a busca, o cabeçalho continua completo, com "Editar categoria" e "Desativar categoria"; só "Nova pergunta" fica desabilitada, com uma dica explicando o motivo. Sem nenhuma categoria, o cabeçalho não aparece e a tela mostra o estado vazio com "Nova categoria".
 
-**Formulário da categoria** (abre num painel lateral, ver "Formulários em painel lateral"):
+**Formulário da categoria** (abre num diálogo central estreito, ver "Formulários"):
 
 | Campo | Regra |
 |---|---|
@@ -87,9 +87,13 @@ O WhatsApp mostra no máximo 10 itens por lista. Com mais de 10 itens ativos (ca
 
 A tela mostra essa informação e marca, com um separador **"Página N no WhatsApp"**, no início de cada página a partir da segunda. Só itens ativos contam (nas categorias, só as ativas que têm pergunta ativa). É informação, não erro: listas curtas são mais fáceis para o cidadão.
 
-### Formulários em painel lateral
+### Formulários
 
-Os formulários de categoria e de pergunta abrem num **painel lateral**, com rodapé fixo: **Cancelar** e **Confirmar** e, no da pergunta, também **Ver como o cidadão recebe**. O foco fica dentro do painel, o fundo não recebe foco nem clique e não rola, e o Esc e o Cancelar pedem confirmação quando há mudanças. No celular o painel ocupa a largura da tela.
+O formulário da **pergunta** abre num **painel lateral**, com rodapé fixo: **Cancelar**, **Salvar pergunta** (que só leva os valores ao rascunho) e **Ver como o cidadão recebe**. No celular o painel ocupa a largura da tela.
+
+O formulário da **categoria** abre num **diálogo central estreito**, com **Cancelar** e **Salvar categoria**.
+
+Nos dois, o foco fica dentro do formulário, o fundo não recebe foco nem clique e não rola, e o Esc e o Cancelar pedem confirmação quando há mudanças.
 
 ### Formulário da pergunta
 
