@@ -10,7 +10,7 @@ Manter as categorias e perguntas que o cidadão navega no WhatsApp, com as respo
 
 ## Estado da tela
 
-**API no backend pronta (`GET/POST/PUT/PATCH /api/v1/content/*`, issue #63); tela no frontend na Sprint 3.** O conteúdo inicial vem da carga idempotente do sistema (`db/seeds/content.seed.ts`) e qualquer item editado pelo painel passa a ter `updated_by` preenchido, sendo preservado em execuções seguintes do seed.
+**Pronta (API no backend na issue #63, tela no painel na issue #124).** O conteúdo inicial vem da carga idempotente do sistema (`db/seeds/content.seed.ts`) e qualquer item editado pelo painel passa a ter `updated_by` preenchido, sendo preservado em execuções seguintes do seed.
 
 ## Como o conteúdo funciona
 
@@ -66,7 +66,9 @@ A área da direita lista as perguntas da categoria selecionada, em ordem. Cada u
 
 **Ações:** reordenar (↑↓), **Ativar/Desativar**, **Editar**, **Nova pergunta**.
 
-Uma pergunta nova entra **no fim da lista** da categoria, **ativa** e com **"Permitir complemento por IA"** ligada.
+Uma pergunta nova entra **no fim da lista** da categoria, **ativa** e com **"Permitir complemento por IA"** ligada. A equipe pode desmarcar **"Pergunta ativa no chatbot"** antes de salvar, e a pergunta nasce inativa.
+
+O que ainda não foi salvo leva um selo, um por item: **"Não salva"** no item novo e **"Alteração não salva"** no item existente com mudança pendente. O selo some se a mudança for desfeita.
 
 ### Busca
 
@@ -99,6 +101,7 @@ A tela mostra essa informação e marca, com um separador **"Página N no WhatsA
 Regras entre os campos:
 - **"Exige atendimento presencial" e "Fora do escopo" são mutuamente exclusivos.** Marcar um desabilita o outro.
 - **Perguntas fora do escopo nunca usam IA.** A opção fica desligada e desabilitada. Ao desmarcar "Fora do escopo", a IA volta ligada.
+- O botão **Cancelar** do formulário, assim como a tecla Esc, pede confirmação quando há mudanças no formulário.
 - Ao editar uma pergunta existente, aparece a orientação: **"Para mudar o assunto da pergunta, desative-a e crie uma nova, para não alterar o histórico dos relatórios."** Não é possível mover uma pergunta para outra categoria.
 
 ### "Ver como o cidadão recebe"
@@ -115,6 +118,8 @@ Prévia no estilo WhatsApp, com o que está no formulário, **mesmo antes de sal
 **Pergunta fora do escopo:** o balão oficial traz a resposta escrita pela equipe, a base legal e os documentos úteis (quando houver) e o aviso no fim, **sem "O que fazer agora:"**. Depois vem um balão separado, sem botões e sem oferta de agendamento, com a frase "Como esta demanda não compete ao PROCON, dirija-se ao órgão indicado na orientação acima portando seus documentos e comprovantes para atendimento especializado." Não usa IA.
 
 **Observação sobre o atendimento presencial:** quando a pergunta exige atendimento presencial e a observação está preenchida, o cidadão a recebe no balão da resposta (oficial e com IA), logo depois da linha "Esta situação pode exigir atendimento presencial no PROCON Jacareí para andamento formal.", na forma "Sobre o atendimento presencial: [observação]". Não é repetida na oferta de agendamento e não é enviada à IA. Observação vazia não gera linha.
+
+Se, com o complemento por IA, o balão com IA passaria de **1.024 caracteres** (limite do WhatsApp para mensagens com botões), a prévia avisa: "Com o complemento por IA, esta mensagem passaria de 1.024 caracteres. Neste caso o bot envia só a resposta oficial." O texto do aviso vem da API.
 
 Uma pergunta numa **categoria nova ainda não salva** mostra só a lista, com o aviso "Esta categoria ainda não foi salva. Salve para que o cidadão a veja." e "A prévia completa fica disponível depois de salvar". Nesse caso a lista sai do rascunho, sem os rótulos do bot (cabeçalho, botão e navegação).
 

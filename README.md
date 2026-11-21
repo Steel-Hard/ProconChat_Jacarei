@@ -86,7 +86,7 @@ O projeto busca:
 | Banco | PostgreSQL 15, migrations com `node-pg-migrate` | Implementado |
 | LLM | Ollama + `llama3.2:3b`, local (RP05: nenhuma API externa de LLM) | Serviço implementado; ligado ao fluxo na Sprint 3 |
 | WhatsApp | **WhatsApp Cloud API** oficial | Implementado |
-| Painel web | React 19 + Vite + TypeScript, a partir do `template-react` | Parcial: login, "Minha conta", Agendamentos, Detalhe do agendamento e WhatsApp; demais telas na Sprint 3 |
+| Painel web | React 19 + Vite + TypeScript, a partir do `template-react` | Parcial: login, "Minha conta", Agendamentos, Detalhe do agendamento WhatsApp e Conteúdo; demais telas na Sprint 3 |
 | Infraestrutura | Docker Compose, GitHub Actions (CI/CD), VM na nuvem com HTTPS | Implementado |
 
 Detalhes em [`.docs/architecture/architecture.md`](.docs/architecture/architecture.md).
