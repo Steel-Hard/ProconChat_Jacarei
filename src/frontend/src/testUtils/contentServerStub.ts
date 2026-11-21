@@ -85,8 +85,18 @@ export default function contentServerStub({ categories, questions, preview }: Se
     const failures: Failure[] = []
     const bodies: { url: string; method: string; body: unknown }[] = []
 
+    const holds: { method: string; match: RegExp; gate: Promise<void> }[] = []
+
     function failNext(method: string, match: RegExp, status = 500, times = 1) {
         failures.push({ method, match, status, times })
+    }
+
+    function holdNext(method: string, match: RegExp): () => void {
+        const { promise, resolve } = Promise.withResolvers<void>()
+
+        holds.push({ method, match, gate: promise })
+
+        return resolve
     }
 
     async function handle(request: Request): Promise<Response> {
@@ -99,6 +109,13 @@ export default function contentServerStub({ categories, questions, preview }: Se
 
         if (method !== "GET") {
             bodies.push({ url: path, method, body })
+        }
+
+        const heldIndex = holds.findIndex((item) => item.method === method && item.match.test(path))
+
+        if (heldIndex >= 0) {
+            const [held] = holds.splice(heldIndex, 1)
+            await held.gate
         }
 
         const failure = failures.find(
@@ -193,5 +210,5 @@ export default function contentServerStub({ categories, questions, preview }: Se
         return json({ data: {} })
     }
 
-    return { state, log, bodies, failNext, handle }
+    return { state, log, bodies, failNext, holdNext, handle }
 }

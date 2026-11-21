@@ -313,6 +313,34 @@ describe("ContentPage", () => {
         expect(screen.getByText("1 salvas e 1 pendentes.")).toBeInTheDocument()
     })
 
+    it("o Salvar fica desabilitado durante a recarga que antecede a gravação e um segundo clique não grava nada", async () => {
+        const user = userEvent.setup()
+        const { server } = await loaded()
+        server.failNext("GET", /^\/categories$/)
+
+        await createCategory(user)
+        await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
+        await waitFor(() => expect(server.log).toContain("POST /categories"))
+        await screen.findByText("Categoria nova")
+        const release = server.holdNext("GET", /^\/categories$/)
+        const writesBefore = server.log.filter((entry) => !entry.startsWith("GET")).length
+
+        await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
+
+        await waitFor(() =>
+            expect(screen.getByRole("button", { name: "Salvar alterações" })).toBeDisabled()
+        )
+        await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
+        expect(server.log.filter((entry) => !entry.startsWith("GET"))).toHaveLength(writesBefore)
+
+        release()
+
+        await waitFor(() =>
+            expect(screen.getByText("Conteúdo atualizado com sucesso.")).toBeInTheDocument()
+        )
+        expect(server.log.filter((entry) => entry === "POST /categories")).toHaveLength(1)
+    })
+
     it("a busca procura em todas as categorias e esconde as setas", async () => {
         const user = userEvent.setup()
         await loaded()
