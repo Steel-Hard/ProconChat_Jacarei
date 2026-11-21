@@ -140,7 +140,7 @@ O Ollama chegou a cerca de 3 GB em uso. Os outros serviços, parados, usam junto
 
 ### Modelo frio
 
-A primeira geração depois que o modelo sai da memória leva de 13 a 22 s, em qualquer número de CPUs testado (12,9 s com 7 CPUs, 15,8 s com 13). O Ollama descarrega o modelo depois de alguns minutos sem uso, e a conversa seguinte paga o tempo de carregá-lo. Essa primeira resposta passa da meta de 10 s e, nas medições mais lentas (até 21,8 s), pode passar também do limite de espera de 20 s. Nesse caso o cidadão recebe a resposta oficial.
+A primeira geração depois que o modelo sai da memória leva cerca de 13 a 22 s (12,9 a 21,8 s medidos), em qualquer número de CPUs testado (12,9 s com 7 CPUs, 15,8 s com 13). O Ollama descarrega o modelo depois de alguns minutos sem uso, e a conversa seguinte paga o tempo de carregá-lo. Essa primeira resposta passa da meta de 10 s e, nas medições mais lentas (até 21,8 s), pode passar também do limite de espera de 20 s. Nesse caso o cidadão recebe a resposta oficial.
 
 ### Disco
 
@@ -151,6 +151,7 @@ A primeira geração depois que o modelo sai da memória leva de 13 a 22 s, em q
 | Modelo `llama3.2:3b` | 2,0 GB |
 | Banco recém-criado | 50 MB |
 | Total na instalação | cerca de 12,6 GB |
+| Cache da compilação (só no caminho 2B) | espaço extra durante o build (na medição do projeto, cerca de 1 GB) |
 
 ## Requisitos mínimos e recomendados
 
@@ -304,12 +305,19 @@ Como as imagens publicadas são ARM64, numa máquina x86 você compila as três 
 4. Compile as três imagens, uma de cada vez, com o nome e a tag que o `compose.prod.yaml` espera (troque `steel-hard` se mudou `IMAGE_OWNER`):
 
    ```bash
-   docker build --target runtime -t "ghcr.io/steel-hard/proconchat-backend:$TAG" src/backend
-   docker build --target runtime -t "ghcr.io/steel-hard/proconchat-gateway:$TAG" src/gateway
-   docker build --target runtime --build-arg VITE_API_URL= -t "ghcr.io/steel-hard/proconchat-frontend:$TAG" src/frontend
+   docker build --target runtime \
+     -t "ghcr.io/steel-hard/proconchat-backend:$TAG" \
+     src/backend
+   docker build --target runtime \
+     -t "ghcr.io/steel-hard/proconchat-gateway:$TAG" \
+     src/gateway
+   docker build --target runtime \
+     --build-arg VITE_API_URL= \
+     -t "ghcr.io/steel-hard/proconchat-frontend:$TAG" \
+     src/frontend
    ```
 
-   O `--build-arg VITE_API_URL=` (vazio) faz o painel chamar a API no mesmo endereço em que é aberto.
+   O `--build-arg VITE_API_URL=` (vazio) faz o painel chamar a API no mesmo endereço em que é aberto. A compilação usa espaço extra de cache em disco; depois do build, libere-o com `docker builder prune -f`.
 5. Rode o deploy com a mesma tag. Como as três imagens já existem na máquina, o script só baixa o `postgres`, o `caddy` e o Ollama:
 
    ```bash
