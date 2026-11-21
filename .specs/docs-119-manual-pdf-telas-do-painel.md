@@ -27,7 +27,7 @@ Hoje a equipe do PROCON tem um guia em PDF só para conectar o WhatsApp. Não ex
 | RN-09 | Toda captura é feita com o painel rodando localmente na worktree, só com dados fictícios. Nenhum nome, CPF, telefone, e-mail, protocolo ou credencial real pode aparecer (LGPD). Na tela de WhatsApp, só identificadores inventados e nenhum token real. | usuário; decisão 002 |
 | RN-10 | Toda tela coberta tem ao menos uma captura com legenda numerada. | issue #119 |
 | RN-11 | O manual tem um apêndice técnico, para a equipe técnica, com o passo a passo para redefinir a senha do Admin no servidor. O apêndice pode ter comandos, mas não pode ter endereço de servidor, IP nem segredo. | usuário; decisão 004, item 8 |
-| RN-12 | O manual usa o gerador e o estilo que já existem para os guias em PDF, sem alterá-los. | usuário |
+| RN-12 | O manual usa o gerador e o estilo que já existem para os guias em PDF. O gerador não muda. O estilo pode ganhar um bloco no fim, com uma nota no guia de estilo, que vale só para o manual, desde que os outros guias em PDF não mudem de aparência. | usuário (D-U-10) |
 | RN-13 | O PDF entra no índice geral da documentação (linha da pasta de guias) e na tabela do índice dos guias. | issue #119 |
 | RN-14 | Quando uma fonte de texto diverge do código do painel, vale o que o painel faz hoje, e a divergência é anotada para o reviewer. Corrigir as outras fontes fica fora desta tarefa. | usuário |
 | RN-15 | Junto da combinação do líder, o manual avisa que, sem "Gerenciar usuários" no líder, só a conta Admin gerencia contas, e que quem cria uma conta precisa ter todas as permissões que vai conceder a ela. | usuário (D-U-03) |
@@ -36,6 +36,7 @@ Hoje a equipe do PROCON tem um guia em PDF só para conectar o WhatsApp. Não ex
 | RN-18 | A capa tem o título "Manual do painel" e o subtítulo "Como usar as telas do painel do ProconChat Jacareí". | usuário (D-U-08) |
 | RN-19 | As capturas são só em tamanho de computador. Não há capturas em tamanho de celular. | usuário (D-U-07) |
 | RN-20 | O PDF tem no máximo 40 páginas, 35 capturas e 10 MB. | usuário (D-U-09) |
+| RN-21 | O PDF não tem marcadores na barra lateral do leitor. A navegação do manual é o sumário clicável no início do documento. | usuário (D-U-11) |
 
 ## Critérios de aceite
 
@@ -78,6 +79,8 @@ Geração e índices
 - CA-20 QUANDO os links e as figuras do texto-fonte são conferidos ENTÃO toda imagem citada DEVE existir na pasta de imagens do manual, toda imagem da pasta DEVE ser usada, as figuras DEVEM ter numeração seguida e todo link DEVE abrir. (RN-10, RN-12)
 - CA-24 QUANDO o PDF é aberto ENTÃO a capa DEVE ter o título "Manual do painel" e o subtítulo "Como usar as telas do painel do ProconChat Jacareí". (RN-18)
 - CA-25 QUANDO o PDF final é conferido ENTÃO DEVE ter no máximo 40 páginas, no máximo 35 capturas e no máximo 10 MB. (RN-20)
+- CA-26 QUANDO os outros guias em PDF são gerados com o estilo alterado e comparados com a versão gerada antes da alteração ENTÃO a aparência deles NÃO DEVE mudar, e o gerador DEVE continuar sem alteração. (RN-12)
+- CA-27 QUANDO o PDF é aberto num leitor ENTÃO não DEVE haver marcadores na barra lateral, e cada item do sumário no início DEVE levar, com um clique, ao capítulo correspondente. (RN-21)
 
 ## Critérios de sucesso
 
@@ -110,7 +113,8 @@ Geração e índices
 
 - Telas de Sessões e Dashboard: não estão prontas (decisão do usuário).
 - Corrigir as regras das telas, as decisões, o protótipo ou a memória do time quando divergem do painel: as divergências só são anotadas (RN-14).
-- Mudar o gerador, o estilo, a capa ou as fontes dos guias.
+- Mudar o gerador (`gerar-pdf.mjs` e `gerar-pdfs.sh`), a capa ou as fontes dos guias. A única mudança de estilo permitida é o bloco restrito ao manual de RN-12 (D-U-10).
+- Marcadores (outline) no PDF: exigiriam mudar o gerador compartilhado, e o usuário recusou (D-U-11).
 - Mudar os outros dois guias em PDF ou gerar de novo os PDFs deles.
 - Criar carga de dados fictícios no repositório (seed, script ou arquivo versionado): os dados fictícios são criados por SQL no banco local de quem tira as capturas, e o script fica fora do repositório (D-U-06).
 - Capturas em tamanho de celular (D-U-07).
@@ -126,7 +130,7 @@ Typecheck, lint e suíte de testes: esta tarefa não muda código, então eles n
 - Fase 2: T3
   - Gate de fase: todas as capturas de RN-02 na pasta de imagens, em tamanho de computador e no máximo 35.
 - Fase 3 (sequencial): T5 → T6 (rascunho com capturas)
-  - Gate de fase: `.docs/guias/gerar-pdfs.sh manual-do-painel` sem erro; `git status --short` mostra só o manual, o PDF dele, as imagens dele e os dois README.
+  - Gate de fase: `.docs/guias/gerar-pdfs.sh manual-do-painel` sem erro; `git status --short` mostra só o manual, o PDF dele, as imagens dele, os dois README e, se houver, `.docs/guias/estilo/guia.css` e `.docs/guias/estilo/README.md` (RN-12).
 - Fase 4 (paralelo): T7 [P], T8 [P], T9 [P], T10 [P], T11 [P]
   - Começa com o rascunho com capturas. A revisão da Nobara (T10) e a da Maki (T11) começam já com ele, enquanto o dev-doc escreve o apêndice (T7). Revisores só leem; quem altera o Markdown é só o dev-doc, em sequência: primeiro o apêndice, depois as correções dos achados.
   - Gate de fase: tabela idêntica, links e figuras sem erro, revisões sem achado que bloqueia em aberto, e T6 rodada de novo para a versão final.
@@ -233,9 +237,9 @@ Ambiente do gerador: Node.js 20 ou mais novo e Chrome ou Chromium (ou `CHROME_PA
 - **Onde:** `.docs/guias/manual-do-painel.pdf`
 - **Dev:** dev-doc
 - **Depende de:** T5 (rascunho); T7 e as correções dos achados de T8, T9, T10 e T11 (versão final).
-- **Reaproveita:** `.docs/guias/gerar-pdfs.sh` e `.docs/guias/estilo/`, sem alterá-los.
-- **Atende:** RN-12, RN-18, RN-20, CA-17, CA-24, CA-25
-- **Pronto quando:** o PDF foi gerado só para o manual, abre com capa, capítulos e capturas, tem no máximo 40 páginas e 10 MB, e nenhum outro PDF da pasta mudou.
+- **Reaproveita:** `.docs/guias/gerar-pdfs.sh` e `.docs/guias/gerar-pdf.mjs`, sem alterá-los, e `.docs/guias/estilo/`, que só pode ganhar o bloco restrito ao manual de RN-12.
+- **Atende:** RN-12, RN-18, RN-20, RN-21, CA-17, CA-24, CA-25, CA-27
+- **Pronto quando:** o PDF foi gerado só para o manual, abre com capa, sumário clicável, capítulos e capturas, não tem marcadores, tem no máximo 40 páginas e 10 MB, e nenhum outro PDF da pasta mudou.
 - **Teste:** nenhum (documentação).
 - **Gate:** não se aplica typecheck, lint nem suíte. Conferência: `.docs/guias/gerar-pdfs.sh manual-do-painel` sem erro, `ls -l .docs/guias/manual-do-painel.pdf` com até 10 MB, número de páginas conferido no leitor de PDF e `git status --short` sem `guia-configuracao-do-bot.pdf` nem `documento-do-software.pdf`.
 - **Modelo:** economico
@@ -326,9 +330,9 @@ Ambiente do gerador: Node.js 20 ou mais novo e Chrome ou Chromium (ou `CHROME_PA
 - **Depende de:** T6 (versão final), T8, T9, T10, T11
 - **Reaproveita:** o resultado das conferências T8 e T9 e a lista de divergências registrada na T1.
 - **Atende:** todos os RN e CA
-- **Pronto quando:** sem achado que bloqueia; o PR só altera o manual, o PDF dele, as imagens dele, os dois README e esta especificação.
+- **Pronto quando:** sem achado que bloqueia; o PR só altera o manual, o PDF dele, as imagens dele, os dois README, esta especificação e, no máximo, `.docs/guias/estilo/guia.css` e `.docs/guias/estilo/README.md`; no `guia.css`, a mudança é um único bloco no fim, com todas as regras restritas por `body:has(#sumario)`, e o `README.md` do estilo ganhou a nota sobre esse bloco; `gerar-pdf.mjs` e `gerar-pdfs.sh` não mudaram; os outros dois guias, gerados fora do commit com o estilo novo, têm a mesma aparência da versão gerada antes da mudança (CA-26); o PDF do manual não tem marcadores (CA-27).
 - **Teste:** nenhum (documentação).
-- **Gate:** gerador sem erro, comparação da tabela sem diferença e `git diff --stat develop...HEAD` só com os arquivos citados.
+- **Gate:** gerador sem erro, comparação da tabela sem diferença, `git diff --stat develop...HEAD` só com os arquivos citados e `git diff develop...HEAD -- .docs/guias/gerar-pdf.mjs .docs/guias/gerar-pdfs.sh` sem saída.
 - **Modelo:** padrao
 - **Status:** pendente
 
@@ -355,3 +359,5 @@ Respondidas em 2026-11-21, com a aprovação da especificação.
 - D-U-07 Capturas só em tamanho de computador (RN-19).
 - D-U-08 Capa com o título "Manual do painel" e o subtítulo "Como usar as telas do painel do ProconChat Jacareí" (RN-18).
 - D-U-09 Limites: até 40 páginas, 35 capturas e 10 MB (RN-20).
+- D-U-10 Aprovado um bloco no fim de `.docs/guias/estilo/guia.css`, com uma nota em `.docs/guias/estilo/README.md`, restrito ao manual pelo seletor `body:has(#sumario)`, desde que os outros guias não mudem visualmente. O gerador `gerar-pdf.mjs` continua sem alteração (RN-12, CA-26, T6, T12, Fora do escopo).
+- D-U-11 O PDF fica sem marcadores (outline). O usuário recusou mudar o gerador compartilhado, e o sumário clicável é a navegação do manual (RN-21, CA-27, T6, Fora do escopo).
