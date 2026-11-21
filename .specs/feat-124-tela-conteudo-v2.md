@@ -1,6 +1,6 @@
 # Tela de Conteúdo do chatbot no painel (#124)
 
-> Status: em-andamento
+> Status: implementada
 > Tipo: funcionalidade
 > Tamanho: grande
 > Branch: feat/124-tela-conteudo-v2
@@ -671,7 +671,7 @@ Nenhuma.
 
 ## Acréscimo de backend (D-U-04, D-U-05, D-U-06)
 
-> Status do acréscimo: aprovada — aprovação do usuário repassada pela orchestrator em 2026-11-20; não bloqueia as tarefas de frontend já aprovadas (T1 a T19, M1, M2, K1 a K3), exceto T20. As respostas do PO (D-PO-B01 a D-PO-B03) foram confirmadas pelo usuário (repasse da orchestrator).
+> Status do acréscimo: implementada — aprovação do usuário repassada pela orchestrator em 2026-11-20; não bloqueia as tarefas de frontend já aprovadas (T1 a T19, M1, M2, K1 a K3), exceto T20. As respostas do PO (D-PO-B01 a D-PO-B03) foram confirmadas pelo usuário (repasse da orchestrator).
 > Tamanho do acréscimo: grande
 > Criado em: 2026-11-20
 
