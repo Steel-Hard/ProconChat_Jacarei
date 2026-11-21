@@ -56,7 +56,7 @@ export default function ContentPage() {
 
                 {page.status === "error" ? (
                     <div role="alert" className={css.alert}>
-                        <p>{t("loadFailed")}</p>
+                        <p>{page.loadForbidden ? t("loadForbidden") : t("loadFailed")}</p>
                     </div>
                 ) : null}
 

@@ -7,6 +7,7 @@
     "notice": "Esta é uma orientação automatizada de caráter informativo. Ela não é vinculante e não substitui o atendimento jurídico ou administrativo formal do PROCON Jacareí.",
     "lastChangeNone": "Ainda não alterado pelo painel",
     "initialLoad": "Carga inicial do sistema",
+    "loadForbidden": "Você não tem permissão para ver o conteúdo do chatbot.",
     "loadFailed": "Não foi possível carregar o conteúdo do chatbot.",
     "saveReloadFailed": "As alterações foram enviadas, mas não foi possível atualizar a tela. Salve de novo para tentar atualizar antes de gravar mais alguma coisa.",
     "saveToast": "Conteúdo atualizado com sucesso.",

@@ -51,6 +51,10 @@ function draftQuestionOfFields(
     return { ...fields, key, id: null, categoryKey, updatedBy: null, updatedAt: null }
 }
 
+function isForbidden(error: unknown): boolean {
+    return typeof error === "object" && error !== null && "status" in error && error.status === 403
+}
+
 export default function useContent() {
     const { t } = useTranslation("content")
     const { showToast } = useToast()
@@ -509,6 +513,7 @@ export default function useContent() {
 
     return {
         status: query.isLoading ? "loading" : !draft ? "error" : "success",
+        loadForbidden: !draft && isForbidden(query.error),
         saving,
         actionError,
         changes,

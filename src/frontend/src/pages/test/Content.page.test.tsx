@@ -252,6 +252,19 @@ describe("ContentPage", () => {
         expect(within(row).getByRole("alert")).toBeInTheDocument()
     })
 
+    it("carga recusada com 403 mostra a mensagem de falta de permissão", async () => {
+        await renderContentPage(baseOptions(), (server) =>
+            server.failNext("GET", /^\/categories$/, 403)
+        )
+
+        expect(
+            await screen.findByText("Você não tem permissão para ver o conteúdo do chatbot.")
+        ).toBeInTheDocument()
+        expect(
+            screen.queryByText("Não foi possível carregar o conteúdo do chatbot.")
+        ).not.toBeInTheDocument()
+    })
+
     it("a busca procura em todas as categorias e esconde as setas", async () => {
         const user = userEvent.setup()
         await loaded()
