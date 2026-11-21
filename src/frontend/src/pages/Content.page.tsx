@@ -68,7 +68,7 @@ export default function ContentPage() {
                     <p className={css.fixedNoticeText}>
                         <strong className={css.fixedNoticeLabel}>{t("noticeLabel")}</strong>
                         {SPACE}
-                        {t("notice")}
+                        <span>{t("notice")}</span>
                         {SPACE}
                         <span className={css.fixedNoticeNote}>{t("noticeNote")}</span>
                     </p>
