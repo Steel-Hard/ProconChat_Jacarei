@@ -81,11 +81,9 @@ A senha que veio com a instalação é conhecida pela equipe técnica. Troque-a 
 ![Janela de troca de senha](images/configuracao-do-bot/03-trocar-senha.png)
 *Figura 3 – Janela de troca de senha*
 
-A nova senha deve ter de 8 a 72 caracteres. Ela vale a partir do próximo acesso. As outras telas abertas com a conta Admin são encerradas; a que você está usando continua aberta.
+A nova senha deve ter de 8 a 72 caracteres e vale a partir do próximo acesso.
 
-> **Dica:** anote a nova senha em um lugar seguro e combinado com a chefia. Não existe o botão "Esqueci minha senha".
-
-> **Atenção:** se você esquecer a senha do Admin, ninguém consegue redefini-la pelo painel. Procure a equipe técnica responsável pelo sistema e peça a redefinição da senha do Admin. O sistema não envia e-mails, e a equipe técnica faz esse procedimento diretamente no servidor.
+> **Atenção:** anote a senha em lugar seguro. Não existe "Esqueci minha senha": se esquecer a senha do Admin, procure a equipe técnica, que a redefine diretamente no servidor.
 
 # 2. Criar a conta na Meta e registrar o número
 
@@ -132,8 +130,6 @@ Você vai precisar de dois códigos na etapa 5. Anote-os agora.
 
 # 3. Gerar o token permanente
 
-O token é a "senha longa" que dá ao sistema permissão para enviar e receber mensagens.
-
 > **Atenção:** a Meta mostra, na tela de **Configuração da API**, um token temporário. Ele expira em 24 horas e, depois disso, o chatbot para de responder. Não use esse token no atendimento real. Gere o token permanente, como descrito abaixo.
 
 ## Criar o usuário do sistema
@@ -155,9 +151,9 @@ O token é a "senha longa" que dá ao sistema permissão para enviar e receber m
 2. Escolha o aplicativo.
 3. Em validade, escolha **Nunca**.
 4. Marque as duas permissões: `whatsapp_business_messaging` e `whatsapp_business_management`.
-5. Clique em gerar e **copie o token na hora**. Ele aparece uma única vez.
+5. Clique em gerar e **copie o token na hora**: ele aparece uma única vez. Se perder, gere outro.
 
-> **Dica:** cole o token em um bloco de notas protegido assim que o gerar. Se perder, basta gerar outro, mas você terá de repetir o preenchimento da tela de WhatsApp.
+
 
 # 4. Cadastrar os modelos de mensagem
 
