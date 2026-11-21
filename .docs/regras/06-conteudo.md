@@ -18,9 +18,11 @@ Manter as categorias e perguntas que o cidadão navega no WhatsApp, com as respo
 - **A ordem das listas na tela é a ordem que o cidadão vê** no WhatsApp.
 - **Nada é excluído, só desativado.**
 
-No topo, um bloco **FIXO** mostra o aviso obrigatório, que não é configurável:
+No topo, um bloco fixo, sem botão, campo ou ação de edição e sem selo, mostra o aviso obrigatório. Antes do texto vem o rótulo **"Aviso obrigatório, ao final de todas as respostas:"** e, depois dele, a nota **"Este aviso não é configurável."**. Entre o rótulo e a nota, só o texto oficial do aviso:
 
 > "Esta é uma orientação automatizada de caráter informativo. Ela não é vinculante e não substitui o atendimento jurídico ou administrativo formal do PROCON Jacareí."
+
+Categorias e perguntas ficam num cartão único, separado por filetes. "Salvar alterações", "Descartar" e o contador, assim como a última alteração, continuam no topo da tela, sem barra fixa.
 
 O topo também mostra **"Última alteração por [nome] em [data]"** do item (categoria ou pergunta) alterado mais recentemente pelo painel. Se nenhum item tiver autor, mostra **"Ainda não alterado pelo painel"**.
 
@@ -37,15 +39,17 @@ A tela segue o padrão das telas de configuração ([regras gerais, §3](00-regr
 
 ## Categorias
 
-A coluna da esquerda lista as categorias em ordem. Cada uma mostra:
+A coluna da esquerda lista as categorias em ordem, de forma compacta. Cada uma mostra:
 - a posição;
 - o **título curto** (em negrito, é o que aparece no WhatsApp) e o nome completo;
 - quantas perguntas tem e quantas estão ativas;
-- o estado: **Ativa**, **Inativa**, ou **Ativa · oculta no chatbot**. Esta última aparece quando a categoria está ativa mas **não tem nenhuma pergunta ativa**. Nesse caso ela não aparece para o cidadão.
+- o estado, em um selo à direita: **Ativa**, **Inativa**, ou **Ativa · oculta no chatbot**. Esta última aparece quando a categoria está ativa mas **não tem nenhuma pergunta ativa**. Nesse caso ela não aparece para o cidadão, e o selo tem um ícone "i" com a dica "Categorias só aparecem ao cidadão quando têm ao menos uma pergunta ativa" (ao passar o mouse, focar pelo teclado ou tocar).
 
-**Ações:** reordenar (↑↓), **Nova categoria**, **Editar categoria**, **Ativar/Desativar**.
+**Ações na linha:** só as setas de reordenar (↑↓), empilhadas. Clicar, tocar ou acionar a linha pelo teclado seleciona a categoria. **Nova categoria** continua disponível na coluna de categorias.
 
-**Formulário da categoria:**
+**Ações no cabeçalho da categoria selecionada** (painel de perguntas, que mostra o nome e o estado dela): **Editar categoria**, **Desativar categoria** (ou **Ativar categoria**, quando ela está inativa) e **Nova pergunta**, nessa ordem. Ativar/desativar muda só o rascunho e não muda o estado das perguntas. Sem nenhuma categoria, o cabeçalho não aparece e a tela mostra o estado vazio com "Nova categoria".
+
+**Formulário da categoria** (abre num painel lateral, ver "Formulários em painel lateral"):
 
 | Campo | Regra |
 |---|---|
@@ -57,14 +61,14 @@ Uma categoria nova é criada **ativa, no fim da lista**.
 
 ## Perguntas
 
-A área da direita lista as perguntas da categoria selecionada, em ordem. Cada uma mostra:
+A área da direita lista as perguntas da categoria selecionada, em ordem. Abaixo do cabeçalho da categoria vem a busca, e depois a lista. Cada pergunta mostra:
 - a posição;
-- o título curto, a descrição curta e o texto completo;
-- o estado (Ativa/Inativa) e os selos **"Exige atendimento presencial"** ou **"Fora do escopo do PROCON"**;
+- o título curto, em negrito, com a descrição curta ao lado, e o texto completo abaixo;
+- o estado (Ativa/Inativa) e os selos **"Exige atendimento presencial"** (tom neutro) ou **"Fora do escopo do PROCON"** (tom âmbar);
 - a base legal e a quantidade de documentos úteis;
 - **"Última alteração por [nome] em [data]"**. Itens sem autor (carga inicial) mostram **"Carga inicial do sistema"**, sem data. Pergunta ainda não salva não mostra essa linha.
 
-**Ações:** reordenar (↑↓), **Ativar/Desativar**, **Editar**, **Nova pergunta**.
+**Ações na linha:** reordenar (↑↓, fora da busca), **Desativar** (ou **Ativar**, na pergunta inativa) e **Editar**, nessa ordem. **Nova pergunta** fica no cabeçalho da categoria selecionada.
 
 Uma pergunta nova entra **no fim da lista** da categoria, **ativa** e com **"Permitir complemento por IA"** ligada. A equipe pode desmarcar **"Pergunta ativa no chatbot"** antes de salvar, e a pergunta nasce inativa.
 
@@ -72,7 +76,7 @@ O que ainda não foi salvo leva um selo, um por item: **"Não salva"** no item n
 
 ### Busca
 
-Campo que procura no texto da pergunta, no texto da resposta e no título curto **em todas as categorias**, sem diferenciar maiúsculas nem acentos, mostrando a categoria de cada resultado. A busca considera as alterações ainda não salvas. Durante a busca, as setas de reordenar somem.
+Campo, dentro do painel de perguntas, logo abaixo do cabeçalho da categoria, com o botão **Limpar** enquanto houver termo. Procura no texto da pergunta, no texto da resposta e no título curto **em todas as categorias**, sem diferenciar maiúsculas nem acentos, mostrando a categoria de cada resultado. A busca considera as alterações ainda não salvas. Durante a busca, as setas de reordenar somem.
 
 ### Listas com mais de 10 itens
 
@@ -82,6 +86,10 @@ O WhatsApp mostra no máximo 10 itens por lista. Com mais de 10 itens ativos (ca
 - última página: até 9 itens + "Voltar".
 
 A tela mostra essa informação e marca, com um separador **"Página N no WhatsApp"**, no início de cada página a partir da segunda. Só itens ativos contam (nas categorias, só as ativas que têm pergunta ativa). É informação, não erro: listas curtas são mais fáceis para o cidadão.
+
+### Formulários em painel lateral
+
+Os formulários de categoria e de pergunta abrem num **painel lateral**, com rodapé fixo: **Cancelar** e **Confirmar** e, no da pergunta, também **Ver como o cidadão recebe**. O foco fica dentro do painel, o fundo não recebe foco nem clique e não rola, e o Esc e o Cancelar pedem confirmação quando há mudanças. No celular o painel ocupa a largura da tela.
 
 ### Formulário da pergunta
 
@@ -96,7 +104,7 @@ A tela mostra essa informação e marca, com um separador **"Página N no WhatsA
 | Exige atendimento presencial | O chatbot **oferece agendamento direto**, sem perguntar se a dúvida foi resolvida. Tem uma observação opcional sobre o atendimento presencial (até 500 caracteres), que o cidadão recebe na resposta, só existe com a opção marcada e é descartada se ela for desmarcada |
 | Fora do escopo do PROCON | A resposta orienta a procurar outro órgão. **Nunca oferece agendamento** |
 | Permitir complemento por IA nesta pergunta | Ligada por padrão. Desligada: o chatbot envia só o texto oficial |
-| Pergunta ativa no chatbot | Convive com "Ativar/Desativar" da lista e mexe no mesmo valor. No formulário, a mudança só vale quando o formulário é confirmado |
+| Pergunta ativa no chatbot | Convive com "Ativar/Desativar" da linha da pergunta e mexe no mesmo valor. No formulário, a mudança só vale quando o formulário é confirmado |
 
 Regras entre os campos:
 - **"Exige atendimento presencial" e "Fora do escopo" são mutuamente exclusivos.** Marcar um desabilita o outro.
@@ -106,7 +114,7 @@ Regras entre os campos:
 
 ### "Ver como o cidadão recebe"
 
-Prévia no estilo WhatsApp, com o que está no formulário, **mesmo antes de salvar**. Não grava nada e não gera IA de verdade (usa texto de exemplo). **Os textos, botões e a ordem dos balões são exatamente os que o bot envia**, montados pelo mesmo código que monta as mensagens do bot. O painel não guarda cópia desses textos.
+Prévia no estilo WhatsApp, em uma **janela própria em formato de celular**, aberta por cima do painel do formulário, com o que está no formulário, **mesmo antes de salvar**. Os botões das mensagens aparecem em duas colunas. Ao abrir, o foco vai para a janela e o painel por trás fica bloqueado. O Esc fecha só a prévia, e o foco volta ao botão "Ver como o cidadão recebe". Não há balão verde nem horário nos balões. Não grava nada e não gera IA de verdade (usa texto de exemplo). **Os textos, botões e a ordem dos balões são exatamente os que o bot envia**, montados pelo mesmo código que monta as mensagens do bot. O painel não guarda cópia desses textos.
 
 1. A **lista da categoria**, como o bot envia: cabeçalho "Escolha uma das perguntas abaixo:", botão "Ver perguntas", linhas com título curto e descrição curta, com a pergunta editada em negrito, e as linhas "Voltar opções" e "Ver mais opções" quando houver outra página.
 2. **Com "Permitir complemento por IA" ligada, um balão único** com a explicação escrita pela IA (texto de exemplo), a base legal, os documentos, "O que fazer agora", a linha de atendimento presencial quando houver, o aviso de caráter não vinculante, a pergunta do passo seguinte com os botões e o rótulo "Gerado com auxílio de IA" no rodapé desse balão ([decisão 009](../decisoes/009-complemento-por-llm.md), item 6). Com a IA ligada, a prévia mostra também a alternativa **"Se a IA estiver indisponível"**, com os balões 3 e 4.
