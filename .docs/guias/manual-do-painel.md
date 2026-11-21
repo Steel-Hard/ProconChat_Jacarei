@@ -300,7 +300,7 @@ A coluna da direita mostra as perguntas da categoria escolhida, com a posição,
 - Os botões **Cancelar** e **Salvar pergunta** ficam no rodapé da janela.
 
 ![Formulário de edição de uma pergunta](images/manual-do-painel/14-conteudo-pergunta.png)
-*Figura 14 – Formulário de edição de uma pergunta*
+*Figura 14 – Formulário de edição de uma pergunta (a janela continua abaixo)*
 
 <h2 id="s06-03">Ver como o cidadão recebe</h2>
 
