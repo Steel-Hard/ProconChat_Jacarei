@@ -11,55 +11,55 @@ versao: 1.0
 <p class="sec"><a href="#s01-02">Como o painel está organizado</a><span>3</span></p>
 <p class="sec"><a href="#s01-03">Salvar e descartar</a><span>3</span></p>
 <p class="sec"><a href="#s01-04">Palavras que aparecem neste manual</a><span>4</span></p>
-<p class="cap"><a href="#s02">1. Entrar e Minha conta</a><span>6</span></p>
-<p class="sec"><a href="#s02-01">Entrar no painel</a><span>6</span></p>
-<p class="sec"><a href="#s02-02">Conta sem nenhuma tela liberada</a><span>6</span></p>
-<p class="sec"><a href="#s02-03">Menu Minha conta</a><span>7</span></p>
-<p class="sec"><a href="#s02-04">Alterar a própria senha</a><span>7</span></p>
-<p class="cap"><a href="#s03">2. Agendamentos</a><span>8</span></p>
-<p class="sec"><a href="#s03-01">Situações de um agendamento</a><span>8</span></p>
-<p class="sec"><a href="#s03-02">A lista</a><span>8</span></p>
-<p class="sec"><a href="#s03-03">Calendário semanal</a><span>10</span></p>
-<p class="cap"><a href="#s04">3. Detalhe do agendamento</a><span>12</span></p>
-<p class="sec"><a href="#s04-01">O que a tela mostra</a><span>12</span></p>
-<p class="sec"><a href="#s04-02">Ações</a><span>13</span></p>
-<p class="sec"><a href="#s04-03">Cancelar um agendamento</a><span>15</span></p>
-<p class="cap"><a href="#s05">4. Relatórios</a><span>16</span></p>
-<p class="sec"><a href="#s05-01">Escolher o período</a><span>16</span></p>
-<p class="sec"><a href="#s05-02">O que a tela mostra</a><span>16</span></p>
-<p class="cap"><a href="#s06">5. Conteúdo do chatbot</a><span>18</span></p>
-<p class="sec"><a href="#s06-01">Categorias</a><span>18</span></p>
-<p class="sec"><a href="#s06-02">Perguntas</a><span>19</span></p>
-<p class="sec"><a href="#s06-03">Ver como o cidadão recebe</a><span>20</span></p>
-<p class="sec"><a href="#s06-04">Buscar, páginas e salvar</a><span>21</span></p>
-<p class="cap"><a href="#s07">6. Horários de atendimento</a><span>22</span></p>
-<p class="sec"><a href="#s07-01">Grade semanal</a><span>22</span></p>
-<p class="sec"><a href="#s07-02">Janela de agendamento</a><span>23</span></p>
-<p class="sec"><a href="#s07-03">Dados da unidade</a><span>23</span></p>
-<p class="sec"><a href="#s07-04">Lembrete ao cidadão</a><span>23</span></p>
-<p class="sec"><a href="#s07-05">Datas bloqueadas</a><span>24</span></p>
-<p class="sec"><a href="#s07-06">Mudanças agendadas</a><span>24</span></p>
-<p class="sec"><a href="#s07-07">Quando a mudança afeta agendamentos</a><span>24</span></p>
-<p class="cap"><a href="#s08">7. Documentos</a><span>25</span></p>
-<p class="cap"><a href="#s09">8. Usuários</a><span>27</span></p>
-<p class="sec"><a href="#s09-01">Criar uma conta</a><span>27</span></p>
-<p class="sec"><a href="#s09-02">Marcar as permissões</a><span>28</span></p>
-<p class="sec"><a href="#s09-03">Redefinir a senha de uma conta</a><span>29</span></p>
-<p class="sec"><a href="#s09-04">Desativar e reativar uma conta</a><span>29</span></p>
-<p class="sec"><a href="#s09-05">Regras de segurança</a><span>30</span></p>
-<p class="cap"><a href="#s10">9. WhatsApp</a><span>31</span></p>
-<p class="cap"><a href="#s11">10. Permissões</a><span>35</span></p>
-<p class="cap"><a href="#s12">11. Sugestões de combinações</a><span>36</span></p>
-<p class="cap"><a href="#s13">Apêndice A. Redefinir a senha do Admin no servidor</a><span>38</span></p>
-<p class="sec"><a href="#s13-01">Antes de começar</a><span>38</span></p>
-<p class="sec"><a href="#s13-02">Passo a passo</a><span>38</span></p>
-<p class="sec"><a href="#s13-03">Se o script falhar</a><span>39</span></p>
-<p class="sec"><a href="#s13-04">Sem o script</a><span>39</span></p>
+<p class="cap"><a href="#s02">1. Entrar e Minha conta</a><span>5</span></p>
+<p class="sec"><a href="#s02-01">Entrar no painel</a><span>5</span></p>
+<p class="sec"><a href="#s02-02">Conta sem nenhuma tela liberada</a><span>5</span></p>
+<p class="sec"><a href="#s02-03">Menu Minha conta</a><span>6</span></p>
+<p class="sec"><a href="#s02-04">Alterar a própria senha</a><span>6</span></p>
+<p class="cap"><a href="#s03">2. Agendamentos</a><span>7</span></p>
+<p class="sec"><a href="#s03-01">Situações de um agendamento</a><span>7</span></p>
+<p class="sec"><a href="#s03-02">A lista</a><span>7</span></p>
+<p class="sec"><a href="#s03-03">Calendário semanal</a><span>9</span></p>
+<p class="cap"><a href="#s04">3. Detalhe do agendamento</a><span>11</span></p>
+<p class="sec"><a href="#s04-01">O que a tela mostra</a><span>11</span></p>
+<p class="sec"><a href="#s04-02">Ações</a><span>12</span></p>
+<p class="sec"><a href="#s04-03">Cancelar um agendamento</a><span>14</span></p>
+<p class="cap"><a href="#s05">4. Relatórios</a><span>15</span></p>
+<p class="sec"><a href="#s05-01">Escolher o período</a><span>15</span></p>
+<p class="sec"><a href="#s05-02">O que a tela mostra</a><span>15</span></p>
+<p class="cap"><a href="#s06">5. Conteúdo do chatbot</a><span>17</span></p>
+<p class="sec"><a href="#s06-01">Categorias</a><span>17</span></p>
+<p class="sec"><a href="#s06-02">Perguntas</a><span>18</span></p>
+<p class="sec"><a href="#s06-03">Ver como o cidadão recebe</a><span>19</span></p>
+<p class="sec"><a href="#s06-04">Buscar, páginas e salvar</a><span>20</span></p>
+<p class="cap"><a href="#s07">6. Horários de atendimento</a><span>21</span></p>
+<p class="sec"><a href="#s07-01">Grade semanal</a><span>21</span></p>
+<p class="sec"><a href="#s07-02">Janela de agendamento</a><span>22</span></p>
+<p class="sec"><a href="#s07-03">Dados da unidade</a><span>22</span></p>
+<p class="sec"><a href="#s07-04">Lembrete ao cidadão</a><span>22</span></p>
+<p class="sec"><a href="#s07-05">Datas bloqueadas</a><span>23</span></p>
+<p class="sec"><a href="#s07-06">Mudanças agendadas</a><span>23</span></p>
+<p class="sec"><a href="#s07-07">Quando a mudança afeta agendamentos</a><span>23</span></p>
+<p class="cap"><a href="#s08">7. Documentos</a><span>24</span></p>
+<p class="cap"><a href="#s09">8. Usuários</a><span>25</span></p>
+<p class="sec"><a href="#s09-01">Criar uma conta</a><span>26</span></p>
+<p class="sec"><a href="#s09-02">Marcar as permissões</a><span>27</span></p>
+<p class="sec"><a href="#s09-03">Redefinir a senha de uma conta</a><span>27</span></p>
+<p class="sec"><a href="#s09-04">Desativar e reativar uma conta</a><span>28</span></p>
+<p class="sec"><a href="#s09-05">Regras de segurança</a><span>29</span></p>
+<p class="cap"><a href="#s10">9. WhatsApp</a><span>30</span></p>
+<p class="cap"><a href="#s11">10. Permissões</a><span>34</span></p>
+<p class="cap"><a href="#s12">11. Sugestões de combinações</a><span>35</span></p>
+<p class="cap"><a href="#s13">Apêndice A. Redefinir a senha do Admin no servidor</a><span>37</span></p>
+<p class="sec"><a href="#s13-01">Antes de começar</a><span>37</span></p>
+<p class="sec"><a href="#s13-02">Passo a passo</a><span>37</span></p>
+<p class="sec"><a href="#s13-03">Se o script falhar</a><span>38</span></p>
+<p class="sec"><a href="#s13-04">Sem o script</a><span>38</span></p>
 </div>
 
-# <a id="s01"></a>Antes de começar
+<h1 id="s01">Antes de começar</h1>
 
-## <a id="s01-01"></a>Para quem é este manual
+<h2 id="s01-01">Para quem é este manual</h2>
 
 Este manual é para a equipe do PROCON Jacareí que usa o painel do ProconChat no dia a dia. Você não precisa saber nada de informática. Ele explica, tela por tela, o que cada uma mostra e o que dá para fazer nela, e diz o que cada permissão libera.
 
@@ -67,7 +67,7 @@ O painel é o site interno do PROCON. Nele a equipe acompanha os agendamentos qu
 
 > **Atenção:** os nomes de botões, campos e mensagens estão escritos neste manual exatamente como aparecem na tela, em **negrito**. Se algo na sua tela estiver diferente, avise a equipe técnica.
 
-## <a id="s01-02"></a>Como o painel está organizado
+<h2 id="s01-02">Como o painel está organizado</h2>
 
 O menu fica na lateral esquerda e tem três grupos:
 
@@ -79,7 +79,7 @@ O menu fica na lateral esquerda e tem três grupos:
 
 Cada pessoa vê no menu só as telas que a sua conta pode usar. Por isso o menu de uma colega pode ser diferente do seu. O que cada conta pode usar depende das **permissões** marcadas para ela (veja o capítulo 10).
 
-## <a id="s01-03"></a>Salvar e descartar
+<h2 id="s01-03">Salvar e descartar</h2>
 
 Nas telas de configuração (Conteúdo, Horários de atendimento, Documentos, Usuários e WhatsApp), nada vale na hora. As mudanças ficam **pendentes** até você clicar em **Salvar alterações**. Enquanto houver mudanças pendentes, aparece o aviso "N alterações não salvas". O botão **Descartar** desfaz tudo o que ainda não foi salvo.
 
@@ -87,7 +87,7 @@ Nas ações sobre um agendamento, como assumir ou cancelar, o painel pede uma co
 
 > **Atenção:** nada é excluído no painel. Categorias, perguntas e contas são apenas **ativadas** ou **desativadas**, para que o histórico continue completo.
 
-## <a id="s01-04"></a>Palavras que aparecem neste manual
+<h2 id="s01-04">Palavras que aparecem neste manual</h2>
 
 | Palavra | O que significa |
 | --- | --- |
@@ -109,9 +109,9 @@ Nas ações sobre um agendamento, como assumir ou cancelar, o painel pede uma co
 | ID do número e ID da conta | Códigos só de números que identificam o número e a conta do WhatsApp Business do PROCON na Meta |
 | Token e App Secret | Códigos secretos que dão ao sistema permissão para usar o WhatsApp |
 
-# <a id="s02"></a>1. Entrar e Minha conta
+<h1 id="s02">1. Entrar e Minha conta</h1>
 
-## <a id="s02-01"></a>Entrar no painel
+<h2 id="s02-01">Entrar no painel</h2>
 
 1. Abra o endereço do painel no navegador.
 2. Digite o seu **E-mail** e a sua **Senha**.
@@ -124,18 +124,18 @@ Se o e-mail ou a senha estiverem errados, aparece "E-mail ou senha incorretos.".
 
 Não existe "Esqueci minha senha". Se você esqueceu a sua, peça para redefinir a alguém que tenha a permissão **Gerenciar usuários** e também todas as permissões da sua conta, normalmente a conta Admin (capítulo 8). Se quem esqueceu foi o Admin, quem redefine é a equipe técnica (Apêndice A, só para a equipe técnica).
 
-## <a id="s02-02"></a>Conta sem nenhuma tela liberada
+<h2 id="s02-02">Conta sem nenhuma tela liberada</h2>
 
 Uma conta nova nasce sem permissões. Quem entra com ela vê o aviso "Sua conta ainda não tem acesso a nenhuma tela". Peça a alguém com a permissão **Gerenciar usuários** que libere as telas de que você precisa e depois entre de novo. O botão **Voltar para o login** encerra essa sessão.
 
 ![Aviso de conta sem acesso](images/manual-do-painel/02-conta-sem-acesso.png)
 *Figura 2 – Aviso de conta sem nenhuma tela liberada*
 
-## <a id="s02-03"></a>Menu Minha conta
+<h2 id="s02-03">Menu Minha conta</h2>
 
 No canto superior direito aparecem o seu nome e o seu e-mail. A conta Admin mostra também o selo **ADMIN**. Ao clicar em **Minha conta** abre um menu com duas opções: **Alterar minha senha** e **Sair**.
 
-## <a id="s02-04"></a>Alterar a própria senha
+<h2 id="s02-04">Alterar a própria senha</h2>
 
 1. Clique em **Minha conta** e depois em **Alterar minha senha**.
 2. Digite a **Senha atual**.
@@ -147,13 +147,13 @@ A nova senha vale a partir do próximo acesso. Ao trocar a senha, as outras sess
 ![Menu Minha conta e janela Alterar minha senha](images/manual-do-painel/03-minha-conta-e-senha.png)
 *Figura 3 – Menu Minha conta e janela Alterar minha senha*
 
-# <a id="s03"></a>2. Agendamentos
+<h1 id="s03">2. Agendamentos</h1>
 
 A tela **Agendamentos** mostra os atendimentos presenciais criados pelo chatbot. Quem cria os agendamentos é sempre o chatbot: o painel não cria. Para mudar a data, quem remarca é o próprio cidadão, no chatbot.
 
 **Quem usa:** quem tem a permissão **Ver agendamentos** consulta a tela. Quem tem **Gerenciar agendamentos** também pode agir sobre os agendamentos.
 
-## <a id="s03-01"></a>Situações de um agendamento
+<h2 id="s03-01">Situações de um agendamento</h2>
 
 | Situação | O que significa |
 | --- | --- |
@@ -163,7 +163,7 @@ A tela **Agendamentos** mostra os atendimentos presenciais criados pelo chatbot.
 | Não compareceu | O horário passou e o cidadão não veio |
 | Cancelado | Foi cancelado pelo cidadão, no chatbot, ou pela equipe, no painel |
 
-## <a id="s03-02"></a>A lista
+<h2 id="s03-02">A lista</h2>
 
 A tela abre na visão **Lista**. Cada linha mostra o protocolo, o titular (com o CPF parcialmente escondido), a categoria e a pergunta de origem, a data e a hora, o responsável e a situação. Na linha de um agendamento Pendente aparece o botão **Assumir**, para quem tem a permissão de gerenciar.
 
@@ -182,21 +182,21 @@ Para achar um agendamento, use os recursos do topo da tela:
 
 > **Dica:** os títulos Titular, Data e hora, Responsável e Status podem ser clicados para ordenar a lista. Cada página mostra 20 agendamentos, e os botões **Anterior** e **Próxima** passam de página.
 
-## <a id="s03-03"></a>Calendário semanal
+<h2 id="s03-03">Calendário semanal</h2>
 
 O botão **Calendário semanal** troca a lista por uma grade da semana, com um quadro para cada agendamento, colorido pela situação. Nos horários sem agendamento aparece quantas vagas ainda estão livres. Os botões de seta passam para a semana anterior ou para a próxima, e **Esta semana** volta para a semana de hoje. Clicar num agendamento abre o detalhe dele.
 
 ![Calendário semanal](images/manual-do-painel/06-agendamentos-calendario.png)
 *Figura 6 – Calendário semanal de agendamentos*
 
-# <a id="s04"></a>3. Detalhe do agendamento
+<h1 id="s04">3. Detalhe do agendamento</h1>
 
 Ao clicar num agendamento da lista ou do calendário, abre a tela de detalhe. O botão **Voltar para Agendamentos** leva de volta à lista.
 
 ![Detalhe de um agendamento confirmado](images/manual-do-painel/07-detalhe-agendamento.png)
 *Figura 7 – Detalhe de um agendamento confirmado, com comparecimento por representante*
 
-## <a id="s04-01"></a>O que a tela mostra
+<h2 id="s04-01">O que a tela mostra</h2>
 
 - **Dados do agendamento:** titular, CPF do titular (parcialmente escondido), data e hora, situação, responsável, quem comparece (o titular ou um representante), o motivo do agendamento e de onde o cidadão veio no chatbot. Quando comparece um representante, nome e CPF continuam sendo do titular, e a tela lembra de conferir os documentos exigidos do representante.
 - **Documentos solicitados pelo chatbot:** a lista que o cidadão recebeu no momento do agendamento. Se a configuração de documentos mudar depois, esta lista não muda, e a tela avisa quando ela é diferente da configuração atual.
@@ -209,7 +209,7 @@ Ao clicar num agendamento da lista ou do calendário, abre a tela de detalhe. O 
 
 > **Atenção:** ainda não é possível abrir a conversa completa a partir do detalhe.
 
-## <a id="s04-02"></a>Ações
+<h2 id="s04-02">Ações</h2>
 
 Quem tem **Gerenciar agendamentos** vê o quadro **Ações**. Quem só tem **Ver agendamentos** vê a mensagem "Sua conta pode apenas visualizar agendamentos.". As ações mudam conforme a situação do agendamento.
 
@@ -227,7 +227,7 @@ Quem tem **Gerenciar agendamentos** vê o quadro **Ações**. Quem só tem **Ver
 
 Antes do dia do atendimento, o painel mostra "Marcar como atendido: disponível a partir do dia do atendimento." no lugar do botão. O mesmo vale para "Marcar como não compareceu", que só fica disponível depois do horário. Num agendamento Pendente, marcar como atendido ou como não compareceu também faz de você o responsável.
 
-## <a id="s04-03"></a>Cancelar um agendamento
+<h2 id="s04-03">Cancelar um agendamento</h2>
 
 Ao clicar em **Cancelar agendamento**, escolha o **Motivo do cancelamento**: **Unidade fechada nesta data**, **A pedido do cidadão**, **Agendamento duplicado** ou **Outro motivo**. Você pode escrever uma **Observação interna**, que não é enviada ao cidadão. Depois de confirmar, o horário volta a ficar disponível no chatbot, e a ação não pode ser desfeita.
 
@@ -236,17 +236,17 @@ Ao clicar em **Cancelar agendamento**, escolha o **Motivo do cancelamento**: **U
 
 O aviso ao cidadão por WhatsApp é opcional e é ligado ou desligado pelo Admin na tela **WhatsApp** (capítulo 9). Ele começa desligado. Com o aviso desligado, a janela diz "O aviso por WhatsApp está desligado. O cidadão não será avisado pelo sistema. Avise por outro meio.", e quem cancela precisa avisar o cidadão por telefone ou outro meio. Depois do horário do atendimento não é possível cancelar: registre o caso como atendido ou como não compareceu.
 
-# <a id="s05"></a>4. Relatórios
+<h1 id="s05">4. Relatórios</h1>
 
 A tela **Relatórios** mostra números do uso do chatbot e dos agendamentos presenciais.
 
 **Quem usa:** quem tem a permissão **Ver relatórios**.
 
-## <a id="s05-01"></a>Escolher o período
+<h2 id="s05-01">Escolher o período</h2>
 
 No topo, escolha o período: **Últimos 7 dias**, **Últimos 30 dias**, **Últimos 90 dias**, **Mês atual**, **Mês anterior** ou **Personalizado**. No período personalizado, preencha as datas **De** e **até**. Todos os números da tela passam a valer para o período escolhido.
 
-## <a id="s05-02"></a>O que a tela mostra
+<h2 id="s05-02">O que a tela mostra</h2>
 
 - **Conversas no período:** quantas conversas o chatbot teve, a média por dia e quantos agendamentos foram criados.
 - **Desfecho das conversas:** como cada conversa terminou, com a quantidade e a porcentagem. Cada conversa tem um único desfecho, e o total fecha em 100%. Passe o mouse sobre o ícone de informação ao lado de cada desfecho para ler a definição dele.
@@ -267,7 +267,7 @@ A **Taxa de não comparecimento** divide os que não compareceram pelos que já 
 
 > **Atenção:** indicadores adicionais e a exportação dos relatórios ainda não estão disponíveis.
 
-# <a id="s06"></a>5. Conteúdo do chatbot
+<h1 id="s06">5. Conteúdo do chatbot</h1>
 
 A tela **Conteúdo** é onde a equipe mantém as categorias, perguntas e respostas que o cidadão navega no WhatsApp. A ordem das listas na tela é a ordem em que o cidadão vê.
 
@@ -278,7 +278,7 @@ No topo há um aviso fixo, que não pode ser editado: "Esta é uma orientação 
 ![Tela de Conteúdo do chatbot](images/manual-do-painel/13-conteudo.png)
 *Figura 13 – Categorias à esquerda e perguntas da categoria escolhida à direita*
 
-## <a id="s06-01"></a>Categorias
+<h2 id="s06-01">Categorias</h2>
 
 A coluna da esquerda lista as categorias. Clique numa categoria para ver as perguntas dela.
 
@@ -287,7 +287,7 @@ A coluna da esquerda lista as categorias. Clique numa categoria para ver as perg
 - **Editar categoria** e **Desativar categoria** (ou **Ativar categoria**) ficam no cabeçalho da categoria escolhida.
 - Uma categoria ativa sem nenhuma pergunta ativa aparece como "Ativa · oculta no chatbot": o cidadão só vê categorias que têm ao menos uma pergunta ativa.
 
-## <a id="s06-02"></a>Perguntas
+<h2 id="s06-02">Perguntas</h2>
 
 A coluna da direita mostra as perguntas da categoria escolhida, com a posição, o título curto, o texto da pergunta, a situação (**Ativa** ou **Inativa**) e, quando existirem, os selos **Exige atendimento presencial** e **Fora do escopo do PROCON**.
 
@@ -302,20 +302,20 @@ A coluna da direita mostra as perguntas da categoria escolhida, com a posição,
 ![Formulário de edição de uma pergunta](images/manual-do-painel/14-conteudo-pergunta.png)
 *Figura 14 – Formulário de edição de uma pergunta*
 
-## <a id="s06-03"></a>Ver como o cidadão recebe
+<h2 id="s06-03">Ver como o cidadão recebe</h2>
 
 O botão **Ver como o cidadão recebe**, dentro do formulário da pergunta, mostra uma prévia no estilo do WhatsApp com o que está no formulário, mesmo antes de salvar. Nada é gravado, e o texto da inteligência artificial é um exemplo, não uma resposta real.
 
 ![Prévia de como o cidadão recebe a resposta](images/manual-do-painel/15-conteudo-previa.png)
 *Figura 15 – Prévia de como o cidadão recebe a resposta*
 
-## <a id="s06-04"></a>Buscar, páginas e salvar
+<h2 id="s06-04">Buscar, páginas e salvar</h2>
 
 - **Buscar** procura no texto da pergunta, na resposta e no título curto, em todas as categorias.
 - Quando uma lista tem mais de 10 itens ativos, o WhatsApp mostra a lista em páginas. A tela marca onde começa cada página com "Página N no WhatsApp". Listas curtas são mais fáceis para o cidadão.
 - As mudanças só valem depois de **Salvar alterações**. Cada item com mudança pendente mostra o selo **Não salva** (item novo) ou **Alteração não salva** (item que já existia). Duas pessoas editando ao mesmo tempo: vale o último **Salvar alterações**.
 
-# <a id="s07"></a>6. Horários de atendimento
+<h1 id="s07">6. Horários de atendimento</h1>
 
 A tela **Horários de atendimento** define os horários livres que o chatbot oferece ao cidadão para o atendimento presencial.
 
@@ -324,13 +324,13 @@ A tela **Horários de atendimento** define os horários livres que o chatbot ofe
 ![Tela de Horários de atendimento](images/manual-do-painel/16-horarios-grade.png)
 *Figura 16 – Grade semanal e prévia da grade*
 
-## <a id="s07-01"></a>Grade semanal
+<h2 id="s07-01">Grade semanal</h2>
 
 Para cada dia da semana, marque a caixa do dia para ligar o atendimento e informe as faixas de horário, como 08:00 às 12:00 e 13:00 às 17:00. O botão **+ Faixa** acrescenta outra faixa no dia, e o × remove. Dois campos definem o tamanho dos horários: **Duração de cada atendimento** e **Vagas simultâneas por horário**.
 
 A **Prévia da grade** mostra, num calendário, como o chatbot oferece os horários. Clique num dia para ver os horários dele e os agendamentos que já existem.
 
-## <a id="s07-02"></a>Janela de agendamento
+<h2 id="s07-02">Janela de agendamento</h2>
 
 ![Janela de agendamento](images/manual-do-painel/17-horarios-janela.png)
 *Figura 17 – Janela de agendamento (o aviso do Dashboard citado na tela ainda não está disponível)*
@@ -339,26 +339,26 @@ A **Prévia da grade** mostra, num calendário, como o chatbot oferece os horár
 - **Antecedência mínima:** de **Sem antecedência (mesmo dia)** a **5 dias úteis**. Contam só os dias com atendimento.
 - **Alertar quando a espera passar de:** quantos dias de espera até o próximo horário livre são considerados demais. O aviso correspondente ainda não está disponível no painel.
 
-## <a id="s07-03"></a>Dados da unidade
+<h2 id="s07-03">Dados da unidade</h2>
 
 O **Endereço da unidade** é obrigatório e aparece nas mensagens do chatbot, como a confirmação do agendamento. O **Complemento ou referência** é opcional.
 
-## <a id="s07-04"></a>Lembrete ao cidadão
+<h2 id="s07-04">Lembrete ao cidadão</h2>
 
 Com a opção **Enviar lembrete ao cidadão** ligada, o chatbot manda um lembrete pelo WhatsApp aos agendamentos Pendentes e Confirmados, com a antecedência escolhida em **Antecedência do lembrete**. O texto é fixo e aparece na **Prévia da mensagem**. Cada lembrete é uma mensagem de modelo e tem custo por mensagem cobrado pela Meta, por isso o painel pede uma confirmação ao ligar e ao desligar. O lembrete só é enviado depois que a Meta aprova o modelo, o que é acompanhado na tela **WhatsApp**, só da conta Admin.
 
-## <a id="s07-05"></a>Datas bloqueadas
+<h2 id="s07-05">Datas bloqueadas</h2>
 
 Use para feriados e pontos facultativos. Escolha a **Data**, escreva a **Descrição** e clique em **Adicionar**. O chatbot não oferece horários nos dias bloqueados. **Remover** tira o bloqueio. Hoje só é possível bloquear o dia inteiro: bloquear apenas um período do dia ainda não está disponível.
 
 ![Dados da unidade e datas bloqueadas](images/manual-do-painel/18-horarios-unidade-e-bloqueios.png)
 *Figura 18 – Dados da unidade e datas bloqueadas*
 
-## <a id="s07-06"></a>Mudanças agendadas
+<h2 id="s07-06">Mudanças agendadas</h2>
 
 O campo **Valer a partir de** permite preparar uma nova configuração para uma data futura (a partir de amanhã). A lista **Mudanças agendadas** mostra as que existem, com as opções **Editar** e **Cancelar mudança**, e **Voltar à configuração de hoje** retorna à configuração atual.
 
-## <a id="s07-07"></a>Quando a mudança afeta agendamentos
+<h2 id="s07-07">Quando a mudança afeta agendamentos</h2>
 
 O painel não deixa salvar uma mudança que deixaria agendamentos existentes fora da agenda. Dias com agendamentos aparecem marcados na prévia, e a tela mostra avisos como "Há agendamentos em 23/11. Para desligar este dia, peça a quem gerencia os agendamentos para cancelar ou remarcar antes.". Quando uma alteração afeta agendamentos, a lista **Esta alteração afeta N agendamentos** mostra quais são, e **Salvar alterações** fica desabilitado até que alguém com a permissão **Gerenciar agendamentos** cancele ou remarque esses agendamentos.
 
@@ -366,7 +366,7 @@ O painel não deixa salvar uma mudança que deixaria agendamentos existentes for
 
 Quando você muda horários ou endereço, o painel lembra de revisar as perguntas do Conteúdo que citam essas informações, com o atalho **Revisar Conteúdo →**.
 
-# <a id="s08"></a>7. Documentos
+<h1 id="s08">7. Documentos</h1>
 
 A tela **Documentos** define as listas de documentos que o chatbot envia ao cidadão ao criar o agendamento. Há duas listas: **Quando o próprio titular comparece** e **Quando um representante comparece em nome do titular**. Em cada caso, o chatbot soma a lista aos documentos úteis da pergunta que o cidadão fez.
 
@@ -385,7 +385,7 @@ A **Prévia da mensagem de confirmação do agendamento** mostra como o cidadão
 
 > **Atenção:** as alterações valem só para os próximos agendamentos. Os agendamentos já criados mantêm a lista que foi enviada ao cidadão na época.
 
-# <a id="s09"></a>8. Usuários
+<h1 id="s09">8. Usuários</h1>
 
 A tela **Usuários** mostra todas as contas do painel e permite criar contas, marcar as permissões de cada uma, redefinir senhas e desativar contas.
 
@@ -398,7 +398,7 @@ A lista mostra, para cada conta, o nome, o e-mail, quantas permissões ela tem, 
 
 A tela mostra só as permissões das telas que já estão disponíveis no painel. As demais permissões da tabela do capítulo 10 aparecem aqui quando a tela delas ficar disponível.
 
-## <a id="s09-01"></a>Criar uma conta
+<h2 id="s09-01">Criar uma conta</h2>
 
 1. Clique em **Criar conta**.
 2. Preencha o **Nome**, o **E-mail** (não pode repetir o de outra conta) e a **Senha inicial** (mínimo de 8 caracteres).
@@ -406,7 +406,7 @@ A tela mostra só as permissões das telas que já estão disponíveis no painel
 
 A conta é criada sem nenhuma permissão. Informe a senha inicial pessoalmente à pessoa, porque o sistema não envia e-mails. Depois, marque as permissões dela.
 
-## <a id="s09-02"></a>Marcar as permissões
+<h2 id="s09-02">Marcar as permissões</h2>
 
 Clique na conta e marque ou desmarque as permissões, uma a uma. **Gerenciar agendamentos** inclui **Ver agendamentos**: marcar a primeira marca a segunda. Não existem perfis nem cargos: cada conta é montada marcando as permissões que ela precisa (veja o capítulo 11 para sugestões). As mudanças só valem depois de **Salvar alterações**, e a conta passa a mostrar "Permissões alteradas por [nome] em [data]".
 
@@ -415,14 +415,14 @@ Clique na conta e marque ou desmarque as permissões, uma a uma. **Gerenciar age
 
 A descrição de **Ver relatórios** fala em exportação, mas a exportação ainda não está disponível.
 
-## <a id="s09-03"></a>Redefinir a senha de uma conta
+<h2 id="s09-03">Redefinir a senha de uma conta</h2>
 
 Clique na conta e em **Redefinir senha**. Defina a **Nova senha inicial**, repita em **Confirmar senha** e clique em **Redefinir senha**. A senha anterior deixa de funcionar na hora, e a nova deve ser informada pessoalmente à pessoa.
 
 ![Janelas Criar conta e Redefinir senha](images/manual-do-painel/22-usuarios-criar-conta-e-redefinir.png)
 *Figura 22 – Janelas Criar conta e Redefinir senha*
 
-## <a id="s09-04"></a>Desativar e reativar uma conta
+<h2 id="s09-04">Desativar e reativar uma conta</h2>
 
 **Desativar conta** impede a pessoa de entrar. **Reativar conta** devolve o acesso. As contas não são excluídas, para preservar quem escreveu cada observação e cada registro.
 
@@ -431,7 +431,7 @@ Se a conta é responsável por agendamentos futuros, ao desativá-la, ou ao tira
 ![Janela de agendamentos futuros da conta](images/manual-do-painel/23-usuarios-agendamentos-futuros.png)
 *Figura 23 – Janela de agendamentos futuros da conta*
 
-## <a id="s09-05"></a>Regras de segurança
+<h2 id="s09-05">Regras de segurança</h2>
 
 Estas regras evitam que alguém aumente o próprio acesso.
 
@@ -440,7 +440,7 @@ Estas regras evitam que alguém aumente o próprio acesso.
 3. **Só se redefine a senha ou se desativa uma conta cujas permissões você tem por completo.** Caso contrário, os botões ficam bloqueados com o aviso "Esta conta tem permissões que você não possui".
 4. **A conta Admin não pode ser alterada pelo painel:** não pode ser desativada, não perde permissões e ninguém redefine a senha dela por aqui. Se o Admin esquecer a senha, a redefinição é feita pela equipe técnica diretamente no servidor.
 
-# <a id="s10"></a>9. WhatsApp
+<h1 id="s10">9. WhatsApp</h1>
 
 A tela **WhatsApp** mostra a conexão do número do PROCON com o WhatsApp e permite pausar o chatbot.
 
@@ -483,7 +483,7 @@ A **Anonimização automática**, quando ligada, apaga por prazo a ligação das
 
 > **Atenção:** a anonimização não pode ser desfeita.
 
-# <a id="s11"></a>10. Permissões
+<h1 id="s11">10. Permissões</h1>
 
 Cada conta do painel só enxerga e só faz o que as suas permissões liberam. A tabela abaixo mostra o que cada uma libera.
 
@@ -507,7 +507,7 @@ Alguns pontos importantes:
 - **Gerenciar agendamentos** inclui **Ver agendamentos**.
 - Só se concede ou remove uma permissão que você mesmo tem.
 
-# <a id="s12"></a>11. Sugestões de combinações
+<h1 id="s12">11. Sugestões de combinações</h1>
 
 Como o sistema não tem perfis prontos, esta página traz **sugestões** de quais permissões marcar para três situações comuns. São apenas sugestões, e você pode ajustar cada uma conforme a necessidade do PROCON. Para marcar as permissões, use a tela **Usuários** (capítulo 8). A figura mostra como fica o menu de cada uma das três combinações.
 
@@ -528,19 +528,19 @@ Marque todas as permissões que aparecem na tela **Usuários**, menos **Gerencia
 
 > **Atenção:** com esta combinação, a pessoa líder não consegue criar contas nem mudar permissões. Assim, só a conta Admin gerencia as contas. E quem cria uma conta precisa ter todas as permissões que vai conceder a ela: para criar uma conta de líder com estas seis permissões, quem cria precisa tê-las também (a conta Admin tem todas).
 
-# <a id="s13"></a>Apêndice A. Redefinir a senha do Admin no servidor
+<h1 id="s13">Apêndice A. Redefinir a senha do Admin no servidor</h1>
 
 > **Atenção:** este apêndice é só para a equipe técnica. Quem usa o painel no dia a dia não precisa dele.
 
 O painel não redefine a senha da conta Admin, e não existe "Esqueci minha senha". Se o Admin esquecer a senha, a equipe técnica redefine direto no servidor, como descrito aqui. O e-mail do Admin não muda.
 
-## <a id="s13-01"></a>Antes de começar
+<h2 id="s13-01">Antes de começar</h2>
 
 - Entre no servidor com o usuário `deploy` e abra um terminal interativo. O script não roda sem ele.
 - Vá para a pasta da instalação, `/opt/proconchat`.
 - A senha nova precisa ter de 8 caracteres a 72 bytes.
 
-## <a id="s13-02"></a>Passo a passo
+<h2 id="s13-02">Passo a passo</h2>
 
 1. Rode o script:
 
@@ -555,7 +555,7 @@ O painel não redefine a senha da conta Admin, e não existe "Esqueci minha senh
 
 Ao redefinir, todas as sessões abertas do Admin são encerradas, e a pessoa precisa entrar de novo. A senha não aparece na linha de comando, no histórico do terminal nem no arquivo de configuração.
 
-## <a id="s13-03"></a>Se o script falhar
+<h2 id="s13-03">Se o script falhar</h2>
 
 Em qualquer falha, o script termina com uma mensagem e a senha do Admin não é alterada. Veja o que cada mensagem pede:
 
@@ -569,7 +569,7 @@ Em qualquer falha, o script termina com uma mensagem e a senha do Admin não é 
 | compose.prod.yaml e .env precisam existir em (pasta) | O script foi rodado de uma instalação incompleta. Confira a pasta `/opt/proconchat` |
 | não foi possível redefinir a senha do Admin; veja a mensagem acima | Leia a mensagem anterior. Se for "No Admin account found. Run the seed first (npm run db:seed or the seed service)", a conta Admin ainda não existe: rode a carga inicial do sistema e tente de novo |
 
-## <a id="s13-04"></a>Sem o script
+<h2 id="s13-04">Sem o script</h2>
 
 O mesmo resultado sai com os comandos abaixo, também como usuário `deploy`. A senha vale só para este comando e não é gravada no arquivo de configuração:
 
