@@ -655,7 +655,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: nenhum.
 - Gate: doc
 - Modelo: economico
-- Status: pendente
+- Status: feita. Evidência: gate doc ok; 06-conteudo.md (Estado da tela e decisões de selos, Cancelar, nasce inativa e aviso de 1.024), regras/README.md, README.md, architecture.md e rastreabilidade.md (Nota 4) dizem que Conteúdo está pronto; links conferidos
 
 ## Dúvidas
 
