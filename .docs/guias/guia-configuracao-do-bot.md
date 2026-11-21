@@ -30,7 +30,7 @@ Só a conta Admin vê a tela de WhatsApp. Se o seu menu não mostra o item **Wha
 | 6 | Pausar e retomar o atendimento | Painel do PROCON |
 | 7 | Resolver problemas comuns | Painel do PROCON |
 
-> **Atenção:** a aprovação dos modelos de mensagem pela Meta leva de algumas horas a alguns dias. Por isso, faça as etapas 2, 3 e 4 primeiro e deixe o restante para depois.
+> **Atenção:** a aprovação dos modelos de mensagem pela Meta leva de algumas horas a alguns dias. Por isso, faça as capítulos 2, 3 e 4 primeiro e deixe o restante para depois.
 
 > **Atenção:** o número que for registrado na Meta para o chatbot deixa de funcionar no aplicativo WhatsApp comum do celular. Use um número dedicado ao atendimento.
 
@@ -97,7 +97,7 @@ Esta parte é feita no site da Meta, fora do nosso painel. Os nomes abaixo podem
 2. No painel do aplicativo, adicione o produto **WhatsApp**. A Meta cria uma conta do WhatsApp Business ligada ao aplicativo.
 3. Em **Configurações do negócio** (no Gerenciador de Negócios, em **business.facebook.com**), confira se o negócio e a conta do WhatsApp Business aparecem. Eles ficam em **Contas** e **Contas do WhatsApp**.
 
-> **Atenção:** tenha à mão uma forma de pagamento (cartão). Ela só é necessária para as mensagens de modelo (lembrete e aviso de cancelamento); o chatbot responde ao cidadão sem ela. Veja mais na etapa de custo, no capítulo 4.
+> **Atenção:** tenha à mão uma forma de pagamento (cartão). Ela só é necessária para as mensagens de modelo (lembrete e aviso de cancelamento); o chatbot responde ao cidadão sem ela. Veja mais na seção Custo, no capítulo 4.
 
 > **Dica:** use, de preferência, uma conta do Facebook que seja da instituição e que mais de uma pessoa de confiança consiga acessar. Assim, o acesso não se perde se alguém sair.
 
@@ -114,7 +114,7 @@ Esta parte é feita no site da Meta, fora do nosso painel. Os nomes abaixo podem
 
 ## Guardar o ID do número e o ID da conta
 
-Você vai precisar de dois códigos na etapa 5. Anote-os agora.
+Você vai precisar de dois códigos na capítulo 5. Anote-os agora.
 
 1. No Painel de desenvolvedores da Meta, abra o aplicativo e vá em **WhatsApp**, **Configuração da API**.
 2. Copie o **ID do número de telefone**.
@@ -153,8 +153,6 @@ Você vai precisar de dois códigos na etapa 5. Anote-os agora.
 4. Marque as duas permissões: `whatsapp_business_messaging` e `whatsapp_business_management`.
 5. Clique em gerar e **copie o token na hora**: ele aparece uma única vez. Se perder, gere outro.
 
-
-
 # 4. Cadastrar os modelos de mensagem
 
 O WhatsApp só deixa a instituição escrever primeiro para o cidadão com **modelos de mensagem aprovados pela Meta**. O chatbot usa dois:
@@ -188,6 +186,8 @@ Texto do corpo:
 Olá, {{1}}. Lembrete do seu atendimento no PROCON Jacareí: {{2}}, {{3}}, às {{4}} (protocolo {{5}}). Endereço: {{6}}. Traga: {{7}}. Se não puder comparecer, remarque ou cancele respondendo a esta mensagem.
 ```
 
+> **Atenção:** ao colar o texto na Meta, confira que ele ficou em um parágrafo só, sem quebras de linha, e que ficou idêntico ao acima, letra por letra. No PDF, o texto pode aparecer em várias linhas só por causa do tamanho da página.
+
 | Variável | O que entra | Exemplo para a Meta |
 | --- | --- | --- |
 | `{{1}}` | Primeiro nome do cidadão | Maria |
@@ -208,6 +208,8 @@ Texto do corpo:
 Olá, {{1}}. Seu agendamento {{2}} no PROCON Jacareí, marcado para {{3}} às {{4}}, foi cancelado. Motivo: {{5}}. Para agendar novamente, envie uma mensagem para este número.
 ```
 
+> **Atenção:** ao colar o texto na Meta, confira que ele ficou em um parágrafo só, sem quebras de linha, e que ficou idêntico ao acima, letra por letra. No PDF, o texto pode aparecer em várias linhas só por causa do tamanho da página.
+
 | Variável | O que entra | Exemplo para a Meta |
 | --- | --- | --- |
 | `{{1}}` | Primeiro nome do cidadão | Maria |
@@ -226,7 +228,7 @@ Cadastrar e aprovar um modelo não custa nada. A Meta pode cobrar pelo envio das
 
 ## Os quatro status dos modelos
 
-Depois de enviar, a Meta analisa o modelo. O painel do PROCON mostra o resultado em **Modelos de mensagem** (veja a etapa 5).
+Depois de enviar, a Meta analisa o modelo. O painel do PROCON mostra o resultado em **Modelos de mensagem** (veja a capítulo 5).
 
 | Status | O que significa | O que fazer |
 | --- | --- | --- |
@@ -259,10 +261,10 @@ Na parte de cima, você vê o número institucional, a **situação** do atendim
 ![Seção Credenciais](images/configuracao-do-bot/06-credenciais.png)
 *Figura 5 – Seção Credenciais, ainda vazia*
 
-1. Em **ID do número de telefone**, digite o ID guardado na etapa 2. Só números.
+1. Em **ID do número de telefone**, digite o ID guardado na capítulo 2. Só números.
 2. Em **ID da conta WhatsApp Business**, digite o ID da conta. Só números.
-3. Em **Token de acesso**, cole o token permanente da etapa 3. Sem espaços.
-4. Em **App Secret**, cole a chave secreta da etapa 2. Sem espaços.
+3. Em **Token de acesso**, cole o token permanente da capítulo 3. Sem espaços.
+4. Em **App Secret**, cole a chave secreta da capítulo 2. Sem espaços.
 
 Todos os quatro campos são obrigatórios.
 
@@ -271,7 +273,7 @@ Todos os quatro campos são obrigatórios.
 
 > **Atenção:** depois de salvos, o token e o App Secret nunca mais aparecem inteiros. A tela mostra só os quatro últimos caracteres, com o botão **Substituir**. Isso é de propósito, por segurança. Para trocar, clique em **Substituir** e cole o valor novo.
 
-O campo do token também avisa sobre a validade. Se você vir "Este token expira em..." ou "Use um token permanente de usuário do sistema; o token temporário expira em 24 horas", gere o token permanente da etapa 3.
+O campo do token também avisa sobre a validade. Se você vir "Este token expira em..." ou "Use um token permanente de usuário do sistema; o token temporário expira em 24 horas", gere o token permanente da capítulo 3.
 
 ## Testar a conexão
 
@@ -291,7 +293,7 @@ O campo do token também avisa sobre a validade. Se você vir "Este token expira
 | ID do número não encontrado ou sem acesso por este token | Confira o ID do número e se o usuário do sistema tem acesso à conta |
 | ID da conta WhatsApp Business não encontrado ou sem acesso por este token | Confira o ID da conta e o acesso do usuário do sistema |
 | O número não pertence a esta conta WhatsApp Business | O ID do número e o ID da conta são de contas diferentes. Confira os dois |
-| O token não tem permissão para gerenciar este número | Gere o token de novo, marcando as duas permissões da etapa 3 |
+| O token não tem permissão para gerenciar este número | Gere o token de novo, marcando as duas permissões da capítulo 3 |
 | Não foi possível falar com a Meta. Tente de novo em instantes | Aguarde alguns minutos e tente de novo |
 | A Meta recusou as credenciais | Confira todos os campos, um por um |
 
@@ -450,7 +452,7 @@ A pausa vale **na hora**, sem precisar clicar em Salvar. Enquanto durar, quem es
 
 | O que aconteceu | O que fazer |
 | --- | --- |
-| O chatbot parou de responder de repente | Veja a situação na tela de WhatsApp. Se for "Credenciais inválidas" ou "Token inválido ou expirado", gere um novo token permanente (etapa 3), clique em **Substituir**, teste e salve. Veja também se não ficou pausado |
+| O chatbot parou de responder de repente | Veja a situação na tela de WhatsApp. Se for "Credenciais inválidas" ou "Token inválido ou expirado", gere um novo token permanente (capítulo 3), clique em **Substituir**, teste e salve. Veja também se não ficou pausado |
 | A situação mostra "Não verificado" | Clique em **Testar conexão** para o sistema conferir os dados com a Meta |
 | O painel avisa que não há eventos do webhook há mais de 24 horas | Confira, no painel da Meta, se o webhook está verificado e se o campo **messages** está assinado |
 | Os lembretes ou avisos não são enviados | Confira se o lembrete está ligado e salvo em **Horários de atendimento** (ele vem desligado) e se o aviso de cancelamento está ligado na tela de WhatsApp (também vem desligado). Veja o status dos modelos: eles precisam estar **Aprovado**. Veja também se a conta da Meta tem forma de pagamento |
