@@ -681,7 +681,7 @@ O usuário respondeu D-U-04, D-U-05 e D-U-06. Este acréscimo faz duas coisas:
 O texto aprovado acima não é editado. Para este acréscimo vale o seguinte:
 
 - O bullet "Qualquer mudança na API de Conteúdo ou no bot" de "Fora do escopo" deixa de valer para o que está descrito aqui. Continua valendo para o resto da tela: não existe "salvar tudo de uma vez" e as gravações seguem item a item (RN-06).
-- D-U-04, D-U-05 e D-U-06 ficam respondidas pelas decisões RN-B01 a RN-B14 abaixo. As dúvidas que sobraram dessas respostas foram respondidas pelo PO e pelo usuário (ver "Decisões registradas"), e o usuário confirmou as respostas do PO.
+- D-U-04, D-U-05 e D-U-06 ficam respondidas pelas decisões RN-B01 a RN-B14 abaixo; RN-B15 é uma decisão posterior do usuário (aviso de tamanho do balão com IA). As dúvidas que sobraram dessas respostas foram respondidas pelo PO e pelo usuário (ver "Decisões registradas"), e o usuário confirmou as respostas do PO.
 - CA-53, CA-56 e CA-61 ("depende de D-U-04") passam a ser verificados com o contrato novo: nenhum texto do bot é copiado no painel, sem exceção autorizada.
 - RN-27 (composição da prévia) continua. O item "Fora do escopo: ver D-U-05" passa a ser RN-B06 a RN-B08.
 - T20 passa a depender de B1 (contrato novo disponível) e, para a conferência final dos textos, de B2 e B3. Ajuste proposto para a T20 (o corpo original não é editado):
@@ -709,6 +709,7 @@ O texto aprovado acima não é editado. Para este acréscimo vale o seguinte:
 | RN-B12 | O balão com IA tem um limite de tamanho no WhatsApp (1.024 caracteres no corpo de uma mensagem com botões). Se o texto ficar maior, o bot já manda a resposta oficial no lugar, e isso continua igual. Como a observação entra no balão com IA, essa troca vai acontecer mais vezes nas perguntas presenciais com observação longa; é uma consequência esperada. | bot real; decisão 009; product-owner (D-PO-B03) |
 | RN-B13 | Os campos antigos da resposta da prévia são removidos nesta mesma issue, depois de a tela passar a usar só as mensagens do bot (T20): o balão da resposta e o balão do passo seguinte no formato antigo (e o que só existe por causa deles), a lista antiga da categoria e o aviso fixo solto, desde que a T20 confirme que não os usa. O alerta de resposta longa continua na resposta da prévia. | usuário (D-U-B01, D-U-B03) |
 | RN-B14 | Pergunta numa categoria ainda não salva (RN-28): a prévia continua mostrando só a lista montada com o rascunho, sem os rótulos do bot (cabeçalho, botão "Ver perguntas", "Voltar opções", "Ver mais opções"). | usuário (D-U-B02) |
+| RN-B15 | A prévia avisa quando o balão com IA passaria do limite do bot (1.024 caracteres no corpo, contados como o bot conta). Nesse caso o bot real manda a resposta oficial no lugar (RN-B12). A prévia continua mostrando o balão com IA, com o aviso "Com o complemento por IA, esta mensagem passaria de 1.024 caracteres. Neste caso o bot envia só a resposta oficial.", e a alternativa "Se a IA estiver indisponível" mostra o que o bot enviaria. O limite e a contagem são os mesmos do bot, num único lugar do código. Como o texto de exemplo da IA tem tamanho fixo, o aviso depende da resposta, da base legal, dos documentos e da observação do formulário; com a IA de verdade, o tamanho real pode ser outro. | usuário |
 
 ### Critérios de aceite do acréscimo
 
@@ -727,6 +728,10 @@ Prévia igual ao bot
 - CA-B11 QUANDO, antes de B6, a prévia é pedida com os campos de antes (sem a ordem do rascunho) ENTÃO a resposta DEVE continuar trazendo todos os campos antigos com o mesmo formato, preenchidos a partir das mensagens do bot, para que o painel continue funcionando até a T20. (RN-B01)
 - CA-B24 QUANDO a B6 termina ENTÃO a resposta da prévia DEVE trazer só `botMessages` e o alerta de resposta longa (sinal e mensagem), sem a lista antiga, o aviso fixo solto, o balão da resposta e o balão do passo seguinte antigos; o painel não DEVE ter mais os tipos antigos; e a prévia na tela DEVE continuar igual à da T20. (RN-B13)
 - CA-B12 QUANDO a prévia é pedida ENTÃO nada DEVE ser gravado, e as validações e mensagens de erro que já existem (categoria não encontrada, campos inválidos, sem permissão) DEVEM continuar iguais. (RN-25)
+- CA-B27 QUANDO a IA está ligada e o corpo do balão com IA tem até 1.024 caracteres (inclusive exatamente 1.024) ENTÃO a prévia não DEVE avisar nada, e DEVE informar o tamanho do corpo e o limite. (RN-B15)
+- CA-B28 QUANDO a IA está ligada e o corpo do balão com IA tem 1.025 caracteres ou mais ENTÃO a prévia DEVE trazer o aviso "Com o complemento por IA, esta mensagem passaria de 1.024 caracteres. Neste caso o bot envia só a resposta oficial.", DEVE continuar trazendo o balão com IA e as mensagens oficiais, e a contagem DEVE ser a mesma do bot (letras com acento e emojis contam como um caractere cada). (RN-B15, RN-B12)
+- CA-B29 QUANDO a IA está desligada ou a pergunta é fora do escopo ENTÃO a prévia não DEVE avisar nada, com tamanho zero. (RN-B15)
+- CA-B30 QUANDO a prévia é pedida, com ou sem aviso de tamanho ENTÃO nenhuma categoria, pergunta, documento ou registro de alteração DEVE ser criado nem mudado no banco, e isso DEVE ser coberto por teste de integração. (RN-25, CA-B12)
 
 Bot: fora do escopo
 
@@ -841,6 +846,14 @@ interface PreviewBotMessages {
     categoryList: PreviewBotList
     officialMessages: OutgoingMessage[]
     aiMessage: Extract<OutgoingMessage, { type: "buttons" }> | null
+    aiLengthWarning: PreviewAiLengthWarning
+}
+
+interface PreviewAiLengthWarning {
+    exceedsLimit: boolean
+    length: number
+    limit: number
+    message: string | null
 }
 
 interface QuestionPreviewResult {
@@ -858,6 +871,7 @@ interface QuestionPreviewResult {
 - `categoryList.message`: a mensagem de lista do bot para a página em que a pergunta atual está, com as linhas de navegação. `currentRowIndex` é a posição da pergunta atual dentro de `message.rows` (as linhas de navegação vêm depois das perguntas). A pergunta nova, ainda sem id, recebe na linha um id provisório que não colide com ids reais; o painel não deve usar os ids das linhas.
 - `officialMessages`: exatamente o que o bot envia sem IA. Pergunta comum ou presencial: dois itens (texto do balão oficial e botões do passo seguinte). Fora do escopo, depois de B2: dois itens de texto (balão oficial e encaminhamento). Antes de B2 o fora do escopo sai com um item só, porque é o que o bot envia hoje.
 - `aiMessage`: o balão com IA que o bot monta com o texto de exemplo; nulo quando a IA está desligada ou a pergunta é fora do escopo.
+- `aiLengthWarning` (B7, campo novo e aditivo): `length` é o tamanho do corpo de `aiMessage` contado como o bot conta (por caractere Unicode, `Array.from(texto).length`), ou 0 quando `aiMessage` é nulo; `limit` é o limite do bot (1.024, da mesma constante que o serviço de IA usa); `exceedsLimit` é verdadeiro quando `length` passa de `limit`; `message` é o texto do aviso de RN-B15, vindo da API, quando `exceedsLimit` é verdadeiro, e nulo nos outros casos. O painel só mostra `message`, sem texto próprio.
 - O nome `botMessages` existe porque `categoryList` já é usado pelo campo antigo.
 
 Exemplo, pergunta comum com IA ligada (textos encurtados com "…"):
@@ -890,7 +904,8 @@ Exemplo, pergunta comum com IA ligada (textos encurtados com "…"):
         "text": "Exemplo ilustrativo …\n\nBase legal: CDC, art. 49\n\nO que fazer agora:\n…\n\nEsta é uma orientação automatizada …\n\nA dúvida foi resolvida?",
         "buttons": [ { "id": "resolved_yes", "title": "Sim" }, { "id": "resolved_no", "title": "Não" } ],
         "footer": "Gerado com auxílio de IA"
-      }
+      },
+      "aiLengthWarning": { "exceedsLimit": false, "length": 612, "limit": 1024, "message": null }
     },
     "fixedDisclaimer": "…",
     "answerLengthWarning": false,
@@ -921,7 +936,7 @@ Decisão (D-U-B01): manter os campos antigos, com o mesmo formato, até a T20 te
 | `nextStepBubble.inPersonNote` | igual a hoje | não |
 | `nextStepBubble.formattedText` | a versão numerada do bot (já é texto do bot) | não |
 
-Efeito no frontend: T1 e T15 seguem compilando e passando até a T20, porque os testes deles simulam a API. A T20 troca o consumo para `botMessages` e para de ler os campos antigos. Na B6, saem da API e do painel `answerBubble`, `nextStepBubble` e seus tipos (`PreviewAnswerBubble`, `PreviewNextStepBubble`, `PreviewNextStepType`), e o que só existia para preenchê-los; saem também o campo antigo `categoryList` (`PreviewCategoryListSection`, `PreviewCategoryListRow`) e `fixedDisclaimer`, desde que a T20 confirme que não os usa (D-U-B03). Ficam `answerLengthWarning` e `answerLengthWarningMessage`. Depois da B6, a resposta da prévia é `{ botMessages, answerLengthWarning, answerLengthWarningMessage }`.
+Efeito no frontend: T1 e T15 seguem compilando e passando até a T20, porque os testes deles simulam a API. A T20 troca o consumo para `botMessages` e para de ler os campos antigos. Na B6, saem da API e do painel `answerBubble`, `nextStepBubble` e seus tipos (`PreviewAnswerBubble`, `PreviewNextStepBubble`, `PreviewNextStepType`), e o que só existia para preenchê-los; saem também o campo antigo `categoryList` (`PreviewCategoryListSection`, `PreviewCategoryListRow`) e `fixedDisclaimer`, desde que a T20 confirme que não os usa (D-U-B03). Ficam `answerLengthWarning` e `answerLengthWarningMessage`. Depois da B6, a resposta da prévia é `{ botMessages, answerLengthWarning, answerLengthWarningMessage }`, com `botMessages.aiLengthWarning` mantido.
 
 ### Plano de execução do acréscimo
 
@@ -939,12 +954,13 @@ Fases (o frontend T1 a T19 não depende de nenhuma delas e roda ao mesmo tempo):
 - Fase B3: B3 (pode rodar ao mesmo tempo que B1). B2 e B3 rodam em qualquer ordem, nunca ao mesmo tempo
 - Fase B4: B4 (depois de B1, B2 e B3)
 - Fase B5: T20 (Itadori) pode começar quando B1 estiver feita e fecha depois de B4
-- Fase B6: B6 (Todo, com a parte do painel feita pelo Itadori), depois de T20 e B4
+- Fase B6 (aviso de tamanho da IA): B7 (Todo), depois de B1 e B3; T21 (Itadori), depois de T20 e B7
+- Fase B7: B6 (Todo, com a parte do painel feita pelo Itadori), depois de T20, B4, B7 e T21. B7 e B6 mexem nos mesmos arquivos da API (tipos da prévia e montagem da prévia), e T21 e a parte do painel da B6 mexem nos mesmos tipos do painel; por isso a ordem é B7 → T21 → B6, sem paralelo entre elas.
 - Depois: T19, M2 e K3, como no plano original, também depois de B6.
 
 Gates de frontend usados na B6: os do plano original (gate rápido `cd src/frontend && npx vitest run <arquivos de teste da tarefa>`; gate completo `cd src/frontend && npm run lint && npm run typecheck && npm run test:run`).
 
-B2 e B3 não são [P] entre si porque mexem nos mesmos arquivos (formatador, motor de decisão e seus testes). Tarefas do Todo: B0, B1, B2, B3, B4, B6 (parte da API). Do Kusakabe: B5. Do Itadori: T20 e a parte do painel da B6.
+B2 e B3 não são [P] entre si porque mexem nos mesmos arquivos (formatador, motor de decisão e seus testes). Tarefas do Todo: B0, B1, B2, B3, B4, B7, B6 (parte da API). Do Kusakabe: B5. Do Itadori: T20, T21 e a parte do painel da B6.
 
 Regras para todas as tarefas do acréscimo: nunca escrever comentários; TDD (o teste citado em "Teste" é escrito e falha antes do código); no máximo 5 passos; um commit atômico por tarefa no padrão `Feat :sparkles: [#124] <descrição>` (correções do bot: `Fix :bug: [#124] <descrição>`); nunca alterar teste para fazê-lo passar. Os testes listados como "mudam" em cada tarefa mudam porque o comportamento mudou por decisão do usuário; isso faz parte da entrega. Se outro teste quebrar, avisar a orchestrator em vez de editar em silêncio.
 
@@ -1042,14 +1058,44 @@ Regras para todas as tarefas do acréscimo: nunca escrever comentários; TDD (o 
 - O quê: tirar da resposta da prévia e do painel os campos antigos `answerBubble`, `nextStepBubble`, `categoryList` e `fixedDisclaimer`, seus tipos e o que só existia para preenchê-los, depois de a tela passar a usar só `botMessages`; `answerLengthWarning` e `answerLengthWarningMessage` ficam.
 - Onde: API (Todo): `src/backend/types/content.types.ts` (`PreviewAnswerBubble`, `PreviewNextStepBubble`, `PreviewNextStepType`, `PreviewCategoryListSection`, `PreviewCategoryListRow` e os quatro campos em `QuestionPreviewResult`); `src/backend/services/contentRules.ts` (preenchimento dos campos antigos e imports que só serviam a eles, como `OFERTA_AGENDAMENTO` e `PERGUNTA_RESOLVIDA`); testes `src/backend/services/contentRules.test.ts`, `src/backend/services/content.service.test.ts`, `src/backend/routes/content.routes.test.ts`, `src/backend/tests/integration/content.integration.test.ts`; `src/backend/README.md` (linha da prévia). Painel (Itadori, combinado com o Todo): os tipos antigos da prévia em `src/frontend/src/types/content/` e qualquer uso restante em `src/frontend/src/utils/content/` e nos testes.
 - Dev: Todo (dev-backend), com a parte do painel feita pelo Itadori (dev-frontend)
-- Depende de: T20 feita; B4
+- Depende de: T20 feita; B4; B7 e T21 feitas (mesmos arquivos de tipos e de montagem da prévia)
 - Reaproveita: `botMessages` de B1; o consumo novo da T20.
+- Observação: remove também, se ainda existir, qualquer outro campo antigo da prévia, mas mantém `botMessages.aiLengthWarning` e o alerta de resposta longa.
 - Atende: RN-B13, CA-B24
 - Passos: (1) Itadori confirma que a T20 não usa `categoryList` nem `fixedDisclaimer` (se usar, esses dois ficam e o motivo vai no Status); nos testes da API, trocar as conferências dos campos antigos pelas de `botMessages` e acrescentar a conferência de que os campos removidos não vêm mais e o alerta de tamanho continua; (2) remover tipos e preenchimento na API e atualizar o README do backend; (3) Itadori remove os tipos antigos do painel e confirma que nada mais os usa; (4) gate completo backend, gate integração backend e gate completo frontend; (5) commits atômicos `Refactor :recycle: [#124] Remove os campos antigos da prévia do Conteúdo na API` (Todo) e `Refactor :recycle: [#124] Remove os tipos antigos da prévia do Conteúdo no painel` (Itadori).
-- Pronto quando: a resposta da prévia é `{ botMessages, answerLengthWarning, answerLengthWarningMessage }`, sem `answerBubble`, `nextStepBubble`, `categoryList` e `fixedDisclaimer`; nenhum código da API ou do painel cita os tipos removidos; a prévia na tela continua igual à da T20; gates passam.
+- Pronto quando: a resposta da prévia é `{ botMessages, answerLengthWarning, answerLengthWarningMessage }`, com `botMessages.aiLengthWarning`, sem `answerBubble`, `nextStepBubble`, `categoryList` e `fixedDisclaimer`; nenhum código da API ou do painel cita os tipos removidos; a prévia na tela continua igual à da T20; gates passam.
 - Teste: unitário, rota e integração. Falha primeiro "a resposta da prévia traz só botMessages e o alerta de tamanho".
 - Testes que mudam (comportamento, por D-U-B01 e D-U-B03): os casos de `contentRules.test.ts` (inclusive os da lista antiga e do aviso fixo), `content.service.test.ts` (tipo "resolution" de `nextStepBubble`), `content.routes.test.ts` (`nextStepBubble.type`) e `content.integration.test.ts` (`nextStepBubble.type` e `nextStepBubble.inPersonNote`) que conferem os campos removidos passam a conferir o mesmo pelo `botMessages`. No painel, os testes que ainda usarem os tipos antigos.
 - Gate: completo backend (`cd src/backend && npm run lint && npm run build && npm run typecheck:test && npm test`), integração backend (banco separado, `npm run db:migrate && npm run test:integration`) e completo frontend (`cd src/frontend && npm run lint && npm run typecheck && npm run test:run`)
+- Modelo: economico
+- Status: pendente
+
+#### B7 Aviso de tamanho do balão com IA na prévia
+- O quê: a prévia passa a devolver `botMessages.aiLengthWarning`, calculado com o mesmo limite e a mesma contagem que o bot usa para decidir se manda o balão com IA ou a resposta oficial.
+- Onde: `src/backend/services/llmAnswer.service.ts` (exportar `LIMITE_CORPO_BOTOES`, hoje privado, e passar a contar com a mesma função exportada); `src/backend/types/content.types.ts` (`PreviewAiLengthWarning` e o campo em `PreviewBotMessages`); `src/backend/services/contentRules.ts` (cálculo do aviso e constante com o texto do aviso); testes `src/backend/services/contentRules.test.ts`, `src/backend/services/llmAnswer.service.test.ts`, `src/backend/routes/content.routes.test.ts`, `src/backend/tests/integration/content.integration.test.ts`.
+- Dev: Todo (dev-backend)
+- Depende de: B1 e B3 feitas
+- Reaproveita: `LIMITE_CORPO_BOTOES` e a contagem `Array.from(texto).length` de `llmAnswer.service.ts`; `montarMensagemIa` e `AI_SAMPLE_TEXT` já usados pela prévia.
+- Atende: RN-B15, CA-B27, CA-B28, CA-B29, CA-B30
+- Passos: (1) testes: corpo com exatamente 1.024 sem aviso, com 1.025 com aviso e com `aiMessage` presente, contagem com acento e emoji igual à do bot, IA desligada e fora do escopo com tamanho 0 e sem aviso, serviço de IA continua trocando pela resposta oficial acima do limite, e teste de integração de que a prévia não cria nem muda nada no banco; (2) exportar o limite e a contagem do serviço de IA sem mudar o comportamento dele; (3) cálculo do aviso na prévia e tipo; (4) gate completo e gate integração backend; (5) commit `Feat :sparkles: [#124] Avisa na prévia quando o balão com IA passaria do limite do WhatsApp`.
+- Pronto quando: existe um único limite no código, usado pelo bot e pela prévia; os casos de CA-B27 a CA-B29 passam; o teste de integração confirma que a prévia não grava nada; gates passam.
+- Teste: unitário, rota e integração. Falha primeiro "corpo do balão com IA com 1.025 caracteres traz exceedsLimit verdadeiro e a mensagem do aviso".
+- Testes que mudam: nenhum por comportamento; os arquivos listados só ganham casos. `llmAnswer.service.test.ts` continua passando sem mudança, porque o comportamento do serviço de IA não muda.
+- Gate: completo backend (`cd src/backend && npm run lint && npm run build && npm run typecheck:test && npm test`) e integração backend (banco separado, `npm run db:migrate && npm run test:integration`)
+- Modelo: padrao
+- Status: feita. Evidência: testes escritos primeiro e vistos falhar (aviso ausente); lint, build, typecheck:test e npm test do backend passam (140 arquivos, 2002 testes); integração em banco separado proconchat_test (47 arquivos, 414 testes); inclui o teste de que a prévia não grava nada (unitário e de integração); nenhum teste existente alterado; commit 78109ae
+
+#### T21 Aviso de tamanho do balão com IA na tela
+- O quê: na prévia da tela, mostrar `botMessages.aiLengthWarning.message` junto ao balão com IA quando `exceedsLimit` é verdadeiro, sem nenhum texto do aviso escrito no painel.
+- Onde: tipo da prévia em `src/frontend/src/types/content/`; `src/frontend/src/utils/content/buildPreviewBubbles.ts`; `src/frontend/src/components/ContentPreview*.tsx`; testes correspondentes.
+- Dev: Itadori (dev-frontend)
+- Depende de: T20 e B7
+- Reaproveita: o consumo de `botMessages` da T20; estilos da prévia de M1.
+- Atende: RN-B15, CA-B27, CA-B28, CA-B29; no celular o aviso fica empilhado junto ao balão, sem rolagem horizontal, e no computador a prévia continua como antes quando não há aviso (CA-64, CA-65)
+- Passos: (1) testes: com `exceedsLimit` verdadeiro o texto de `message` aparece junto ao balão com IA e a alternativa "Se a IA estiver indisponível" continua; com falso nada aparece; o texto não existe em nenhum arquivo do painel; (2) tipo; (3) montagem e componente; (4) gate completo frontend; (5) commit `Feat :sparkles: [#124] Mostra na prévia o aviso de tamanho do balão com IA`.
+- Pronto quando: os testes passam; nenhum texto do aviso copiado no painel; gate completo frontend passa.
+- Teste: unitário de componente. Falha primeiro "com exceedsLimit verdadeiro a mensagem da API aparece junto ao balão com IA".
+- Gate: completo frontend (`cd src/frontend && npm run lint && npm run typecheck && npm run test:run`)
 - Modelo: economico
 - Status: pendente
 
@@ -1072,6 +1118,7 @@ Regras para todas as tarefas do acréscimo: nunca escrever comentários; TDD (o 
 - D-PO-B03 (respondida pelo PO e confirmada pelo usuário): a observação vai no balão oficial da pergunta presencial, logo depois da linha fixa "Esta situação pode exigir atendimento presencial no PROCON Jacareí para andamento formal.", numa linha só, no formato "Sobre o atendimento presencial: <observação>" (formato confirmado pelo usuário); também no balão com IA; não é repetida na oferta; não é enviada à IA. Vira RN-B09, RN-B11 e RN-B12.
 - D-U-B01 (decidida pelo usuário): os campos antigos da prévia são removidos nesta mesma issue, na B6, depois da T20. Vira RN-B13.
 - D-U-B02 (decidida pelo usuário): pergunta em categoria ainda não salva continua sem os rótulos do bot. Vira RN-B14.
+- Aviso de tamanho do balão com IA (decidido pelo usuário): a prévia avisa quando o balão com IA passaria de 1.024 caracteres, com o texto "Com o complemento por IA, esta mensagem passaria de 1.024 caracteres. Neste caso o bot envia só a resposta oficial.". O texto é simples para PO e QA; "só a resposta oficial" quer dizer a resposta oficial seguida do passo seguinte, como na alternativa "Se a IA estiver indisponível". Vira RN-B15.
 - D-U-B03 (decidida pelo usuário): na B6 saem também `categoryList` e `fixedDisclaimer`, se a T20 não os usar (a T20 confirma); `answerLengthWarning` e `answerLengthWarningMessage` ficam. Vira parte de RN-B13 e CA-B24.
 
 ### Dúvidas do acréscimo
