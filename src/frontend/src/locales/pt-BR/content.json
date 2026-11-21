@@ -114,6 +114,7 @@
         "titleEdit": "Editar pergunta",
         "close": "Fechar",
         "editGuidance": "Para mudar o assunto da pergunta, desative-a e crie uma nova, para não alterar o histórico dos relatórios.",
+        "titlesHelp": "Textos exibidos na lista tocável do WhatsApp, quando o cidadão escolhe a pergunta.",
         "shortTitle": "Título curto (lista do WhatsApp)",
         "shortDescription": "Descrição curta",
         "question": "Texto da pergunta",

@@ -51,6 +51,31 @@ const outOfScope = () => screen.getByRole("checkbox", { name: /Fora do escopo do
 const llm = () => screen.getByRole("checkbox", { name: /Permitir complemento por IA/ })
 
 describe("ContentQuestionForm", () => {
+    it("a caixa dos textos da lista tem só título curto e descrição curta, com a ajuda", () => {
+        renderForm()
+
+        const group = screen.getByText(/Textos exibidos na lista tocável do WhatsApp/)
+            .parentElement as HTMLElement
+
+        expect(group.className).toMatch(/fieldGroup/)
+        expect(group).toContainElement(screen.getByLabelText(/Título curto/))
+        expect(group).toContainElement(screen.getByLabelText(/Descrição curta/))
+        expect(group).not.toContainElement(screen.getByLabelText(/Texto da pergunta/))
+        expect(group).not.toContainElement(screen.getByLabelText(/Base legal/))
+    })
+
+    it("Documentos úteis não ficam em caixa e cada caixa de marcar é um cartão", () => {
+        renderForm()
+
+        const documents = screen.getByText("Documentos úteis para esta dúvida")
+
+        expect(documents.parentElement?.className).not.toMatch(/fieldGroup/)
+
+        screen.getAllByRole("checkbox").forEach((box) => {
+            expect(box.closest("label")?.className).toMatch(/checkCard/)
+        })
+    })
+
     it("marcar Fora do escopo desliga e desabilita a IA", async () => {
         const user = userEvent.setup()
         renderForm()

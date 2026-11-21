@@ -98,23 +98,24 @@ function ContentQuestionForm({
                 <p className={css.guidance}>{t("questionForm.editGuidance")}</p>
             ) : null}
             <div className={css.fieldGroup}>
-                <div className={css.twoColumns}>
-                    <ContentTextField
-                        label={t("questionForm.shortTitle")}
-                        value={fields.shortTitle}
-                        max={CONTENT_LIMITS.shortTitle}
-                        error={errorOf("shortTitle")}
-                        onChange={(value) => patch({ shortTitle: value })}
-                    />
-                    <ContentTextField
-                        label={t("questionForm.shortDescription")}
-                        value={fields.shortDescription}
-                        max={CONTENT_LIMITS.shortDescription}
-                        optional
-                        error={errorOf("shortDescription")}
-                        onChange={(value) => patch({ shortDescription: value })}
-                    />
-                </div>
+                <p className={css.fieldGroupHelp}>{t("questionForm.titlesHelp")}</p>
+                <ContentTextField
+                    label={t("questionForm.shortTitle")}
+                    value={fields.shortTitle}
+                    max={CONTENT_LIMITS.shortTitle}
+                    error={errorOf("shortTitle")}
+                    onChange={(value) => patch({ shortTitle: value })}
+                />
+                <ContentTextField
+                    label={t("questionForm.shortDescription")}
+                    value={fields.shortDescription}
+                    max={CONTENT_LIMITS.shortDescription}
+                    optional
+                    error={errorOf("shortDescription")}
+                    onChange={(value) => patch({ shortDescription: value })}
+                />
+            </div>
+            <div className={css.section}>
                 <ContentTextField
                     label={t("questionForm.question")}
                     value={fields.question}
@@ -145,7 +146,7 @@ function ContentQuestionForm({
                     onChange={(value) => patch({ legalBasis: value })}
                 />
             </div>
-            <div className={css.fieldGroup}>
+            <div className={css.section}>
                 <span className={css.sectionTitle}>{t("questionForm.documents")}</span>
                 <p className={css.hint}>{t("questionForm.documentsHint")}</p>
                 <ContentDocumentsField
@@ -154,7 +155,7 @@ function ContentQuestionForm({
                     onChange={(documents) => patch({ requiredDocuments: documents })}
                 />
             </div>
-            <div className={css.fieldGroup}>
+            <div className={css.section}>
                 <div className={css.checks}>
                     <ContentCheckField
                         card
