@@ -154,6 +154,23 @@ describe("ContentPage", () => {
         expect(screen.queryByText(/não salva/)).not.toBeInTheDocument()
     })
 
+    it("depois de salvar uma categoria nova a seleção continua nela", async () => {
+        const user = userEvent.setup()
+        await loaded()
+
+        await createCategory(user)
+        await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
+
+        await waitFor(() =>
+            expect(screen.getByText("Conteúdo atualizado com sucesso.")).toBeInTheDocument()
+        )
+
+        expect(
+            screen.getByRole("heading", { name: "Categoria nova", level: 2 })
+        ).toBeInTheDocument()
+        expect(screen.queryByRole("heading", { name: "Categoria 1", level: 2 })).toBeNull()
+    })
+
     it("Descartar desfaz as alterações", async () => {
         const user = userEvent.setup()
         await loaded()
@@ -260,7 +277,9 @@ describe("ContentPage", () => {
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
 
         await waitFor(() => expect(server.log).toContain("POST /categories"))
-        expect(await screen.findByText("Categoria nova")).toBeInTheDocument()
+        expect(
+            await screen.findByRole("heading", { name: "Categoria nova", level: 2 })
+        ).toBeInTheDocument()
 
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
 
@@ -268,7 +287,9 @@ describe("ContentPage", () => {
             expect(screen.getByText("Conteúdo atualizado com sucesso.")).toBeInTheDocument()
         )
         expect(server.log.filter((entry) => entry === "POST /categories")).toHaveLength(1)
-        expect(screen.getByText("Categoria nova")).toBeInTheDocument()
+        expect(
+            screen.getByRole("heading", { name: "Categoria nova", level: 2 })
+        ).toBeInTheDocument()
     })
 
     it("com a recarga ainda falhando, o Salvar não grava nada e avisa", async () => {
@@ -374,7 +395,7 @@ describe("ContentPage", () => {
         await createCategory(user)
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
         await waitFor(() => expect(server.log).toContain("POST /categories"))
-        await screen.findByText("Categoria nova")
+        await screen.findByRole("heading", { name: "Categoria nova", level: 2 })
         const release = server.holdNext("GET", /^\/categories$/)
         const writesBefore = server.log.filter((entry) => !entry.startsWith("GET")).length
 
