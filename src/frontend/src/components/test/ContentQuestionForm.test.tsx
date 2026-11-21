@@ -161,6 +161,10 @@ describe("ContentQuestionForm", () => {
         await user.type(screen.getByLabelText(/Título curto/), "abc")
         await user.click(screen.getByRole("button", { name: "Cancelar" }))
 
+        expect(onCancel).not.toHaveBeenCalled()
+
+        await user.click(screen.getByRole("button", { name: "Descartar alterações" }))
+
         expect(onCancel).toHaveBeenCalledTimes(1)
         expect(onConfirm).not.toHaveBeenCalled()
     })
