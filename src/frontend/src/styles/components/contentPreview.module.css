@@ -21,6 +21,8 @@
 
 .title {
     margin: 0;
+    scroll-margin-top: 16px;
+    scroll-margin-bottom: 96px;
     font: 700 16px var(--font-heading);
     color: var(--text-body);
 }
