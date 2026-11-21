@@ -171,8 +171,8 @@ Não há medição que justifique um recomendado acima do mínimo para a CPU: co
 ### Se o hardware não atingir a meta de 10 s
 
 - O sistema continua funcionando: o cidadão espera pela IA até o limite de `LLM_TIMEOUT_MS` (padrão de 20 s), com o indicador "digitando…", e recebe a resposta oficial se a IA passar do limite.
-- Para ganhar tempo, aumente os núcleos (o ganho para em 6), use uma CPU e uma memória mais rápidas e dê ao Ollama pelo menos 4 GB de memória (abaixo de 3 GB as gerações falham).
-- Confira que o sistema não está disputando CPU com outros programas na mesma máquina.
+- Para ganhar tempo, use uma CPU e uma memória mais rápidas (acima de 6 núcleos não há ganho) e não limite a memória do Ollama: a medição do mínimo usou até 6 GB.
+- Confira que nada disputa CPU com o sistema na mesma máquina.
 - Não altere o código nem as configurações do sistema para compensar um hardware lento: a meta de 10 s é de dimensionamento da máquina.
 
 ## Software
