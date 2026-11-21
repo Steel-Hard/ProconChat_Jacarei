@@ -203,4 +203,25 @@ describe("ContentPreview", () => {
 
         expect(screen.queryByText(/passaria de 1.024/)).not.toBeInTheDocument()
     })
+
+    it("anuncia que a prévia está atualizando", () => {
+        renderPreview({ status: "updating" })
+
+        expect(screen.getByRole("status")).toHaveTextContent("Atualizando a prévia...")
+    })
+
+    it("não anuncia atualização quando a prévia está pronta", () => {
+        renderPreview()
+
+        expect(screen.queryByText("Atualizando a prévia...")).not.toBeInTheDocument()
+    })
+
+    it("ao abrir, leva o foco e a rolagem ao título da prévia", () => {
+        const scroll = vi.fn()
+        window.HTMLElement.prototype.scrollIntoView = scroll
+        renderPreview()
+
+        expect(screen.getByRole("heading", { name: "Ver como o cidadão recebe" })).toHaveFocus()
+        expect(scroll).toHaveBeenCalled()
+    })
 })

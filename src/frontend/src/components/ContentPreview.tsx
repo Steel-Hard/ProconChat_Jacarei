@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react"
 import { useTranslation } from "react-i18next"
 import ContentPreviewBubble from "@/components/ContentPreviewBubble"
 import ContentPreviewList from "@/components/ContentPreviewList"
@@ -6,14 +7,22 @@ import css from "@/styles/components/contentPreview.module.css"
 
 function ContentPreview({ status, model, onClose, onRetry }: ContentPreviewProps) {
     const { t } = useTranslation("content")
+    const titleRef = useRef<HTMLHeadingElement>(null)
     const showChat =
         model !== null && (status === "ready" || status === "updating" || status === "unsaved")
+
+    useEffect(() => {
+        titleRef.current?.focus()
+        titleRef.current?.scrollIntoView?.({ block: "start", behavior: "smooth" })
+    }, [])
 
     return (
         <section className={css.preview} aria-label={t("preview.title")}>
             <div className={css.header}>
                 <div>
-                    <h3 className={css.title}>{t("preview.title")}</h3>
+                    <h3 ref={titleRef} tabIndex={-1} className={css.title}>
+                        {t("preview.title")}
+                    </h3>
                     <p className={css.subtitle}>{t("preview.subtitle")}</p>
                 </div>
                 <button type="button" className={css.close} onClick={onClose}>
@@ -29,6 +38,9 @@ function ContentPreview({ status, model, onClose, onRetry }: ContentPreviewProps
                         </output>
                         <p className={css.notice}>{t("preview.fullAfterSave")}</p>
                     </>
+                ) : null}
+                {status === "updating" ? (
+                    <output className={css.notice}>{t("preview.updating")}</output>
                 ) : null}
                 {status === "invalid" ? (
                     <output className={`${css.notice} ${css.fixErrors}`}>
