@@ -175,6 +175,68 @@ describe("ContentPage", () => {
         expect(server.log.filter((entry) => entry === "POST /categories")).toHaveLength(1)
     })
 
+    it("falha parcial com a recarga também falhando não duplica a categoria criada no próximo Salvar", async () => {
+        const user = userEvent.setup()
+        const { server } = await loaded()
+        server.failNext("PATCH", /\/categories\/2\/active$/)
+        server.failNext("GET", /^\/categories$/)
+
+        await createCategory(user)
+        await user.click(screen.getAllByRole("button", { name: /^Desativar / })[1])
+        await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
+
+        expect(
+            await screen.findByText(
+                "Algumas alterações foram salvas e outras não. Revise o que ainda está pendente e salve de novo."
+            )
+        ).toBeInTheDocument()
+        expect(screen.getByText("Categoria nova")).toBeInTheDocument()
+
+        await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
+
+        await waitFor(() =>
+            expect(screen.getByText("Conteúdo atualizado com sucesso.")).toBeInTheDocument()
+        )
+        expect(server.log.filter((entry) => entry === "POST /categories")).toHaveLength(1)
+        expect(screen.getByText("Categoria nova")).toBeInTheDocument()
+    })
+
+    it("salvar com sucesso e a recarga falhando mantém os itens criados na tela e não duplica", async () => {
+        const user = userEvent.setup()
+        const { server } = await loaded()
+        server.failNext("GET", /^\/categories$/)
+
+        await createCategory(user)
+        await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
+
+        await waitFor(() => expect(server.log).toContain("POST /categories"))
+        expect(await screen.findByText("Categoria nova")).toBeInTheDocument()
+
+        await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
+
+        await waitFor(() =>
+            expect(screen.getByText("Conteúdo atualizado com sucesso.")).toBeInTheDocument()
+        )
+        expect(server.log.filter((entry) => entry === "POST /categories")).toHaveLength(1)
+        expect(screen.getByText("Categoria nova")).toBeInTheDocument()
+    })
+
+    it("com a recarga ainda falhando, o Salvar não grava nada e avisa", async () => {
+        const user = userEvent.setup()
+        const { server } = await loaded()
+        server.failNext("GET", /^\/categories$/, 500, 2)
+
+        await createCategory(user)
+        await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
+        await waitFor(() => expect(server.log).toContain("POST /categories"))
+        const writesBefore = server.log.filter((entry) => !entry.startsWith("GET")).length
+
+        await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
+
+        expect(await screen.findByText(/não foi possível atualizar a tela/i)).toBeInTheDocument()
+        expect(server.log.filter((entry) => !entry.startsWith("GET"))).toHaveLength(writesBefore)
+    })
+
     it("a busca procura em todas as categorias e esconde as setas", async () => {
         const user = userEvent.setup()
         await loaded()

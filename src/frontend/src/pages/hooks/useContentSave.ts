@@ -64,7 +64,7 @@ function useContentSave() {
         }
     }
 
-    return { saving, save }
+    return { saving, save, reload }
 }
 
 export default useContentSave

@@ -55,7 +55,7 @@ export default function useContent() {
     const { t } = useTranslation("content")
     const { showToast } = useToast()
     const query = contentApi.useGetContentSnapshotQuery()
-    const { saving, save: runSave } = useContentSave()
+    const { saving, save: runSave, reload } = useContentSave()
     const snapshot: ContentSnapshot | undefined = query.data
     const baseDraft = useMemo(() => (snapshot ? deriveContentDraft(snapshot) : null), [snapshot])
     const [edited, setEdited] = useState<ContentDraftState | null>(null)
@@ -67,6 +67,7 @@ export default function useContent() {
     const [actionError, setActionError] = useState<ContentActionError | null>(null)
     const [invalidKeys, setInvalidKeys] = useState<ReadonlySet<string>>(EMPTY_SET)
     const [itemErrors, setItemErrors] = useState<Record<string, string>>({})
+    const [needsReload, setNeedsReload] = useState(false)
     const draft = edited ?? baseDraft
 
     function update(change: (current: ContentDraftState) => ContentDraftState) {
@@ -410,16 +411,50 @@ export default function useContent() {
             return
         }
 
-        const plan = buildContentSavePlan(snapshot, draft)
+        let base = snapshot
+        let working = draft
+
+        if (needsReload) {
+            const fresh = await reload()
+
+            if (fresh === null) {
+                setActionError({ message: t("saveReloadFailed"), details: [], tone: "error" })
+                return
+            }
+
+            base = fresh
+            working = reapplyDraftOnSnapshot(draft, fresh)
+            setNeedsReload(false)
+            setEdited(working)
+        }
+
+        const plan = buildContentSavePlan(base, working)
 
         if (plan.length === 0) {
+            if (base !== snapshot) {
+                setEdited(null)
+                showToast(t("saveToast"))
+            }
+
             return
         }
 
-        const before = changes.length
+        const before = contentChangesOf(working, base).length
         const outcome = await runSave(plan)
 
         if (outcome === null) {
+            return
+        }
+
+        if (outcome.snapshot === null && outcome.completed > 0) {
+            setNeedsReload(true)
+        }
+
+        if (outcome.failure === null && outcome.snapshot === null) {
+            setEdited(applyCreatedIds(working, outcome.idMap))
+            setItemErrors({})
+            showToast(t("saveToast"))
+            setActionError({ message: t("saveReloadFailed"), details: [], tone: "warning" })
             return
         }
 
@@ -430,7 +465,7 @@ export default function useContent() {
             return
         }
 
-        const withIds = applyCreatedIds(draft, outcome.idMap)
+        const withIds = applyCreatedIds(working, outcome.idMap)
         const nextDraft = outcome.snapshot
             ? reapplyDraftOnSnapshot(withIds, outcome.snapshot)
             : withIds
@@ -451,6 +486,14 @@ export default function useContent() {
     }
 
     function discard() {
+        if (needsReload) {
+            void reload().then((fresh) => {
+                if (fresh !== null) {
+                    setNeedsReload(false)
+                }
+            })
+        }
+
         setEdited(null)
         setInvalidKeys(EMPTY_SET)
         setItemErrors({})
@@ -458,7 +501,7 @@ export default function useContent() {
     }
 
     return {
-        status: query.isLoading ? "loading" : query.isError || !draft ? "error" : "success",
+        status: query.isLoading ? "loading" : !draft ? "error" : "success",
         saving,
         actionError,
         changes,

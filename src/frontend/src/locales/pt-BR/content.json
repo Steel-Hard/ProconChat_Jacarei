@@ -8,6 +8,7 @@
     "lastChangeNone": "Ainda não alterado pelo painel",
     "initialLoad": "Carga inicial do sistema",
     "loadFailed": "Não foi possível carregar o conteúdo do chatbot.",
+    "saveReloadFailed": "As alterações foram enviadas, mas não foi possível atualizar a tela. Salve de novo para tentar atualizar antes de gravar mais alguma coisa.",
     "saveToast": "Conteúdo atualizado com sucesso.",
     "saveFailedFirst": "Não foi possível salvar. Nenhuma alteração foi gravada. Tente de novo.",
     "saveFailedPartial": "Algumas alterações foram salvas e outras não. Revise o que ainda está pendente e salve de novo.",
