@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import BadRequestError from "../errors/BadRequestError"
 import ConflictError from "../errors/ConflictError"
 import NotFoundError from "../errors/NotFoundError"
@@ -181,5 +181,64 @@ describe("ContentService", () => {
         expect(preview.answerLengthWarning).toBe(true)
         expect(preview.categoryList.rows[0]?.shortTitle).toBe("Produto com vício")
         expect(preview.nextStepBubble?.type).toBe("resolution")
+    })
+    it("does not write anything when previewing a question", async () => {
+        const repository = new ContentStubRepository()
+        const service = new ContentService({ repository })
+        const cat = await service.createCategory(
+            { title: "Compras e Garantias", shortTitle: "Compras e garantia", description: null },
+            1,
+        )
+        const q1 = await service.createQuestion(
+            {
+                categoryId: cat.id,
+                shortTitle: "Produto com defeito",
+                shortDescription: null,
+                question: "Comprei um produto com defeito, o que fazer?",
+                answer: "O fornecedor tem até 30 dias para reparar.",
+                legalBasis: null,
+                requiredDocuments: [],
+                requiresInPerson: false,
+                inPersonNote: null,
+                outOfScope: false,
+                llmAllowed: true,
+                active: true,
+            },
+            1,
+        )
+        const categoriesBefore = await repository.listCategories()
+        const questionsBefore = await repository.listQuestionsByCategory(cat.id)
+        const writers = [
+            "createCategory",
+            "updateCategory",
+            "setCategoryActive",
+            "reorderCategories",
+            "createQuestion",
+            "updateQuestion",
+            "setQuestionActive",
+            "reorderQuestions",
+        ] as const
+        const spies = writers.map((name) => vi.spyOn(repository, name))
+
+        await service.previewQuestion({
+            questionId: q1.id,
+            categoryId: cat.id,
+            shortTitle: "Outro título",
+            shortDescription: "Outra descrição",
+            question: "Outra pergunta?",
+            answer: "Outra resposta.",
+            legalBasis: "CDC",
+            requiredDocuments: ["Nota fiscal"],
+            requiresInPerson: true,
+            inPersonNote: "Traga os documentos.",
+            outOfScope: false,
+            llmAllowed: true,
+        })
+
+        for (const spy of spies) {
+            expect(spy).not.toHaveBeenCalled()
+        }
+        expect(await repository.listCategories()).toEqual(categoriesBefore)
+        expect(await repository.listQuestionsByCategory(cat.id)).toEqual(questionsBefore)
     })
 })

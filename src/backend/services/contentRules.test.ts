@@ -3,6 +3,7 @@ import {
     AVISO_NAO_VINCULANTE,
     OFERTA_AGENDAMENTO,
     PERGUNTA_RESOLVIDA,
+    LIMITE_CORPO_BOTOES,
     ROTULO_IA,
     criarMensagensPerguntas,
     mensagensRespostaOficial,
@@ -476,6 +477,62 @@ describe("contentRules", () => {
                 expect(lista.currentRowIndex).toBe(currentIndex)
             },
         )
+
+        describe("aiLengthWarning", () => {
+            function inputComCorpoIaDe(tamanho: number, overrides: Partial<typeof baseInput> = {}) {
+                const input = { ...baseInput, llmAllowed: true, legalBasis: "", ...overrides }
+                const semPreenchimento = Array.from(
+                    (montarMensagemIa(AI_SAMPLE_TEXT, respostaDe(input)) as { text: string }).text,
+                ).length
+                const preenchimento = tamanho - semPreenchimento - Array.from("\nBase legal: ").length
+                return { ...input, legalBasis: "a".repeat(preenchimento) }
+            }
+
+            it("does not warn when the AI balloon body has exactly the limit", () => {
+                const preview = buildQuestionPreview(category, [], inputComCorpoIaDe(LIMITE_CORPO_BOTOES))
+                const aiMessage = preview.botMessages.aiMessage
+
+                expect(Array.from(aiMessage?.text ?? "").length).toBe(LIMITE_CORPO_BOTOES)
+                expect(preview.botMessages.aiLengthWarning).toEqual({
+                    exceedsLimit: false,
+                    length: LIMITE_CORPO_BOTOES,
+                    limit: LIMITE_CORPO_BOTOES,
+                    message: null,
+                })
+            })
+
+            it("warns, with the same limit the bot uses, when the AI balloon body passes the limit by one character", () => {
+                const preview = buildQuestionPreview(category, [], inputComCorpoIaDe(LIMITE_CORPO_BOTOES + 1))
+                const warning = preview.botMessages.aiLengthWarning
+
+                expect(Array.from(preview.botMessages.aiMessage?.text ?? "").length).toBe(LIMITE_CORPO_BOTOES + 1)
+                expect(warning.exceedsLimit).toBe(true)
+                expect(warning.length).toBe(LIMITE_CORPO_BOTOES + 1)
+                expect(warning.limit).toBe(1024)
+                expect(warning.message).toBe(
+                    "Com o complemento por IA, esta mensagem passaria de 1.024 caracteres. Neste caso o bot envia só a resposta oficial.",
+                )
+                expect(preview.botMessages.aiMessage).not.toBeNull()
+            })
+
+            it("counts characters like the bot does, not UTF-16 units", () => {
+                const input = inputComCorpoIaDe(LIMITE_CORPO_BOTOES, { legalBasis: "" })
+                const comEmoji = { ...input, legalBasis: input.legalBasis.slice(0, -1) + "😀" }
+                const preview = buildQuestionPreview(category, [], comEmoji)
+
+                expect(preview.botMessages.aiLengthWarning.length).toBe(LIMITE_CORPO_BOTOES)
+                expect(preview.botMessages.aiLengthWarning.exceedsLimit).toBe(false)
+            })
+
+            it("does not warn when AI is off or the question is out of scope", () => {
+                const off = buildQuestionPreview(category, [], { ...inputComCorpoIaDe(2000), llmAllowed: false })
+                const outOfScope = buildQuestionPreview(category, [], { ...inputComCorpoIaDe(2000), outOfScope: true })
+                const semAviso = { exceedsLimit: false, length: 0, limit: LIMITE_CORPO_BOTOES, message: null }
+
+                expect(off.botMessages.aiLengthWarning).toEqual(semAviso)
+                expect(outOfScope.botMessages.aiLengthWarning).toEqual(semAviso)
+            })
+        })
 
         it("appends a new question to the end of the list when it has no id", () => {
             const questions = manyQuestions(2)

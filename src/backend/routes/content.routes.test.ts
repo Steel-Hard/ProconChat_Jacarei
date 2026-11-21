@@ -179,6 +179,12 @@ describe("content.routes", () => {
             expect(res.body.data.botMessages.categoryList.currentRowIndex).toBe(0)
             expect(res.body.data.botMessages.officialMessages).toHaveLength(2)
             expect(res.body.data.botMessages.aiMessage.footer).toBe("Gerado com auxílio de IA")
+            expect(res.body.data.botMessages.aiLengthWarning).toEqual({
+                exceedsLimit: false,
+                length: expect.any(Number),
+                limit: 1024,
+                message: null,
+            })
             expect(res.body.data.fixedDisclaimer).toEqual(expect.any(String))
             expect(res.body.data.categoryList.rows).toHaveLength(1)
             expect(res.body.data.answerBubble.formattedText).toEqual(expect.any(String))

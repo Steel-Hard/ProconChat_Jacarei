@@ -23,6 +23,8 @@ export const ERRO_PREFIXO = "Não entendi. Digite o número de uma das opções 
 export const AVISO_NAO_VINCULANTE =
     "Esta é uma orientação automatizada de caráter informativo. Ela não é vinculante e não substitui o atendimento jurídico ou administrativo formal do PROCON Jacareí."
 
+export const LIMITE_CORPO_BOTOES = 1024
+
 export const ROTULO_IA = "Gerado com auxílio de IA"
 
 export const PERGUNTA_RESOLVIDA =

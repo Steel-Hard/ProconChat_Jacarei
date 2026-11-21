@@ -2,6 +2,7 @@ import {
     AVISO_NAO_VINCULANTE,
     OFERTA_AGENDAMENTO,
     PERGUNTA_RESOLVIDA,
+    LIMITE_CORPO_BOTOES,
     criarMensagensPerguntas,
     mensagensRespostaOficial,
     montarMensagemIa,
@@ -12,6 +13,7 @@ import type { Pergunta, RespostaFinalOutput } from "../types/motorDecisao.types"
 import {
     CategoryItem,
     CategoryRecord,
+    PreviewAiLengthWarning,
     PreviewBotList,
     PreviewCategoryListRow,
     PreviewNextStepBubble,
@@ -23,6 +25,9 @@ import {
 
 export const ANSWER_WARNING_THRESHOLD = 1000
 export const ANSWER_WARNING_MESSAGE = "Respostas longas ficam difíceis de ler no celular"
+
+export const AI_LENGTH_WARNING_MESSAGE =
+    "Com o complemento por IA, esta mensagem passaria de 1.024 caracteres. Neste caso o bot envia só a resposta oficial."
 
 export const AI_SAMPLE_TEXT =
     "Exemplo ilustrativo de complemento redigido pela IA a partir da orientação oficial acima, sem alterar prazos, documentos nem fundamento legal."
@@ -224,6 +229,19 @@ function buildBotCategoryList(
     }
 }
 
+function buildAiLengthWarning(
+    aiMessage: Extract<OutgoingMessage, { type: "buttons" }> | null,
+): PreviewAiLengthWarning {
+    const length = aiMessage ? Array.from(aiMessage.text).length : 0
+    const exceedsLimit = length > LIMITE_CORPO_BOTOES
+    return {
+        exceedsLimit,
+        length,
+        limit: LIMITE_CORPO_BOTOES,
+        message: exceedsLimit ? AI_LENGTH_WARNING_MESSAGE : null,
+    }
+}
+
 function buildNextStepBubble(
     resposta: RespostaFinalOutput,
     officialMessages: OutgoingMessage[],
@@ -305,6 +323,7 @@ export function buildQuestionPreview(
             categoryList: botList,
             officialMessages,
             aiMessage,
+            aiLengthWarning: buildAiLengthWarning(aiMessage),
         },
     }
 }

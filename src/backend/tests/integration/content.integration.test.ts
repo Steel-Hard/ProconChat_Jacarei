@@ -322,6 +322,44 @@ describe("Content API integration tests (Postgres)", () => {
         expect(outOfScopeRes.body.data.botMessages.aiMessage).toBeNull()
     })
 
+    it("does not write anything when previewing and reports the AI balloon length warning", async () => {
+        const pool = getPool()
+        const catId = createdCategoryIds[0]!
+        const snapshot = async () => {
+            const questions = await pool.query(
+                "SELECT * FROM Questions WHERE category_id = $1 ORDER BY id",
+                [catId],
+            )
+            const categories = await pool.query("SELECT * FROM Categories ORDER BY id")
+            const documents = await pool.query("SELECT * FROM RequiredDocuments ORDER BY id")
+            return { questions: questions.rows, categories: categories.rows, documents: documents.rows }
+        }
+        const before = await snapshot()
+
+        const res = await request(app)
+            .post("/api/v1/content/questions/preview")
+            .set("Origin", ORIGIN)
+            .set("Cookie", editor.cookie)
+            .send({
+                categoryId: catId,
+                shortTitle: "Prévia longa",
+                shortDescription: null,
+                question: "Pergunta com base legal longa?",
+                answer: "Resposta.",
+                legalBasis: "a".repeat(500),
+                requiredDocuments: ["b".repeat(250), "c".repeat(250)],
+                requiresInPerson: false,
+                outOfScope: false,
+                llmAllowed: true,
+            })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.botMessages.aiLengthWarning.exceedsLimit).toBe(true)
+        expect(res.body.data.botMessages.aiLengthWarning.limit).toBe(1024)
+        expect(res.body.data.botMessages.aiLengthWarning.message).toEqual(expect.any(String))
+        expect(await snapshot()).toEqual(before)
+    })
+
     it("preserves panel-edited seeded questions when seedContent runs again (updated_by IS NOT NULL)", async () => {
         const pool = getPool()
         const client = await pool.connect()

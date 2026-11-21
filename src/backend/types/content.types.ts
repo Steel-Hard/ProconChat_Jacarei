@@ -169,10 +169,18 @@ export interface PreviewBotList {
     totalPages: number
 }
 
+export interface PreviewAiLengthWarning {
+    exceedsLimit: boolean
+    length: number
+    limit: number
+    message: string | null
+}
+
 export interface PreviewBotMessages {
     categoryList: PreviewBotList
     officialMessages: OutgoingMessage[]
     aiMessage: Extract<OutgoingMessage, { type: "buttons" }> | null
+    aiLengthWarning: PreviewAiLengthWarning
 }
 
 export interface QuestionPreviewResult {
