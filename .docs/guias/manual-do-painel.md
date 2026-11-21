@@ -207,6 +207,8 @@ Ao clicar num agendamento da lista ou do calendário, abre a tela de detalhe. O 
 ![Linha do tempo da conversa de origem](images/manual-do-painel/08-detalhe-linha-do-tempo.png)
 *Figura 8 – Linha do tempo da conversa de origem*
 
+> **Atenção:** ainda não é possível abrir a conversa completa a partir do detalhe.
+
 ## <a id="s04-02"></a>Ações
 
 Quem tem **Gerenciar agendamentos** vê o quadro **Ações**. Quem só tem **Ver agendamentos** vê a mensagem "Sua conta pode apenas visualizar agendamentos.". As ações mudam conforme a situação do agendamento.
@@ -359,6 +361,8 @@ O campo **Valer a partir de** permite preparar uma nova configuração para uma 
 ## <a id="s07-07"></a>Quando a mudança afeta agendamentos
 
 O painel não deixa salvar uma mudança que deixaria agendamentos existentes fora da agenda. Dias com agendamentos aparecem marcados na prévia, e a tela mostra avisos como "Há agendamentos em 23/11. Para desligar este dia, peça a quem gerencia os agendamentos para cancelar ou remarcar antes.". Quando uma alteração afeta agendamentos, a lista **Esta alteração afeta N agendamentos** mostra quais são, e **Salvar alterações** fica desabilitado até que alguém com a permissão **Gerenciar agendamentos** cancele ou remarque esses agendamentos.
+
+> **Atenção:** ainda não está disponível uma forma de resolver isso pela própria tela de Horários.
 
 Quando você muda horários ou endereço, o painel lembra de revisar as perguntas do Conteúdo que citam essas informações, com o atalho **Revisar Conteúdo →**.
 
