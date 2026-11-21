@@ -28,9 +28,9 @@ Cada pessoa vê no menu só as telas que a sua conta pode usar. Por isso o menu 
 
 ## Salvar e descartar
 
-Nas telas de configuração (Conteúdo, Horários de atendimento, Documentos e Usuários), nada vale na hora. As mudanças ficam **pendentes** até você clicar em **Salvar alterações**. Enquanto houver mudanças pendentes, aparece o aviso "N alterações não salvas". O botão **Descartar** desfaz tudo o que ainda não foi salvo.
+Nas telas de configuração (Conteúdo, Horários de atendimento, Documentos, Usuários e WhatsApp), nada vale na hora. As mudanças ficam **pendentes** até você clicar em **Salvar alterações**. Enquanto houver mudanças pendentes, aparece o aviso "N alterações não salvas". O botão **Descartar** desfaz tudo o que ainda não foi salvo.
 
-Nas ações sobre um agendamento, como assumir ou cancelar, o painel pede uma confirmação e a ação vale na hora.
+Nas ações sobre um agendamento, como assumir ou cancelar, o painel pede uma confirmação e a ação vale na hora. Em Conteúdo (ao fechar o formulário de uma pergunta) e em Horários de atendimento (ao trocar de configuração), o painel também pergunta antes de descartar o que não foi salvo.
 
 > **Atenção:** nada é excluído no painel. Categorias, perguntas e contas são apenas **ativadas** ou **desativadas**, para que o histórico continue completo.
 
@@ -69,7 +69,7 @@ Nas ações sobre um agendamento, como assumir ou cancelar, o painel pede uma co
 
 Se o e-mail ou a senha estiverem errados, aparece "E-mail ou senha incorretos.". Depois de várias tentativas sem sucesso, aparece "Muitas tentativas sem sucesso. Aguarde alguns minutos e tente de novo.". Espere um pouco e tente de novo.
 
-Não existe "Esqueci minha senha". Se você esqueceu a sua, peça a alguém da equipe que tenha a permissão **Gerenciar usuários** para redefinir (capítulo 8). Se quem esqueceu foi o Admin, quem redefine é a equipe técnica.
+Não existe "Esqueci minha senha". Se você esqueceu a sua, peça para redefinir a alguém que tenha a permissão **Gerenciar usuários** e também todas as permissões da sua conta, normalmente a conta Admin (capítulo 8). Se quem esqueceu foi o Admin, quem redefine é a equipe técnica (Apêndice A, só para a equipe técnica).
 
 ## Conta sem nenhuma tela liberada
 
@@ -153,8 +153,6 @@ Ao clicar num agendamento da lista ou do calendário, abre a tela de detalhe. O 
 
 ![Linha do tempo da conversa de origem](images/manual-do-painel/08-detalhe-linha-do-tempo.png)
 *Figura 8 – Linha do tempo da conversa de origem*
-
-> **Atenção:** o link para abrir a conversa completa a partir do detalhe ainda não está disponível.
 
 ## Ações
 
@@ -280,7 +278,7 @@ A **Prévia da grade** mostra, num calendário, como o chatbot oferece os horár
 ## Janela de agendamento
 
 ![Janela de agendamento](images/manual-do-painel/17-horarios-janela.png)
-*Figura 17 – Janela de agendamento*
+*Figura 17 – Janela de agendamento (o aviso do Dashboard citado na tela ainda não está disponível)*
 
 - **Oferecer horários até:** quantos dias à frente o chatbot oferece horários. Se não houver horário livre nessa janela, o chatbot avisa o cidadão que não há horários disponíveis no momento.
 - **Antecedência mínima:** de **Sem antecedência (mesmo dia)** a **5 dias úteis**. Contam só os dias com atendimento.
@@ -309,8 +307,6 @@ O campo **Valer a partir de** permite preparar uma nova configuração para uma 
 
 O painel não deixa salvar uma mudança que deixaria agendamentos existentes fora da agenda. Dias com agendamentos aparecem marcados na prévia, e a tela mostra avisos como "Há agendamentos em 23/11. Para desligar este dia, peça a quem gerencia os agendamentos para cancelar ou remarcar antes.". Quando uma alteração afeta agendamentos, a lista **Esta alteração afeta N agendamentos** mostra quais são, e **Salvar alterações** fica desabilitado até que alguém com a permissão **Gerenciar agendamentos** cancele ou remarque esses agendamentos.
 
-> **Atenção:** uma janela própria para decidir o que fazer com os agendamentos afetados ainda não está disponível.
-
 Quando você muda horários ou endereço, o painel lembra de revisar as perguntas do Conteúdo que citam essas informações, com o atalho **Revisar Conteúdo →**.
 
 # 7. Documentos
@@ -323,7 +319,7 @@ A tela **Documentos** define as listas de documentos que o chatbot envia ao cida
 *Figura 19 – Listas de documentos e prévia da mensagem de confirmação*
 
 - Para acrescentar um documento, escreva no campo **Novo documento** e clique em **Adicionar**.
-- **Editar** altera o texto de um item (Enter confirma e Esc cancela). **Remover** tira o item da lista.
+- **Editar** altera o texto de um item (Enter confirma e Esc cancela). O botão × (**Remover**) tira o item da lista.
 - As setas ↑ e ↓ mudam a ordem.
 - Um documento repetido na mesma lista não é aceito: "Esse documento já está na lista.".
 - Se uma lista ficar vazia, a tela avisa que o cidadão pode chegar sem o necessário para o atendimento.
@@ -359,6 +355,8 @@ Clique na conta e marque ou desmarque as permissões, uma a uma. **Gerenciar age
 
 ![Permissões marcadas em uma conta](images/manual-do-painel/21-usuarios-permissoes.png)
 *Figura 21 – Permissões marcadas em uma conta*
+
+A descrição de **Ver relatórios** fala em exportação, mas a exportação ainda não está disponível.
 
 ## Redefinir a senha de uma conta
 
@@ -398,22 +396,24 @@ A tela tem duas abas: **Conexão** e **Privacidade**.
 ## Aba Conexão
 
 ![Aba Conexão da tela WhatsApp](images/manual-do-painel/24-whatsapp-conexao.png)
-*Figura 24 – Aba Conexão da tela WhatsApp*
+*Figura 24 – Aba Conexão da tela WhatsApp (valores de exemplo)*
 
 - **Número institucional** e **Situação:** mostram o número conectado e se o atendimento está **Operando**, com **Respostas pausadas** ou com algum problema.
 - **Pausar respostas automáticas:** liga e desliga as respostas do chatbot. Durante a pausa, quem escrever recebe uma mensagem fixa, mostrada na tela, e o painel avisa que as respostas estão pausadas, com o botão **Reativar respostas**.
 - **Estado do número:** mostra se as credenciais estão válidas, o último evento que a Meta enviou ao sistema, as falhas de entrega das últimas 24 horas, a qualidade do número e o limite de envios da Meta.
 
 ![Credenciais da tela WhatsApp](images/manual-do-painel/25-whatsapp-credenciais.png)
-*Figura 25 – Credenciais e orientações para configurar no painel da Meta*
+*Figura 25 – Credenciais e orientações para configurar no painel da Meta (valores de exemplo)*
 
 - **Credenciais:** o ID do número de telefone, o ID da conta WhatsApp Business, o token de acesso e o App Secret. Os valores secretos ficam guardados em segredo e não podem ser vistos depois de salvos: só dá para trocá-los, com o botão **Substituir**. O botão **Testar conexão** confere se os dados estão certos antes de salvar.
 - **Avisos ao cidadão:** liga e desliga o aviso por WhatsApp quando a equipe cancela um agendamento. Cada aviso tem custo por mensagem cobrado pela Meta, e o painel pede confirmação ao ligar e ao desligar.
 - **Modelos de mensagem:** mostra se a Meta já aprovou os dois modelos usados pelo sistema, **Aviso de cancelamento** e **Lembrete do atendimento**. Sem a aprovação, o aviso e o lembrete não são enviados. O botão **Atualizar status da Meta** consulta de novo.
 - **Histórico de alterações:** registra quem mudou as credenciais, pausou o chatbot ou ligou e desligou os avisos. Os valores secretos nunca são registrados.
 
+Se aparecer "Não foi possível consultar a Meta. Confira as credenciais e tente novamente.", as credenciais ainda não estão corretas ou a Meta não respondeu. Use **Testar conexão** e **Atualizar status da Meta**.
+
 ![Avisos, modelos de mensagem e histórico](images/manual-do-painel/26-whatsapp-modelos.png)
-*Figura 26 – Avisos ao cidadão, modelos de mensagem e histórico de alterações*
+*Figura 26 – Avisos ao cidadão, modelos de mensagem e histórico de alterações (valores de exemplo)*
 
 ## Aba Privacidade
 
@@ -467,7 +467,7 @@ Marque só **Gerenciar agendamentos**, que já inclui **Ver agendamentos**. A pe
 
 ## Líder
 
-Marque todas as permissões, menos **Gerenciar usuários**: **Ver agendamentos**, **Gerenciar agendamentos**, **Gerenciar conteúdo do chatbot**, **Configurar atendimento presencial**, **Configurar documentos para atendimento presencial** e **Ver relatórios**.
+Marque todas as permissões que aparecem na tela **Usuários**, menos **Gerenciar usuários**. Hoje são seis: **Ver agendamentos**, **Gerenciar agendamentos**, **Gerenciar conteúdo do chatbot**, **Configurar atendimento presencial**, **Configurar documentos para atendimento presencial** e **Ver relatórios**.
 
 > **Atenção:** com esta combinação, a pessoa líder não consegue criar contas nem mudar permissões. Assim, só a conta Admin gerencia as contas. E quem cria uma conta precisa ter todas as permissões que vai conceder a ela: para criar uma conta de líder com estas seis permissões, quem cria precisa tê-las também (a conta Admin tem todas).
 
