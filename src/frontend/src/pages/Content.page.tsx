@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next"
 import ContentCategoryActions from "@/components/ContentCategoryActions"
 import ContentCategoryForm from "@/components/ContentCategoryForm"
 import ContentCategoryList from "@/components/ContentCategoryList"
-import ContentPreview from "@/components/ContentPreview"
+import ContentPreviewWindow from "@/components/ContentPreviewWindow"
 import ContentQuestionForm from "@/components/ContentQuestionForm"
 import ContentQuestionList from "@/components/ContentQuestionList"
 import LastChangeNote from "@/components/LastChangeNote"
@@ -201,7 +201,7 @@ export default function ContentPage() {
                         onChange={page.changeFormFields}
                         previewSlot={
                             page.preview ? (
-                                <ContentPreview
+                                <ContentPreviewWindow
                                     status={page.preview.status}
                                     model={page.preview.model}
                                     onClose={page.closePreview}

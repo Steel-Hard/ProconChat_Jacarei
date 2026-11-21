@@ -21,7 +21,13 @@ function ContentPreviewBubble({ bubble }: ContentPreviewBubbleProps) {
                 ) : null}
             </div>
             {bubble.buttons.length > 0 ? (
-                <div className={css.buttons}>
+                <div
+                    className={
+                        bubble.buttons.length === 2
+                            ? `${css.buttons} ${css.buttonsGrid}`
+                            : css.buttons
+                    }
+                >
                     {bubble.buttons.map((button) => (
                         <span key={button} className={css.button}>
                             {button}

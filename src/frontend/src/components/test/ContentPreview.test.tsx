@@ -180,7 +180,7 @@ describe("ContentPreview", () => {
         const user = userEvent.setup()
         const { onClose } = renderPreview()
 
-        await user.click(screen.getByRole("button", { name: "Fechar prévia" }))
+        await user.click(screen.getByRole("button", { name: "Fechar" }))
 
         expect(onClose).toHaveBeenCalledTimes(1)
     })
@@ -221,7 +221,7 @@ describe("ContentPreview", () => {
         window.HTMLElement.prototype.scrollIntoView = scroll
         renderPreview()
 
-        expect(screen.getByRole("heading", { name: "Ver como o cidadão recebe" })).toHaveFocus()
+        expect(screen.getByRole("heading", { name: "Como o cidadão recebe" })).toHaveFocus()
         expect(scroll).toHaveBeenCalled()
     })
 })

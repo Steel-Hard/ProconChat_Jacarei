@@ -180,4 +180,30 @@ describe("ContentFormDialog", () => {
 
         expect(screen.getByRole("alert")).toHaveFocus()
     })
+
+    it("com a camada da prévia aberta, Esc não fecha nem pede descarte do formulário", async () => {
+        const user = userEvent.setup()
+        const onCancel = vi.fn()
+        render(
+            <ContentFormDialog
+                title="Nova"
+                confirmLabel="Confirmar"
+                cancelLabel="Cancelar"
+                dirty
+                layerOpen
+                layer={<div data-testid="camada">prévia</div>}
+                onConfirm={vi.fn()}
+                onCancel={onCancel}
+            >
+                <input aria-label="Campo" />
+            </ContentFormDialog>
+        )
+
+        await user.keyboard("{Escape}")
+
+        expect(onCancel).not.toHaveBeenCalled()
+        expect(screen.queryByText("Descartar as alterações?")).not.toBeInTheDocument()
+        expect(screen.getByTestId("camada")).toBeInTheDocument()
+        expect(screen.getByLabelText("Campo").closest("dialog")).toHaveAttribute("inert")
+    })
 })

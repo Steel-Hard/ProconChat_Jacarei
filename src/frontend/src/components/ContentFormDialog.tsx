@@ -25,6 +25,8 @@ type ContentFormDialogProps = {
     previewLabel?: string
     summary?: string | null
     dirty?: boolean
+    layer?: ReactNode
+    layerOpen?: boolean
     children: ReactNode
     onConfirm: () => void
     onCancel: () => void
@@ -40,6 +42,8 @@ function ContentFormDialog({
     previewLabel,
     summary = null,
     dirty = false,
+    layer = null,
+    layerOpen = false,
     children,
     onConfirm,
     onCancel,
@@ -127,7 +131,7 @@ function ContentFormDialog({
         }
 
         function handleKeyDown(event: KeyboardEvent) {
-            if (confirmingDiscard) {
+            if (confirmingDiscard || layerOpen) {
                 return
             }
 
@@ -150,7 +154,7 @@ function ContentFormDialog({
         return () => {
             document.removeEventListener("keydown", handleKeyDown)
         }
-    }, [onCancel, dirty, confirmingDiscard])
+    }, [onCancel, dirty, confirmingDiscard, layerOpen])
 
     function requestClose() {
         if (dirty) {
@@ -174,7 +178,7 @@ function ContentFormDialog({
                 className={wide ? `${css.dialog} ${css.dialogWide}` : css.dialog}
                 aria-modal="true"
                 aria-labelledby={titleId}
-                inert={confirmingDiscard || undefined}
+                inert={confirmingDiscard || layerOpen || undefined}
             >
                 <h2 id={titleId} className={css.title}>
                     {title}
@@ -202,6 +206,7 @@ function ContentFormDialog({
                     </div>
                 </form>
             </dialog>
+            {layer}
             <ConfirmDialog
                 open={confirmingDiscard}
                 tone="danger"

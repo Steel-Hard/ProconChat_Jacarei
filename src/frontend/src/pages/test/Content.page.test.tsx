@@ -425,6 +425,29 @@ describe("ContentPage", () => {
         expect(screen.getAllByText("Alteração não salva")).toHaveLength(1)
     })
 
+    it("a prévia abre em janela própria por cima do formulário e Esc fecha só ela", async () => {
+        const user = userEvent.setup()
+        await loaded()
+
+        await user.click(screen.getAllByRole("button", { name: /^Editar (?!categoria)/ })[0])
+        await user.type(screen.getByLabelText(/Título curto/), " x")
+        const previewButton = screen.getByRole("button", { name: "Ver como o cidadão recebe" })
+        await user.click(previewButton)
+
+        expect(
+            await screen.findByRole("dialog", { name: "Como o cidadão recebe" })
+        ).toBeInTheDocument()
+
+        await user.keyboard("{Escape}")
+
+        expect(
+            screen.queryByRole("dialog", { name: "Como o cidadão recebe" })
+        ).not.toBeInTheDocument()
+        expect(screen.queryByText("Descartar as alterações?")).not.toBeInTheDocument()
+        expect(screen.getByLabelText(/Título curto/)).toBeInTheDocument()
+        expect(previewButton).toHaveFocus()
+    })
+
     it("a busca procura em todas as categorias e esconde as setas", async () => {
         const user = userEvent.setup()
         await loaded()

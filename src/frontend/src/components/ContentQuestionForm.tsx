@@ -84,6 +84,8 @@ function ContentQuestionForm({
             cancelLabel={t("questionForm.cancel")}
             previewLabel={t("questionForm.preview")}
             dirty={JSON.stringify(fields) !== JSON.stringify(initial)}
+            layer={previewSlot}
+            layerOpen={Boolean(previewSlot)}
             onPreview={onPreview}
             onConfirm={confirm}
             onCancel={onCancel}
@@ -194,7 +196,6 @@ function ContentQuestionForm({
                     ))}
                 </div>
             </div>
-            {previewSlot}
         </ContentFormDialog>
     )
 }
