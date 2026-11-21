@@ -186,7 +186,7 @@ Texto do corpo:
 Olá, {{1}}. Lembrete do seu atendimento no PROCON Jacareí: {{2}}, {{3}}, às {{4}} (protocolo {{5}}). Endereço: {{6}}. Traga: {{7}}. Se não puder comparecer, remarque ou cancele respondendo a esta mensagem.
 ```
 
-> **Atenção:** ao colar o texto na Meta, confira que ele ficou em um parágrafo só, sem quebras de linha, e que ficou idêntico ao acima, letra por letra. No PDF, o texto pode aparecer em várias linhas só por causa do tamanho da página.
+> **Atenção:** ao colar na Meta, confira que o texto ficou em um parágrafo só, sem quebras de linha, e idêntico ao acima. No PDF ele aparece em várias linhas só por causa da largura da página.
 
 | Variável | O que entra | Exemplo para a Meta |
 | --- | --- | --- |
@@ -208,7 +208,7 @@ Texto do corpo:
 Olá, {{1}}. Seu agendamento {{2}} no PROCON Jacareí, marcado para {{3}} às {{4}}, foi cancelado. Motivo: {{5}}. Para agendar novamente, envie uma mensagem para este número.
 ```
 
-> **Atenção:** ao colar o texto na Meta, confira que ele ficou em um parágrafo só, sem quebras de linha, e que ficou idêntico ao acima, letra por letra. No PDF, o texto pode aparecer em várias linhas só por causa do tamanho da página.
+> **Atenção:** ao colar na Meta, confira que o texto ficou em um parágrafo só, sem quebras de linha, e idêntico ao acima. No PDF ele aparece em várias linhas só por causa da largura da página.
 
 | Variável | O que entra | Exemplo para a Meta |
 | --- | --- | --- |
@@ -218,24 +218,17 @@ Olá, {{1}}. Seu agendamento {{2}} no PROCON Jacareí, marcado para {{3}} às {{
 | `{{4}}` | Hora do atendimento | 14:00 |
 | `{{5}}` | Motivo do cancelamento | a unidade estará fechada nesta data |
 
-> **Dica:** o aviso de cancelamento é opcional e vem desligado. Cadastre este modelo mesmo assim, para poder ligar o aviso depois sem esperar a aprovação.
+> **Dica:** o aviso de cancelamento vem desligado, mas cadastre o modelo já, para ligar o aviso depois sem esperar a aprovação.
 
 ## Custo
 
-Cadastrar e aprovar um modelo não custa nada. A Meta pode cobrar pelo envio das mensagens de modelo, e os valores e as regras de cobrança mudam com o tempo. Consulte a tabela de preços atual da Meta antes de ligar os envios.
+Cadastrar e aprovar um modelo não custa nada. A Meta pode cobrar pelo envio das mensagens de modelo, e os valores e as regras mudam. Consulte a tabela de preços atual da Meta.
 
-> **Atenção:** para enviar mensagens de modelo, a conta da Meta precisa ter uma **forma de pagamento** cadastrada. No Gerenciador de Negócios, abra o **Hub de faturamento (Billing Hub)** e depois **Formas de pagamento**, e cadastre um cartão. Sem isso, os avisos falham com o erro 131042. O chatbot continua respondendo normalmente ao cidadão.
+> **Atenção:** para enviar mensagens de modelo, a conta da Meta precisa ter uma **forma de pagamento** cadastrada. No Gerenciador de Negócios, abra o **Hub de faturamento (Billing Hub)**, depois **Formas de pagamento**, e cadastre um cartão. Sem isso, os avisos falham com o erro 131042. O chatbot continua respondendo ao cidadão.
 
-## Os quatro status dos modelos
+## Depois de enviar
 
-Depois de enviar, a Meta analisa o modelo. O painel do PROCON mostra o resultado em **Modelos de mensagem** (veja o capítulo 5). Enquanto um modelo não estiver **Aprovado**, o sistema não envia a mensagem dele.
-
-| Status | O que significa | O que fazer |
-| --- | --- | --- |
-| Aprovado | A Meta aceitou o modelo. O sistema já pode usá-lo | Nada |
-| Em análise | A Meta ainda está analisando | Aguardar, de algumas horas a alguns dias |
-| Rejeitado | A Meta recusou o modelo | Abrir o modelo no Gerenciador do WhatsApp, ler o motivo, corrigir o texto e enviar de novo |
-| Não encontrado | O modelo com esse nome e idioma não existe na conta | Conferir o nome e o idioma, ou cadastrar o modelo |
+A Meta analisa cada modelo e o painel do PROCON mostra o resultado. Os quatro status possíveis (Aprovado, Em análise, Rejeitado e Não encontrado) são explicados no capítulo 5, em "Conferir os modelos". Enquanto um modelo não estiver **Aprovado**, o sistema não envia a mensagem dele.
 
 # 5. Preencher a tela de WhatsApp
 
@@ -347,12 +340,12 @@ Use o botão **Atualizar status da Meta**, na seção **Modelos de mensagem**, p
 
 Com as credenciais salvas e a Meta respondendo, cada modelo aparece com o nome e um status. Se aparecer o aviso da figura acima, confira as credenciais e clique em **Atualizar status da Meta**.
 
-| Cor | Status | Significado |
-| --- | --- | --- |
-| Verde | Aprovado | A Meta aceitou o modelo |
-| Amarelo | Em análise | A Meta ainda está analisando. Se a Meta devolver outro status, ele aparece também em amarelo, com o nome do status |
-| Vermelho | Rejeitado | A Meta recusou o modelo |
-| Vermelho | Não encontrado | Não existe modelo com esse nome e idioma na conta |
+| Cor | Status | Significado | O que fazer |
+| --- | --- | --- | --- |
+| Verde | Aprovado | A Meta aceitou o modelo | Nada |
+| Amarelo | Em análise | A Meta ainda está analisando. Se a Meta devolver outro status, ele aparece também em amarelo, com o nome do status | Aguardar, de algumas horas a alguns dias |
+| Vermelho | Rejeitado | A Meta recusou o modelo | Ler o motivo no Gerenciador do WhatsApp, corrigir o texto e enviar de novo |
+| Vermelho | Não encontrado | Não existe modelo com esse nome e idioma na conta | Conferir o nome e o idioma, ou cadastrar o modelo |
 
 Clique em **Atualizar status da Meta** para ver a situação mais recente.
 
