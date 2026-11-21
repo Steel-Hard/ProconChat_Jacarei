@@ -35,7 +35,7 @@ Regras:
 Todas as **telas de configuração** (Horários de atendimento, Documentos, Conteúdo, Usuários e WhatsApp) seguem o mesmo padrão:
 
 1. As alterações ficam **pendentes** até clicar em **"Salvar alterações"**.
-2. Enquanto há alterações pendentes, aparece **"N alterações não salvas"**. Passando o mouse, aparece a lista do que mudou. O contador mostra o que difere do que está gravado, não quantas ações foram feitas: adicionar e remover o mesmo item não conta, e voltar ao estado gravado zera o contador.
+2. Enquanto há alterações pendentes, aparece **"N alterações não salvas"**. Passando o mouse ou tocando, aparece a lista do que mudou. O contador mostra o que difere do que está gravado, não quantas ações foram feitas: adicionar e remover o mesmo item não conta, e voltar ao estado gravado zera o contador.
 3. **"Descartar"** desfaz todas as alterações pendentes.
 4. O topo da tela mostra **"Última alteração por [nome] em [data]"**.
 
