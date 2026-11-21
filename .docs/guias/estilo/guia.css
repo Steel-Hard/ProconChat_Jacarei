@@ -146,7 +146,8 @@ img {
 
 figure { margin: 5mm 0; text-align: center; break-inside: avoid; page-break-inside: avoid; }
 figcaption,
-p:has(> img:only-child) + p:has(> em:only-child) {
+p:has(> img) > em:last-child {
+    display: block;
     margin: 2mm 0 0;
     font-size: 9pt;
     line-height: 1.4;
@@ -154,15 +155,28 @@ p:has(> img:only-child) + p:has(> em:only-child) {
     text-align: center;
     font-style: italic;
 }
-p:has(> img:only-child) {
-    margin: 5mm 0 0;
+p:has(> img) {
+    margin: 5mm 0 6mm;
     break-inside: avoid;
     page-break-inside: avoid;
+}
+p:has(> img) > br { display: none; }
+p:has(> img:only-child) {
+    margin-bottom: 0;
     break-after: avoid;
     page-break-after: avoid;
 }
-p:has(> img:only-child) + p:has(> em:only-child) { margin-bottom: 6mm; break-before: avoid; page-break-before: avoid; }
-li p:has(> img:only-child) { margin-top: 3mm; }
+p:has(> img:only-child) + p:has(> em:only-child) {
+    margin: 2mm 0 6mm;
+    font-size: 9pt;
+    line-height: 1.4;
+    color: var(--cor-mudo);
+    text-align: center;
+    font-style: italic;
+    break-before: avoid;
+    page-break-before: avoid;
+}
+li p:has(> img) { margin-top: 3mm; }
 
 blockquote {
     margin: 4mm 0 5mm;
