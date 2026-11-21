@@ -274,7 +274,7 @@ Ambiente do gerador: Node.js 20 ou mais novo e Chrome ou Chromium (ou `CHROME_PA
 - **Teste:** nenhum (documentação).
 - **Gate:** o `diff` acima (ajustado ao título final do capítulo) sem saída.
 - **Modelo:** economico
-- **Status:** pendente
+- **Status:** concluída em 2026-11-21, pela Maki (registrado pelo dev-doc a pedido da orchestrator). Evidência: a comparação com `diff` entre a tabela da decisão 004 e a do capítulo 10 do manual não mostrou nenhuma diferença, inclusive na linha separadora.
 
 ### T9 [P] Conferir links e figuras
 
@@ -288,7 +288,7 @@ Ambiente do gerador: Node.js 20 ou mais novo e Chrome ou Chromium (ou `CHROME_PA
 - **Teste:** nenhum (documentação).
 - **Gate:** comparação das duas listas sem diferença e gerador sem erro.
 - **Modelo:** economico
-- **Status:** pendente
+- **Status:** concluída em 2026-11-21, pela Maki (registrado pelo dev-doc a pedido da orchestrator). Evidência: a lista de imagens citadas no Markdown é igual à da pasta, as legendas seguem de Figura 1 em diante sem pular número, e os links dos dois README e do manual apontam para arquivos que existem.
 
 ### T10 [P] Revisão visual da designer
 
@@ -302,7 +302,7 @@ Ambiente do gerador: Node.js 20 ou mais novo e Chrome ou Chromium (ou `CHROME_PA
 - **Teste:** nenhum (documentação).
 - **Gate:** nenhum achado que bloqueia em aberto.
 - **Modelo:** padrao
-- **Status:** pendente
+- **Status:** revisão feita em 2026-11-21 pela Nobara (registrado pelo dev-doc a pedido da orchestrator). Primeira rodada, achados que bloqueavam: falta de sumário, páginas quase vazias, capturas cortadas no meio do conteúdo (Figuras 4, 7, 8, 9, 11, 13, 15, 16, 17, 19, 20, 24, 25, 26 e 27) e a Figura 3 com a janela cortada e fundo de outra tela. Resolvido: sumário com links e números de página conferidos no PDF; as 28 figuras refeitas com o elemento inteiro, a 1280 pixels e o dobro de resolução; Figura 3 com a janela completa e fundo limpo; tamanho das figuras ajustado só para o manual; capa com versão e data maiores. Sugestões aplicadas: tamanho menor dos formulários, títulos menores para as abas e as combinações, capa. Em aberto: o PDF não tem marcadores (outline), porque o gerador compartilhado não passa a opção ao Chrome, e ainda há páginas com meio espaço livre. A nova conferência da designer ainda não está registrada.
 
 ### T11 [P] Revisão de QA
 
@@ -316,7 +316,7 @@ Ambiente do gerador: Node.js 20 ou mais novo e Chrome ou Chromium (ou `CHROME_PA
 - **Teste:** nenhum (documentação).
 - **Gate:** nenhum achado que bloqueia em aberto.
 - **Modelo:** padrao
-- **Status:** pendente
+- **Status:** revisão feita em 2026-11-21 pela Maki (registrado pelo dev-doc a pedido da orchestrator). Os critérios de T11 foram conferidos no painel local e o apêndice bate com as telas e com o script. Sem achado que bloqueia. Sugestões e tratamento: S1 aplicada (valores de exemplo nas legendas das Figuras 24 a 26 e nota sobre a mensagem da Meta); S2 aplicada na recaptura da Figura 22 (e-mail `@exemplo.invalid`); S3 aplicada (legenda da Figura 17 e frase sobre a exportação perto da Figura 21); S4 aplicada, e os dois avisos de função ainda indisponível foram recolocados com redação neutra por decisão da orchestrator; S5 aplicada (frase de "Esqueci minha senha" com remissão ao Apêndice A); S6 aplicada nos Documentos (o botão × (Remover)); em Horários o botão de bloqueio se chama Remover na tela e ficou como estava; S7 aplicada (WhatsApp na lista das telas com Salvar alterações e confirmações descritas conforme o código); S8 conferida no código (`markAttended` e `markNoShow` assumem o agendamento Pendente), a frase do manual está certa e não mudou. Itens que a Maki marcou como não verificáveis ao vivo: S8, confirmado depois no código; a lista dos demais não foi repassada ao dev-doc e fica a registrar pela Maki.
 
 ### T12 Revisão do reviewer
 
