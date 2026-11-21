@@ -82,14 +82,12 @@ Uma conta nova nasce sem permissões. Quem entra com ela vê o aviso "Sua conta 
 
 No canto superior direito aparecem o seu nome e o seu e-mail. A conta Admin mostra também o selo **ADMIN**. Ao clicar em **Minha conta** abre um menu com duas opções: **Alterar minha senha** e **Sair**.
 
-
 ## Alterar a própria senha
 
 1. Clique em **Minha conta** e depois em **Alterar minha senha**.
 2. Digite a **Senha atual**.
 3. Digite a **Nova senha** (mínimo de 8 caracteres) e repita em **Confirmar senha**.
 4. Clique em **Salvar senha**.
-
 
 A nova senha vale a partir do próximo acesso. Ao trocar a senha, as outras sessões abertas com a sua conta são encerradas, e a sessão atual continua.
 
@@ -175,7 +173,6 @@ Quem tem **Gerenciar agendamentos** vê o quadro **Ações**. Quem só tem **Ver
 *Figura 9 – Detalhe de um agendamento pendente, com as ações disponíveis*
 
 Antes do dia do atendimento, o painel mostra "Marcar como atendido: disponível a partir do dia do atendimento." no lugar do botão. O mesmo vale para "Marcar como não compareceu", que só fica disponível depois do horário. Num agendamento Pendente, marcar como atendido ou como não compareceu também faz de você o responsável.
-
 
 ## Cancelar um agendamento
 
@@ -291,7 +288,6 @@ A **Prévia da grade** mostra, num calendário, como o chatbot oferece os horár
 
 ## Dados da unidade
 
-
 O **Endereço da unidade** é obrigatório e aparece nas mensagens do chatbot, como a confirmação do agendamento. O **Complemento ou referência** é opcional.
 
 ## Lembrete ao cidadão
@@ -299,7 +295,6 @@ O **Endereço da unidade** é obrigatório e aparece nas mensagens do chatbot, c
 Com a opção **Enviar lembrete ao cidadão** ligada, o chatbot manda um lembrete pelo WhatsApp aos agendamentos Pendentes e Confirmados, com a antecedência escolhida em **Antecedência do lembrete**. O texto é fixo e aparece na **Prévia da mensagem**. Cada lembrete é uma mensagem de modelo e tem custo por mensagem cobrado pela Meta, por isso o painel pede uma confirmação ao ligar e ao desligar. O lembrete só é enviado depois que a Meta aprova o modelo, o que é acompanhado na tela **WhatsApp**, só da conta Admin.
 
 ## Datas bloqueadas
-
 
 Use para feriados e pontos facultativos. Escolha a **Data**, escreva a **Descrição** e clique em **Adicionar**. O chatbot não oferece horários nos dias bloqueados. **Remover** tira o bloqueio. Hoje só é possível bloquear o dia inteiro: bloquear apenas um período do dia ainda não está disponível.
 
@@ -317,6 +312,7 @@ O painel não deixa salvar uma mudança que deixaria agendamentos existentes for
 > **Atenção:** uma janela própria para decidir o que fazer com os agendamentos afetados ainda não está disponível.
 
 Quando você muda horários ou endereço, o painel lembra de revisar as perguntas do Conteúdo que citam essas informações, com o atalho **Revisar Conteúdo →**.
+
 # 7. Documentos
 
 A tela **Documentos** define as listas de documentos que o chatbot envia ao cidadão ao criar o agendamento. Há duas listas: **Quando o próprio titular comparece** e **Quando um representante comparece em nome do titular**. Em cada caso, o chatbot soma a lista aos documentos úteis da pergunta que o cidadão fez.
@@ -335,7 +331,6 @@ A tela **Documentos** define as listas de documentos que o chatbot envia ao cida
 A **Prévia da mensagem de confirmação do agendamento** mostra como o cidadão recebe a mensagem no WhatsApp, para o titular ou para o representante, com uma pergunta de exemplo. A prévia já inclui as alterações não salvas. Protocolo, data e hora são exemplos.
 
 > **Atenção:** as alterações valem só para os próximos agendamentos. Os agendamentos já criados mantêm a lista que foi enviada ao cidadão na época.
-
 
 # 8. Usuários
 
@@ -356,7 +351,6 @@ A tela mostra só as permissões das telas que já estão disponíveis no painel
 2. Preencha o **Nome**, o **E-mail** (não pode repetir o de outra conta) e a **Senha inicial** (mínimo de 8 caracteres).
 3. Clique em **Criar conta**.
 
-
 A conta é criada sem nenhuma permissão. Informe a senha inicial pessoalmente à pessoa, porque o sistema não envia e-mails. Depois, marque as permissões dela.
 
 ## Marcar as permissões
@@ -372,7 +366,6 @@ Clique na conta e em **Redefinir senha**. Defina a **Nova senha inicial**, repit
 
 ![Janelas Criar conta e Redefinir senha](images/manual-do-painel/22-usuarios-criar-conta-e-redefinir.png)
 *Figura 22 – Janelas Criar conta e Redefinir senha*
-
 
 ## Desativar e reativar uma conta
 
@@ -468,16 +461,13 @@ Como o sistema não tem perfis prontos, esta página traz **sugestões** de quai
 
 Marque só **Ver agendamentos**. A pessoa consulta a lista, o calendário e o detalhe dos agendamentos, mas não muda nada.
 
-
 ## Atendente
 
 Marque só **Gerenciar agendamentos**, que já inclui **Ver agendamentos**. A pessoa assume agendamentos, atribui a colegas, registra se o cidadão foi atendido ou faltou, cancela e escreve observações.
 
-
 ## Líder
 
 Marque todas as permissões, menos **Gerenciar usuários**: **Ver agendamentos**, **Gerenciar agendamentos**, **Gerenciar conteúdo do chatbot**, **Configurar atendimento presencial**, **Configurar documentos para atendimento presencial** e **Ver relatórios**.
-
 
 > **Atenção:** com esta combinação, a pessoa líder não consegue criar contas nem mudar permissões. Assim, só a conta Admin gerencia as contas. E quem cria uma conta precisa ter todas as permissões que vai conceder a ela: para criar uma conta de líder com estas seis permissões, quem cria precisa tê-las também (a conta Admin tem todas).
 
