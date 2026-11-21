@@ -254,7 +254,7 @@ Ambiente do gerador: Node.js 20 ou mais novo e Chrome ou Chromium (ou `CHROME_PA
 - **Teste:** nenhum (documentação).
 - **Gate:** não se aplica typecheck, lint nem suíte. Conferência: `.docs/guias/gerar-pdfs.sh manual-do-painel` sem erro e cada mensagem citada existe, com o mesmo texto, em `deploy/reset-admin-password.sh`.
 - **Modelo:** padrao
-- **Status:** pendente
+- **Status:** concluída em 2026-11-21. Evidência: Apêndice A no fim de `.docs/guias/manual-do-painel.md`, aberto com o aviso de que é só para a equipe técnica; cobre CA-14 a CA-16 (painel não redefine; usuário `deploy`, pasta da instalação e terminal interativo; senha pedida duas vezes sem aparecer; 8 caracteres a 72 bytes; versão em uso descoberta sozinha; sessões do Admin encerradas; e-mail não muda; troca confirmada só por "Senha do Admin redefinida"), tabela de falhas e alternativa sem o script. As 9 mensagens do script citadas existem com o mesmo texto em `deploy/reset-admin-password.sh` (e a do backend em `resetAdminPassword.ts`). Sem endereço de servidor, IP nem segredo. Página de teste gerada fora do repositório: 39 páginas (limite de 40), então as correções das revisões precisam compensar qualquer página nova. O PDF do repositório não foi regerado.
 - **Commit:** `Docs :bulb: [#119] Adiciona o apêndice de redefinição da senha do Admin`
 
 ### T8 [P] Conferir a tabela de permissões contra a decisão 004

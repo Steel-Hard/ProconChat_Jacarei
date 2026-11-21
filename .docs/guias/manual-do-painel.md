@@ -480,3 +480,58 @@ Marque todas as permissões, menos **Gerenciar usuários**: **Ver agendamentos**
 
 
 > **Atenção:** com esta combinação, a pessoa líder não consegue criar contas nem mudar permissões. Assim, só a conta Admin gerencia as contas. E quem cria uma conta precisa ter todas as permissões que vai conceder a ela: para criar uma conta de líder com estas seis permissões, quem cria precisa tê-las também (a conta Admin tem todas).
+
+# Apêndice A. Redefinir a senha do Admin no servidor
+
+> **Atenção:** este apêndice é só para a equipe técnica. Quem usa o painel no dia a dia não precisa dele.
+
+O painel não redefine a senha da conta Admin, e não existe "Esqueci minha senha". Se o Admin esquecer a senha, a equipe técnica redefine direto no servidor, como descrito aqui. O e-mail do Admin não muda.
+
+## Antes de começar
+
+- Entre no servidor com o usuário `deploy` e abra um terminal interativo. O script não roda sem ele.
+- Vá para a pasta da instalação, `/opt/proconchat`.
+- A senha nova precisa ter de 8 caracteres a 72 bytes.
+
+## Passo a passo
+
+1. Rode o script:
+
+   ```bash
+   /opt/proconchat/deploy/reset-admin-password.sh
+   ```
+
+2. Digite a senha nova e, em seguida, repita a senha. O script não mostra o que é digitado.
+3. Aguarde. O script descobre sozinho a versão do sistema em uso, lendo o registro de entregas, e roda a redefinição dentro do sistema.
+4. A senha só foi trocada se aparecerem as mensagens "Senha do Admin redefinida. O e-mail do Admin não mudou." e "Entre no painel com a senha nova.".
+5. Entre no painel com o e-mail do Admin e a senha nova.
+
+Ao redefinir, todas as sessões abertas do Admin são encerradas, e a pessoa precisa entrar de novo. A senha não aparece na linha de comando, no histórico do terminal nem no arquivo de configuração.
+
+## Se o script falhar
+
+Em qualquer falha, o script termina com uma mensagem e a senha do Admin não é alterada. Veja o que cada mensagem pede:
+
+| Mensagem | O que fazer |
+| --- | --- |
+| rode este script em um terminal interativo | Abra uma sessão com terminal e rode de novo. Não use o script em tarefas automáticas |
+| as senhas não são iguais; nada foi alterado | Rode de novo e digite a mesma senha nas duas vezes |
+| a senha precisa ter pelo menos 8 caracteres; nada foi alterado | Escolha uma senha com 8 caracteres ou mais |
+| a senha não pode passar de 72 bytes; nada foi alterado | Escolha uma senha mais curta. Acentos ocupam mais de um byte |
+| nenhum deploy registrado em releases.log; defina IMAGE_TAG | O sistema não tem entrega registrada. Use o procedimento sem o script, abaixo, informando a versão em uso |
+| compose.prod.yaml e .env precisam existir em (pasta) | O script foi rodado de uma instalação incompleta. Confira a pasta `/opt/proconchat` |
+| não foi possível redefinir a senha do Admin; veja a mensagem acima | Leia a mensagem anterior. Se for "No Admin account found. Run the seed first", a conta Admin ainda não existe: rode a carga inicial do sistema e tente de novo |
+
+## Sem o script
+
+O mesmo resultado sai com os comandos abaixo, também como usuário `deploy`. A senha vale só para este comando e não é gravada no arquivo de configuração:
+
+```bash
+cd /opt/proconchat
+export IMAGE_TAG="$(tail -n 1 releases.log | cut -d' ' -f2)"
+read -r -s -p "Senha nova: " ROOT_PASSWORD; export ROOT_PASSWORD
+docker compose -f compose.prod.yaml run --rm seed node dist/db/scripts/resetAdminPassword.js
+unset ROOT_PASSWORD
+```
+
+A mensagem "Senha do Admin redefinida" no fim do comando confirma a troca.
