@@ -14,21 +14,21 @@ Este guia é para a pessoa do PROCON que vai conectar o número de WhatsApp da i
 - o acesso da conta **Admin** (e-mail e senha);
 - um número de telefone que será o número oficial do atendimento;
 - uma conta no Facebook de uma pessoa responsável, para criar a conta da Meta (a empresa dona do WhatsApp);
-- uma forma de pagamento (cartão) para cadastrar na Meta.
+- uma forma de pagamento (cartão), necessária apenas para as mensagens de modelo (o lembrete e o aviso de cancelamento). O chatbot responde ao cidadão sem ela.
 
 Só a conta Admin vê a tela de WhatsApp. Se o seu menu não mostra o item **WhatsApp**, você não está usando a conta Admin.
 
 ## O que você vai fazer
 
-| Etapa | O que acontece | Onde |
+| Capítulo | O que acontece | Onde |
 | --- | --- | --- |
 | 1 | Entrar no sistema e trocar a senha do Admin | Painel do PROCON |
-| 2 | Criar a conta na Meta e registrar o número | Site da Meta |
+| 2 | Criar a conta na Meta, registrar o número e guardar o ID do número, o ID da conta e o App Secret | Site da Meta |
 | 3 | Gerar o token permanente | Site da Meta |
 | 4 | Cadastrar os dois modelos de mensagem | Site da Meta |
-| 5 | Preencher a tela de WhatsApp e testar a conexão | Painel do PROCON |
-| 6 | Ligar o webhook (o "recado" que a Meta envia ao sistema) | Site da Meta e painel |
-| 7 | Conferir se os modelos foram aprovados | Painel do PROCON |
+| 5 | Preencher a tela de WhatsApp, testar a conexão e salvar. Depois, configurar o webhook (o "recado" que a Meta envia ao sistema), conferir o estado do número e dos modelos, preencher a aba Privacidade e ligar os avisos | Painel do PROCON e site da Meta |
+| 6 | Pausar e retomar o atendimento | Painel do PROCON |
+| 7 | Resolver problemas comuns | Painel do PROCON |
 
 > **Atenção:** a aprovação dos modelos de mensagem pela Meta leva de algumas horas a alguns dias. Por isso, faça as etapas 2, 3 e 4 primeiro e deixe o restante para depois.
 
@@ -41,6 +41,9 @@ Só a conta Admin vê a tela de WhatsApp. Se o seu menu não mostra o item **Wha
 | Palavra | O que significa |
 | --- | --- |
 | Meta | A empresa dona do WhatsApp, do Facebook e do Instagram |
+| Painel de desenvolvedores da Meta | Um site da Meta (developers.facebook.com) onde fica o aplicativo e os códigos dele |
+| Gerenciador de Negócios | Outro site da Meta (business.facebook.com), onde ficam a conta da empresa, os usuários e a forma de pagamento |
+| Gerenciador do WhatsApp | Uma área do Gerenciador de Negócios (business.facebook.com/wa/manage), onde ficam os números e os modelos de mensagem |
 | WhatsApp Business | O tipo de conta de WhatsApp para empresas, usado pelo chatbot |
 | ID do número | Um código só de números que identifica o seu número na Meta |
 | ID da conta | Um código só de números que identifica a sua conta do WhatsApp Business |
@@ -54,7 +57,7 @@ Só a conta Admin vê a tela de WhatsApp. Se o seu menu não mostra o item **Wha
 ## Entrar
 
 1. Abra o endereço do painel no navegador.
-2. Digite o e-mail e a senha da conta Admin.
+2. Digite o e-mail e a senha da conta Admin. O seu login é o e-mail do Admin.
 3. Clique em **Entrar**.
 
 ![Tela de entrada do painel](images/configuracao-do-bot/01-login.png)
@@ -72,8 +75,8 @@ A senha que veio com a instalação é conhecida pela equipe técnica. Troque-a 
 ![Menu Minha conta](images/configuracao-do-bot/02-minha-conta-menu.png)
 *Figura 2 – Menu Minha conta, com as opções Alterar minha senha e Sair*
 
-3. Digite a **senha atual**, a **nova senha** e repita a nova senha em **confirmação**.
-4. Confirme.
+3. Digite a **senha atual**, a **nova senha** e repita a nova senha em **Confirmar senha**.
+4. Clique em **Salvar senha**.
 
 ![Janela de troca de senha](images/configuracao-do-bot/03-trocar-senha.png)
 *Figura 3 – Janela de troca de senha*
@@ -86,13 +89,17 @@ A nova senha deve ter de 8 a 72 caracteres. Ela vale a partir do próximo acesso
 
 # 2. Criar a conta na Meta e registrar o número
 
-Esta parte é feita no site da Meta, fora do nosso painel. Os nomes abaixo podem mudar um pouco.
+Esta parte é feita no site da Meta, fora do nosso painel. Os nomes abaixo podem mudar um pouco. Se ficar travado em algum passo na Meta, procure a equipe técnica.
+
+> **Dica:** a Meta usa três lugares diferentes neste guia, e cada um é um site ou uma área à parte: o **Painel de desenvolvedores** (onde fica o aplicativo), o **Gerenciador de Negócios** (conta da empresa, usuários e pagamento) e o **Gerenciador do WhatsApp** (números e modelos de mensagem). Quando o guia citar um deles, entre nele pelo nome.
 
 ## Criar a conta
 
 1. Entre com a conta do Facebook da pessoa responsável em **developers.facebook.com** e crie um aplicativo novo do tipo **Empresa** (em inglês, *Business*).
 2. No painel do aplicativo, adicione o produto **WhatsApp**. A Meta cria uma conta do WhatsApp Business ligada ao aplicativo.
-3. Em **Configurações do negócio** (no Gerenciador de Negócios da Meta, em **business.facebook.com**), confira se o negócio e a conta do WhatsApp Business aparecem. Eles ficam em **Contas** e **Contas do WhatsApp**.
+3. Em **Configurações do negócio** (no Gerenciador de Negócios, em **business.facebook.com**), confira se o negócio e a conta do WhatsApp Business aparecem. Eles ficam em **Contas** e **Contas do WhatsApp**.
+
+> **Atenção:** tenha à mão uma forma de pagamento (cartão). Ela só é necessária para as mensagens de modelo (lembrete e aviso de cancelamento); o chatbot responde ao cidadão sem ela. Veja mais na etapa de custo, no capítulo 4.
 
 > **Dica:** use, de preferência, uma conta do Facebook que seja da instituição e que mais de uma pessoa de confiança consiga acessar. Assim, o acesso não se perde se alguém sair.
 
@@ -111,13 +118,13 @@ Esta parte é feita no site da Meta, fora do nosso painel. Os nomes abaixo podem
 
 Você vai precisar de dois códigos na etapa 5. Anote-os agora.
 
-1. No painel de desenvolvedores da Meta, abra o aplicativo e vá em **WhatsApp**, **Configuração da API**.
+1. No Painel de desenvolvedores da Meta, abra o aplicativo e vá em **WhatsApp**, **Configuração da API**.
 2. Copie o **ID do número de telefone**.
 3. Copie o **ID da conta do WhatsApp Business**, que aparece na mesma tela.
 
 ## Guardar o App Secret
 
-1. No painel de desenvolvedores da Meta, abra o aplicativo e vá em **Configurações do app**, **Básico**.
+1. No Painel de desenvolvedores da Meta, abra o aplicativo e vá em **Configurações do app**, **Básico**.
 2. Ao lado de **Chave secreta do app** (App Secret), clique em mostrar. A Meta pode pedir a senha do Facebook.
 3. Copie a chave e guarde-a com segurança.
 
@@ -131,7 +138,7 @@ O token é a "senha longa" que dá ao sistema permissão para enviar e receber m
 
 ## Criar o usuário do sistema
 
-1. Entre no Gerenciador de Negócios da Meta e abra **Configurações do negócio**.
+1. Entre no Gerenciador de Negócios e abra **Configurações do negócio**.
 2. Vá em **Usuários**, depois **Usuários do sistema**, e clique em **Adicionar**.
 3. Dê um nome (por exemplo, `proconchat`) e escolha a função **Administrador**.
 
@@ -217,9 +224,9 @@ Olá, {{1}}. Seu agendamento {{2}} no PROCON Jacareí, marcado para {{3}} às {{
 
 ## Custo
 
-Cadastrar e aprovar um modelo não custa nada. Mas **cada mensagem enviada com modelo é cobrada pela Meta**, mesmo dentro da conversa de 24 horas. Os valores mudam; consulte a tabela de preços atual da Meta.
+Cadastrar e aprovar um modelo não custa nada. A Meta pode cobrar pelo envio das mensagens de modelo, e os valores e as regras de cobrança mudam com o tempo. Consulte a tabela de preços atual da Meta antes de ligar os envios.
 
-> **Atenção:** a Meta só envia mensagens de modelo se a conta tiver uma **forma de pagamento** cadastrada. No Gerenciador de Negócios, abra **Billing Hub** e depois **Formas de pagamento**, e cadastre um cartão. Sem isso, os avisos falham com o erro 131042.
+> **Atenção:** para enviar mensagens de modelo, a conta da Meta precisa ter uma **forma de pagamento** cadastrada. No Gerenciador de Negócios, abra o **Hub de faturamento (Billing Hub)** e depois **Formas de pagamento**, e cadastre um cartão. Sem isso, os avisos falham com o erro 131042. O chatbot continua respondendo normalmente ao cidadão.
 
 ## Os quatro status dos modelos
 
@@ -268,22 +275,7 @@ Todos os quatro campos são obrigatórios.
 
 > **Atenção:** depois de salvos, o token e o App Secret nunca mais aparecem inteiros. A tela mostra só os quatro últimos caracteres, com o botão **Substituir**. Isso é de propósito, por segurança. Para trocar, clique em **Substituir** e cole o valor novo.
 
-O campo do token também avisa sobre a validade. Se você ver "Este token expira em..." ou "Use um token permanente de usuário do sistema; o token temporário expira em 24 horas", gere o token permanente da etapa 3.
-
-## Configurar o webhook na Meta
-
-Ao lado das credenciais, o quadro **Configure no painel da Meta** mostra dois valores que o sistema gera para você: a **URL do webhook** e o **token de verificação**. Cada um tem o botão **Copiar**.
-
-1. Clique em **Copiar** ao lado da **URL do webhook**.
-2. No painel de desenvolvedores da Meta, abra o aplicativo e vá em **WhatsApp**, **Configuração**.
-3. Na parte **Webhook**, clique em **Editar** e cole a URL no campo de URL de retorno (callback).
-4. Volte ao painel do PROCON, copie o **token de verificação** e cole no campo **Verificar token** da Meta.
-5. Clique em **Verificar e salvar**.
-6. Ainda na Meta, em **Campos do webhook**, assine o campo **messages**.
-
-> **Atenção:** se no lugar da URL aparecer o aviso "A URL pública do sistema não está configurada no servidor", peça à equipe técnica para definir o endereço público do sistema. Sem ele, a Meta não consegue chamar o sistema.
-
-> **Dica:** se a Meta recusar a verificação, confira se o token de verificação foi colado inteiro, sem espaço no começo ou no fim, e se é o mesmo que o painel mostra.
+O campo do token também avisa sobre a validade. Se você vir "Este token expira em..." ou "Use um token permanente de usuário do sistema; o token temporário expira em 24 horas", gere o token permanente da etapa 3.
 
 ## Testar a conexão
 
@@ -291,7 +283,7 @@ Ao lado das credenciais, o quadro **Configure no painel da Meta** mostra dois va
 2. Aguarde o resultado.
 
 ![Teste de conexão com erro](images/configuracao-do-bot/11-teste-conexao-erro.png)
-*Figura 7 – Teste de conexão com falha (aqui, usamos dados inventados de propósito)*
+*Figura 7 – Resultado de um teste de conexão com falha (os dados usados na captura são inventados)*
 
 - **Sucesso:** o painel mostra o número e o nome verificados pela Meta. Siga para o passo de salvar.
 - **Erro:** o painel explica o motivo. Veja a tabela abaixo.
@@ -316,6 +308,25 @@ Ao lado das credenciais, o quadro **Configure no painel da Meta** mostra dois va
 
 A seção **Histórico de alterações**, no fim da tela, registra quem mudou o quê e quando. Os valores do token e do App Secret nunca são registrados.
 
+O próximo passo é configurar o webhook na Meta, logo abaixo.
+
+## Configurar o webhook na Meta
+
+Faça este passo **depois de salvar** as credenciais. O quadro do painel lista os passos da Meta em outra ordem; para não se perder, siga a ordem deste guia.
+
+Ao lado das credenciais, o quadro **Configure no painel da Meta** mostra dois valores que o sistema gera para você: a **URL do webhook** e o **token de verificação**. Cada um tem o botão **Copiar**.
+
+1. Clique em **Copiar** ao lado da **URL do webhook**.
+2. No Painel de desenvolvedores da Meta, abra o aplicativo e vá em **WhatsApp**, **Configuração**.
+3. Na parte **Webhook**, clique em **Editar** e cole a URL no campo de URL de retorno (callback).
+4. Volte ao painel do PROCON, copie o **token de verificação** e cole no campo **Verificar token** da Meta.
+5. Clique em **Verificar e salvar**.
+6. Ainda na Meta, em **Campos do webhook**, assine o campo **messages**.
+
+> **Atenção:** se no lugar da URL aparecer o aviso "A URL pública do sistema não está configurada no servidor", peça à equipe técnica para definir o endereço público do sistema. Sem ele, a Meta não consegue chamar o sistema.
+
+> **Dica:** se a Meta recusar a verificação, confira se o token de verificação foi colado inteiro, sem espaço no começo ou no fim, e se é o mesmo que o painel mostra.
+
 ## Conferir o estado do número
 
 ![Seção Estado do número](images/configuracao-do-bot/05-estado-do-numero.png)
@@ -336,11 +347,36 @@ Use o botão **Atualizar status da Meta**, na seção **Modelos de mensagem**, p
 ## Conferir os modelos
 
 ![Seção Modelos de mensagem](images/configuracao-do-bot/08-modelos.png)
-*Figura 9 – Seção Modelos de mensagem. Quando a consulta à Meta funciona, cada modelo mostra o status*
+*Figura 9 – Seção Modelos de mensagem quando o sistema ainda não consegue consultar a Meta: aparece o aviso "Não foi possível consultar a Meta" e o botão Atualizar status da Meta*
 
-Na seção **Modelos de mensagem**, cada modelo aparece com o nome e um dos status da etapa 4: **Aprovado** (verde), **Em análise** (amarelo), **Rejeitado** (vermelho) ou **Não encontrado** (vermelho). Clique em **Atualizar status da Meta** para ver a situação mais recente.
+Com as credenciais salvas e a Meta respondendo, cada modelo aparece com o nome e um status. Se aparecer o aviso da figura acima, confira as credenciais e clique em **Atualizar status da Meta**.
+
+| Cor | Status | Significado |
+| --- | --- | --- |
+| Verde | Aprovado | A Meta aceitou o modelo |
+| Amarelo | Em análise | A Meta ainda está analisando. Se a Meta devolver outro status, ele aparece também em amarelo, com o nome do status |
+| Vermelho | Rejeitado | A Meta recusou o modelo |
+| Vermelho | Não encontrado | Não existe modelo com esse nome e idioma na conta |
+
+Clique em **Atualizar status da Meta** para ver a situação mais recente.
 
 Se algum modelo não estiver aprovado, o painel avisa que os lembretes ou os avisos de cancelamento não serão enviados enquanto isso. Se estiver **Rejeitado**, revise o texto no Gerenciador do WhatsApp e envie de novo.
+
+## Preencher a aba Privacidade
+
+Na tela de WhatsApp, logo abaixo do título, existem duas abas: **Conexão** e **Privacidade**. Você esteve na aba Conexão até aqui. Abra agora a aba **Privacidade**.
+
+Ela guarda os dados de quem responde, no PROCON, pelo tratamento dos dados pessoais dos cidadãos (a lei de proteção de dados, a LGPD). Esses dados aparecem em uma página pública de privacidade do sistema.
+
+1. Clique na aba **Privacidade**.
+2. Preencha o **Nome do controlador** (quem responde pelos dados na instituição).
+3. Preencha o **E-mail de contato para pedidos do titular** (o e-mail onde o cidadão pede acesso, correção ou exclusão dos próprios dados).
+4. Se quiser, preencha os demais campos, como o nome do encarregado.
+5. Clique em **Salvar alterações**.
+
+> **Atenção:** quando o nome do controlador e o e-mail de contato estão preenchidos, a saudação do chatbot passa a trazer o link "Saiba como tratamos seus dados". Sem esses dois campos, o link não aparece.
+
+> **Dica:** esses dados mudam quando o PROCON assume o sistema. Por isso ficam no painel, e você pode alterá-los quando precisar.
 
 ## Ligar o aviso de cancelamento (opcional)
 
@@ -357,6 +393,23 @@ O aviso ao cidadão quando a equipe cancela um agendamento vem **desligado**.
 *Figura 11 – Confirmação para ligar o aviso de cancelamento*
 
 A mudança vale na hora, sem precisar clicar em Salvar. Para desligar, o caminho é o mesmo, com outra confirmação. Com o aviso desligado, o agendamento é cancelado sem avisar o cidadão, e a equipe precisa avisar por outro meio.
+
+## Ligar o lembrete ao cidadão (opcional)
+
+O lembrete avisa o cidadão, algumas horas antes, do atendimento marcado. Ele vem **desligado** e é ligado em outra tela, **Horários de atendimento**, no menu lateral.
+
+1. No menu lateral, clique em **Horários de atendimento**.
+2. Procure a seção **Lembrete ao cidadão**.
+3. Clique no interruptor **Enviar lembrete ao cidadão**.
+4. Escolha, em **Antecedência do lembrete**, quantas horas antes do atendimento o cidadão será avisado. As opções são 2, 6, 12, 24 ou 48 horas.
+5. O painel pede confirmação ("Ligar o lembrete?"). Clique em **Ligar lembrete**.
+6. Clique em **Salvar alterações**.
+
+> **Atenção:** diferente do aviso de cancelamento, o lembrete só vale **depois de clicar em Salvar alterações**. Sem salvar, a mudança é perdida.
+
+> **Atenção:** o lembrete só é enviado quando o modelo **Lembrete do atendimento** estiver **Aprovado** na Meta. Cada lembrete é uma mensagem de modelo, e a Meta pode cobrar por ele. Os lembretes também contam no limite diário de envios da Meta.
+
+Quando o lembrete é ligado ou desligado e a mudança é salva, o fato entra no **Histórico de alterações** da tela de WhatsApp, com quem fez e quando. Para desligar, o caminho é o mesmo, com a confirmação "Desligar o lembrete?".
 
 # 6. Pausar e retomar o atendimento
 
@@ -393,7 +446,7 @@ A pausa vale **na hora**, sem precisar clicar em Salvar. Enquanto durar, quem es
 | O chatbot parou de responder de repente | Veja a situação na tela de WhatsApp. Se for "Credenciais inválidas" ou "Token inválido ou expirado", gere um novo token permanente (etapa 3), clique em **Substituir**, teste e salve. Veja também se não ficou pausado |
 | A situação mostra "Não verificado" | Clique em **Testar conexão** para o sistema conferir os dados com a Meta |
 | O painel avisa que não há eventos do webhook há mais de 24 horas | Confira, no painel da Meta, se o webhook está verificado e se o campo **messages** está assinado |
-| Os lembretes ou avisos não são enviados | Veja o status dos modelos. Eles precisam estar **Aprovado**. Veja também se a conta da Meta tem forma de pagamento |
+| Os lembretes ou avisos não são enviados | Confira se o lembrete está ligado e salvo em **Horários de atendimento** (ele vem desligado) e se o aviso de cancelamento está ligado na tela de WhatsApp (também vem desligado). Veja o status dos modelos: eles precisam estar **Aprovado**. Veja também se a conta da Meta tem forma de pagamento |
 | Esqueci a senha do Admin | Procure a equipe técnica responsável pelo sistema. Não há como redefinir pelo painel |
 | O botão **WhatsApp** não aparece no menu | A conta usada não é a do Admin. Entre com a conta Admin |
 
