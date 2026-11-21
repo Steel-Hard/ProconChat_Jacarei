@@ -353,7 +353,7 @@ export default function useContent() {
         const details: string[] = []
 
         if (failure === null) {
-            return { message: t("saveFailedFirst"), details }
+            return { message: t("saveFailedFirst"), details, tone: "error" }
         }
 
         const name = nameOfStep(failure)
@@ -363,7 +363,7 @@ export default function useContent() {
         }
 
         if (failure.kind === "forbidden") {
-            return { message: t("saveForbidden"), details: [] }
+            return { message: t("saveForbidden"), details: [], tone: "error" }
         }
 
         if (failure.kind === "duplicateName") {
@@ -375,7 +375,7 @@ export default function useContent() {
         }
 
         if (outcome.completed === 0) {
-            return { message: t("saveFailedFirst"), details }
+            return { message: t("saveFailedFirst"), details, tone: "error" }
         }
 
         const pending = outcome.snapshot
@@ -387,7 +387,7 @@ export default function useContent() {
             details.unshift(t("saveProgress", { saved, pending }))
         }
 
-        return { message: t("saveFailedPartial"), details }
+        return { message: t("saveFailedPartial"), details, tone: "warning" }
     }
 
     async function save() {
@@ -403,7 +403,8 @@ export default function useContent() {
             setActionError({
                 message: t("saveInvalid"),
                 details:
-                    invalid.first === null ? [] : [t("saveFailedItem", { item: invalid.first })]
+                    invalid.first === null ? [] : [t("saveFailedItem", { item: invalid.first })],
+                tone: "error"
             })
             return
         }

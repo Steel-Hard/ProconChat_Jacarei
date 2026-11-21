@@ -169,5 +169,11 @@
         "down": "↓",
         "separator": " · ",
         "remove": "×"
+    },
+    "page": {
+        "lastChangeNote": "Última alteração por {{name}} em {{date}}",
+        "searchResults_one": "{{count}} resultado",
+        "searchResults_other": "{{count}} resultados",
+        "selectedMeta": "{{count}} perguntas"
     }
 }
