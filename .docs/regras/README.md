@@ -26,7 +26,7 @@ A referência visual é o protótipo navegável aprovado no Claude Design, copia
 | [06-conteudo.md](06-conteudo.md) | Conteúdo do chatbot | Entregue (#63, #124) |
 | [07-sessoes.md](07-sessoes.md) | Sessões | Pendente (#72, #76) |
 | [08-horarios-de-atendimento.md](08-horarios-de-atendimento.md) | Horários de atendimento | Entregue em parte (#64, #125, #134, #74). Pendente (#75, #77) |
-| [09-documentos.md](09-documentos.md) | Documentos para atendimento presencial | Pendente (#65) |
+| [09-documentos.md](09-documentos.md) | Documentos para atendimento presencial | Entregue (#65) |
 | [10-usuarios.md](10-usuarios.md) | Usuários | Entregue (#62, #123) |
 | [11-whatsapp.md](11-whatsapp.md) | WhatsApp | Entregue (#54, #69, #127, #129). Modelos, qualidade e limite de envios integrados à Meta; credenciais, webhook e histórico de alterações |
 
