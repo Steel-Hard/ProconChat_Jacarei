@@ -51,7 +51,7 @@ html {
     print-color-adjust: exact;
 }
 
-body { margin: 0; background: #fff; orphans: 3; widows: 3; }
+body { margin: 0; background: #fff; orphans: 2; widows: 2; }
 
 h1, h2, h3, h4 {
     font-family: var(--fonte-titulo);
@@ -240,7 +240,8 @@ code {
     border: 0.5pt solid var(--cor-borda);
     border-radius: 1mm;
     padding: 0.2mm 1.2mm;
-    overflow-wrap: break-word;
+    white-space: nowrap;
+    overflow-wrap: normal;
 }
 
 pre {
@@ -257,9 +258,15 @@ pre {
     break-inside: avoid;
     page-break-inside: avoid;
 }
-td code, th code { white-space: nowrap; overflow-wrap: normal; }
-
-pre code { background: none; border: 0; padding: 0; color: inherit; font-size: inherit; }
+pre code {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    background: none;
+    border: 0;
+    padding: 0;
+    color: inherit;
+    font-size: inherit;
+}
 
 hr { border: 0; border-top: 0.75pt solid var(--cor-borda); margin: 6mm 0; }
 
