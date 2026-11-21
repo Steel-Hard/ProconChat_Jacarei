@@ -58,6 +58,7 @@
         "headingOf": "Perguntas de {{category}}",
         "searchHeading": "Resultados da busca",
         "new": "Nova pergunta",
+        "newDisabledSearching": "Limpe a busca para criar uma pergunta.",
         "edit": "Editar",
         "activate": "Ativar",
         "deactivate": "Desativar",

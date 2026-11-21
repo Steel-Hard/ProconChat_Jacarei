@@ -10,6 +10,7 @@ import useContent from "@/pages/hooks/useContent"
 import css from "@/styles/pages/content.module.css"
 
 const SKELETON_ROWS = [0, 1, 2]
+const NEW_QUESTION_HINT_ID = "content-new-question-hint"
 
 export default function ContentPage() {
     const { t } = useTranslation("content")
@@ -143,13 +144,23 @@ export default function ContentPage() {
                                         type="button"
                                         className={css.primaryAction}
                                         disabled={page.searching || page.selectedCategory === null}
+                                        aria-describedby={
+                                            page.searching || page.selectedCategory === null
+                                                ? NEW_QUESTION_HINT_ID
+                                                : undefined
+                                        }
                                         onClick={page.openNewQuestion}
                                     >
                                         {t("questions.new")}
                                     </button>
                                 </div>
+                                {page.searching ? (
+                                    <p id={NEW_QUESTION_HINT_ID} className={css.placeholder}>
+                                        {t("questions.newDisabledSearching")}
+                                    </p>
+                                ) : null}
                                 {page.selectedCategory === null && !page.searching ? (
-                                    <p className={css.placeholder}>
+                                    <p id={NEW_QUESTION_HINT_ID} className={css.placeholder}>
                                         {t("questions.noCategorySelected")}
                                     </p>
                                 ) : (

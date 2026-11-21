@@ -265,6 +265,25 @@ describe("ContentPage", () => {
         ).not.toBeInTheDocument()
     })
 
+    it("explica por que Nova pergunta está desabilitada durante a busca", async () => {
+        const user = userEvent.setup()
+        await loaded()
+
+        await user.type(screen.getByRole("searchbox", { name: "Buscar nas perguntas" }), "dev")
+
+        const button = screen.getAllByRole("button", { name: "Nova pergunta" })[0]
+
+        expect(button).toBeDisabled()
+        expect(button).toHaveAccessibleDescription("Limpe a busca para criar uma pergunta.")
+    })
+
+    it("sem hint quando Nova pergunta está habilitada", async () => {
+        await loaded()
+
+        expect(screen.getAllByRole("button", { name: "Nova pergunta" })[0]).toBeEnabled()
+        expect(screen.queryByText("Limpe a busca para criar uma pergunta.")).not.toBeInTheDocument()
+    })
+
     it("a busca procura em todas as categorias e esconde as setas", async () => {
         const user = userEvent.setup()
         await loaded()
