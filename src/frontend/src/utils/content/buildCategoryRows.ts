@@ -14,7 +14,8 @@ export default function buildCategoryRows(
     draft: ContentDraftState,
     snapshot: ContentSnapshot,
     selectedKey: string | null,
-    invalidKeys: ReadonlySet<string>
+    invalidKeys: ReadonlySet<string>,
+    itemErrors: Readonly<Record<string, string>>
 ): ContentCategoryRowView[] {
     const saved = new Map(
         snapshot.categories.map((category) => [String(category.id), draftCategoryOf(category)])
@@ -45,6 +46,7 @@ export default function buildCategoryRows(
                 categoryFieldsChanged(category, savedCategory) ||
                 category.active !== savedCategory.active,
             invalid: invalidKeys.has(category.key),
+            error: itemErrors[category.key] ?? null,
             selected: category.key === selectedKey,
             pageBreak,
             canMoveUp: index > 0,

@@ -101,9 +101,9 @@ export default function useContent() {
     const categoryRows = useMemo(
         () =>
             draft && snapshot
-                ? buildCategoryRows(draft, snapshot, effectiveSelectedKey, invalidKeys)
+                ? buildCategoryRows(draft, snapshot, effectiveSelectedKey, invalidKeys, itemErrors)
                 : [],
-        [draft, snapshot, effectiveSelectedKey, invalidKeys]
+        [draft, snapshot, effectiveSelectedKey, invalidKeys, itemErrors]
     )
 
     const questionRows = useMemo(() => {
@@ -475,12 +475,19 @@ export default function useContent() {
 
         const name = nameOfStep(outcome.failure)
         const step = outcome.failure.step
+        const failedKey =
+            "questionKey" in step
+                ? step.questionKey
+                : "categoryKey" in step && step.kind !== "reorderQuestions"
+                  ? step.categoryKey
+                  : null
 
-        if (name !== null && "questionKey" in step) {
+        if (name !== null && failedKey !== null) {
             setItemErrors({
-                [outcome.failure.step.kind === "createQuestion"
-                    ? step.questionKey
-                    : step.questionKey]: outcome.failure.message ?? name
+                [failedKey in outcome.idMap ? String(outcome.idMap[failedKey]) : failedKey]:
+                    outcome.failure.kind === "duplicateName"
+                        ? t("duplicateCategoryName")
+                        : (outcome.failure.message ?? name)
             })
         }
     }

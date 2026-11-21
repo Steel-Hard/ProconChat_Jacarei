@@ -70,6 +70,11 @@ function ContentCategoryRow({ item, onSelect, onEdit, onToggle, onMove }: Conten
                             <span className={css.stateUnsaved}>{t("categories.unsaved")}</span>
                         ) : null}
                     </span>
+                    {item.error !== null ? (
+                        <p role="alert" className={css.rowError}>
+                            {item.error}
+                        </p>
+                    ) : null}
                 </div>
                 <div className={css.actions}>
                     <div className={css.arrows}>

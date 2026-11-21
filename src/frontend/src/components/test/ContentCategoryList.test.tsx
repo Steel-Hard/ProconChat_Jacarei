@@ -15,6 +15,7 @@ function item(overrides: Partial<ContentCategoryRowView> = {}): ContentCategoryR
         state: "active",
         unsaved: false,
         invalid: false,
+        error: null,
         selected: false,
         pageBreak: null,
         canMoveUp: true,
@@ -74,6 +75,12 @@ describe("ContentCategoryList", () => {
         expect(buttons[1]).toBeEnabled()
         expect(down[0]).toBeEnabled()
         expect(down[1]).toBeDisabled()
+    })
+
+    it("mostra a mensagem do servidor na linha da categoria com erro", () => {
+        renderList([item({ error: "Já existe uma categoria com este nome" })])
+
+        expect(screen.getByRole("alert")).toHaveTextContent("Já existe uma categoria com este nome")
     })
 
     it("mostra o separador de página onde a prop manda", () => {

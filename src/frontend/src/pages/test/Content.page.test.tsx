@@ -237,6 +237,21 @@ describe("ContentPage", () => {
         expect(server.log.filter((entry) => !entry.startsWith("GET"))).toHaveLength(writesBefore)
     })
 
+    it("falha ao criar categoria com nome repetido marca a linha da categoria", async () => {
+        const user = userEvent.setup()
+        const { server } = await loaded()
+        server.failNext("POST", /^\/categories$/, 409)
+
+        await createCategory(user)
+        await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
+
+        const alerts = await screen.findAllByRole("alert")
+        const row = screen.getByText("Categoria nova").closest("li") as HTMLElement
+
+        expect(alerts.length).toBeGreaterThan(0)
+        expect(within(row).getByRole("alert")).toBeInTheDocument()
+    })
+
     it("a busca procura em todas as categorias e esconde as setas", async () => {
         const user = userEvent.setup()
         await loaded()

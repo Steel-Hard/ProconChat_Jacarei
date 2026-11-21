@@ -8,6 +8,7 @@ type ContentCategoryRowView = {
     state: "active" | "inactive" | "hidden"
     unsaved: boolean
     invalid: boolean
+    error: string | null
     selected: boolean
     pageBreak: number | null
     canMoveUp: boolean
