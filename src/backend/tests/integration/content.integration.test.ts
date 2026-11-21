@@ -276,6 +276,52 @@ describe("Content API integration tests (Postgres)", () => {
         )
     })
 
+    it("previews with the same messages the bot sends, including the in-person note and the out-of-scope referral", async () => {
+        const catId = createdCategoryIds[0]!
+        const basePreview = {
+            categoryId: catId,
+            shortTitle: "Prévia",
+            shortDescription: null,
+            question: "Como funciona o prazo?",
+            answer: "O prazo é de 7 dias.",
+            legalBasis: "CDC",
+            requiredDocuments: ["Nota fiscal"],
+            requiresInPerson: false,
+            outOfScope: false,
+            llmAllowed: false,
+        }
+
+        const inPersonRes = await request(app)
+            .post("/api/v1/content/questions/preview")
+            .set("Origin", ORIGIN)
+            .set("Cookie", editor.cookie)
+            .send({ ...basePreview, requiresInPerson: true, inPersonNote: "Traga os boletos." })
+
+        expect(inPersonRes.status).toBe(200)
+        const [official, offer] = inPersonRes.body.data.botMessages.officialMessages
+        expect(official.text).toContain(
+            "Esta situação pode exigir atendimento presencial no PROCON Jacareí para andamento formal.\nSobre o atendimento presencial: Traga os boletos.",
+        )
+        expect(offer.text).toBe("Deseja agendar um atendimento presencial no PROCON Jacareí?")
+        expect(offer.buttons.map((b: { title: string }) => b.title)).toEqual(["Agendar presencial", "Agora não"])
+
+        const outOfScopeRes = await request(app)
+            .post("/api/v1/content/questions/preview")
+            .set("Origin", ORIGIN)
+            .set("Cookie", editor.cookie)
+            .send({ ...basePreview, outOfScope: true })
+
+        expect(outOfScopeRes.status).toBe(200)
+        const [scopeOfficial, referral] = outOfScopeRes.body.data.botMessages.officialMessages
+        expect(scopeOfficial.text).toContain("Resposta: O prazo é de 7 dias.")
+        expect(scopeOfficial.text).not.toContain("O que fazer agora")
+        expect(referral).toEqual({
+            type: "text",
+            text: "Como esta demanda não compete ao PROCON, dirija-se ao órgão indicado na orientação acima portando seus documentos e comprovantes para atendimento especializado.",
+        })
+        expect(outOfScopeRes.body.data.botMessages.aiMessage).toBeNull()
+    })
+
     it("preserves panel-edited seeded questions when seedContent runs again (updated_by IS NOT NULL)", async () => {
         const pool = getPool()
         const client = await pool.connect()
