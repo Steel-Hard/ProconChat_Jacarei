@@ -613,6 +613,7 @@
     }
 
     .drawerFooter .previewAction {
+        order: -1;
         flex-basis: 100%;
         margin-right: 0;
     }
