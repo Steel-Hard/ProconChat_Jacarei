@@ -1007,7 +1007,7 @@ Regras para todas as tarefas do acréscimo: nunca escrever comentários; TDD (o 
 - Testes que mudam: nenhum por mudança de comportamento, porque sem observação tudo continua igual; os arquivos listados só ganham casos. Se algum caso existente de `motorDecisao.service.test.ts` comparar o objeto inteiro de uma pergunta presencial com observação no repositório simulado, ele muda por comportamento e deve ser citado no commit. Ficam intactos: `conversationFlow.fullFlow.test.ts`, os testes de agendamento, `llmExplicacao.service.test.ts`.
 - Gate: rápido e completo backend
 - Modelo: padrao
-- Status: feita. Evidência: testes escritos primeiro e vistos falhar (motor, formatador, IA, cliente da IA); lint, build, typecheck:test e npm test do backend passam (139 arquivos, 1977 testes); nenhum teste existente alterado. Fora de teste: o retorno à resposta oficial acima de 1.024 caracteres no balão com IA não ganhou caso novo (código do serviço de IA inalterado)
+- Status: feita. Evidência: testes escritos primeiro e vistos falhar (motor, formatador, IA, cliente da IA); lint, build, typecheck:test e npm test do backend passam (139 arquivos, 1977 testes); nenhum teste existente alterado. Depois da revisão da Nanami, entraram os casos do retorno à resposta oficial acima de 1.024 caracteres com a observação (llmAnswer.service.test.ts) e da resposta recuperada com a observação (conversationFlow.pending.test.ts); npm test do backend com 140 arquivos e 1997 testes
 
 #### B4 Testes de rota, integração e "prévia igual ao bot"
 - O quê: teste que passa a mesma pergunta pelo motor do bot e pela prévia e exige mensagens idênticas, mais os testes de rota e de integração da prévia com o contrato novo.
@@ -1036,7 +1036,7 @@ Regras para todas as tarefas do acréscimo: nunca escrever comentários; TDD (o 
 - Teste: nenhum.
 - Gate: doc
 - Modelo: economico
-- Status: feita. Evidência: gate doc ok, sem "Pendente" sobre a prévia na regra de Conteúdo, links conferidos; texto escrito conforme as decisões do usuário e RN-B01 a RN-B12; conferência dos textos contra o código fica para depois de B2 e B3 (hoje só B0 e B1 existem no código)
+- Status: feita. Evidência: gate doc ok, sem "Pendente" sobre a prévia na regra de Conteúdo, links conferidos; texto escrito conforme as decisões do usuário e RN-B01 a RN-B12; textos conferidos contra o código de B2 (f922131) e B3 (68d8fb4): frase de encaminhamento, balão oficial do fora do escopo sem "O que fazer agora:", linha "Sobre o atendimento presencial:" e observação fora do prompt da IA; corrigida a descrição do prompt em llm/contrato.md
 
 #### B6 Remover os campos antigos da prévia
 - O quê: tirar da resposta da prévia e do painel os campos antigos `answerBubble`, `nextStepBubble`, `categoryList` e `fixedDisclaimer`, seus tipos e o que só existia para preenchê-los, depois de a tela passar a usar só `botMessages`; `answerLengthWarning` e `answerLengthWarningMessage` ficam.
