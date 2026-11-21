@@ -207,4 +207,14 @@ describe("ContentQuestionForm", () => {
 
         expect(onPreview).toHaveBeenCalledTimes(1)
     })
+
+    it("exibe a dica dos marcadores {endereco} e {horarios} abaixo do campo de resposta", () => {
+        renderForm()
+
+        expect(
+            screen.getByText(
+                "Você pode usar {endereco} e {horarios} para inserir automaticamente o endereço e os horários atuais da unidade."
+            )
+        ).toBeInTheDocument()
+    })
 })

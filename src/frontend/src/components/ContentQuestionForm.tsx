@@ -126,6 +126,7 @@ function ContentQuestionForm({
                     error={errorOf("answer")}
                     onChange={(value) => patch({ answer: value })}
                 />
+                <p className={css.hint}>{t("questionForm.answerPlaceholdersHint")}</p>
                 {fields.answer.length >= CONTENT_LIMITS.answerWarningFrom ? (
                     <p className={css.longAnswerAlert}>{t("questionForm.answerWarning")}</p>
                 ) : null}

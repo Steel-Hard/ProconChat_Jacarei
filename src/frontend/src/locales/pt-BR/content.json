@@ -109,6 +109,7 @@
         "shortDescription": "Descrição curta",
         "question": "Texto da pergunta",
         "answer": "Resposta oficial",
+        "answerPlaceholdersHint": "Você pode usar {endereco} e {horarios} para inserir automaticamente o endereço e os horários atuais da unidade.",
         "answerWarning": "Respostas longas ficam difíceis de ler no celular",
         "legalBasis": "Base legal",
         "legalBasisPlaceholder": "Ex.: CDC, art. 49",
