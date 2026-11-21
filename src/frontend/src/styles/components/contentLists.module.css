@@ -1,0 +1,341 @@
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    container-type: inline-size;
+}
+
+.item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.row {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 6px 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--divider);
+    border-radius: 10px;
+    background: var(--bg-subtle);
+}
+
+.rowSelectable {
+    cursor: pointer;
+}
+
+.rowSelectable:hover {
+    border-color: var(--border-accent);
+}
+
+.rowSelected {
+    border-color: var(--color-primary);
+    background: var(--bg-accent-soft);
+    box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+.rowInactive .shortTitle,
+.rowInactive .fullName,
+.rowInactive .questionText {
+    color: var(--text-soft);
+}
+
+.rowInactive {
+    background: var(--bg-disabled);
+}
+
+.rowUnsaved {
+    border-style: dashed;
+    border-color: var(--warn-border);
+}
+
+.rowInvalid {
+    border-color: var(--error-border);
+    background: var(--error-soft-bg);
+}
+
+.position {
+    padding-top: 1px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--sidebar-label);
+}
+
+.body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.selectButton {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.selectButton:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 3px;
+    border-radius: 4px;
+}
+
+.shortTitle {
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--text-body);
+    overflow-wrap: anywhere;
+}
+
+.fullName {
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--text-strong);
+    overflow-wrap: anywhere;
+    text-wrap: pretty;
+}
+
+.shortDescription {
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--text-muted);
+    overflow-wrap: anywhere;
+}
+
+.questionText {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-strong);
+    overflow-wrap: anywhere;
+    text-wrap: pretty;
+}
+
+.counts {
+    font-size: 12.5px;
+    color: var(--text-muted);
+}
+
+.seals {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.stateActive,
+.stateInactive,
+.stateHidden,
+.stateUnsaved {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 600;
+    line-height: 1.5;
+    white-space: nowrap;
+}
+
+.stateActive {
+    background: var(--account-active-bg);
+    color: var(--success-text);
+}
+
+.stateInactive {
+    background: var(--account-inactive-bg);
+    color: var(--account-inactive-text);
+}
+
+.stateHidden {
+    background: var(--seal-warning-bg);
+    color: var(--seal-warning-text);
+}
+
+.stateUnsaved {
+    background: var(--seal-info-bg);
+    color: var(--seal-info-text);
+}
+
+.legalBasis {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    overflow-wrap: anywhere;
+}
+
+.legalBasis strong {
+    color: var(--text-strong);
+    font-weight: 600;
+}
+
+.documentsCount {
+    font-size: 12.5px;
+    color: var(--text-muted);
+}
+
+.author {
+    font-size: 12px;
+    color: var(--text-soft);
+}
+
+.searchCategory {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: 5px;
+    padding: 1px 8px;
+    border: 1px solid var(--border-accent);
+    border-radius: 6px;
+    background: var(--bg-surface);
+    color: var(--color-primary-dark);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.highlight {
+    border-radius: 3px;
+    background: var(--highlight-bg);
+    color: inherit;
+}
+
+.rowError {
+    margin: 0;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--error-text);
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 4px;
+}
+
+.arrows {
+    display: flex;
+    gap: 2px;
+}
+
+.actionButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 9px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-surface);
+    color: var(--text-strong);
+    font-size: 12.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.actionButton:hover:not(:disabled) {
+    filter: brightness(0.94);
+}
+
+.actionButton:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 1px;
+}
+
+.actionButton:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.arrowButton {
+    padding: 0;
+    width: 32px;
+    font-size: 14px;
+}
+
+.pageBreak {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 2px 0;
+    color: var(--seal-info-text);
+    font-size: 12px;
+    font-weight: 600;
+    list-style: none;
+}
+
+.pageBreak::before,
+.pageBreak::after {
+    content: "";
+    flex: 1 1 0;
+    height: 0;
+    border-top: 1px dashed var(--seal-info-text);
+    opacity: 0.45;
+}
+
+.pageBreakLabel {
+    flex-shrink: 0;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: var(--seal-info-bg);
+    white-space: nowrap;
+}
+
+.empty {
+    padding: 36px 16px;
+    border: 1px dashed var(--border-input);
+    border-radius: 10px;
+    text-align: center;
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--text-muted);
+}
+
+.emptyTitle {
+    display: block;
+    margin-bottom: 4px;
+    font: 700 15px var(--font-heading);
+    color: var(--text-body);
+}
+
+.emptyAction {
+    margin-top: 10px;
+}
+
+@container (max-width: 460px) {
+    .row {
+        grid-template-columns: 24px minmax(0, 1fr);
+    }
+
+    .actions {
+        grid-column: 2;
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 640px) {
+    .actionButton {
+        min-width: 40px;
+        height: 40px;
+    }
+
+    .arrowButton {
+        width: 40px;
+    }
+}
