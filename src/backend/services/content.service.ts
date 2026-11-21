@@ -3,6 +3,8 @@ import ConflictError from "../errors/ConflictError"
 import NotFoundError from "../errors/NotFoundError"
 import contentRepository from "../repositories/content.repository"
 import { IContentRepository } from "../repositories/content.repository.interface"
+import { scheduleRepository } from "../repositories/schedule.repository"
+import { IScheduleRepository } from "../repositories/schedule.repository.interface"
 import { QuestionUpdateBody } from "../schemas/content.schema"
 import {
     buildQuestionPreview,
@@ -10,6 +12,7 @@ import {
     enrichCategoryList,
     enrichQuestionItem,
     enrichQuestionList,
+    hasAnswerPlaceholders,
 } from "./contentRules"
 import {
     CategoryCreateInput,
@@ -50,13 +53,19 @@ export interface IContentService {
 
 interface ContentServiceDependencies {
     repository?: IContentRepository
+    scheduleRepo?: Pick<IScheduleRepository, "getConfig">
 }
 
 export class ContentService implements IContentService {
     private repository: IContentRepository
+    private scheduleRepo: Pick<IScheduleRepository, "getConfig">
 
-    constructor({ repository = contentRepository }: ContentServiceDependencies = {}) {
+    constructor({
+        repository = contentRepository,
+        scheduleRepo = scheduleRepository,
+    }: ContentServiceDependencies = {}) {
         this.repository = repository
+        this.scheduleRepo = scheduleRepo
     }
 
     public async listCategories(): Promise<CategoryItem[]> {
@@ -278,8 +287,11 @@ export class ContentService implements IContentService {
             throw new NotFoundError("Categoria não encontrada")
         }
 
-        const existingQuestions = await this.repository.listQuestionsByCategory(input.categoryId)
-        return buildQuestionPreview(category, existingQuestions, input)
+        const [existingQuestions, schedule] = await Promise.all([
+            this.repository.listQuestionsByCategory(input.categoryId),
+            hasAnswerPlaceholders(input.answer) ? this.scheduleRepo.getConfig() : Promise.resolve(null),
+        ])
+        return buildQuestionPreview(category, existingQuestions, input, schedule)
     }
 }
 

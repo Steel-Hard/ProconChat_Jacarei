@@ -1,8 +1,18 @@
 import { IMotorDecisaoRepository } from "../repositories/motorDecisao.repository.interface"
+import { scheduleRepository } from "../repositories/schedule.repository"
 import { RespostaFinalOutput, Categoria, Pergunta } from "../types/motorDecisao.types"
+import {
+    hasAnswerPlaceholders,
+    resolveAnswerPlaceholders,
+    SchedulePlaceholdersSource,
+} from "./contentRules"
 
 export class MotorDecisaoService {
-    constructor(private readonly repository: IMotorDecisaoRepository) {}
+    constructor(
+        private readonly repository: IMotorDecisaoRepository,
+        private readonly getScheduleConfig: () => Promise<SchedulePlaceholdersSource | null> = () =>
+            scheduleRepository.getConfig(),
+    ) {}
 
     async iniciarSessao(): Promise<Categoria[]> {
         return this.repository.getCategoriasAtivas()
@@ -23,7 +33,12 @@ export class MotorDecisaoService {
             throw new Error("Categoria não encontrada.")
         }
 
-        const documentos = await this.repository.getDocumentosPorPergunta(perguntaId)
+        const [documentos, schedule] = await Promise.all([
+            this.repository.getDocumentosPorPergunta(perguntaId),
+            hasAnswerPlaceholders(pergunta.answer)
+                ? this.getScheduleConfig()
+                : Promise.resolve(null),
+        ])
 
         const observacaoPresencial = pergunta.requires_in_person ? pergunta.in_person_note?.trim() : undefined
 
@@ -31,7 +46,7 @@ export class MotorDecisaoService {
             categoria: categoria.title,
             pergunta: pergunta.question,
             base_legal: pergunta.legal_basis || "",
-            resposta: pergunta.answer,
+            resposta: resolveAnswerPlaceholders(pergunta.answer, schedule),
             documentos_necessarios: documentos.map((d) => d.description),
             requer_presencial: pergunta.requires_in_person,
             fora_de_escopo: pergunta.out_of_scope,

@@ -13,6 +13,10 @@ import {
     buildQuestionPreview,
     enrichCategoryList,
     enrichQuestionList,
+    formatScheduleHoursForAnswer,
+    formatUnitAddressForAnswer,
+    resolveAnswerPlaceholders,
+    SchedulePlaceholdersSource,
 } from "./contentRules"
 import type { Pergunta } from "../types/motorDecisao.types"
 import { CategoryRecord, QuestionRecord } from "../types/content.types"
@@ -567,6 +571,73 @@ describe("contentRules", () => {
             expect(lista.message.rows.map((r) => r.title)).toEqual(["Terceira", "Defeito", "Primeira"])
             expect(lista.currentRowIndex).toBe(1)
             expect(lista.message.rows[1]?.description).toBe("Prazo de 30 dias")
+        })
+
+        describe("marcadores {endereco} e {horarios} (#78)", () => {
+            const sampleSchedule: SchedulePlaceholdersSource = {
+                unitAddress: "Av. Nove de Julho, 215 - Centro, Jacareí - SP",
+                unitAddressComplement: "Sala 2",
+                ranges: [1, 2, 3, 4, 5].flatMap((weekday) => [
+                    { weekday, slotIndex: 1, startTime: "08:30", endTime: "11:30" },
+                    { weekday, slotIndex: 2, startTime: "13:30", endTime: "16:30" },
+                ]),
+            }
+
+            it("formata o endereço com e sem complemento", () => {
+                expect(formatUnitAddressForAnswer(sampleSchedule)).toBe(
+                    "Av. Nove de Julho, 215 - Centro, Jacareí - SP (Sala 2)",
+                )
+                expect(
+                    formatUnitAddressForAnswer({
+                        unitAddress: "  Rua Barão de Jacareí, 100  ",
+                        unitAddressComplement: "   ",
+                    }),
+                ).toBe("Rua Barão de Jacareí, 100")
+            })
+
+            it("agrupa dias consecutivos com mesma grade e separa dias com horários distintos", () => {
+                expect(formatScheduleHoursForAnswer(sampleSchedule.ranges)).toBe(
+                    "segunda a sexta, das 08:30 às 11:30 e das 13:30 às 16:30",
+                )
+
+                expect(
+                    formatScheduleHoursForAnswer([
+                        { weekday: 1, slotIndex: 1, startTime: "08:00", endTime: "12:00" },
+                        { weekday: 2, slotIndex: 1, startTime: "08:00", endTime: "12:00" },
+                        { weekday: 4, slotIndex: 1, startTime: "09:00", endTime: "11:00" },
+                        { weekday: 4, slotIndex: 2, startTime: "13:00", endTime: "15:00" },
+                        { weekday: 4, slotIndex: 3, startTime: "15:30", endTime: "17:00" },
+                        { weekday: 6, slotIndex: 1, startTime: "08:00", endTime: "12:00" },
+                    ]),
+                ).toBe(
+                    "segunda e terça, das 08:00 às 12:00; quinta-feira, das 09:00 às 11:00, das 13:00 às 15:00 e das 15:30 às 17:00; sábado, das 08:00 às 12:00",
+                )
+
+                expect(formatScheduleHoursForAnswer([])).toBe(
+                    "sem horários de atendimento configurados",
+                )
+            })
+
+            it("substitui {endereco} e {horarios} na prévia da resposta", () => {
+                const preview = buildQuestionPreview(
+                    category,
+                    [],
+                    {
+                        ...baseInput,
+                        answer: "Atendemos de {horarios}, em {endereco}.",
+                    },
+                    sampleSchedule,
+                )
+
+                const expectedAnswer =
+                    "Atendemos de segunda a sexta, das 08:30 às 11:30 e das 13:30 às 16:30, em Av. Nove de Julho, 215 - Centro, Jacareí - SP (Sala 2)."
+                expect(preview.botMessages.officialMessages[0]?.text).toContain(
+                    `Resposta: ${expectedAnswer}`,
+                )
+                expect(
+                    resolveAnswerPlaceholders("Texto sem marcadores.", sampleSchedule),
+                ).toBe("Texto sem marcadores.")
+            })
         })
     })
 })
