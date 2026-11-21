@@ -331,7 +331,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: integração. Falha primeiro o teste de `firstAllowedPath` que espera `/conteudo` para quem só tem `content.manage`.
 - Gate: completo
 - Modelo: padrao
-- Status: feita (gate completo: lint, typecheck e test:run passam, 231 arquivos e 1835 testes; testes antigos de 'tela não pronta' atualizados: firstAllowedPath, RequireAccess, routes, readyPermissionKeys, sidebarNavGroups, useLogin; testes escritos primeiro e vistos falhar; commit 7da44c9)
+- Status: feita (gate completo: lint, typecheck e test:run passam, 231 arquivos e 1835 testes; testes antigos de 'tela não pronta' atualizados: firstAllowedPath, RequireAccess, routes, readyPermissionKeys, sidebarNavGroups, useLogin; testes escritos primeiro e vistos falhar; commit d855cf4)
 
 ### T3 [P] Páginas do WhatsApp e estado oculto
 - O quê: função pura que, para uma lista ordenada e um critério de "visível", devolve para cada item a página do WhatsApp e o separador "Página N no WhatsApp" no primeiro item de cada página a partir da segunda, mais a função de "oculta no chatbot" e as contagens da categoria.
@@ -345,7 +345,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário. Falha primeiro o caso de 19 itens ativos.
 - Gate: rápido
 - Modelo: economico
-- Status: feita (gate rápido: 12 testes passam; teste de 19 itens escrito primeiro; commit 5f42df4)
+- Status: feita (gate rápido: 12 testes passam; teste de 19 itens escrito primeiro; commit e504faa)
 
 ### T4 [P] Validação de categoria e pergunta
 - O quê: funções puras que validam os campos da categoria e da pergunta com as regras da API, incluindo a unicidade do nome no rascunho, as regras entre campos e o aviso (não bloqueante) de documento repetido.
@@ -359,7 +359,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário. Falha primeiro "nome 'contrátos ' repetido de 'Contratos' é recusado".
 - Gate: rápido
 - Modelo: padrao
-- Status: feita (gate rápido: 37 testes passam; teste de nome repetido escrito primeiro; commit 57e02ce)
+- Status: feita (gate rápido: 37 testes passam; teste de nome repetido escrito primeiro; commit cc36403)
 
 ### T5 [P] Operações do rascunho
 - O quê: funções puras que derivam o rascunho do retrato do servidor e aplicam criar, editar, ativar/desativar e mover para cima ou para baixo em categorias e perguntas, com chaves provisórias para itens novos, a regra de IA ao marcar e desmarcar "Fora do escopo", a aplicação do mapa chave provisória → id real e a reaplicação sobre um retrato novo.
@@ -373,7 +373,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário. Falha primeiro "categoria nova entra no fim, ativa, com chave provisória".
 - Gate: rápido
 - Modelo: padrao
-- Status: feita (gate rápido: 17 testes passam; commit d3328bc; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
+- Status: feita (gate rápido: 17 testes passam; commit 3423222; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
 
 ### T6 [P] Lista de alterações não salvas e última alteração
 - O quê: funções puras que comparam rascunho e retrato e devolvem a lista de alterações para a barra comum, conforme RN-05, e que escolhem a última alteração do topo conforme RN-14.
@@ -387,7 +387,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário. Falha primeiro "mover para cima e para baixo não conta alteração".
 - Gate: rápido
 - Modelo: padrao
-- Status: feita (gate rápido: 14 testes passam; commit 4e19ee0; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
+- Status: feita (gate rápido: 14 testes passam; commit 80ac34a; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
 
 ### T7 [P] Plano de Salvar
 - O quê: função pura que, a partir do retrato e do rascunho, devolve a lista ordenada de passos do Salvar descrita no Desenho.
@@ -401,7 +401,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário. Falha primeiro "pergunta nova em categoria nova vem depois da criação da categoria e aponta a chave provisória".
 - Gate: rápido
 - Modelo: padrao
-- Status: feita (gate rápido: 8 testes passam; tipo ContentSavePlanStep passou a usar chaves em vez de ids, resolvidas pelo executor; commit 13e5271; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
+- Status: feita (gate rápido: 8 testes passam; tipo ContentSavePlanStep passou a usar chaves em vez de ids, resolvidas pelo executor; commit a56df78; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
 
 ### T8 [P] Busca no rascunho
 - O quê: função pura que busca o termo no texto da pergunta, na resposta e no título curto de todas as perguntas do rascunho, sem acento nem maiúscula, devolvendo cada resultado com a sua categoria, na ordem das categorias e das perguntas.
@@ -415,7 +415,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário. Falha primeiro "devolucao acha Devolução".
 - Gate: rápido
 - Modelo: economico
-- Status: feita (gate rápido: 6 testes passam; commit ab180bb; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
+- Status: feita (gate rápido: 6 testes passam; commit 39e0f64; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
 
 ### T9 [P] Componente da lista de categorias
 - O quê: lista de categorias com posição, título curto em negrito, nome completo, contagens, estado, separador de página, setas e ações, recebendo tudo pronto por props.
@@ -429,7 +429,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário de componente. Falha primeiro "a primeira categoria não tem ↑".
 - Gate: rápido
 - Modelo: economico
-- Status: feita (gate rápido: 8 testes passam; commit cda3775; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar)); ajuste aprovado pelo usuário: selos "Não salva" e "Alteração não salva" (RN-29), commit 1828d6e
+- Status: feita (gate rápido: 8 testes passam; commit 43350cf; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar)); ajuste aprovado pelo usuário: selos "Não salva" e "Alteração não salva" (RN-29), commit d9969a5
 
 ### T10 [P] Componente da lista de perguntas
 - O quê: lista de perguntas com os dados de RN-13, selos, separador, setas que somem na busca, categoria em cada resultado de busca, linha de última alteração ("Carga inicial do sistema" sem autor, nada em item não salvo) e estado vazio.
@@ -443,7 +443,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário de componente. Falha primeiro "em modo busca não há setas".
 - Gate: rápido
 - Modelo: economico
-- Status: feita (gate rápido: 11 testes passam; commit 90d49df; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar)); ajuste aprovado pelo usuário: selos "Não salva" e "Alteração não salva" (RN-29), commit 1828d6e
+- Status: feita (gate rápido: 11 testes passam; commit 3bf8ff7; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar)); ajuste aprovado pelo usuário: selos "Não salva" e "Alteração não salva" (RN-29), commit d9969a5
 
 ### T11 [P] Formulário da categoria
 - O quê: formulário de categoria (nova e edição) com título curto com contador, nome completo e descrição, mostrando os erros recebidos por props e devolvendo os valores ao confirmar.
@@ -457,7 +457,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário de componente. Falha primeiro "contador mostra 24/24 com 24 caracteres".
 - Gate: rápido
 - Modelo: economico
-- Status: feita (gate rápido: 6 testes passam; inclui ContentFormDialog e ContentTextField; commit 527533a; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar)); ajuste aprovado pelo usuário: "Cancelar" pede confirmação de descarte como o Esc (CA-70), commit 7bdca19
+- Status: feita (gate rápido: 6 testes passam; inclui ContentFormDialog e ContentTextField; commit 53d8848; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar)); ajuste aprovado pelo usuário: "Cancelar" pede confirmação de descarte como o Esc (CA-70), commit 92d2230
 
 ### T12 [P] Campo de documentos úteis
 - O quê: campo de lista para "Documentos úteis para esta dúvida", que permite adicionar, editar, remover e reordenar itens, com limite de 30 itens de até 255 caracteres e aviso "Este documento já está na lista." para repetidos, sem bloquear.
@@ -471,7 +471,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário de componente. Falha primeiro "documento repetido entra na lista com o aviso".
 - Gate: rápido
 - Modelo: economico
-- Status: feita (gate rápido: 8 testes passam; commit 1fa9962; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar)); ajuste aprovado pelo usuário: aviso "Informe o documento." anunciado e com foco no campo ao clicar em Adicionar com o campo vazio (CA-71), commit ab9253a
+- Status: feita (gate rápido: 8 testes passam; commit 4fa8504; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar)); ajuste aprovado pelo usuário: aviso "Informe o documento." anunciado e com foco no campo ao clicar em Adicionar com o campo vazio (CA-71), commit da97ece
 
 ### T13 [P] Formulário da pergunta
 - O quê: formulário de pergunta (nova e edição) com contadores (inclusive o do texto da pergunta, sempre visível), alerta de 1.000 caracteres, exclusividade presencial/fora do escopo, bloqueio da IA em fora do escopo e religação ao desmarcar, observação presencial, documentos, "Pergunta ativa no chatbot" valendo só ao confirmar, orientação de edição e botão "Ver como o cidadão recebe".
@@ -485,7 +485,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário de componente. Falha primeiro "marcar Fora do escopo desliga e desabilita a IA".
 - Gate: rápido
 - Modelo: padrao
-- Status: feita (gate rápido: 12 testes passam; commit dbb3845); ajustes aprovados pelo usuário: pergunta nova criada inativa quando "Pergunta ativa no chatbot" é desmarcado (RN-15, CA-33), commit 31c9a5a; "Cancelar" pede confirmação de descarte como o Esc (CA-70), commit 7bdca19, com o teste do formulário de pergunta ajustado ao novo comportamento no commit 7301175
+- Status: feita (gate rápido: 12 testes passam; commit c581892); ajustes aprovados pelo usuário: pergunta nova criada inativa quando "Pergunta ativa no chatbot" é desmarcado (RN-15, CA-33), commit 4f189e0; "Cancelar" pede confirmação de descarte como o Esc (CA-70), commit 92d2230, com o teste do formulário de pergunta ajustado ao novo comportamento no commit 4c7a4f5
 
 ### T14 [P] Componente da prévia estilo WhatsApp
 - O quê: componente que desenha a lista (1), o balão oficial, o balão do passo seguinte com botões, o espaço do balão com IA e a alternativa "Se a IA estiver indisponível", a partir do modelo de balões de T1, com estados de carregando, erro, "corrija os campos" e categoria não salva. Os textos dos balões são os que vêm no modelo (originados da API), nunca uma cópia no componente.
@@ -494,13 +494,13 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Depende de: T1, T2, M1
 - Reaproveita: `WhatsAppMessageBubble` e o estilo da prévia de `DocumentsPreview` como referência; estilos de M1.
 - Atende: RN-25, RN-26, RN-27, RN-28, CA-53, CA-54, CA-56, CA-57, CA-58, CA-59, CA-60
-- Observação: as linhas da lista da prévia usam uma chave própria de renderização, única por linha mesmo quando a API repete o id da linha (o painel não usa os ids das linhas como identidade). Ajuste técnico no commit f572ad7.
+- Observação: as linhas da lista da prévia usam uma chave própria de renderização, única por linha mesmo quando a API repete o id da linha (o painel não usa os ids das linhas como identidade). Ajuste técnico no commit d6a51b2.
 - Passos: (1) testes: pergunta em negrito, indicação de próxima página só com a flag, balão oficial mostra o texto do modelo sem alteração, rótulo de IA no rodapé, alternativa "Se a IA estiver indisponível" com os balões oficial e de passo seguinte, categoria não salva mostra só a lista e os dois avisos; (2) lista; (3) balões e alternativa; (4) gate; (5) commit `Feat :sparkles: [#124] Adiciona a prévia estilo WhatsApp do Conteúdo`.
 - Pronto quando: os testes passam; gate rápido passa.
 - Teste: unitário de componente. Falha primeiro "com IA ligada aparece a alternativa Se a IA estiver indisponível".
 - Gate: rápido
 - Modelo: padrao
-- Status: feita (gate rápido: 11 testes passam; reajustada ao contrato botMessages no commit d209f1c; commit original 6b60a5f; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
+- Status: feita (gate rápido: 11 testes passam; reajustada ao contrato botMessages no commit f5c74a6; commit original 548bbf1; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
 
 ### T15 [P] Montagem da prévia
 - O quê: funções puras que montam a lista (1) a partir do rascunho da categoria com o formulário aplicado e a regra de páginas, e convertem a resposta da prévia da API no modelo de balões de T1: balão oficial com o texto formatado da API, passo seguinte com texto e botões da API e o botão de aceitar a oferta "Agendar presencial", alternativa "Se a IA estiver indisponível" quando a IA está ligada, e o caso de categoria não salva sem chamada à API. Balão com IA e fora do escopo ficam como a API devolve até T20.
@@ -514,7 +514,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário. Falha primeiro "o balão oficial é exatamente o texto formatado devolvido pela API".
 - Gate: rápido
 - Modelo: padrao
-- Status: feita (gate rápido: 20 testes passam; usa direto o contrato botMessages da B1, sem ler answerBubble/nextStepBubble; commit 0dac01d; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
+- Status: feita (gate rápido: 20 testes passam; usa direto o contrato botMessages da B1, sem ler answerBubble/nextStepBubble; commit 2feffca; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
 
 ### T16 [P] Executor do Salvar
 - O quê: hook que executa o plano de T7 em sequência, guarda o mapa de ids criados, para na primeira falha, aplica o mapa ao rascunho, recarrega o retrato do servidor uma única vez no fim (sucesso ou falha), sem descartar o rascunho em caso de falha, e devolve o resultado (sucesso; falha na primeira gravação; falha parcial com quantas foram salvas, quantas faltam, o item e a mensagem; sem permissão), com trava contra clique duplo.
@@ -528,7 +528,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: integração do hook. Falha primeiro "depois de falha parcial, o segundo Salvar não recria a categoria já criada".
 - Gate: rápido
 - Modelo: padrao
-- Status: feita (gate rápido: 12 testes passam entre executor e hook; commit e829597; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
+- Status: feita (gate rápido: 12 testes passam entre executor e hook; commit 62dcd59; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
 
 ### T17 Hook da página de Conteúdo
 - O quê: hook que carrega o retrato completo, guarda o rascunho, a seleção, a busca e o formulário aberto (com cópia própria até confirmar), calcula contagens, estados, separadores, alterações, última alteração do topo e validação, pede a prévia com pausa na digitação (sem pedir em categoria não salva) e chama o Salvar, escolhendo a mensagem de RN-07.
@@ -542,7 +542,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: integração do hook. Falha primeiro "trocar de categoria mantém as alterações pendentes da anterior".
 - Gate: rápido
 - Modelo: padrao
-- Status: feita (gate rápido: 10 testes passam; commit ef056fe; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
+- Status: feita (gate rápido: 10 testes passam; commit e7aa411; TDD estrito não comprovado: pelo registro da sessão, o teste e o código dessa tarefa foram escritos na mesma etapa e não há registro de o teste ter sido visto falhar por falta de código (as falhas registradas foram erros do próprio teste, corrigidos antes do código passar))
 
 ### T18 Montagem da página e testes da tela
 - O quê: página completa com cabeçalho, última alteração do topo, barra de alterações não salvas, bloco fixo, busca, coluna de categorias, área de perguntas, formulários e prévia, nos tamanhos de computador e de celular, e os testes de integração da tela.
@@ -556,7 +556,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: integração. Falha primeiro "criar categoria, criar pergunta nela e salvar grava as duas na ordem".
 - Gate: completo
 - Modelo: padrao
-- Status: feita (gate completo: lint, typecheck, test:run e prettier passam, 253 arquivos e 2018 testes; 12 testes de tela; commit 9417204)
+- Status: feita (gate completo: lint, typecheck, test:run e prettier passam, 253 arquivos e 2018 testes; 12 testes de tela; commit ae7a1af)
 
 ### T20 Ajuste da prévia conforme o bot real
 - O quê: completar o balão com IA, os textos do passo seguinte, a navegação da lista e o caso fora do escopo conforme as respostas de D-U-04, D-U-05 e D-U-06, sem inventar texto.
@@ -570,7 +570,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário e de componente. Falha primeiro o teste do ponto P5 conforme a decisão.
 - Gate: completo
 - Modelo: padrao
-- Status: feita (o painel consome só `botMessages` e envia `listRows` desde T14/T15, commits d209f1c e 0dac01d; conferido contra a API real, subida isolada com banco e portas próprios, já derrubada: lista paginada (página 2 de 3 com 'Voltar opções' e 'Ver mais opções' vindos da API), fora do escopo em dois balões de texto, 'Agendar presencial' e a linha 'Sobre o atendimento presencial: <observação>', aviso de 1.024 caracteres vindo de `aiLengthWarning`, tudo mostrado como a API devolve; a tela abriu em /conteudo e a prévia renderizou sem erro no navegador; gate completo do frontend: lint, typecheck (tsc -b), prettier e test:run passam, 255 arquivos e 2049 testes; nenhum ajuste de código foi necessário nesta conferência)
+- Status: feita (o painel consome só `botMessages` e envia `listRows` desde T14/T15, commits f5c74a6 e 2feffca; conferido contra a API real, subida isolada com banco e portas próprios, já derrubada: lista paginada (página 2 de 3 com 'Voltar opções' e 'Ver mais opções' vindos da API), fora do escopo em dois balões de texto, 'Agendar presencial' e a linha 'Sobre o atendimento presencial: <observação>', aviso de 1.024 caracteres vindo de `aiLengthWarning`, tudo mostrado como a API devolve; a tela abriu em /conteudo e a prévia renderizou sem erro no navegador; gate completo do frontend: lint, typecheck (tsc -b), prettier e test:run passam, 255 arquivos e 2049 testes; nenhum ajuste de código foi necessário nesta conferência)
 
 ### T19 [P] Verificação final no Docker
 - O quê: rodar a suíte completa e o build do painel, também pelo compose, e conferir a tela aberta no container.
@@ -599,7 +599,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: nenhum.
 - Gate: `cd src/frontend && npm run format:check`
 - Modelo: padrao
-- Status: feita. Evidência: estilos escritos e ajustados na revisão; prettier passa; commits 2a37044, a7203a3, 42121b3 e 2f5409b
+- Status: feita. Evidência: estilos escritos e ajustados na revisão; prettier passa; commits 337a47c, 1f10efa, 894d1a5 e c18b63e
 
 ### M2 [P] Revisão visual
 - O quê: conferir a tela pronta em computador e celular contra M1 e devolver ajustes ao Itadori.
@@ -627,7 +627,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: nenhum.
 - Gate: doc
 - Modelo: economico
-- Status: feita. Evidência: gate doc ok, limites conferidos com a tabela de divergências, links do 06-conteudo.md abrem; commits 5ec069f e b76ec76; revisada pela Nanami
+- Status: feita. Evidência: gate doc ok, limites conferidos com a tabela de divergências, links do 06-conteudo.md abrem; commits 73092e5 e 1b4e8ba; revisada pela Nanami
 
 ### K2 [P] Regra geral de Salvar e Descartar
 - O quê: incluir Conteúdo entre as telas de configuração em "Salvar, descartar e registrar quem alterou" e tirá-lo da frase das telas de operação, conforme decisão confirmada pelo usuário.
@@ -641,7 +641,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: nenhum.
 - Gate: doc
 - Modelo: economico
-- Status: feita. Evidência: gate doc ok, §3 lista Conteúdo entre as telas de configuração e não entre as de operação; commits e9e2d1c e 6de3f02; revisada pela Nanami
+- Status: feita. Evidência: gate doc ok, §3 lista Conteúdo entre as telas de configuração e não entre as de operação; commits 6a251c8 e cbc2fa5; revisada pela Nanami
 
 ### K3 [P] Estado da tela e índices
 - O quê: atualizar "Estado da tela" da regra de Conteúdo (tela pronta no painel, #124), o índice das regras e a linha do painel no README.
@@ -984,7 +984,7 @@ Regras para todas as tarefas do acréscimo: nunca escrever comentários; TDD (o 
 - Teste: nenhum (só tipos; a checagem de tipos é o gate).
 - Gate: completo backend
 - Modelo: economico
-- Status: feita. Evidência: lint, build, typecheck:test e npm test do backend passam (139 arquivos, 1946 testes, nenhum alterado); commit 4f84d55
+- Status: feita. Evidência: lint, build, typecheck:test e npm test do backend passam (139 arquivos, 1946 testes, nenhum alterado); commit e3d1cf1
 
 #### B1 [P] Prévia usa o formatador do bot
 - O quê: reescrever a montagem da prévia para chamar as funções do formatador do bot (resposta oficial, balão com IA, lista de perguntas), devolver `botMessages`, aceitar `listRows`, preencher os campos antigos a partir das mensagens do bot e apagar os textos próprios da prévia.
@@ -999,7 +999,7 @@ Regras para todas as tarefas do acréscimo: nunca escrever comentários; TDD (o 
 - Testes que mudam (comportamento): em `contentRules.test.ts`, os casos que esperam "Para este caso é necessário…", "Deseja agendar um horário?", "A sua dúvida foi resolvida?", "Agendar atendimento", a frase própria de fora do escopo e `AI_SAMPLE_LABEL`. Ficam intactos: `content.controller.test.ts`, `content.routes.test.ts`, os demais casos de `content.service.test.ts` (o tipo "resolution" continua) e os casos de páginas e listas de `contentRules.test.ts`. `content.schema.test.ts` só ganha casos.
 - Gate: rápido e completo backend
 - Modelo: padrao
-- Status: feita. Evidência: testes escritos primeiro e vistos falhar (botMessages ausente, listRows ignorado); lint, build, typecheck:test e npm test do backend passam (139 arquivos, 1963 testes); commit 70dee01. Testes alterados por comportamento em contentRules.test.ts: texto do passo seguinte, botão "Agendar presencial", rodapé da IA e sem frase própria do fora do escopo. Observação: no fora do escopo a prévia ainda sai com um balão só (como o bot hoje) até a B2
+- Status: feita. Evidência: testes escritos primeiro e vistos falhar (botMessages ausente, listRows ignorado); lint, build, typecheck:test e npm test do backend passam (139 arquivos, 1963 testes); commit 105f303. Testes alterados por comportamento em contentRules.test.ts: texto do passo seguinte, botão "Agendar presencial", rodapé da IA e sem frase própria do fora do escopo. Observação: no fora do escopo a prévia ainda sai com um balão só (como o bot hoje) até a B2
 
 #### B2 [P] Bot: fora do escopo com a resposta da equipe e balão separado
 - O quê: o motor deixa de trocar a resposta do fora do escopo e passa a trazer os documentos; o formatador passa a devolver, no fora do escopo, o balão oficial e o balão de encaminhamento; o fluxo da conversa usa essa saída e continua encerrando como fora do escopo.
@@ -1014,7 +1014,7 @@ Regras para todas as tarefas do acréscimo: nunca escrever comentários; TDD (o 
 - Testes que mudam (comportamento): `motorDecisao.service.test.ts` (o caso que espera a frase trocada e os documentos vazios); `conversationFlow.service.test.ts` (o caso "pergunta fora do escopo encerra com OUT_OF_SCOPE" passa a conferir dois balões; o encerramento continua igual); `messageFormatter.service.test.ts` (casos de fora do escopo em `formatarRespostaFinal`/"O que fazer agora", que deixa de aparecer no fora do escopo por D-PO-B02). Ficam intactos: `conversationFlow.llm.test.ts` (o encerramento `OUT_OF_SCOPE` não muda), `llmExplicacao.service.test.ts`, `conversationFlow.fullFlow.test.ts`, `conversationFlow.pending.test.ts`, `conversationFlow.delivery.test.ts`, os testes de agendamento, retorno e pausa, e `motorDecisao.integration.test.ts`.
 - Gate: rápido e completo backend
 - Modelo: padrao
-- Status: feita. Evidência: testes escritos primeiro e vistos falhar (motor, formatador, fluxo); lint, build, typecheck:test e npm test do backend passam (139 arquivos, 1966 testes); commit c8ffbb3. Testes alterados por comportamento: motorDecisao.service.test.ts (resposta e documentos da equipe), conversationFlow.service.test.ts (dois balões de texto) e o caso de fora do escopo em contentRules.test.ts (agora igual ao bot). Dado de teste: pergunta 2 do repositório simulado ganhou resposta e documento
+- Status: feita. Evidência: testes escritos primeiro e vistos falhar (motor, formatador, fluxo); lint, build, typecheck:test e npm test do backend passam (139 arquivos, 1966 testes); commit f450a63. Testes alterados por comportamento: motorDecisao.service.test.ts (resposta e documentos da equipe), conversationFlow.service.test.ts (dois balões de texto) e o caso de fora do escopo em contentRules.test.ts (agora igual ao bot). Dado de teste: pergunta 2 do repositório simulado ganhou resposta e documento
 
 #### B3 Bot: enviar a observação presencial
 - O quê: o motor passa a preencher a observação presencial quando a pergunta é presencial e a observação não está em branco; o formatador a coloca como "Sobre o atendimento presencial: <observação>" logo depois da linha fixa de atendimento presencial, na resposta oficial e no balão com IA, e não no balão da oferta; o cliente da IA não a envia à IA.
@@ -1058,7 +1058,7 @@ Regras para todas as tarefas do acréscimo: nunca escrever comentários; TDD (o 
 - Teste: nenhum.
 - Gate: doc
 - Modelo: economico
-- Status: feita. Evidência: gate doc ok, sem "Pendente" sobre a prévia na regra de Conteúdo, links conferidos; texto escrito conforme as decisões do usuário e RN-B01 a RN-B12; textos conferidos contra o código de B2 (c8ffbb3) e B3 (8cbcc2c): frase de encaminhamento, balão oficial do fora do escopo sem "O que fazer agora:", linha "Sobre o atendimento presencial:" e observação fora do prompt da IA; corrigida a descrição do prompt em llm/contrato.md
+- Status: feita. Evidência: gate doc ok, sem "Pendente" sobre a prévia na regra de Conteúdo, links conferidos; texto escrito conforme as decisões do usuário e RN-B01 a RN-B12; textos conferidos contra o código de B2 (f450a63) e B3 (9505dff): frase de encaminhamento, balão oficial do fora do escopo sem "O que fazer agora:", linha "Sobre o atendimento presencial:" e observação fora do prompt da IA; corrigida a descrição do prompt em llm/contrato.md
 
 #### B6 Remover os campos antigos da prévia
 - O quê: tirar da resposta da prévia e do painel os campos antigos `answerBubble`, `nextStepBubble`, `categoryList` e `fixedDisclaimer`, seus tipos e o que só existia para preenchê-los, depois de a tela passar a usar só `botMessages`; `answerLengthWarning` e `answerLengthWarningMessage` ficam.
@@ -1074,7 +1074,7 @@ Regras para todas as tarefas do acréscimo: nunca escrever comentários; TDD (o 
 - Testes que mudam (comportamento, por D-U-B01 e D-U-B03): os casos de `contentRules.test.ts` (inclusive os da lista antiga e do aviso fixo), `content.service.test.ts` (tipo "resolution" de `nextStepBubble`), `content.routes.test.ts` (`nextStepBubble.type`) e `content.integration.test.ts` (`nextStepBubble.type` e `nextStepBubble.inPersonNote`) que conferem os campos removidos passam a conferir o mesmo pelo `botMessages`. No painel, os testes que ainda usarem os tipos antigos.
 - Gate: completo backend (`cd src/backend && npm run lint && npm run build && npm run typecheck:test && npm test`), integração backend (banco separado, `npm run db:migrate && npm run test:integration`) e completo frontend (`cd src/frontend && npm run lint && npm run typecheck && npm run test:run`)
 - Modelo: economico
-- Status: feita (parte da API). Evidência: teste "a resposta da prévia traz só botMessages e o alerta de tamanho" escrito primeiro e visto falhar; lint, build, typecheck:test e npm test do backend passam (140 arquivos, 2002 testes); integração em banco separado proconchat_test (47 arquivos, 414 testes); README do backend atualizado; commit 69923a8. Testes alterados por comportamento: os que conferiam os campos removidos em contentRules, content.service, content.routes e na integração passaram a conferir pelo botMessages. Os tipos antigos do painel saíram no commit d209f1c (o reajuste da T14 para botMessages), feito pelo Itadori. Observação do gate frontend: src/pages/test/WhatsApp.page.test.tsx (mostra modelos, qualidade, limite...) falha com 'Aviso de cancelamento' não encontrado, sem relação com a prévia
+- Status: feita (parte da API). Evidência: teste "a resposta da prévia traz só botMessages e o alerta de tamanho" escrito primeiro e visto falhar; lint, build, typecheck:test e npm test do backend passam (140 arquivos, 2002 testes); integração em banco separado proconchat_test (47 arquivos, 414 testes); README do backend atualizado; commit 6033c03. Testes alterados por comportamento: os que conferiam os campos removidos em contentRules, content.service, content.routes e na integração passaram a conferir pelo botMessages. Os tipos antigos do painel saíram no commit f5c74a6 (o reajuste da T14 para botMessages), feito pelo Itadori. Observação do gate frontend: src/pages/test/WhatsApp.page.test.tsx (mostra modelos, qualidade, limite...) falha com 'Aviso de cancelamento' não encontrado, sem relação com a prévia
 
 #### B7 Aviso de tamanho do balão com IA na prévia
 - O quê: a prévia passa a devolver `botMessages.aiLengthWarning`, calculado com o mesmo limite e a mesma contagem que o bot usa para decidir se manda o balão com IA ou a resposta oficial.
@@ -1089,7 +1089,7 @@ Regras para todas as tarefas do acréscimo: nunca escrever comentários; TDD (o 
 - Testes que mudam: nenhum por comportamento; os arquivos listados só ganham casos. `llmAnswer.service.test.ts` continua passando sem mudança, porque o comportamento do serviço de IA não muda.
 - Gate: completo backend (`cd src/backend && npm run lint && npm run build && npm run typecheck:test && npm test`) e integração backend (banco separado, `npm run db:migrate && npm run test:integration`)
 - Modelo: padrao
-- Status: feita. Evidência: testes escritos primeiro e vistos falhar (aviso ausente); lint, build, typecheck:test e npm test do backend passam (140 arquivos, 2002 testes); integração em banco separado proconchat_test (47 arquivos, 414 testes); inclui o teste de que a prévia não grava nada (unitário e de integração); nenhum teste existente alterado; commit 78109ae
+- Status: feita. Evidência: testes escritos primeiro e vistos falhar (aviso ausente); lint, build, typecheck:test e npm test do backend passam (140 arquivos, 2002 testes); integração em banco separado proconchat_test (47 arquivos, 414 testes); inclui o teste de que a prévia não grava nada (unitário e de integração); nenhum teste existente alterado; commit b1e9baf
 
 #### T21 Aviso de tamanho do balão com IA na tela
 - O quê: na prévia da tela, mostrar `botMessages.aiLengthWarning.message` junto ao balão com IA quando `exceedsLimit` é verdadeiro, sem nenhum texto do aviso escrito no painel.
@@ -1103,7 +1103,7 @@ Regras para todas as tarefas do acréscimo: nunca escrever comentários; TDD (o 
 - Teste: unitário de componente. Falha primeiro "com exceedsLimit verdadeiro a mensagem da API aparece junto ao balão com IA".
 - Gate: completo frontend (`cd src/frontend && npm run lint && npm run typecheck && npm run test:run`)
 - Modelo: economico
-- Status: feita (gate completo frontend: lint, typecheck (tsc -b) e test:run passam, 255 arquivos e 2047 testes; o teste do modelo da prévia foi escrito primeiro e visto falhar (lengthWarning ausente), o teste do componente foi escrito junto com o código e passou de primeira; o painel mostra `aiLengthWarning.message` como a API devolve, sem texto próprio, usando o aviso já existente da prévia sem classe nova; commits c564314, 58111e6 e 5350de8, este último corrige o tipo da prévia da categoria não salva que o typecheck apontou)
+- Status: feita (gate completo frontend: lint, typecheck (tsc -b) e test:run passam, 255 arquivos e 2047 testes; o teste do modelo da prévia foi escrito primeiro e visto falhar (lengthWarning ausente), o teste do componente foi escrito junto com o código e passou de primeira; o painel mostra `aiLengthWarning.message` como a API devolve, sem texto próprio, usando o aviso já existente da prévia sem classe nova; commits da18997, c58fa3c e da18997, este último corrige o tipo da prévia da categoria não salva que o typecheck apontou)
 
 ### Impacto nos testes existentes do bot
 
