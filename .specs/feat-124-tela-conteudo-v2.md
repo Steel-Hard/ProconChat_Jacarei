@@ -326,7 +326,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: integração. Falha primeiro o teste de `firstAllowedPath` que espera `/conteudo` para quem só tem `content.manage`.
 - Gate: completo
 - Modelo: padrao
-- Status: pendente
+- Status: feita (gate completo: lint, typecheck e test:run passam, 231 arquivos e 1835 testes; testes antigos de 'tela não pronta' atualizados: firstAllowedPath, RequireAccess, routes, readyPermissionKeys, sidebarNavGroups, useLogin; testes escritos primeiro e vistos falhar; commit 7da44c9)
 
 ### T3 [P] Páginas do WhatsApp e estado oculto
 - O quê: função pura que, para uma lista ordenada e um critério de "visível", devolve para cada item a página do WhatsApp e o separador "Página N no WhatsApp" no primeiro item de cada página a partir da segunda, mais a função de "oculta no chatbot" e as contagens da categoria.
@@ -340,7 +340,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário. Falha primeiro o caso de 19 itens ativos.
 - Gate: rápido
 - Modelo: economico
-- Status: pendente
+- Status: feita (gate rápido: 12 testes passam; teste de 19 itens escrito primeiro; commit 5f42df4)
 
 ### T4 [P] Validação de categoria e pergunta
 - O quê: funções puras que validam os campos da categoria e da pergunta com as regras da API, incluindo a unicidade do nome no rascunho, as regras entre campos e o aviso (não bloqueante) de documento repetido.
@@ -354,7 +354,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário. Falha primeiro "nome 'contrátos ' repetido de 'Contratos' é recusado".
 - Gate: rápido
 - Modelo: padrao
-- Status: pendente
+- Status: feita (gate rápido: 37 testes passam; teste de nome repetido escrito primeiro; commit 57e02ce)
 
 ### T5 [P] Operações do rascunho
 - O quê: funções puras que derivam o rascunho do retrato do servidor e aplicam criar, editar, ativar/desativar e mover para cima ou para baixo em categorias e perguntas, com chaves provisórias para itens novos, a regra de IA ao marcar e desmarcar "Fora do escopo", a aplicação do mapa chave provisória → id real e a reaplicação sobre um retrato novo.
@@ -368,7 +368,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário. Falha primeiro "categoria nova entra no fim, ativa, com chave provisória".
 - Gate: rápido
 - Modelo: padrao
-- Status: pendente
+- Status: feita (gate rápido: 17 testes passam; commit d3328bc)
 
 ### T6 [P] Lista de alterações não salvas e última alteração
 - O quê: funções puras que comparam rascunho e retrato e devolvem a lista de alterações para a barra comum, conforme RN-05, e que escolhem a última alteração do topo conforme RN-14.
@@ -382,7 +382,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário. Falha primeiro "mover para cima e para baixo não conta alteração".
 - Gate: rápido
 - Modelo: padrao
-- Status: pendente
+- Status: feita (gate rápido: 14 testes passam; commit 4e19ee0)
 
 ### T7 [P] Plano de Salvar
 - O quê: função pura que, a partir do retrato e do rascunho, devolve a lista ordenada de passos do Salvar descrita no Desenho.
@@ -396,7 +396,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário. Falha primeiro "pergunta nova em categoria nova vem depois da criação da categoria e aponta a chave provisória".
 - Gate: rápido
 - Modelo: padrao
-- Status: pendente
+- Status: feita (gate rápido: 8 testes passam; tipo ContentSavePlanStep passou a usar chaves em vez de ids, resolvidas pelo executor; commit 13e5271)
 
 ### T8 [P] Busca no rascunho
 - O quê: função pura que busca o termo no texto da pergunta, na resposta e no título curto de todas as perguntas do rascunho, sem acento nem maiúscula, devolvendo cada resultado com a sua categoria, na ordem das categorias e das perguntas.
@@ -410,7 +410,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário. Falha primeiro "devolucao acha Devolução".
 - Gate: rápido
 - Modelo: economico
-- Status: pendente
+- Status: feita (gate rápido: 6 testes passam; commit ab180bb)
 
 ### T9 [P] Componente da lista de categorias
 - O quê: lista de categorias com posição, título curto em negrito, nome completo, contagens, estado, separador de página, setas e ações, recebendo tudo pronto por props.
@@ -424,7 +424,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário de componente. Falha primeiro "a primeira categoria não tem ↑".
 - Gate: rápido
 - Modelo: economico
-- Status: pendente
+- Status: feita (gate rápido: 8 testes passam; commit cda3775)
 
 ### T10 [P] Componente da lista de perguntas
 - O quê: lista de perguntas com os dados de RN-13, selos, separador, setas que somem na busca, categoria em cada resultado de busca, linha de última alteração ("Carga inicial do sistema" sem autor, nada em item não salvo) e estado vazio.
@@ -438,7 +438,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário de componente. Falha primeiro "em modo busca não há setas".
 - Gate: rápido
 - Modelo: economico
-- Status: pendente
+- Status: feita (gate rápido: 11 testes passam; commit 90d49df)
 
 ### T11 [P] Formulário da categoria
 - O quê: formulário de categoria (nova e edição) com título curto com contador, nome completo e descrição, mostrando os erros recebidos por props e devolvendo os valores ao confirmar.
@@ -452,7 +452,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário de componente. Falha primeiro "contador mostra 24/24 com 24 caracteres".
 - Gate: rápido
 - Modelo: economico
-- Status: pendente
+- Status: feita (gate rápido: 6 testes passam; inclui ContentFormDialog e ContentTextField; commit 527533a)
 
 ### T12 [P] Campo de documentos úteis
 - O quê: campo de lista para "Documentos úteis para esta dúvida", que permite adicionar, editar, remover e reordenar itens, com limite de 30 itens de até 255 caracteres e aviso "Este documento já está na lista." para repetidos, sem bloquear.
@@ -466,7 +466,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário de componente. Falha primeiro "documento repetido entra na lista com o aviso".
 - Gate: rápido
 - Modelo: economico
-- Status: pendente
+- Status: feita (gate rápido: 8 testes passam; commit 1fa9962)
 
 ### T13 [P] Formulário da pergunta
 - O quê: formulário de pergunta (nova e edição) com contadores (inclusive o do texto da pergunta, sempre visível), alerta de 1.000 caracteres, exclusividade presencial/fora do escopo, bloqueio da IA em fora do escopo e religação ao desmarcar, observação presencial, documentos, "Pergunta ativa no chatbot" valendo só ao confirmar, orientação de edição e botão "Ver como o cidadão recebe".
@@ -480,7 +480,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário de componente. Falha primeiro "marcar Fora do escopo desliga e desabilita a IA".
 - Gate: rápido
 - Modelo: padrao
-- Status: pendente
+- Status: feita (gate rápido: 12 testes passam; commit dbb3845)
 
 ### T14 [P] Componente da prévia estilo WhatsApp
 - O quê: componente que desenha a lista (1), o balão oficial, o balão do passo seguinte com botões, o espaço do balão com IA e a alternativa "Se a IA estiver indisponível", a partir do modelo de balões de T1, com estados de carregando, erro, "corrija os campos" e categoria não salva. Os textos dos balões são os que vêm no modelo (originados da API), nunca uma cópia no componente.
@@ -494,7 +494,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário de componente. Falha primeiro "com IA ligada aparece a alternativa Se a IA estiver indisponível".
 - Gate: rápido
 - Modelo: padrao
-- Status: pendente
+- Status: feita (gate rápido: 11 testes passam; reajustada ao contrato botMessages no commit f697c45; commit original 6b60a5f)
 
 ### T15 [P] Montagem da prévia
 - O quê: funções puras que montam a lista (1) a partir do rascunho da categoria com o formulário aplicado e a regra de páginas, e convertem a resposta da prévia da API no modelo de balões de T1: balão oficial com o texto formatado da API, passo seguinte com texto e botões da API e o botão de aceitar a oferta "Agendar presencial", alternativa "Se a IA estiver indisponível" quando a IA está ligada, e o caso de categoria não salva sem chamada à API. Balão com IA e fora do escopo ficam como a API devolve até T20.
@@ -508,7 +508,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário. Falha primeiro "o balão oficial é exatamente o texto formatado devolvido pela API".
 - Gate: rápido
 - Modelo: padrao
-- Status: pendente
+- Status: feita (gate rápido: 20 testes passam; usa direto o contrato botMessages da B1, sem ler answerBubble/nextStepBubble; commit 490b27b)
 
 ### T16 [P] Executor do Salvar
 - O quê: hook que executa o plano de T7 em sequência, guarda o mapa de ids criados, para na primeira falha, aplica o mapa ao rascunho, recarrega o retrato do servidor uma única vez no fim (sucesso ou falha), sem descartar o rascunho em caso de falha, e devolve o resultado (sucesso; falha na primeira gravação; falha parcial com quantas foram salvas, quantas faltam, o item e a mensagem; sem permissão), com trava contra clique duplo.
@@ -522,7 +522,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: integração do hook. Falha primeiro "depois de falha parcial, o segundo Salvar não recria a categoria já criada".
 - Gate: rápido
 - Modelo: padrao
-- Status: pendente
+- Status: feita (gate rápido: 12 testes passam entre executor e hook; commit e829597)
 
 ### T17 Hook da página de Conteúdo
 - O quê: hook que carrega o retrato completo, guarda o rascunho, a seleção, a busca e o formulário aberto (com cópia própria até confirmar), calcula contagens, estados, separadores, alterações, última alteração do topo e validação, pede a prévia com pausa na digitação (sem pedir em categoria não salva) e chama o Salvar, escolhendo a mensagem de RN-07.
@@ -536,7 +536,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: integração do hook. Falha primeiro "trocar de categoria mantém as alterações pendentes da anterior".
 - Gate: rápido
 - Modelo: padrao
-- Status: pendente
+- Status: feita (gate rápido: 10 testes passam; commit 7edd13b)
 
 ### T18 Montagem da página e testes da tela
 - O quê: página completa com cabeçalho, última alteração do topo, barra de alterações não salvas, bloco fixo, busca, coluna de categorias, área de perguntas, formulários e prévia, nos tamanhos de computador e de celular, e os testes de integração da tela.
@@ -550,7 +550,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: integração. Falha primeiro "criar categoria, criar pergunta nela e salvar grava as duas na ordem".
 - Gate: completo
 - Modelo: padrao
-- Status: pendente
+- Status: feita (gate completo: lint, typecheck, test:run e prettier passam, 253 arquivos e 2018 testes; 12 testes de tela; commit 5f82fbb)
 
 ### T20 Ajuste da prévia conforme o bot real
 - O quê: completar o balão com IA, os textos do passo seguinte, a navegação da lista e o caso fora do escopo conforme as respostas de D-U-04, D-U-05 e D-U-06, sem inventar texto.
@@ -564,7 +564,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: unitário e de componente. Falha primeiro o teste do ponto P5 conforme a decisão.
 - Gate: completo
 - Modelo: padrao
-- Status: pendente
+- Status: em-andamento. Evidência parcial: o painel já consome só `botMessages` e envia `listRows` desde T14/T15 (commits f697c45 e 490b27b), e os tipos antigos de `answerBubble`/`nextStepBubble` já saíram do frontend. Falta conferir a tela com a API depois de B2, B3 e B4 (fora do escopo em dois balões e linha da observação presencial, que o painel mostra como vêm) e fechar com o gate completo
 
 ### T19 [P] Verificação final no Docker
 - O quê: rodar a suíte completa e o build do painel, também pelo compose, e conferir a tela aberta no container.
