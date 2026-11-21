@@ -41,7 +41,15 @@ function ContentTextField({
     const id = useId()
     const errorId = `${id}-error`
     const hintId = `${id}-hint`
-    const describedBy = [error ? errorId : null, hint ? hintId : null].filter(Boolean).join(" ")
+    const counterId = `${id}-counter`
+    const describedBy = [
+        error ? errorId : null,
+        hint ? hintId : null,
+        max !== undefined ? counterId : null
+    ]
+        .filter(Boolean)
+        .join(" ")
+    const announce = max !== undefined && value.length >= max * 0.9
     const common = {
         id,
         value,
@@ -61,7 +69,11 @@ function ContentTextField({
                     ) : null}
                 </label>
                 {max !== undefined ? (
-                    <span className={counterClass(value.length, max)} aria-live="polite">
+                    <span
+                        id={counterId}
+                        className={counterClass(value.length, max)}
+                        aria-live={announce ? "polite" : undefined}
+                    >
                         {t("counter", { count: value.length, max })}
                     </span>
                 ) : null}
