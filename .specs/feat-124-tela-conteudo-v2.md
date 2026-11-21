@@ -992,7 +992,7 @@ Regras para todas as tarefas do acréscimo: nunca escrever comentários; TDD (o 
 - Testes que mudam (comportamento): `motorDecisao.service.test.ts` (o caso que espera a frase trocada e os documentos vazios); `conversationFlow.service.test.ts` (o caso "pergunta fora do escopo encerra com OUT_OF_SCOPE" passa a conferir dois balões; o encerramento continua igual); `messageFormatter.service.test.ts` (casos de fora do escopo em `formatarRespostaFinal`/"O que fazer agora", que deixa de aparecer no fora do escopo por D-PO-B02). Ficam intactos: `conversationFlow.llm.test.ts` (o encerramento `OUT_OF_SCOPE` não muda), `llmExplicacao.service.test.ts`, `conversationFlow.fullFlow.test.ts`, `conversationFlow.pending.test.ts`, `conversationFlow.delivery.test.ts`, os testes de agendamento, retorno e pausa, e `motorDecisao.integration.test.ts`.
 - Gate: rápido e completo backend
 - Modelo: padrao
-- Status: pendente
+- Status: feita. Evidência: testes escritos primeiro e vistos falhar (motor, formatador, fluxo); lint, build, typecheck:test e npm test do backend passam (139 arquivos, 1966 testes); commit f922131. Testes alterados por comportamento: motorDecisao.service.test.ts (resposta e documentos da equipe), conversationFlow.service.test.ts (dois balões de texto) e o caso de fora do escopo em contentRules.test.ts (agora igual ao bot). Dado de teste: pergunta 2 do repositório simulado ganhou resposta e documento
 
 #### B3 Bot: enviar a observação presencial
 - O quê: o motor passa a preencher a observação presencial quando a pergunta é presencial e a observação não está em branco; o formatador a coloca como "Sobre o atendimento presencial: <observação>" logo depois da linha fixa de atendimento presencial, na resposta oficial e no balão com IA, e não no balão da oferta; o cliente da IA não a envia à IA.
@@ -1007,7 +1007,7 @@ Regras para todas as tarefas do acréscimo: nunca escrever comentários; TDD (o 
 - Testes que mudam: nenhum por mudança de comportamento, porque sem observação tudo continua igual; os arquivos listados só ganham casos. Se algum caso existente de `motorDecisao.service.test.ts` comparar o objeto inteiro de uma pergunta presencial com observação no repositório simulado, ele muda por comportamento e deve ser citado no commit. Ficam intactos: `conversationFlow.fullFlow.test.ts`, os testes de agendamento, `llmExplicacao.service.test.ts`.
 - Gate: rápido e completo backend
 - Modelo: padrao
-- Status: pendente
+- Status: feita. Evidência: testes escritos primeiro e vistos falhar (motor, formatador, IA, cliente da IA); lint, build, typecheck:test e npm test do backend passam (139 arquivos, 1977 testes); nenhum teste existente alterado. Fora de teste: o retorno à resposta oficial acima de 1.024 caracteres no balão com IA não ganhou caso novo (código do serviço de IA inalterado)
 
 #### B4 Testes de rota, integração e "prévia igual ao bot"
 - O quê: teste que passa a mesma pergunta pelo motor do bot e pela prévia e exige mensagens idênticas, mais os testes de rota e de integração da prévia com o contrato novo.
