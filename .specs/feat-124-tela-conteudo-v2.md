@@ -730,7 +730,7 @@ Valem as mesmas regras das tarefas de código acima: nunca escrever comentários
 - Teste: nenhum.
 - Gate: `cd src/frontend && npm run format:check`
 - Modelo: economico
-- Status: pendente
+- Status: feita (contrato de estilos da Miwa entregue em 5e7bc16)
 
 #### K4 [P] Regra de Conteúdo alinhada ao protótipo
 - O quê: atualizar a regra de Conteúdo com o aviso sem selo "FIXO", com rótulo e nota, as ações de categoria no cabeçalho da categoria selecionada, a busca no painel de perguntas, o formulário em painel lateral e a prévia em janela própria.
@@ -787,7 +787,7 @@ Valem as mesmas regras das tarefas de código acima: nunca escrever comentários
 - Teste: nenhum.
 - Gate: `cd src/frontend && npm run format:check`
 - Modelo: padrao
-- Status: pendente
+- Status: feita (CSS do alinhamento em 5e7bc16, 8e59a7b, 7e13ce4, 6857c50, d216549 e 5a34074; prettier passa; revisados e aprovados pela Nanami)
 
 #### T24 Prévia em janela própria
 - O quê: abrir a prévia numa janela modal própria em formato de celular, por cima do painel do formulário, com os botões das mensagens em duas colunas, foco na janela ao abrir, Esc fechando só a prévia e foco de volta ao botão "Ver como o cidadão recebe".
@@ -801,7 +801,7 @@ Valem as mesmas regras das tarefas de código acima: nunca escrever comentários
 - Teste: unitário de componente. Falha primeiro "Esc com a prévia aberta fecha só a prévia e devolve o foco ao botão Ver como o cidadão recebe".
 - Gate: rápido e completo
 - Modelo: padrao
-- Status: feita (commit bf7ae1b; janela da prévia com testes de Esc, de foco e de clique fora)
+- Status: feita (commit bf7ae1b; janela da prévia com testes de Esc, de foco e de clique fora; gate na HEAD: tsc -b ok e 2101 testes passando)
 
 #### M5 Conferência lado a lado com o protótipo
 - O quê: comparar a tela pronta com o protótipo, região por região, em computador e em celular, com capturas novas, e devolver os ajustes ao Itadori e à Miwa.
@@ -815,7 +815,7 @@ Valem as mesmas regras das tarefas de código acima: nunca escrever comentários
 - Teste: nenhum novo.
 - Gate: completo, build e revisão visual por região
 - Modelo: padrao
-- Status: pendente
+- Status: feita (comparação lado a lado com o protótipo, no computador e no celular, feita pela Miwa em 95b4f32, com capturas em /tmp/claude-1000/-home-felipe-faculdade-ProconChat-Jacarei/f07323d1-b961-43cc-be4b-ae3be510a3db/scratchpad/comparacao-2/; validada pelo Inumaki em 43c0c95 (CA-72 a CA-87); as diferenças que restaram foram corrigidas em 5f59f2c, e8bb1e7, 9141ce0, 6857c50, d216549 e 5a34074 e conferidas por captura em d216549 (capturas-d216549/); as diferenças mantidas estão no CA-86, com motivo)
 
 ## Dúvidas
 
