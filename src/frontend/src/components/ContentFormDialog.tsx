@@ -1,4 +1,14 @@
-import { useEffect, useId, useRef, type FormEvent, type MouseEvent, type ReactNode } from "react"
+import {
+    useCallback,
+    useEffect,
+    useId,
+    useRef,
+    useState,
+    type FormEvent,
+    type ReactNode
+} from "react"
+import { useTranslation } from "react-i18next"
+import ConfirmDialog from "@/components/ConfirmDialog"
 import css from "@/styles/components/contentForms.module.css"
 
 const FIELD_SELECTOR = "input:not([disabled]), select:not([disabled]), textarea:not([disabled])"
@@ -14,6 +24,7 @@ type ContentFormDialogProps = {
     cancelLabel: string
     previewLabel?: string
     summary?: string | null
+    dirty?: boolean
     children: ReactNode
     onConfirm: () => void
     onCancel: () => void
@@ -28,13 +39,57 @@ function ContentFormDialog({
     cancelLabel,
     previewLabel,
     summary = null,
+    dirty = false,
     children,
     onConfirm,
     onCancel,
     onPreview
 }: ContentFormDialogProps) {
+    const { t } = useTranslation("content")
     const titleId = useId()
+    const overlayRef = useRef<HTMLDivElement>(null)
     const dialogRef = useRef<HTMLDialogElement>(null)
+    const summaryRef = useRef<HTMLParagraphElement>(null)
+    const [confirmingDiscard, setConfirmingDiscard] = useState(false)
+    const [submitAttempt, setSubmitAttempt] = useState(0)
+    const closeDiscardDialog = useCallback(() => setConfirmingDiscard(false), [])
+
+    useEffect(() => {
+        const overlay = overlayRef.current
+        const inerted: Element[] = []
+        let node: Element | null = overlay
+
+        while (node && node !== document.body) {
+            const current: Element = node
+            Array.from(current.parentElement?.children ?? []).forEach((sibling) => {
+                if (sibling !== current && !sibling.hasAttribute("inert")) {
+                    sibling.setAttribute("inert", "")
+                    inerted.push(sibling)
+                }
+            })
+            node = current.parentElement
+        }
+
+        const previousOverflow = document.body.style.overflow
+        document.body.style.overflow = "hidden"
+
+        return () => {
+            inerted.forEach((element) => element.removeAttribute("inert"))
+            document.body.style.overflow = previousOverflow
+        }
+    }, [])
+
+    useEffect(() => {
+        if (submitAttempt === 0) {
+            return
+        }
+
+        const invalid = dialogRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')
+        const target = invalid ?? summaryRef.current
+
+        target?.focus()
+        target?.scrollIntoView?.({ block: "center" })
+    }, [submitAttempt])
 
     useEffect(() => {
         const previous =
@@ -72,8 +127,16 @@ function ContentFormDialog({
         }
 
         function handleKeyDown(event: KeyboardEvent) {
+            if (confirmingDiscard) {
+                return
+            }
+
             if (event.key === "Escape") {
-                onCancel()
+                if (dirty) {
+                    setConfirmingDiscard(true)
+                } else {
+                    onCancel()
+                }
                 return
             }
 
@@ -87,27 +150,23 @@ function ContentFormDialog({
         return () => {
             document.removeEventListener("keydown", handleKeyDown)
         }
-    }, [onCancel])
-
-    function handleOverlayClick(event: MouseEvent<HTMLDivElement>) {
-        if (event.target === event.currentTarget) {
-            onCancel()
-        }
-    }
+    }, [onCancel, dirty, confirmingDiscard])
 
     function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
         onConfirm()
+        setSubmitAttempt((current) => current + 1)
     }
 
     return (
-        <div className={css.overlay} role="presentation" onClick={handleOverlayClick}>
+        <div ref={overlayRef} className={css.overlay} role="presentation">
             <dialog
                 ref={dialogRef}
                 open
                 className={wide ? `${css.dialog} ${css.dialogWide}` : css.dialog}
                 aria-modal="true"
                 aria-labelledby={titleId}
+                inert={confirmingDiscard || undefined}
             >
                 <h2 id={titleId} className={css.title}>
                     {title}
@@ -115,7 +174,7 @@ function ContentFormDialog({
                 {intro ? <p className={css.intro}>{intro}</p> : null}
                 <form noValidate className={css.form} onSubmit={handleSubmit}>
                     {summary ? (
-                        <p role="alert" className={css.summary}>
+                        <p ref={summaryRef} tabIndex={-1} role="alert" className={css.summary}>
                             {summary}
                         </p>
                     ) : null}
@@ -135,6 +194,17 @@ function ContentFormDialog({
                     </div>
                 </form>
             </dialog>
+            <ConfirmDialog
+                open={confirmingDiscard}
+                tone="danger"
+                narrow
+                title={t("discardDialog.title")}
+                description={t("discardDialog.description")}
+                confirmLabel={t("discardDialog.confirm")}
+                cancelLabel={t("discardDialog.cancel")}
+                onConfirm={onCancel}
+                onCancel={closeDiscardDialog}
+            />
         </div>
     )
 }

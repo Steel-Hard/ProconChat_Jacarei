@@ -44,6 +44,7 @@ function ContentCategoryForm({
             title={mode === "new" ? t("categoryForm.titleNew") : t("categoryForm.titleEdit")}
             confirmLabel={t("categoryForm.confirm")}
             cancelLabel={t("categoryForm.cancel")}
+            dirty={JSON.stringify(fields) !== JSON.stringify(initial)}
             onConfirm={confirm}
             onCancel={onCancel}
         >

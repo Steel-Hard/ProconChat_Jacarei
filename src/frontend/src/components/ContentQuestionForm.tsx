@@ -83,6 +83,7 @@ function ContentQuestionForm({
             confirmLabel={t("questionForm.confirm")}
             cancelLabel={t("questionForm.cancel")}
             previewLabel={t("questionForm.preview")}
+            dirty={JSON.stringify(fields) !== JSON.stringify(initial)}
             onPreview={onPreview}
             onConfirm={confirm}
             onCancel={onCancel}

@@ -78,6 +78,12 @@
         "emptyTitle": "Esta categoria ainda não tem perguntas.",
         "emptyHint": "Crie a primeira pergunta para ela aparecer no WhatsApp."
     },
+    "discardDialog": {
+        "title": "Descartar as alterações?",
+        "description": "O que você preencheu neste formulário ainda não foi aplicado e será perdido.",
+        "confirm": "Descartar alterações",
+        "cancel": "Continuar editando"
+    },
     "categoryForm": {
         "titleNew": "Nova categoria",
         "titleEdit": "Editar categoria",
