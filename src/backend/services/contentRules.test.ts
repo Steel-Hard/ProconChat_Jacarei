@@ -449,6 +449,34 @@ describe("contentRules", () => {
             expect(lista.message.rows.slice(-2).map((r) => r.title)).toEqual(["Voltar opções", "Ver mais opções"])
         })
 
+        it.each([
+            { total: 18, currentId: 100, page: 1, totalPages: 2, currentIndex: 0 },
+            { total: 18, currentId: 109, page: 2, totalPages: 2, currentIndex: 0 },
+            { total: 18, currentId: 117, page: 2, totalPages: 2, currentIndex: 8 },
+            { total: 19, currentId: 100, page: 1, totalPages: 3, currentIndex: 0 },
+            { total: 19, currentId: 116, page: 2, totalPages: 3, currentIndex: 7 },
+            { total: 19, currentId: 117, page: 3, totalPages: 3, currentIndex: 0 },
+            { total: 19, currentId: 118, page: 3, totalPages: 3, currentIndex: 1 },
+        ])(
+            "puts the current question on page $page of $totalPages with $total questions",
+            ({ total, currentId, page, totalPages, currentIndex }) => {
+                const questions = manyQuestions(total)
+                const preview = buildQuestionPreview(category, questions, { ...baseInput, questionId: currentId })
+                const lista = preview.botMessages.categoryList
+
+                const linhas = questions.map((q) =>
+                    q.id === currentId
+                        ? perguntaDeLinha(q.id, "Defeito", "Prazo de 30 dias")
+                        : perguntaDeLinha(q.id, q.shortTitle, q.shortDescription),
+                )
+                expect(lista.message).toEqual(criarMensagensPerguntas(linhas, page)[0])
+                expect(lista.page).toBe(page)
+                expect(lista.totalPages).toBe(totalPages)
+                expect(lista.message.rows[lista.currentRowIndex]?.title).toBe("Defeito")
+                expect(lista.currentRowIndex).toBe(currentIndex)
+            },
+        )
+
         it("appends a new question to the end of the list when it has no id", () => {
             const questions = manyQuestions(2)
             const preview = buildQuestionPreview(category, questions, baseInput)
