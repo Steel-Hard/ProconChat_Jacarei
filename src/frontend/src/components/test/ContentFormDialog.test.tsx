@@ -38,6 +38,46 @@ function renderDialog(
 }
 
 describe("ContentFormDialog", () => {
+    it("o modo estreito soma a classe estreita ao diálogo", () => {
+        render(
+            <ContentFormDialog
+                narrow
+                title="Nova categoria"
+                confirmLabel="Confirmar"
+                cancelLabel="Cancelar"
+                onConfirm={vi.fn()}
+                onCancel={vi.fn()}
+            >
+                <input aria-label="Campo" />
+            </ContentFormDialog>
+        )
+
+        const dialog = screen.getByRole("dialog", { name: "Nova categoria" })
+
+        expect(dialog.className).toMatch(/dialogNarrow/)
+        expect(dialog.className).toMatch(/dialog_/)
+    })
+
+    it("o painel lateral mostra a categoria acima do título e a meta abaixo", () => {
+        render(
+            <ContentFormDialog
+                drawer
+                crumb="Categoria 1"
+                meta="Carga inicial do sistema"
+                title="Editar pergunta"
+                confirmLabel="Confirmar"
+                cancelLabel="Cancelar"
+                onConfirm={vi.fn()}
+                onCancel={vi.fn()}
+            >
+                <input aria-label="Campo" />
+            </ContentFormDialog>
+        )
+
+        expect(screen.getByText("Categoria 1").className).toMatch(/drawerCrumb/)
+        expect(screen.getByText("Carga inicial do sistema").className).toMatch(/drawerMeta/)
+    })
+
     it("no modo painel lateral o formulário fica à direita com cabeçalho, corpo e rodapé fixo", () => {
         renderDialog({ drawer: true })
 

@@ -11,6 +11,8 @@ type ContentQuestionFormProps = {
     onPreview?: () => void
     onChange?: (fields: ContentQuestionFormFields) => void
     previewSlot?: ReactNode
+    crumb?: string | null
+    meta?: string | null
 }
 
 export default ContentQuestionFormProps

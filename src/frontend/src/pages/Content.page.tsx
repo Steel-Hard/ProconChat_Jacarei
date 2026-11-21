@@ -7,6 +7,7 @@ import ContentQuestionForm from "@/components/ContentQuestionForm"
 import ContentQuestionList from "@/components/ContentQuestionList"
 import LastChangeNote from "@/components/LastChangeNote"
 import UnsavedChangesBar from "@/components/UnsavedChangesBar"
+import formatDate from "@/utils/formatDate"
 import useContent from "@/pages/hooks/useContent"
 import css from "@/styles/pages/content.module.css"
 
@@ -17,9 +18,27 @@ const SEARCH_INPUT_ID = "content-search-input"
 
 export default function ContentPage() {
     const { t } = useTranslation("content")
+    const { t: tc } = useTranslation()
     const page = useContent()
     const ready = page.status === "success"
     const dialog = page.dialog
+
+    const dialogQuestion = page.dialogQuestion
+    const dialogDate =
+        dialogQuestion?.updatedAt === null || dialogQuestion === null
+            ? null
+            : formatDate(dialogQuestion.updatedAt)
+    let questionMeta: string | null = null
+
+    if (dialogQuestion && dialogQuestion.id !== null) {
+        questionMeta =
+            dialogQuestion.updatedBy !== null && dialogDate !== null
+                ? tc("lastChangeNote.text", {
+                      name: dialogQuestion.updatedBy.name.trim(),
+                      date: dialogDate
+                  })
+                : t("initialLoad")
+    }
 
     return (
         <>
@@ -214,6 +233,8 @@ export default function ContentPage() {
                     <ContentQuestionForm
                         key={JSON.stringify(dialog)}
                         mode={dialog.mode}
+                        crumb={page.dialogCategory?.title ?? null}
+                        meta={questionMeta}
                         initial={page.questionFormInitial}
                         validate={page.validateQuestionFields}
                         onConfirm={page.confirmQuestion}

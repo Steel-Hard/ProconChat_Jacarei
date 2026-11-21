@@ -20,6 +20,9 @@ type ContentFormDialogProps = {
     title: string
     intro?: string
     drawer?: boolean
+    narrow?: boolean
+    crumb?: string | null
+    meta?: string | null
     confirmLabel: string
     cancelLabel: string
     previewLabel?: string
@@ -37,6 +40,9 @@ function ContentFormDialog({
     title,
     intro,
     drawer = false,
+    narrow = false,
+    crumb = null,
+    meta = null,
     confirmLabel,
     cancelLabel,
     previewLabel,
@@ -204,7 +210,9 @@ function ContentFormDialog({
             <dialog
                 ref={dialogRef}
                 open
-                className={drawer ? css.drawer : css.dialog}
+                className={
+                    drawer ? css.drawer : narrow ? `${css.dialog} ${css.dialogNarrow}` : css.dialog
+                }
                 aria-modal="true"
                 aria-labelledby={titleId}
                 inert={confirmingDiscard || layerOpen || undefined}
@@ -213,9 +221,11 @@ function ContentFormDialog({
                     <>
                         <div className={css.drawerHeader}>
                             <div className={css.drawerHeaderText}>
+                                {crumb ? <p className={css.drawerCrumb}>{crumb}</p> : null}
                                 <h2 id={titleId} className={css.drawerTitle}>
                                     {title}
                                 </h2>
+                                {meta ? <p className={css.drawerMeta}>{meta}</p> : null}
                             </div>
                             <button
                                 type="button"

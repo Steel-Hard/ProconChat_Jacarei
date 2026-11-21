@@ -564,6 +564,8 @@ export default function useContent() {
         closeDialog,
         categoryFormInitial,
         questionFormInitial,
+        dialogQuestion,
+        dialogCategory: previewCategory,
         validateCategoryFields,
         validateQuestionFields,
         confirmCategory,

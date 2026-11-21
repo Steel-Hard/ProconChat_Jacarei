@@ -6,6 +6,7 @@ type ContentCheckFieldProps = {
     hint?: ReactNode
     checked: boolean
     disabled?: boolean
+    card?: boolean
     onChange: (checked: boolean) => void
 }
 
@@ -14,10 +15,20 @@ function ContentCheckField({
     hint,
     checked,
     disabled = false,
+    card = false,
     onChange
 }: ContentCheckFieldProps) {
+    const classes = [
+        css.check,
+        disabled ? css.checkDisabled : "",
+        card ? css.checkCard : "",
+        card && disabled ? css.checkCardDisabled : ""
+    ]
+        .filter(Boolean)
+        .join(" ")
+
     return (
-        <label className={disabled ? `${css.check} ${css.checkDisabled}` : css.check}>
+        <label className={classes}>
             <input
                 type="checkbox"
                 checked={checked}

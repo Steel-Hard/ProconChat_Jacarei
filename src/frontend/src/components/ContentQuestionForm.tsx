@@ -19,7 +19,9 @@ function ContentQuestionForm({
     onCancel,
     onPreview,
     onChange,
-    previewSlot
+    previewSlot,
+    crumb,
+    meta
 }: ContentQuestionFormProps) {
     const { t } = useTranslation("content")
     const [fields, setFields] = useState<ContentQuestionFormFields>(initial)
@@ -78,6 +80,8 @@ function ContentQuestionForm({
     return (
         <ContentFormDialog
             drawer
+            crumb={crumb}
+            meta={meta}
             title={mode === "new" ? t("questionForm.titleNew") : t("questionForm.titleEdit")}
             summary={errors.length > 0 ? t("saveInvalid") : null}
             confirmLabel={t("questionForm.confirm")}
@@ -153,6 +157,7 @@ function ContentQuestionForm({
             <div className={css.fieldGroup}>
                 <div className={css.checks}>
                     <ContentCheckField
+                        card
                         label={t("questionForm.requiresInPerson")}
                         hint={t("questionForm.requiresInPersonHint")}
                         checked={fields.requiresInPerson}
@@ -171,6 +176,7 @@ function ContentQuestionForm({
                         />
                     ) : null}
                     <ContentCheckField
+                        card
                         label={t("questionForm.outOfScope")}
                         hint={t("questionForm.outOfScopeHint")}
                         checked={fields.outOfScope}
@@ -178,6 +184,7 @@ function ContentQuestionForm({
                         onChange={toggleOutOfScope}
                     />
                     <ContentCheckField
+                        card
                         label={t("questionForm.llmAllowed")}
                         hint={t("questionForm.llmAllowedHint")}
                         checked={fields.llmAllowed}
@@ -185,6 +192,7 @@ function ContentQuestionForm({
                         onChange={(checked) => patch({ llmAllowed: checked })}
                     />
                     <ContentCheckField
+                        card
                         label={t("questionForm.active")}
                         checked={fields.active}
                         onChange={(checked) => patch({ active: checked })}

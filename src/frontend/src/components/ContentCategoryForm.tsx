@@ -41,6 +41,7 @@ function ContentCategoryForm({
 
     return (
         <ContentFormDialog
+            narrow
             title={mode === "new" ? t("categoryForm.titleNew") : t("categoryForm.titleEdit")}
             confirmLabel={t("categoryForm.confirm")}
             cancelLabel={t("categoryForm.cancel")}

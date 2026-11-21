@@ -82,6 +82,54 @@ describe("ContentPage", () => {
         ).toBeGreaterThan(0)
     })
 
+    it("o painel lateral mostra a categoria e a última alteração ao editar uma pergunta", async () => {
+        const user = userEvent.setup()
+        await loaded({
+            categories: [stubCategory(1)],
+            questions: [
+                stubQuestion(10, 1, {
+                    updatedBy: { id: 1, name: "Ana" },
+                    updatedAt: "2026-11-05T15:00:00.000Z"
+                }),
+                stubQuestion(11, 1)
+            ]
+        })
+
+        await user.click(screen.getByRole("button", { name: "Editar P10" }))
+
+        const dialog = screen.getByRole("dialog", { name: "Editar pergunta" })
+
+        expect(within(dialog).getByText("Categoria 1")).toBeInTheDocument()
+        expect(
+            within(dialog).getByText("Última alteração por Ana em 05/11/2026")
+        ).toBeInTheDocument()
+    })
+
+    it("o painel lateral mostra a carga inicial quando a pergunta nunca foi alterada", async () => {
+        const user = userEvent.setup()
+        await loaded()
+
+        await user.click(screen.getByRole("button", { name: "Editar P10" }))
+
+        expect(
+            within(screen.getByRole("dialog", { name: "Editar pergunta" })).getByText(
+                "Carga inicial do sistema"
+            )
+        ).toBeInTheDocument()
+    })
+
+    it("o painel lateral de pergunta nova mostra a categoria e não mostra a última alteração", async () => {
+        const user = userEvent.setup()
+        await loaded()
+
+        await user.click(screen.getAllByRole("button", { name: "Nova pergunta" })[0])
+
+        const dialog = screen.getByRole("dialog", { name: "Nova pergunta" })
+
+        expect(within(dialog).getByText("Categoria 1")).toBeInTheDocument()
+        expect(within(dialog).queryByText(/Última alteração|Carga inicial/)).not.toBeInTheDocument()
+    })
+
     it("criar categoria, criar pergunta nela e salvar grava as duas na ordem", async () => {
         const user = userEvent.setup()
         const { server } = await loaded()
