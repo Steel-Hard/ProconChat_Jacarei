@@ -1,3 +1,5 @@
+import type { OutgoingMessage } from "./message.types"
+
 export interface ContentUpdatedBy {
     id: number
     name: string
@@ -98,6 +100,13 @@ export interface QuestionReorderInput {
     questionIds: number[]
 }
 
+export interface PreviewListRowInput {
+    questionId: number | null
+    shortTitle: string
+    shortDescription: string | null
+    isCurrent: boolean
+}
+
 export interface QuestionPreviewInput {
     questionId?: number
     categoryId: number
@@ -111,6 +120,7 @@ export interface QuestionPreviewInput {
     inPersonNote: string | null
     outOfScope: boolean
     llmAllowed: boolean
+    listRows?: PreviewListRowInput[]
 }
 
 export interface PreviewCategoryListRow {
@@ -150,6 +160,19 @@ export interface PreviewNextStepBubble {
     prompt: string
     buttons: string[]
     formattedText: string
+}
+
+export interface PreviewBotList {
+    message: Extract<OutgoingMessage, { type: "list" }>
+    currentRowIndex: number
+    page: number
+    totalPages: number
+}
+
+export interface PreviewBotMessages {
+    categoryList: PreviewBotList
+    officialMessages: OutgoingMessage[]
+    aiMessage: Extract<OutgoingMessage, { type: "buttons" }> | null
 }
 
 export interface QuestionPreviewResult {
