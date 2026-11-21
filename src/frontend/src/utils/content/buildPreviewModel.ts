@@ -31,8 +31,7 @@ export default function buildPreviewModel(result: ContentPreviewResult): Content
                 title: row.title,
                 description: row.description ?? null,
                 isCurrent: index === categoryList.currentRowIndex
-            })),
-            hasMoreOptions: false
+            }))
         },
         primaryBubbles: aiMessage ? [bubbleOf(aiMessage, "ai")] : official,
         fallbackBubbles: aiMessage ? official : [],

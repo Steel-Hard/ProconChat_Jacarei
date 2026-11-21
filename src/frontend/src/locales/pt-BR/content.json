@@ -165,8 +165,6 @@
         "fixErrors": "Corrija os campos do formulário para ver a prévia.",
         "unsavedCategory": "Esta categoria ainda não foi salva. Salve para que o cidadão a veja.",
         "fullAfterSave": "A prévia completa fica disponível depois de salvar",
-        "moreOptions": "Ver mais opções ›",
-        "aiLabel": "Gerado com auxílio de IA",
         "fallbackTitle": "Se a IA estiver indisponível"
     },
     "changes": {

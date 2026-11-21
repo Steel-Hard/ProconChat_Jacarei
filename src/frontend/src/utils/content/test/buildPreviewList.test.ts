@@ -122,25 +122,22 @@ function rowsOf(count: number, currentIndex: number): ContentPreviewListRowInput
 }
 
 describe("buildLocalPreviewList", () => {
-    it("mostra todas as linhas sem indicação de mais opções com até 10", () => {
+    it("mostra todas as linhas com até 10", () => {
         const list = buildLocalPreviewList(rowsOf(10, 3))
 
         expect(list.rows).toHaveLength(10)
-        expect(list.hasMoreOptions).toBe(false)
         expect(list.rows[3]).toMatchObject({ title: "T4", isCurrent: true })
     })
 
-    it("mostra só a página da pergunta atual e indica mais opções", () => {
+    it("mostra só a página da pergunta atual, sem rótulos do bot", () => {
         const first = buildLocalPreviewList(rowsOf(19, 2))
         const second = buildLocalPreviewList(rowsOf(19, 12))
         const third = buildLocalPreviewList(rowsOf(19, 18))
 
         expect(first.rows).toHaveLength(9)
-        expect(first.hasMoreOptions).toBe(true)
+        expect(first).not.toHaveProperty("hasMoreOptions")
         expect(second.rows).toHaveLength(8)
-        expect(second.hasMoreOptions).toBe(true)
         expect(third.rows.map((row) => row.title)).toEqual(["T18", "T19"])
-        expect(third.hasMoreOptions).toBe(false)
     })
 
     it("não inventa texto de cabeçalho nem de botão", () => {

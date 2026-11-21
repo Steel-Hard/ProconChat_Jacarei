@@ -73,7 +73,7 @@ describe("buildPreviewModel", () => {
             ["Ver mais opções", false]
         ])
         expect(model.list.rows[0].description).toBe("Desc")
-        expect(model.list.hasMoreOptions).toBe(false)
+        expect(model.list).not.toHaveProperty("hasMoreOptions")
     })
 
     it("com IA ligada usa o balão com IA e o rodapé, e deixa o oficial como alternativa", () => {

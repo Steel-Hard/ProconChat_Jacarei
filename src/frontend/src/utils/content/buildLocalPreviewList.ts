@@ -7,7 +7,6 @@ export default function buildLocalPreviewList(
 ): ContentPreviewListModel {
     const pages = whatsappPages(rows, () => true)
     const currentPage = pages.find((entry) => entry.item.isCurrent)?.whatsappPage ?? 1
-    const totalPages = Math.max(1, ...pages.map((entry) => entry.whatsappPage ?? 1))
 
     return {
         text: null,
@@ -20,7 +19,6 @@ export default function buildLocalPreviewList(
                 title: entry.item.shortTitle,
                 description: entry.item.shortDescription,
                 isCurrent: entry.item.isCurrent
-            })),
-        hasMoreOptions: currentPage < totalPages
+            }))
     }
 }

@@ -1,4 +1,3 @@
-import { useTranslation } from "react-i18next"
 import type ContentPreviewListModel from "@/types/content/ContentPreviewListModel.types"
 import css from "@/styles/components/contentPreview.module.css"
 
@@ -7,8 +6,6 @@ type ContentPreviewListProps = {
 }
 
 function ContentPreviewList({ list }: ContentPreviewListProps) {
-    const { t } = useTranslation("content")
-
     return (
         <div className={css.list}>
             {list.text !== null ? <p className={css.listHeader}>{list.text}</p> : null}
@@ -31,11 +28,6 @@ function ContentPreviewList({ list }: ContentPreviewListProps) {
             {list.buttonText !== null ? (
                 <div className={css.listNav}>
                     <span className={css.listButton}>{list.buttonText}</span>
-                </div>
-            ) : null}
-            {list.hasMoreOptions ? (
-                <div className={css.listNav}>
-                    <span className={css.listButton}>{t("preview.moreOptions")}</span>
                 </div>
             ) : null}
         </div>

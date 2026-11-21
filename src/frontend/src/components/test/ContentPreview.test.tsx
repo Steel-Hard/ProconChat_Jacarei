@@ -16,8 +16,7 @@ function model(overrides: Partial<ContentPreviewModel> = {}): ContentPreviewMode
             rows: [
                 { key: "q_1", title: "Outra", description: null, isCurrent: false },
                 { key: "q_2", title: "Troca de produto", description: "Prazo", isCurrent: true }
-            ],
-            hasMoreOptions: false
+            ]
         },
         primaryBubbles: [
             { id: "official", text: OFFICIAL, footerLabel: null, buttons: [] },
@@ -68,23 +67,10 @@ describe("ContentPreview", () => {
         expect(screen.getByText("Ver perguntas")).toBeInTheDocument()
     })
 
-    it("só mostra a indicação de próxima página quando a flag manda", () => {
-        const { unmount } = render(
-            <ContentPreview status="ready" model={model()} onClose={vi.fn()} onRetry={vi.fn()} />
-        )
-        expect(screen.queryByText("Ver mais opções ›")).not.toBeInTheDocument()
-        unmount()
+    it("não acrescenta rótulos do bot que a API não mandou", () => {
+        renderPreview({ status: "unsaved" })
 
-        const base = model()
-        render(
-            <ContentPreview
-                status="ready"
-                model={model({ list: { ...base.list, hasMoreOptions: true } })}
-                onClose={vi.fn()}
-                onRetry={vi.fn()}
-            />
-        )
-        expect(screen.getByText("Ver mais opções ›")).toBeInTheDocument()
+        expect(screen.queryByText(/Ver mais opções/)).not.toBeInTheDocument()
     })
 
     it("mostra o balão oficial exatamente com o texto do modelo", () => {
