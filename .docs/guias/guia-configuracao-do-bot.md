@@ -374,6 +374,9 @@ Ela guarda os dados de quem responde, no PROCON, pelo tratamento dos dados pesso
 4. Se quiser, preencha os demais campos, como o nome do encarregado.
 5. Clique em **Salvar alterações**.
 
+![Aba Privacidade preenchida](images/configuracao-do-bot/17-privacidade.png)
+*Figura 10 – Aba Privacidade com o nome do controlador e o e-mail de contato (dados de exemplo)*
+
 > **Atenção:** quando o nome do controlador e o e-mail de contato estão preenchidos, a saudação do chatbot passa a trazer o link "Saiba como tratamos seus dados". Sem esses dois campos, o link não aparece.
 
 > **Dica:** esses dados mudam quando o PROCON assume o sistema. Por isso ficam no painel, e você pode alterá-los quando precisar.
@@ -383,14 +386,14 @@ Ela guarda os dados de quem responde, no PROCON, pelo tratamento dos dados pesso
 O aviso ao cidadão quando a equipe cancela um agendamento vem **desligado**.
 
 ![Seção Avisos ao cidadão](images/configuracao-do-bot/07-aviso-cancelamento.png)
-*Figura 10 – Seção Avisos ao cidadão, com o interruptor desligado*
+*Figura 11 – Seção Avisos ao cidadão, com o interruptor desligado*
 
 1. Na seção **Avisos ao cidadão**, clique no interruptor.
 2. O painel pede confirmação e lembra que cada aviso é cobrado pela Meta.
 3. Clique em **Ligar aviso** para confirmar, ou em **Voltar** para desistir.
 
 ![Confirmação para ligar o aviso](images/configuracao-do-bot/13-dialogo-ligar-aviso.png)
-*Figura 11 – Confirmação para ligar o aviso de cancelamento*
+*Figura 12 – Confirmação para ligar o aviso de cancelamento*
 
 A mudança vale na hora, sem precisar clicar em Salvar. Para desligar, o caminho é o mesmo, com outra confirmação. Com o aviso desligado, o agendamento é cancelado sem avisar o cidadão, e a equipe precisa avisar por outro meio.
 
@@ -400,10 +403,18 @@ O lembrete avisa o cidadão, algumas horas antes, do atendimento marcado. Ele ve
 
 1. No menu lateral, clique em **Horários de atendimento**.
 2. Procure a seção **Lembrete ao cidadão**.
-3. Clique no interruptor **Enviar lembrete ao cidadão**.
-4. Escolha, em **Antecedência do lembrete**, quantas horas antes do atendimento o cidadão será avisado. As opções são 2, 6, 12, 24 ou 48 horas.
-5. O painel pede confirmação ("Ligar o lembrete?"). Clique em **Ligar lembrete**.
-6. Clique em **Salvar alterações**.
+3. Marque a caixa **Desativado**, no canto da seção. Ela passa a mostrar **Ativado**.
+
+![Seção Lembrete ao cidadão](images/configuracao-do-bot/15-lembrete-desligado.png)
+*Figura 13 – Seção Lembrete ao cidadão, ainda desligada*
+
+4. O painel pede confirmação ("Ligar o lembrete?"). Clique em **Ligar lembrete**.
+
+![Confirmação para ligar o lembrete](images/configuracao-do-bot/16-dialogo-ligar-lembrete.png)
+*Figura 14 – Confirmação para ligar o lembrete*
+
+5. Em **Antecedência do lembrete**, escolha quantas horas antes do atendimento o cidadão será avisado. As opções são 2, 6, 12, 24 ou 48 horas.
+6. Clique em **Salvar alterações**, no canto superior direito.
 
 > **Atenção:** diferente do aviso de cancelamento, o lembrete só vale **depois de clicar em Salvar alterações**. Sem salvar, a mudança é perdida.
 
@@ -421,7 +432,7 @@ Use a pausa em emergências, por exemplo, quando o chatbot estiver passando uma 
 2. O painel pergunta se você quer pausar. Leia o aviso: o chatbot deixará de responder aos cidadãos até ser reativado.
 
 ![Confirmação para pausar](images/configuracao-do-bot/12-dialogo-pausar.png)
-*Figura 12 – Confirmação para pausar as respostas, com a mensagem que o cidadão vai receber*
+*Figura 15 – Confirmação para pausar as respostas, com a mensagem que o cidadão vai receber*
 
 3. Clique em **Pausar respostas**.
 
@@ -430,7 +441,7 @@ A pausa vale **na hora**, sem precisar clicar em Salvar. Enquanto durar, quem es
 > O atendimento automático do PROCON Jacareí está temporariamente indisponível. Tente novamente mais tarde.
 
 ![Atendimento pausado](images/configuracao-do-bot/14-atendimento-pausado.png)
-*Figura 13 – Atendimento pausado: uma faixa amarela no topo e a situação "Respostas pausadas"*
+*Figura 16 – Atendimento pausado: uma faixa amarela no topo e a situação "Respostas pausadas"*
 
 ## Retomar
 
