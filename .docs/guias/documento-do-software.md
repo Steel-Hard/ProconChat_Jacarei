@@ -158,11 +158,11 @@ A primeira geração depois que o modelo sai da memória leva cerca de 13 a 22 s
 | Recurso | Mínimo | Recomendado |
 | --- | --- | --- |
 | CPU | 6 núcleos | 6 núcleos: os testes não mostraram ganho acima disso |
-| Memória (RAM) | 8 GB: cerca de 3 GB para o Ollama (4 GB de limite, como testado), 0,1 GB para os demais serviços e o restante para o sistema operacional, o Docker e a compilação das imagens (caminho 2B) | 8 GB, sem outra aplicação pesada na mesma máquina |
+| Memória (RAM) | 8 GB: cerca de 3 GB de uso medido do Ollama (o compose não limita a memória do container, e não é preciso configurar limite), 0,1 GB para os demais serviços e o restante para o sistema operacional, o Docker e a compilação das imagens (caminho 2B) | 8 GB, sem outra aplicação pesada na mesma máquina |
 | Disco | 20 GB livres | 40 GB, para backups, registros e versões antigas das imagens |
 | Placa de vídeo | Não necessária | Não necessária |
 
-O mínimo é a configuração em que quase todas as respostas saíram em até 10 s: com 6 núcleos, a média foi de 6,5 s, 2 respostas em 20 passaram de 10 s e o pior caso foi de cerca de 12 s. Com 4 núcleos a média ficou entre 7 e 9 s, mas de 1 a 7 respostas em 20 passaram de 10 s, por isso 4 núcleos não atendem à meta. A memória de 8 GB deixa folga sobre o uso medido do Ollama (cerca de 3 GB). O trecho do sistema operacional e da compilação nessa folga é estimativa, não medida.
+O mínimo é a configuração em que quase todas as respostas saíram em até 10 s: com 6 núcleos, a média foi de 6,5 s, 2 respostas em 20 passaram de 10 s e o pior caso foi de cerca de 12 s. Com 4 núcleos a média ficou entre 7 e 9 s, mas de 1 a 7 respostas em 20 passaram de 10 s, por isso 4 núcleos não atendem à meta. A medição de 6 núcleos foi feita com até 6 GB disponíveis para o Ollama, e os 8 GB da máquina dão essa folga. Não configure um limite de memória menor para o Ollama: com 4 GB a média subiu para 8,5 s e, abaixo de 3 GB, as gerações falham. O trecho do sistema operacional e da compilação nessa folga é estimativa, não medida.
 
 Não há medição que justifique um recomendado acima do mínimo para a CPU: com 7 e 13 CPUs os tempos foram iguais aos de 6. A folga recomendada é só de disco, calculada sobre os 12,6 GB medidos mais o cache de compilação, os backups e os registros.
 
