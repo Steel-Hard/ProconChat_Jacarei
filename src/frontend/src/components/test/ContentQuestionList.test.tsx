@@ -51,8 +51,9 @@ describe("ContentQuestionList", () => {
         expect(screen.getByText("Prazo e condições")).toBeInTheDocument()
         expect(screen.getByText("Posso trocar um produto?")).toBeInTheDocument()
         expect(screen.getByText("Ativa")).toBeInTheDocument()
-        expect(screen.getByText("Base legal: CDC, art. 49")).toBeInTheDocument()
-        expect(screen.getByText("2 documentos úteis")).toBeInTheDocument()
+        expect(screen.getByText(/Base legal: CDC, art. 49/)).toHaveTextContent(
+            "Base legal: CDC, art. 49 · 2 documentos úteis"
+        )
         expect(screen.getByText("Última alteração por Ana em 05/11/2026")).toBeInTheDocument()
     })
 

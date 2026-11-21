@@ -12,6 +12,8 @@ type ContentQuestionRowProps = {
     onMove: (categoryKey: string, key: string, direction: "up" | "down") => void
 }
 
+const SPACE = " "
+
 function ContentQuestionRow({
     item,
     showArrows,
@@ -75,15 +77,23 @@ function ContentQuestionRow({
                             {item.outOfScope ? (
                                 <Seal label={t("questions.sealOutOfScope")} tone="warning" />
                             ) : null}
-                            {item.legalBasis !== "" ? (
-                                <span>{t("questions.legalBasis", { value: item.legalBasis })}</span>
-                            ) : null}
-                            {item.legalBasis !== "" && item.documentsCount > 0 ? (
-                                <span className={css.metaSeparator}>{t("icons.dot")}</span>
-                            ) : null}
-                            {item.documentsCount > 0 ? (
+                            {item.legalBasis !== "" || item.documentsCount > 0 ? (
                                 <span>
-                                    {t("questions.documentsCount", { count: item.documentsCount })}
+                                    {item.legalBasis !== ""
+                                        ? t("questions.legalBasis", { value: item.legalBasis })
+                                        : null}
+                                    {item.legalBasis !== "" && item.documentsCount > 0 ? (
+                                        <span className={css.metaSeparator}>
+                                            {SPACE}
+                                            {t("icons.dot")}
+                                            {SPACE}
+                                        </span>
+                                    ) : null}
+                                    {item.documentsCount > 0
+                                        ? t("questions.documentsCount", {
+                                              count: item.documentsCount
+                                          })
+                                        : null}
                                 </span>
                             ) : null}
                         </div>
