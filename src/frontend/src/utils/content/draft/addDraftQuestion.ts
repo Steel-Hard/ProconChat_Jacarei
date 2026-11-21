@@ -8,10 +8,7 @@ export default function addDraftQuestion(
     fields: ContentQuestionFormFields
 ): ContentDraftState {
     const key = `nova-${draft.nextNewKey}`
-    const normalized = normalizeQuestionFields(
-        { ...fields, active: true, llmAllowed: !fields.outOfScope },
-        false
-    )
+    const normalized = normalizeQuestionFields({ ...fields, llmAllowed: !fields.outOfScope }, false)
 
     return {
         ...draft,

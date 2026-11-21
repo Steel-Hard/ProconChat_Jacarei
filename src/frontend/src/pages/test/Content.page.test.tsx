@@ -341,6 +341,27 @@ describe("ContentPage", () => {
         expect(server.log.filter((entry) => entry === "POST /categories")).toHaveLength(1)
     })
 
+    it("pergunta nova com Pergunta ativa no chatbot desmarcada é gravada inativa", async () => {
+        const user = userEvent.setup()
+        const { server } = await loaded()
+
+        await user.click(screen.getAllByRole("button", { name: "Nova pergunta" })[0])
+        await user.type(screen.getByLabelText(/Título curto/), "Inativa")
+        await user.type(screen.getByLabelText(/Texto da pergunta/), "Posso?")
+        await user.type(screen.getByLabelText(/Resposta oficial/), "Pode.")
+        await user.click(screen.getByRole("checkbox", { name: /Pergunta ativa no chatbot/ }))
+        await user.click(screen.getByRole("button", { name: "Confirmar" }))
+        await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
+
+        await waitFor(() =>
+            expect(screen.getByText("Conteúdo atualizado com sucesso.")).toBeInTheDocument()
+        )
+        expect(server.bodies.find((entry) => entry.url === "/questions")?.body).toMatchObject({
+            shortTitle: "Inativa",
+            active: false
+        })
+    })
+
     it("a busca procura em todas as categorias e esconde as setas", async () => {
         const user = userEvent.setup()
         await loaded()

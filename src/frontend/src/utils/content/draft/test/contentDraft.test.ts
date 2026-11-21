@@ -114,7 +114,15 @@ describe("addDraftCategory", () => {
 })
 
 describe("addDraftQuestion", () => {
-    it("coloca a pergunta nova no fim da categoria, ativa e com IA ligada", () => {
+    it("a pergunta nova com o campo ativa marcado nasce ativa", () => {
+        const draft = deriveContentDraft(snapshot)
+
+        const next = addDraftQuestion(draft, "1", { ...questionFields, active: true })
+
+        expect(next.questionsByCategory["1"][2].active).toBe(true)
+    })
+
+    it("coloca a pergunta nova no fim da categoria, com IA ligada, e respeita o campo ativa desmarcado", () => {
         const draft = deriveContentDraft(snapshot)
 
         const next = addDraftQuestion(draft, "1", {
@@ -127,7 +135,7 @@ describe("addDraftQuestion", () => {
         expect(created.key).toBe("nova-1")
         expect(created.id).toBeNull()
         expect(created.categoryKey).toBe("1")
-        expect(created.active).toBe(true)
+        expect(created.active).toBe(false)
         expect(created.llmAllowed).toBe(true)
         expect(draft.questionsByCategory["1"]).toHaveLength(2)
     })

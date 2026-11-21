@@ -96,6 +96,18 @@ describe("buildContentSavePlan", () => {
         expect(plan[1]).toMatchObject({ kind: "createQuestion", categoryKey: "nova-1" })
     })
 
+    it("pergunta nova com o campo ativa desmarcado é criada inativa, num único passo", () => {
+        const draft = addDraftQuestion(deriveContentDraft(snapshot), "1", {
+            ...fields,
+            active: false
+        })
+
+        const plan = buildContentSavePlan(snapshot, draft)
+
+        expect(kinds(plan)).toEqual(["createQuestion"])
+        expect(plan[0]).toMatchObject({ input: { active: false } })
+    })
+
     it("segue a ordem dos seis grupos", () => {
         let draft = deriveContentDraft(snapshot)
         draft = addDraftCategory(draft, { title: "Nova", shortTitle: "N", description: "" })
