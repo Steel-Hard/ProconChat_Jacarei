@@ -599,7 +599,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: nenhum.
 - Gate: `cd src/frontend && npm run format:check`
 - Modelo: padrao
-- Status: pendente
+- Status: feita. Evidência: estilos escritos e ajustados na revisão; prettier passa; commits 2a37044, a7203a3, 42121b3 e 2f5409b
 
 ### M2 [P] Revisão visual
 - O quê: conferir a tela pronta em computador e celular contra M1 e devolver ajustes ao Itadori.
@@ -613,7 +613,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Teste: nenhum.
 - Gate: revisão visual
 - Modelo: padrao
-- Status: pendente
+- Status: feita. Evidência: revisão visual e de usabilidade por leitura de código, aprovada sem pendência; a conferência em tela foi feita pelo QA no app real
 
 ### K1 [P] Regras de Conteúdo na documentação
 - O quê: atualizar a regra de Conteúdo com o padrão de alterações pendentes (Salvar/Descartar, contador conforme RN-05, sem aviso ao sair), o Salvar parcial e suas mensagens, último Salvar vale, rótulos e limites dos campos vindos da API, aviso de documento repetido, IA ao desmarcar fora do escopo, pergunta nova ativa, campo ativo valendo ao confirmar, última alteração do topo e "Carga inicial do sistema", prévia com textos do bot, botão "Agendar presencial", alternativa "Se a IA estiver indisponível" e categoria não salva. O que depende de D-U-04, D-U-05 e D-U-06 fica marcado como pendente.
