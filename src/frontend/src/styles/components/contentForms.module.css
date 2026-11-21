@@ -24,10 +24,6 @@
     color: inherit;
 }
 
-.dialogWide {
-    max-width: 880px;
-}
-
 .title {
     margin: 0;
     font: 700 19px var(--font-heading);

@@ -1,54 +1,7 @@
-.list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    container-type: inline-size;
-}
-
 .item {
     display: flex;
     flex-direction: column;
     gap: 8px;
-}
-
-.row {
-    display: grid;
-    grid-template-columns: 28px minmax(0, 1fr) auto;
-    align-items: start;
-    gap: 6px 10px;
-    padding: 10px 12px;
-    border: 1px solid var(--divider);
-    border-radius: 10px;
-    background: var(--bg-subtle);
-}
-
-.rowSelected {
-    border-color: var(--color-primary);
-    background: var(--bg-accent-soft);
-    box-shadow: inset 3px 0 0 var(--color-primary);
-}
-
-.rowInactive .shortTitle,
-.rowInactive .fullName,
-.rowInactive .questionText {
-    color: var(--text-muted);
-}
-
-.rowInactive {
-    background: var(--bg-disabled);
-}
-
-.rowUnsaved {
-    border-style: dashed;
-    border-color: var(--warn-border);
-}
-
-.rowInvalid {
-    border-color: var(--error-border);
-    background: var(--error-soft-bg);
 }
 
 .position {
@@ -199,57 +152,6 @@
     color: var(--error-text);
 }
 
-.actions {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 4px;
-}
-
-.arrows {
-    display: flex;
-    gap: 2px;
-}
-
-.actionButton {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    min-width: 32px;
-    height: 32px;
-    padding: 0 9px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--bg-surface);
-    color: var(--text-strong);
-    font-size: 12.5px;
-    font-weight: 600;
-    white-space: nowrap;
-    cursor: pointer;
-}
-
-.actionButton:hover:not(:disabled) {
-    filter: brightness(0.94);
-}
-
-.actionButton:focus-visible {
-    outline: 2px solid var(--focus-ring);
-    outline-offset: 1px;
-}
-
-.actionButton:disabled {
-    opacity: 0.35;
-    cursor: not-allowed;
-}
-
-.arrowButton {
-    padding: 0;
-    width: 32px;
-    font-size: 14px;
-}
-
 .pageBreak {
     display: flex;
     align-items: center;
@@ -286,28 +188,6 @@
     font-size: 13.5px;
     line-height: 1.55;
     color: var(--text-muted);
-}
-
-@container (max-width: 460px) {
-    .row {
-        grid-template-columns: 24px minmax(0, 1fr);
-    }
-
-    .actions {
-        grid-column: 2;
-        justify-content: flex-start;
-    }
-}
-
-@media (max-width: 640px) {
-    .actionButton {
-        min-width: 40px;
-        height: 40px;
-    }
-
-    .arrowButton {
-        width: 40px;
-    }
 }
 
 .lines {
