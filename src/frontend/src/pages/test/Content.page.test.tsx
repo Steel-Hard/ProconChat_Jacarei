@@ -44,7 +44,7 @@ async function createQuestion(user: ReturnType<typeof userEvent.setup>) {
     await user.type(screen.getByLabelText(/Título curto/), "Pergunta nova")
     await user.type(screen.getByLabelText(/Texto da pergunta/), "Posso trocar?")
     await user.type(screen.getByLabelText(/Resposta oficial/), "Pode.")
-    await user.click(screen.getByRole("button", { name: "Confirmar" }))
+    await user.click(screen.getByRole("button", { name: "Salvar pergunta" }))
 }
 
 describe("ContentPage", () => {
@@ -355,7 +355,7 @@ describe("ContentPage", () => {
         await user.type(screen.getByLabelText(/Texto da pergunta/), "Posso?")
         await user.type(screen.getByLabelText(/Resposta oficial/), "Pode.")
         await user.click(screen.getByRole("checkbox", { name: /Pergunta ativa no chatbot/ }))
-        await user.click(screen.getByRole("button", { name: "Confirmar" }))
+        await user.click(screen.getByRole("button", { name: "Salvar pergunta" }))
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
 
         await waitFor(() =>

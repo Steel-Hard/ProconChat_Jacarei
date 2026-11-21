@@ -4,7 +4,12 @@ import userEvent from "@testing-library/user-event"
 import ContentFormDialog from "@/components/ContentFormDialog"
 
 function renderDialog(
-    overrides: { dirty?: boolean; summary?: string | null; onConfirm?: () => void } = {}
+    overrides: {
+        dirty?: boolean
+        summary?: string | null
+        onConfirm?: () => void
+        drawer?: boolean
+    } = {}
 ) {
     const onCancel = vi.fn()
     const onConfirm = overrides.onConfirm ?? vi.fn()
@@ -16,6 +21,7 @@ function renderDialog(
             </main>
             <ContentFormDialog
                 title="Nova pergunta"
+                drawer={overrides.drawer}
                 confirmLabel="Confirmar"
                 cancelLabel="Cancelar"
                 dirty={overrides.dirty ?? false}
@@ -32,6 +38,42 @@ function renderDialog(
 }
 
 describe("ContentFormDialog", () => {
+    it("no modo painel lateral o formulário fica à direita com cabeçalho, corpo e rodapé fixo", () => {
+        renderDialog({ drawer: true })
+
+        const dialog = screen.getByRole("dialog", { name: "Nova pergunta" })
+        const footer = screen.getByRole("button", { name: "Confirmar" })
+            .parentElement as HTMLElement
+
+        expect(dialog.className).toMatch(/drawer/)
+        expect(dialog.parentElement?.className).toMatch(/drawerOverlay/)
+        expect(screen.getByRole("heading", { name: "Nova pergunta", level: 2 })).toBeInTheDocument()
+        expect(footer.className).toMatch(/drawerFooter/)
+        expect(footer).toContainElement(screen.getByRole("button", { name: "Cancelar" }))
+        expect(dialog.querySelector("form")).toContainElement(footer)
+    })
+
+    it("no modo painel lateral o botão de fechar do cabeçalho segue a regra do descarte", async () => {
+        const user = userEvent.setup()
+        const { onCancel } = renderDialog({ drawer: true, dirty: true })
+
+        await user.click(screen.getByRole("button", { name: "Fechar" }))
+
+        expect(onCancel).not.toHaveBeenCalled()
+        expect(screen.getByText("Descartar as alterações?")).toBeInTheDocument()
+    })
+
+    it("no modo painel lateral o foco começa no primeiro campo e Esc fecha direto sem alterações", async () => {
+        const user = userEvent.setup()
+        const { onCancel } = renderDialog({ drawer: true })
+
+        expect(screen.getByLabelText("Campo")).toHaveFocus()
+
+        await user.keyboard("{Escape}")
+
+        expect(onCancel).toHaveBeenCalledTimes(1)
+    })
+
     it("clicar fora do diálogo não fecha nem descarta", async () => {
         const user = userEvent.setup()
         const { onCancel } = renderDialog({ dirty: true })

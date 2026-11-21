@@ -77,7 +77,7 @@ function ContentQuestionForm({
 
     return (
         <ContentFormDialog
-            wide
+            drawer
             title={mode === "new" ? t("questionForm.titleNew") : t("questionForm.titleEdit")}
             summary={errors.length > 0 ? t("saveInvalid") : null}
             confirmLabel={t("questionForm.confirm")}
@@ -93,7 +93,7 @@ function ContentQuestionForm({
             {mode === "edit" ? (
                 <p className={css.guidance}>{t("questionForm.editGuidance")}</p>
             ) : null}
-            <div className={css.section}>
+            <div className={css.fieldGroup}>
                 <div className={css.twoColumns}>
                     <ContentTextField
                         label={t("questionForm.shortTitle")}
@@ -141,7 +141,7 @@ function ContentQuestionForm({
                     onChange={(value) => patch({ legalBasis: value })}
                 />
             </div>
-            <div className={css.section}>
+            <div className={css.fieldGroup}>
                 <span className={css.sectionTitle}>{t("questionForm.documents")}</span>
                 <p className={css.hint}>{t("questionForm.documentsHint")}</p>
                 <ContentDocumentsField
@@ -150,7 +150,7 @@ function ContentQuestionForm({
                     onChange={(documents) => patch({ requiredDocuments: documents })}
                 />
             </div>
-            <div className={css.section}>
+            <div className={css.fieldGroup}>
                 <div className={css.checks}>
                     <ContentCheckField
                         label={t("questionForm.requiresInPerson")}

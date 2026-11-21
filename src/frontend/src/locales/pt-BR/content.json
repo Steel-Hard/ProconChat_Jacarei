@@ -115,6 +115,7 @@
     "questionForm": {
         "titleNew": "Nova pergunta",
         "titleEdit": "Editar pergunta",
+        "close": "Fechar",
         "editGuidance": "Para mudar o assunto da pergunta, desative-a e crie uma nova, para não alterar o histórico dos relatórios.",
         "shortTitle": "Título curto (lista do WhatsApp)",
         "shortDescription": "Descrição curta",
@@ -135,7 +136,7 @@
         "active": "Pergunta ativa no chatbot",
         "optional": "opcional",
         "preview": "Ver como o cidadão recebe",
-        "confirm": "Confirmar",
+        "confirm": "Salvar pergunta",
         "cancel": "Cancelar"
     },
     "documentsField": {

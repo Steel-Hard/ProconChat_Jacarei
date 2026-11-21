@@ -178,7 +178,7 @@ describe("ContentQuestionForm", () => {
 
         await user.click(active)
         expect(onConfirm).not.toHaveBeenCalled()
-        await user.click(screen.getByRole("button", { name: "Confirmar" }))
+        await user.click(screen.getByRole("button", { name: "Salvar pergunta" }))
 
         expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ active: false }))
     })
@@ -193,7 +193,7 @@ describe("ContentQuestionForm", () => {
             })
         })
 
-        await user.click(screen.getByRole("button", { name: "Confirmar" }))
+        await user.click(screen.getByRole("button", { name: "Salvar pergunta" }))
 
         expect(screen.getByText("Informe a resposta.")).toBeInTheDocument()
         expect(onConfirm).not.toHaveBeenCalled()
