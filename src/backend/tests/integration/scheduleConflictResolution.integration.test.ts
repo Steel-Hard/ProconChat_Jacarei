@@ -26,6 +26,7 @@ const WEDNESDAY = 3
 const THURSDAY = 4
 const WITHOUT_TUESDAY = [1, 3, 4, 5]
 const INVALID_SEATS_PER_SLOT = 0
+const DB_CHECK_VIOLATION = "23514"
 
 function dayOfWeek(dateStr: string): number {
     return new Date(`${dateStr}T12:00:00Z`).getUTCDay()
@@ -298,7 +299,7 @@ describe("regras de resolução de conflitos da agenda com Postgres", () => {
                     seenConflictIds: [first, second],
                     seenNoticeEnabled: false,
                 }),
-            ).rejects.toThrow()
+            ).rejects.toMatchObject({ code: DB_CHECK_VIOLATION })
 
             expect(await appointmentState(first)).toEqual({ status: "CONFIRMED", offGrid: false })
             expect(await appointmentState(second)).toEqual({ status: "CONFIRMED", offGrid: false })
