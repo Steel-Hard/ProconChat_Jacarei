@@ -1,6 +1,6 @@
 # Teste ponta a ponta do fluxo principal do chatbot (#18)
 
-> Status: aprovada
+> Status: em-andamento
 > Tipo: funcionalidade
 > Tamanho: grande
 > Branch: test/18-teste-e2e-fluxo-principal
@@ -427,7 +427,7 @@ Regras para todas as tarefas:
 - Teste: unitário dos helpers, dentro da config e2e. Falha primeiro o teste de `toSentMessage` que espera `type: "buttons"` com os ids dos botões.
 - Gate: rápido e2e
 - Modelo: padrao
-- Status: pendente
+- Status: em-andamento
 
 ### T2 [P] Cenário 1: dúvida nova termina em agendamento, assumido e atendido pelo painel
 - O quê: o arquivo `fluxoPrincipal.e2e.test.ts`, com o cenário 1 de ponta a ponta.
@@ -507,7 +507,7 @@ Regras para todas as tarefas:
 - Teste: nenhum (configuração de CI). A verificação é a execução no CI.
 - Gate: CI
 - Modelo: economico
-- Status: pendente
+- Status: em-andamento
 
 ### T5 [P] Documentação de como rodar o teste ponta a ponta
 - O quê: explicar o que o teste cobre e como rodá-lo, localmente e no CI.
@@ -537,7 +537,7 @@ Regras para todas as tarefas:
 - Teste: nenhum (documentação)
 - Gate: doc
 - Modelo: economico
-- Status: pendente
+- Status: em-andamento
 
 ## Dúvidas
 
