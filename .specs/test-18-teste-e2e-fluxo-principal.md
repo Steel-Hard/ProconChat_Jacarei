@@ -485,7 +485,7 @@ Regras para todas as tarefas:
 - Teste: e2e. A regra já existe, então o teste deve passar de primeira, e isso fica registrado. Uma falha por defeito do sistema vira achado para o reviewer, e o teste não é ajustado.
 - Gate: rápido e2e
 - Modelo: padrao
-- Status: em-andamento
+- Status: feita (commit 3ddfe55). Cobre CA-07 a CA-14 e CA-18. Evidência: `typecheck:test` ok; `typecheck:e2e` sem erro no arquivo da tarefa; oxlint ok; os 2 testes passam. Passaram de primeira, como previsto, porque cobrem regra que já existia, e não acharam defeito no sistema.
 
 ### T4 [P] Job `backend-e2e` no CI
 - O quê: um job novo no CI que sobe o Postgres, instala o Backend e o Gateway, aplica as migrations, checa os tipos do e2e e roda o teste.
