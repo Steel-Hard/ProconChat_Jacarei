@@ -1,6 +1,6 @@
 # Divergências entre a documentação de regras e o painel (#174)
 
-> Status: aprovada
+> Status: em-andamento
 > Tipo: funcionalidade
 > Tamanho: media
 > Branch: docs/174-divergencias-regras-e-painel
@@ -259,7 +259,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 - **Gate:** documentação. A lista do menu na regra é igual à do painel, tela por tela. Todo link mudado abre o arquivo e a seção que existem (o da decisão 013 é conferido no gate da fase 1).
 - **Modelo:** economico
 - **Commit:** `Docs :bulb: [#174] Atualiza o menu e o estado das telas nas regras`
-- **Status:** pendente
+- **Status:** feita, commit aea539c. Gate: 0 links quebrados em regras e decisões; a busca por Sessões e Dashboard mostra só as marcas de descarte e as notas para a decisão 013.
 
 ### T3 [P] Registrar a exportação como não entregue na regra de Relatórios e na decisão 010
 
@@ -274,7 +274,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 - **Gate:** documentação. Uma busca por "Exportar", "exportação", "Sessões" e "Dashboard" nos dois arquivos só encontra a nota, o trecho que diz que a exportação não foi entregue ou o uso técnico de "sessão". Todo link mudado abre.
 - **Modelo:** padrao
 - **Commit:** `Docs :bulb: [#174] Registra a exportação de relatórios como não entregue`
-- **Status:** pendente
+- **Status:** feita, commit 134a83b. Gate: 0 links quebrados em regras e decisões; a busca por Sessões e Dashboard mostra só as marcas de descarte e as notas para a decisão 013.
 
 ### T4 [P] Criar a decisão 013 e pôr as notas de estado nas decisões antigas
 
@@ -294,7 +294,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 - **Gate:** documentação. A tabela de permissões e a nota da decisão 004 ficam copiadas no Status da tarefa, para a T8 levar ao manual. O índice das decisões abre a decisão nova. Todo link mudado abre.
 - **Modelo:** padrao
 - **Commit:** `Docs :bulb: [#174] Registra o descarte das telas de Sessões e Dashboard nas decisões`
-- **Status:** pendente
+- **Status:** feita, commit a8f97eb. Gate: 0 links quebrados em regras e decisões; a busca por Sessões e Dashboard mostra só as marcas de descarte e as notas para a decisão 013.
 
 ### T5 [P] Tirar Sessões e Dashboard como telas futuras das regras das telas
 
@@ -314,7 +314,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 - **Gate:** documentação. Uma busca por `Sessões`, `Ver sessões`, `#72`, `07-sessoes`, `Dashboard`, `#71` e `02-dashboard` nos seis arquivos só encontra a marca de tela descartada, o texto de registro das regras 02 e 07, a nota que aponta para a 013 e o uso técnico da palavra "sessão". Todo link mudado abre.
 - **Modelo:** padrao
 - **Commit:** `Docs :bulb: [#174] Retira Sessões e Dashboard como telas futuras das regras`
-- **Status:** pendente
+- **Status:** feita, commit ad8612e. Gate: 0 links quebrados em regras e decisões; a busca por Sessões e Dashboard mostra só as marcas de descarte e as notas para a decisão 013.
 
 ### T6 [P] Conferir e corrigir a regra 08 contra o painel
 
@@ -334,7 +334,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 - **Gate:** documentação. Cada texto citado entre aspas na regra existe igual no painel ou no servidor. Uma busca por `Dashboard` e `02-dashboard` na regra 08 não encontra promessa de alerta. Todo link mudado abre.
 - **Modelo:** padrao
 - **Commit:** `Docs :bulb: [#174] Corrige a regra de Horários conforme o painel`
-- **Status:** pendente
+- **Status:** feita, commit 0a39a51. Gate: 0 links quebrados em regras e decisões; a busca por Sessões e Dashboard mostra só as marcas de descarte e as notas para a decisão 013. Textos da regra 08 conferidos no painel e no servidor. "Horários cancelados voltam livres" saiu dos pendentes, porque já funciona, e o "Tentar novamente" existe no histórico do agendamento. Ficam pendentes só o "envio em paralelo" e os "testes de borda extras".
 
 ### T7 [P] Pôr a nota de estado na decisão 007
 
@@ -349,7 +349,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 - **Gate:** documentação. O texto bate com a regra 08 e com o painel. O link para a decisão 013 abre.
 - **Modelo:** economico
 - **Commit:** `Docs :bulb: [#174] Registra o estado do alerta de espera na decisão 007`
-- **Status:** pendente
+- **Status:** feita, commit a909124. Gate: 0 links quebrados em regras e decisões; a busca por Sessões e Dashboard mostra só as marcas de descarte e as notas para a decisão 013.
 
 ### T12 [P] Tirar as capturas novas das figuras 17, 18 e 14 do manual
 
