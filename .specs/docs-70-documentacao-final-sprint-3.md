@@ -207,7 +207,7 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 - **Teste:** nenhum (documentação).
 - **Gate:** cada número do placar conferido contra a lista do GitHub; a conferência de links; `git status --short` mostra só a pasta `sprint3`.
 - **Modelo:** padrao
-- **Status:** feita, commit 81b2ce2. Gate: números do placar conferidos contra o `gh issue list`; conferência de links sem saída.
+- **Status:** feita, commits 81b2ce2 e 514e859. Gate: números do placar conferidos contra o `gh issue list`; links relativos conferidos em todos os arquivos alterados; `git status` limpo.
 
 ### T3 [P] Conferir e completar a instalação no README
 
@@ -269,7 +269,7 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 - **Teste:** nenhum (documentação).
 - **Gate:** cada item alterado aponta a sua fonte no código, na migration ou na decisão; a conferência de links; `git status --short` mostra só `architecture.md` e `database.md`.
 - **Modelo:** padrao
-- **Status:** feita, commit 9e07b72. Gate: conferência de links sem saída.
+- **Status:** feita, commits 9e07b72 e 48ddf63. Gate: links relativos conferidos em todos os arquivos alterados; `git status` limpo.
 
 ### T5 [P] Conferir a rastreabilidade item a item
 
@@ -301,7 +301,7 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 - **Teste:** nenhum (documentação).
 - **Gate:** cada linha cita a sua fonte (issue, decisão, código ou registro escrito); a conferência de links; `git status --short` mostra só `rastreabilidade.md`.
 - **Modelo:** padrao
-- **Status:** pendente
+- **Status:** feita, commit c463ea4. Gate: links relativos conferidos em todos os arquivos alterados; `git status` limpo. Duas ressalvas em aberto, com o usuário (ver Dúvidas, U-05 e U-06): o RNF03, porque não foram achadas as citações legais no código da página `/privacidade` e a decisão 002 diz "a conferir"; e o RF05 com o RNF02, marcados ✅ com ressalva, porque o modelo frio chega a 21,8 s e o servidor ARM de produção não foi medido.
 
 ### T6 (não se aplica) Registrar os requisitos parciais com as issues da PO
 
@@ -337,7 +337,7 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 - **Teste:** nenhum (documentação).
 - **Gate:** a comparação, linha por linha, do status de RF01 a RF08 e RNF01 a RNF08 entre o README e a rastreabilidade não mostra diferença; a conferência de links; `git status --short` mostra só `README.md`.
 - **Modelo:** economico
-- **Status:** pendente
+- **Status:** feita, commit 4ece6fa. Gate: links relativos conferidos em todos os arquivos alterados; `git status` limpo.
 
 ### T8 Deixar coerentes os trechos que tocam as decisões da #174
 
@@ -364,7 +364,7 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
   - a conferência de links;
   - o histórico da branch com um commit por tarefa, sem coautoria (`git log --format=%B develop..HEAD`).
 - **Modelo:** economico
-- **Status:** pendente
+- **Status:** feita, sem commit próprio: os cinco pontos da #174 entraram nos commits da T4, da T5 e da T7. Gate: links relativos conferidos em todos os arquivos alterados; `git status` limpo.
 
 ### T9 [P] Conferir o README do backend contra o sistema
 
@@ -386,7 +386,7 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 - **Teste:** nenhum (documentação).
 - **Gate:** cada trecho alterado aponta a sua fonte no código; a conferência de links; `git status --short` mostra só `src/backend/README.md`.
 - **Modelo:** padrao
-- **Status:** pendente
+- **Status:** feita, commit 473c924. Gate: links relativos conferidos em todos os arquivos alterados; `git status` limpo.
 
 ### T10 [P] Conferir o README do gateway contra o sistema
 
@@ -403,7 +403,7 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 - **Teste:** nenhum (documentação).
 - **Gate:** cada trecho alterado aponta a sua fonte no código; a conferência de links; `git status --short` mostra só `src/gateway/README.md`.
 - **Modelo:** padrao
-- **Status:** pendente
+- **Status:** feita, commit 5d6124e. Gate: links relativos conferidos em todos os arquivos alterados; `git status` limpo.
 
 ### T11 [P] Conferir o README do painel web contra o sistema
 
@@ -426,7 +426,7 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 - **Teste:** nenhum (documentação).
 - **Gate:** cada trecho alterado aponta a sua fonte no código; `npm run format:check` em `src/frontend` (depois de `npm ci`, se faltar `node_modules`); a conferência de links; `git status --short` mostra só `src/frontend/README.md`.
 - **Modelo:** padrao
-- **Status:** pendente
+- **Status:** feita, commit 8c3f236. Gate: links relativos conferidos em todos os arquivos alterados; `git status` limpo. `prettier --check` do README do painel passou.
 
 ## Dúvidas
 
@@ -436,7 +436,8 @@ Nenhuma em aberto. As respostas da PO (P-01 a P-07) foram incorporadas em RN-04,
 
 ### Para o usuário
 
-Nenhuma em aberto.
+- U-05 RNF03: a página de privacidade foi conferida e as citações legais dos prazos não foram achadas no texto dela, e a decisão 002 ainda diz "a conferir". Isso diverge do que a RN-17 registra. O usuário decide como o RNF03 fica na rastreabilidade.
+- U-06 RF05 e RNF02: estão como atendidos com ressalva, porque, com o modelo de IA frio, a resposta chega a 21,8 s, e o servidor de produção (ARM) não foi medido. O usuário decide se a ressalva basta ou se o status muda.
 
 ### Respostas do usuário
 
