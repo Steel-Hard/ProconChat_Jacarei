@@ -1,6 +1,6 @@
 # Documentação final da Sprint 3 (#70)
 
-> Status: aprovada
+> Status: em-andamento
 > Tipo: funcionalidade
 > Tamanho: media
 > Branch: docs/70-documentacao-final-sprint-3
@@ -184,7 +184,7 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 - **Teste:** nenhum (documentação).
 - **Gate:** a conferência de links (na fase); `git status --short` mostra só `.docs/README.md`.
 - **Modelo:** economico
-- **Status:** pendente
+- **Status:** feita, commit b86718e. Gate: conferência de links sem saída.
 
 ### T2 [P] Criar o fechamento da Sprint 3
 
@@ -207,7 +207,7 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 - **Teste:** nenhum (documentação).
 - **Gate:** cada número do placar conferido contra a lista do GitHub; a conferência de links; `git status --short` mostra só a pasta `sprint3`.
 - **Modelo:** padrao
-- **Status:** pendente
+- **Status:** feita, commit 81b2ce2. Gate: números do placar conferidos contra o `gh issue list`; conferência de links sem saída.
 
 ### T3 [P] Conferir e completar a instalação no README
 
@@ -239,7 +239,7 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
   - a conferência de links;
   - `git status --short` mostra só `README.md`.
 - **Modelo:** padrao
-- **Status:** pendente
+- **Status:** feita, commit 38b7457. Gate: sistema subido do zero sem `ollama` e `llm-pull`, painel respondeu 200 e a entrada com a conta Admin respondeu 200; conferência de links sem saída. O teste com o modelo de IA continua com a QA (CA-01).
 
 ### T4 [P] Atualizar a arquitetura e o modelo de dados para o estado final
 
@@ -269,7 +269,7 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 - **Teste:** nenhum (documentação).
 - **Gate:** cada item alterado aponta a sua fonte no código, na migration ou na decisão; a conferência de links; `git status --short` mostra só `architecture.md` e `database.md`.
 - **Modelo:** padrao
-- **Status:** pendente
+- **Status:** feita, commit 9e07b72. Gate: conferência de links sem saída.
 
 ### T5 [P] Conferir a rastreabilidade item a item
 
