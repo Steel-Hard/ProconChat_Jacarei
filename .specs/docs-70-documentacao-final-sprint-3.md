@@ -20,7 +20,7 @@ Esta tarefa deixa a documentação igual ao que está de fato no sistema hoje (R
 
 - uma pessoa de fora do time consegue subir o sistema seguindo só o README;
 - o quadro de rastreabilidade não tem nenhum requisito como "não atendido" e bate com o README;
-- cada requisito que continua parcial aponta para uma issue aberta pela PO.
+- os pontos que pareciam lacunas (RF02, RF03, RNF01, RNF03, RF05, RF06 e RNF02) aparecem com a situação decidida pelo usuário em 22/11/2026 e a fonte de cada um, sem nenhuma issue de lacuna.
 
 É só documentação: nenhuma tela, regra ou código do sistema muda.
 
@@ -38,17 +38,17 @@ Esta tarefa deixa a documentação igual ao que está de fato no sistema hoje (R
 | RN-08 | O fechamento da Sprint 3 segue o modelo das Sprints 1 e 2: placar, tarefas concluídas, tarefas em aberto e riscos. Os dados são estes: <ul><li>O período é de 20/10 a 23/11/2026.</li><li>A data do retrato é o dia em que a lista do GitHub for conferida.</li><li>O burndown fica registrado como pendente. O motivo é que não há registro de quando cada issue foi para "In progress".</li></ul> | PO (P-03) |
 | RN-09 | O README principal aponta para o fechamento da Sprint 3 e mostra a sprint como concluída. | PO |
 | RN-10 | A #174 já foi decidida: <ul><li>Nos pontos 1 a 4 (menu, exportação de relatórios, "Ver sessões" e conflitos em Horários), muda só a documentação.</li><li>A exportação de relatórios fica como não entregue, bônus da #73.</li><li>No ponto 5, a frase sobre o Dashboard sai da tela de Horários. Essa mudança no painel é do dev de frontend.</li></ul>As regras das telas e o manual são de outro dev (Inumaki). Esta tarefa só mantém o README, a arquitetura e a rastreabilidade coerentes com essas decisões. | usuário; PO (P-06) |
-| RN-11 | Nada é inventado. Uma data, um resultado ou um status sem fonte vai para "Dúvidas" e não é escrito como fato. A resposta do professor sobre os fluxos decisórios não é inventada. | orquestradora; PO (P-01) |
+| RN-11 | Nada é inventado. Uma data, um resultado ou um status sem fonte vai para "Dúvidas" e não é escrito como fato. Sobre os fluxos decisórios, vale só o que o usuário registrou em 22/11/2026 (RN-17). | orquestradora; PO (P-01); usuário |
 | RN-12 | Nenhum documento mostra o valor de uma senha, chave ou token. Os exemplos citam só o nome da configuração. | padrão de segurança |
 | RN-13 | Cada tarefa entra em um commit separado, no formato `Docs :bulb: [#70] <descrição no imperativo>`, sem linha de coautoria. | orquestradora; padrão de commits |
 | RN-14 | As telas de Sessões (#72) e de Dashboard (#71) foram descartadas de propósito pelo grupo. No README, na arquitetura e na rastreabilidade, as duas aparecem como "descartada por decisão do grupo", nunca como entregue, pendente, "não entregue" ou lacuna. Nenhuma delas gera issue de lacuna. Isso vale também para o RF06 e para a tabela de corte do RP04. | usuário |
 | RN-15 | Como não há Dashboard, a tela inicial do painel leva a Agendamentos (PR #115). Os documentos descrevem isso como o comportamento final, não como algo provisório "enquanto não há Dashboard". | usuário |
 | RN-16 | A tabela de corte de escopo do RP04 deixa de ser proposta e vira o registro oficial do que ficou de fora: <ul><li>Sessões (#72): descartada por decisão do grupo.</li><li>Exportação em PDF, Excel e CSV: não entregue, bônus da #73.</li><li>Dashboard (#71): descartado por decisão do grupo.</li><li>Os demais itens, conforme o que existe no sistema.</li></ul> | PO (P-04) |
-| RN-17 | Ficam parciais, e cada um entra na lista de lacunas: <ul><li>**RF02, RF03 e RNF01:** o professor e o PROCON não responderam sobre os fluxos decisórios, e não há registro do teste com usuários. Em RF02, RF03 e na nota 1, isso aparece como "sem resposta até o fechamento", e o teste com usuários como "sem registro".</li><li>**RNF03:** a conferência das citações legais dos prazos da decisão 002 continua aberta.</li></ul> | PO (P-01, P-05); usuário |
+| RN-17 | Os cinco pontos que a rastreabilidade tratava como lacunas não são lacunas. Nenhum deles fica parcial por esse motivo, e cada um cita a sua fonte: <ul><li>**RF02 e RF03:** o professor aceitou e recomendou o fluxo atual, com botões.</li><li>**RNF01:** o PROCON validou e aprovou o fluxo antes do desenvolvimento, e o fluxo foi construído a partir dos feedbacks dele.</li><li>**RF06:** a tela de Relatórios cumpre o requisito. A exportação e os gráficos são bônus da #73 e nunca foram pedidos.</li><li>**RNF03:** a página de privacidade já traz as citações legais dos prazos.</li><li>**RF05 e RNF02:** o tempo de resposta da IA foi medido de novo, e o resultado está em um PDF da pasta de guias. A medição está sendo conferida pelo dev (Megumi), e o status desses dois segue o que a conferência confirmar.</li></ul>Decisão de 22/11/2026, que substitui a versão anterior desta regra ("sem resposta até o fechamento" e "sem registro"). | PO (P-01, P-05); usuário (22/11/2026) |
 | RN-18 | O placar conta as issues assim: <ul><li>A #122 e a #120 aparecem só como "unificada na #121" e "unificada na #118", sem contar em dobro.</li><li>A #159 conta como organização da Feira, sem código.</li><li>A #18, a #159 e a #164 aparecem como entradas no meio da sprint.</li><li>A #70 conta como a issue de fechamento, aberta no retrato.</li></ul> | PO (P-02) |
 | RN-19 | A #70 também corrige estes textos, inteiros: <ul><li>o modelo de dados, que deixa de dizer "planejado para a Sprint 3";</li><li>a linha da pasta `.tasks/` no índice geral, porque as especificações ficam em `.specs/`, que está no Git;</li><li>os README do backend, do gateway e do painel web, conferidos do começo ao fim contra o que o sistema faz hoje.</li></ul> | PO (P-07); usuário (U-04) |
 | RN-20 | O usuário autorizou o teste do zero com o modelo de IA. Quem faz esse teste é a QA (Nobara). O dev não baixa nem roda o modelo de IA: ele valida só o que não depende do modelo. | usuário (U-01, U-02) |
-| RN-21 | Nenhuma issue de lacuna é aberta antes de o usuário ver a lista de lacunas. O usuário também decide se essas issues recebem a etiqueta `SPRINT 3`. Até essa decisão, os requisitos parciais ficam como ⚠️ "issue a abrir". | usuário (U-03) |
+| RN-21 | Nenhuma issue de lacuna é aberta para a #70, e a rastreabilidade não tem nenhum "issue a abrir". Se a conferência da rastreabilidade achar outro requisito parcial, além dos pontos da RN-17, o dev avisa a orquestradora, e nenhuma issue é aberta sem decisão do usuário. | usuário (U-03, 22/11/2026) |
 
 ## Critérios de aceite
 
@@ -64,11 +64,11 @@ Rastreabilidade e arquitetura
 
 - CA-06 QUANDO a rastreabilidade é aberta ENTÃO nenhum requisito DEVE estar como ❌, e a data da revisão DEVE ser a da conferência final. A legenda DEVE explicar que o 🔴 do RP04 marca um risco, não um requisito. (RN-04, RN-05)
 - CA-07 QUANDO um requisito está como atendido ENTÃO a linha DEVE citar onde isso pode ser visto: uma issue entregue, uma decisão ou um registro escrito. Um requisito não pode ficar como atendido só porque a issue foi fechada. (RN-04)
-- CA-08 QUANDO um requisito está como parcial ENTÃO a linha DEVE dizer o que falta, em linguagem simples, e o número da issue aberta pela PO. Isso vale no mínimo para RF02, RF03, RNF01 e RNF03. (RN-06, RN-17)
-- CA-09 QUANDO RF02, RF03 e a nota 1 são lidos ENTÃO DEVEM dizer que a consulta sobre os fluxos decisórios ficou "sem resposta até o fechamento" e que o teste com usuários está "sem registro". Nenhuma resposta DEVE ser atribuída ao professor ou ao PROCON. (RN-11, RN-17)
+- CA-08 QUANDO a rastreabilidade é lida ENTÃO RF02, RF03, RNF01, RNF03 e RF06 NÃO DEVEM aparecer como parciais nem como lacuna, cada um DEVE citar a fonte da RN-17, e nenhuma linha DEVE dizer "issue a abrir". RF05 e RNF02 DEVEM citar a medição do PDF da pasta de guias, com o status que a conferência da medição confirmar. (RN-17, RN-21)
+- CA-09 QUANDO RF02, RF03 e a nota 1 são lidos ENTÃO DEVEM dizer que o professor aceitou e recomendou o fluxo atual, com botões. QUANDO o RNF01 é lido ENTÃO DEVE dizer que o PROCON validou e aprovou o fluxo antes do desenvolvimento e que o fluxo foi construído a partir dos feedbacks dele. Nenhum dos três DEVE dizer "sem resposta até o fechamento" nem "sem registro". (RN-11, RN-17)
 - CA-10 QUANDO a rastreabilidade fala de pendências antigas que já foram resolvidas ENTÃO o texto DEVE refletir a situação de hoje e citar a issue que resolveu cada uma. Os casos já conhecidos são: o teste ponta a ponta (#18), o guia de passagem para o PROCON (#118) e o painel em construção (#123 a #129). (RN-04)
 - CA-11 QUANDO a arquitetura é aberta ENTÃO a data de atualização DEVE ser a da conferência final. Nenhum item DEVE aparecer como "planejado para a Sprint 2" ou "planejado para a Sprint 3". O que ficou de fora DEVE aparecer com a situação certa e a issue: Sessões (#72) e Dashboard (#71) descartados por decisão do grupo, e exportação de relatórios não entregue (bônus da #73). (RN-04, RN-14, RN-15, RN-16)
-- CA-12 QUANDO a tela de Sessões ou a de Dashboard é citada no README, na arquitetura ou na rastreabilidade (inclusive no RF06 e no RP04) ENTÃO DEVE aparecer como "descartada por decisão do grupo", nunca como entregue, pendente, "não entregue" ou "em construção", e nenhuma das duas DEVE estar na lista de lacunas. QUANDO a tela inicial é citada ENTÃO DEVE levar a Agendamentos. (RN-14, RN-15)
+- CA-12 QUANDO a tela de Sessões ou a de Dashboard é citada no README, na arquitetura ou na rastreabilidade (inclusive no RF06 e no RP04) ENTÃO DEVE aparecer como "descartada por decisão do grupo", nunca como entregue, pendente, "não entregue" ou "em construção", e nenhuma das duas DEVE aparecer como lacuna. QUANDO a tela inicial é citada ENTÃO DEVE levar a Agendamentos. (RN-14, RN-15)
 - CA-13 QUANDO a tabela de corte de escopo do RP04 é lida ENTÃO DEVE ser o registro oficial do que ficou de fora, e não mais uma "proposta a validar". (RN-16)
 - CA-14 QUANDO o README, a arquitetura e a rastreabilidade falam do menu do painel, da exportação de relatórios, da permissão "Ver sessões", dos conflitos em Horários ou do Dashboard ENTÃO DEVEM dizer o mesmo que as decisões da #174 e o que o painel faz hoje. (RN-10)
 - CA-15 QUANDO o modelo de dados é aberto ENTÃO nada que já existe no sistema DEVE aparecer como "planejado para a Sprint 3". (RN-19)
@@ -105,7 +105,7 @@ Geral
 
 - A QA sobe o sistema do zero seguindo só o README, numa cópia nova, sem ajuda.
 - A rastreabilidade não tem ❌, e cada requisito tem o mesmo status no README.
-- Cada requisito parcial aponta para uma issue aberta, depois que o usuário decidir sobre a lista de lacunas (RN-21).
+- Os pontos da RN-17 aparecem com a situação decidida em 22/11/2026 e a fonte de cada um, sem issue de lacuna e sem "issue a abrir" (RN-17, RN-21).
 - Os README do backend, do gateway e do painel web descrevem o que o sistema faz hoje.
 - Sessões, Dashboard e a exportação de relatórios aparecem com a mesma situação nos três documentos.
 - O fechamento da Sprint 3 existe, e o README aponta para ele.
@@ -117,7 +117,7 @@ Geral
 - Regras das telas e manual do painel. Ficam com outro dev (Inumaki), conforme as decisões da #174.
 - Tirar do painel a frase sobre o Dashboard na tela de Horários. É mudança de painel e fica com o dev de frontend.
 - Mudar código, telas, testes ou configuração do sistema.
-- Abrir issues. Isso é com a PO, depois da decisão do usuário (RN-06, RN-21).
+- Abrir issues. Nenhuma issue de lacuna será aberta para a #70 (RN-17, RN-21).
 - Rodar o modelo de IA no teste do dev. O teste do zero com o modelo é da QA (RN-20).
 - Gerar um gráfico de burndown da Sprint 3 (RN-08).
 
@@ -136,13 +136,13 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 | Arquivo | Tarefas |
 |---|---|
 | `.docs/README.md` | T1 |
-| `.docs/sprints/sprint3/` | T2 e depois T6 (só a seção "Em aberto") |
+| `.docs/sprints/sprint3/` | T2 |
 | `README.md` (raiz) | T3 (Instalação), depois T7 (Tecnologias, Scrum e Product Backlog) e depois T8 |
 | `src/backend/README.md` | T9 |
 | `src/gateway/README.md` | T10 |
 | `src/frontend/README.md` | T11 |
 | `.docs/architecture/architecture.md` e `.docs/database/database.md` | T4 e depois T8 |
-| `.docs/desafio/rastreabilidade.md` | T5, depois T6 e depois T8 |
+| `.docs/desafio/rastreabilidade.md` | T5 e depois T8 |
 
 - Fase 1 (paralelo): T1 [P], T2 [P], T3 [P], T4 [P], T5 [P], T9 [P], T10 [P], T11 [P]
   - O caminho do fechamento está fixo nesta especificação: `.docs/sprints/sprint3/README.md`. Assim, a T1 já pode apontar para ele. O link só passa no gate quando a T2 terminar.
@@ -151,12 +151,10 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
     - a conferência de links não mostra nada;
     - a validação da T3 sem o modelo de IA passou;
     - `npm run format:check` em `src/frontend` passou;
-    - a lista de lacunas da T5 foi entregue à orquestradora, para o usuário ver;
+    - nenhum ❌ nem "issue a abrir" na rastreabilidade, e os pontos da RN-17 citam a sua fonte;
+    - se a T5 achou outro requisito parcial, a orquestradora foi avisada (RN-21);
     - `git status --short` mostra só os arquivos destas tarefas.
-- Fase 2 (parada até a decisão do usuário): T6
-  - Começa quando o usuário decidir sobre a lista de lacunas e a etiqueta `SPRINT 3` (U-03), e a orquestradora avisar os números das issues abertas pela PO.
-  - Até lá, os requisitos parciais ficam como ⚠️ "issue a abrir" (RN-21). As Fases 3 e 4 podem andar antes dela. Se a T6 terminar depois da T7, a comparação de status do gate da Fase 3 roda de novo.
-  - Gate de fase: nenhum ❌ na rastreabilidade; cada ⚠️ cita uma issue; a conferência de links não mostra nada.
+- Fase 2: não se aplica. A T6 foi cancelada em 22/11/2026, porque nenhuma issue de lacuna será aberta (RN-17, RN-21).
 - Fase 3: T7
   - Gate de fase: a comparação do status de cada requisito entre o README e a rastreabilidade não mostra diferença; a conferência de links não mostra nada.
 - Fase 4: T8
@@ -204,8 +202,8 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
   - o período é de 20/10 a 23/11/2026, e o retrato tem a data da conferência;
   - o placar soma as issues com a etiqueta `SPRINT 3` seguindo RN-18. A #122 e a #120 aparecem só como "unificada na #121" e "unificada na #118". A #159 é a organização da Feira, sem código. A #18, a #159 e a #164 estão marcadas como entradas no meio da sprint. A #70 está como a issue de fechamento, aberta no retrato;
   - o burndown está registrado como pendente, com o motivo (não há registro de "In progress");
-  - os riscos citam as lacunas da T5 e o que ficou de fora (Sessões e Dashboard descartados por decisão do grupo, exportação não entregue);
-  - a seção "Em aberto" já lista o que se sabe e deixa lugar para as issues novas, preenchidas na T6.
+  - os riscos citam o que ficou de fora (Sessões e Dashboard descartados por decisão do grupo, exportação não entregue), sem tratar os pontos da RN-17 como lacunas;
+  - a seção "Em aberto" lista o que se sabe, sem issues de lacuna (RN-21).
 - **Teste:** nenhum (documentação).
 - **Gate:** cada número do placar conferido contra a lista do GitHub; a conferência de links; `git status --short` mostra só a pasta `sprint3`.
 - **Modelo:** padrao
@@ -273,9 +271,9 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 - **Modelo:** padrao
 - **Status:** pendente
 
-### T5 [P] Conferir a rastreabilidade item a item e listar as lacunas
+### T5 [P] Conferir a rastreabilidade item a item
 
-- **O quê:** conferir cada RF, RNF e RP da rastreabilidade contra o que está no sistema hoje, corrigir o que já se resolveu e entregar à orquestradora a lista dos requisitos que de fato estão parciais.
+- **O quê:** conferir cada RF, RNF e RP da rastreabilidade contra o que está no sistema hoje, corrigir o que já se resolveu e registrar os pontos da RN-17 com a situação decidida pelo usuário em 22/11/2026.
 - **Onde:** `.docs/desafio/rastreabilidade.md` (legenda, tabelas, notas 1 a 5, seção RP04 e seção Documentação). Para conferir:
   - o código na `develop`;
   - `.docs/decisoes/`;
@@ -286,24 +284,26 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 - **Dev:** Megumi (dev-doc)
 - **Depende de:** nada
 - **Reaproveita:** a estrutura em três camadas (Código, Desenho, Situação) e as notas atuais.
-- **Atende:** RN-04, RN-05, RN-06, RN-11, RN-14, RN-15, RN-16, RN-17, RN-21, CA-06, CA-07, CA-09, CA-10, CA-12, CA-13, CA-24
+- **Atende:** RN-04, RN-05, RN-06, RN-11, RN-14, RN-15, RN-16, RN-17, RN-21, CA-06, CA-07, CA-08, CA-09, CA-10, CA-12, CA-13, CA-24
 - **Pronto quando:**
-  - cada linha foi conferida. As que já se resolveram foram corrigidas, citando a fonte: RNF08 com a #18, RNF07 com a #118, RF08 com as #123 a #129, RF06 com a #68 e a #128, RNF02 e RF05 com a decisão 009;
-  - RF02, RF03 e RNF01 estão como ⚠️. RF02, RF03 e a nota 1 dizem que a consulta ao professor e ao PROCON sobre os fluxos decisórios ficou "sem resposta até o fechamento", e que o teste com usuários está "sem registro";
-  - RNF03 está como ⚠️ pela conferência das citações legais da decisão 002;
+  - cada linha foi conferida. As que já se resolveram foram corrigidas, citando a fonte: RNF08 com a #18, RNF07 com a #118, RF08 com as #123 a #129, RF06 com a #68 e a #128, RNF02 e RF05 com a decisão 009 e a nova medição;
+  - RF02, RF03 e a nota 1 dizem que o professor aceitou e recomendou o fluxo atual, com botões, sem "sem resposta até o fechamento" nem "sem registro";
+  - RNF01 diz que o PROCON validou e aprovou o fluxo antes do desenvolvimento e que o fluxo foi construído a partir dos feedbacks dele;
+  - RNF03 cita a página de privacidade (rota `/privacidade`) como fonte das citações legais dos prazos;
+  - RF06 cita a tela de Relatórios como o que cumpre o requisito, com a exportação e os gráficos como bônus da #73, nunca pedidos;
+  - RF05 e RNF02 citam a medição do tempo de resposta da IA no PDF de `.docs/guias/`, com o status que a conferência da medição confirmar. Se a conferência não confirmar a medição, o dev avisa a orquestradora antes de marcar o status;
   - a legenda explica que o 🔴 do RP04 é um risco, não um requisito;
   - a tabela de corte é o registro oficial (RN-16), com Sessões e Dashboard descartados por decisão do grupo e exportação não entregue (bônus da #73);
   - o RF06 não trata Sessões nem Dashboard como lacuna: os dois aparecem como descartados por decisão do grupo;
   - a nota 4 não fala mais de Dashboard e Sessões "em construção", nem da tela inicial "enquanto não há Dashboard";
-  - a orquestradora recebeu a lista de lacunas, em linguagem simples e sem caminho de arquivo nem código, para o usuário ver antes de qualquer issue ser aberta (RN-21). A lista traz RF02, RF03 e RNF01 juntos, RNF03 e outras lacunas que a conferência achar;
-  - a lista não traz Sessões nem Dashboard;
-  - os itens parciais ficam como ⚠️ "issue a abrir" até a T6.
+  - nenhuma linha diz "issue a abrir";
+  - se a conferência achou outro requisito parcial, além dos pontos da RN-17, a orquestradora recebeu esse item em linguagem simples, sem caminho de arquivo nem código, e nenhuma issue foi aberta (RN-21). Sessões e Dashboard nunca entram como parciais.
 - **Teste:** nenhum (documentação).
 - **Gate:** cada linha cita a sua fonte (issue, decisão, código ou registro escrito); a conferência de links; `git status --short` mostra só `rastreabilidade.md`.
 - **Modelo:** padrao
 - **Status:** pendente
 
-### T6 Registrar os requisitos parciais com as issues da PO
+### T6 (não se aplica) Registrar os requisitos parciais com as issues da PO
 
 - **O quê:** trocar cada "issue a abrir" da rastreabilidade pelo número da issue que a PO abriu, e listar essas issues na seção "Em aberto" do fechamento da Sprint 3.
 - **Onde:** `.docs/desafio/rastreabilidade.md` e `.docs/sprints/sprint3/README.md` (só "Em aberto").
@@ -318,14 +318,14 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 - **Teste:** nenhum (documentação).
 - **Gate:** `grep -c '❌' .docs/desafio/rastreabilidade.md` dá 0, ou só a ocorrência da legenda; cada issue citada existe; a conferência de links.
 - **Modelo:** economico
-- **Status:** pendente
+- **Status:** não se aplica. Cancelada em 22/11/2026 por decisão do usuário: os pontos que seriam registrados como parciais não são lacunas (RN-17), e nenhuma issue de lacuna será aberta (RN-21).
 
 ### T7 Atualizar no README o status dos requisitos, as tecnologias e o Scrum
 
 - **O quê:** deixar as tabelas de Tecnologias, Scrum e Product Backlog do README iguais à rastreabilidade e ao fechamento da Sprint 3.
 - **Onde:** `README.md` (seções Tecnologias, Scrum e Product Backlog, e a nota que aponta só para o fechamento da Sprint 1).
 - **Dev:** Megumi (dev-doc)
-- **Depende de:** T2, T3 e T5. A T7 não espera a T6: no README, o status "Parcial" não muda quando a issue ganha número.
+- **Depende de:** T2, T3 e T5
 - **Reaproveita:** a rastreabilidade conferida (T5) e o fechamento da Sprint 3 (T2).
 - **Atende:** RN-03, RN-09, RN-14, RN-15, CA-12, CA-16, CA-17, CA-18, CA-24
 - **Pronto quando:**
@@ -436,13 +436,14 @@ Nenhuma em aberto. As respostas da PO (P-01 a P-07) foram incorporadas em RN-04,
 
 ### Para o usuário
 
-- U-03 O usuário quer ver a lista de lacunas (T5) antes de qualquer issue ser aberta. Duas decisões continuam com ele: quais lacunas viram issue e se essas issues recebem a etiqueta `SPRINT 3`. A resposta muda o placar (T2) e a seção "Em aberto" (T6). A T6 fica parada até lá (RN-21).
+Nenhuma em aberto.
 
 ### Respostas do usuário
 
+- U-03 Respondida em 22/11/2026: os cinco pontos da rastreabilidade não são lacunas (RN-17), nenhuma issue de lacuna será aberta e a T6 não se aplica (RN-21). A etiqueta `SPRINT 3` para issues de lacuna deixa de ser uma decisão pendente, e o placar (T2) não muda por causa disso.
 - U-01 Quem faz o teste do zero com o modelo de IA é a QA (Nobara). O dev não precisa fazer esse teste (RN-20).
 - U-02 O usuário autorizou o teste do zero com o modelo de IA. Quem roda é a QA (Nobara). A validação da T3 pelo dev segue sem `ollama` e `llm-pull` (RN-20).
 - U-04 Tudo entra na #70: o modelo de dados, a linha `.tasks/` e os README de cada serviço, inteiros (RN-19, T9 a T11).
-- A #121 ficou sem resposta do professor e do PROCON. RF02, RF03 e a nota 1 registram "sem resposta até o fechamento" (RN-17).
+- Fluxos decisórios (atualizado em 22/11/2026): o professor aceitou e recomendou o fluxo atual, com botões, e o PROCON validou e aprovou o fluxo antes do desenvolvimento. Isso substitui o registro anterior de "sem resposta até o fechamento" (RN-17).
 - Sessões (#72) e Dashboard (#71) foram descartados de propósito pelo grupo, e a tela inicial leva a Agendamentos (RN-14, RN-15).
 - A #174 foi decidida (RN-10).
