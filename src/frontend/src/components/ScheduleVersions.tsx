@@ -1,7 +1,6 @@
 import { useId } from "react"
 import { useTranslation } from "react-i18next"
 import ConfirmDialog from "@/components/ConfirmDialog"
-import ScheduleConflictList from "@/components/ScheduleConflictList"
 import ScheduleVersionItem from "@/components/ScheduleVersionItem"
 import type ScheduleVersionsActions from "@/types/schedule/ScheduleVersionsActions.types"
 import type ScheduleVersionsView from "@/types/schedule/ScheduleVersionsView.types"
@@ -83,9 +82,6 @@ function ScheduleVersions({ view, actions }: ScheduleVersionsProps) {
                         ))}
                     </ul>
                 </div>
-            ) : null}
-            {view.cancelConflicts ? (
-                <ScheduleConflictList conflicts={view.cancelConflicts} />
             ) : null}
             <ConfirmDialog
                 open={view.cancelTarget !== null}

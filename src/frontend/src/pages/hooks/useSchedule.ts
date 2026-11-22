@@ -9,13 +9,16 @@ import useScheduleDraft from "@/pages/hooks/useScheduleDraft"
 import useSchedulePreview from "@/pages/hooks/useSchedulePreview"
 import useScheduleSave from "@/pages/hooks/useScheduleSave"
 import scheduleApi from "@/store/api/schedule.api"
+import useAppDispatch from "@/store/useAppDispatch"
 import useAppSelector from "@/store/useAppSelector"
 import type LastChange from "@/types/settings/LastChange.types"
 import type BlockedDateProblem from "@/types/schedule/BlockedDateProblem.types"
 import type ScheduleBlockedDateView from "@/types/schedule/ScheduleBlockedDateView.types"
 import type ScheduleConflict from "@/types/schedule/ScheduleConflict.types"
 import type ScheduleConflictResolution from "@/types/schedule/ScheduleConflictResolution.types"
+import type ScheduleConflictResolutionRequest from "@/types/schedule/ScheduleConflictResolutionRequest.types"
 import type ScheduleConflictResolutionSummary from "@/types/schedule/ScheduleConflictResolutionSummary.types"
+import type ScheduleConflictModalOrigin from "@/types/schedule/ScheduleConflictModalOrigin.types"
 import type ScheduleConflictRowView from "@/types/schedule/ScheduleConflictRowView.types"
 import type ScheduleInputWithOrigins from "@/types/schedule/ScheduleInputWithOrigins.types"
 import type ScheduleVersionsActions from "@/types/schedule/ScheduleVersionsActions.types"
@@ -23,17 +26,20 @@ import type ScheduleVersionsView from "@/types/schedule/ScheduleVersionsView.typ
 import type ScheduleDayView from "@/types/schedule/ScheduleDayView.types"
 import type ScheduleDraftField from "@/types/schedule/ScheduleDraftField.types"
 import type ScheduleIssueField from "@/types/schedule/ScheduleIssueField.types"
+import type ScheduleSaveError from "@/types/schedule/ScheduleSaveError.types"
 import type SchedulePreviewConflict from "@/types/schedule/SchedulePreviewConflict.types"
 import type ScheduleProblem from "@/types/schedule/ScheduleProblem.types"
 import bookedDaysInVigency from "@/utils/schedule/bookedDaysInVigency"
 import conflictTargets from "@/utils/schedule/conflictTargets"
 import dayAfter from "@/utils/schedule/dayAfter"
+import dayMonthOf from "@/utils/schedule/dayMonthOf"
 import fieldOfIssuePath from "@/utils/schedule/fieldOfIssuePath"
 import formatDate from "@/utils/formatDate"
 import rangeKey from "@/utils/schedule/rangeKey"
 import scheduleSaveErrorOf from "@/utils/schedule/scheduleSaveErrorOf"
 import todayInSaoPaulo from "@/utils/schedule/todayInSaoPaulo"
 
+type ConflictsError = Extract<ScheduleSaveError, { kind: "conflicts" }>
 type IssueTarget = Extract<ScheduleIssueField, { kind: "field" }>["field"]
 type FieldMessages = Partial<Record<IssueTarget, string[]>>
 type ConflictModalSource =
@@ -61,16 +67,17 @@ const SHOWN_FIELDS: readonly IssueTarget[] = [
 function useSchedule() {
     const { t } = useTranslation(["schedule", "common"])
     const { showToast } = useToast()
+    const dispatch = useAppDispatch()
     const account = useAppSelector((state) => state.account.current)
     const [effectiveFrom, setEffectiveFrom] = useState("")
     const [dateInput, setDateInput] = useState("")
     const [dateInvalid, setDateInvalid] = useState(false)
     const [pendingVersion, setPendingVersion] = useState<string | null>(null)
     const [cancelTarget, setCancelTarget] = useState<string | null>(null)
-    const [cancelConflicts, setCancelConflicts] = useState<ScheduleConflictRowView[] | null>(null)
     const [modalConflicts, setModalConflicts] = useState<ScheduleConflict[] | null>(null)
     const [modalSource, setModalSource] = useState<ConflictModalSource | null>(null)
     const [modalError, setModalError] = useState<string | null>(null)
+    const [modalChanged, setModalChanged] = useState(false)
     const [resolving, setResolving] = useState(false)
     const canManageAppointments =
         account !== null && (account.isAdmin || account.permissions.includes("appointments.manage"))
@@ -229,6 +236,32 @@ function useSchedule() {
         setModalConflicts(null)
         setModalSource(null)
         setModalError(null)
+        setModalChanged(false)
+    }
+
+    function refreshConflictModal(error: ConflictsError) {
+        setModalConflicts(error.conflicts)
+        setModalChanged(error.changed)
+
+        if (error.changed && error.notice !== null && canManageAppointments) {
+            dispatch(
+                scheduleApi.util.upsertQueryEntries([
+                    {
+                        endpointName: "getScheduleCancellationNotice",
+                        arg: undefined,
+                        value: error.notice
+                    }
+                ])
+            )
+        }
+    }
+
+    function seenOf(action: ScheduleConflictResolution): ScheduleConflictResolutionRequest {
+        return {
+            conflictResolution: action,
+            seenConflictIds: (modalConflicts ?? []).map((conflict) => conflict.id),
+            ...(action === "CANCEL" ? { seenNoticeEnabled: noticeQuery.currentData?.enabled } : {})
+        }
     }
 
     function save() {
@@ -248,7 +281,7 @@ function useSchedule() {
                 draft.resetIfUnchangedSince(sentRevision)
                 showToast(t(targetEffectiveFrom ? "save.scheduledToast" : "save.toast"))
             },
-            onConflicts: (conflicts) => {
+            onConflicts: (error) => {
                 booked.refetch()
                 setModalError(null)
                 setModalSource({
@@ -257,7 +290,7 @@ function useSchedule() {
                     revision: sentRevision,
                     effectiveFrom: targetEffectiveFrom
                 })
-                setModalConflicts(conflicts)
+                refreshConflictModal(error)
             }
         })
     }
@@ -268,6 +301,8 @@ function useSchedule() {
         }
 
         setModalError(null)
+        setModalChanged(false)
+        const seen = seenOf(action)
 
         if (modalSource.kind === "save") {
             setResolving(true)
@@ -275,11 +310,12 @@ function useSchedule() {
                 built: modalSource.built,
                 revision: modalSource.revision,
                 effectiveFrom: modalSource.effectiveFrom,
-                conflictResolution: action,
+                ...seen,
                 onSaved: (resolution) => {
                     draft.resetIfUnchangedSince(modalSource.revision)
                     setModalConflicts(null)
                     setModalSource(null)
+                    setModalChanged(false)
                     booked.refetch()
                     showToast(
                         resolution
@@ -287,9 +323,9 @@ function useSchedule() {
                             : t(modalSource.effectiveFrom ? "save.scheduledToast" : "save.toast")
                     )
                 },
-                onConflicts: (conflicts) => {
+                onConflicts: (error) => {
                     booked.refetch()
-                    setModalConflicts(conflicts)
+                    refreshConflictModal(error)
                 },
                 onError: () => {
                     setModalError(t("conflictModal.resolveFailed"))
@@ -303,11 +339,11 @@ function useSchedule() {
         try {
             const result = await deleteVersion({
                 effectiveFrom: modalSource.effectiveFrom,
-                conflictResolution: action
+                ...seen
             }).unwrap()
             setModalConflicts(null)
             setModalSource(null)
-            setCancelConflicts(null)
+            setModalChanged(false)
             booked.refetch()
 
             if (effectiveFrom === modalSource.effectiveFrom) {
@@ -320,7 +356,7 @@ function useSchedule() {
         } catch (caught) {
             const error = scheduleSaveErrorOf(caught)
             if (error?.kind === "conflicts") {
-                setModalConflicts(error.conflicts)
+                refreshConflictModal(error)
             } else {
                 setModalError(t("conflictModal.resolveFailed"))
             }
@@ -333,7 +369,6 @@ function useSchedule() {
 
     function applyVersion(date: string) {
         setVersionActionError(null)
-        setCancelConflicts(null)
         setPendingVersion(null)
         setDateInvalid(false)
         draft.discard()
@@ -382,7 +417,6 @@ function useSchedule() {
         }
 
         setVersionActionError(null)
-        setCancelConflicts(null)
 
         try {
             await deleteVersion(date).unwrap()
@@ -398,15 +432,17 @@ function useSchedule() {
             const error = scheduleSaveErrorOf(caught)
 
             if (error?.kind === "conflicts") {
-                setCancelConflicts(error.conflicts)
                 setModalError(null)
                 setModalSource({ kind: "cancelVersion", effectiveFrom: date })
-                setModalConflicts(error.conflicts)
+                refreshConflictModal(error)
             } else if (error !== null) {
                 setVersionActionError(t("versions.cancelFailed"))
             }
         }
     }
+
+    const modalOrigin: ScheduleConflictModalOrigin =
+        modalSource?.kind === "cancelVersion" ? "cancelScheduledChange" : "save"
 
     const versionsView: ScheduleVersionsView = {
         effectiveFrom,
@@ -416,7 +452,6 @@ function useSchedule() {
         dateError: dateInvalid ? t("versions.dateError") : null,
         versions,
         versionsFailed: versionsQuery.isError,
-        cancelConflicts,
         cancelTarget,
         cancelling,
         switchPending: pendingVersion !== null
@@ -461,6 +496,12 @@ function useSchedule() {
         conflictRows,
         conflictModal: {
             conflicts: modalConflicts,
+            origin: modalOrigin,
+            changeDate:
+                modalSource?.kind === "cancelVersion"
+                    ? dayMonthOf(modalSource.effectiveFrom)
+                    : null,
+            changedNotice: modalChanged,
             canManageAppointments,
             noticeEnabled: noticeQuery.currentData?.enabled ?? null,
             noticeProblemCode: noticeQuery.currentData?.enabled

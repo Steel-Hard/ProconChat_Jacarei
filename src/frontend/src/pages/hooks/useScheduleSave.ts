@@ -1,7 +1,6 @@
 import { useRef, useState } from "react"
 import scheduleApi from "@/store/api/schedule.api"
-import type ScheduleConflict from "@/types/schedule/ScheduleConflict.types"
-import type ScheduleConflictResolution from "@/types/schedule/ScheduleConflictResolution.types"
+import type ScheduleConflictResolutionRequest from "@/types/schedule/ScheduleConflictResolutionRequest.types"
 import type ScheduleConflictResolutionSummary from "@/types/schedule/ScheduleConflictResolutionSummary.types"
 import type ScheduleInputWithOrigins from "@/types/schedule/ScheduleInputWithOrigins.types"
 import type ScheduleSaveError from "@/types/schedule/ScheduleSaveError.types"
@@ -13,13 +12,14 @@ type SaveOutcome = {
     origins: Pick<ScheduleInputWithOrigins, "rangeOrigins" | "blockOrigins">
 }
 
-type SaveRequest = {
+type ConflictsError = Extract<ScheduleSaveError, { kind: "conflicts" }>
+
+type SaveRequest = ScheduleConflictResolutionRequest & {
     built: ScheduleInputWithOrigins
     revision: number
     effectiveFrom?: string
-    conflictResolution?: ScheduleConflictResolution
     onSaved: (resolution?: ScheduleConflictResolutionSummary) => void
-    onConflicts: (conflicts: ScheduleConflict[]) => void
+    onConflicts: (error: ConflictsError) => void
     onError?: (error: ScheduleSaveError) => void
 }
 
@@ -34,6 +34,8 @@ function useScheduleSave(currentRevision: number) {
         revision,
         effectiveFrom,
         conflictResolution,
+        seenConflictIds,
+        seenNoticeEnabled,
         onSaved,
         onConflicts,
         onError
@@ -50,7 +52,9 @@ function useScheduleSave(currentRevision: number) {
             const saved = await saveSchedule({
                 config: built.input,
                 effectiveFrom,
-                conflictResolution
+                conflictResolution,
+                seenConflictIds,
+                seenNoticeEnabled
             }).unwrap()
             onSaved(saved.resolution)
         } catch (caught) {
@@ -63,7 +67,7 @@ function useScheduleSave(currentRevision: number) {
                     origins: { rangeOrigins: built.rangeOrigins, blockOrigins: built.blockOrigins }
                 })
                 if (error.kind === "conflicts") {
-                    onConflicts(error.conflicts)
+                    onConflicts(error)
                 } else {
                     onError?.(error)
                 }

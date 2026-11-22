@@ -15,7 +15,6 @@ function view(overrides: Partial<ScheduleVersionsView> = {}): ScheduleVersionsVi
         dateError: null,
         versions: [{ effectiveFrom: "2026-11-10", config: buildScheduleConfig() }],
         versionsFailed: false,
-        cancelConflicts: null,
         cancelTarget: null,
         cancelling: false,
         switchPending: false,

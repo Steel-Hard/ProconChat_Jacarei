@@ -49,6 +49,28 @@ const MANAGER_ACCOUNT: PanelAccount = {
     permissions: ["schedule.configure", "appointments.manage"]
 }
 
+const CHANGED_NOTICE =
+    "A lista de agendamentos afetados ou o aviso ao cidadão mudou desde que você abriu esta janela. Confira antes de escolher."
+
+const CONFLICTS_REPLY = {
+    status: 409,
+    body: {
+        error: {
+            code: "SCHEDULE_CONFLICTS",
+            message: "x",
+            details: { conflicts: CONFLICTS }
+        }
+    }
+}
+
+const RESOLUTION_CANCEL = {
+    action: "CANCEL",
+    affectedCount: 2,
+    notifiedCount: 2,
+    failedCount: 0,
+    noticeDisabled: false
+}
+
 afterEach(() => {
     vi.unstubAllGlobals()
     vi.unstubAllEnvs()
@@ -274,5 +296,139 @@ describe("SchedulePage: modal de conflitos", () => {
                 within(dialog).getByRole("button", { name: "Cancelar agendamentos" })
             ).toBeEnabled()
         )
+    })
+
+    it("ao cancelar envia os ids do modal e o estado do aviso mostrado", async () => {
+        const { user, callsTo } = await renderSchedulePage({
+            account: MANAGER_ACCOUNT,
+            handlers: {
+                "GET /api/v1/schedule/cancellation-notice": () => ({
+                    status: 200,
+                    body: { data: { enabled: true, problem: null } }
+                }),
+                "PUT /api/v1/schedule": ({ body }) =>
+                    (body as { conflictResolution?: string }).conflictResolution
+                        ? {
+                              status: 200,
+                              body: {
+                                  data: buildScheduleConfig({ seatsPerSlot: 1 }),
+                                  resolution: RESOLUTION_CANCEL
+                              }
+                          }
+                        : CONFLICTS_REPLY
+            }
+        })
+
+        const dialog = await triggerConflictModal(user)
+        await user.click(
+            await within(dialog).findByRole("button", { name: "Cancelar e avisar os cidadãos" })
+        )
+
+        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
+        expect(callsTo("PUT", "/api/v1/schedule")[1]?.body).toMatchObject({
+            conflictResolution: "CANCEL",
+            seenConflictIds: ["41", "42"],
+            seenNoticeEnabled: true
+        })
+    })
+
+    it("ao manter envia os ids do modal e não envia o estado do aviso", async () => {
+        const { user, callsTo } = await renderSchedulePage({
+            account: SCHEDULE_ONLY_ACCOUNT,
+            handlers: {
+                "PUT /api/v1/schedule": ({ body }) =>
+                    (body as { conflictResolution?: string }).conflictResolution
+                        ? {
+                              status: 200,
+                              body: {
+                                  data: buildScheduleConfig({ seatsPerSlot: 1 }),
+                                  resolution: { ...RESOLUTION_CANCEL, action: "KEEP" }
+                              }
+                          }
+                        : CONFLICTS_REPLY
+            }
+        })
+
+        const dialog = await triggerConflictModal(user)
+        await user.click(within(dialog).getByRole("button", { name: "Manter os agendamentos" }))
+
+        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
+        const sent = callsTo("PUT", "/api/v1/schedule")[1]?.body
+        expect(sent).toMatchObject({ conflictResolution: "KEEP", seenConflictIds: ["41", "42"] })
+        expect(sent).not.toHaveProperty("seenNoticeEnabled")
+    })
+
+    it("depois de uma divergência troca a lista e o aviso, mostra a mensagem de atualização e deixa escolher de novo", async () => {
+        const newConflict = { ...CONFLICTS[0], id: "43", protocol: "AAAA1111" }
+        const { user, callsTo } = await renderSchedulePage({
+            account: MANAGER_ACCOUNT,
+            handlers: {
+                "GET /api/v1/schedule/cancellation-notice": () => ({
+                    status: 200,
+                    body: { data: { enabled: true, problem: null } }
+                }),
+                "PUT /api/v1/schedule": ({ body }) => {
+                    const payload = body as {
+                        conflictResolution?: string
+                        seenConflictIds?: string[]
+                    }
+
+                    if (!payload.conflictResolution) {
+                        return CONFLICTS_REPLY
+                    }
+
+                    if (payload.seenConflictIds?.length === 2) {
+                        return {
+                            status: 409,
+                            body: {
+                                error: {
+                                    code: "SCHEDULE_CONFLICTS_CHANGED",
+                                    message: "x",
+                                    details: {
+                                        conflicts: [...CONFLICTS, newConflict],
+                                        cancellationNotice: { enabled: false, problem: null },
+                                        changes: ["CONFLICTS", "NOTICE"]
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    return {
+                        status: 200,
+                        body: {
+                            data: buildScheduleConfig({ seatsPerSlot: 1 }),
+                            resolution: RESOLUTION_CANCEL
+                        }
+                    }
+                }
+            }
+        })
+
+        const dialog = await triggerConflictModal(user)
+        expect(within(dialog).queryByText(CHANGED_NOTICE)).not.toBeInTheDocument()
+        await user.click(
+            await within(dialog).findByRole("button", { name: "Cancelar e avisar os cidadãos" })
+        )
+
+        const refreshed = await screen.findByRole("dialog", {
+            name: "Esta alteração afeta 3 agendamentos"
+        })
+        expect(within(refreshed).getByText(CHANGED_NOTICE)).toBeInTheDocument()
+        expect(within(refreshed).getByText(/AAAA1111/)).toBeInTheDocument()
+        const cancelOff = within(refreshed).getByRole("button", { name: "Cancelar agendamentos" })
+        expect(cancelOff).toBeEnabled()
+        expect(
+            within(refreshed).getByRole("button", { name: "Manter os agendamentos" })
+        ).toBeEnabled()
+
+        await user.click(cancelOff)
+
+        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
+        expect(callsTo("PUT", "/api/v1/schedule")[2]?.body).toMatchObject({
+            conflictResolution: "CANCEL",
+            seenConflictIds: ["41", "42", "43"],
+            seenNoticeEnabled: false
+        })
     })
 })
