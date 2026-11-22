@@ -1,7 +1,6 @@
-import { useId } from "react"
+import { useEffect, useId, useRef } from "react"
 import { useTranslation } from "react-i18next"
 import ConfirmDialog from "@/components/ConfirmDialog"
-import ScheduleConflictList from "@/components/ScheduleConflictList"
 import ScheduleVersionItem from "@/components/ScheduleVersionItem"
 import type ScheduleVersionsActions from "@/types/schedule/ScheduleVersionsActions.types"
 import type ScheduleVersionsView from "@/types/schedule/ScheduleVersionsView.types"
@@ -20,9 +19,26 @@ function dateText(value: string): string {
 function ScheduleVersions({ view, actions }: ScheduleVersionsProps) {
     const { t } = useTranslation(["schedule", "common"])
     const errorId = useId()
+    const sectionRef = useRef<HTMLElement>(null)
+    const versionCount = view.versions.length
+    const previousVersionCount = useRef(versionCount)
+
+    useEffect(() => {
+        const lostVersion = versionCount < previousVersionCount.current
+        previousVersionCount.current = versionCount
+
+        if (lostVersion && (!document.activeElement || document.activeElement === document.body)) {
+            sectionRef.current?.focus()
+        }
+    }, [versionCount])
 
     return (
-        <section className={css.versions} aria-label={t("versions.title")}>
+        <section
+            ref={sectionRef}
+            tabIndex={-1}
+            className={css.versions}
+            aria-label={t("versions.title")}
+        >
             <div className={css.controls}>
                 <div className={css.info}>
                     <strong>
@@ -83,9 +99,6 @@ function ScheduleVersions({ view, actions }: ScheduleVersionsProps) {
                         ))}
                     </ul>
                 </div>
-            ) : null}
-            {view.cancelConflicts ? (
-                <ScheduleConflictList conflicts={view.cancelConflicts} />
             ) : null}
             <ConfirmDialog
                 open={view.cancelTarget !== null}

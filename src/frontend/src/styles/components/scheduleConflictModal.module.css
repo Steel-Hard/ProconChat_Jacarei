@@ -1,0 +1,174 @@
+.overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    overflow-y: auto;
+    background: var(--overlay);
+}
+
+.dialog {
+    position: static;
+    margin: 0;
+    border: 0;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 640px;
+    max-height: calc(100vh - 40px);
+    max-height: calc(100dvh - 40px);
+    padding: 0;
+    border-radius: 14px;
+    background: var(--bg-surface);
+    overflow: hidden;
+}
+
+.header {
+    padding: 22px 24px 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+.title {
+    margin: 0;
+    font-family: var(--font-heading);
+    font-size: 19px;
+    font-weight: 700;
+}
+
+.description {
+    margin: 6px 0 0;
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+.list {
+    list-style: none;
+    margin: 0;
+    padding: 8px 24px;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.footer {
+    padding: 16px 24px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+    gap: 10px;
+}
+
+.option {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.optionDanger {
+    border-color: var(--error-border);
+}
+
+.optionText {
+    margin: 0;
+    font-size: 13.5px;
+    line-height: 1.45;
+    color: var(--text-secondary);
+}
+
+.keepButton,
+.cancelButton,
+.retryButton {
+    margin-top: auto;
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.keepButton,
+.cancelButton {
+    width: 100%;
+}
+
+@media (max-width: 479px), (max-height: 700px) {
+    .dialog {
+        overflow-y: auto;
+    }
+
+    .list {
+        flex: none;
+        overflow: visible;
+    }
+}
+
+.keepButton {
+    border: 1px solid var(--color-primary);
+    background: var(--bg-surface);
+    color: var(--color-primary);
+}
+
+.cancelButton {
+    border: 0;
+    background: var(--danger);
+    color: #ffffff;
+}
+
+.retryButton {
+    align-self: flex-start;
+    white-space: nowrap;
+    border: 1px solid var(--border-input);
+    background: var(--bg-surface);
+    color: var(--text-strong);
+}
+
+.keepButton:disabled,
+.cancelButton:disabled,
+.retryButton:disabled,
+.backButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.backButton {
+    align-self: flex-start;
+    border: 0;
+    background: none;
+    padding: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.error {
+    margin: 0;
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--danger);
+}
+
+.changedNotice {
+    display: block;
+    margin: 10px 0 0;
+    padding: 9px 11px;
+    border: 1px solid var(--warn-border);
+    border-radius: 8px;
+    background: var(--warn-bg);
+    color: var(--warn-text);
+    font-size: 13px;
+    line-height: 1.45;
+}

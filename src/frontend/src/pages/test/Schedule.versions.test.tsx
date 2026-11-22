@@ -57,6 +57,30 @@ function cancelDialog(): HTMLElement {
     })
 }
 
+function resolutionOf(action: "KEEP" | "CANCEL") {
+    return {
+        action,
+        affectedCount: 1,
+        notifiedCount: 0,
+        failedCount: 0,
+        noticeDisabled: true
+    }
+}
+
+async function openModal(user: Awaited<ReturnType<typeof withVersions>>["user"]) {
+    await formReady()
+    await user.click(
+        await screen.findByRole("button", { name: "Cancelar a mudança de 10/11/2026" })
+    )
+    await user.click(within(cancelDialog()).getByRole("button", { name: "Cancelar mudança" }))
+
+    return screen.findByRole(
+        "dialog",
+        { name: "Cancelar a mudança de 10/11 afeta 1 agendamento" },
+        SLOW
+    )
+}
+
 describe("SchedulePage: mudanças agendadas", () => {
     it("mostra desde quando vale a configuração de hoje quando ela é uma mudança já iniciada", async () => {
         await renderSchedulePage({
@@ -133,46 +157,226 @@ describe("SchedulePage: mudanças agendadas", () => {
         ).toBeInTheDocument()
     })
 
-    it("lista os agendamentos que impedem o cancelamento", async () => {
-        const { user } = await withVersions({
-            [`DELETE /api/v1/schedule/versions/${CHANGE}`]: () => ({
-                status: 409,
-                body: {
-                    error: {
-                        code: "SCHEDULE_CONFLICTS",
-                        message: "x",
-                        details: {
-                            conflicts: [
-                                {
-                                    id: "7",
-                                    protocol: "ABCD1234",
-                                    name: "Maria Oliveira",
-                                    cpfMasked: "***.456.789-**",
-                                    date: "2026-11-14",
-                                    time: "09:00",
-                                    status: "CONFIRMED",
-                                    code: "DAY_WITHOUT_SERVICE",
-                                    reason: "Dia sem atendimento na nova grade"
+    describe("cancelar uma mudança que deixa agendamentos fora da configuração anterior", () => {
+        const AFFECTED = {
+            id: "7",
+            protocol: "ABCD1234",
+            name: "Maria Oliveira",
+            cpfMasked: "***.456.789-**",
+            date: "2026-11-14",
+            time: "09:00",
+            status: "CONFIRMED",
+            code: "DAY_WITHOUT_SERVICE",
+            reason: "Dia sem atendimento na nova grade"
+        }
+
+        const DELETE_PATH = `DELETE /api/v1/schedule/versions/${CHANGE}`
+
+        function withConflicts(handlers: Handlers = {}) {
+            return withVersions({
+                [DELETE_PATH]: ({ body }) => {
+                    const sent = body as { conflictResolution?: "KEEP" | "CANCEL" } | undefined
+
+                    return sent?.conflictResolution
+                        ? {
+                              status: 200,
+                              body: { resolution: resolutionOf(sent.conflictResolution) }
+                          }
+                        : {
+                              status: 409,
+                              body: {
+                                  error: {
+                                      code: "SCHEDULE_CONFLICTS",
+                                      message: "x",
+                                      details: { conflicts: [AFFECTED] }
+                                  }
+                              }
+                          }
+                },
+                ...handlers
+            })
+        }
+
+        it("abre o modal da origem cancelar mudança e não mostra a lista fora dele", async () => {
+            const { user } = await withConflicts()
+
+            const dialog = await openModal(user)
+
+            expect(within(dialog).getByText(/ABCD1234/)).toBeInTheDocument()
+            expect(screen.getAllByText(/ABCD1234/)).toHaveLength(1)
+            expect(
+                screen.queryByRole("region", { name: "Esta alteração afeta 1 agendamento" })
+            ).not.toBeInTheDocument()
+        })
+
+        it("mantém os agendamentos enviando a resolução e os ids vistos", async () => {
+            const { user, callsTo } = await withConflicts()
+
+            const dialog = await openModal(user)
+            await user.click(within(dialog).getByRole("button", { name: "Manter os agendamentos" }))
+
+            await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
+            const sent = callsTo("DELETE", `/api/v1/schedule/versions/${CHANGE}`)
+            expect(sent[0]?.body).toBeUndefined()
+            expect(sent[1]?.body).toEqual({ conflictResolution: "KEEP", seenConflictIds: ["7"] })
+        })
+
+        it("cancela os agendamentos enviando os ids vistos e o estado do aviso mostrado", async () => {
+            const { user, callsTo } = await withConflicts({
+                "GET /api/v1/schedule/cancellation-notice": () => ({
+                    status: 200,
+                    body: { data: { enabled: true, problem: null } }
+                })
+            })
+
+            const dialog = await openModal(user)
+            await user.click(
+                await within(dialog).findByRole("button", {
+                    name: "Cancelar a mudança, os agendamentos e avisar os cidadãos"
+                })
+            )
+
+            await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
+            expect(callsTo("DELETE", `/api/v1/schedule/versions/${CHANGE}`)[1]?.body).toEqual({
+                conflictResolution: "CANCEL",
+                seenConflictIds: ["7"],
+                seenNoticeEnabled: true
+            })
+        })
+
+        it("atualiza o modal quando a lista mudou e mostra a mensagem de atualização", async () => {
+            const { user } = await withConflicts({
+                [DELETE_PATH]: ({ body }) => {
+                    const sent = body as { conflictResolution?: string } | undefined
+
+                    if (!sent?.conflictResolution) {
+                        return {
+                            status: 409,
+                            body: {
+                                error: {
+                                    code: "SCHEDULE_CONFLICTS",
+                                    message: "x",
+                                    details: { conflicts: [AFFECTED] }
                                 }
-                            ]
+                            }
+                        }
+                    }
+
+                    return {
+                        status: 409,
+                        body: {
+                            error: {
+                                code: "SCHEDULE_CONFLICTS_CHANGED",
+                                message: "x",
+                                details: {
+                                    conflicts: [
+                                        AFFECTED,
+                                        { ...AFFECTED, id: "8", protocol: "ZZZZ9999" }
+                                    ],
+                                    cancellationNotice: { enabled: false, problem: null },
+                                    changes: ["CONFLICTS"]
+                                }
+                            }
                         }
                     }
                 }
             })
+
+            const dialog = await openModal(user)
+            await user.click(within(dialog).getByRole("button", { name: "Manter os agendamentos" }))
+
+            const refreshed = await screen.findByRole(
+                "dialog",
+                { name: "Cancelar a mudança de 10/11 afeta 2 agendamentos" },
+                SLOW
+            )
+            expect(within(refreshed).getByText(/ZZZZ9999/)).toBeInTheDocument()
+            expect(
+                within(refreshed).getByText(
+                    "A lista de agendamentos afetados ou o aviso ao cidadão mudou desde que você abriu esta janela. Confira antes de escolher."
+                )
+            ).toBeInTheDocument()
         })
-        await formReady()
 
-        await user.click(
-            await screen.findByRole("button", { name: "Cancelar a mudança de 10/11/2026" })
-        )
-        await user.click(within(cancelDialog()).getByRole("button", { name: "Cancelar mudança" }))
+        it("leva o foco para a seção das mudanças agendadas depois de manter os agendamentos", async () => {
+            let canceled = false
+            const { user } = await withConflicts({
+                "GET /api/v1/schedule/versions": () => ({
+                    status: 200,
+                    body: {
+                        data: canceled
+                            ? []
+                            : [
+                                  {
+                                      effectiveFrom: CHANGE,
+                                      config: { ...VERSION, effectiveFrom: CHANGE }
+                                  }
+                              ]
+                    }
+                }),
+                [DELETE_PATH]: ({ body }) => {
+                    const sent = body as { conflictResolution?: "KEEP" | "CANCEL" } | undefined
 
-        const list = await screen.findByRole(
-            "region",
-            { name: "Esta alteração afeta 1 agendamento" },
-            SLOW
-        )
-        expect(within(list).getByText(/ABCD1234/)).toBeInTheDocument()
+                    if (sent?.conflictResolution) {
+                        canceled = true
+                        return { status: 200, body: { resolution: resolutionOf("KEEP") } }
+                    }
+
+                    return {
+                        status: 409,
+                        body: {
+                            error: {
+                                code: "SCHEDULE_CONFLICTS",
+                                message: "x",
+                                details: { conflicts: [AFFECTED] }
+                            }
+                        }
+                    }
+                }
+            })
+
+            const dialog = await openModal(user)
+            await user.click(within(dialog).getByRole("button", { name: "Manter os agendamentos" }))
+
+            await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
+            await waitFor(
+                () =>
+                    expect(
+                        screen.getByRole("region", { name: "Mudanças agendadas" })
+                    ).toHaveFocus(),
+                SLOW
+            )
+        })
+
+        it("não cancela a mudança ao voltar sem cancelar", async () => {
+            const { user, callsTo } = await withConflicts()
+
+            const dialog = await openModal(user)
+            await user.click(
+                within(dialog).getByRole("button", { name: "← Voltar sem cancelar a mudança" })
+            )
+
+            expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+            expect(callsTo("DELETE", `/api/v1/schedule/versions/${CHANGE}`)).toHaveLength(1)
+        })
+
+        it("volta para a configuração de hoje quando a mudança cancelada estava aberta", async () => {
+            const { user } = await withConflicts()
+            await formReady()
+            await user.click(
+                await screen.findByRole("button", { name: "Editar a mudança de 10/11/2026" })
+            )
+            await waitFor(() => expect(seatsField()).toHaveValue(4), SLOW)
+
+            const dialog = await openModal(user)
+            await user.click(within(dialog).getByRole("button", { name: "Manter os agendamentos" }))
+
+            await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
+            expect(
+                await screen.findByText("Editando a configuração que vale hoje")
+            ).toBeInTheDocument()
+            expect(screen.getByLabelText("Valer a partir de")).toHaveValue("")
+        })
     })
 
     it("pede confirmação para trocar de versão com alterações pendentes e carrega a outra ao confirmar", async () => {
@@ -335,5 +539,109 @@ describe("SchedulePage: mudanças agendadas", () => {
                 "Não foi possível salvar os horários. Confira os dados e tente de novo."
             )
         ).not.toBeInTheDocument()
+    })
+
+    describe("mensagem de resultado ao cancelar uma mudança pelo modal", () => {
+        const SUMMARY = {
+            action: "CANCEL",
+            affectedCount: 1,
+            notifiedCount: 0,
+            failedCount: 0,
+            noticeDisabled: false
+        }
+
+        it.each([
+            [
+                "manter 1",
+                "Manter os agendamentos",
+                false,
+                { ...SUMMARY, action: "KEEP" },
+                'Mudança cancelada. 1 agendamento mantido com o selo "Fora da grade atual".'
+            ],
+            [
+                "manter 2",
+                "Manter os agendamentos",
+                false,
+                { ...SUMMARY, action: "KEEP", affectedCount: 2 },
+                'Mudança cancelada. 2 agendamentos mantidos com o selo "Fora da grade atual".'
+            ],
+            [
+                "cancelar com aviso ligado",
+                "Cancelar a mudança, os agendamentos e avisar os cidadãos",
+                true,
+                { ...SUMMARY, affectedCount: 2, notifiedCount: 2 },
+                "Mudança cancelada. 2 agendamentos cancelados e cidadãos avisados por WhatsApp."
+            ],
+            [
+                "cancelar com aviso desligado",
+                "Cancelar a mudança e os agendamentos",
+                false,
+                { ...SUMMARY, noticeDisabled: true },
+                "Mudança cancelada. 1 agendamento cancelado. O cidadão não foi avisado pelo sistema."
+            ],
+            [
+                "cancelar com falhas de aviso",
+                "Cancelar a mudança, os agendamentos e avisar os cidadãos",
+                true,
+                { ...SUMMARY, affectedCount: 3, notifiedCount: 1, failedCount: 2 },
+                "Mudança cancelada. 3 agendamentos cancelados. 2 avisos falharam."
+            ],
+            [
+                "manter sem nenhum afetado",
+                "Manter os agendamentos",
+                false,
+                { ...SUMMARY, action: "KEEP", affectedCount: 0 },
+                "Mudança de horários cancelada."
+            ],
+            [
+                "cancelar sem nenhum afetado",
+                "Cancelar a mudança e os agendamentos",
+                false,
+                { ...SUMMARY, affectedCount: 0 },
+                "Mudança de horários cancelada."
+            ]
+        ])(
+            "mostra o texto certo ao %s",
+            async (_label, choice, noticeEnabled, summary, expected) => {
+                const { user } = await withVersions({
+                    "GET /api/v1/schedule/cancellation-notice": () => ({
+                        status: 200,
+                        body: { data: { enabled: noticeEnabled, problem: null } }
+                    }),
+                    [`DELETE /api/v1/schedule/versions/${CHANGE}`]: ({ body }) =>
+                        (body as { conflictResolution?: string } | undefined)?.conflictResolution
+                            ? { status: 200, body: { resolution: summary } }
+                            : {
+                                  status: 409,
+                                  body: {
+                                      error: {
+                                          code: "SCHEDULE_CONFLICTS",
+                                          message: "x",
+                                          details: {
+                                              conflicts: [
+                                                  {
+                                                      id: "7",
+                                                      protocol: "ABCD1234",
+                                                      name: "Maria Oliveira",
+                                                      cpfMasked: "***.456.789-**",
+                                                      date: "2026-11-14",
+                                                      time: "09:00",
+                                                      status: "CONFIRMED",
+                                                      code: "DAY_WITHOUT_SERVICE",
+                                                      reason: "Dia sem atendimento na nova grade"
+                                                  }
+                                              ]
+                                          }
+                                      }
+                                  }
+                              }
+                })
+
+                const dialog = await openModal(user)
+                await user.click(await within(dialog).findByRole("button", { name: choice }))
+
+                expect(await screen.findByText(expected, {}, SLOW)).toBeInTheDocument()
+            }
+        )
     })
 })

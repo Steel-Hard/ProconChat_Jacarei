@@ -1,11 +1,9 @@
 import { useEffect, useId, useRef, type FormEvent, type MouseEvent, type ReactNode } from "react"
 import { useTranslation } from "react-i18next"
+import trapFocus from "@/utils/trapFocus"
 import css from "@/styles/components/confirmDialog.module.css"
 
 const FIELD_SELECTOR = "input:not([disabled]), select:not([disabled]), textarea:not([disabled])"
-
-const FOCUSABLE_SELECTOR =
-    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 const TONE_CLASS = {
     primary: css.confirm,
@@ -80,31 +78,7 @@ function ConfirmDialog({
             }
 
             if (event.key === "Tab") {
-                trapFocus(event)
-            }
-        }
-
-        function trapFocus(event: KeyboardEvent) {
-            const focusable = Array.from(
-                dialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? []
-            )
-
-            if (focusable.length === 0) {
-                event.preventDefault()
-                return
-            }
-
-            const first = focusable[0]
-            const last = focusable[focusable.length - 1]
-            const active = document.activeElement
-            const inside = active instanceof Node && dialogRef.current?.contains(active)
-
-            if (event.shiftKey && (active === first || !inside)) {
-                event.preventDefault()
-                last.focus()
-            } else if (!event.shiftKey && (active === last || !inside)) {
-                event.preventDefault()
-                first.focus()
+                trapFocus(event, dialogRef.current)
             }
         }
 

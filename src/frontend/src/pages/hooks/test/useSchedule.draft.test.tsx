@@ -204,77 +204,22 @@ describe("useSchedule: rascunho", () => {
 })
 
 describe("useSchedule: dias com agendamento", () => {
-    it("recusa desligar o dia da semana com agendamento e explica com as datas", async () => {
+    it("permite desligar o dia da semana, remover faixa e bloquear data mesmo com agendamento", async () => {
         const { result } = await ready({ bookedDays: BOOKED })
         await waitFor(() => expect(result.current.bookedDays).toHaveLength(2))
-
-        act(() => result.current.actions.toggleDay(3))
-
-        const wednesday = result.current.days.find((day) => day.weekday === 3)
-        expect(wednesday?.enabled).toBe(true)
-        expect(wednesday?.lockedReason).toBe(
-            "Há agendamentos em 04/11 e 11/11. Para desligar este dia, peça a quem gerencia os agendamentos para cancelar ou remarcar antes."
-        )
-        expect(result.current.changes).toEqual([])
-    })
-
-    it("cita só as 3 primeiras datas quando há mais", async () => {
-        const many = ["2026-11-04", "2026-11-11", "2026-11-18", "2026-11-25"].map((date) => ({
-            date,
-            weekday: 3,
-            total: 1,
-            times: [{ time: "09:00", count: 1 }]
-        }))
-        const { result } = await ready({ bookedDays: many })
-        await waitFor(() => expect(result.current.bookedDays).toHaveLength(4))
-
-        expect(result.current.days.find((day) => day.weekday === 3)?.lockedReason).toBe(
-            "Há agendamentos em 04/11, 11/11 e 18/11 e em outras datas. Para desligar este dia, peça a quem gerencia os agendamentos para cancelar ou remarcar antes."
-        )
-    })
-
-    it("mostra o ano nas datas da trava quando elas cruzam a virada do ano", async () => {
-        const crossing = ["2026-12-30", "2027-01-06"].map((date) => ({
-            date,
-            weekday: 3,
-            total: 1,
-            times: [{ time: "09:00", count: 1 }]
-        }))
-        const { result } = await ready({ bookedDays: crossing })
-        await waitFor(() => expect(result.current.bookedDays).toHaveLength(2))
-
-        expect(result.current.days.find((day) => day.weekday === 3)?.lockedReason).toBe(
-            "Há agendamentos em 30/12/2026 e 06/01/2027. Para desligar este dia, peça a quem gerencia os agendamentos para cancelar ou remarcar antes."
-        )
-    })
-
-    it("recusa remover a faixa que cobre um agendamento e deixa a outra livre", async () => {
-        const { result } = await ready({ bookedDays: BOOKED })
-        await waitFor(() => expect(result.current.bookedDays).toHaveLength(2))
-        const wednesday = () => result.current.days.find((day) => day.weekday === 3)
 
         act(() => result.current.actions.removeRange(3, 0))
+        expect(result.current.days.find((day) => day.weekday === 3)?.ranges).toHaveLength(1)
 
-        expect(wednesday()?.ranges.map((range) => range.removeLocked)).toEqual([true, true])
-        expect(wednesday()?.ranges).toHaveLength(2)
-        expect(result.current.days[0].ranges.map((range) => range.removeLocked)).toEqual([
-            false,
-            false
-        ])
-    })
-
-    it("recusa bloquear a data com agendamento com a quantidade do dia", async () => {
-        const { result } = await ready({ bookedDays: BOOKED })
-        await waitFor(() => expect(result.current.bookedDays).toHaveLength(2))
+        act(() => result.current.actions.toggleDay(3))
+        expect(result.current.days.find((day) => day.weekday === 3)?.enabled).toBe(false)
 
         act(() => result.current.actions.setNewBlockDate("2026-11-04"))
         act(() => result.current.actions.setNewBlockDescription("Ponto facultativo"))
         act(() => result.current.actions.addBlock())
 
-        expect(result.current.newBlockError).toBe(
-            "Esta data tem 2 agendamentos. Para bloqueá-la, peça a quem gerencia os agendamentos para cancelar ou remarcar antes."
-        )
-        expect(result.current.blocks).toHaveLength(1)
+        expect(result.current.newBlockError).toBeNull()
+        expect(result.current.blocks).toHaveLength(2)
     })
 
     it("não trava nada sem agendamento", async () => {
@@ -283,7 +228,6 @@ describe("useSchedule: dias com agendamento", () => {
         act(() => result.current.actions.toggleDay(3))
         act(() => result.current.actions.removeRange(1, 0))
 
-        expect(result.current.days.every((day) => day.lockedReason === null)).toBe(true)
         expect(result.current.days.find((day) => day.weekday === 3)?.enabled).toBe(false)
         expect(result.current.days[0].ranges).toHaveLength(1)
     })

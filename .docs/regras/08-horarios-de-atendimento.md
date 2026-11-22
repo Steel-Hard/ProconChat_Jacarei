@@ -10,7 +10,7 @@ Definir **quando o PROCON atende presencialmente**. É daqui que o chatbot tira 
 
 ## Estado da tela
 
-**Pronta (backend na issue #64, tela na issue #125, mudanças agendadas na issue #134, envio do lembrete na issue #74).** O chatbot oferece os horários da configuração salva aqui, seguindo em cada data a versão que vale nela (seção "Mudanças agendadas"). Ainda faltam: a janela de manter ou cancelar os agendamentos afetados (issue #75) e a criação de bloqueio de parte do dia (issue #77; a tela cria só bloqueio de dia inteiro, mas mostra e deixa remover os bloqueios parciais que já existirem).
+**Pronta (backend na issue #64, tela na issue #125, mudanças agendadas na issue #134, envio do lembrete na issue #74, janela de manter ou cancelar os agendamentos afetados na issue #75).** O chatbot oferece os horários da configuração salva aqui, seguindo em cada data a versão que vale nela (seção "Mudanças agendadas"). Ainda falta a criação de bloqueio de parte do dia (issue #77; a tela cria só bloqueio de dia inteiro, mas mostra e deixa remover os bloqueios parciais que já existirem). Também estão pendentes, dentro da #75, os itens marcados como pendentes em "Quando a mudança afeta agendamentos existentes".
 
 ## Regras gerais da tela
 
@@ -90,11 +90,10 @@ A configuração pode mudar a partir de uma data, sem afetar os agendamentos de 
 - **Criar:** em "Valer a partir de", a equipe escolhe uma data a partir de amanhã. A tela carrega a configuração que valeria nessa data, a equipe altera e salva. Data de hoje ou anterior mostra no campo "Escolha uma data a partir de amanhã.", não carrega nada e não deixa salvar.
 - **Lista "Mudanças agendadas":** mostra cada mudança futura pela data de início, com "Editar" e "Cancelar mudança" (os botões são lidos como "Editar a mudança de dd/mm/aaaa" e "Cancelar a mudança de dd/mm/aaaa"). Se a lista não carregar, aparece "Não foi possível carregar as mudanças agendadas.".
 - **Editar:** só antes da data de início. Salvar substitui a cópia da mudança e registra quem alterou e quando.
-- **Cancelar:** só antes da data de início, depois de confirmar no diálogo "Cancelar a mudança de horários a partir de dd/mm/aaaa?". A mudança some da lista e as datas dela voltam a seguir a configuração anterior.
+- **Cancelar:** só antes da data de início, depois de confirmar no diálogo "Cancelar a mudança de horários a partir de dd/mm/aaaa?". A mudança some da lista e as datas dela voltam a seguir a configuração anterior. Se o cancelamento deixaria agendamentos fora da configuração anterior, abre a janela de conflitos (seção "Quando a mudança afeta agendamentos existentes"), com as mesmas opções do salvar e textos próprios. Nenhuma lista de afetados aparece abaixo das mudanças agendadas: só a janela mostra os afetados.
 - **Trocar de versão com alterações não salvas** (Editar, outra data ou "Voltar à configuração de hoje") pede confirmação: "Descartar as alterações não salvas?". "Voltar" mantém o rascunho.
 - **Vigência:** uma mudança vale da data de início até a véspera da próxima mudança. A configuração de hoje vale de hoje até a véspera da primeira mudança futura. Em cada data, a grade, a duração, as vagas, as datas bloqueadas e o endereço são os da versão que vale nela. A janela, a antecedência mínima e o alerta de espera são os da versão que vale hoje; os dias úteis da antecedência contam com a grade de cada dia.
 - **Cópia própria:** cada mudança guarda a sua cópia dos horários, das datas bloqueadas e do endereço, e a tela avisa isso quando há mudanças agendadas. Por isso, um bloqueio novo só é aceito numa data da vigência da versão em edição. Fora dela, o servidor recusa com o erro no próprio bloqueio: "Esta data segue a mudança de dd/mm. Bloqueie lá." ou, antes do início da mudança em edição, "Esta data vem antes do início desta mudança (dd/mm). Bloqueie na configuração que vale nessa data.".
-- **Travas do formulário:** desligar o dia, remover a faixa e bloquear a data só ficam travados pelos agendamentos da vigência da versão em edição. A prévia continua marcando todos os dias com agendamento.
 - **Editar a configuração de hoje quando ela é uma mudança que já começou** grava uma mudança nova a partir de hoje; a que começou antes fica como estava.
 
 ## Quando a mudança afeta agendamentos existentes
@@ -110,24 +109,57 @@ Ao salvar, o sistema verifica se algum agendamento **Pendente ou Confirmado futu
 | A faixa foi removida ou alterada | "Faixa de horário removida ou alterada" |
 | As vagas foram reduzidas abaixo do que já está ocupado | Os **agendados por último** num horário lotado são os afetados |
 | A duração aumentou e dois agendamentos **Confirmados** do mesmo responsável passaram a se sobrepor | "Responsável com outro agendamento sobreposto com atendimentos de N minutos (protocolo XXXXXXXX)" |
-| Cancelar uma mudança agendada deixaria agendamentos da vigência dela fora da configuração anterior | O mesmo motivo da linha correspondente, conferido contra a configuração anterior. O cancelamento é recusado e a lista "Esta alteração afeta N agendamentos" aparece abaixo das mudanças agendadas |
+| Cancelar uma mudança agendada deixaria agendamentos da vigência dela fora da configuração anterior | O mesmo motivo da linha correspondente, conferido contra a configuração anterior. Em vez de recusar, abre a janela de conflitos, como no salvar |
 
-**Comportamento atual, até a issue #75:** a tela não deixa salvar uma mudança que afete agendamentos. O funcionário cancela ou remarca o agendamento na tela de Agendamentos antes. Para isso:
+**Antes de salvar**, a tela só informa e não trava nada: desligar um dia, remover uma faixa ou bloquear uma data que tenha agendamento é permitido, e "Salvar alterações" continua habilitado. O que a tela mostra:
 
 - Os dias com agendamento futuro aparecem marcados na prévia, com os horários e a quantidade no detalhe do dia.
-- O formulário recusa bloquear o dia inteiro de uma data com agendamento, desligar o dia da semana que tem agendamento (o checkbox fica desabilitado, com as próximas datas) e remover a faixa que cobre um horário com agendamento.
-- As outras mudanças (alterar o início ou o fim de uma faixa, a duração, as vagas ou remover um bloqueio) são simuladas pela prévia antes de salvar: os afetados aparecem no campo ligado à mudança e na lista "Esta alteração afeta N agendamentos" (protocolo, dia, hora, status e motivo), e "Salvar alterações" fica desabilitado.
-- Se ainda assim o servidor recusar ao salvar (por exemplo, um agendamento feito pelo chatbot entre a prévia e o salvar), a mesma lista aparece, agora com nome e CPF mascarado, e o salvar fica desabilitado até a próxima edição.
+- Os afetados pela alteração aparecem no campo ligado à mudança e na lista "Esta alteração afeta N agendamentos" (protocolo, dia, hora, status e motivo). Abaixo da lista há uma dica que depende da permissão. Com **Configurar atendimento presencial** e **Gerenciar agendamentos** (e o Admin): "Ao salvar, você poderá manter estes agendamentos fora da grade atual ou cancelá-los." Só com Configurar atendimento presencial: "Ao salvar, você poderá manter estes agendamentos fora da grade atual. Para cancelá-los, peça a quem gerencia os agendamentos."
+- Um bloqueio novo numa data de outra vigência continua recusado no próprio campo (seção "Mudanças agendadas"). Isso não é trava por agendamento.
 
-**Quando a issue #75 for feita:** se houver afetados, abre a janela **"Esta alteração afeta N agendamentos"** com a lista e três opções:
+**A janela de conflitos.** Ao salvar a configuração de hoje, ao salvar uma mudança agendada ou ao cancelar uma mudança agendada, o servidor refaz a lista de afetados. Se houver afetados e a equipe ainda não escolheu nada, **nada é gravado** e abre a janela **"Esta alteração afeta N agendamentos"** (origem "salvar") ou **"Cancelar a mudança de dd/mm afeta N agendamentos"** (origem "cancelar mudança agendada"), com a lista e as opções:
 
-- **Manter os agendamentos:** continuam válidos e ganham o selo "Fora da grade atual" (não são apontados de novo em mudanças futuras). Nenhum aviso é enviado.
-- **Cancelar e avisar os cidadãos:** cancela todos com o motivo "Unidade fechada nesta data" (bloqueios) ou "Outro motivo" (demais casos) e grava a mudança de horários. **Um aviso por agendamento** (não existe aviso agrupado: cada cidadão tem o próprio agendamento e recebe o modelo de cancelamento da [decisão 005](../decisoes/005-mensagens-ao-cidadao.md) com os dados do dele). O resultado do envio é registrado no histórico de cada agendamento, com o mesmo tratamento do cancelamento individual ([Detalhe do agendamento](04-detalhe-do-agendamento.md)). Quem decide se há aviso é o interruptor **"Avisar o cidadão por WhatsApp quando a equipe cancelar um agendamento"** da tela de WhatsApp (desligado por padrão):
-  - **Com o aviso ligado**, a opção se chama **"Cancelar e avisar os cidadãos"** e o modal mostra o resumo "N cidadãos receberão um aviso por WhatsApp. Cada aviso é uma mensagem de modelo e tem custo por mensagem cobrado pela Meta." Se houver problema conhecido na conta da Meta, aparece antes a faixa "O aviso pode não chegar: [motivo]" ([regra 11](11-whatsapp.md#aviso-de-cancelamento-ao-cidadão)), e o cancelamento continua permitido.
-  - **Com o aviso desligado (padrão)**, a opção se chama **"Cancelar agendamentos"** e o modal mostra o resumo "N cidadãos não serão avisados pelo sistema. A equipe precisa avisar por outro meio." Nada é enviado à Meta e cada histórico registra "Aviso ao cidadão desativado: cidadão não avisado pelo sistema". Se a configuração do aviso não puder ser lida, o modal não deixa confirmar e mostra "Não foi possível verificar o aviso ao cidadão. Tente de novo." com o botão "Tentar de novo".
-  - O cancelamento dos agendamentos e a gravação da mudança de horários acontecem **juntos**: se um falhar, nenhum vale. Os avisos são enviados depois, e uma falha de envio **não desfaz** os cancelamentos: o resultado mostra "N agendamentos cancelados. M avisos falharam." e cada falha fica no histórico do agendamento, com "Tentar novamente". Os horários cancelados voltam a ficar livres nos dois casos.
-  - **Quem pode:** esta opção só aparece para quem tem **Configurar atendimento presencial** e também **Gerenciar agendamentos**, porque cancela agendamentos ([decisão 004](../decisoes/004-contas-e-permissoes-granulares.md)). Quem só configura horários vê apenas "Manter os agendamentos" e "Voltar sem salvar".
-- **Voltar sem salvar.**
+- **Manter os agendamentos:** continuam válidos e ganham o selo "Fora da grade atual" (o histórico registra que foram mantidos, e eles **não são apontados de novo** como afetados em mudanças futuras). Nenhum aviso é enviado.
+- **Cancelar:** cancela todos com o motivo "Unidade fechada nesta data" (data ou período bloqueado) ou "Outro motivo" (demais casos). **Um aviso por agendamento** (não existe aviso agrupado: cada cidadão recebe o modelo de cancelamento da [decisão 005](../decisoes/005-mensagens-ao-cidadao.md) com os dados do dele). Quem decide se há aviso é o interruptor **"Avisar o cidadão por WhatsApp quando a equipe cancelar um agendamento"** da tela de WhatsApp (desligado por padrão):
+  - **Com o aviso ligado**, o modal mostra o resumo "N cidadãos receberão um aviso por WhatsApp. Cada aviso é uma mensagem de modelo e tem custo por mensagem cobrado pela Meta." Se houver problema conhecido na conta da Meta, aparece antes a faixa "O aviso pode não chegar: [motivo]" ([regra 11](11-whatsapp.md#aviso-de-cancelamento-ao-cidadão)), e o cancelamento continua permitido.
+  - **Com o aviso desligado (padrão)**, o modal mostra "N cidadãos não serão avisados pelo sistema. A equipe precisa avisar por outro meio.", nada é enviado à Meta e cada histórico registra "Aviso ao cidadão desativado: cidadão não avisado pelo sistema".
+  - Enquanto o estado do aviso é verificado, o modal mostra "Verificando o aviso ao cidadão...". Se não for possível verificá-lo, mostra "Não foi possível verificar o aviso ao cidadão. Tente de novo." com "Tentar de novo". Nos dois casos o botão de cancelar **não aparece**, e Manter e voltar continuam disponíveis.
+- **Voltar:** não grava nada. O Esc equivale a voltar, e clicar fora do modal não o fecha. Durante uma ação em andamento, nem o Esc nem os botões fecham o modal.
+
+**Quem pode:** cancelar só aparece para quem tem **Configurar atendimento presencial** e também **Gerenciar agendamentos** (o Admin tem as duas), porque cancela agendamentos ([decisão 004](../decisoes/004-contas-e-permissoes-granulares.md)). O servidor confere isso a cada pedido. Quem só configura horários vê apenas Manter e voltar.
+
+**Textos por origem e por permissão:**
+
+| | Origem "salvar" | Origem "cancelar mudança agendada" |
+|---|---|---|
+| Título | "Esta alteração afeta N agendamento(s)" | "Cancelar a mudança de dd/mm afeta N agendamento(s)" |
+| Abertura, com as duas permissões | "Estes agendamentos Pendentes ou Confirmados deixam de caber na configuração nova. Escolha o que fazer antes de salvar." | "Estes agendamentos Pendentes ou Confirmados deixam de caber na configuração anterior, que voltaria a valer. Escolha o que fazer antes de cancelar a mudança." |
+| Abertura, só com Configurar atendimento presencial | "Estes agendamentos Pendentes ou Confirmados deixam de caber na configuração nova. Você não pode cancelar agendamentos. Mantenha-os para salvar a alteração, ou volte sem salvar." | "Estes agendamentos Pendentes ou Confirmados deixam de caber na configuração anterior, que voltaria a valer. Você não pode cancelar agendamentos. Mantenha-os para cancelar a mudança, ou volte sem cancelar." |
+| Opção Manter | "Continuam válidos e ganham o selo "Fora da grade atual" na lista e no detalhe. Nenhum aviso é enviado." | "A mudança é cancelada e estes agendamentos continuam válidos, com o selo "Fora da grade atual". Nenhum aviso é enviado." |
+| Botão de cancelar, aviso ligado | "Cancelar e avisar os cidadãos" | "Cancelar a mudança, os agendamentos e avisar os cidadãos" |
+| Botão de cancelar, aviso desligado | "Cancelar agendamentos" | "Cancelar a mudança e os agendamentos" |
+| Voltar | "← Voltar sem salvar" | "← Voltar sem cancelar a mudança" |
+
+**O que o servidor confere ao gravar.** A tela envia quais agendamentos estavam na janela e, ao cancelar, se o aviso estava ligado ou desligado. No momento de gravar, o servidor refaz a lista:
+
+- **Lista igual à vista** (e, no cancelar, aviso igual): aplica a escolha e grava a agenda **juntos**, ou seja, se uma parte falhar, nenhuma vale. Duas gravações da agenda ao mesmo tempo não se misturam: uma espera a outra. Os avisos saem **depois** de tudo gravado.
+- **Lista diferente da vista, ou aviso que mudou desde que a janela abriu:** nada é gravado e nenhum aviso é enviado. A janela se atualiza com a lista nova e o estado atual do aviso, e mostra: "A lista de agendamentos afetados ou o aviso ao cidadão mudou desde que você abriu esta janela. Confira antes de escolher." A mensagem fica até a próxima escolha ou até a janela fechar, e não aparece na primeira abertura. Vale para Manter e para Cancelar, nos três caminhos. Uma mudança só no aviso não impede Manter.
+- **Lista vazia** (por exemplo, o cidadão cancelou o agendamento nesse meio tempo): grava a agenda, ou cancela a mudança, sem mexer em nenhum agendamento e sem avisar. A tela fecha a janela e mostra a mensagem normal, sem "0 agendamentos".
+
+**Mensagem de resultado.**
+
+- Origem "salvar": cancelou com o aviso ligado, "N agendamentos cancelados e cidadãos avisados por WhatsApp."; com o aviso desligado, "N agendamentos cancelados. Os cidadãos não foram avisados pelo sistema."; manteve, "Alteração salva. N agendamentos mantidos com o selo "Fora da grade atual"."; com falha de aviso, numa frase só, "N agendamentos cancelados. M avisos falharam." (plural certo nas duas partes).
+- Origem "cancelar mudança agendada": as mesmas mensagens com "Mudança cancelada. " antes, e a de mantidos sem "Alteração salva.": "Mudança cancelada. N agendamentos mantidos com o selo "Fora da grade atual"."; com falha, "Mudança cancelada. N agendamentos cancelados. M avisos falharam.".
+- Uma falha de envio **não desfaz** os cancelamentos e soma na mensagem de resultado. Nos casos de falha do envio (telefone ausente, gateway fora do ar, recusa da Meta), ela fica registrada também no histórico do agendamento, no mesmo formato do cancelamento individual ([Detalhe do agendamento](04-detalhe-do-agendamento.md)). Se o envio quebrar antes de registrar (falha de banco ou envio do mesmo agendamento já em andamento), ela entra só na contagem do resultado.
+- Se a ação não puder ser concluída, a janela continua aberta com "Não foi possível concluir a ação. Tente de novo.".
+- Ao cancelar uma mudança que estava aberta para edição, a tela volta para a configuração de hoje.
+
+**Pendente (não entregue na #75):**
+
+- O botão **"Tentar novamente"** para a falha de envio do cancelamento em massa.
+- A garantia de que os horários cancelados voltam a ficar livres nos dois casos (aviso ligado e desligado).
+- O envio dos avisos **em paralelo** (hoje saem um a um).
+- Testes de borda extras.
 
 ## O que não existe de propósito
 

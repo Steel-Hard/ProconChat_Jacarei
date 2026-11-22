@@ -1,5 +1,7 @@
 import { useRef, useState } from "react"
 import scheduleApi from "@/store/api/schedule.api"
+import type ScheduleConflictResolutionRequest from "@/types/schedule/ScheduleConflictResolutionRequest.types"
+import type ScheduleConflictResolutionSummary from "@/types/schedule/ScheduleConflictResolutionSummary.types"
 import type ScheduleInputWithOrigins from "@/types/schedule/ScheduleInputWithOrigins.types"
 import type ScheduleSaveError from "@/types/schedule/ScheduleSaveError.types"
 import scheduleSaveErrorOf from "@/utils/schedule/scheduleSaveErrorOf"
@@ -10,12 +12,15 @@ type SaveOutcome = {
     origins: Pick<ScheduleInputWithOrigins, "rangeOrigins" | "blockOrigins">
 }
 
-type SaveRequest = {
+type ConflictsError = Extract<ScheduleSaveError, { kind: "conflicts" }>
+
+type SaveRequest = ScheduleConflictResolutionRequest & {
     built: ScheduleInputWithOrigins
     revision: number
     effectiveFrom?: string
-    onSaved: () => void
-    onConflicts: () => void
+    onSaved: (resolution?: ScheduleConflictResolutionSummary) => void
+    onConflicts: (error: ConflictsError) => void
+    onError?: (error: ScheduleSaveError) => void
 }
 
 function useScheduleSave(currentRevision: number) {
@@ -24,7 +29,17 @@ function useScheduleSave(currentRevision: number) {
     const [outcome, setOutcome] = useState<SaveOutcome | null>(null)
     const inFlight = useRef(false)
 
-    async function save({ built, revision, effectiveFrom, onSaved, onConflicts }: SaveRequest) {
+    async function save({
+        built,
+        revision,
+        effectiveFrom,
+        conflictResolution,
+        seenConflictIds,
+        seenNoticeEnabled,
+        onSaved,
+        onConflicts,
+        onError
+    }: SaveRequest) {
         if (inFlight.current) {
             return
         }
@@ -34,8 +49,14 @@ function useScheduleSave(currentRevision: number) {
         setOutcome(null)
 
         try {
-            await saveSchedule({ config: built.input, effectiveFrom }).unwrap()
-            onSaved()
+            const saved = await saveSchedule({
+                config: built.input,
+                effectiveFrom,
+                conflictResolution,
+                seenConflictIds,
+                seenNoticeEnabled
+            }).unwrap()
+            onSaved(saved.resolution)
         } catch (caught) {
             const error = scheduleSaveErrorOf(caught)
 
@@ -45,10 +66,11 @@ function useScheduleSave(currentRevision: number) {
                     error,
                     origins: { rangeOrigins: built.rangeOrigins, blockOrigins: built.blockOrigins }
                 })
-            }
-
-            if (error?.kind === "conflicts") {
-                onConflicts()
+                if (error.kind === "conflicts") {
+                    onConflicts(error)
+                } else {
+                    onError?.(error)
+                }
             }
         } finally {
             inFlight.current = false

@@ -159,6 +159,91 @@ describe("scheduleApi", () => {
         expect(await bodyAt(fetchMock, 0)).toEqual(INPUT)
     })
 
+    it("envia a resolução, os ids vistos e o aviso visto no corpo do PUT", async () => {
+        const { scheduleApi, store, fetchMock } = await setup(() => ({
+            status: 200,
+            body: { data: VIEW }
+        }))
+
+        await store.dispatch(
+            scheduleApi.endpoints.saveSchedule.initiate({
+                config: INPUT,
+                conflictResolution: "CANCEL",
+                seenConflictIds: ["41", "42"],
+                seenNoticeEnabled: true
+            })
+        )
+
+        expect(await bodyAt(fetchMock, 0)).toEqual({
+            ...INPUT,
+            conflictResolution: "CANCEL",
+            seenConflictIds: ["41", "42"],
+            seenNoticeEnabled: true
+        })
+    })
+
+    it("não envia seenNoticeEnabled ao manter", async () => {
+        const { scheduleApi, store, fetchMock } = await setup(() => ({
+            status: 200,
+            body: { data: VIEW }
+        }))
+
+        await store.dispatch(
+            scheduleApi.endpoints.saveSchedule.initiate({
+                config: INPUT,
+                effectiveFrom: "2026-11-10",
+                conflictResolution: "KEEP",
+                seenConflictIds: ["41"]
+            })
+        )
+
+        expect(await bodyAt(fetchMock, 0)).toEqual({
+            ...INPUT,
+            conflictResolution: "KEEP",
+            seenConflictIds: ["41"]
+        })
+    })
+
+    it("apaga a mudança agendada com DELETE sem corpo e sem query quando não há resolução", async () => {
+        const { scheduleApi, store, fetchMock } = await setup(() => ({
+            status: 204,
+            body: null
+        }))
+
+        await store.dispatch(scheduleApi.endpoints.deleteScheduleVersion.initiate("2026-11-10"))
+
+        expect(requestAt(fetchMock, 0).method).toBe("DELETE")
+        expect(requestAt(fetchMock, 0).url).toBe(
+            "https://api.example.com/api/v1/schedule/versions/2026-11-10"
+        )
+        expect(await requestAt(fetchMock, 0).clone().text()).toBe("")
+    })
+
+    it("apaga a mudança agendada levando a resolução e o que foi visto num corpo JSON, sem query", async () => {
+        const { scheduleApi, store, fetchMock } = await setup(() => ({
+            status: 200,
+            body: { resolution: { action: "CANCEL" } }
+        }))
+
+        await store.dispatch(
+            scheduleApi.endpoints.deleteScheduleVersion.initiate({
+                effectiveFrom: "2026-11-10",
+                conflictResolution: "CANCEL",
+                seenConflictIds: ["41"],
+                seenNoticeEnabled: false
+            })
+        )
+
+        expect(requestAt(fetchMock, 0).url).toBe(
+            "https://api.example.com/api/v1/schedule/versions/2026-11-10"
+        )
+        expect(await bodyAt(fetchMock, 0)).toEqual({
+            conflictResolution: "CANCEL",
+            seenConflictIds: ["41"],
+            seenNoticeEnabled: false
+        })
+    })
+
     it("pede a prévia salva sem mês e com o mês informado", async () => {
         const { scheduleApi, store, fetchMock } = await setup(() => ({
             status: 200,

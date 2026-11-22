@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next"
 import LastChangeNote from "@/components/LastChangeNote"
 import ScheduleBlockedDates from "@/components/ScheduleBlockedDates"
 import ScheduleConflictList from "@/components/ScheduleConflictList"
+import ScheduleConflictModal from "@/components/ScheduleConflictModal"
 import ScheduleDurationSeats from "@/components/ScheduleDurationSeats"
 import SchedulePreview from "@/components/SchedulePreview"
 import ScheduleReminderFields from "@/components/ScheduleReminderFields"
@@ -57,7 +58,10 @@ function SchedulePage() {
                     <p className={css.warning}>{t("bookedDaysFailed")}</p>
                 ) : null}
                 {draft && page.conflictRows ? (
-                    <ScheduleConflictList conflicts={page.conflictRows} />
+                    <ScheduleConflictList
+                        conflicts={page.conflictRows}
+                        canCancelAppointments={page.conflictModal.canManageAppointments}
+                    />
                 ) : null}
                 {draft ? (
                     <div className={css.columns}>
@@ -135,6 +139,7 @@ function SchedulePage() {
                         />
                     </div>
                 ) : null}
+                <ScheduleConflictModal {...page.conflictModal} />
             </section>
         </>
     )

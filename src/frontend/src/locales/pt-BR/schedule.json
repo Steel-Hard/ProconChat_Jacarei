@@ -90,9 +90,59 @@
     "conflicts": {
         "title_one": "Esta alteração afeta {{count}} agendamento",
         "title_other": "Esta alteração afeta {{count}} agendamentos",
-        "hint": "Para fazer esta alteração, peça a quem gerencia os agendamentos para cancelar ou remarcar esses agendamentos antes de salvar.",
+        "hintWithCancel": "Ao salvar, você poderá manter estes agendamentos fora da grade atual ou cancelá-los.",
+        "hintKeepOnly": "Ao salvar, você poderá manter estes agendamentos fora da grade atual. Para cancelá-los, peça a quem gerencia os agendamentos.",
         "when": "{{weekday}}, {{date}} às {{time}}",
         "protocol": "Protocolo {{protocol}}"
+    },
+    "conflictModal": {
+        "changedNotice": "A lista de agendamentos afetados ou o aviso ao cidadão mudou desde que você abriu esta janela. Confira antes de escolher.",
+        "save": {
+            "descriptionWithCancel": "Estes agendamentos Pendentes ou Confirmados deixam de caber na configuração nova. Escolha o que fazer antes de salvar.",
+            "descriptionKeepOnly": "Estes agendamentos Pendentes ou Confirmados deixam de caber na configuração nova. Você não pode cancelar agendamentos. Mantenha-os para salvar a alteração, ou volte sem salvar.",
+            "keepDescription": "Continuam válidos e ganham o selo \"Fora da grade atual\" na lista e no detalhe. Nenhum aviso é enviado.",
+            "keepAction": "Manter os agendamentos",
+            "cancelActionOn": "Cancelar e avisar os cidadãos",
+            "cancelActionOff": "Cancelar agendamentos",
+            "back": "← Voltar sem salvar",
+            "canceledWithFailures_one": "{{count}} agendamento cancelado. $t(schedule:conflictModal.failedCount, {\"count\": {{failedCount}} }).",
+            "canceledWithFailures_other": "{{count}} agendamentos cancelados. $t(schedule:conflictModal.failedCount, {\"count\": {{failedCount}} })."
+        },
+        "cancelScheduledChange": {
+            "title_one": "Cancelar a mudança de {{date}} afeta {{count}} agendamento",
+            "title_other": "Cancelar a mudança de {{date}} afeta {{count}} agendamentos",
+            "descriptionWithCancel": "Estes agendamentos Pendentes ou Confirmados deixam de caber na configuração anterior, que voltaria a valer. Escolha o que fazer antes de cancelar a mudança.",
+            "descriptionKeepOnly": "Estes agendamentos Pendentes ou Confirmados deixam de caber na configuração anterior, que voltaria a valer. Você não pode cancelar agendamentos. Mantenha-os para cancelar a mudança, ou volte sem cancelar.",
+            "keepDescription": "A mudança é cancelada e estes agendamentos continuam válidos, com o selo \"Fora da grade atual\". Nenhum aviso é enviado.",
+            "keepAction": "Manter os agendamentos",
+            "cancelActionOn": "Cancelar a mudança, os agendamentos e avisar os cidadãos",
+            "cancelActionOff": "Cancelar a mudança e os agendamentos",
+            "back": "← Voltar sem cancelar a mudança",
+            "canceledWithFailures_one": "Mudança cancelada. {{count}} agendamento cancelado. $t(schedule:conflictModal.failedCount, {\"count\": {{failedCount}} }).",
+            "canceledWithFailures_other": "Mudança cancelada. {{count}} agendamentos cancelados. $t(schedule:conflictModal.failedCount, {\"count\": {{failedCount}} }).",
+            "keptToast_one": "Mudança cancelada. {{count}} agendamento mantido com o selo \"Fora da grade atual\".",
+            "keptToast_other": "Mudança cancelada. {{count}} agendamentos mantidos com o selo \"Fora da grade atual\".",
+            "canceledOnToast_one": "Mudança cancelada. {{count}} agendamento cancelado e cidadão avisado por WhatsApp.",
+            "canceledOnToast_other": "Mudança cancelada. {{count}} agendamentos cancelados e cidadãos avisados por WhatsApp.",
+            "canceledOffToast_one": "Mudança cancelada. {{count}} agendamento cancelado. O cidadão não foi avisado pelo sistema.",
+            "canceledOffToast_other": "Mudança cancelada. {{count}} agendamentos cancelados. Os cidadãos não foram avisados pelo sistema."
+        },
+        "cancelSummaryOn_one": "{{count}} cidadão receberá um aviso por WhatsApp. Cada aviso é uma mensagem de modelo e tem custo por mensagem cobrado pela Meta.",
+        "cancelSummaryOn_other": "{{count}} cidadãos receberão um aviso por WhatsApp. Cada aviso é uma mensagem de modelo e tem custo por mensagem cobrado pela Meta.",
+        "cancelSummaryOff_one": "{{count}} cidadão não será avisado pelo sistema. A equipe precisa avisar por outro meio.",
+        "cancelSummaryOff_other": "{{count}} cidadãos não serão avisados pelo sistema. A equipe precisa avisar por outro meio.",
+        "noticeLoading": "Verificando o aviso ao cidadão...",
+        "noticeFailed": "Não foi possível verificar o aviso ao cidadão. Tente de novo.",
+        "retryNotice": "Tentar de novo",
+        "resolveFailed": "Não foi possível concluir a ação. Tente de novo.",
+        "keptToast_one": "Alteração salva. {{count}} agendamento mantido com o selo \"Fora da grade atual\".",
+        "keptToast_other": "Alteração salva. {{count}} agendamentos mantidos com o selo \"Fora da grade atual\".",
+        "canceledOnToast_one": "{{count}} agendamento cancelado e cidadão avisado por WhatsApp.",
+        "canceledOnToast_other": "{{count}} agendamentos cancelados e cidadãos avisados por WhatsApp.",
+        "canceledOffToast_one": "{{count}} agendamento cancelado. O cidadão não foi avisado pelo sistema.",
+        "canceledOffToast_other": "{{count}} agendamentos cancelados. Os cidadãos não foram avisados pelo sistema.",
+        "failedCount_one": "{{count}} aviso falhou",
+        "failedCount_other": "{{count}} avisos falharam"
     },
     "contentNotice": {
         "text": "Se você mudar horários ou endereço, revise as perguntas do Conteúdo que citam essas informações.",
@@ -124,9 +174,6 @@
         "separator": "–",
         "removeSymbol": "×",
         "remove": "Remover faixa {{start}} às {{end}} de {{day}}",
-        "removeLocked": "{{target}} indisponível: há agendamento nesta faixa. Para removê-la, peça a quem gerencia os agendamentos para cancelar ou remarcar antes.",
-        "dayLocked": "Há agendamentos em {{dates}}. Para desligar este dia, peça a quem gerencia os agendamentos para cancelar ou remarcar antes.",
-        "dayLockedMore": "Há agendamentos em {{dates}} e em outras datas. Para desligar este dia, peça a quem gerencia os agendamentos para cancelar ou remarcar antes.",
         "removeAt": "Remover faixa {{position}} de {{day}}"
     },
     "durationSeats": {
@@ -210,8 +257,6 @@
         "problems": {
             "dateRequired": "Informe a data.",
             "dateAlreadyBlocked": "Esta data já tem um bloqueio",
-            "dateHasAppointments_one": "Esta data tem {{count}} agendamento. Para bloqueá-la, peça a quem gerencia os agendamentos para cancelar ou remarcar antes.",
-            "dateHasAppointments_other": "Esta data tem {{count}} agendamentos. Para bloqueá-la, peça a quem gerencia os agendamentos para cancelar ou remarcar antes.",
             "descriptionRequired": "Descrição do bloqueio obrigatória",
             "descriptionTooLong": "Descrição deve ter no máximo 150 caracteres"
         }
@@ -258,7 +303,6 @@
         "scheduledToast": "Mudança de horários agendada.",
         "failed": "Não foi possível salvar os horários. Confira os dados e tente de novo.",
         "hintErrors_one": "{{count}} campo com erro. Corrija para salvar.",
-        "hintErrors_other": "{{count}} campos com erro. Corrija para salvar.",
-        "hintConflicts": "A alteração afeta agendamentos. Veja a lista abaixo."
+        "hintErrors_other": "{{count}} campos com erro. Corrija para salvar."
     }
 }
