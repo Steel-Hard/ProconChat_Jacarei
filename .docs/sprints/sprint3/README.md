@@ -23,7 +23,7 @@
 |---|---|
 | Issues com a etiqueta `SPRINT 3` | **27** |
 | Concluídas com entrega | **22** |
-| Fechadas sem entrega própria | **2 unificadas** (#122 na #121 e #120 na #118), **1 sem registro de resultado** (#121) e **1 de organização, sem código** (#159, Feira de Projetos) |
+| Fechadas sem entrega própria | **2 unificadas** (#122 na #121 e #120 na #118), **1 de validação sem roteiro nem resultado no GitHub** (#121) e **1 de organização, sem código** (#159, Feira de Projetos) |
 | Em aberto | **1** (#70, a issue de fechamento, aberta neste retrato) |
 
 27 = 22 concluídas com entrega + #121 + #159 + #122 + #120 + #70.
@@ -78,7 +78,7 @@ Horários no fuso de Brasília. **Início** é o primeiro commit com `[#N]` na `
 
 | # | Tarefa | Situação |
 |---|---|---|
-| #121 | Validação com usuários: teste de usabilidade e confirmação dos fluxos decisórios | Fechada em 16/11 como concluída, mas o único comentário é "EM PROGRESSO". Sem roteiro, resultado do teste nem resposta do professor e do PROCON: **sem resposta até o fechamento** e teste com usuários **sem registro** |
+| #121 | Validação com usuários: teste de usabilidade e confirmação dos fluxos decisórios | Fechada em 16/11 como concluída. O único comentário na issue é "EM PROGRESSO", sem roteiro nem resultado. Segundo o registro do usuário em 22/11/2026, o professor aceitou e recomendou o fluxo atual, com botões, e o PROCON validou e aprovou o fluxo antes do desenvolvimento |
 | #122 | Confirmar com professor e PROCON a interpretação de fluxos decisórios | Unificada na #121 (fechada em 19/10 como não planejada) |
 | #120 | Documento em PDF do software: visão geral, requisitos e instalação | Unificada na #118 (fechada em 19/10 como não planejada); o documento do software saiu na #118 |
 | #159 | Feira de Projetos: o que precisamos entregar e organizar até 19/11 | Organização da Feira, sem código; fechada em 21/11 |
@@ -104,14 +104,14 @@ Issues sem a etiqueta `SPRINT 3`, a maioria com a etiqueta `Extra`, tratadas dur
 ## 3. Tarefas em aberto
 
 - **#70** Documentação final: README, arquitetura, rastreabilidade e fechamento da Sprint 3. É a issue que gera este documento.
-- Issues para as lacunas de requisito encontradas na conferência da rastreabilidade: pendentes de decisão. Serão listadas aqui quando existirem.
+- Nenhuma issue de lacuna foi aberta: a conferência da rastreabilidade não deixou requisito parcial ([rastreabilidade](../../desafio/rastreabilidade.md)).
 
 ---
 
 ## 4. Riscos e o que ficou de fora
 
-1. **Sem resposta sobre os fluxos decisórios e sem teste com usuários registrado** (RF02, RF03 e RNF01): ver [rastreabilidade](../../desafio/rastreabilidade.md).
-2. **Citações legais dos prazos de privacidade** sem conferência pela equipe (RNF03): ver a [decisão 002](../../decisoes/002-lgpd-dados-pessoais.md).
+1. **Telas descartadas:** Dashboard (#71) e Sessões (#72) foram descartados por decisão do grupo, e a tela inicial leva a Agendamentos.
+2. **Exportação de relatórios não entregue:** a exportação em PDF, Excel e CSV e os gráficos extras são bônus da #73 e nunca foram pedidos; os relatórios mínimos (#68, #128) cumprem o RF06.
 3. **Fechamentos concentrados no fim:** 9 das 22 entregas fecharam entre 17/11 e 22/11, incluindo os PDFs, a tela de Conteúdo e o teste ponta a ponta.
 4. **Concentração:** das 22 entregas, 14 têm só felipe-sant como responsável, 3 só Nickaqui (#63, #64, #68), 1 só frevisto (#129), 1 só claudsaints (#128) e 3 dividem felipe-sant e claudsaints (#65, #126, #127).
 5. **Divergências entre as regras e o painel** estão em tratamento na #174.
