@@ -74,8 +74,9 @@ Definir **quando o PROCON atende presencialmente**. É daqui que o chatbot tira 
 ### Datas bloqueadas
 
 - **Dia inteiro** ou **apenas um período** (horário inicial e final), com uma descrição (ex.: "Aniversário de Jacareí"). A tela cria, mostra e remove os dois tipos.
-- **Mais de um bloqueio parcial na mesma data**, desde que não se sobreponham (ex.: manhã e tarde). Períodos sobrepostos são recusados.
-- **Validações do formulário:** o fim deve ser depois do início; preencher só um dos horários é recusado; com "dia inteiro" marcado, o período não é pedido.
+- **Mais de um bloqueio parcial na mesma data**, desde que não se sobreponham (ex.: manhã e tarde). O início de um pode ser igual ao fim do outro. Períodos sobrepostos são recusados: "Este período se sobrepõe a outro bloqueio desta data".
+- **Dia inteiro não convive com outro bloqueio na mesma data:** tanto um dia inteiro numa data que já tem bloqueio quanto um período numa data de dia inteiro são recusados com "Esta data já tem um bloqueio".
+- **Validações do formulário** (campos "Início" e "Fim"): o fim deve ser depois do início, e fim igual ao início também é recusado ("O fim deve ser depois do início."); preencher só um dos horários é recusado ("Informe o início e o fim do período."); com "Bloquear o dia inteiro" marcado, os horários são ignorados.
 - O chatbot e a prévia mensal não oferecem horários nessas datas ou períodos. Um horário já agendado que cai no período é afetado, com o motivo "Período bloqueado (hh:mm–hh:mm)" (seção "Quando a mudança afeta agendamentos existentes").
 
 ### Prévia da grade
