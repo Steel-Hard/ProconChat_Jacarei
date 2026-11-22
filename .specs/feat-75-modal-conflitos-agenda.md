@@ -569,7 +569,7 @@ Regras para todas as tarefas de código:
 - Teste: unitário da linha. Falha primeiro o teste que espera o protocolo sem a palavra "Protocolo" e nenhum CPF. O resto é estilo, conferido lado a lado.
 - Gate: rápido front
 - Modelo: padrao
-- Status: feita (42eab83), com a conferência lado a lado pendente da Nobara (não rodei navegador, só CSS conforme o Desenho). Teste primeiro: a linha falhou por componente ausente. Gate: vitest 1309 de componentes e páginas passam e 1 falha (ScheduleConflictList, T8), typecheck, oxlint e prettier ok. Teste alterado por mudança de regra (RN-20): Schedule.conflicts.test.tsx agora espera o modal sem CPF e sem a palavra Protocolo. Seletor do selo do detalhe via [data-tone] dentro de .tags.
+- Status: feita (42eab83), com a conferência lado a lado pendente da Nobara (não rodei navegador, só CSS conforme o Desenho). Teste primeiro: a linha falhou por componente ausente. Gate: vitest 1309 de componentes e páginas passam e 1 falha (ScheduleConflictList, T8), typecheck, oxlint e prettier ok. Teste alterado por mudança de regra (RN-20): Schedule.conflicts.test.tsx agora espera o modal sem CPF e sem a palavra Protocolo. Seletor do selo do detalhe via [data-tone] dentro de .tags. A alteração em Schedule.conflicts.test.tsx (sem CPF e sem "Protocolo") foi aceita sob a RN-20. O status da linha usa o Seal com cores (prop colors), sem estilo inline repetido; o teste do Seal passou a cobrir isso.
 
 ### T8 [P] Dica da lista de afetados por permissão (B3)
 - O quê: a lista de afetados da tela de Horários mostra a dica de RN-14 conforme a permissão de quem usa.
@@ -586,7 +586,7 @@ Regras para todas as tarefas de código:
 - Teste: unitário de componente. Falha primeiro o caso "só com Configurar atendimento presencial".
 - Gate: rápido front
 - Modelo: economico
-- Status: feita (da08007). Teste primeiro: o caso só com Configurar falhou pelo motivo certo. Gate: vitest 840 (páginas e lista) passam, typecheck, oxlint e prettier ok. Testes alterados (autorizado): o teste antigo da dica foi trocado pelos dois casos de permissão, e as renderizações dos outros testes do arquivo passaram a levar a propriedade nova obrigatória, sem mudar o que verificam.
+- Status: feita (da08007). Teste primeiro: o caso só com Configurar falhou pelo motivo certo. Teste de página da dica para Admin sem appointments.manage e para só Configurar adicionado (passaram de primeira, regra já existente). Gate: vitest 840 (páginas e lista) passam, typecheck, oxlint e prettier ok. Testes alterados (autorizado): o teste antigo da dica foi trocado pelos dois casos de permissão, e as renderizações dos outros testes do arquivo passaram a levar a propriedade nova obrigatória, sem mudar o que verificam.
 
 ### T11 [P] Mensagens de resultado por origem e sem "0 agendamentos"
 - O quê: usar a frase com falhas de cada origem, os resultados sem falha da origem cancelar mudança agendada (com "Mudança cancelada. " antes, RN-16) e a mensagem normal quando `affectedCount` é 0.
