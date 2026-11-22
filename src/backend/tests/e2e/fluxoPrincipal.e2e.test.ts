@@ -78,7 +78,8 @@ describe("fluxo principal ponta a ponta", () => {
         expect(session.events.find((event) => event.type === "APPOINTMENT_CREATED")?.appointmentId).toBe(pending.id)
         const storedEvents = JSON.stringify(session.events)
         expect(storedEvents).not.toContain(HOLDER_NAME)
-        expect(storedEvents).not.toContain("529982247")
+        expect(storedEvents).not.toContain(E2E_CPFS.fluxoPrincipal)
+        expect(storedEvents).not.toContain(E2E_CPFS.fluxoPrincipal.replace(/\D/g, ""))
 
         const cookie = await loginStaff(env)
         const claimed = await panelAction(env, cookie, pending.id, "claim")
