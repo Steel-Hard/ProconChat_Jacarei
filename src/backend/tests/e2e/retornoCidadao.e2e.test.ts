@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest"
 import { eventsOf } from "../integration/helpers/usersDb"
 import { createCitizen } from "./helpers/citizen"
-import { appointmentByProtocol, sessionsOfPhone } from "./helpers/e2eDb"
+import { appointmentByProtocol, E2eSession, sessionsOfPhone } from "./helpers/e2eDb"
 import { E2eEnvironment, startE2eEnvironment, stopE2eEnvironment } from "./helpers/e2eEnvironment"
 import { bookThroughChat, expectedWhen, goToSlotList, protocolOf } from "./helpers/journeys"
 import { E2E_CPFS, E2E_PHONES } from "./helpers/phones"
@@ -29,6 +29,13 @@ function cancelConfirmationText(appointmentDatetime: Date): string {
 
 function canceledText(protocol: string): string {
     return `Seu agendamento ${protocol} foi cancelado e o horário foi liberado. Para agendar novamente, envie uma mensagem para este número.`
+}
+
+function expectNoTypedData(sessions: E2eSession[], holder: { name: string; cpf: string }): void {
+    const stored = JSON.stringify(sessions.map((session) => session.events))
+    expect(stored).not.toContain(holder.name)
+    expect(stored).not.toContain(holder.cpf)
+    expect(stored).not.toContain(holder.cpf.replace(/\D/g, ""))
 }
 
 beforeAll(async () => {
@@ -100,10 +107,7 @@ describe("retorno do cidadão com agendamento futuro", () => {
             from: confirmed.appointmentDatetime.toISOString(),
             to: rescheduled.appointmentDatetime.toISOString(),
         })
-        for (const session of sessions) {
-            expect(JSON.stringify(session.events)).not.toContain(holder.name)
-            expect(JSON.stringify(session.events)).not.toContain(holder.cpf)
-        }
+        expectNoTypedData(sessions, holder)
     })
 
     test("cancela um agendamento pendente depois da confirmação e libera o horário", async () => {
@@ -144,15 +148,15 @@ describe("retorno do cidadão com agendamento futuro", () => {
             "APPOINTMENT_CONSULTED",
             "APPOINTMENT_CANCELED",
         ])
-        for (const session of sessions) {
-            expect(JSON.stringify(session.events)).not.toContain(holder.name)
-            expect(JSON.stringify(session.events)).not.toContain(holder.cpf)
-        }
+        expectNoTypedData(sessions, holder)
 
-        await citizen.say("oi")
-        expect(citizen.optionIds()).not.toEqual(expect.arrayContaining(RETURN_BUTTONS))
-        expect(citizen.optionIds()).toContain(`cat_${current.categoryId}`)
+        const callsBefore = current.meta.graphCalls.length
         await goToSlotList(current, citizen, holder)
+        const sent = current.meta.sentSince(callsBefore)
+        const categoryListIndex = sent.findIndex((message) => message.optionIds.some((id) => id.startsWith("cat_")))
+        expect(categoryListIndex).toBeGreaterThanOrEqual(0)
+        const beforeCategoryList = sent.slice(0, categoryListIndex + 1).flatMap((message) => message.optionIds)
+        expect(beforeCategoryList).not.toEqual(expect.arrayContaining(RETURN_BUTTONS))
         expect(citizen.slotIds()).toContain(`slot_${booked.appointmentDatetime.toISOString()}`)
     })
 })
