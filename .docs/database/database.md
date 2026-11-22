@@ -3,8 +3,8 @@
 > Persistência única em PostgreSQL, compartilhada entre o chatbot e o painel ([`../architecture/architecture.md`](../architecture/architecture.md)).
 >
 > Este documento tem duas partes:
-> 1. **[Schema atual](#parte-1--schema-atual-implementado)**: o que existe depois das migrations `01` a `09`, `010`, `11`, `12`, `13`, `14`, `15`, `16` e `17` (a `11_sprint2_schema.sql` é o schema da Sprint 2, issue #52; a `12_short_text_checks.sql` ajusta o limite dos títulos curtos, issue #61; a `13_conversation_events_data_checks.sql` limita as chaves e os valores de `ConversationEvents.data` e amarra `current_step = 'FINISHED'` às sessões encerradas, issue #16; a `14_whatsapp_settings_display_number.sql` guarda o número e o nome verificados do WhatsApp, issue #54; a `15_whatsapp_settings_access_token_lifetime.sql` guarda se o token de acesso do WhatsApp expira, issue #54; a `16_user_permissions.sql` cria as permissões granulares das contas e o e-mail único sem diferenciar maiúsculas, issue #62; a `17_schedule_changes.sql` guarda snapshots de agenda com data efetiva, issue #134).
-> 2. **[Schema planejado](#parte-2--schema-planejado-sprint-3)**: o que ainda falta criar, com a issue de cada parte.
+> 1. **[Schema atual](#parte-1--schema-atual-implementado)**: o que existe depois das migrations `01` a `09`, `010` e `11` a `21` (a `11_sprint2_schema.sql` é o schema da Sprint 2, issue #52; a `12_short_text_checks.sql` ajusta o limite dos títulos curtos, issue #61; a `13_conversation_events_data_checks.sql` limita as chaves e os valores de `ConversationEvents.data` e amarra `current_step = 'FINISHED'` às sessões encerradas, issue #16; a `14_whatsapp_settings_display_number.sql` guarda o número e o nome verificados do WhatsApp, issue #54; a `15_whatsapp_settings_access_token_lifetime.sql` guarda se o token de acesso do WhatsApp expira, issue #54; a `16_user_permissions.sql` cria as permissões granulares das contas e o e-mail único sem diferenciar maiúsculas, issue #62; a `17_schedule_changes.sql` guarda snapshots de agenda com data efetiva, issue #134; as migrations `18` a `21` estão na tabela do histórico).
+> 2. **[Schema planejado](#parte-2--schema-planejado)**: o que falta criar. Hoje não há nada planejado.
 >
 > Antes de mexer no banco, leia também o SQL em `src/backend/db/schema/` e as convenções em [`migrations.md`](migrations.md): **toda mudança é uma migration nova**, nunca edição de migration antiga.
 
@@ -32,6 +32,7 @@
 | `18` | Mensagens enviadas e histórico de alterações (#88): cria os tipos `outbound_kind` e `outbound_status`, a tabela `OutboundMessages` (com o HMAC do wamid em `provider_message_hash` e `chk_outbound_messages_provider_message_hash`, o índice parcial das falhas e os índices das FKs) e a tabela `AuditLog` (com `chk_audit_log_data_object`). O `Down` remove as duas tabelas e os dois tipos |
 | `19` | Configuração de privacidade (#69): cria a tabela de linha única `PrivacySettings` (controlador, encarregado, e-mail de contato, atendimento presencial e prazos de guarda), com `CHECK` de linha única, de tamanho, de espaço nas pontas e do formato do e-mail. Não insere linha. O `Down` remove a tabela |
 | `20` | Anonimização por prazo (#69, D3): `Sessions.phone_hash`, `Appointments.cpf_hash` e `Appointments.cpf_masked` passam a aceitar `NULL`; `anonymized_at` em `Sessions` e `Appointments`, com `chk_sessions_anonymized`, `chk_sessions_anonymized_finished` e `chk_appointments_anonymized`; os índices parciais `idx_sessions_retention` e `idx_appointments_retention`; e `retention_enabled` (`FALSE`), `session_retention_days` (90, de 30 a 1825) e `appointment_retention_days` (365, de 90 a 1825) em `PrivacySettings`. O `Down` **aborta com mensagem clara se houver conversa ou agendamento anonimizado** (o dado removido não volta); sem linha anonimizada, remove as colunas, os `CHECK` e os índices e volta o `NOT NULL` |
+| `21` | Interruptor do aviso de cancelamento (#164, [decisão 005](../decisoes/005-mensagens-ao-cidadao.md)): adiciona `WhatsAppSettings.cancellation_notice_enabled BOOLEAN NOT NULL DEFAULT FALSE` (o aviso nasce desligado) e o valor `CITIZEN_NOTICE_DISABLED` em `appointment_event_type`, recriando o tipo. O `Down` apaga os eventos desse tipo e remove a coluna |
 
 ### Diagrama
 
@@ -587,6 +588,7 @@ CREATE TYPE appointment_event_type AS ENUM (
     'CANCELED_BY_STAFF',
     'CITIZEN_NOTIFIED',
     'CITIZEN_NOTIFICATION_FAILED',
+    'CITIZEN_NOTICE_DISABLED',
     'REMINDER_SENT',
     'KEPT_OFF_GRID'
 );
@@ -616,6 +618,7 @@ CREATE INDEX idx_appointment_events_appointment ON AppointmentEvents(appointment
 | `CANCELED_BY_CITIZEN` | — |
 | `CANCELED_BY_STAFF` | `{ "reason": "UNIT_CLOSED" \| "CITIZEN_REQUEST" \| "DUPLICATE" \| "OTHER" }` |
 | `CITIZEN_NOTIFIED`, `CITIZEN_NOTIFICATION_FAILED` | `{ "kind": "CONFIRMATION" \| "CANCELLATION" \| "REMINDER" }` |
+| `CITIZEN_NOTICE_DISABLED` | Registra que o cancelamento não gerou aviso porque o interruptor do aviso estava desligado (#164) |
 | `REMINDER_SENT`, `KEPT_OFF_GRID` | — |
 
 `actor_user_id` `NULL` = foi o cidadão ou o sistema.
@@ -734,6 +737,7 @@ CREATE TABLE WhatsAppSettings (
     access_token_permanent BOOLEAN,
     access_token_expires_at TIMESTAMPTZ,
     last_webhook_event_at TIMESTAMPTZ,
+    cancellation_notice_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     updated_by BIGINT REFERENCES Users(id),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT chk_whatsapp_settings_singleton CHECK (id = 1),
@@ -755,6 +759,7 @@ CREATE TABLE WhatsAppSettings (
 - `display_phone_number` e `verified_name` (#54): o número institucional e o nome verificado que a Meta devolveu no último salvar ou teste bem-sucedido dos valores salvos. `NULL` até o primeiro sucesso. Teste de valores novos ou que falha não muda os dois, e gravá-los não muda `updated_by`/`updated_at` quando vêm do teste.
 - `access_token_permanent` e `access_token_expires_at` (#54, migration `15`): o tipo do token de acesso salvo, descoberto pelo `debug_token` da Meta. `TRUE` sem data = não expira; `FALSE` com a data = expira nessa data; as duas `NULL` = não se sabe (nunca verificado ou a Meta não respondeu). O `CHECK` usa `IS TRUE`/`IS FALSE` porque, com `= TRUE`, uma data sem `access_token_permanent` daria `NULL` no `CHECK` e passaria. Um teste dos valores salvos só grava o tipo quando a Meta o informa; o salvar que troca o token sempre grava o tipo do token novo (inclusive desconhecido). Gravar pelo teste não muda `updated_by`/`updated_at`. A validade fica velha se o token for revogado direto na Meta. A #88 não detecta isso (a decisão ficou fora do escopo, Q5 da spec): a tela segue com o "Testar conexão", e o estado `EXPIRED` cobre o token com validade vencida.
 - `last_webhook_event_at` (#88): a data do último POST do webhook com ao menos uma `change` aceita, gravada pela rota interna `POST /api/v1/internal/whatsapp/events` a cada chamada, sem mudar `updated_by`/`updated_at` e sem criar a linha. A leitura do painel marca o webhook como parado acima de 24h sem evento, ou quando nunca houve evento.
+- `cancellation_notice_enabled` (#164, migration `21`): interruptor do aviso de cancelamento ao cidadão. Nasce `FALSE` (desligado): com ele desligado, o cancelamento pela equipe não envia modelo e grava `CITIZEN_NOTICE_DISABLED` no histórico do agendamento.
 
 ### PrivacySettings — #69, [decisão 002](../decisoes/002-lgpd-dados-pessoais.md)
 
@@ -868,6 +873,6 @@ A proposta de referência que ficava na Parte 2 deste documento foi implementada
 
 ---
 
-## Parte 2 — Schema planejado (Sprint 3)
+## Parte 2 — Schema planejado
 
-Nada planejado no momento. `OutboundMessages` e `AuditLog`, que estavam aqui, foram criadas na migration `18` (#88) e estão descritas na Parte 1.
+Nada planejado no momento, e a entrega da Sprint 3 não deixou schema pendente. `OutboundMessages` e `AuditLog`, que estavam aqui, foram criadas na migration `18` (#88) e estão descritas na Parte 1.
