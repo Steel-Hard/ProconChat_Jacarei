@@ -8,6 +8,7 @@ import { E2E_CPFS, E2E_PHONES } from "./helpers/phones"
 import { loginStaff, panelAction } from "./helpers/panel"
 import { setCancellationNotice } from "./helpers/whatsappSettingsDb"
 
+const RETURN_OPTION_PREFIX = "return_"
 const RETURN_BUTTONS = ["return_reschedule", "return_cancel", "return_other"]
 
 let env: E2eEnvironment | undefined
@@ -156,7 +157,7 @@ describe("retorno do cidadão com agendamento futuro", () => {
         const categoryListIndex = sent.findIndex((message) => message.optionIds.some((id) => id.startsWith("cat_")))
         expect(categoryListIndex).toBeGreaterThanOrEqual(0)
         const beforeCategoryList = sent.slice(0, categoryListIndex + 1).flatMap((message) => message.optionIds)
-        expect(beforeCategoryList).not.toEqual(expect.arrayContaining(RETURN_BUTTONS))
+        expect(beforeCategoryList.some((id) => id.startsWith(RETURN_OPTION_PREFIX))).toBe(false)
         expect(citizen.slotIds()).toContain(`slot_${booked.appointmentDatetime.toISOString()}`)
     })
 })
