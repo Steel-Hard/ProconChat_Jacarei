@@ -85,6 +85,28 @@ describe("useSchedule: prévia", () => {
         expect((put.body as { seatsPerSlot: number }).seatsPerSlot).toBe(3)
     })
 
+    it("manda o bloqueio de período com início e fim no rascunho da prévia", async () => {
+        const { result, callsTo } = await ready()
+
+        act(() => result.current.actions.setNewBlockDate("2026-11-20"))
+        act(() => result.current.actions.setNewBlockDescription("Reunião"))
+        act(() => result.current.actions.setNewBlockFullDay(false))
+        act(() => result.current.actions.setNewBlockStartTime("08:30"))
+        act(() => result.current.actions.setNewBlockEndTime("10:00"))
+        act(() => result.current.actions.addBlock())
+        await settle(400)
+        await waitFor(() => expect(callsTo("POST", "/api/v1/schedule/preview")).toHaveLength(1))
+
+        const [post] = callsTo("POST", "/api/v1/schedule/preview")
+        const { blockedDates } = (post.body as { config: { blockedDates: unknown[] } }).config
+        expect(blockedDates).toContainEqual({
+            date: "2026-11-20",
+            startTime: "08:30",
+            endTime: "10:00",
+            description: "Reunião"
+        })
+    })
+
     it("não manda o rascunho aos 399 ms e manda aos 400 ms com o relógio parado", async () => {
         vi.useRealTimers()
         const { result, callsTo } = await renderScheduleHook()

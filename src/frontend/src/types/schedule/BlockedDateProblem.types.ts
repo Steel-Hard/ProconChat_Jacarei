@@ -3,5 +3,8 @@ type BlockedDateProblem =
     | { code: "dateAlreadyBlocked" }
     | { code: "descriptionRequired" }
     | { code: "descriptionTooLong" }
+    | { code: "periodRequired" }
+    | { code: "periodInvalid" }
+    | { code: "periodOverlap" }
 
 export default BlockedDateProblem
