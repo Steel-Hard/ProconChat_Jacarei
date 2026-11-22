@@ -380,6 +380,49 @@ describe("scheduleStub.repository resolução de conflitos", () => {
         })
     })
 
+    describe("campos que a equipe deveria ter enviado", () => {
+        it("trata a lista vista ausente como divergência de lista ao resolver", async () => {
+            const repo = createScheduleStubRepository({ appointments: [tuesdayAppointment] })
+
+            const error = await conflictOf(() =>
+                repo.saveConfig({ config: closedDay, actorUserId: 2, now, conflictResolution: "KEEP" }),
+            )
+
+            expect(error.code).toBe("SCHEDULE_CONFLICTS_CHANGED")
+            expect(error.details).toMatchObject({ changes: ["CONFLICTS"] })
+        })
+
+        it("trata o estado do aviso ausente como divergência do aviso ao cancelar", async () => {
+            const repo = createScheduleStubRepository({ appointments: [tuesdayAppointment] })
+
+            const error = await conflictOf(() =>
+                repo.saveConfig({
+                    config: closedDay,
+                    actorUserId: 2,
+                    now,
+                    conflictResolution: "CANCEL",
+                    seenConflictIds: ["22"],
+                }),
+            )
+
+            expect(error.code).toBe("SCHEDULE_CONFLICTS_CHANGED")
+            expect(error.details).toMatchObject({ changes: ["NOTICE"] })
+        })
+
+        it("lança SCHEDULE_CONFLICTS ao cancelar a mudança com resolução mas sem usuário", async () => {
+            const repo = createScheduleStubRepository({ appointments: [saturdayAppointment] })
+
+            const error = await conflictOf(() =>
+                repo.deleteScheduledConfig("2026-10-12", now, {
+                    conflictResolution: "KEEP",
+                    seenConflictIds: ["21"],
+                }),
+            )
+
+            expect(error.code).toBe("SCHEDULE_CONFLICTS")
+        })
+    })
+
     describe("salvar a configuração de hoje", () => {
         it("lança SCHEDULE_CONFLICTS_CHANGED quando um agendamento visto deixou de ser afetado e ainda há outro afetado", async () => {
             const repo = createScheduleStubRepository({

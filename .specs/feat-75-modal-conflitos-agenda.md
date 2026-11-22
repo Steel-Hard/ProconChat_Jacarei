@@ -400,7 +400,7 @@ Regras para todas as tarefas de código:
 - Teste: unitário. Falha primeiro o teste que espera que `deleteScheduledConfig` com `"KEEP"` devolva os ids afetados, e não uma lista vazia.
 - Gate: rápido back
 - Modelo: padrao
-- Status: feita. Teste escrito primeiro: 9 dos 18 testes do bloco novo falharam pelo motivo certo antes do código. Alteração de teste autorizada pelo usuário: o teste antigo "salva a mudança sem conferir conflitos e guarda os argumentos" virou "salva a mudança resolvendo os conflitos e guarda os argumentos", com conflictResolution KEEP e seenConflictIds ["11"] no toEqual de scheduledSaveCalls, porque o stub passou a conferir conflitos. Gate: typecheck:test ok, oxlint ok, suíte do backend 143 arquivos e 2042 testes ok.
+- Status: feita. Teste escrito primeiro: 9 dos 18 testes do bloco novo falharam pelo motivo certo antes do código. Alteração de teste autorizada pelo usuário: o teste antigo "salva a mudança sem conferir conflitos e guarda os argumentos" virou "salva a mudança resolvendo os conflitos e guarda os argumentos", com conflictResolution KEEP e seenConflictIds ["11"] no toEqual de scheduledSaveCalls, porque o stub passou a conferir conflitos. Gate: typecheck:test ok, oxlint ok, suíte do backend 143 arquivos e 2042 testes ok. Sugestão S-T3-1 da revisão: o stub passou a copiar a regra do repositório real (lista vista ausente dá CONFLICTS; aviso visto ausente ao cancelar dá NOTICE; resolução no DELETE sem usuário dá SCHEDULE_CONFLICTS), com 3 testes novos. Ajuste só de montagem em 3 testes antigos de schedule.conflictResolution.test.ts (mantém afetados, cancela com aviso ligado, cancela com aviso desligado): passaram a informar seenConflictIds (e seenNoticeEnabled ao cancelar), porque o stub agora confere o que foi visto; nenhuma expectativa mudou. Gate: typecheck:test ok, oxlint ok, suíte 2056 testes ok.
 
 ### T4 [P] Serviço do B1 e testes do cancelamento de mudança agendada (B5)
 - O quê:
@@ -605,7 +605,7 @@ Regras para todas as tarefas de código:
 - Teste: integração de página. Falha primeiro o teste que espera "Mudança de horários cancelada." quando o DELETE com resolução volta com `affectedCount: 0`.
 - Gate: rápido front
 - Modelo: economico
-- Status: pendente
+- Status: feita (52f92db). Teste primeiro: 9 novos falharam pelo motivo certo (os 2 de origem salvar com a frase de falhas já passavam, regra que existia). Gate: vitest 843 de páginas passam, typecheck, oxlint e prettier ok.
 
 ### T12 Remover o código das travas antigas e o que sobrou sem uso
 - O quê: apagar o código, os textos e os testes que só serviam às travas antigas ou que ficaram sem uso depois de T8 a T13.

@@ -39,6 +39,7 @@ describe("schedule.service conflict resolution", () => {
         const input = buildScheduleConfigInput({
             ranges: [],
             conflictResolution: "KEEP",
+            seenConflictIds: ["10", "11"],
         })
 
         await service.saveConfig(input, 1, DEFAULT_STUB_NOW, {
@@ -85,6 +86,8 @@ describe("schedule.service conflict resolution", () => {
         const input = buildScheduleConfigInput({
             ranges: [],
             conflictResolution: "CANCEL",
+            seenConflictIds: ["10", "11", "12"],
+            seenNoticeEnabled: true,
         })
 
         await service.saveConfig(input, 1, DEFAULT_STUB_NOW, {
@@ -124,7 +127,12 @@ describe("schedule.service conflict resolution", () => {
 
         let summary: ScheduleConflictResolutionSummary | undefined
         await service.saveConfig(
-            buildScheduleConfigInput({ ranges: [], conflictResolution: "CANCEL" }),
+            buildScheduleConfigInput({
+                ranges: [],
+                conflictResolution: "CANCEL",
+                seenConflictIds: ["10"],
+                seenNoticeEnabled: false,
+            }),
             1,
             DEFAULT_STUB_NOW,
             {

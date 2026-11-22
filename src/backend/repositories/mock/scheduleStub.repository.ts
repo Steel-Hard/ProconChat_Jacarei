@@ -321,19 +321,13 @@ export function createScheduleStubRepository(
         request: ConflictResolutionRequest,
     ): ("CONFLICTS" | "NOTICE")[] {
         const changes: ("CONFLICTS" | "NOTICE")[] = []
-        if (request.seenConflictIds !== undefined) {
-            const seen = new Set(request.seenConflictIds)
-            const current = new Set(conflicts.map((conflict) => conflict.id))
-            const sameList = seen.size === current.size && [...current].every((id) => seen.has(id))
-            if (!sameList) {
-                changes.push("CONFLICTS")
-            }
+        const seen = new Set(request.seenConflictIds ?? [])
+        const current = new Set(conflicts.map((conflict) => conflict.id))
+        const sameList = seen.size === current.size && [...current].every((id) => seen.has(id))
+        if (!sameList) {
+            changes.push("CONFLICTS")
         }
-        if (
-            request.conflictResolution === "CANCEL" &&
-            request.seenNoticeEnabled !== undefined &&
-            request.seenNoticeEnabled !== cancellationNoticeEnabled
-        ) {
+        if (request.conflictResolution === "CANCEL" && request.seenNoticeEnabled !== cancellationNoticeEnabled) {
             changes.push("NOTICE")
         }
         return changes
@@ -342,13 +336,14 @@ export function createScheduleStubRepository(
     function resolveConflicts(
         conflicts: ScheduleConflictItem[],
         request: ConflictResolutionRequest,
+        actorUserId: number | undefined,
         message: string,
     ): string[] {
         failWhenNoticeUnreadable()
         if (conflicts.length === 0) {
             return []
         }
-        if (!request.conflictResolution) {
+        if (!request.conflictResolution || actorUserId === undefined) {
             throw new ConflictError(message, "SCHEDULE_CONFLICTS", conflictDetails(conflicts))
         }
         const changes = changesSinceSeen(conflicts, request)
@@ -405,6 +400,7 @@ export function createScheduleStubRepository(
         const resolvedIds = resolveConflicts(
             conflicts,
             { conflictResolution, seenConflictIds, seenNoticeEnabled },
+            actorUserId,
             "Esta alteração afeta agendamentos futuros",
         )
 
@@ -447,6 +443,7 @@ export function createScheduleStubRepository(
         const resolvedIds = resolveConflicts(
             conflicts,
             params,
+            actorUserId,
             "Esta alteração afeta agendamentos futuros",
         )
         onResolved?.({ affectedIds: resolvedIds, noticeEnabled: cancellationNoticeEnabled })
@@ -482,6 +479,7 @@ export function createScheduleStubRepository(
         const resolvedIds = resolveConflicts(
             conflicts,
             deleteOptions ?? {},
+            deleteOptions?.actorUserId,
             "O cancelamento afeta agendamentos futuros",
         )
         deleteOptions?.onResolved?.({
