@@ -44,7 +44,7 @@ Esta tarefa deixa a documentação igual ao que está de fato no sistema hoje (R
 | RN-14 | As telas de Sessões (#72) e de Dashboard (#71) foram descartadas de propósito pelo grupo. No README, na arquitetura e na rastreabilidade, as duas aparecem como "descartada por decisão do grupo", nunca como entregue, pendente, "não entregue" ou lacuna. Nenhuma delas gera issue de lacuna. Isso vale também para o RF06 e para a tabela de corte do RP04. | usuário |
 | RN-15 | Como não há Dashboard, a tela inicial do painel leva a Agendamentos (PR #115). Os documentos descrevem isso como o comportamento final, não como algo provisório "enquanto não há Dashboard". | usuário |
 | RN-16 | A tabela de corte de escopo do RP04 deixa de ser proposta e vira o registro oficial do que ficou de fora: <ul><li>Sessões (#72): descartada por decisão do grupo.</li><li>Exportação em PDF, Excel e CSV: não entregue, bônus da #73.</li><li>Dashboard (#71): descartado por decisão do grupo.</li><li>Os demais itens, conforme o que existe no sistema.</li></ul> | PO (P-04) |
-| RN-17 | Os cinco pontos que a rastreabilidade tratava como lacunas não são lacunas. Nenhum deles fica parcial por esse motivo, e cada um cita a sua fonte: <ul><li>**RF02 e RF03:** o professor aceitou e recomendou o fluxo atual, com botões.</li><li>**RNF01:** o PROCON validou e aprovou o fluxo antes do desenvolvimento, e o fluxo foi construído a partir dos feedbacks dele.</li><li>**RF06:** a tela de Relatórios cumpre o requisito. A exportação e os gráficos são bônus da #73 e nunca foram pedidos.</li><li>**RNF03:** a página de privacidade já traz as citações legais dos prazos.</li><li>**RF05 e RNF02:** o tempo de resposta da IA foi medido de novo, e o resultado está em um PDF da pasta de guias. A medição está sendo conferida pelo dev (Megumi), e o status desses dois segue o que a conferência confirmar.</li></ul>Decisão de 22/11/2026, que substitui a versão anterior desta regra ("sem resposta até o fechamento" e "sem registro"). | PO (P-01, P-05); usuário (22/11/2026) |
+| RN-17 | Os cinco pontos que a rastreabilidade tratava como lacunas não são lacunas. Nenhum deles fica parcial por esse motivo, e cada um cita a sua fonte: <ul><li>**RF02 e RF03:** o professor aceitou e recomendou o fluxo atual, com botões.</li><li>**RNF01:** o PROCON validou e aprovou o fluxo antes do desenvolvimento, e o fluxo foi construído a partir dos feedbacks dele.</li><li>**RF06:** a tela de Relatórios cumpre o requisito. A exportação e os gráficos são bônus da #73 e nunca foram pedidos.</li><li>**RNF03:** a página de privacidade já traz os prazos, e isso basta. Fica entregue sem ressalva, e a conferência dos artigos de lei não é exigida (U-05).</li><li>**RF05 e RNF02:** o tempo de resposta da IA foi medido de novo, e o resultado está em um PDF da pasta de guias. Os dois ficam entregues, citando a medição de 20/11/2026 (U-06).</li></ul>Decisão de 22/11/2026, que substitui a versão anterior desta regra ("sem resposta até o fechamento" e "sem registro"). | PO (P-01, P-05); usuário (22/11/2026) |
 | RN-18 | O placar conta as issues assim: <ul><li>A #122 e a #120 aparecem só como "unificada na #121" e "unificada na #118", sem contar em dobro.</li><li>A #159 conta como organização da Feira, sem código.</li><li>A #18, a #159 e a #164 aparecem como entradas no meio da sprint.</li><li>A #70 conta como a issue de fechamento, aberta no retrato.</li></ul> | PO (P-02) |
 | RN-19 | A #70 também corrige estes textos, inteiros: <ul><li>o modelo de dados, que deixa de dizer "planejado para a Sprint 3";</li><li>a linha da pasta `.tasks/` no índice geral, porque as especificações ficam em `.specs/`, que está no Git;</li><li>os README do backend, do gateway e do painel web, conferidos do começo ao fim contra o que o sistema faz hoje.</li></ul> | PO (P-07); usuário (U-04) |
 | RN-20 | O usuário autorizou o teste do zero com o modelo de IA. Quem faz esse teste é a QA (Nobara). O dev não baixa nem roda o modelo de IA: ele valida só o que não depende do modelo. | usuário (U-01, U-02) |
@@ -207,7 +207,7 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 - **Teste:** nenhum (documentação).
 - **Gate:** cada número do placar conferido contra a lista do GitHub; a conferência de links; `git status --short` mostra só a pasta `sprint3`.
 - **Modelo:** padrao
-- **Status:** feita, commits 81b2ce2 e 514e859. Gate: números do placar conferidos contra o `gh issue list`; links relativos conferidos em todos os arquivos alterados; `git status` limpo.
+- **Status:** pendente. Reaberta em 22/11/2026 pela revisão (Kusakabe), que bloqueou a tarefa: o fechamento da Sprint 3 ainda usa a redação antiga das lacunas e tem datas em UTC, e não no horário de Brasília (RN-17, CA-23). Volta para feita quando chegar o commit de correção. Commits anteriores: 81b2ce2 e 514e859.
 
 ### T3 [P] Conferir e completar a instalação no README
 
@@ -301,7 +301,7 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 - **Teste:** nenhum (documentação).
 - **Gate:** cada linha cita a sua fonte (issue, decisão, código ou registro escrito); a conferência de links; `git status --short` mostra só `rastreabilidade.md`.
 - **Modelo:** padrao
-- **Status:** feita, commit c463ea4. Gate: links relativos conferidos em todos os arquivos alterados; `git status` limpo. Duas ressalvas em aberto, com o usuário (ver Dúvidas, U-05 e U-06): o RNF03, porque não foram achadas as citações legais no código da página `/privacidade` e a decisão 002 diz "a conferir"; e o RF05 com o RNF02, marcados ✅ com ressalva, porque o modelo frio chega a 21,8 s e o servidor ARM de produção não foi medido.
+- **Status:** feita, commit c463ea4. Gate: links relativos conferidos em todos os arquivos alterados; `git status` limpo. As duas ressalvas levantadas na conferência foram respondidas pelo usuário (U-05 e U-06): o RNF03 fica entregue sem ressalva, e o RF05 e o RNF02 ficam entregues, citando a medição de 20/11/2026.
 
 ### T6 (não se aplica) Registrar os requisitos parciais com as issues da PO
 
@@ -436,11 +436,12 @@ Nenhuma em aberto. As respostas da PO (P-01 a P-07) foram incorporadas em RN-04,
 
 ### Para o usuário
 
-- U-05 RNF03: a página de privacidade foi conferida e as citações legais dos prazos não foram achadas no texto dela, e a decisão 002 ainda diz "a conferir". Isso diverge do que a RN-17 registra. O usuário decide como o RNF03 fica na rastreabilidade.
-- U-06 RF05 e RNF02: estão como atendidos com ressalva, porque, com o modelo de IA frio, a resposta chega a 21,8 s, e o servidor de produção (ARM) não foi medido. O usuário decide se a ressalva basta ou se o status muda.
+Nenhuma em aberto.
 
 ### Respostas do usuário
 
+- U-05 Respondida em 22/11/2026: o RNF03 fica entregue sem ressalva. Os prazos que a página de privacidade mostra bastam, e a conferência dos artigos de lei não é exigida (RN-17).
+- U-06 Respondida em 22/11/2026: o RF05 e o RNF02 ficam entregues, citando a medição de 20/11/2026, que é a que o usuário tinha em mente (RN-17).
 - U-03 Respondida em 22/11/2026: os cinco pontos da rastreabilidade não são lacunas (RN-17), nenhuma issue de lacuna será aberta e a T6 não se aplica (RN-21). A etiqueta `SPRINT 3` para issues de lacuna deixa de ser uma decisão pendente, e o placar (T2) não muda por causa disso.
 - U-01 Quem faz o teste do zero com o modelo de IA é a QA (Nobara). O dev não precisa fazer esse teste (RN-20).
 - U-02 O usuário autorizou o teste do zero com o modelo de IA. Quem roda é a QA (Nobara). A validação da T3 pelo dev segue sem `ollama` e `llm-pull` (RN-20).
