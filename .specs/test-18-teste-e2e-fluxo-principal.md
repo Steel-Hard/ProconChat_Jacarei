@@ -366,6 +366,7 @@ Fases:
   - Gate de fase: backend, gateway e backend-e2e local (suíte e2e completa).
   - Em seguida, push e conferência dos jobs `backend-e2e` e `backend-integration` no CI.
   - T5 é conferida de novo contra o que T2 e T3 entregaram.
+  - Resultado do gate de fase (em b99543f): passou. Frontend com 2248 testes, backend com 2068, gateway com 256, integração com 438 e `test:db`, e2e com 26. A branch está 0 commits atrás de `origin/develop`, sem conflito.
 
 Quem edita o quê, para as tarefas [P] não se cruzarem:
 
@@ -427,7 +428,7 @@ Regras para todas as tarefas:
 - Teste: unitário dos helpers, dentro da config e2e. Falha primeiro o teste de `toSentMessage` que espera `type: "buttons"` com os ids dos botões.
 - Gate: rápido e2e
 - Modelo: padrao
-- Status: feita (commit edc880c). Evidência: vermelho por módulo inexistente antes do código; verde com `test:e2e` (23 testes, 3 arquivos); `npm test` do backend com 2068 testes e sem `tests/e2e`; `typecheck:test` e `typecheck:e2e` ok; oxlint ok no backend e no gateway; build do backend e do gateway ok; 256 testes do gateway ok; verificação real no Postgres descartável passou e deixou o banco limpo.
+- Status: feita (commit edc880c). Evidência: vermelho por módulo inexistente antes do código; verde com `test:e2e` (23 testes, 3 arquivos); `npm test` do backend com 2068 testes e sem `tests/e2e`; `typecheck:test` e `typecheck:e2e` ok; oxlint ok no backend e no gateway; build do backend e do gateway ok; 256 testes do gateway ok; verificação real no Postgres descartável passou e deixou o banco limpo. Revisão final do Saturno: aprovada.
 
 ### T2 [P] Cenário 1: dúvida nova termina em agendamento, assumido e atendido pelo painel
 - O quê: o arquivo `fluxoPrincipal.e2e.test.ts`, com o cenário 1 de ponta a ponta.
@@ -449,7 +450,7 @@ Regras para todas as tarefas:
 - Teste: e2e. A regra já existe, então o teste deve passar de primeira, e isso fica registrado. Para provar que ele pega erro, confira uma vez, sem commitar, que trocar o segredo do app no corpo assinado faz o teste falhar.
 - Gate: rápido e2e
 - Modelo: padrao
-- Status: feita (commit d5ecc24). Cobre CA-01 a CA-06, CA-13, CA-14 e CA-15. Evidência: passou de primeira, como previsto, por cobrir regra que já existia; a prova de que pega erro foi trocar o segredo da assinatura, que deu 401 (troca revertida); `test:e2e` com 5 arquivos e 26 testes passando; `typecheck:e2e` e oxlint ok; backend com lint, build, `typecheck:test` e `npm test` (2068) ok; gateway com lint, build e 256 testes ok.
+- Status: feita (commit d5ecc24). Cobre CA-01 a CA-06, CA-13, CA-14 e CA-15. Evidência: passou de primeira, como previsto, por cobrir regra que já existia; a prova de que pega erro foi trocar o segredo da assinatura, que deu 401 (troca revertida); `test:e2e` com 5 arquivos e 26 testes passando; `typecheck:e2e` e oxlint ok; backend com lint, build, `typecheck:test` e `npm test` (2068) ok; gateway com lint, build e 256 testes ok. Revisão final do Saturno: achado que bloqueia (o CA-13 só conferia o CPF sem pontuação), corrigido no commit 1f3f9fe; aguardando nova revisão do Saturno.
 
 ### T3 [P] Cenário 2: retorno do cidadão, remarcar e cancelar
 - O quê: o arquivo `retornoCidadao.e2e.test.ts`, com dois testes, um por conversa (remarcar e cancelar), cada um com o próprio telefone.
@@ -485,7 +486,7 @@ Regras para todas as tarefas:
 - Teste: e2e. A regra já existe, então o teste deve passar de primeira, e isso fica registrado. Uma falha por defeito do sistema vira achado para o reviewer, e o teste não é ajustado.
 - Gate: rápido e2e
 - Modelo: padrao
-- Status: feita (commit 3ddfe55). Cobre CA-07 a CA-14 e CA-18. Evidência: `typecheck:test` ok; `typecheck:e2e` sem erro no arquivo da tarefa; oxlint ok; os 2 testes passam. Passaram de primeira, como previsto, porque cobrem regra que já existia, e não acharam defeito no sistema.
+- Status: feita (commit 3ddfe55). Cobre CA-07 a CA-14 e CA-18. Evidência: `typecheck:test` ok; `typecheck:e2e` sem erro no arquivo da tarefa; oxlint ok; os 2 testes passam. Passaram de primeira, como previsto, porque cobrem regra que já existia, e não acharam defeito no sistema. Revisão final do Saturno: aprovada.
 
 ### T4 [P] Job `backend-e2e` no CI
 - O quê: um job novo no CI que sobe o Postgres, instala o Backend e o Gateway, aplica as migrations, checa os tipos do e2e e roda o teste.
@@ -507,7 +508,7 @@ Regras para todas as tarefas:
 - Teste: nenhum (configuração de CI). A verificação é a execução no CI.
 - Gate: CI
 - Modelo: economico
-- Status: feita (commit 1c8cf6a). Evidência: o YAML carrega com `yaml.safe_load` e lista os 5 jobs; actionlint indisponível. Pendente: o job `backend-e2e` só roda de verdade depois do push e depende dos scripts `typecheck:e2e` e `test:e2e` da T1.
+- Status: feita (commit 1c8cf6a). Evidência: o YAML carrega com `yaml.safe_load` e lista os 5 jobs; actionlint indisponível. Pendente: o job `backend-e2e` só roda de verdade depois do push e depende dos scripts `typecheck:e2e` e `test:e2e` da T1. Revisão final do Saturno: aprovada.
 
 ### T5 [P] Documentação de como rodar o teste ponta a ponta
 - O quê: explicar o que o teste cobre e como rodá-lo, localmente e no CI.
@@ -537,7 +538,7 @@ Regras para todas as tarefas:
 - Teste: nenhum (documentação)
 - Gate: doc
 - Modelo: economico
-- Status: feita (commit 5100d75). Evidência: não há formatador de docs para esses arquivos. Conferência final contra o código feita no commit ed1c51d (README do backend, com as 3 sugestões do Saturno aplicadas); pendência resolvida.
+- Status: feita (commit 5100d75). Evidência: não há formatador de docs para esses arquivos. Conferência final contra o código feita no commit ed1c51d (README do backend, com as 3 sugestões do Saturno aplicadas); pendência resolvida. Revisão final do Saturno: aprovada, incluindo ed1c51d.
 
 ## Dúvidas
 
