@@ -187,6 +187,7 @@ com base nos requisitos e fluxos decisórios fornecidos pelo PROCON.
 ### Pré-requisitos
 
 - [Docker](https://docs.docker.com/get-docker/) e Docker Compose v2 (`docker compose`, sem hífen);
+- `openssl`, para gerar as chaves do `.env` (já vem no Linux e no macOS; no Windows, use o WSL);
 - Acesso à internet na primeira subida: o Docker baixa as imagens e o serviço `llm-pull` baixa o modelo de IA (cerca de 2 GB), o que pode demorar;
 - Nenhuma outra dependência de host é necessária — Node.js, PostgreSQL e o
   modelo de linguagem rodam todos dentro dos containers.
@@ -213,7 +214,7 @@ Abra o `.env` e preencha duas variáveis, cada uma com o resultado de `openssl r
 - `AUTH_TOKEN_SECRET`: assina as sessões do painel.
 
 Confira também `ROOT_EMAIL` e `ROOT_PASSWORD`: são o e-mail e a senha da conta Admin criada na primeira
-subida. O `.env.example` traz valores de desenvolvimento; troque-os se outras pessoas acessarem a máquina.
+subida. A senha precisa ter de 8 caracteres a 72 bytes. O `.env.example` traz valores de desenvolvimento; troque-os se outras pessoas acessarem a máquina.
 Os demais valores do `.env.example` servem para desenvolvimento.
 
 Depois, suba tudo:
@@ -222,9 +223,11 @@ Depois, suba tudo:
 docker compose up --build
 ```
 
-Na primeira vez, o `llm-pull` baixa o modelo de IA; acompanhe com `docker compose ps -a` até os
-serviços ficarem saudáveis. Abra o painel em `http://localhost:8081` (porta `FRONTEND_PORT`) e entre
-com `ROOT_EMAIL` e `ROOT_PASSWORD`. Nesse modo não há HTTPS, e o WhatsApp real não entrega mensagens
+Na primeira vez, o `llm-pull` baixa o modelo de IA; acompanhe com `docker compose ps -a`. Nem todo
+serviço tem healthcheck: `postgres`, `backend` e `ollama` aparecem como `healthy`, `frontend` e `gateway`
+como `Up`, e `migrate`, `seed` e `llm-pull` terminam sozinhos com código `0`. Abra o painel exatamente em
+`http://localhost:8081` (porta `FRONTEND_PORT`), e não em `127.0.0.1`: nesse endereço o login dá `403`,
+pela proteção de origem. Entre com `ROOT_EMAIL` e `ROOT_PASSWORD`. Nesse modo não há HTTPS, e o WhatsApp real não entrega mensagens
 à máquina; para isso, use a produção ([`.docs/infra/deploy.md`](.docs/infra/deploy.md)).
 
 Isso sobe, com um único comando, todo o ambiente do MVP:
