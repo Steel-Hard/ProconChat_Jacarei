@@ -403,7 +403,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 - **Gate:** documentação. A comparação mecânica da tabela de permissões e da nota do manual com as da decisão 004 não mostra diferença, do mesmo jeito da T8 da especificação #119. A lista de imagens citadas é igual à lista da pasta. `grep -n "ainda não" .docs/guias/manual-do-painel.md` conferido item por item. `.docs/guias/gerar-pdfs.sh manual-do-painel` termina sem erro.
 - **Modelo:** padrao
 - **Commit:** `Docs :bulb: [#174] Atualiza o manual do painel conforme as decisões da #174`
-- **Status:** pendente
+- **Status:** em-andamento. Texto principal no commit 1f54192. Gate parcial: a tabela de permissões é igual à da decisão 004, e as 28 imagens citadas existem na pasta. Faltam o sumário e as legendas das figuras 14, 17 e 18, que dependem das capturas da T12.
 
 ### T9 Gerar de novo o PDF do manual
 
@@ -435,7 +435,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 - **Teste:** nenhum (documentação).
 - **Gate:** conferir o texto da memória contra a regra 08, frase por frase. Não há commit, porque a pasta fica fora do git.
 - **Modelo:** economico
-- **Status:** pendente
+- **Status:** feita, sem commit, porque o arquivo da memória fica fora do git. Gate: texto conferido frase por frase contra a regra 08 corrigida, e só o item de Horários mudou.
 
 ### T11 [P] Revisão do reviewer
 
