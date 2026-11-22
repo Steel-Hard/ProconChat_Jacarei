@@ -336,7 +336,7 @@ Regras para todas as tarefas de código:
 - TDD: o teste citado em "Teste" é escrito e falha antes do código. Nas tarefas só de teste de regra que já existe, o teste passa de primeira, e isso é esperado e fica registrado;
 - nunca alterar teste para fazê-lo passar, salvo as alterações autorizadas e explicadas em T1, T8, T10 e T12;
 - um commit atômico por tarefa, só com os caminhos exatos (`git commit -m "..." -- caminhos`), sem linha Co-Authored-By e sem push;
-- padrão de commit: `Fix :bug: [#75] ...`, `Test :test_tube: [#75] ...`, `Refactor :recycle: [#75] ...`, `Style :art: [#75] ...` ou `Docs :bulb: [#75] ...`, conforme a tarefa.
+- padrão de commit: `Fix :bug: [#75] ...`, `Feat :sparkles: [#75] ...`, `Test :test_tube: [#75] ...`, `Refactor :recycle: [#75] ...`, `Style :art: [#75] ...` ou `Docs :bulb: [#75] ...`, conforme a tarefa.
 
 ## Tarefas
 
@@ -424,7 +424,7 @@ Regras para todas as tarefas de código:
 - Teste: unitário de serviço e de rota com o stub. Falha primeiro o teste do serviço que espera, no DELETE com `"CANCEL"` e aviso ligado, um envio por agendamento afetado.
 - Gate: rápido back
 - Modelo: padrao
-- Status: feita. Código escrito antes dos testes novos (fora da ordem do TDD); os testes novos passaram de primeira. Gate: typecheck:test ok, oxlint ok, suíte do backend 143 arquivos e 2053 testes ok; os testes de integração de T5 e T6 ficam para o CI. Ajustes de montagem em testes antigos de schedule.conflictResolution.test.ts, autorizados pelo usuário, sem mudar expectativa: (1) "cancela agendamentos sem enviar avisos quando o interruptor está desligado" passou a desligar o aviso por repo.setCancellationNoticeEnabled(false), porque o serviço não lê mais o aviso antes de gravar (spec, Desenho do serviço); (2) "não salva a agenda quando a configuração do aviso não pode ser lida" passou a provocar a falha por repo.setCancellationNoticeReadError, porque a leitura agora é feita dentro da transação do repositório.
+- Status: feita. Código escrito antes dos testes novos (fora da ordem do TDD); os testes novos passaram de primeira. Gate: typecheck:test ok, oxlint ok, suíte do backend 143 arquivos e 2053 testes ok; os testes de integração de T5 e T6 ficam para o CI. Ajustes de montagem em testes antigos de schedule.conflictResolution.test.ts, autorizados pelo usuário, sem mudar expectativa: (1) "cancela agendamentos sem enviar avisos quando o interruptor está desligado" passou a desligar o aviso por repo.setCancellationNoticeEnabled(false), porque o serviço não lê mais o aviso antes de gravar (spec, Desenho do serviço); (2) "não salva a agenda quando a configuração do aviso não pode ser lida" passou a provocar a falha por repo.setCancellationNoticeReadError, porque a leitura agora é feita dentro da transação do repositório. Vermelho comprovado depois: rodando os testes novos contra o schedule.service.ts do commit anterior, 6 falharam (envio por agendamento com aviso ligado, aviso desligado pelo estado do repositório, falha de envio, lista vazia, 409 por mudança só do aviso, problema do aviso completado no 409); com o serviço atual todos passam.
 
 ### T5 [P] Repositório real: aviso lido na transação, conferência do B1 e lista vazia
 - O quê: nos três caminhos do repositório real, ler o interruptor do aviso dentro da transação com trava compartilhada, comparar com o que foi visto, gravar sem mexer em ninguém quando a lista refeita estiver vazia e responder conforme o contrato, provado com banco real.
