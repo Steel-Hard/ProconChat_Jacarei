@@ -537,7 +537,7 @@ Regras para todas as tarefas:
 - Teste: nenhum (documentação)
 - Gate: doc
 - Modelo: economico
-- Status: feita (commit 5100d75). Evidência: não há formatador de docs para esses arquivos. Pendente: conferir contra o código real depois de T2, T3 e T4.
+- Status: feita (commit 5100d75). Evidência: não há formatador de docs para esses arquivos. Conferência final contra o código feita no commit ed1c51d (README do backend, com as 3 sugestões do Saturno aplicadas); pendência resolvida.
 
 ## Dúvidas
 
