@@ -26,5 +26,6 @@ Quando uma decisão daqui contradiz um documento mais antigo (`architecture/`, `
 | [010](010-registro-de-interacoes-e-relatorios.md) | Registro de interações e relatórios | Aceita | RF06, RNF03 |
 | [011](011-atendimento-humano-no-chat-nao-adotado.md) | Atendimento humano no chat não adotado | Aceita | RF07, RP04 |
 | [012](012-horarios-agendados.md) | Mudanças de horários com data de início | Aceita | RF07, RF08 (#134) |
+| [013](013-telas-de-sessoes-e-dashboard-descartadas.md) | Telas de Sessões e Dashboard descartadas | Aceita | RF06 |
 
 Origem: revisão do protótipo do painel administrativo com o grupo, em 26 e 27/09/2026.

@@ -44,6 +44,8 @@ Quando alguém com agendamento futuro volta a escrever, o bot oferece: **Remarca
 
 As **etapas de abandono** têm nomes fixos, usados em Sessões e em Relatórios: na lista de categorias, na lista de perguntas, aguardando a resposta, na pergunta "A dúvida foi resolvida?", em quem vai comparecer, na escolha do horário.
 
+> **Estado em 2026-11-22:** a tela de Sessões foi descartada pelo grupo e não existe no painel. Ver a [decisão 013](013-telas-de-sessoes-e-dashboard-descartadas.md).
+
 ## Consequências
 
 - `Sessions` ganha um campo de desfecho, com os 8 valores acima, e a lógica de timeout.

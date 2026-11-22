@@ -23,6 +23,9 @@ Regras adicionais:
 1. **Nome e CPF são sempre do titular** (o consumidor lesado), mesmo quando outra pessoa comparece em nome dele.
 2. **A busca por CPF compara hashes**: a recepção digita os 11 dígitos, o sistema calcula o hash e procura. O CPF completo nunca aparece.
 3. **Sessões do mesmo cidadão podem ser ligadas pelo `phone_hash`** ("Outras conversas deste número" na tela de Sessões). A consulta é feita no backend, que **nunca devolve o hash** ao front.
+
+> **Estado em 2026-11-22:** a tela de Sessões foi descartada pelo grupo e não existe no painel. Ver a [decisão 013](013-telas-de-sessoes-e-dashboard-descartadas.md).
+
 4. **Relatórios e exportações contêm só dados agregados**, sem nome, CPF ou protocolo.
 5. **O cidadão é informado**, no momento do agendamento, de que receberá avisos naquele número. Não há consentimento separado, porque a base legal é a execução do serviço que ele mesmo pediu.
 6. **Segredos de integração** (token da Meta, App Secret) são guardados criptografados no banco, com uma chave-mestra que fica no `.env`.
