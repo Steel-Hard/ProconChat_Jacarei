@@ -16,6 +16,11 @@ import {
     ScheduleVersion,
 } from "../types/schedule.types"
 
+export interface ScheduleResolutionOutcome {
+    affectedIds: string[]
+    noticeEnabled: boolean
+}
+
 export interface SaveScheduleConfigRepoParams {
     config: NormalizedScheduleConfig
     actorUserId: number
@@ -23,14 +28,18 @@ export interface SaveScheduleConfigRepoParams {
     validateAgainstVersions?: (versions: ScheduleVersion[]) => void
     conflictResolution?: ScheduleConflictResolution
     noticeDisabled?: boolean
-    onResolved?: (affectedIds: string[]) => void
+    seenConflictIds?: string[]
+    seenNoticeEnabled?: boolean
+    onResolved?: (outcome: ScheduleResolutionOutcome) => void
 }
 
 export interface DeleteScheduledConfigRepoOptions {
     actorUserId?: number
     conflictResolution?: ScheduleConflictResolution
     noticeDisabled?: boolean
-    onResolved?: (affectedIds: string[]) => void
+    seenConflictIds?: string[]
+    seenNoticeEnabled?: boolean
+    onResolved?: (outcome: ScheduleResolutionOutcome) => void
 }
 
 export interface IScheduleRepository {

@@ -93,7 +93,12 @@ describe("schedule.routes conflict resolution", () => {
         const cancelRes = await request(app)
             .put("/api/v1/schedule")
             .set("Cookie", cookieOf(1))
-            .send(buildScheduleConfigInput({ ranges: [], conflictResolution: "CANCEL" }))
+            .send(buildScheduleConfigInput({
+                ranges: [],
+                conflictResolution: "CANCEL",
+                seenConflictIds: ["10"],
+                seenNoticeEnabled: true,
+            }))
 
         expect(cancelRes.status).toBe(403)
         expect(cancelRes.body.error.code).toBe("FORBIDDEN")
@@ -101,7 +106,7 @@ describe("schedule.routes conflict resolution", () => {
         const keepRes = await request(app)
             .put("/api/v1/schedule")
             .set("Cookie", cookieOf(1))
-            .send(buildScheduleConfigInput({ ranges: [], conflictResolution: "KEEP" }))
+            .send(buildScheduleConfigInput({ ranges: [], conflictResolution: "KEEP", seenConflictIds: ["10"] }))
 
         expect(keepRes.status).toBe(200)
         expect(keepRes.body.resolution).toEqual({
@@ -118,7 +123,12 @@ describe("schedule.routes conflict resolution", () => {
         const response = await request(app)
             .put("/api/v1/schedule")
             .set("Cookie", cookieOf(2))
-            .send(buildScheduleConfigInput({ ranges: [], conflictResolution: "CANCEL" }))
+            .send(buildScheduleConfigInput({
+                ranges: [],
+                conflictResolution: "CANCEL",
+                seenConflictIds: ["10"],
+                seenNoticeEnabled: true,
+            }))
 
         expect(response.status).toBe(200)
         expect(response.body.resolution).toEqual({
@@ -130,11 +140,12 @@ describe("schedule.routes conflict resolution", () => {
         })
     })
 
-    it("bloqueia DELETE /versions com conflictResolution=CANCEL sem appointments.manage", async () => {
+    it("bloqueia DELETE /versions com conflictResolution CANCEL sem appointments.manage", async () => {
         const app = buildApp()
         const response = await request(app)
-            .delete("/api/v1/schedule/versions/2027-11-01?conflictResolution=CANCEL")
+            .delete("/api/v1/schedule/versions/2027-11-01")
             .set("Cookie", cookieOf(1))
+            .send({ conflictResolution: "CANCEL", seenConflictIds: ["10"], seenNoticeEnabled: true })
 
         expect(response.status).toBe(403)
         expect(response.body.error.code).toBe("FORBIDDEN")

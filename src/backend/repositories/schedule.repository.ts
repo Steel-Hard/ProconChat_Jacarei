@@ -469,7 +469,7 @@ async function saveScheduledConfig({
             throw new ScheduleNotConfiguredError()
         }
         await client.query("COMMIT")
-        onResolved?.(resolvedIds)
+        onResolved?.({ affectedIds: resolvedIds, noticeEnabled: !noticeDisabled })
         return saved
     } catch (error) {
         await client.query("ROLLBACK")
@@ -544,7 +544,10 @@ async function deleteScheduledConfig(
 
         await client.query("DELETE FROM ScheduleChanges WHERE effective_from = $1", [effectiveFrom])
         await client.query("COMMIT")
-        options?.onResolved?.(resolvedIds)
+        options?.onResolved?.({
+            affectedIds: resolvedIds,
+            noticeEnabled: !(options.noticeDisabled ?? false),
+        })
     } catch (error) {
         await client.query("ROLLBACK")
         throw error
@@ -758,7 +761,7 @@ async function saveConfig({
         }
 
         await client.query("COMMIT")
-        onResolved?.(resolvedIds)
+        onResolved?.({ affectedIds: resolvedIds, noticeEnabled: !noticeDisabled })
         return updatedView
     } catch (err) {
         await client.query("ROLLBACK")

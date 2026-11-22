@@ -150,6 +150,12 @@ export interface ScheduleCancellationNoticeState {
     problem: CancellationNoticeProblem | null
 }
 
+export interface ConflictResolutionRequest {
+    conflictResolution?: ScheduleConflictResolution
+    seenConflictIds?: string[]
+    seenNoticeEnabled?: boolean
+}
+
 export interface ScheduleConfigInput {
     slotMinutes: SlotMinutes
     seatsPerSlot: number
@@ -163,6 +169,8 @@ export interface ScheduleConfigInput {
     ranges: ScheduleRangeInputItem[]
     blockedDates: BlockedDateInputItem[]
     conflictResolution?: ScheduleConflictResolution
+    seenConflictIds?: string[]
+    seenNoticeEnabled?: boolean
 }
 
 export interface NormalizedScheduleConfig {

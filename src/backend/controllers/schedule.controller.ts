@@ -4,7 +4,7 @@ import UnauthorizedError from "../errors/UnauthorizedError"
 import { IScheduleService, scheduleService } from "../services/schedule.service"
 import {
     ScheduleConfigInput,
-    ScheduleConflictResolution,
+    ConflictResolutionRequest,
     ScheduleConflictResolutionSummary,
 } from "../types/schedule.types"
 
@@ -112,10 +112,8 @@ class ScheduleController {
             const effectiveFrom = typeof req.params.effectiveFrom === "string"
                 ? req.params.effectiveFrom
                 : ""
-            const conflictResolution =
-                req.query.conflictResolution === "KEEP" || req.query.conflictResolution === "CANCEL"
-                    ? (req.query.conflictResolution as ScheduleConflictResolution)
-                    : undefined
+            const { conflictResolution, seenConflictIds, seenNoticeEnabled } =
+                req.body as ConflictResolutionRequest
             if (conflictResolution === "CANCEL") {
                 this.ensureCanCancelAppointments(req)
             }
@@ -124,6 +122,8 @@ class ScheduleController {
             await this.service.deleteScheduledConfig(effectiveFrom, undefined, {
                 actorUserId,
                 conflictResolution,
+                seenConflictIds,
+                seenNoticeEnabled,
                 onResolution: (summary) => {
                     resolution = summary
                 },

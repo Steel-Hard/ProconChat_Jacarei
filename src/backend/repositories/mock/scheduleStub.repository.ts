@@ -286,6 +286,7 @@ export function createScheduleStubRepository(
         now,
         validateAgainstVersions,
         conflictResolution,
+        noticeDisabled = false,
         onResolved,
     }: SaveScheduleConfigRepoParams): Promise<ScheduleConfigView> {
         validateAgainstVersions?.(configuredVersions())
@@ -338,7 +339,7 @@ export function createScheduleStubRepository(
             updatedAt: now.toISOString(),
         }
 
-        onResolved?.(resolvedIds)
+        onResolved?.({ affectedIds: resolvedIds, noticeEnabled: !noticeDisabled })
         return copyConfig(currentConfig)
     }
 
@@ -350,8 +351,8 @@ export function createScheduleStubRepository(
             throw scheduledSaveError
         }
         params.validateAgainstVersions?.(configuredVersions())
-        const { config, actorUserId, now, effectiveFrom, onResolved } = params
-        onResolved?.([])
+        const { config, actorUserId, now, effectiveFrom, noticeDisabled = false, onResolved } = params
+        onResolved?.({ affectedIds: [], noticeEnabled: !noticeDisabled })
         return buildDefaultScheduleConfigView({
             ...config,
             effectiveFrom,
@@ -373,7 +374,10 @@ export function createScheduleStubRepository(
         if (scheduledDeleteError) {
             throw scheduledDeleteError
         }
-        deleteOptions?.onResolved?.([])
+        deleteOptions?.onResolved?.({
+            affectedIds: [],
+            noticeEnabled: !(deleteOptions.noticeDisabled ?? false),
+        })
     }
 
     return {

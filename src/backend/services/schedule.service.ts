@@ -88,6 +88,8 @@ export interface SaveScheduleOptions {
 export interface DeleteScheduleOptions {
     actorUserId?: number
     conflictResolution?: ScheduleConflictResolution
+    seenConflictIds?: string[]
+    seenNoticeEnabled?: boolean
     onResolution?: (summary: ScheduleConflictResolutionSummary) => void
 }
 
@@ -388,8 +390,10 @@ export function createScheduleService(
             validateAgainstVersions: blocksInVigencyCheck(input, todayStr, todayStr),
             conflictResolution: resolution,
             noticeDisabled: resolution === "CANCEL" ? !noticeEnabled : false,
-            onResolved: (ids) => {
-                affectedIds = ids
+            seenConflictIds: input.seenConflictIds,
+            seenNoticeEnabled: input.seenNoticeEnabled,
+            onResolved: (outcome) => {
+                affectedIds = outcome.affectedIds
             },
         })
         if (resolution) {
@@ -434,8 +438,10 @@ export function createScheduleService(
             validateAgainstVersions: blocksInVigencyCheck(input, effectiveFrom, getLocalParts(now).dateStr),
             conflictResolution: resolution,
             noticeDisabled: resolution === "CANCEL" ? !noticeEnabled : false,
-            onResolved: (ids) => {
-                affectedIds = ids
+            seenConflictIds: input.seenConflictIds,
+            seenNoticeEnabled: input.seenNoticeEnabled,
+            onResolved: (outcome) => {
+                affectedIds = outcome.affectedIds
             },
         })
         if (resolution) {
@@ -474,8 +480,10 @@ export function createScheduleService(
             actorUserId: options?.actorUserId,
             conflictResolution: resolution,
             noticeDisabled: resolution === "CANCEL" ? !noticeEnabled : false,
-            onResolved: (ids) => {
-                affectedIds = ids
+            seenConflictIds: options?.seenConflictIds,
+            seenNoticeEnabled: options?.seenNoticeEnabled,
+            onResolved: (outcome) => {
+                affectedIds = outcome.affectedIds
             },
         })
         if (resolution && options?.actorUserId !== undefined) {
