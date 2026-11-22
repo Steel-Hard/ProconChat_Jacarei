@@ -319,8 +319,8 @@ export function createScheduleStubRepository(
     function changesSinceSeen(
         conflicts: ScheduleConflictItem[],
         request: ConflictResolutionRequest,
-    ): string[] {
-        const changes: string[] = []
+    ): ("CONFLICTS" | "NOTICE")[] {
+        const changes: ("CONFLICTS" | "NOTICE")[] = []
         if (request.seenConflictIds !== undefined) {
             const seen = new Set(request.seenConflictIds)
             const current = new Set(conflicts.map((conflict) => conflict.id))

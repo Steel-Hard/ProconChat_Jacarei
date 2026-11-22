@@ -409,8 +409,8 @@ function changesSinceSeen(
     conflicts: ScheduleConflictItem[],
     request: ConflictResolutionRequest,
     noticeEnabled: boolean,
-): string[] {
-    const changes: string[] = []
+): ("CONFLICTS" | "NOTICE")[] {
+    const changes: ("CONFLICTS" | "NOTICE")[] = []
     const seen = new Set(request.seenConflictIds ?? [])
     const current = new Set(conflicts.map((conflict) => conflict.id))
     const sameList = seen.size === current.size && [...current].every((id) => seen.has(id))
