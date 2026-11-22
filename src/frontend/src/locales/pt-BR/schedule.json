@@ -303,7 +303,6 @@
         "scheduledToast": "Mudança de horários agendada.",
         "failed": "Não foi possível salvar os horários. Confira os dados e tente de novo.",
         "hintErrors_one": "{{count}} campo com erro. Corrija para salvar.",
-        "hintErrors_other": "{{count}} campos com erro. Corrija para salvar.",
-        "hintConflicts": "A alteração afeta agendamentos. Veja a lista abaixo."
+        "hintErrors_other": "{{count}} campos com erro. Corrija para salvar."
     }
 }
