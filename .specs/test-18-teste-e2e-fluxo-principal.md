@@ -449,7 +449,7 @@ Regras para todas as tarefas:
 - Teste: e2e. A regra já existe, então o teste deve passar de primeira, e isso fica registrado. Para provar que ele pega erro, confira uma vez, sem commitar, que trocar o segredo do app no corpo assinado faz o teste falhar.
 - Gate: rápido e2e
 - Modelo: padrao
-- Status: em-andamento
+- Status: feita (commit d5ecc24). Cobre CA-01 a CA-06, CA-13, CA-14 e CA-15. Evidência: passou de primeira, como previsto, por cobrir regra que já existia; a prova de que pega erro foi trocar o segredo da assinatura, que deu 401 (troca revertida); `test:e2e` com 5 arquivos e 26 testes passando; `typecheck:e2e` e oxlint ok; backend com lint, build, `typecheck:test` e `npm test` (2068) ok; gateway com lint, build e 256 testes ok.
 
 ### T3 [P] Cenário 2: retorno do cidadão, remarcar e cancelar
 - O quê: o arquivo `retornoCidadao.e2e.test.ts`, com dois testes, um por conversa (remarcar e cancelar), cada um com o próprio telefone.
