@@ -311,7 +311,7 @@ describe("conferência do que a equipe viu ao resolver conflitos, com Postgres",
             expect(await appointmentState(id)).toEqual({ status: "CONFIRMED", offGrid: false })
         })
 
-        it("aceita Manter mesmo com o aviso diferente do visto, porque o aviso não importa ao manter", async () => {
+        it("mantém os agendamentos fora da grade com o aviso ligado, sem exigir o estado do aviso visto", async () => {
             await setNoticeEnabled(true)
             const id = await appointmentAt(tuesdayToday)
 
@@ -391,6 +391,55 @@ describe("conferência do que a equipe viu ao resolver conflitos, com Postgres",
             expect(response.status).toBe(409)
             expect(response.body.error.details.changes).toEqual(["NOTICE"])
             expect(await changeDates()).toEqual([])
+        })
+
+        it("recusa com 409 SCHEDULE_CONFLICTS_CHANGED quando um agendamento visto deixou de ser afetado e ainda há outro afetado", async () => {
+            const still = await appointmentAt(tuesdayInChange, "09:00")
+
+            const response = await putVersion(
+                changeDate,
+                bodyOf(WITHOUT_TUESDAY, {
+                    conflictResolution: "CANCEL",
+                    seenConflictIds: [still, UNKNOWN_APPOINTMENT_ID],
+                    seenNoticeEnabled: false,
+                }),
+            )
+
+            expect(response.status).toBe(409)
+            expect(response.body.error.code).toBe("SCHEDULE_CONFLICTS_CHANGED")
+            expect(response.body.error.details.conflicts).toEqual([expect.objectContaining({ id: still })])
+            expect(await changeDates()).toEqual([])
+            expect(await appointmentState(still)).toEqual({ status: "CONFIRMED", offGrid: false })
+        })
+
+        it("recusa Manter com 409 SCHEDULE_CONFLICTS_CHANGED, sem gravar a mudança, quando a lista mudou", async () => {
+            const seen = await appointmentAt(tuesdayInChange, "09:00")
+            await appointmentAt(tuesdayInChange, "10:00")
+
+            const response = await putVersion(
+                changeDate,
+                bodyOf(WITHOUT_TUESDAY, { conflictResolution: "KEEP", seenConflictIds: [seen] }),
+            )
+
+            expect(response.status).toBe(409)
+            expect(response.body.error.code).toBe("SCHEDULE_CONFLICTS_CHANGED")
+            expect(await changeDates()).toEqual([])
+            expect(await appointmentState(seen)).toEqual({ status: "CONFIRMED", offGrid: false })
+        })
+
+        it("grava a mudança sem mexer em agendamento quando a lista refeita está vazia", async () => {
+            const response = await putVersion(
+                changeDate,
+                bodyOf(WITHOUT_TUESDAY, {
+                    conflictResolution: "CANCEL",
+                    seenConflictIds: [UNKNOWN_APPOINTMENT_ID],
+                    seenNoticeEnabled: false,
+                }),
+            )
+
+            expect(response.status).toBe(200)
+            expect(response.body.resolution).toMatchObject({ affectedCount: 0, notifiedCount: 0, failedCount: 0 })
+            expect(await changeDates()).toEqual([changeDate])
         })
 
         it("cancela e grava a mudança quando a lista e o aviso são os que a equipe viu", async () => {
