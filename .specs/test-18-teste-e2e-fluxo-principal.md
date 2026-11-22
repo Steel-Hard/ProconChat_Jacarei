@@ -427,7 +427,7 @@ Regras para todas as tarefas:
 - Teste: unitário dos helpers, dentro da config e2e. Falha primeiro o teste de `toSentMessage` que espera `type: "buttons"` com os ids dos botões.
 - Gate: rápido e2e
 - Modelo: padrao
-- Status: em-andamento
+- Status: feita (commit edc880c). Evidência: vermelho por módulo inexistente antes do código; verde com `test:e2e` (23 testes, 3 arquivos); `npm test` do backend com 2068 testes e sem `tests/e2e`; `typecheck:test` e `typecheck:e2e` ok; oxlint ok no backend e no gateway; build do backend e do gateway ok; 256 testes do gateway ok; verificação real no Postgres descartável passou e deixou o banco limpo.
 
 ### T2 [P] Cenário 1: dúvida nova termina em agendamento, assumido e atendido pelo painel
 - O quê: o arquivo `fluxoPrincipal.e2e.test.ts`, com o cenário 1 de ponta a ponta.
@@ -449,7 +449,7 @@ Regras para todas as tarefas:
 - Teste: e2e. A regra já existe, então o teste deve passar de primeira, e isso fica registrado. Para provar que ele pega erro, confira uma vez, sem commitar, que trocar o segredo do app no corpo assinado faz o teste falhar.
 - Gate: rápido e2e
 - Modelo: padrao
-- Status: pendente
+- Status: em-andamento
 
 ### T3 [P] Cenário 2: retorno do cidadão, remarcar e cancelar
 - O quê: o arquivo `retornoCidadao.e2e.test.ts`, com dois testes, um por conversa (remarcar e cancelar), cada um com o próprio telefone.
@@ -485,7 +485,7 @@ Regras para todas as tarefas:
 - Teste: e2e. A regra já existe, então o teste deve passar de primeira, e isso fica registrado. Uma falha por defeito do sistema vira achado para o reviewer, e o teste não é ajustado.
 - Gate: rápido e2e
 - Modelo: padrao
-- Status: pendente
+- Status: em-andamento
 
 ### T4 [P] Job `backend-e2e` no CI
 - O quê: um job novo no CI que sobe o Postgres, instala o Backend e o Gateway, aplica as migrations, checa os tipos do e2e e roda o teste.
