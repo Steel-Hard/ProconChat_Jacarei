@@ -43,10 +43,11 @@ Esta tarefa deixa a documentação igual ao que está de fato no sistema hoje (R
 | RN-14 | A tela de Sessões (#72) foi descartada de propósito pelo grupo, e o PR foi fechado sem merge. No README, na arquitetura e na rastreabilidade, Sessões aparece como "descartada por decisão do grupo". Ela não é entregue nem pendente e não gera issue de lacuna. | usuário |
 | RN-15 | O Dashboard (#71) aparece conforme o estado real: <ul><li>A issue está fechada no GitHub como não planejada, com a etiqueta "Extra".</li><li>A tela não existe no painel, que marca o Dashboard como não pronto.</li></ul>O Dashboard aparece como não entregue (extra) e não gera issue de lacuna. | PO (P-04); GitHub em 22/11/2026 |
 | RN-16 | A tabela de corte de escopo do RP04 deixa de ser proposta e vira o registro oficial do que ficou de fora: <ul><li>Sessões (#72): descartada de propósito.</li><li>Exportação em PDF, Excel e CSV: não entregue, bônus da #73.</li><li>Dashboard (#71): conforme RN-15.</li><li>Os demais itens, conforme o que existe no sistema.</li></ul> | PO (P-04) |
-| RN-17 | Ficam parciais, com issue nova aberta pela PO: <ul><li>**RF02, RF03 e RNF01:** não há registro da resposta sobre os fluxos decisórios nem do teste com usuários. A nota 1 passa a dizer: "resposta sobre fluxos decisórios e teste com usuários: sem registro".</li><li>**RNF03:** a conferência das citações legais dos prazos da decisão 002 continua aberta.</li></ul> | PO (P-01, P-05) |
+| RN-17 | Ficam parciais, e cada um entra na lista de lacunas: <ul><li>**RF02, RF03 e RNF01:** o professor e o PROCON não responderam sobre os fluxos decisórios, e não há registro do teste com usuários. Em RF02, RF03 e na nota 1, isso aparece como "sem resposta até o fechamento", e o teste com usuários como "sem registro".</li><li>**RNF03:** a conferência das citações legais dos prazos da decisão 002 continua aberta.</li></ul> | PO (P-01, P-05); usuário |
 | RN-18 | O placar conta as issues assim: <ul><li>A #122 e a #120 aparecem só como "unificada na #121" e "unificada na #118", sem contar em dobro.</li><li>A #159 conta como organização da Feira, sem código.</li><li>A #18, a #159 e a #164 aparecem como entradas no meio da sprint.</li><li>A #70 conta como a issue de fechamento, aberta no retrato.</li></ul> | PO (P-02) |
-| RN-19 | A #70 também corrige dois textos: <ul><li>o modelo de dados deixa de dizer "planejado para a Sprint 3";</li><li>o índice geral corrige a linha da pasta `.tasks/`, porque as especificações ficam em `.specs/`, que está no Git.</li></ul>Nos README de cada serviço, só se corrige o que o README principal ou a arquitetura citam. O resto vira item da lista de lacunas, sem issue. Esta divisão foi proposta pela PO e falta a confirmação do usuário. | PO (P-07), pendente de confirmação do usuário |
-| RN-20 | Quem faz o teste do zero com o modelo de IA é a QA (Nobara). O dev não baixa nem roda o modelo de IA até a orquestradora avisar. Ele valida só o que não depende do modelo. | usuário (U-01, U-02) |
+| RN-19 | A #70 também corrige estes textos, inteiros: <ul><li>o modelo de dados, que deixa de dizer "planejado para a Sprint 3";</li><li>a linha da pasta `.tasks/` no índice geral, porque as especificações ficam em `.specs/`, que está no Git;</li><li>os README do backend, do gateway e do painel web, conferidos do começo ao fim contra o que o sistema faz hoje.</li></ul> | PO (P-07); usuário (U-04) |
+| RN-20 | O usuário autorizou o teste do zero com o modelo de IA. Quem faz esse teste é a QA (Nobara). O dev não baixa nem roda o modelo de IA: ele valida só o que não depende do modelo. | usuário (U-01, U-02) |
+| RN-21 | Nenhuma issue de lacuna é aberta antes de o usuário ver a lista de lacunas. O usuário também decide se essas issues recebem a etiqueta `SPRINT 3`. Até essa decisão, os requisitos parciais ficam como ⚠️ "issue a abrir". | usuário (U-03) |
 
 ## Critérios de aceite
 
@@ -63,7 +64,7 @@ Rastreabilidade e arquitetura
 - CA-06 QUANDO a rastreabilidade é aberta ENTÃO nenhum requisito DEVE estar como ❌, e a data da revisão DEVE ser a da conferência final. A legenda DEVE explicar que o 🔴 do RP04 marca um risco, não um requisito. (RN-04, RN-05)
 - CA-07 QUANDO um requisito está como atendido ENTÃO a linha DEVE citar onde isso pode ser visto: uma issue entregue, uma decisão ou um registro escrito. Um requisito não pode ficar como atendido só porque a issue foi fechada. (RN-04)
 - CA-08 QUANDO um requisito está como parcial ENTÃO a linha DEVE dizer o que falta, em linguagem simples, e o número da issue aberta pela PO. Isso vale no mínimo para RF02, RF03, RNF01 e RNF03. (RN-06, RN-17)
-- CA-09 QUANDO a nota 1 é lida ENTÃO DEVE dizer "resposta sobre fluxos decisórios e teste com usuários: sem registro", sem atribuir nenhuma resposta ao professor ou ao PROCON. (RN-11, RN-17)
+- CA-09 QUANDO RF02, RF03 e a nota 1 são lidos ENTÃO DEVEM dizer que a consulta sobre os fluxos decisórios ficou "sem resposta até o fechamento" e que o teste com usuários está "sem registro". Nenhuma resposta DEVE ser atribuída ao professor ou ao PROCON. (RN-11, RN-17)
 - CA-10 QUANDO a rastreabilidade fala de pendências antigas que já foram resolvidas ENTÃO o texto DEVE refletir a situação de hoje e citar a issue que resolveu cada uma. Os casos já conhecidos são: o teste ponta a ponta (#18), o guia de passagem para o PROCON (#118) e o painel em construção (#123 a #129). (RN-04)
 - CA-11 QUANDO a arquitetura é aberta ENTÃO a data de atualização DEVE ser a da conferência final. Nenhum item DEVE aparecer como "planejado para a Sprint 2" ou "planejado para a Sprint 3". O que ficou de fora DEVE aparecer com a situação certa e a issue: Sessões descartada por decisão do grupo (#72), Dashboard não entregue (#71) e exportação de relatórios não entregue (bônus da #73). (RN-04, RN-14, RN-15, RN-16)
 - CA-12 QUANDO a tela de Sessões é citada no README, na arquitetura ou na rastreabilidade ENTÃO DEVE aparecer como "descartada por decisão do grupo", nunca como entregue, pendente ou "em construção". Ela não DEVE estar na lista de lacunas. (RN-14)
@@ -97,12 +98,14 @@ Geral
 - CA-24 QUANDO qualquer arquivo alterado é conferido ENTÃO todo link relativo DEVE apontar para um arquivo ou pasta que existe. (RN-02, RN-07)
 - CA-25 QUANDO qualquer arquivo alterado é lido ENTÃO não DEVE aparecer o valor de nenhuma senha, chave ou token. (RN-12)
 - CA-26 QUANDO o histórico da branch é conferido ENTÃO DEVE haver um commit por tarefa, no formato combinado, sem linha de coautoria, e com só os arquivos daquela tarefa. (RN-13)
+- CA-27 QUANDO o README do backend, do gateway ou do painel web é seguido ENTÃO cada comando, rota, porta, variável de configuração, serviço e tela citados DEVEM existir como estão escritos no sistema hoje. Nada que saiu do projeto DEVE aparecer como atual: Evolution e Redis só podem aparecer na seção sobre a migração. (RN-19)
 
 ## Critérios de sucesso
 
 - A QA sobe o sistema do zero seguindo só o README, numa cópia nova, sem ajuda.
 - A rastreabilidade não tem ❌, e cada requisito tem o mesmo status no README.
-- Cada requisito parcial aponta para uma issue aberta.
+- Cada requisito parcial aponta para uma issue aberta, depois que o usuário decidir sobre a lista de lacunas (RN-21).
+- Os README do backend, do gateway e do painel web descrevem o que o sistema faz hoje.
 - Sessões, Dashboard e a exportação de relatórios aparecem com a mesma situação nos três documentos.
 - O fechamento da Sprint 3 existe, e o README aponta para ele.
 - O PR é mergeado na `develop` até 23/11/2026.
@@ -113,13 +116,13 @@ Geral
 - Regras das telas e manual do painel. Ficam com outro dev (Inumaki), conforme as decisões da #174.
 - Tirar do painel a frase sobre o Dashboard na tela de Horários. É mudança de painel e fica com o dev de frontend.
 - Mudar código, telas, testes ou configuração do sistema.
-- Abrir issues. Isso é com a PO (RN-06).
-- Corrigir trechos dos README de cada serviço que o README principal e a arquitetura não citam. Eles entram só na lista de lacunas, sem issue (RN-19, pendente de confirmação do usuário).
+- Abrir issues. Isso é com a PO, depois da decisão do usuário (RN-06, RN-21).
+- Rodar o modelo de IA no teste do dev. O teste do zero com o modelo é da QA (RN-20).
 - Gerar um gráfico de burndown da Sprint 3 (RN-08).
 
 ## Plano de execução
 
-Esta tarefa não muda código. Typecheck, lint, build e testes não são afetados e não entram nos gates. O CI não tem checagem de Markdown fora do painel: o `format:check` só roda dentro de `src/frontend`. Se a T3 alterar `src/frontend/README.md`, o gate dela inclui `npm run format:check` em `src/frontend`.
+Esta tarefa não muda código. Typecheck, lint, build e testes não são afetados e não entram nos gates. O CI não tem checagem de Markdown fora do painel: o `format:check` só roda dentro de `src/frontend` e pega o `src/frontend/README.md`. Por isso, o gate da T11 inclui `npm run format:check` em `src/frontend`. Os README do backend e do gateway não passam por formatador no CI.
 
 Conferência de links usada nos gates. Ela roda na raiz da worktree e não pode mostrar nada:
 
@@ -133,19 +136,25 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 |---|---|
 | `.docs/README.md` | T1 |
 | `.docs/sprints/sprint3/` | T2 e depois T6 (só a seção "Em aberto") |
-| `README.md` (raiz) e trechos de `src/*/README.md` citados por ele | T3 (Instalação), depois T7 (Tecnologias, Scrum e Product Backlog) e depois T8 |
+| `README.md` (raiz) | T3 (Instalação), depois T7 (Tecnologias, Scrum e Product Backlog) e depois T8 |
+| `src/backend/README.md` | T9 |
+| `src/gateway/README.md` | T10 |
+| `src/frontend/README.md` | T11 |
 | `.docs/architecture/architecture.md` e `.docs/database/database.md` | T4 e depois T8 |
 | `.docs/desafio/rastreabilidade.md` | T5, depois T6 e depois T8 |
 
-- Fase 1 (paralelo): T1 [P], T2 [P], T3 [P], T4 [P], T5 [P]
+- Fase 1 (paralelo): T1 [P], T2 [P], T3 [P], T4 [P], T5 [P], T9 [P], T10 [P], T11 [P]
   - O caminho do fechamento está fixo nesta especificação: `.docs/sprints/sprint3/README.md`. Assim, a T1 já pode apontar para ele. O link só passa no gate quando a T2 terminar.
+  - A T3 cita os README dos serviços só por link, sem copiar o conteúdo deles. Assim, ela não depende das T9 a T11.
   - Gate de fase:
     - a conferência de links não mostra nada;
     - a validação da T3 sem o modelo de IA passou;
-    - a lista de lacunas da T5 foi entregue à orquestradora;
+    - `npm run format:check` em `src/frontend` passou;
+    - a lista de lacunas da T5 foi entregue à orquestradora, para o usuário ver;
     - `git status --short` mostra só os arquivos destas tarefas.
-- Fase 2 (espera um aviso): T6
-  - Começa quando a orquestradora avisar os números das issues abertas pela PO para cada lacuna.
+- Fase 2 (parada até a decisão do usuário): T6
+  - Começa quando o usuário decidir sobre a lista de lacunas e a etiqueta `SPRINT 3` (U-03), e a orquestradora avisar os números das issues abertas pela PO.
+  - Até lá, os requisitos parciais ficam como ⚠️ "issue a abrir" (RN-21). As Fases 3 e 4 podem andar antes dela. Se a T6 terminar depois da T7, a comparação de status do gate da Fase 3 roda de novo.
   - Gate de fase: nenhum ❌ na rastreabilidade; cada ⚠️ cita uma issue; a conferência de links não mostra nada.
 - Fase 3: T7
   - Gate de fase: a comparação do status de cada requisito entre o README e a rastreabilidade não mostra diferença; a conferência de links não mostra nada.
@@ -205,14 +214,13 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 
 - **O quê:** deixar a seção de instalação do README igual ao que o sistema usa hoje e validar, sem o modelo de IA, tudo o que não depende dele.
 - **Onde:**
-  - `README.md`, seção "Instalação" e o bloco de produção no topo;
-  - nos README de cada serviço, só os trechos que o README principal cita (RN-19).
+  - `README.md`, seção "Instalação" e o bloco de produção no topo. Os README dos serviços são das T9 a T11, e a T3 só aponta para eles por link.
 
   Para conferir: `compose.yaml`, `compose.prod.yaml`, `.env.example`, `src/backend/README.md`, `src/gateway/README.md`, `src/frontend/README.md`, `.docs/infra/deploy.md` e `.docs/guias/documento-do-software.md` (requisitos medidos).
 - **Dev:** Megumi (dev-doc)
 - **Depende de:** nada
 - **Reaproveita:** a tabela de serviços e a nota sobre a chave de criptografia, que já existem.
-- **Atende:** RN-01, RN-02, RN-12, RN-19, RN-20, CA-02, CA-03, CA-04, CA-05, CA-24, CA-25. O CA-01 é da QA.
+- **Atende:** RN-01, RN-02, RN-12, RN-20, CA-02, CA-03, CA-04, CA-05, CA-24, CA-25. O CA-01 é da QA.
 - **Pronto quando:**
   - o `git clone` usa o endereço real do repositório, sem marcador;
   - o README diz como abrir o painel (porta 8081) e entrar com a conta Admin, citando os nomes `ROOT_EMAIL` e `ROOT_PASSWORD`, sem os valores;
@@ -225,13 +233,12 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 - **Gate:**
   - criar uma worktree nova fora da pasta da tarefa (`git worktree add ../readme-do-zero HEAD --detach`);
   - lá dentro, seguir só o README: copiar `.env.example` para `.env` com `cp`, sem mostrar o conteúdo, e preencher `ENCRYPTION_KEY`;
-  - subir só os serviços que não dependem do modelo de IA, com outro nome de projeto e portas que não colidem com outra pilha que esteja rodando: `docker compose -p readme-do-zero up --build postgres migrate seed backend frontend gateway`. Os serviços `ollama` e `llm-pull` não sobem até a orquestradora avisar (RN-20);
+  - subir só os serviços que não dependem do modelo de IA, com outro nome de projeto e portas que não colidem com outra pilha que esteja rodando: `docker compose -p readme-do-zero up --build postgres migrate seed backend frontend gateway`. Os serviços `ollama` e `llm-pull` não sobem no teste do dev: o teste com o modelo de IA é da QA (RN-20);
   - conferir que esses serviços sobem, que o painel abre e que a entrada com a conta Admin funciona;
   - registrar no Status o que precisou de ajuste;
   - ao fim, `docker compose -p readme-do-zero down -v` e `git worktree remove ../readme-do-zero`;
   - a conferência de links;
-  - `npm run format:check` em `src/frontend`, se `src/frontend/README.md` mudou;
-  - `git status --short` mostra só `README.md` e os trechos dos README de serviço citados.
+  - `git status --short` mostra só `README.md`.
 - **Modelo:** padrao
 - **Status:** pendente
 
@@ -278,17 +285,15 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 - **Dev:** Megumi (dev-doc)
 - **Depende de:** nada
 - **Reaproveita:** a estrutura em três camadas (Código, Desenho, Situação) e as notas atuais.
-- **Atende:** RN-04, RN-05, RN-06, RN-11, RN-14, RN-15, RN-16, RN-17, RN-19, CA-06, CA-07, CA-09, CA-10, CA-12, CA-13, CA-24
+- **Atende:** RN-04, RN-05, RN-06, RN-11, RN-14, RN-15, RN-16, RN-17, RN-21, CA-06, CA-07, CA-09, CA-10, CA-12, CA-13, CA-24
 - **Pronto quando:**
   - cada linha foi conferida. As que já se resolveram foram corrigidas, citando a fonte: RNF08 com a #18, RNF07 com a #118, RF08 com as #123 a #129, RF06 com a #68 e a #128, RNF02 e RF05 com a decisão 009;
-  - RF02, RF03 e RNF01 estão como ⚠️, e a nota 1 diz "resposta sobre fluxos decisórios e teste com usuários: sem registro";
+  - RF02, RF03 e RNF01 estão como ⚠️. RF02, RF03 e a nota 1 dizem que a consulta ao professor e ao PROCON sobre os fluxos decisórios ficou "sem resposta até o fechamento", e que o teste com usuários está "sem registro";
   - RNF03 está como ⚠️ pela conferência das citações legais da decisão 002;
   - a legenda explica que o 🔴 do RP04 é um risco, não um requisito;
   - a tabela de corte é o registro oficial (RN-16), com Sessões descartada, Dashboard conforme RN-15 e exportação não entregue (bônus da #73);
   - a nota 4 não fala mais de Sessões "em construção";
-  - a orquestradora recebeu a lista de lacunas, em linguagem simples, sem caminho de arquivo nem código. A lista separa:
-    - as lacunas que viram issue (RF02, RF03 e RNF01 juntos, RNF03 e outras que a conferência achar);
-    - os trechos dos README de serviço fora do escopo, que não viram issue (RN-19);
+  - a orquestradora recebeu a lista de lacunas, em linguagem simples e sem caminho de arquivo nem código, para o usuário ver antes de qualquer issue ser aberta (RN-21). A lista traz RF02, RF03 e RNF01 juntos, RNF03 e outras lacunas que a conferência achar;
   - a lista não traz Sessões nem Dashboard;
   - os itens parciais ficam como ⚠️ "issue a abrir" até a T6.
 - **Teste:** nenhum (documentação).
@@ -301,9 +306,9 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 - **O quê:** trocar cada "issue a abrir" da rastreabilidade pelo número da issue que a PO abriu, e listar essas issues na seção "Em aberto" do fechamento da Sprint 3.
 - **Onde:** `.docs/desafio/rastreabilidade.md` e `.docs/sprints/sprint3/README.md` (só "Em aberto").
 - **Dev:** Megumi (dev-doc)
-- **Depende de:** T2, T5 e o aviso da orquestradora com os números das issues abertas pela PO.
+- **Depende de:** T2, T5 e a decisão do usuário sobre a lista de lacunas e a etiqueta `SPRINT 3` (U-03). Depois dessa decisão, depende do aviso da orquestradora com os números das issues abertas pela PO. Fica parada até lá.
 - **Reaproveita:** a lista de lacunas da T5.
-- **Atende:** RN-05, RN-06, RN-17, CA-06, CA-08, CA-20
+- **Atende:** RN-05, RN-06, RN-17, RN-21, CA-06, CA-08, CA-20
 - **Pronto quando:**
   - não há nenhum ❌ nem nenhum "issue a abrir" na rastreabilidade;
   - cada ⚠️ cita uma issue que existe (`gh issue view <n>`);
@@ -318,8 +323,8 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 - **O quê:** deixar as tabelas de Tecnologias, Scrum e Product Backlog do README iguais à rastreabilidade e ao fechamento da Sprint 3.
 - **Onde:** `README.md` (seções Tecnologias, Scrum e Product Backlog, e a nota que aponta só para o fechamento da Sprint 1).
 - **Dev:** Megumi (dev-doc)
-- **Depende de:** T2, T3 e T6
-- **Reaproveita:** a rastreabilidade final (T6) e o fechamento da Sprint 3 (T2).
+- **Depende de:** T2, T3 e T5. A T7 não espera a T6: no README, o status "Parcial" não muda quando a issue ganha número.
+- **Reaproveita:** a rastreabilidade conferida (T5) e o fechamento da Sprint 3 (T2).
 - **Atende:** RN-03, RN-09, RN-14, RN-15, CA-12, CA-16, CA-17, CA-18, CA-24
 - **Pronto quando:**
   - cada requisito tem o mesmo status no README e na rastreabilidade. Hoje divergem pelo menos o RNF02 ("Pendente" no README, ⚠️ na rastreabilidade) e o RNF05 ("Pendente" no README, ✅ na rastreabilidade);
@@ -340,7 +345,7 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
   - `.docs/architecture/architecture.md` (linhas do painel e da API do painel);
   - `.docs/desafio/rastreabilidade.md` (RF08, nota 4 e a tabela do RP04).
 - **Dev:** Megumi (dev-doc)
-- **Depende de:** T4, T6 e T7
+- **Depende de:** T4, T5 e T7
 - **Reaproveita:** as decisões da #174 (RN-10) e o que as T4, T5 e T7 já escreveram.
 - **Atende:** RN-10, RN-14, RN-15, CA-11, CA-12, CA-14, CA-16, CA-24
 - **Pronto quando:**
@@ -360,6 +365,68 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 - **Modelo:** economico
 - **Status:** pendente
 
+### T9 [P] Conferir o README do backend contra o sistema
+
+- **O quê:** conferir o README do backend do começo ao fim contra o que o backend faz hoje, e corrigir o que estiver desatualizado.
+- **Onde:** `src/backend/README.md`. Para conferir:
+  - `src/backend/package.json` (comandos);
+  - `src/backend/src/` (rotas e módulos);
+  - `src/backend/db/` (migrations e seed);
+  - `compose.yaml`, `.env.example` e `.github/workflows/ci.yml`.
+- **Dev:** Megumi (dev-doc)
+- **Depende de:** nada
+- **Reaproveita:** a estrutura atual do README.
+- **Atende:** RN-12, RN-14, RN-19, CA-24, CA-25, CA-27
+- **Pronto quando:**
+  - cada comando, rota, variável e serviço citados existem no sistema com o mesmo nome;
+  - o que saiu do projeto não aparece como atual;
+  - Sessões, Dashboard e exportação de relatórios seguem RN-14, RN-15 e RN-10;
+  - o que foi corrigido fica listado no Status.
+- **Teste:** nenhum (documentação).
+- **Gate:** cada trecho alterado aponta a sua fonte no código; a conferência de links; `git status --short` mostra só `src/backend/README.md`.
+- **Modelo:** padrao
+- **Status:** pendente
+
+### T10 [P] Conferir o README do gateway contra o sistema
+
+- **O quê:** conferir o README do gateway do começo ao fim contra o que o gateway faz hoje, e corrigir o que estiver desatualizado.
+- **Onde:** `src/gateway/README.md`. Para conferir: `src/gateway/package.json`, `src/gateway/src/`, `compose.yaml`, `.env.example` e `.docs/whatsapp/app-de-teste.md`.
+- **Dev:** Megumi (dev-doc)
+- **Depende de:** nada
+- **Reaproveita:** a estrutura atual do README, incluindo a seção sobre a migração da Evolution.
+- **Atende:** RN-12, RN-19, CA-24, CA-25, CA-27
+- **Pronto quando:**
+  - cada comando, porta, variável e serviço citados existem no sistema com o mesmo nome;
+  - a Evolution e o Redis aparecem só na seção sobre a migração;
+  - o que foi corrigido fica listado no Status.
+- **Teste:** nenhum (documentação).
+- **Gate:** cada trecho alterado aponta a sua fonte no código; a conferência de links; `git status --short` mostra só `src/gateway/README.md`.
+- **Modelo:** padrao
+- **Status:** pendente
+
+### T11 [P] Conferir o README do painel web contra o sistema
+
+- **O quê:** conferir o README do painel web do começo ao fim contra o que o painel faz hoje, e corrigir o que estiver desatualizado.
+- **Onde:** `src/frontend/README.md`. Para conferir:
+  - `src/frontend/package.json`;
+  - `src/frontend/src/pages/`;
+  - `src/frontend/src/navigation/`;
+  - `src/frontend/src/store/api/`;
+  - `src/frontend/Dockerfile` e `compose.yaml`.
+- **Dev:** Megumi (dev-doc)
+- **Depende de:** nada
+- **Reaproveita:** a estrutura atual do README.
+- **Atende:** RN-10, RN-12, RN-14, RN-15, RN-19, CA-24, CA-25, CA-27
+- **Pronto quando:**
+  - cada comando, rota, tela e variável citados existem no painel com o mesmo nome;
+  - Sessões aparece como descartada por decisão do grupo, e o Dashboard como não entregue;
+  - a exportação de relatórios aparece como não entregue, bônus da #73;
+  - o que foi corrigido fica listado no Status.
+- **Teste:** nenhum (documentação).
+- **Gate:** cada trecho alterado aponta a sua fonte no código; `npm run format:check` em `src/frontend` (depois de `npm ci`, se faltar `node_modules`); a conferência de links; `git status --short` mostra só `src/frontend/README.md`.
+- **Modelo:** padrao
+- **Status:** pendente
+
 ## Dúvidas
 
 ### Para o product-owner
@@ -368,12 +435,13 @@ Nenhuma em aberto. As respostas da PO (P-01 a P-07) foram incorporadas em RN-04,
 
 ### Para o usuário
 
-- U-03 As issues novas das lacunas recebem a etiqueta `SPRINT 3`? A PO deixou essa decisão para o usuário. A resposta muda o placar (T2) e a seção "Em aberto" (T6).
-- U-04 A PO propôs uma divisão para os textos desatualizados fora do escopo original (RN-19): <ul><li>o modelo de dados e a linha `.tasks/` entram na #70;</li><li>nos README de cada serviço, só se corrige o que o README principal ou a arquitetura citam;</li><li>o resto vai para a lista de lacunas, sem issue.</li></ul>O usuário confirma essa divisão?
+- U-03 O usuário quer ver a lista de lacunas (T5) antes de qualquer issue ser aberta. Duas decisões continuam com ele: quais lacunas viram issue e se essas issues recebem a etiqueta `SPRINT 3`. A resposta muda o placar (T2) e a seção "Em aberto" (T6). A T6 fica parada até lá (RN-21).
 
 ### Respostas do usuário
 
 - U-01 Quem faz o teste do zero com o modelo de IA é a QA (Nobara). O dev não precisa fazer esse teste (RN-20).
-- U-02 O dev não roda o modelo de IA até a orquestradora avisar. Ele valida só o que não depende do modelo, e a QA faz o teste do zero (RN-20, Gate da T3).
+- U-02 O usuário autorizou o teste do zero com o modelo de IA. Quem roda é a QA (Nobara). A validação da T3 pelo dev segue sem `ollama` e `llm-pull` (RN-20).
+- U-04 Tudo entra na #70: o modelo de dados, a linha `.tasks/` e os README de cada serviço, inteiros (RN-19, T9 a T11).
+- A #121 ficou sem resposta do professor e do PROCON. RF02, RF03 e a nota 1 registram "sem resposta até o fechamento" (RN-17).
 - Sessões (#72) foi descartada de propósito pelo grupo (RN-14).
 - A #174 foi decidida (RN-10).
