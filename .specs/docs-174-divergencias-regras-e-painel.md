@@ -1,10 +1,11 @@
 # Divergências entre a documentação de regras e o painel (#174)
 
-> Status: em-revisao
+> Status: aprovada
 > Tipo: funcionalidade
 > Tamanho: media
 > Branch: docs/174-divergencias-regras-e-painel
 > Criada em: 2026-11-22
+> Aprovada em: 2026-11-22
 
 ## Objetivo
 
@@ -124,10 +125,10 @@ O manual tem hoje 28 figuras (limite de 35) e o PDF tem cerca de 4,9 MB (limite 
 | RN-02 | A regra de Entrar e Minha conta e o índice das regras dizem que o menu tem sete telas prontas: Agendamentos, Relatórios, Conteúdo, Horários de atendimento, Documentos, Usuários e WhatsApp. | usuário; painel |
 | RN-03 | A exportação de relatórios fica registrada como "bônus da #73, não entregue". A documentação não a descreve como algo que existe no painel. | usuário |
 | RN-04 | As telas de Sessões (#72) e de Dashboard (#71) foram descartadas de propósito pelo grupo. A documentação registra isso numa única decisão nova (013), e não como "em construção", pendente ou futura. | usuário |
-| RN-05 | A permissão "Ver sessões" fica registrada como descartada, junto com a tela, e não sai do modelo: o servidor continua com ela, e a tela de Usuários continua sem mostrá-la. **A confirmar pelo usuário (D-PO-01).** | product-owner (recomendação) |
-| RN-06 | As decisões antigas não têm o texto reescrito. Elas ganham uma nota de estado curta e datada, que aponta para a decisão nova (Sessões e Dashboard) ou diz "bônus da #73, não entregue" (exportação). Trechos que tratem Sessões ou Dashboard como tela futura ou em construção são trocados por essa nota. | usuário (D-U-04); product-owner (recomendação, D-PO-01) |
-| RN-07 | As regras das telas de Sessões e de Dashboard continuam na pasta das regras, marcadas no topo como "Tela descartada (decisão 013)", e o índice das regras mostra "Descartada (013)" nas duas. As outras regras têm o texto ajustado para não prometer as duas telas. | product-owner (recomendação, D-PO-01); usuário (D-U-02) |
-| RN-08 | A tabela de permissões da decisão 004 e a do manual ficam iguais, linha por linha, com a mesma nota da decisão 013 nas duas. | product-owner (recomendação, D-PO-01) |
+| RN-05 | A permissão "Ver sessões" fica registrada como descartada, junto com a tela, e não sai do modelo: o servidor continua com ela, e a tela de Usuários continua sem mostrá-la. | product-owner (recomendação); usuário (D-PO-01, confirmada em 22/11/2026) |
+| RN-06 | As decisões antigas não têm o texto reescrito. Elas ganham uma nota de estado curta e datada, que aponta para a decisão nova (Sessões e Dashboard) ou diz "bônus da #73, não entregue" (exportação). Trechos que tratem Sessões ou Dashboard como tela futura ou em construção são trocados por essa nota. | usuário (D-U-04; D-PO-01, confirmada em 22/11/2026); product-owner (recomendação) |
+| RN-07 | As regras das telas de Sessões e de Dashboard continuam na pasta das regras, marcadas no topo como "Tela descartada (decisão 013)", e o índice das regras mostra "Descartada (013)" nas duas. As outras regras têm o texto ajustado para não prometer as duas telas. | product-owner (recomendação); usuário (D-U-02; D-PO-01, confirmada em 22/11/2026) |
+| RN-08 | A tabela de permissões da decisão 004 e a do manual ficam iguais, linha por linha, com a mesma nota da decisão 013 nas duas. | product-owner (recomendação); usuário (D-PO-01, confirmada em 22/11/2026) |
 | RN-09 | A regra 08 descreve a janela de conflitos e as pendências como o painel faz hoje, com os pontos da tabela da divergência 4. "Testes de borda extras" continua na lista de pendentes. | usuário; painel |
 | RN-10 | Na divergência 5, muda o painel: a frase do campo "Alertar quando a espera passar de" passa a ser exatamente "Prazo de espera considerado longo para o próximo horário livre." | usuário (D-U-03) |
 | RN-11 | A regra 08, a decisão 007 e o manual dizem o mesmo que o texto novo do painel e não prometem aviso do Dashboard. | usuário |
@@ -192,7 +193,6 @@ O manual tem hoje 28 figuras (limite de 35) e o PDF tem cerca de 4,9 MB (limite 
 - **Arquitetura e rastreabilidade do desafio continuam tratando Sessões e Dashboard como "Em construção" ou como entrega.** São do Megumi (#70). Até ele ajustar, elas divergem da decisão 013. A rastreabilidade liga Sessões ao RF06; esta tarefa não decide se o RF06 continua coberto por outra tela.
 - **O documento do software continua dizendo que a equipe pode "ver relatórios e sessões".** Não muda nesta tarefa, porque tem PDF próprio e a regra é não mexer em outro PDF.
 - **A memória do time sobre Relatórios, Sessões, Dashboard e WhatsApp continua tratando Dashboard e Sessões como pendentes e a exportação como existente.** Fica assim por decisão do usuário (D-U-09).
-- **A D-PO-01 ainda não foi confirmada pelo usuário.** As tarefas T2, T3, T4, T5, T7 e T8 seguem a recomendação da PO. Se o usuário escolher outra saída para "Ver sessões" ou para as decisões antigas, essas tarefas mudam antes de começar.
 - **As capturas novas dependem da T1 e da Mai.** Sem a T12, a T8 não fecha o critério das figuras e a T9 não gera o PDF.
 - **O sumário do manual tem os números de página escritos à mão.** Reescrever Datas bloqueadas, Conteúdo e a seção de conflitos muda a paginação. O gate da T9 confere cada número e cada link.
 - **Várias pessoas mexem nos mesmos arquivos.** Regra 01, índice das regras, decisão 004, regra 08 e manual aparecem em mais de uma divergência. As tarefas foram montadas por arquivo, para duas tarefas nunca editarem o mesmo arquivo ao mesmo tempo.
@@ -210,7 +210,7 @@ Para as tarefas rodarem em paralelo, estes textos e nomes ficam fixos. Quem link
 
 ## Plano de execução
 
-Nenhuma tarefa começa antes de o usuário aprovar esta especificação. A aprovação também precisa confirmar a D-PO-01, de que dependem T2, T3, T4, T5, T7 e T8. Nas tarefas de documentação, o gate é o de documentação: links abrem, o texto bate com o painel e com a regra, e o manual fica coerente. Typecheck, lint e suíte não se aplicam a elas. Só a T1 mexe em código e tem o gate do frontend, com as mesmas checagens do CI.
+O usuário aprovou esta especificação em 22/11/2026 e confirmou a D-PO-01, de que dependem T2, T3, T4, T5, T7 e T8. Nas tarefas de documentação, o gate é o de documentação: links abrem, o texto bate com o painel e com a regra, e o manual fica coerente. Typecheck, lint e suíte não se aplicam a elas. Só a T1 mexe em código e tem o gate do frontend, com as mesmas checagens do CI.
 
 - Fase 1 (paralelo): T1 [P], T2 [P], T3 [P], T4 [P], T5 [P]
   - Gate de fase: no frontend, `npm run build` (inclui o typecheck), `npm run test:run`, `npm run lint` e `npm run format:check` sem erro. Na documentação, as buscas por `Sessões`, `Ver sessões`, `#72`, `07-sessoes`, `Dashboard`, `#71` e `02-dashboard` em `.docs/regras/` e `.docs/decisoes/` sem nenhum trecho que trate as telas como futuras, com exceção da regra 08 e da decisão 007 (fase 2); todos os links mudados abrindo, inclusive os links para a decisão 013.
@@ -223,7 +223,7 @@ Nenhuma tarefa começa antes de o usuário aprovar esta especificação. A aprov
 
 **Coordenação com o Megumi (#70):** arquitetura e rastreabilidade do desafio são dele. Antes de a T4 fechar a decisão 013, o dev-doc avisa o Megumi do descarte de Sessões e Dashboard e do nome do arquivo da decisão 013, para ele ajustar na #70 os trechos de "Em construção", a entrega de Sessões no RF06 e o item "Importante". O dev-doc não edita esses arquivos e não decide como o RF06 fica coberto.
 
-**Permissão de arquivos da Mai:** a Mai (dev-frontend) normalmente mexe só em `src/frontend`. A T12 grava em `.docs/guias/images/manual-do-painel/`. Esse caminho precisa ser liberado para ela antes da T12, só para os três arquivos de imagem citados.
+**Permissão de arquivos da Mai:** a Mai (dev-frontend) normalmente mexe só em `src/frontend`. A T12 grava em `.docs/guias/images/manual-do-painel/`. O orquestrador liberou esse caminho para ela em 22/11/2026, só para gravar os três arquivos de imagem citados na T12.
 
 Ambiente do gerador: Node.js 20 ou mais novo e Chrome ou Chromium (ou `CHROME_PATH`). Na primeira execução, o `npx` baixa o `marked` e precisa de internet. Rode sempre com o nome do manual: sem argumento, o gerador refaz todos os PDFs da pasta com a data de hoje na capa, e eles não devem entrar no commit.
 
@@ -251,7 +251,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 - **O quê:** descrever o menu de hoje, com as sete telas prontas, e marcar Dashboard e Sessões como descartadas no índice das regras.
 - **Onde:** `.docs/regras/01-login-e-conta.md` (linhas 13 e 26 a 35, incluindo a linha 28 com o Dashboard no grupo Operação e a linha 35 sobre a tela inicial) e `.docs/regras/README.md` (linhas 21, 22, 27 e 33). A linha 28 do índice (regra 08) fica com a T6.
 - **Dev:** dev-doc
-- **Depende de:** confirmação da D-PO-01
+- **Depende de:** D-PO-01 (confirmada em 22/11/2026)
 - **Reaproveita:** a lista de telas prontas do painel (`src/frontend/src/navigation/navItemsReady.ts`), a tabela do menu do manual, que já mostra as sete telas, e os contratos fixos (nome da decisão 013 e estado "Descartada (013)").
 - **Atende:** RN-01, RN-02, RN-04, RN-07, CA-01, CA-02, CA-05, CA-21
 - **Pronto quando:** a regra 01 lista as sete telas prontas, a tabela do menu não tem Dashboard nem Sessões, a frase da tela inicial não espera o Dashboard, e o estado da tela cita as entregas certas. O índice mostra "Descartada (013)" para Dashboard e Sessões e o estado certo das outras telas. A frase "Cada arquivo de tela pendente descreve como a tela vai funcionar" fica coerente com as telas descartadas.
@@ -266,7 +266,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 - **O quê:** dizer, na regra de Relatórios, que a exportação é um bônus da #73, não entregue, tirar dela as citações a Sessões e ao Dashboard como telas que existem, e pôr na decisão 010 as notas de estado.
 - **Onde:** `.docs/regras/05-relatorios.md` (seção Exportar, linha 76 em diante; linhas 94, 95, 99 e 100) e `.docs/decisoes/010-registro-de-interacoes-e-relatorios.md` (linhas 9, 29, 30 e 35).
 - **Dev:** dev-doc
-- **Depende de:** confirmação da D-PO-01
+- **Depende de:** D-PO-01 (confirmada em 22/11/2026)
 - **Reaproveita:** os contratos fixos (nota da exportação e nota de Sessões) e a forma como a regra 08 marca o que não foi entregue.
 - **Atende:** RN-03, RN-04, RN-06, RN-19, CA-03, CA-04, CA-05, CA-21
 - **Pronto quando:** a regra de Relatórios não descreve o botão "Exportar" como algo da tela; diz que a exportação é um bônus da #73, não entregue, sem inventar prazo; casos individuais, nomes das etapas e definições dos indicadores não apontam para Sessões ou Dashboard como telas que existem. Na decisão 010, o texto continua o mesmo, com a nota da exportação e, nos trechos que tratam Sessões como tela, a nota de Sessões no lugar.
@@ -281,7 +281,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 - **O quê:** criar a decisão 013, que registra o descarte das telas de Sessões e de Dashboard e o que acontece com "Ver sessões", e pôr a nota de estado nas decisões 002, 004, 008 e 011.
 - **Onde:** `.docs/decisoes/013-telas-de-sessoes-e-dashboard-descartadas.md` (novo), `.docs/decisoes/README.md` (linha nova no índice), `.docs/decisoes/004-contas-e-permissoes-granulares.md` (nota abaixo da tabela das 8 permissões, linhas 16 a 26, sem mudar as linhas da tabela), `.docs/decisoes/002-lgpd-dados-pessoais.md` (linha 25), `.docs/decisoes/008-fluxo-da-conversa-e-desfechos.md` (linha 45) e `.docs/decisoes/011-atendimento-humano-no-chat-nao-adotado.md` (linha 24).
 - **Dev:** dev-doc
-- **Depende de:** confirmação da D-PO-01; aviso ao Megumi feito (nota de coordenação)
+- **Depende de:** D-PO-01 (confirmada em 22/11/2026); aviso ao Megumi feito (nota de coordenação)
 - **Reaproveita:** a decisão 011 como molde (contexto, decisão com motivos, consequências), o formato do índice das decisões e os contratos fixos.
 - **Atende:** RN-03, RN-04, RN-05, RN-06, RN-08, RN-19, CA-04, CA-05, CA-06, CA-15, CA-21
 - **Pronto quando:**
@@ -301,7 +301,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 - **O quê:** marcar as regras de Sessões e de Dashboard como descartadas e ajustar as outras regras para não prometerem as duas telas.
 - **Onde:** `.docs/regras/07-sessoes.md` (marca no topo e estado da tela), `.docs/regras/02-dashboard.md` (marca no topo e estado da tela, linhas 9 a 13 e 79), `.docs/regras/00-regras-gerais.md` (linhas 18, 23, 24, 26 e 66), `.docs/regras/04-detalhe-do-agendamento.md` (linhas 45, 116 e 123), `.docs/regras/10-usuarios.md` (linha 35) e `.docs/regras/11-whatsapp.md` (linha 213).
 - **Dev:** dev-doc
-- **Depende de:** confirmação da D-PO-01
+- **Depende de:** D-PO-01 (confirmada em 22/11/2026)
 - **Reaproveita:** o levantamento da tabela da divergência 3 e os contratos fixos.
 - **Atende:** RN-03, RN-04, RN-05, RN-07, CA-05, CA-21
 - **Pronto quando:**
@@ -341,7 +341,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 - **O quê:** pôr no item do limite de espera da decisão 007 a nota de estado do Dashboard, sem reescrever o texto da decisão.
 - **Onde:** `.docs/decisoes/007-agenda-configuravel.md` (linha 19).
 - **Dev:** dev-doc
-- **Depende de:** T1 e confirmação da D-PO-01
+- **Depende de:** T1 e D-PO-01 (confirmada em 22/11/2026)
 - **Reaproveita:** o texto aprovado na D-U-03 e a nota de Dashboard dos contratos fixos.
 - **Atende:** RN-06, RN-11, CA-12
 - **Pronto quando:** o item mantém o texto, e a nota logo abaixo diz que o Dashboard foi descartado, que o prazo é salvo sem tela que mostre o aviso e aponta para a decisão 013.
@@ -354,7 +354,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 ### T12 [P] Tirar as capturas novas das figuras 17, 18 e 14 do manual
 
 - **O quê:** tirar no painel local, com dados fictícios, as capturas novas da janela de agendamento (figura 17, já com o texto novo), de dados da unidade e datas bloqueadas (figura 18, com o formulário de bloqueio de hoje) e do formulário de pergunta do Conteúdo (figura 14, com a dica dos marcadores visível).
-- **Onde:** substituir, no mesmo lugar e com o mesmo nome, `.docs/guias/images/manual-do-painel/17-horarios-janela.png`, `.docs/guias/images/manual-do-painel/18-horarios-unidade-e-bloqueios.png` e `.docs/guias/images/manual-do-painel/14-conteudo-pergunta.png`. Nenhum outro arquivo. Esse caminho precisa ser liberado para a Mai (ver Plano de execução).
+- **Onde:** substituir, no mesmo lugar e com o mesmo nome, `.docs/guias/images/manual-do-painel/17-horarios-janela.png`, `.docs/guias/images/manual-do-painel/18-horarios-unidade-e-bloqueios.png` e `.docs/guias/images/manual-do-painel/14-conteudo-pergunta.png`. Nenhum outro arquivo. Caminho liberado pelo orquestrador para a Mai em 22/11/2026, só para essas três imagens (ver Plano de execução).
 - **Dev:** dev-frontend (Mai)
 - **Depende de:** T1
 - **Reaproveita:** o painel local com a carga fictícia usada nas capturas da #119; o mesmo recorte e enquadramento das figuras atuais.
@@ -386,7 +386,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
   - linhas 489 a 501 (tabela de permissões e nota);
   - o sumário (linhas 1 a 60).
 - **Dev:** dev-doc
-- **Depende de:** T1, T3, T4, T6, T12 e confirmação da D-PO-01
+- **Depende de:** T1, T3, T4, T6, T12 e D-PO-01 (confirmada em 22/11/2026)
 - **Reaproveita:** a regra 08 corrigida (T6), a regra 06 (marcadores), a tabela e a nota da decisão 004 (T4), os textos do painel listados na divergência 6 e a linguagem e o formato de avisos que o manual já usa.
 - **Atende:** RN-01, RN-03, RN-04, RN-05, RN-08, RN-11, RN-12, RN-14, RN-16, CA-13, CA-14, CA-15, CA-16, CA-17, CA-18, CA-19, CA-21
 - **Pronto quando:**
@@ -457,12 +457,11 @@ A numeração segue a da versão anterior, para facilitar levar ao usuário.
 
 ### Abertas
 
-#### Para o usuário (recomendação da product-owner)
-
-- **D-PO-01. Tela de Sessões descartada: o que acontece com a permissão "Ver sessões" e com as decisões antigas?** Recomendação da PO (Rika), ainda a confirmar pelo usuário, e seguida pelas tarefas: (1) "Ver sessões" fica registrada como descartada e não sai do modelo, porque o servidor a mantém e removê-la seria código; na tela de Usuários continua sem aparecer; (2) criar a decisão 013 no molde da 011, cobrindo Sessões e Dashboard, com linha no índice das decisões; (3) as decisões antigas não têm o texto reescrito e ganham uma nota curta datada apontando para a 013, e os trechos que tratam Sessões ou Dashboard como tela futura são trocados pela nota; (4) as regras 07 e 02 ficam na pasta, marcadas no topo "Tela descartada (decisão 013)", e o índice das regras mostra "Descartada (013)"; (5) a tabela de permissões da decisão 004 e a do manual ficam iguais, com a nota da 013 nas duas. Afeta T2, T3, T4, T5, T7 e T8.
+Nenhuma.
 
 ### Respondidas
 
+- **D-PO-01. Tela de Sessões descartada: o que acontece com a permissão "Ver sessões" e com as decisões antigas?** Confirmada pelo usuário em 22/11/2026, conforme a recomendação da PO (Rika), seguida pelas tarefas: (1) "Ver sessões" fica registrada como descartada e não sai do modelo, porque o servidor a mantém e removê-la seria código; na tela de Usuários continua sem aparecer; (2) criar a decisão 013 no molde da 011, cobrindo Sessões e Dashboard, com linha no índice das decisões; (3) as decisões antigas não têm o texto reescrito e ganham uma nota curta datada apontando para a 013, e os trechos que tratam Sessões ou Dashboard como tela futura são trocados pela nota; (4) as regras 07 e 02 ficam na pasta, marcadas no topo "Tela descartada (decisão 013)", e o índice das regras mostra "Descartada (013)"; (5) a tabela de permissões da decisão 004 e a do manual ficam iguais, com a nota da 013 nas duas. Afeta T2, T3, T4, T5, T7 e T8.
 - **D-U-02. Dashboard (#71): descartado ou ainda pendente?** Resposta do usuário: descartado pelo grupo, como Sessões; não é "em construção" nem futuro. Entram no escopo as regras 00, 01, 02, 05, 08 e 11 e a decisão 007 (nota de estado), e a decisão 013 cobre as duas telas.
 - **D-U-03. Texto exato da frase nova.** Resposta do usuário: "Prazo de espera considerado longo para o próximo horário livre." Vale para T1, T6, T7 e T8. O teste do texto, se houver, fica no teste dos campos da janela, seguindo o TDD do repositório.
 - **D-U-04. Como registrar numa decisão o que não foi entregue?** Resposta do usuário: nota de estado datada, mantendo o texto das decisões, citando a #73 como "bônus da #73, não entregue".
