@@ -1,6 +1,6 @@
 # Correções do modal de conflitos ao alterar a agenda (#75, PR #169)
 
-> Status: em-andamento
+> Status: implementada
 > Tipo: funcionalidade
 > Tamanho: grande
 > Branch: feat/75-modal-conflitos-agenda
@@ -442,7 +442,7 @@ Regras para todas as tarefas de código:
 - Teste: integração, rodado no CI. Primeiro é escrito o teste que salva a configuração de hoje com `"CANCEL"` e `seenConflictIds` sem um dos afetados e espera 409 `SCHEDULE_CONFLICTS_CHANGED`. Como não roda local, a falha antes do código não é observada localmente, e isso fica registrado no Status.
 - Gate: local `typecheck:test` e lint dos arquivos; integração no CI
 - Modelo: padrao
-- Status: feita (aguardando o resultado do job backend-integration no CI). Gate local: typecheck:test ok, oxlint ok, suíte do backend sem regressão. O teste de integração foi escrito junto com o código e não roda local (sem Postgres): a falha antes do código não foi observada local.
+- Status: feita. Os testes de integração passaram no job backend-integration do CI no commit 2e8ee0f (PR #169, 2026-11-22). Gate local: typecheck:test ok, oxlint ok, suíte do backend sem regressão. O teste de integração foi escrito junto com o código e não roda local (sem Postgres): a falha antes do código não foi observada local.
 
 ### T6 [P] Testes com banco real das regras de resolução (B2)
 - O quê: provar com banco real:
@@ -462,7 +462,7 @@ Regras para todas as tarefas de código:
 - Teste: integração, rodado no CI. Regras que já existem: os testes devem passar de primeira (registrar no Status). Se algum falhar no CI, é bug, e a correção entra nesta tarefa.
 - Gate: local `typecheck:test` e lint dos arquivos; integração no CI
 - Modelo: padrao
-- Status: feita (aguardando o resultado do job backend-integration no CI). Gate local: typecheck:test ok, oxlint ok. Os testes não rodam local (sem Postgres): não foi observado se passam de primeira. Se algum falhar no CI, é bug e a correção entra nesta tarefa.
+- Status: feita. Os testes de integração passaram no job backend-integration do CI no commit 2e8ee0f (PR #169, 2026-11-22). Gate local: typecheck:test ok, oxlint ok. Os testes não rodam local (sem Postgres): não foi observado se passam de primeira. Se algum falhar no CI, é bug e a correção entra nesta tarefa.
 
 ### T7 [P] Textos da origem salvar, da dica por permissão e da mensagem de atualização
 - O quê: acrescentar ao arquivo de textos as chaves de RN-11, RN-14 e RN-15 (`conflicts.hintWithCancel`, `conflicts.hintKeepOnly`, `conflictModal.changedNotice` e `conflictModal.save.*`), conforme "Textos".
@@ -569,7 +569,7 @@ Regras para todas as tarefas de código:
 - Teste: unitário da linha. Falha primeiro o teste que espera o protocolo sem a palavra "Protocolo" e nenhum CPF. O resto é estilo, conferido lado a lado.
 - Gate: rápido front
 - Modelo: padrao
-- Status: feita (42eab83), com a conferência lado a lado pendente da Nobara (não rodei navegador, só CSS conforme o Desenho). Teste primeiro: a linha falhou por componente ausente. Gate: vitest 1309 de componentes e páginas passam e 1 falha (ScheduleConflictList, T8), typecheck, oxlint e prettier ok. Teste alterado por mudança de regra (RN-20): Schedule.conflicts.test.tsx agora espera o modal sem CPF e sem a palavra Protocolo. Seletor do selo do detalhe via [data-tone] dentro de .tags. A alteração em Schedule.conflicts.test.tsx (sem CPF e sem "Protocolo") foi aceita sob a RN-20. Divergências do Desenho/CA-27, achadas pela Nobara no navegador e confirmadas por ela nas capturas v2 (v2-1280-cancelar-mudanca, v2-320x568 e v2-320x640, HEAD 08c6539): (1) os botões não têm mais nowrap em nenhuma largura, só o "Tentar de novo", porque o rótulo longo do cancelar aparecia cortado no computador (e03b81c); (2) abaixo de 480 px de largura ou com altura até 700 px a lista rola junto com a caixa, não por dentro, porque o rodapé ficava fora de alcance em 320x568 (e03b81c); (3) abaixo de 480 px a linha do modal fica em coluna única (b56be47). O status da linha usa o Seal com cores (prop colors), sem estilo inline repetido; o teste do Seal passou a cobrir isso.
+- Status: feita (42eab83). Teste primeiro: a linha falhou por componente ausente. Gate: vitest 1309 de componentes e páginas passam e 1 falha (ScheduleConflictList, T8), typecheck, oxlint e prettier ok. Teste alterado por mudança de regra (RN-20): Schedule.conflicts.test.tsx agora espera o modal sem CPF e sem a palavra Protocolo. Seletor do selo do detalhe via [data-tone] dentro de .tags. A alteração em Schedule.conflicts.test.tsx (sem CPF e sem "Protocolo") foi aceita sob a RN-20. Divergências do Desenho/CA-27, achadas pela Nobara no navegador e confirmadas por ela nas capturas v2 (v2-1280-cancelar-mudanca, v2-320x568 e v2-320x640, HEAD 08c6539): (1) os botões não têm mais nowrap em nenhuma largura, só o "Tentar de novo", porque o rótulo longo do cancelar aparecia cortado no computador (e03b81c); (2) abaixo de 480 px de largura ou com altura até 700 px a lista rola junto com a caixa, não por dentro, porque o rodapé ficava fora de alcance em 320x568 (e03b81c); (3) abaixo de 480 px a linha do modal fica em coluna única (b56be47). O status da linha usa o Seal com cores (prop colors), sem estilo inline repetido; o teste do Seal passou a cobrir isso.
 
 ### T8 [P] Dica da lista de afetados por permissão (B3)
 - O quê: a lista de afetados da tela de Horários mostra a dica de RN-14 conforme a permissão de quem usa.
