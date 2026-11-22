@@ -7,6 +7,7 @@ import ContentTextField from "@/components/ContentTextField"
 import type ContentFieldError from "@/types/content/ContentFieldError.types"
 import type ContentQuestionFormFields from "@/types/content/ContentQuestionFormFields.types"
 import type ContentQuestionFormProps from "@/types/content/ContentQuestionFormProps.types"
+import findMisspelledPlaceholders from "@/utils/content/findMisspelledPlaceholders"
 import contentErrorText from "@/utils/content/contentErrorText"
 import CONTENT_LIMITS from "@/utils/content/contentLimits"
 import css from "@/styles/components/contentForms.module.css"
@@ -26,8 +27,15 @@ function ContentQuestionForm({
     const { t } = useTranslation("content")
     const [fields, setFields] = useState<ContentQuestionFormFields>(initial)
     const [attempted, setAttempted] = useState(false)
+    const [warnedPlaceholders, setWarnedPlaceholders] = useState<string | null>(null)
     const onChangeRef = useRef(onChange)
     const errors: ContentFieldError[] = attempted ? validate(fields).errors : []
+    const misspelledPlaceholders = findMisspelledPlaceholders(fields.answer)
+    const misspelledKey = misspelledPlaceholders.map((item) => item.found).join("|")
+    const placeholderWarnings =
+        warnedPlaceholders === misspelledKey
+            ? misspelledPlaceholders.map((item) => t("questionForm.misspelledPlaceholder", item))
+            : []
 
     useEffect(() => {
         onChangeRef.current = onChange
@@ -68,9 +76,16 @@ function ContentQuestionForm({
     function confirm() {
         setAttempted(true)
 
-        if (validate(fields).valid) {
-            onConfirm(fields)
+        if (!validate(fields).valid) {
+            return
         }
+
+        if (misspelledPlaceholders.length > 0 && warnedPlaceholders !== misspelledKey) {
+            setWarnedPlaceholders(misspelledKey)
+            return
+        }
+
+        onConfirm(fields)
     }
 
     const crossErrors = errors.filter(
@@ -131,6 +146,7 @@ function ContentQuestionForm({
                     multiline
                     tall
                     error={errorOf("answer")}
+                    warnings={placeholderWarnings}
                     onChange={(value) => patch({ answer: value })}
                 />
                 <p className={css.hint}>{t("questionForm.answerPlaceholdersHint")}</p>

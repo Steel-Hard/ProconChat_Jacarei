@@ -179,6 +179,10 @@
     color: var(--error-text);
 }
 
+.warningLine {
+    margin: 0;
+}
+
 .longAnswerAlert {
     margin: 0;
     padding: 9px 12px;

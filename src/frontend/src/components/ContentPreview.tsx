@@ -7,7 +7,13 @@ import css from "@/styles/components/contentPreview.module.css"
 
 const DIALOG_PROPS = { role: "dialog", "aria-modal": true } as const
 
-function ContentPreview({ status, model, onClose, onRetry }: ContentPreviewProps) {
+function ContentPreview({
+    status,
+    model,
+    misspelledPlaceholders = [],
+    onClose,
+    onRetry
+}: ContentPreviewProps) {
     const { t } = useTranslation("content")
     const titleId = useId()
     const titleRef = useRef<HTMLHeadingElement>(null)
@@ -60,6 +66,16 @@ function ContentPreview({ status, model, onClose, onRetry }: ContentPreviewProps
                             {t("preview.fixErrors")}
                         </output>
                     ) : null}
+                    {showChat
+                        ? misspelledPlaceholders.map((item) => (
+                              <output
+                                  key={item.found}
+                                  className={`${css.notice} ${css.unsavedNotice}`}
+                              >
+                                  {t("preview.misspelledPlaceholder", item)}
+                              </output>
+                          ))
+                        : null}
                     {showChat && model.lengthWarning !== null ? (
                         <output className={`${css.notice} ${css.unsavedNotice}`}>
                             {model.lengthWarning}

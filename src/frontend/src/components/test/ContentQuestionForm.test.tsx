@@ -243,3 +243,79 @@ describe("ContentQuestionForm", () => {
         ).toBeInTheDocument()
     })
 })
+
+const withAnswer = (answer: string) => ({ ...empty, answer })
+const save = () => screen.getByRole("button", { name: "Salvar pergunta" })
+
+describe("ContentQuestionForm marcador mal escrito", () => {
+
+    it("no primeiro clique em Salvar não salva e avisa o trecho errado e a forma certa", async () => {
+        const user = userEvent.setup()
+        const { onConfirm } = renderForm({ initial: withAnswer("Fica em {Endereco}.") })
+
+        await user.click(save())
+
+        expect(onConfirm).not.toHaveBeenCalled()
+        expect(
+            screen.getByText("Marcador não reconhecido: {Endereco}. Use {endereco}.")
+        ).toBeInTheDocument()
+    })
+
+    it("o aviso fica ligado ao campo de resposta e é anunciado", async () => {
+        const user = userEvent.setup()
+        renderForm({ initial: withAnswer("Fica em {Endereco}.") })
+
+        await user.click(save())
+
+        const warning = screen.getByRole("status")
+        expect(warning).not.toBeNull()
+        expect(
+            screen.getByLabelText(/Resposta oficial/).getAttribute("aria-describedby")
+        ).toContain(warning?.id)
+    })
+
+    it("o segundo clique em Salvar, sem mudar o problema, salva", async () => {
+        const user = userEvent.setup()
+        const { onConfirm } = renderForm({ initial: withAnswer("Fica em {Endereco}.") })
+
+        await user.click(save())
+        await user.click(save())
+
+        expect(onConfirm).toHaveBeenCalledTimes(1)
+    })
+
+    it("corrigindo o texto, salva de uma vez e sem aviso", async () => {
+        const user = userEvent.setup()
+        const { onConfirm } = renderForm({ initial: withAnswer("Fica em {Endereco}.") })
+
+        await user.click(save())
+        await user.clear(screen.getByLabelText(/Resposta oficial/))
+        await user.type(screen.getByLabelText(/Resposta oficial/), "Fica em endereco")
+        expect(screen.queryByText(/Marcador não reconhecido/)).not.toBeInTheDocument()
+        await user.click(save())
+
+        expect(onConfirm).toHaveBeenCalledTimes(1)
+    })
+
+    it("marcador correto não gera aviso e salva no primeiro clique", async () => {
+        const user = userEvent.setup()
+        const { onConfirm } = renderForm({ initial: withAnswer("Fica em {endereco}.") })
+
+        await user.click(save())
+
+        expect(onConfirm).toHaveBeenCalledTimes(1)
+        expect(screen.queryByText(/Marcador não reconhecido/)).not.toBeInTheDocument()
+    })
+
+    it("lista todos os trechos errados no aviso", async () => {
+        const user = userEvent.setup()
+        renderForm({ initial: withAnswer("{Endereco} e {horario}") })
+
+        await user.click(save())
+
+        expect(screen.getByText(/Marcador não reconhecido: \{Endereco\}/)).toBeInTheDocument()
+        expect(
+            screen.getByText("Marcador não reconhecido: {horario}. Use {horarios}.")
+        ).toBeInTheDocument()
+    })
+})

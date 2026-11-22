@@ -12,6 +12,7 @@ type ContentTextFieldProps = {
     tall?: boolean
     hint?: string
     error?: string | null
+    warnings?: string[]
     placeholder?: string
     rows?: number
 }
@@ -34,16 +35,19 @@ function ContentTextField({
     tall = false,
     hint,
     error = null,
+    warnings = [],
     placeholder,
     rows
 }: ContentTextFieldProps) {
     const { t } = useTranslation("content")
     const id = useId()
     const errorId = `${id}-error`
+    const warningId = `${id}-warning`
     const hintId = `${id}-hint`
     const counterId = `${id}-counter`
     const describedBy = [
         error ? errorId : null,
+        warnings.length > 0 ? warningId : null,
         hint ? hintId : null,
         max !== undefined ? counterId : null
     ]
@@ -91,6 +95,15 @@ function ContentTextField({
                 <p id={hintId} className={css.hint}>
                     {hint}
                 </p>
+            ) : null}
+            {warnings.length > 0 ? (
+                <output id={warningId} className={css.longAnswerAlert}>
+                    {warnings.map((warning) => (
+                        <p key={warning} className={css.warningLine}>
+                            {warning}
+                        </p>
+                    ))}
+                </output>
             ) : null}
             {error ? (
                 <p id={errorId} className={css.error}>
