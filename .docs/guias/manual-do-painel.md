@@ -170,6 +170,8 @@ A tela abre na visão **Lista**. Cada linha mostra o protocolo, o titular (com o
 ![Lista de agendamentos](images/manual-do-painel/04-agendamentos-lista.png)
 *Figura 4 – Lista de agendamentos*
 
+Agendamentos que a equipe manteve depois de uma mudança de horários, mesmo fora da configuração nova, mostram o selo **Fora da grade atual**, na lista e no detalhe (veja o capítulo 6).
+
 Para achar um agendamento, use os recursos do topo da tela:
 
 - **Buscar:** digite o nome do titular, o protocolo ou o CPF completo (os 11 números). A busca olha todos os períodos, situações e responsáveis. Com um único resultado, a tecla Enter abre o agendamento. É o recurso ideal para a recepção, quando o cidadão chega.
@@ -207,7 +209,7 @@ Ao clicar num agendamento da lista ou do calendário, abre a tela de detalhe. O 
 ![Linha do tempo da conversa de origem](images/manual-do-painel/08-detalhe-linha-do-tempo.png)
 *Figura 8 – Linha do tempo da conversa de origem*
 
-> **Atenção:** abrir a conversa completa a partir do detalhe ainda não está disponível.
+> **Atenção:** não existe uma tela com a conversa completa. A tela de Sessões foi descartada pelo grupo, e a linha do tempo acima é o único lugar para ver os passos da conversa.
 
 <h2 id="s04-02">Ações</h2>
 
@@ -265,7 +267,7 @@ Os desfechos possíveis são: **Resolvida sem agendamento**, **Terminou em agend
 
 A **Taxa de não comparecimento** divide os que não compareceram pelos que já foram registrados (Atendido mais Não compareceu). Agendamentos cancelados, aguardando registro e futuros não entram na conta.
 
-> **Atenção:** indicadores adicionais e a exportação dos relatórios ainda não estão disponíveis.
+> **Atenção:** a exportação dos relatórios (PDF, Excel e CSV) e os indicadores adicionais (gráficos por dia, perguntas não resolvidas, abandono por etapa e horário de pico) são um bônus da #73, não entregue.
 
 <h1 id="s06">5. Conteúdo do chatbot</h1>
 
@@ -295,6 +297,7 @@ A coluna da direita mostra as perguntas da categoria escolhida, com a posição,
 - **Exige atendimento presencial:** o chatbot oferece o agendamento direto, sem perguntar se a dúvida foi resolvida.
 - **Fora do escopo do PROCON:** a resposta orienta a procurar outro órgão e nunca oferece agendamento. Essa opção não pode ser marcada junto com a anterior.
 - **Permitir complemento por IA nesta pergunta:** quando desligada, o chatbot envia só o texto oficial.
+- **Marcadores `{endereco}` e `{horarios}`:** a resposta aceita esses dois marcadores, e o painel mostra abaixo da **Resposta oficial** a dica "Você pode usar {endereco} e {horarios} para inserir automaticamente o endereço e os horários atuais da unidade." No envio ao cidadão e na prévia, cada marcador é trocado pelo endereço e pelos horários de atendimento de hoje. Se você escrever um marcador errado, como `{Endereco}`, aparece "Marcador não reconhecido: {Endereco}. Use {endereco}." O primeiro clique em **Salvar pergunta** não salva e acrescenta "Se for isso mesmo que você quer, clique em Salvar de novo."; o segundo clique salva assim mesmo.
 - **Editar** abre a pergunta para alteração. Para mudar o assunto de uma pergunta, desative-a e crie uma nova, para não alterar o histórico dos relatórios.
 - **Desativar** (ou **Ativar**) liga ou desliga a pergunta no chatbot.
 - Os botões **Cancelar** e **Salvar pergunta** ficam no rodapé da janela.
@@ -304,7 +307,7 @@ A coluna da direita mostra as perguntas da categoria escolhida, com a posição,
 
 <h2 id="s06-03">Ver como o cidadão recebe</h2>
 
-O botão **Ver como o cidadão recebe**, dentro do formulário da pergunta, mostra uma prévia no estilo do WhatsApp com o que está no formulário, mesmo antes de salvar. Nada é gravado, e o texto da inteligência artificial é um exemplo, não uma resposta real.
+O botão **Ver como o cidadão recebe**, dentro do formulário da pergunta, mostra uma prévia no estilo do WhatsApp com o que está no formulário, mesmo antes de salvar. Nada é gravado, e o texto da inteligência artificial é um exemplo, não uma resposta real. Os marcadores `{endereco}` e `{horarios}` aparecem já trocados pelo endereço e pelos horários de hoje, e o aviso de marcador mal escrito também aparece aqui.
 
 ![Prévia de como o cidadão recebe a resposta](images/manual-do-painel/15-conteudo-previa.png)
 *Figura 15 – Prévia de como o cidadão recebe a resposta*
@@ -333,11 +336,11 @@ A **Prévia da grade** mostra, num calendário, como o chatbot oferece os horár
 <h2 id="s07-02">Janela de agendamento</h2>
 
 ![Janela de agendamento](images/manual-do-painel/17-horarios-janela.png)
-*Figura 17 – Janela de agendamento (o aviso do Dashboard citado na tela ainda não está disponível)*
+*Figura 17 – Janela de agendamento*
 
 - **Oferecer horários até:** quantos dias à frente o chatbot oferece horários. Se não houver horário livre nessa janela, o chatbot avisa o cidadão que não há horários disponíveis no momento.
 - **Antecedência mínima:** de **Sem antecedência (mesmo dia)** a **5 dias úteis**. Contam só os dias com atendimento.
-- **Alertar quando a espera passar de:** quantos dias de espera até o próximo horário livre são considerados demais. O aviso correspondente ainda não está disponível no painel.
+- **Alertar quando a espera passar de:** quantos dias de espera até o próximo horário livre são considerados longos. O campo mostra "Prazo de espera considerado longo para o próximo horário livre." Hoje o prazo só fica salvo: nenhuma tela mostra um aviso a partir dele.
 
 <h2 id="s07-03">Dados da unidade</h2>
 
@@ -349,7 +352,12 @@ Com a opção **Enviar lembrete ao cidadão** ligada, o chatbot manda um lembret
 
 <h2 id="s07-05">Datas bloqueadas</h2>
 
-Use para feriados e pontos facultativos. Escolha a **Data**, escreva a **Descrição** e clique em **Adicionar**. O chatbot não oferece horários nos dias bloqueados. **Remover** tira o bloqueio. Hoje só é possível bloquear o dia inteiro: bloquear apenas um período do dia ainda não está disponível.
+Use para feriados, pontos facultativos e para fechar só uma parte do dia. A tela diz: "Bloqueie um dia inteiro ou apenas um período. O chatbot não oferece horários durante o bloqueio." Em **Novo bloqueio**, escolha a **Data** e escreva a **Descrição**. Para bloquear o dia todo, deixe marcada a opção **Bloquear o dia inteiro**. Para bloquear só um período, desmarque essa opção e preencha **Início** e **Fim**. Depois clique em **Adicionar**. A lista mostra "Dia inteiro" ou o período, como 08:00–12:00, e **Remover** tira o bloqueio.
+
+- Uma data pode ter mais de um período, desde que eles não se sobreponham.
+- Um dia inteiro não pode ter outro bloqueio na mesma data.
+- Mensagens que a tela mostra: "Informe o início e o fim do período.", "O fim deve ser depois do início.", "Este período se sobrepõe a outro bloqueio desta data" e "Esta data já tem um bloqueio".
+- Se um bloqueio atinge agendamentos que já existem, a tela abre a janela de conflitos, descrita em "Quando a mudança afeta agendamentos".
 
 ![Dados da unidade e datas bloqueadas](images/manual-do-painel/18-horarios-unidade-e-bloqueios.png)
 *Figura 18 – Dados da unidade e datas bloqueadas*
@@ -360,11 +368,17 @@ O campo **Valer a partir de** permite preparar uma nova configuração para uma 
 
 <h2 id="s07-07">Quando a mudança afeta agendamentos</h2>
 
-O painel não deixa salvar uma mudança que deixaria agendamentos existentes fora da agenda. Dias com agendamentos aparecem marcados na prévia, e a tela mostra avisos como "Há agendamentos em 23/11. Para desligar este dia, peça a quem gerencia os agendamentos para cancelar ou remarcar antes.". Quando uma alteração afeta agendamentos, a lista **Esta alteração afeta N agendamentos** mostra quais são, e **Salvar alterações** fica desabilitado até que alguém com a permissão **Gerenciar agendamentos** cancele ou remarque esses agendamentos.
+Dias com agendamentos aparecem marcados na prévia. Quando uma alteração deixaria agendamentos **Pendentes** ou **Confirmados** fora da configuração, a tela mostra a lista **Esta alteração afeta N agendamentos**, com o protocolo, o dia, a hora, a situação e o motivo de cada um. Ao clicar em **Salvar alterações**, nada é gravado ainda: abre a janela **Esta alteração afeta N agendamentos**, e você escolhe o que fazer.
 
-> **Atenção:** ainda não está disponível uma forma de resolver isso pela própria tela de Horários.
+- **Manter os agendamentos:** eles continuam válidos e ganham o selo **Fora da grade atual**, na lista e no detalhe. Nenhum aviso é enviado, e eles não são apontados de novo em mudanças futuras.
+- **Cancelar e avisar os cidadãos** (ou **Cancelar agendamentos**, quando o aviso por WhatsApp está desligado): cancela todos os agendamentos afetados. Cada cidadão recebe o próprio aviso, se o aviso estiver ligado na tela **WhatsApp**. Com o aviso desligado, a janela diz que os cidadãos não serão avisados pelo sistema, e a equipe precisa avisá-los por outro meio.
+- **← Voltar sem salvar:** não grava nada.
 
-Quando você muda horários ou endereço, o painel lembra de revisar as perguntas do Conteúdo que citam essas informações, com o atalho **Revisar Conteúdo →**.
+Só quem tem **Configurar atendimento presencial** e também **Gerenciar agendamentos** vê as opções de cancelar. Quem só configura horários pode apenas manter os agendamentos ou voltar. Cancelar uma **mudança agendada** que deixaria agendamentos fora da configuração anterior abre a mesma janela, com o botão **← Voltar sem cancelar a mudança**.
+
+Se a lista de afetados ou o aviso mudar enquanto a janela está aberta, ela se atualiza e diz: "A lista de agendamentos afetados ou o aviso ao cidadão mudou desde que você abriu esta janela. Confira antes de escolher."
+
+Quando você muda horários ou endereço, o painel lembra de revisar as perguntas do Conteúdo que citam essas informações, com o atalho **Revisar Conteúdo →**. As respostas que usam os marcadores `{endereco}` e `{horarios}` mudam sozinhas, e só as que têm horário ou endereço escritos em texto fixo precisam de revisão.
 
 <h1 id="s08">7. Documentos</h1>
 
@@ -413,7 +427,7 @@ Clique na conta e marque ou desmarque as permissões, uma a uma. **Gerenciar age
 ![Permissões marcadas em uma conta](images/manual-do-painel/21-usuarios-permissoes.png)
 *Figura 21 – Permissões marcadas em uma conta*
 
-A descrição de **Ver relatórios** fala em exportação, mas a exportação ainda não está disponível.
+A descrição de **Ver relatórios** fala em exportação, mas a exportação de relatórios é um bônus da #73, não entregue.
 
 <h2 id="s09-03">Redefinir a senha de uma conta</h2>
 
@@ -498,7 +512,7 @@ Cada conta do painel só enxerga e só faz o que as suas permissões liberam. A 
 | Ver relatórios | Indicadores e exportação |
 | Gerenciar usuários | Criar contas, ativar/desativar, editar permissões |
 
-A exportação de relatórios ainda não está disponível.
+> **Estado em 2026-11-22:** a permissão Ver sessões ficou registrada como descartada, junto com a tela de Sessões, e não aparece na tela de Usuários (decisão 013). A exportação de relatórios é um bônus da #73, não entregue.
 
 Alguns pontos importantes:
 
