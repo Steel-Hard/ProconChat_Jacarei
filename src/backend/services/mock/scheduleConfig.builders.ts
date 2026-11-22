@@ -1,7 +1,7 @@
 import { buildDefaultScheduleConfigView } from "../../repositories/mock/scheduleStub.repository"
-import { FutureActiveAppointment, ScheduleConfigInput } from "../../types/schedule.types"
+import { FutureActiveAppointment, ScheduleSaveInput } from "../../types/schedule.types"
 
-export function buildScheduleConfigInput(overrides: Partial<ScheduleConfigInput> = {}): ScheduleConfigInput {
+export function buildScheduleConfigInput(overrides: Partial<ScheduleSaveInput> = {}): ScheduleSaveInput {
     const def = buildDefaultScheduleConfigView()
     return {
         slotMinutes: def.slotMinutes,

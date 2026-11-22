@@ -5,11 +5,12 @@ import { validateRequest } from "../middleware/validateRequest.middleware"
 import { scheduleRepository as defaultScheduleRepository } from "../repositories/schedule.repository"
 import { IScheduleRepository } from "../repositories/schedule.repository.interface"
 import {
+    deleteScheduledConfigBodySchema,
     previewScheduleBodySchema,
     previewScheduleQuerySchema,
     scheduleDateQuerySchema,
     scheduleEffectiveDateSchema,
-    scheduleConfigBodySchema,
+    scheduleSaveBodySchema,
 } from "../schemas/schedule.schema"
 import { createScheduleService, IScheduleService } from "../services/schedule.service"
 
@@ -47,22 +48,29 @@ export class ScheduleRoutes {
             controller.getConfigForDate.bind(controller),
         )
         this.router.get("/versions", controller.listScheduledConfigs.bind(controller))
+        this.router.get(
+            "/cancellation-notice",
+            controller.getCancellationNoticeState.bind(controller),
+        )
 
         this.router.put(
             "/",
-            validateRequest({ body: scheduleConfigBodySchema }, { withIssues: true }),
+            validateRequest({ body: scheduleSaveBodySchema }, { withIssues: true }),
             controller.saveConfig.bind(controller),
         )
 
         this.router.put(
             "/versions/:effectiveFrom",
-            validateRequest({ params: scheduleEffectiveDateSchema, body: scheduleConfigBodySchema }, { withIssues: true }),
+            validateRequest({ params: scheduleEffectiveDateSchema, body: scheduleSaveBodySchema }, { withIssues: true }),
             controller.saveScheduledConfig.bind(controller),
         )
 
         this.router.delete(
             "/versions/:effectiveFrom",
-            validateRequest({ params: scheduleEffectiveDateSchema }, { withIssues: true }),
+            validateRequest(
+                { params: scheduleEffectiveDateSchema, body: deleteScheduledConfigBodySchema },
+                { withIssues: true },
+            ),
             controller.deleteScheduledConfig.bind(controller),
         )
 

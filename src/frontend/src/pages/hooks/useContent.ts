@@ -447,10 +447,15 @@ export default function useContent() {
         }
 
         const before = contentChangesOf(working, base).length
+        const selectedBefore = effectiveSelectedKey
         const outcome = await runSave(plan)
 
         if (outcome === null) {
             return
+        }
+
+        if (selectedBefore !== null && selectedBefore in outcome.idMap) {
+            setSelectedKey(String(outcome.idMap[selectedBefore]))
         }
 
         if (outcome.snapshot === null && outcome.completed > 0) {
@@ -564,6 +569,8 @@ export default function useContent() {
         closeDialog,
         categoryFormInitial,
         questionFormInitial,
+        dialogQuestion,
+        dialogCategory: previewCategory,
         validateCategoryFields,
         validateQuestionFields,
         confirmCategory,

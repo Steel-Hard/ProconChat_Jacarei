@@ -23,6 +23,17 @@ async function ready(options: Parameters<typeof renderScheduleHook>[0] = {}) {
     return rendered
 }
 
+type Draft = Awaited<ReturnType<typeof ready>>["result"]
+
+function addPeriodBlock(result: Draft, date: string, startTime: string, endTime: string) {
+    act(() => result.current.actions.setNewBlockDate(date))
+    act(() => result.current.actions.setNewBlockDescription("Reunião"))
+    act(() => result.current.actions.setNewBlockFullDay(false))
+    act(() => result.current.actions.setNewBlockStartTime(startTime))
+    act(() => result.current.actions.setNewBlockEndTime(endTime))
+    act(() => result.current.actions.addBlock())
+}
+
 describe("useSchedule: rascunho", () => {
     it("carrega a configuração e monta os 7 dias de segunda a domingo", async () => {
         const { result } = await ready()
@@ -155,8 +166,94 @@ describe("useSchedule: rascunho", () => {
             ["2026-11-02", "Finados (feriado nacional)"],
             ["2026-11-20", "Consciência Negra"]
         ])
-        expect(result.current.newBlock).toEqual({ date: "", description: "" })
+        expect(result.current.newBlock).toEqual({
+            date: "",
+            description: "",
+            fullDay: true,
+            startTime: "",
+            endTime: ""
+        })
         expect(result.current.changes).toEqual(["datas bloqueadas"])
+    })
+
+    it("adiciona o bloqueio de período com início e fim", async () => {
+        const { result } = await ready()
+
+        addPeriodBlock(result, "2026-11-20", "08:30", "10:00")
+
+        expect(result.current.newBlockError).toBeNull()
+        expect(result.current.blocks.find((block) => block.date === "2026-11-20")).toMatchObject({
+            startTime: "08:30",
+            endTime: "10:00",
+            description: "Reunião"
+        })
+        expect(result.current.newBlock.fullDay).toBe(true)
+    })
+
+    it("guarda bloqueio de dia inteiro sem horário quando o dia inteiro está marcado", async () => {
+        const { result } = await ready()
+
+        act(() => result.current.actions.setNewBlockDate("2026-11-20"))
+        act(() => result.current.actions.setNewBlockDescription("Feriado"))
+        act(() => result.current.actions.setNewBlockStartTime("16:00"))
+        act(() => result.current.actions.setNewBlockEndTime("13:00"))
+        act(() => result.current.actions.addBlock())
+
+        expect(result.current.newBlockError).toBeNull()
+        expect(result.current.blocks.find((block) => block.date === "2026-11-20")).toMatchObject({
+            startTime: null,
+            endTime: null
+        })
+    })
+
+    it("aceita dois períodos da mesma data sem sobreposição", async () => {
+        const { result } = await ready()
+
+        addPeriodBlock(result, "2026-11-20", "08:00", "12:00")
+        addPeriodBlock(result, "2026-11-20", "13:00", "17:00")
+
+        expect(result.current.newBlockError).toBeNull()
+        expect(result.current.blocks.filter((block) => block.date === "2026-11-20")).toHaveLength(2)
+    })
+
+    it("recusa período que se sobrepõe a outro da mesma data", async () => {
+        const { result } = await ready()
+
+        addPeriodBlock(result, "2026-11-20", "08:00", "12:00")
+        addPeriodBlock(result, "2026-11-20", "11:00", "14:00")
+
+        expect(result.current.newBlockError).toBe(
+            "Este período se sobrepõe a outro bloqueio desta data"
+        )
+        expect(result.current.blocks.filter((block) => block.date === "2026-11-20")).toHaveLength(1)
+    })
+
+    it("recusa período com o fim antes do início e marca o erro no período", async () => {
+        const { result } = await ready()
+
+        addPeriodBlock(result, "2026-11-20", "10:00", "09:00")
+
+        expect(result.current.newBlockError).toBe("O fim deve ser depois do início.")
+        expect(result.current.newBlockPeriodInvalid).toBe(true)
+        expect(result.current.blocks).toHaveLength(1)
+    })
+
+    it("recusa período com só o início preenchido", async () => {
+        const { result } = await ready()
+
+        addPeriodBlock(result, "2026-11-20", "10:00", "")
+
+        expect(result.current.newBlockError).toBe("Informe o início e o fim do período.")
+        expect(result.current.newBlockPeriodInvalid).toBe(true)
+    })
+
+    it("não marca o período quando o erro é da data", async () => {
+        const { result } = await ready()
+
+        act(() => result.current.actions.addBlock())
+
+        expect(result.current.newBlockError).toBe("Informe a data.")
+        expect(result.current.newBlockPeriodInvalid).toBe(false)
     })
 
     it.each([
@@ -204,77 +301,35 @@ describe("useSchedule: rascunho", () => {
 })
 
 describe("useSchedule: dias com agendamento", () => {
-    it("recusa desligar o dia da semana com agendamento e explica com as datas", async () => {
+    it("permite desligar o dia da semana, remover faixa e bloquear data mesmo com agendamento", async () => {
         const { result } = await ready({ bookedDays: BOOKED })
         await waitFor(() => expect(result.current.bookedDays).toHaveLength(2))
-
-        act(() => result.current.actions.toggleDay(3))
-
-        const wednesday = result.current.days.find((day) => day.weekday === 3)
-        expect(wednesday?.enabled).toBe(true)
-        expect(wednesday?.lockedReason).toBe(
-            "Há agendamentos em 04/11 e 11/11. Para desligar este dia, peça a quem gerencia os agendamentos para cancelar ou remarcar antes."
-        )
-        expect(result.current.changes).toEqual([])
-    })
-
-    it("cita só as 3 primeiras datas quando há mais", async () => {
-        const many = ["2026-11-04", "2026-11-11", "2026-11-18", "2026-11-25"].map((date) => ({
-            date,
-            weekday: 3,
-            total: 1,
-            times: [{ time: "09:00", count: 1 }]
-        }))
-        const { result } = await ready({ bookedDays: many })
-        await waitFor(() => expect(result.current.bookedDays).toHaveLength(4))
-
-        expect(result.current.days.find((day) => day.weekday === 3)?.lockedReason).toBe(
-            "Há agendamentos em 04/11, 11/11 e 18/11 e em outras datas. Para desligar este dia, peça a quem gerencia os agendamentos para cancelar ou remarcar antes."
-        )
-    })
-
-    it("mostra o ano nas datas da trava quando elas cruzam a virada do ano", async () => {
-        const crossing = ["2026-12-30", "2027-01-06"].map((date) => ({
-            date,
-            weekday: 3,
-            total: 1,
-            times: [{ time: "09:00", count: 1 }]
-        }))
-        const { result } = await ready({ bookedDays: crossing })
-        await waitFor(() => expect(result.current.bookedDays).toHaveLength(2))
-
-        expect(result.current.days.find((day) => day.weekday === 3)?.lockedReason).toBe(
-            "Há agendamentos em 30/12/2026 e 06/01/2027. Para desligar este dia, peça a quem gerencia os agendamentos para cancelar ou remarcar antes."
-        )
-    })
-
-    it("recusa remover a faixa que cobre um agendamento e deixa a outra livre", async () => {
-        const { result } = await ready({ bookedDays: BOOKED })
-        await waitFor(() => expect(result.current.bookedDays).toHaveLength(2))
-        const wednesday = () => result.current.days.find((day) => day.weekday === 3)
 
         act(() => result.current.actions.removeRange(3, 0))
+        expect(result.current.days.find((day) => day.weekday === 3)?.ranges).toHaveLength(1)
 
-        expect(wednesday()?.ranges.map((range) => range.removeLocked)).toEqual([true, true])
-        expect(wednesday()?.ranges).toHaveLength(2)
-        expect(result.current.days[0].ranges.map((range) => range.removeLocked)).toEqual([
-            false,
-            false
-        ])
-    })
-
-    it("recusa bloquear a data com agendamento com a quantidade do dia", async () => {
-        const { result } = await ready({ bookedDays: BOOKED })
-        await waitFor(() => expect(result.current.bookedDays).toHaveLength(2))
+        act(() => result.current.actions.toggleDay(3))
+        expect(result.current.days.find((day) => day.weekday === 3)?.enabled).toBe(false)
 
         act(() => result.current.actions.setNewBlockDate("2026-11-04"))
         act(() => result.current.actions.setNewBlockDescription("Ponto facultativo"))
         act(() => result.current.actions.addBlock())
 
-        expect(result.current.newBlockError).toBe(
-            "Esta data tem 2 agendamentos. Para bloqueá-la, peça a quem gerencia os agendamentos para cancelar ou remarcar antes."
-        )
-        expect(result.current.blocks).toHaveLength(1)
+        expect(result.current.newBlockError).toBeNull()
+        expect(result.current.blocks).toHaveLength(2)
+    })
+
+    it("adiciona bloqueio de período que sobrepõe um agendamento sem recusar", async () => {
+        const { result } = await ready({ bookedDays: BOOKED })
+        await waitFor(() => expect(result.current.bookedDays).toHaveLength(2))
+
+        addPeriodBlock(result, "2026-11-04", "08:30", "09:30")
+
+        expect(result.current.newBlockError).toBeNull()
+        expect(result.current.blocks.find((block) => block.date === "2026-11-04")).toMatchObject({
+            startTime: "08:30",
+            endTime: "09:30"
+        })
     })
 
     it("não trava nada sem agendamento", async () => {
@@ -283,7 +338,6 @@ describe("useSchedule: dias com agendamento", () => {
         act(() => result.current.actions.toggleDay(3))
         act(() => result.current.actions.removeRange(1, 0))
 
-        expect(result.current.days.every((day) => day.lockedReason === null)).toBe(true)
         expect(result.current.days.find((day) => day.weekday === 3)?.enabled).toBe(false)
         expect(result.current.days[0].ranges).toHaveLength(1)
     })

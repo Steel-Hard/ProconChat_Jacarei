@@ -6,9 +6,10 @@ import css from "@/styles/components/scheduleConflictList.module.css"
 
 type ScheduleConflictListProps = {
     conflicts: ScheduleConflictRowView[]
+    canCancelAppointments: boolean
 }
 
-function ScheduleConflictList({ conflicts }: ScheduleConflictListProps) {
+function ScheduleConflictList({ conflicts, canCancelAppointments }: ScheduleConflictListProps) {
     const { t } = useTranslation("schedule")
     const titleId = useId()
 
@@ -17,7 +18,9 @@ function ScheduleConflictList({ conflicts }: ScheduleConflictListProps) {
             <h2 id={titleId} className={css.title}>
                 {t("conflicts.title", { count: conflicts.length })}
             </h2>
-            <p className={css.hint}>{t("conflicts.hint")}</p>
+            <p className={css.hint}>
+                {t(canCancelAppointments ? "conflicts.hintWithCancel" : "conflicts.hintKeepOnly")}
+            </p>
             <ul className={css.rows}>
                 {conflicts.map((conflict) => (
                     <ScheduleConflictRow

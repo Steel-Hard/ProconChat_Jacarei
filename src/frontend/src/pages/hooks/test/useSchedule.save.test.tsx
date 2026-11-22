@@ -120,7 +120,7 @@ describe("useSchedule: salvar", () => {
         expect(callsTo("PUT", "/api/v1/schedule")).toEqual([])
     })
 
-    it("mostra os afetados do 409, trava o salvar, relê os dias com agendamento e libera ao editar", async () => {
+    it("mostra os afetados do 409, abre o modal, relê os dias com agendamento e limpa ao editar", async () => {
         const { result, callsTo } = await ready(() =>
             failure(409, "SCHEDULE_CONFLICTS", { conflicts: [CONFLICT] })
         )
@@ -128,11 +128,10 @@ describe("useSchedule: salvar", () => {
 
         act(() => result.current.save())
         await waitFor(() => expect(result.current.conflictRows).toHaveLength(1))
-        const blocked = result.current.saveDisabled
+        expect(result.current.conflictModal.conflicts).toHaveLength(1)
         await waitFor(() => expect(callsTo("GET", "/api/v1/schedule/booked-days")).toHaveLength(2))
         act(() => result.current.actions.setText("seatsPerSlot", "4"))
 
-        expect(blocked).toBe(true)
         expect(result.current.conflictRows).toBeNull()
         expect(result.current.saveDisabled).toBe(false)
     })

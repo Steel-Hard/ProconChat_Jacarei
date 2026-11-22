@@ -1,6 +1,6 @@
 import ConflictError from "../../errors/ConflictError"
 import ScheduleNotConfiguredError from "../../errors/ScheduleNotConfiguredError"
-import { detectScheduleConflicts } from "../../services/scheduleRules"
+import { appointmentsInScheduleInterval, detectScheduleConflicts } from "../../services/scheduleRules"
 import {
     BlockedDate,
     BookAppointmentInput,
@@ -12,11 +12,15 @@ import {
     FutureActiveAppointment,
     ReturningAppointment,
     ScheduleConfigView,
+    ScheduleConflictItem,
+    ScheduleConflictResolution,
     ScheduleRange,
     ScheduleSettings,
+    NormalizedScheduleConfig,
     ScheduleVersion,
 } from "../../types/schedule.types"
 import {
+    DeleteScheduledConfigRepoOptions,
     IScheduleRepository,
     SaveScheduleConfigRepoParams,
 } from "../schedule.repository.interface"
@@ -44,6 +48,7 @@ export type ScheduledSaveCall = SaveScheduleConfigRepoParams & { effectiveFrom: 
 export interface ScheduledDeleteCall {
     effectiveFrom: string
     now: Date
+    options?: DeleteScheduledConfigRepoOptions
 }
 
 export const DEFAULT_STUB_NOW = new Date("2026-10-05T09:00:00-03:00")
@@ -84,6 +89,8 @@ export function createScheduleStubRepository(
     citizenRescheduleCalls: CitizenRescheduleInput[]
     setScheduledSaveError(error: Error | null): void
     setScheduledDeleteError(error: Error | null): void
+    setCancellationNoticeEnabled(enabled: boolean): void
+    setCancellationNoticeReadError(error: Error | null): void
     listFutureCalls: Date[]
     versionCalls: ScheduleVersionsCall[]
     configForDateCalls: string[]
@@ -100,6 +107,8 @@ export function createScheduleStubRepository(
     let appointments: StoredStubAppointment[] = [...(options.appointments ?? [])]
     let scheduledSaveError: Error | null = null
     let scheduledDeleteError: Error | null = null
+    let cancellationNoticeEnabled = true
+    let cancellationNoticeReadError: Error | null = null
     const users =
         options.users ??
         new Map<number, string>([
@@ -278,32 +287,122 @@ export function createScheduleStubRepository(
             .map(([effectiveFrom, config]) => ({ effectiveFrom, config: copyConfig(config) }))
     }
 
-    async function saveConfig({
-        config,
-        actorUserId,
-        now,
-        validateAgainstVersions,
-    }: SaveScheduleConfigRepoParams): Promise<ScheduleConfigView> {
-        validateAgainstVersions?.(configuredVersions())
-        const future: FutureActiveAppointment[] = appointments
+    interface ConflictResolutionRequest {
+        conflictResolution?: ScheduleConflictResolution
+        seenConflictIds?: string[]
+        seenNoticeEnabled?: boolean
+    }
+
+    function futureAppointments(now: Date): FutureActiveAppointment[] {
+        return appointments
             .filter((a) => a.appointmentDatetime > now)
             .map((a) => ({
                 ...a,
                 assignedUserId: a.assignedUserId ?? null,
                 offGrid: a.offGrid ?? false,
             }))
-        const conflicts = detectScheduleConflicts(
-            config,
-            future,
-            currentConfig?.slotMinutes ?? null,
-        )
-        if (conflicts.length > 0) {
-            throw new ConflictError(
-                "Esta alteração afeta agendamentos futuros",
-                "SCHEDULE_CONFLICTS",
-                { conflicts },
-            )
+    }
+
+    function failWhenNoticeUnreadable(): void {
+        if (cancellationNoticeReadError) {
+            throw cancellationNoticeReadError
         }
+    }
+
+    function conflictDetails(conflicts: ScheduleConflictItem[]): Record<string, unknown> {
+        return {
+            conflicts,
+            cancellationNotice: { enabled: cancellationNoticeEnabled, problem: null },
+        }
+    }
+
+    function changesSinceSeen(
+        conflicts: ScheduleConflictItem[],
+        request: ConflictResolutionRequest,
+    ): ("CONFLICTS" | "NOTICE")[] {
+        const changes: ("CONFLICTS" | "NOTICE")[] = []
+        const seen = new Set(request.seenConflictIds ?? [])
+        const current = new Set(conflicts.map((conflict) => conflict.id))
+        const sameList = seen.size === current.size && [...current].every((id) => seen.has(id))
+        if (!sameList) {
+            changes.push("CONFLICTS")
+        }
+        if (request.conflictResolution === "CANCEL" && request.seenNoticeEnabled !== cancellationNoticeEnabled) {
+            changes.push("NOTICE")
+        }
+        return changes
+    }
+
+    function resolveConflicts(
+        conflicts: ScheduleConflictItem[],
+        request: ConflictResolutionRequest,
+        actorUserId: number | undefined,
+        message: string,
+    ): string[] {
+        failWhenNoticeUnreadable()
+        if (conflicts.length === 0) {
+            return []
+        }
+        if (!request.conflictResolution || actorUserId === undefined) {
+            throw new ConflictError(message, "SCHEDULE_CONFLICTS", conflictDetails(conflicts))
+        }
+        const changes = changesSinceSeen(conflicts, request)
+        if (changes.length > 0) {
+            throw new ConflictError(message, "SCHEDULE_CONFLICTS_CHANGED", {
+                ...conflictDetails(conflicts),
+                changes,
+            })
+        }
+        const resolvedIds = conflicts.map((conflict) => conflict.id)
+        const idSet = new Set(resolvedIds)
+        if (request.conflictResolution === "KEEP") {
+            appointments = appointments.map((a) => (idSet.has(a.id) ? { ...a, offGrid: true } : a))
+        } else {
+            appointments = appointments.filter((a) => !idSet.has(a.id))
+        }
+        return resolvedIds
+    }
+
+    function versionBefore(effectiveFrom: string): ScheduleVersion | undefined {
+        return configuredVersions()
+            .filter((version) => version.effectiveFrom === null || version.effectiveFrom < effectiveFrom)
+            .at(-1)
+    }
+
+    function nextVersionDate(effectiveFrom: string): string | null {
+        return (
+            [...scheduledConfigs.keys()]
+                .filter((date) => date > effectiveFrom)
+                .sort((a, b) => a.localeCompare(b))[0] ?? null
+        )
+    }
+
+    function appointmentsInVigency(effectiveFrom: string, now: Date): FutureActiveAppointment[] {
+        return appointmentsInScheduleInterval(
+            futureAppointments(now),
+            effectiveFrom,
+            nextVersionDate(effectiveFrom),
+        )
+    }
+
+    async function saveConfig({
+        config,
+        actorUserId,
+        now,
+        validateAgainstVersions,
+        conflictResolution,
+        seenConflictIds,
+        seenNoticeEnabled,
+        onResolved,
+    }: SaveScheduleConfigRepoParams): Promise<ScheduleConfigView> {
+        validateAgainstVersions?.(configuredVersions())
+        const conflicts = detectScheduleConflicts(config, futureAppointments(now), currentConfig?.slotMinutes ?? null)
+        const resolvedIds = resolveConflicts(
+            conflicts,
+            { conflictResolution, seenConflictIds, seenNoticeEnabled },
+            actorUserId,
+            "Esta alteração afeta agendamentos futuros",
+        )
 
         const actorName = users.get(actorUserId) ?? "Usuário"
         currentConfig = {
@@ -322,6 +421,7 @@ export function createScheduleStubRepository(
             updatedAt: now.toISOString(),
         }
 
+        onResolved?.({ affectedIds: resolvedIds, noticeEnabled: cancellationNoticeEnabled })
         return copyConfig(currentConfig)
     }
 
@@ -333,7 +433,20 @@ export function createScheduleStubRepository(
             throw scheduledSaveError
         }
         params.validateAgainstVersions?.(configuredVersions())
-        const { config, actorUserId, now, effectiveFrom } = params
+        const { config, actorUserId, now, effectiveFrom, onResolved } = params
+        const previous = versionBefore(effectiveFrom)
+        const conflicts = detectScheduleConflicts(
+            config,
+            appointmentsInVigency(effectiveFrom, now),
+            previous?.config.slotMinutes ?? null,
+        )
+        const resolvedIds = resolveConflicts(
+            conflicts,
+            params,
+            actorUserId,
+            "Esta alteração afeta agendamentos futuros",
+        )
+        onResolved?.({ affectedIds: resolvedIds, noticeEnabled: cancellationNoticeEnabled })
         return buildDefaultScheduleConfigView({
             ...config,
             effectiveFrom,
@@ -344,11 +457,35 @@ export function createScheduleStubRepository(
 
     const scheduledDeleteCalls: ScheduledDeleteCall[] = []
 
-    async function deleteScheduledConfig(effectiveFrom: string, now: Date): Promise<void> {
-        scheduledDeleteCalls.push({ effectiveFrom, now })
+    async function deleteScheduledConfig(
+        effectiveFrom: string,
+        now: Date,
+        deleteOptions?: DeleteScheduledConfigRepoOptions,
+    ): Promise<void> {
+        scheduledDeleteCalls.push(
+            deleteOptions ? { effectiveFrom, now, options: deleteOptions } : { effectiveFrom, now },
+        )
         if (scheduledDeleteError) {
             throw scheduledDeleteError
         }
+        const previous = versionBefore(effectiveFrom)
+        const conflicts = previous
+            ? detectScheduleConflicts(
+                  previous.config as NormalizedScheduleConfig,
+                  appointmentsInVigency(effectiveFrom, now),
+                  previous.config.slotMinutes,
+              )
+            : []
+        const resolvedIds = resolveConflicts(
+            conflicts,
+            deleteOptions ?? {},
+            deleteOptions?.actorUserId,
+            "O cancelamento afeta agendamentos futuros",
+        )
+        deleteOptions?.onResolved?.({
+            affectedIds: resolvedIds,
+            noticeEnabled: cancellationNoticeEnabled,
+        })
     }
 
     return {
@@ -387,6 +524,12 @@ export function createScheduleStubRepository(
         },
         setScheduledDeleteError(error: Error | null) {
             scheduledDeleteError = error
+        },
+        setCancellationNoticeEnabled(enabled: boolean) {
+            cancellationNoticeEnabled = enabled
+        },
+        setCancellationNoticeReadError(error: Error | null) {
+            cancellationNoticeReadError = error
         },
         setConfig(config: ScheduleConfigView | null) {
             currentConfig = config

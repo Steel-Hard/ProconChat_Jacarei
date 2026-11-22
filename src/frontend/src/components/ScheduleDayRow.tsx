@@ -23,13 +23,8 @@ function ScheduleDayRow({
     onAddRange
 }: ScheduleDayRowProps) {
     const { t } = useTranslation("schedule")
-    const lockId = useId()
     const messagesId = useId()
     const name = t(`weekdays.${WEEKDAY_KEYS[day.weekday]}`)
-    const locked = day.lockedReason !== null
-    const describedBy = [day.lockedReason ? lockId : null, day.messages.length ? messagesId : null]
-        .filter(Boolean)
-        .join(" ")
 
     return (
         <li className={css.dayRow}>
@@ -38,13 +33,8 @@ function ScheduleDayRow({
                     type="checkbox"
                     className={css.checkbox}
                     checked={day.enabled}
-                    aria-disabled={locked || undefined}
-                    aria-describedby={describedBy || undefined}
-                    onChange={() => {
-                        if (!locked) {
-                            onToggle(day.weekday)
-                        }
-                    }}
+                    aria-describedby={day.messages.length ? messagesId : undefined}
+                    onChange={() => onToggle(day.weekday)}
                 />
                 {name}
             </label>
@@ -78,11 +68,6 @@ function ScheduleDayRow({
                         </button>
                     ) : null}
                 </div>
-                {day.lockedReason ? (
-                    <p id={lockId} className={css.lock}>
-                        {day.lockedReason}
-                    </p>
-                ) : null}
                 <ScheduleFieldMessages id={messagesId} messages={day.messages} />
             </div>
         </li>

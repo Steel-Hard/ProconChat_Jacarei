@@ -1,4 +1,3 @@
-import type ScheduleConflictRowView from "@/types/schedule/ScheduleConflictRowView.types"
 import type ScheduleVersion from "@/types/schedule/ScheduleVersion.types"
 
 type ScheduleVersionsView = {
@@ -9,7 +8,6 @@ type ScheduleVersionsView = {
     dateError: string | null
     versions: ScheduleVersion[]
     versionsFailed: boolean
-    cancelConflicts: ScheduleConflictRowView[] | null
     cancelTarget: string | null
     cancelling: boolean
     switchPending: boolean

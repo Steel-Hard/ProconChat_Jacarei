@@ -24,9 +24,14 @@
         "label": "Buscar nas perguntas",
         "placeholder": "Buscar no texto da pergunta, na resposta e no título curto",
         "clear": "Limpar busca",
+        "clearButton": "Limpar",
+        "boxLabel": "Buscar",
         "noResults": "Nenhuma pergunta encontrada.",
         "inCategory": "Categoria: {{category}}"
     },
+    "noticeLabel": "Aviso obrigatório, ao final de todas as respostas:",
+    "noticeNote": "Este aviso não é configurável.",
+    "pagingNotice": "Com mais de 10 itens, o chatbot mostra a lista em páginas: 9 opções por vez e a opção 'Ver mais opções'. Listas curtas são mais fáceis para o cidadão.",
     "pageBreak": "Página {{page}} no WhatsApp",
     "categories": {
         "heading": "Categorias",
@@ -34,11 +39,13 @@
         "edit": "Editar categoria",
         "activate": "Ativar",
         "deactivate": "Desativar",
+        "activateCategory": "Ativar categoria",
+        "hiddenTip": "Categorias só aparecem ao cidadão quando têm ao menos uma pergunta ativa",
+        "help": "Ordem do menu de categorias no WhatsApp. Em negrito, o título curto exibido na lista tocável. Use ↑↓ para reordenar.",
+        "headerShort": "Título curto: {{value}}",
+        "deactivateCategory": "Desativar categoria",
         "moveUp": "Mover para cima",
         "moveDown": "Mover para baixo",
-        "editFor": "Editar categoria {{title}}",
-        "activateFor": "Ativar {{title}}",
-        "deactivateFor": "Desativar {{title}}",
         "moveUpFor": "Mover {{title}} para cima",
         "moveDownFor": "Mover {{title}} para baixo",
         "select": "Ver as perguntas de {{title}}",
@@ -59,6 +66,7 @@
         "headingOf": "Perguntas de {{category}}",
         "searchHeading": "Resultados da busca",
         "new": "Nova pergunta",
+        "orderHelp": "Ordem em que as perguntas aparecem ao cidadão no WhatsApp após escolher esta categoria. Em negrito, o título curto exibido na lista tocável. Use ↑↓ para reordenar.",
         "newDisabledSearching": "Limpe a busca para criar uma pergunta.",
         "edit": "Editar",
         "activate": "Ativar",
@@ -98,13 +106,15 @@
         "description": "Descrição",
         "descriptionHint": "Resumo dos assuntos da categoria.",
         "optional": "opcional",
-        "confirm": "Confirmar",
+        "confirm": "Salvar categoria",
         "cancel": "Cancelar"
     },
     "questionForm": {
         "titleNew": "Nova pergunta",
         "titleEdit": "Editar pergunta",
+        "close": "Fechar",
         "editGuidance": "Para mudar o assunto da pergunta, desative-a e crie uma nova, para não alterar o histórico dos relatórios.",
+        "titlesHelp": "Textos exibidos na lista tocável do WhatsApp, quando o cidadão escolhe a pergunta.",
         "shortTitle": "Título curto (lista do WhatsApp)",
         "shortDescription": "Descrição curta",
         "question": "Texto da pergunta",
@@ -125,7 +135,7 @@
         "active": "Pergunta ativa no chatbot",
         "optional": "opcional",
         "preview": "Ver como o cidadão recebe",
-        "confirm": "Confirmar",
+        "confirm": "Salvar pergunta",
         "cancel": "Cancelar"
     },
     "documentsField": {
@@ -160,9 +170,10 @@
         "outOfScopeWithLlm": "Pergunta fora do escopo não permite complemento por IA."
     },
     "preview": {
-        "title": "Ver como o cidadão recebe",
         "subtitle": "Prévia com o que está no formulário, sem gravar e sem gerar IA de verdade.",
-        "close": "Fechar prévia",
+        "closeShort": "Fechar",
+        "windowTitle": "Como o cidadão recebe",
+        "footerNote": "O aviso ao final da resposta é fixo e enviado em todas as respostas. A aparência real depende do aplicativo do cidadão.",
         "loading": "Montando a prévia...",
         "updating": "Atualizando a prévia...",
         "error": "Não foi possível montar a prévia.",
@@ -188,6 +199,7 @@
         "up": "↑",
         "down": "↓",
         "separator": " · ",
+        "dot": "·",
         "remove": "×"
     },
     "page": {

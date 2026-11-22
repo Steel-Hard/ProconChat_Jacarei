@@ -28,8 +28,6 @@ function item(overrides: Partial<ContentCategoryRowView> = {}): ContentCategoryR
 function renderList(items: ContentCategoryRowView[], overrides = {}) {
     const handlers = {
         onSelect: vi.fn(),
-        onEdit: vi.fn(),
-        onToggle: vi.fn(),
         onMove: vi.fn(),
         onNew: vi.fn()
     }
@@ -56,11 +54,13 @@ describe("ContentCategoryList", () => {
         expect(screen.getByText("Ativa · oculta no chatbot")).toBeInTheDocument()
     })
 
-    it("mostra Inativa e o botão Ativar para categoria inativa", () => {
+    it("mostra Inativa sem botões de editar ou ativar na linha", () => {
         renderList([item({ state: "inactive" })])
 
         expect(screen.getByText("Inativa")).toBeInTheDocument()
-        expect(screen.getByRole("button", { name: /^Ativar / })).toBeInTheDocument()
+        expect(screen.queryByRole("button", { name: /^Ativar / })).not.toBeInTheDocument()
+        expect(screen.queryByRole("button", { name: /^Editar / })).not.toBeInTheDocument()
+        expect(screen.queryByRole("button", { name: /^Desativar / })).not.toBeInTheDocument()
     })
 
     it("a primeira categoria não tem ↑ e a última não tem ↓", () => {
@@ -95,13 +95,9 @@ describe("ContentCategoryList", () => {
         const handlers = renderList([item()])
 
         await user.click(screen.getByRole("button", { name: "Ver as perguntas de Contratos" }))
-        await user.click(screen.getByRole("button", { name: /^Editar categoria / }))
-        await user.click(screen.getByRole("button", { name: /^Desativar / }))
         await user.click(screen.getByRole("button", { name: /^Mover .+ para baixo$/ }))
 
         expect(handlers.onSelect).toHaveBeenCalledWith("1")
-        expect(handlers.onEdit).toHaveBeenCalledWith("1")
-        expect(handlers.onToggle).toHaveBeenCalledWith("1")
         expect(handlers.onMove).toHaveBeenCalledWith("1", "down")
     })
 
@@ -128,8 +124,6 @@ describe("ContentCategoryList", () => {
     it("os botões de cada linha levam o título da categoria no nome", () => {
         renderList([item({ key: "1" }), item({ key: "2", position: 2, shortTitle: "Compras" })])
 
-        expect(screen.getByRole("button", { name: "Editar categoria Compras" })).toBeVisible()
-        expect(screen.getByRole("button", { name: "Desativar Contratos" })).toBeVisible()
         expect(screen.getByRole("button", { name: "Mover Compras para cima" })).toBeVisible()
         expect(screen.getByRole("button", { name: "Mover Contratos para baixo" })).toBeVisible()
     })
@@ -146,5 +140,19 @@ describe("ContentCategoryList", () => {
 
         expect(screen.getByText("Alteração não salva")).toBeInTheDocument()
         expect(screen.queryByText("Não salva")).not.toBeInTheDocument()
+    })
+
+    it("categoria oculta mostra o estado com a dica do ícone de informação", async () => {
+        const user = userEvent.setup()
+        renderList([item({ state: "hidden" })])
+
+        expect(screen.getByText("Ativa · oculta no chatbot")).toBeInTheDocument()
+        expect(screen.queryByText("Ativa")).not.toBeInTheDocument()
+
+        await user.hover(screen.getByRole("button", { name: "Mais informações" }))
+
+        expect(screen.getByRole("tooltip")).toHaveTextContent(
+            "Categorias só aparecem ao cidadão quando têm ao menos uma pergunta ativa"
+        )
     })
 })

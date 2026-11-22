@@ -89,18 +89,6 @@
     accent-color: var(--color-primary);
 }
 
-.checkbox[aria-disabled="true"] {
-    opacity: 0.4;
-    cursor: not-allowed;
-}
-
-.checkbox[aria-disabled="true"]:focus-visible,
-.removeRange[aria-disabled="true"]:focus-visible {
-    opacity: 1;
-    outline: 2px solid var(--focus-ring);
-    outline-offset: 2px;
-}
-
 .dayBody {
     display: flex;
     flex-direction: column;
@@ -163,11 +151,6 @@
     cursor: pointer;
 }
 
-.removeRange[aria-disabled="true"] {
-    opacity: 0.4;
-    cursor: not-allowed;
-}
-
 .rangeError {
     max-width: 280px;
     color: var(--danger);
@@ -187,12 +170,6 @@
     font-weight: 600;
     white-space: nowrap;
     cursor: pointer;
-}
-
-.lock {
-    font-size: 12px;
-    line-height: 1.4;
-    color: var(--warn-text);
 }
 
 .errors {
@@ -403,6 +380,21 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     align-items: end;
+    gap: 8px;
+}
+
+.fullDayToggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: fit-content;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.periodFields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 8px;
 }
 

@@ -47,7 +47,7 @@ describe("ContentCategoryForm", () => {
 
         expect(screen.queryByText("Informe o título curto.")).not.toBeInTheDocument()
 
-        await user.click(screen.getByRole("button", { name: "Confirmar" }))
+        await user.click(screen.getByRole("button", { name: "Salvar categoria" }))
 
         expect(screen.getByText("Informe o título curto.")).toBeInTheDocument()
         expect(screen.getByLabelText(/Título curto/)).toHaveAttribute("aria-invalid", "true")
@@ -58,7 +58,7 @@ describe("ContentCategoryForm", () => {
         const user = userEvent.setup()
         renderForm({ validate: () => [{ field: "title", key: "duplicateCategoryName" }] })
 
-        await user.click(screen.getByRole("button", { name: "Confirmar" }))
+        await user.click(screen.getByRole("button", { name: "Salvar categoria" }))
 
         expect(screen.getByText("Já existe uma categoria com este nome")).toBeInTheDocument()
     })
@@ -70,7 +70,7 @@ describe("ContentCategoryForm", () => {
         await user.type(screen.getByLabelText(/Título curto/), "Contratos")
         await user.type(screen.getByLabelText(/Nome da categoria/), "Contratos e serviços")
         await user.type(screen.getByLabelText(/Descrição/), "Resumo")
-        await user.click(screen.getByRole("button", { name: "Confirmar" }))
+        await user.click(screen.getByRole("button", { name: "Salvar categoria" }))
 
         expect(onConfirm).toHaveBeenCalledWith({
             shortTitle: "Contratos",

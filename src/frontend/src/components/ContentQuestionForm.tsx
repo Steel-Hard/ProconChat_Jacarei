@@ -19,7 +19,9 @@ function ContentQuestionForm({
     onCancel,
     onPreview,
     onChange,
-    previewSlot
+    previewSlot,
+    crumb,
+    meta
 }: ContentQuestionFormProps) {
     const { t } = useTranslation("content")
     const [fields, setFields] = useState<ContentQuestionFormFields>(initial)
@@ -77,13 +79,17 @@ function ContentQuestionForm({
 
     return (
         <ContentFormDialog
-            wide
+            drawer
+            crumb={crumb}
+            meta={meta}
             title={mode === "new" ? t("questionForm.titleNew") : t("questionForm.titleEdit")}
             summary={errors.length > 0 ? t("saveInvalid") : null}
             confirmLabel={t("questionForm.confirm")}
             cancelLabel={t("questionForm.cancel")}
             previewLabel={t("questionForm.preview")}
             dirty={JSON.stringify(fields) !== JSON.stringify(initial)}
+            layer={previewSlot}
+            layerOpen={Boolean(previewSlot)}
             onPreview={onPreview}
             onConfirm={confirm}
             onCancel={onCancel}
@@ -91,24 +97,25 @@ function ContentQuestionForm({
             {mode === "edit" ? (
                 <p className={css.guidance}>{t("questionForm.editGuidance")}</p>
             ) : null}
+            <div className={css.fieldGroup}>
+                <p className={css.fieldGroupHelp}>{t("questionForm.titlesHelp")}</p>
+                <ContentTextField
+                    label={t("questionForm.shortTitle")}
+                    value={fields.shortTitle}
+                    max={CONTENT_LIMITS.shortTitle}
+                    error={errorOf("shortTitle")}
+                    onChange={(value) => patch({ shortTitle: value })}
+                />
+                <ContentTextField
+                    label={t("questionForm.shortDescription")}
+                    value={fields.shortDescription}
+                    max={CONTENT_LIMITS.shortDescription}
+                    optional
+                    error={errorOf("shortDescription")}
+                    onChange={(value) => patch({ shortDescription: value })}
+                />
+            </div>
             <div className={css.section}>
-                <div className={css.twoColumns}>
-                    <ContentTextField
-                        label={t("questionForm.shortTitle")}
-                        value={fields.shortTitle}
-                        max={CONTENT_LIMITS.shortTitle}
-                        error={errorOf("shortTitle")}
-                        onChange={(value) => patch({ shortTitle: value })}
-                    />
-                    <ContentTextField
-                        label={t("questionForm.shortDescription")}
-                        value={fields.shortDescription}
-                        max={CONTENT_LIMITS.shortDescription}
-                        optional
-                        error={errorOf("shortDescription")}
-                        onChange={(value) => patch({ shortDescription: value })}
-                    />
-                </div>
                 <ContentTextField
                     label={t("questionForm.question")}
                     value={fields.question}
@@ -152,6 +159,7 @@ function ContentQuestionForm({
             <div className={css.section}>
                 <div className={css.checks}>
                     <ContentCheckField
+                        card
                         label={t("questionForm.requiresInPerson")}
                         hint={t("questionForm.requiresInPersonHint")}
                         checked={fields.requiresInPerson}
@@ -170,6 +178,7 @@ function ContentQuestionForm({
                         />
                     ) : null}
                     <ContentCheckField
+                        card
                         label={t("questionForm.outOfScope")}
                         hint={t("questionForm.outOfScopeHint")}
                         checked={fields.outOfScope}
@@ -177,6 +186,7 @@ function ContentQuestionForm({
                         onChange={toggleOutOfScope}
                     />
                     <ContentCheckField
+                        card
                         label={t("questionForm.llmAllowed")}
                         hint={t("questionForm.llmAllowedHint")}
                         checked={fields.llmAllowed}
@@ -184,6 +194,7 @@ function ContentQuestionForm({
                         onChange={(checked) => patch({ llmAllowed: checked })}
                     />
                     <ContentCheckField
+                        card
                         label={t("questionForm.active")}
                         checked={fields.active}
                         onChange={(checked) => patch({ active: checked })}
@@ -195,7 +206,6 @@ function ContentQuestionForm({
                     ))}
                 </div>
             </div>
-            {previewSlot}
         </ContentFormDialog>
     )
 }

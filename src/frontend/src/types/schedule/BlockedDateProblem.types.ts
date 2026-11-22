@@ -1,8 +1,10 @@
 type BlockedDateProblem =
     | { code: "dateRequired" }
     | { code: "dateAlreadyBlocked" }
-    | { code: "dateHasAppointments"; count: number }
     | { code: "descriptionRequired" }
     | { code: "descriptionTooLong" }
+    | { code: "periodRequired" }
+    | { code: "periodInvalid" }
+    | { code: "periodOverlap" }
 
 export default BlockedDateProblem

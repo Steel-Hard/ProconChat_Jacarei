@@ -19,12 +19,17 @@ const FOCUSABLE_SELECTOR =
 type ContentFormDialogProps = {
     title: string
     intro?: string
-    wide?: boolean
+    drawer?: boolean
+    narrow?: boolean
+    crumb?: string | null
+    meta?: string | null
     confirmLabel: string
     cancelLabel: string
     previewLabel?: string
     summary?: string | null
     dirty?: boolean
+    layer?: ReactNode
+    layerOpen?: boolean
     children: ReactNode
     onConfirm: () => void
     onCancel: () => void
@@ -34,12 +39,17 @@ type ContentFormDialogProps = {
 function ContentFormDialog({
     title,
     intro,
-    wide = false,
+    drawer = false,
+    narrow = false,
+    crumb = null,
+    meta = null,
     confirmLabel,
     cancelLabel,
     previewLabel,
     summary = null,
     dirty = false,
+    layer = null,
+    layerOpen = false,
     children,
     onConfirm,
     onCancel,
@@ -127,7 +137,7 @@ function ContentFormDialog({
         }
 
         function handleKeyDown(event: KeyboardEvent) {
-            if (confirmingDiscard) {
+            if (confirmingDiscard || layerOpen) {
                 return
             }
 
@@ -150,7 +160,7 @@ function ContentFormDialog({
         return () => {
             document.removeEventListener("keydown", handleKeyDown)
         }
-    }, [onCancel, dirty, confirmingDiscard])
+    }, [onCancel, dirty, confirmingDiscard, layerOpen])
 
     function requestClose() {
         if (dirty) {
@@ -166,42 +176,98 @@ function ContentFormDialog({
         setSubmitAttempt((current) => current + 1)
     }
 
+    const summaryNode = summary ? (
+        <p ref={summaryRef} tabIndex={-1} role="alert" className={css.summary}>
+            {summary}
+        </p>
+    ) : null
+
+    const previewButton =
+        onPreview && previewLabel ? (
+            <button type="button" className={css.previewAction} onClick={onPreview}>
+                {previewLabel}
+            </button>
+        ) : null
+
+    const cancelButton = (
+        <button type="button" className={css.cancel} onClick={requestClose}>
+            {cancelLabel}
+        </button>
+    )
+
+    const confirmButton = (
+        <button type="submit" className={css.confirm}>
+            {confirmLabel}
+        </button>
+    )
+
     return (
-        <div ref={overlayRef} className={css.overlay} role="presentation">
+        <div
+            ref={overlayRef}
+            className={drawer ? css.drawerOverlay : css.overlay}
+            role="presentation"
+        >
             <dialog
                 ref={dialogRef}
                 open
-                className={wide ? `${css.dialog} ${css.dialogWide}` : css.dialog}
+                className={
+                    drawer ? css.drawer : narrow ? `${css.dialog} ${css.dialogNarrow}` : css.dialog
+                }
                 aria-modal="true"
                 aria-labelledby={titleId}
-                inert={confirmingDiscard || undefined}
+                inert={confirmingDiscard || layerOpen || undefined}
             >
-                <h2 id={titleId} className={css.title}>
-                    {title}
-                </h2>
-                {intro ? <p className={css.intro}>{intro}</p> : null}
-                <form noValidate className={css.form} onSubmit={handleSubmit}>
-                    {summary ? (
-                        <p ref={summaryRef} tabIndex={-1} role="alert" className={css.summary}>
-                            {summary}
-                        </p>
-                    ) : null}
-                    {children}
-                    <div className={css.actions}>
-                        {onPreview && previewLabel ? (
-                            <button type="button" className={css.previewAction} onClick={onPreview}>
-                                {previewLabel}
+                {drawer ? (
+                    <>
+                        <div className={css.drawerHeader}>
+                            <div className={css.drawerHeaderText}>
+                                {crumb ? <p className={css.drawerCrumb}>{crumb}</p> : null}
+                                <h2 id={titleId} className={css.drawerTitle}>
+                                    {title}
+                                </h2>
+                                {meta ? <p className={css.drawerMeta}>{meta}</p> : null}
+                            </div>
+                            <button
+                                type="button"
+                                className={css.drawerClose}
+                                aria-label={t("questionForm.close")}
+                                onClick={requestClose}
+                            >
+                                {t("icons.remove")}
                             </button>
-                        ) : null}
-                        <button type="button" className={css.cancel} onClick={requestClose}>
-                            {cancelLabel}
-                        </button>
-                        <button type="submit" className={css.confirm}>
-                            {confirmLabel}
-                        </button>
-                    </div>
-                </form>
+                        </div>
+                        <form noValidate className={css.drawerForm} onSubmit={handleSubmit}>
+                            <div className={css.drawerBody}>
+                                {intro ? <p className={css.intro}>{intro}</p> : null}
+                                {summaryNode}
+                                {children}
+                            </div>
+                            <div className={css.drawerFooter}>
+                                {cancelButton}
+                                {previewButton}
+                                {confirmButton}
+                            </div>
+                        </form>
+                    </>
+                ) : (
+                    <>
+                        <h2 id={titleId} className={css.title}>
+                            {title}
+                        </h2>
+                        {intro ? <p className={css.intro}>{intro}</p> : null}
+                        <form noValidate className={css.form} onSubmit={handleSubmit}>
+                            {summaryNode}
+                            {children}
+                            <div className={css.actions}>
+                                {previewButton}
+                                {cancelButton}
+                                {confirmButton}
+                            </div>
+                        </form>
+                    </>
+                )}
             </dialog>
+            {layer}
             <ConfirmDialog
                 open={confirmingDiscard}
                 tone="danger"

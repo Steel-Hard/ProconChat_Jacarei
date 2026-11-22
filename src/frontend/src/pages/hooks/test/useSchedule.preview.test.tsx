@@ -85,6 +85,28 @@ describe("useSchedule: prévia", () => {
         expect((put.body as { seatsPerSlot: number }).seatsPerSlot).toBe(3)
     })
 
+    it("manda o bloqueio de período com início e fim no rascunho da prévia", async () => {
+        const { result, callsTo } = await ready()
+
+        act(() => result.current.actions.setNewBlockDate("2026-11-20"))
+        act(() => result.current.actions.setNewBlockDescription("Reunião"))
+        act(() => result.current.actions.setNewBlockFullDay(false))
+        act(() => result.current.actions.setNewBlockStartTime("08:30"))
+        act(() => result.current.actions.setNewBlockEndTime("10:00"))
+        act(() => result.current.actions.addBlock())
+        await settle(400)
+        await waitFor(() => expect(callsTo("POST", "/api/v1/schedule/preview")).toHaveLength(1))
+
+        const [post] = callsTo("POST", "/api/v1/schedule/preview")
+        const { blockedDates } = (post.body as { config: { blockedDates: unknown[] } }).config
+        expect(blockedDates).toContainEqual({
+            date: "2026-11-20",
+            startTime: "08:30",
+            endTime: "10:00",
+            description: "Reunião"
+        })
+    })
+
     it("não manda o rascunho aos 399 ms e manda aos 400 ms com o relógio parado", async () => {
         vi.useRealTimers()
         const { result, callsTo } = await renderScheduleHook()
@@ -171,7 +193,7 @@ describe("useSchedule: prévia", () => {
         expect(result.current.preview.stale).toBe(true)
     })
 
-    it("trava o salvar com os conflitos da prévia atual e libera quando somem", async () => {
+    it("mostra os conflitos da prévia atual sem travar o salvar e limpa quando somem", async () => {
         const { result } = await ready({
             handlers: {
                 "POST /api/v1/schedule/preview": ({ body }) => ({
@@ -192,12 +214,11 @@ describe("useSchedule: prévia", () => {
         act(() => result.current.actions.setText("seatsPerSlot", "1"))
         await settle()
         await waitFor(() => expect(result.current.conflictRows).toEqual([CONFLICT]))
-        const blocked = [result.current.saveDisabled, result.current.saveHint]
+        expect(result.current.saveDisabled).toBe(false)
         act(() => result.current.actions.setText("seatsPerSlot", "3"))
         await settle()
         await waitFor(() => expect(result.current.conflictRows).toBeNull())
 
-        expect(blocked).toEqual([true, "A alteração afeta agendamentos. Veja a lista abaixo."])
         expect(result.current.saveDisabled).toBe(false)
         expect(result.current.days.find((day) => day.weekday === 3)?.messages).toEqual([])
     })

@@ -15,7 +15,6 @@ function view(overrides: Partial<ScheduleVersionsView> = {}): ScheduleVersionsVi
         dateError: null,
         versions: [{ effectiveFrom: "2026-11-10", config: buildScheduleConfig() }],
         versionsFailed: false,
-        cancelConflicts: null,
         cancelTarget: null,
         cancelling: false,
         switchPending: false,
@@ -82,5 +81,34 @@ describe("ScheduleVersions", () => {
             screen.getByText("Editando a configuração a partir de 10/11/2026")
         ).toBeInTheDocument()
         expect(handlers.returnCurrent).toHaveBeenCalledOnce()
+    })
+
+    it("leva o foco para a seção quando a mudança que o tinha é removida da lista", async () => {
+        const user = userEvent.setup()
+        const two = [
+            { effectiveFrom: "2026-11-10", config: buildScheduleConfig() },
+            { effectiveFrom: "2026-12-01", config: buildScheduleConfig() }
+        ]
+        const { rerender } = render(
+            <ScheduleVersions view={view({ versions: two })} actions={actions()} />
+        )
+        await user.click(screen.getByRole("button", { name: "Cancelar a mudança de 10/11/2026" }))
+        expect(
+            screen.getByRole("button", { name: "Cancelar a mudança de 10/11/2026" })
+        ).toHaveFocus()
+
+        rerender(<ScheduleVersions view={view({ versions: [two[1]] })} actions={actions()} />)
+
+        expect(screen.getByRole("region", { name: "Mudanças agendadas" })).toHaveFocus()
+    })
+
+    it("não mexe no foco quando a lista não perde nenhuma mudança", async () => {
+        const user = userEvent.setup()
+        const { rerender } = render(<ScheduleVersions view={view()} actions={actions()} />)
+        await user.click(screen.getByRole("button", { name: "Editar a mudança de 10/11/2026" }))
+
+        rerender(<ScheduleVersions view={view({ dateError: "x" })} actions={actions()} />)
+
+        expect(screen.getByRole("button", { name: "Editar a mudança de 10/11/2026" })).toHaveFocus()
     })
 })

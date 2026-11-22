@@ -9,6 +9,11 @@
     gap: 10px;
 }
 
+.tags [data-tone] {
+    padding: 4px 11px;
+    font-size: 12.5px;
+}
+
 .protocol {
     padding: 4px 8px;
     border-radius: 6px;

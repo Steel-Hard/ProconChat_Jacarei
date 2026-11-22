@@ -1,59 +1,12 @@
-.preview {
-    --bot-bubble-bg: #202c33;
-    --bot-bubble-text: #e9edef;
-    --bot-bubble-muted: #8696a0;
-    --bot-button-bg: #202c33;
-    --bot-button-text: #53bdeb;
-    --bot-chat-bg: #0b141a;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    min-width: 0;
-}
-
-.header {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
-}
-
-.title {
-    margin: 0;
-    scroll-margin-top: 16px;
-    scroll-margin-bottom: 96px;
-    font: 700 16px var(--font-heading);
-    color: var(--text-body);
-}
-
-.subtitle {
-    margin: 4px 0 0;
-    font-size: 13px;
-    line-height: 1.5;
-    color: var(--text-muted);
-    text-wrap: pretty;
-}
-
-.close {
-    padding: 7px 12px;
-    border: 1px solid var(--border-input);
-    border-radius: 8px;
-    background: var(--bg-surface);
-    color: var(--text-strong);
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.chat {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding: 16px 12px;
-    border-radius: 12px;
-    background: var(--bot-chat-bg);
-    transition: opacity 0.15s ease;
+.phone {
+    --bot-bubble-bg: var(--bg-surface);
+    --bot-bubble-text: var(--chat-text);
+    --bot-bubble-muted: #667781;
+    --bot-bubble-divider: var(--chat-divider);
+    --bot-button-bg: var(--bg-surface);
+    --bot-button-text: #027eb5;
+    --bot-chat-bg: var(--chat-bg) url("/images/whatsapp-chat-background.webp") center / auto
+        no-repeat;
 }
 
 .chatUpdating {
@@ -158,15 +111,15 @@
     display: flex;
     max-width: 92%;
     flex-direction: column;
-    gap: 2px;
+    gap: 0;
     align-self: flex-start;
-    padding: 7px 10px 5px;
-    border-radius: 2px 9px 9px 9px;
+    padding: 8px 10px 6px;
+    border-radius: 2px 10px 10px 10px;
     background: var(--bot-bubble-bg);
-    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
     color: var(--bot-bubble-text);
     font-size: 13.5px;
-    line-height: 1.45;
+    line-height: 1.5;
 }
 
 .bubbleText {
@@ -174,8 +127,8 @@
     overflow-wrap: break-word;
 }
 
-.bubbleText:empty::before {
-    content: "\00a0";
+.bubbleText:empty {
+    height: 0.7em;
 }
 
 .bubbleText strong {
@@ -188,27 +141,25 @@
     justify-content: space-between;
     align-items: flex-end;
     gap: 2px 12px;
-    margin-top: 2px;
+    margin-top: 6px;
 }
 
 .aiLabel {
-    font-size: 11.5px;
-    font-style: italic;
-    line-height: 1.3;
-    color: var(--bot-bubble-muted);
-}
-
-.time {
-    margin-left: auto;
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: var(--bg-accent-soft);
+    color: var(--seal-neutral-text);
     font-size: 11px;
-    line-height: 1;
-    color: var(--bot-bubble-muted);
+    font-weight: 700;
+    line-height: 1.5;
+    white-space: nowrap;
 }
 
 .buttons {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 6px;
     max-width: 92%;
     align-self: flex-start;
     width: min(100%, 280px);
@@ -217,12 +168,12 @@
 .button {
     display: block;
     padding: 9px 10px;
-    border-radius: 8px;
+    border-radius: 10px;
     background: var(--bot-button-bg);
-    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
     color: var(--bot-button-text);
     font-size: 13.5px;
-    font-weight: 500;
+    font-weight: 600;
     text-align: center;
     overflow-wrap: break-word;
 }
@@ -230,19 +181,21 @@
 .list {
     display: flex;
     flex-direction: column;
-    gap: 2px;
     align-self: flex-start;
     width: min(100%, 300px);
     max-width: 92%;
     margin: 0;
     padding: 0;
+    overflow: hidden;
+    border-radius: 2px 10px 10px 10px;
+    background: var(--bot-bubble-bg);
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
     list-style: none;
 }
 
 .listHeader {
-    padding: 8px 10px;
-    border-radius: 8px 8px 2px 2px;
-    background: var(--bot-bubble-bg);
+    margin: 0;
+    padding: 9px 11px 6px;
     color: var(--bot-bubble-text);
     font-size: 13.5px;
     line-height: 1.45;
@@ -256,16 +209,16 @@
     display: flex;
     flex-direction: column;
     gap: 1px;
-    padding: 8px 10px;
-    background: var(--bot-bubble-bg);
+    padding: 7px 11px;
+    border-top: 1px solid var(--bot-bubble-divider);
     color: var(--bot-bubble-text);
-    font-size: 13px;
+    font-size: 13.5px;
     line-height: 1.4;
     overflow-wrap: anywhere;
 }
 
 .listItemCurrent {
-    background: #2a3942;
+    background: var(--bg-accent-soft);
 }
 
 .listItemTitle {
@@ -278,21 +231,17 @@
 }
 
 .listNav {
-    padding: 8px 10px;
-    background: var(--bot-bubble-bg);
+    padding: 7px 11px;
+    border-top: 1px solid var(--bot-bubble-divider);
     color: var(--bot-button-text);
-    font-size: 13px;
+    font-size: 13.5px;
+    font-weight: 600;
     text-align: center;
 }
 
 .listButton {
-    padding: 9px 10px;
-    border-radius: 2px 2px 8px 8px;
-    background: var(--bot-button-bg);
-    color: var(--bot-button-text);
-    font-size: 13.5px;
-    font-weight: 500;
-    text-align: center;
+    color: inherit;
+    font: inherit;
 }
 
 @media (max-width: 640px) {
@@ -302,8 +251,121 @@
         max-width: 100%;
     }
 
-    .chat,
     .alternativeChat {
         padding: 12px 8px;
+    }
+}
+
+.modalOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    overflow-y: auto;
+    background: var(--overlay);
+}
+
+.phone {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 400px;
+    height: min(720px, calc(100vh - 40px));
+    height: min(720px, calc(100dvh - 40px));
+    overflow: hidden;
+    border-radius: 14px;
+    background: var(--bg-surface);
+    color: var(--text-body);
+}
+
+.phoneHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.phoneTitle {
+    margin: 0;
+    font: 700 15px var(--font-heading);
+}
+
+.phoneSubtitle {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--text-muted);
+}
+
+.phoneClose {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    color: var(--text-muted);
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.phoneClose:hover {
+    background: var(--seal-neutral-bg);
+}
+
+.phoneClose:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 1px;
+}
+
+.phoneBody {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 0;
+    padding: 14px 12px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: var(--bot-chat-bg);
+}
+
+.phoneFooter {
+    flex-shrink: 0;
+    margin: 0;
+    padding: 10px 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--text-muted);
+}
+
+.buttonsGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    width: auto;
+    max-width: 88%;
+}
+
+@media (max-width: 640px) {
+    .modalOverlay {
+        padding: 0;
+        place-items: stretch;
+    }
+
+    .phone {
+        max-width: none;
+        height: 100vh;
+        height: 100dvh;
+        border-radius: 0;
     }
 }

@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next"
 import LastChangeNote from "@/components/LastChangeNote"
 import ScheduleBlockedDates from "@/components/ScheduleBlockedDates"
 import ScheduleConflictList from "@/components/ScheduleConflictList"
+import ScheduleConflictModal from "@/components/ScheduleConflictModal"
 import ScheduleDurationSeats from "@/components/ScheduleDurationSeats"
 import SchedulePreview from "@/components/SchedulePreview"
 import ScheduleReminderFields from "@/components/ScheduleReminderFields"
@@ -57,7 +58,10 @@ function SchedulePage() {
                     <p className={css.warning}>{t("bookedDaysFailed")}</p>
                 ) : null}
                 {draft && page.conflictRows ? (
-                    <ScheduleConflictList conflicts={page.conflictRows} />
+                    <ScheduleConflictList
+                        conflicts={page.conflictRows}
+                        canCancelAppointments={page.conflictModal.canManageAppointments}
+                    />
                 ) : null}
                 {draft ? (
                     <div className={css.columns}>
@@ -114,9 +118,16 @@ function SchedulePage() {
                                 blocks={page.blocks}
                                 newDate={page.newBlock.date}
                                 newDescription={page.newBlock.description}
+                                newFullDay={page.newBlock.fullDay}
+                                newStartTime={page.newBlock.startTime}
+                                newEndTime={page.newBlock.endTime}
                                 newError={page.newBlockError}
+                                newPeriodInvalid={page.newBlockPeriodInvalid}
                                 onChangeNewDate={actions.setNewBlockDate}
                                 onChangeNewDescription={actions.setNewBlockDescription}
+                                onChangeNewFullDay={actions.setNewBlockFullDay}
+                                onChangeNewStartTime={actions.setNewBlockStartTime}
+                                onChangeNewEndTime={actions.setNewBlockEndTime}
                                 onAdd={actions.addBlock}
                                 onRemove={actions.removeBlock}
                             />
@@ -135,6 +146,7 @@ function SchedulePage() {
                         />
                     </div>
                 ) : null}
+                <ScheduleConflictModal {...page.conflictModal} />
             </section>
         </>
     )

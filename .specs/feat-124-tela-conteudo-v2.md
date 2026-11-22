@@ -18,7 +18,7 @@ Por decisão do usuário, a tela segue o padrão das telas de configuração (Ho
 |---|---|---|
 | RN-01 | Só acessa a tela quem tem a permissão "Gerenciar conteúdo do chatbot" ou a conta Admin. Sem permissão, o item não aparece no menu. A validação final é sempre no servidor. | product-owner; regras gerais §2 |
 | RN-02 | Nada é excluído, só ativado ou desativado. A ordem das listas na tela é a ordem que o cidadão vê no WhatsApp. | product-owner; regra de Conteúdo |
-| RN-03 | O topo da tela mostra um bloco fixo, que não pode ser editado, com o aviso (RNF04): "Esta é uma orientação automatizada de caráter informativo. Ela não é vinculante e não substitui o atendimento jurídico ou administrativo formal do PROCON Jacareí." | product-owner; regras gerais §7 |
+| RN-03 | O topo da tela mostra um bloco fixo, que não pode ser editado, com o aviso (RNF04): "Esta é uma orientação automatizada de caráter informativo. Ela não é vinculante e não substitui o atendimento jurídico ou administrativo formal do PROCON Jacareí." A forma de apresentar o bloco está em RN-34. | product-owner; regras gerais §7 |
 | RN-04 | Toda alteração (criar, editar, ativar/desativar, reordenar) fica pendente até "Salvar alterações". Enquanto houver pendências aparece "N alterações não salvas", com a lista do que mudou ao passar o mouse ou tocar. "Descartar" desfaz todas as pendências. A regra geral do painel passa a incluir Conteúdo entre as telas de configuração. Sair da tela com pendências não gera aviso, igual a Horários e Documentos. | usuário (decisão confirmada) |
 | RN-05 | O contador compara com o que está gravado, e não conta ações: há uma entrada por item novo (criado e depois editado continua sendo uma só), uma por item existente com algum campo diferente, uma por item cujo estado mudou e uma por lista reordenada (reordenar a mesma lista várias vezes conta uma). Uma mudança que volta ao valor gravado deixa de contar, e voltar à ordem gravada deixa de contar. | product-owner |
 | RN-06 | O servidor grava cada item separadamente, então o Salvar envia as alterações uma a uma. Se uma falhar, o envio para ali, o que já foi gravado fica gravado e deixa de contar como pendente, a tela recarrega, o que faltou continua pendente e um novo Salvar nunca cria de novo um item que já foi criado. | product-owner |
@@ -27,7 +27,7 @@ Por decisão do usuário, a tela segue o padrão das telas de configuração (Ho
 | RN-09 | A lista de categorias mostra a posição, o título curto (em negrito), o nome completo, quantas perguntas a categoria tem e quantas estão ativas, e o estado: "Ativa", "Inativa" ou "Ativa · oculta no chatbot". O último estado aparece quando a categoria está ativa e não tem nenhuma pergunta ativa. | product-owner |
 | RN-10 | Uma categoria nova é criada ativa, no fim da lista. | product-owner |
 | RN-11 | Formulário da categoria: título curto obrigatório, até 24 caracteres, com contador. Nome completo obrigatório, até 150 caracteres, único sem diferenciar acentos nem maiúsculas. Nome repetido mostra "Já existe uma categoria com este nome". Descrição opcional, até 500 caracteres. Título curto e nome não aceitam quebra de linha nem tabulação. | product-owner; limites e caracteres da API |
-| RN-12 | Ações na lista de categorias: reordenar (↑↓), "Nova categoria", "Editar categoria", "Ativar/Desativar". | product-owner |
+| RN-12 | Ações de categoria: reordenar (↑↓) em cada linha da lista e "Nova categoria" no topo da lista. "Editar categoria" e "Desativar categoria" (que vira "Ativar categoria" quando ela está inativa) ficam só no cabeçalho da categoria selecionada, ao lado de "Nova pergunta", e não aparecem mais em cada linha. Alterada pelo alinhamento ao protótipo (RN-30); antes, "Editar categoria" e "Ativar/Desativar" ficavam em cada linha da lista. | product-owner; usuário (posição das ações, PR #172) |
 | RN-13 | A lista de perguntas da categoria selecionada mostra a posição, o título curto, a descrição curta, o texto da pergunta, o estado (Ativa/Inativa), os selos "Exige atendimento presencial" ou "Fora do escopo do PROCON", a base legal, a quantidade de documentos úteis e "Última alteração por [nome] em [data]", com data no formato dd/mm/aaaa. Itens sem autor (carga inicial) mostram "Carga inicial do sistema", sem data, porque a API não informa a data de criação. | product-owner; regras gerais §9 |
 | RN-14 | O topo da tela mostra a última alteração do item alterado mais recentemente pelo painel, entre categorias e perguntas: "Última alteração por [nome] em [data]". Se nenhum item tiver autor, mostra "Ainda não alterado pelo painel". | product-owner |
 | RN-15 | Uma pergunta nova entra no fim da lista da categoria e com "Permitir complemento por IA" ligada. Ela vem ativa por padrão: o campo "Pergunta ativa no chatbot" já aparece marcado, e a equipe pode desmarcá-lo antes de salvar. Desmarcada, a pergunta é criada inativa, já na própria criação. | product-owner; usuário (campo desmarcável) |
@@ -45,6 +45,12 @@ Por decisão do usuário, a tela segue o padrão das telas de configuração (Ho
 | RN-27 | Composição da prévia: (1) a lista da categoria, com a pergunta em negrito e a navegação de página quando houver; (2) com IA ligada, o balão único com IA, como o bot envia; (3) com IA desligada, o balão da resposta oficial com o aviso no fim; (4) depois dele, o balão do passo seguinte com os botões. Com IA ligada, a prévia também mostra a alternativa "Se a IA estiver indisponível", com os balões (3) e (4). O botão de aceitar a oferta de agendamento é "Agendar presencial". Fora do escopo: ver D-U-05. | product-owner; usuário (botão); decisão 009 |
 | RN-28 | Pergunta numa categoria nova ainda não salva: a lista (1) sai do rascunho, com o aviso "Esta categoria ainda não foi salva. Salve para que o cidadão a veja.". Como a prévia da API exige categoria gravada, os balões (2) a (4) não aparecem e a prévia mostra "A prévia completa fica disponível depois de salvar". | product-owner |
 | RN-29 | Nas listas de categorias e de perguntas, cada item com alteração pendente mostra um selo, e só um: "Não salva" para item novo, ainda não gravado (inclusive se for editado antes de salvar); "Alteração não salva" para item já gravado que foi editado, ativado/desativado ou reordenado. O selo some quando a alteração é desfeita e o item volta ao que está gravado. | usuário |
+| RN-30 | Alinhamento ao protótipo do painel: a tela de Conteúdo segue o protótipo em tudo o que não é regra de negócio. Categorias e perguntas ficam em duas caixas lado a lado, como no protótipo, e dentro da caixa de perguntas filetes horizontais separam as regiões. A lista de categorias é compacta: setas ↑↓ empilhadas, selo de estado à direita e, no estado "Ativa · oculta no chatbot", um ícone "i" com a dica "Categorias só aparecem ao cidadão quando têm ao menos uma pergunta ativa". As linhas de pergunta seguem o protótipo, com as ações "Desativar" (ou "Ativar") e "Editar", nessa ordem. O selo "Exige atendimento presencial" tem tom lilás, como no protótipo (fundo #E6E2F6, texto #3A3072), e o selo "Fora do escopo do PROCON", tom âmbar. Nenhuma regra de negócio muda por causa do alinhamento. | usuário (PR #172); protótipo do painel |
+| RN-31 | A busca fica dentro do painel de perguntas, logo abaixo do cabeçalho da categoria, com o botão "Limpar" enquanto houver termo. O comportamento da busca não muda (RN-23). | usuário (PR #172) |
+| RN-32 | O formulário da pergunta abre num painel lateral, com rodapé fixo, nesta ordem: "Cancelar", "Ver como o cidadão recebe" e "Salvar pergunta". O formulário da categoria abre num diálogo central estreito, como no protótipo, com "Cancelar" e "Salvar categoria". Nos dois continuam valendo o foco dentro do formulário, o Esc, a confirmação de descarte (CA-70), o fundo sem foco nem clique e a rolagem do fundo travada. | usuário (PR #172) |
+| RN-33 | A prévia "Ver como o cidadão recebe" abre numa janela própria em formato de celular, por cima do painel do formulário, com os botões das mensagens em duas colunas. Ao abrir, o foco vai para a janela. O Esc ou um clique fora da janela fecham só a prévia (o painel do formulário continua aberto), e o foco volta ao botão "Ver como o cidadão recebe". Os textos continuam vindo da API (RN-26). | usuário (PR #172) |
+| RN-34 | O bloco fixo do aviso mostra o rótulo "Aviso obrigatório, ao final de todas as respostas:" antes do texto do aviso e a nota "Este aviso não é configurável." depois dele, sem selo "FIXO". Entre o rótulo e a nota, o único conteúdo é o texto oficial do aviso, exatamente igual ao de RN-03. | usuário (PR #172) |
+| RN-35 | Não mudam com o alinhamento: "Salvar alterações", "Descartar" e o contador continuam no topo da tela, sem barra fixa; "Última alteração" continua no topo; os textos da prévia continuam vindo da API; a prévia continua sem balão verde e sem horário nos balões. | usuário (PR #172) |
 
 ## Critérios de aceite
 
@@ -59,7 +65,7 @@ Acesso e menu
 
 Bloco fixo e última alteração
 
-- CA-07 QUANDO a tela abre ENTÃO o topo DEVE mostrar o bloco fixo com o texto do aviso exatamente igual ao de RN-03, sem nenhum botão, campo ou ação de edição. (RN-03)
+- CA-07 QUANDO a tela abre ENTÃO o topo DEVE mostrar o bloco fixo com o texto do aviso exatamente igual ao de RN-03, sem nenhum botão, campo ou ação de edição. A apresentação do bloco (rótulo, nota e sem selo "FIXO") foi complementada pelo alinhamento ao protótipo em CA-84. (RN-03)
 - CA-08 QUANDO há itens alterados pelo painel ENTÃO o topo DEVE mostrar "Última alteração por [nome] em [data]" do item com a alteração mais recente entre categorias e perguntas. QUANDO nenhum item tem autor ENTÃO DEVE mostrar "Ainda não alterado pelo painel". (RN-14)
 
 Alterações pendentes, Salvar e Descartar
@@ -89,7 +95,7 @@ Categorias
 - CA-26 QUANDO o título curto da categoria fica vazio ou passa de 24 caracteres ENTÃO o sistema DEVE mostrar o erro e não aceitar o formulário; com exatamente 24 DEVE aceitar. O contador DEVE mostrar quantos caracteres foram usados do limite de 24. (RN-11)
 - CA-27 QUANDO o nome completo fica vazio, passa de 150 caracteres ou é igual ao de outra categoria, gravada ou nova, ativa ou inativa, sem diferenciar acentos, maiúsculas e espaços nas pontas (ex.: "Contratos" e "contrátos ") ENTÃO o sistema DEVE mostrar o erro, com "Já existe uma categoria com este nome" no caso de repetição, e não aceitar o formulário. (RN-11)
 - CA-28 QUANDO título curto ou nome contêm quebra de linha ou tabulação, ou a descrição passa de 500 caracteres ENTÃO o sistema DEVE mostrar o erro e não aceitar o formulário. A descrição vazia DEVE ser aceita. (RN-11)
-- CA-29 QUANDO "Ativar/Desativar" é acionado numa categoria ENTÃO o estado DEVE mudar só no rascunho e as perguntas dela não DEVEM mudar de estado. (RN-02, RN-12)
+- CA-29 QUANDO "Ativar/Desativar" é acionado numa categoria ENTÃO o estado DEVE mudar só no rascunho e as perguntas dela não DEVEM mudar de estado. Com o alinhamento ao protótipo, a ação passa a ser "Desativar categoria"/"Ativar categoria" no cabeçalho da categoria selecionada, e não mais na linha (CA-74, CA-75); o comportamento continua o mesmo. (RN-02, RN-12)
 - CA-30 QUANDO ↑ ou ↓ é acionado ENTÃO a categoria DEVE trocar de lugar com a vizinha. A primeira não DEVE ter ↑ e a última não DEVE ter ↓. Depois de salvar, a ordem gravada DEVE ser a da tela. (RN-02, RN-12)
 - CA-31 QUANDO não existe nenhuma categoria ENTÃO a tela DEVE mostrar um estado vazio com a ação "Nova categoria". (RN-12)
 
@@ -144,8 +150,34 @@ Carregamento e erros
 
 Celular e computador
 
-- CA-64 QUANDO a tela é aberta no celular ENTÃO categorias, perguntas, formulários e prévia DEVEM ficar empilhados em uma coluna, sem rolagem horizontal, com a barra de alterações, as setas e os botões acessíveis pelo toque. (RN-04, RN-12)
+- CA-64 QUANDO a tela é aberta no celular ENTÃO categorias, perguntas, formulários e prévia DEVEM ficar empilhados em uma coluna, sem rolagem horizontal, com a barra de alterações, as setas e os botões acessíveis pelo toque. Com o alinhamento ao protótipo, o formulário passa a ser o painel lateral (CA-81) e a prévia, a janela em formato de celular (CA-83). (RN-04, RN-12)
 - CA-65 QUANDO o painel é aberto em tamanho de computador ENTÃO o menu e as demais telas DEVEM continuar como antes, com a única diferença de o item "Conteúdo" abrir a tela nova. (RN-01)
+
+Alinhamento ao protótipo (PR #172)
+
+- CA-72 QUANDO a tela abre em tamanho de computador ENTÃO categorias e perguntas DEVEM ficar em duas caixas lado a lado, como no protótipo, e dentro da caixa de perguntas filetes horizontais DEVEM separar o cabeçalho da categoria, a busca e a lista. (RN-30)
+- CA-73 QUANDO a tela abre ENTÃO o campo de busca DEVE estar dentro do painel de perguntas, logo abaixo do cabeçalho da categoria, e não mais acima das duas colunas. QUANDO há termo digitado ENTÃO o botão "Limpar" DEVE aparecer; ao acioná-lo, a busca DEVE ficar vazia e a lista da categoria selecionada DEVE voltar com as setas (CA-46). QUANDO a busca está vazia ENTÃO "Limpar" não DEVE aparecer. (RN-31, RN-23)
+- CA-74 QUANDO uma categoria está selecionada ENTÃO o cabeçalho do painel de perguntas DEVE mostrar o nome dela, o estado e os botões "Editar categoria", "Desativar categoria" e "Nova pergunta", nessa ordem. "Editar categoria" DEVE abrir o formulário dessa categoria. "Desativar categoria" DEVE mudar o estado só no rascunho (CA-29) e, com a categoria inativa, o botão DEVE se chamar "Ativar categoria". (RN-12)
+- CA-75 QUANDO a lista de categorias aparece ENTÃO nenhuma linha DEVE ter os botões de editar ou de ativar/desativar; cada linha DEVE ter só as setas ↑↓ e DEVE selecionar a categoria ao ser clicada, tocada ou acionada pelo teclado. As regras de primeira e última de CA-30 continuam valendo. (RN-12)
+- CA-76 QUANDO há busca em andamento e uma categoria está selecionada ENTÃO o cabeçalho completo dela DEVE continuar visível, com "Editar categoria", "Desativar categoria" (ou "Ativar categoria") e "Nova pergunta"; só "Nova pergunta" DEVE ficar desabilitada, com a dica de que não dá para criar pergunta durante a busca (decisão do Yuta, igual ao protótipo). QUANDO há categorias mas nenhuma está selecionada ENTÃO o painel de perguntas DEVE continuar mostrando a orientação de hoje para escolher uma categoria, sem "Editar categoria" nem "Desativar categoria". QUANDO não existe nenhuma categoria ENTÃO o cabeçalho da categoria não DEVE aparecer e o estado vazio com "Nova categoria" (CA-31) DEVE continuar. (RN-12, RN-23)
+- CA-77 QUANDO a lista de categorias aparece ENTÃO cada linha DEVE mostrar as setas ↑↓ empilhadas, uma sobre a outra, e o selo de estado à direita. QUANDO a categoria está "Ativa · oculta no chatbot" ENTÃO o selo DEVE ter um ícone "i" que, ao passar o mouse, receber o foco pelo teclado ou ser tocado, mostra a dica "Categorias só aparecem ao cidadão quando têm ao menos uma pergunta ativa". Os selos "Não salva" e "Alteração não salva" (CA-68) DEVEM continuar aparecendo. (RN-30, RN-09, RN-29)
+- CA-78 QUANDO a lista de perguntas aparece ENTÃO cada linha DEVE seguir o protótipo: título curto em negrito com a descrição curta ao lado, texto da pergunta abaixo, depois os selos com base legal e quantidade de documentos (os dois juntos, separados por "·", e o "·" nunca sozinho numa linha), e a linha de última alteração; as ações DEVEM ser, nessa ordem, as setas (fora da busca), "Desativar" (ou "Ativar", na pergunta inativa) e "Editar". Os dados de RN-13 DEVEM continuar todos presentes. (RN-30, RN-13)
+- CA-79 QUANDO uma pergunta tem o selo "Exige atendimento presencial" ENTÃO ele DEVE aparecer em tom lilás, como no protótipo (fundo #E6E2F6, texto #3A3072). QUANDO tem o selo "Fora do escopo do PROCON" ENTÃO ele DEVE aparecer em tom âmbar. Os dois selos DEVEM ter tons diferentes entre si. (RN-30)
+- CA-80 QUANDO "Nova pergunta" ou "Editar" de uma pergunta é acionado ENTÃO o formulário DEVE abrir num painel lateral, com rodapé fixo que continua visível ao rolar os campos, com, nesta ordem, "Cancelar", "Ver como o cidadão recebe" e "Salvar pergunta" (que só leva os valores ao rascunho). QUANDO "Nova categoria" ou "Editar categoria" é acionado ENTÃO o formulário DEVE abrir num diálogo central estreito, como no protótipo, com "Cancelar" e "Salvar categoria" (que só leva os valores ao rascunho). Nos dois, o foco DEVE ir para dentro do formulário, o fundo não DEVE receber foco nem clique e não DEVE rolar, o Esc e "Cancelar" DEVEM seguir CA-70, e todos os campos, validações e mensagens dos formulários DEVEM continuar iguais. (RN-32, RN-04)
+- CA-81 QUANDO o painel lateral abre no celular ENTÃO ele DEVE ocupar a largura da tela, sem rolagem horizontal, com o rodapé fixo visível e os botões acessíveis pelo toque. (RN-32)
+- CA-82 QUANDO "Ver como o cidadão recebe" é acionado ENTÃO a prévia DEVE abrir numa janela própria em formato de celular, por cima do painel do formulário, com os botões das mensagens em duas colunas, e o foco DEVE ir para a janela. Enquanto ela está aberta, o painel por trás não DEVE receber foco nem clique. QUANDO o Esc é pressionado ou há um clique fora da janela com a prévia aberta ENTÃO só a prévia DEVE fechar, o painel DEVE continuar aberto com o que foi digitado, e o foco DEVE voltar ao botão "Ver como o cidadão recebe". Os textos dos balões DEVEM continuar vindo da API, e os estados de carregando, erro, campos a corrigir e categoria não salva DEVEM continuar como em CA-58 a CA-60. (RN-33, RN-26)
+- CA-83 QUANDO a prévia abre no celular ENTÃO a janela DEVE caber na largura da tela, sem rolagem horizontal, e os botões das mensagens DEVEM continuar em duas colunas. (RN-33)
+- CA-84 QUANDO a tela abre ENTÃO o bloco fixo DEVE mostrar, nessa ordem, o rótulo "Aviso obrigatório, ao final de todas as respostas:", o texto do aviso exatamente igual ao de RN-03 e a nota "Este aviso não é configurável.". O texto oficial DEVE estar num elemento próprio, separado do rótulo e da nota por um único espaço de cada lado. Entre o rótulo e a nota não DEVE haver nenhum outro conteúdo além do texto do aviso, o bloco não DEVE ter o selo "FIXO" e continua sem botão, campo ou ação de edição. (RN-34, RN-03)
+- CA-85 QUANDO a tela alinhada é comparada com a de antes ENTÃO "Salvar alterações", "Descartar" e o contador DEVEM continuar no topo, sem barra fixa; "Última alteração" DEVE continuar no topo; e a prévia DEVE continuar sem balão verde e sem horário nos balões. As demais telas do painel não DEVEM mudar (CA-65). (RN-35)
+- CA-86 QUANDO a tela é comparada lado a lado com o protótipo, no mesmo tamanho de computador e de celular ENTÃO cada região (bloco do aviso; caixa da lista de categorias; cabeçalho da categoria e busca; linhas de pergunta; painel lateral do formulário da pergunta e diálogo da categoria; janela da prévia) DEVE ter a mesma disposição, a mesma ordem de elementos e os mesmos tons do protótipo, exceto as diferenças abaixo, que ficam e cada uma com o seu motivo. Qualquer outra diferença DEVE ser corrigida ou listada com o motivo. (RN-30 a RN-35)
+  - "Salvar alterações", "Descartar" e o contador no topo da tela, sem barra fixa: padrão das telas de configuração (RN-04, RN-35).
+  - "Última alteração" no topo da tela: RN-14.
+  - Aviso sem o selo "FIXO": decisão do usuário (RN-34).
+  - Textos da prévia vindos do bot, pela API, e não os do protótipo: RN-26.
+  - Prévia sem balão verde e sem horário nos balões: decisão do usuário (RN-35).
+  - Rótulo "Resposta oficial" no lugar de "Resposta": rótulo já usado pela tela, mantido por decisão do Yuta.
+  - Documentos úteis com setas para reordenar: a reordenação já fazia parte do campo (T12), mantida por decisão do Yuta.
+- CA-87 QUANDO uma categoria nova é criada, fica selecionada e "Salvar alterações" é acionado ENTÃO, depois da gravação, a seleção DEVE continuar nessa categoria, agora com o id real devolvido pelo servidor, e não DEVE voltar à primeira categoria. (RN-04, RN-06)
 
 Qualidade
 
@@ -157,6 +189,7 @@ Qualidade
 - A equipe do PROCON consegue criar, editar, ativar/desativar e reordenar categorias e perguntas pelo painel, e o cidadão vê o resultado no WhatsApp depois do Salvar, sem depender do seed.
 - Nenhuma falha de Salvar deixa item duplicado nem esconde o que ficou sem gravar.
 - A prévia mostra o que o bot envia, sem textos inventados no painel.
+- A tela de Conteúdo fica igual ao protótipo do painel em cada região conferida lado a lado, sem mudar nenhuma regra de negócio (CA-86).
 - Os testes automáticos cobrem regras de campo, contador, páginas do WhatsApp, busca, plano de Salvar com falha parcial, prévia e acesso. A suíte completa, o lint, a checagem de tipos e o build passam, inclusive no Docker.
 
 ## Fora do escopo
@@ -164,6 +197,7 @@ Qualidade
 - Excluir categoria ou pergunta: os relatórios e o histórico apontam para elas (regra de Conteúdo).
 - Árvore de decisão com ramificações (decisão 001).
 - Editar o aviso de caráter não vinculante (RNF04).
+- No alinhamento ao protótipo (PR #172): barra fixa de Salvar/Descartar, mudar a posição de "Última alteração", balão verde e horário nos balões da prévia, e qualquer texto da prévia escrito no painel. Ficam como estão por decisão do usuário (RN-35). Também não muda nenhuma outra tela do painel.
 - Mover pergunta para outra categoria: para mudar, desativa-se e cria-se outra.
 - Qualquer mudança na API de Conteúdo ou no bot. Por isso não existe "salvar tudo de uma vez" no servidor, e a tela trabalha com as gravações item a item (RN-06). As divergências da prévia com o bot ficam registradas e, se for preciso mudar a API, isso vira outra issue (D-U-04).
 - Avisar ao sair da tela com alterações pendentes (decisão do usuário, RN-04).
@@ -277,9 +311,20 @@ Na criação e na edição de pergunta, "Permitir complemento por IA", "Exige at
 - Fora do escopo: conforme D-U-05 (P7).
 - O aviso e o rótulo "Gerado com auxílio de IA" vêm da resposta da API. Só o bloco fixo do topo usa o arquivo de textos da tela, com teste do texto exato.
 
+### Alinhamento ao protótipo (PR #172)
+
+- Referência: `.docs/prototipo/ProconChat Painel.dc.html` (tela "conteudo", servida em http://localhost:8300) e as capturas lado a lado da Miwa (`prototipo-*.png` e `tela-*.png` na pasta de comparação do scratchpad da sessão). O protótipo vale para disposição, ordem e tons; os textos do bot continuam vindo da API e as regras continuam as desta spec. Onde o protótipo diverge de uma decisão do usuário, vale a decisão: sem selo "FIXO" no aviso (RN-34), o que RN-35 manda manter e as demais diferenças listadas em CA-86. O selo presencial segue o lilás do protótipo (RN-30).
+- Contrato de estilos (M3): antes do código, a Miwa fixa os nomes de classe por região nos arquivos de estilo da tela (duas caixas lado a lado e filetes horizontais na caixa de perguntas; cabeçalho da categoria; busca no painel; linha compacta de categoria com setas empilhadas, selo à direita e dica do "i"; linha de pergunta e ações; tons dos selos presencial e fora do escopo; painel lateral com rodapé fixo; janela da prévia em formato de celular com botões em duas colunas; bloco do aviso com rótulo e nota). Com os nomes fixados, o CSS (M4) e os componentes (T22, T23, T24) andam em paralelo sem editar os mesmos arquivos.
+- Cabeçalho da categoria: reaproveita `ContentCategoryActions` (editar, ativar/desativar e nova pergunta da categoria selecionada). As linhas de categoria deixam de receber `onEdit` e `onToggle`. "Nova categoria" fica no `.categoriesHeader`, o cabeçalho da coluna de categorias.
+- Painel lateral: no formulário da pergunta, `ContentFormDialog` passa a ser desenhado como painel lateral; no da categoria, como diálogo central estreito. Nos dois, sem mudar o que já faz (foco, Esc, confirmação de descarte, fundo inerte e rolagem travada). O rodapé fixo fica fora da área que rola. O painel tem o botão "Fechar". O botão de confirmar do painel da pergunta passa a se chamar "Salvar pergunta"; o do formulário de categoria passa a se chamar "Salvar categoria", como no protótipo (decisão do Yuta). Como antes, confirmar só leva os valores ao rascunho; a gravação no servidor continua sendo o "Salvar alterações" (RN-04).
+- Cabeçalho do painel lateral (decisão registrada): o nome da categoria aparece acima do título do painel. Só ao editar uma pergunta já gravada aparece também a meta da pergunta: "Última alteração por [nome] em [data]" ou, sem autor, "Carga inicial do sistema". Pergunta nova não mostra meta.
+- Formatos (decisão registrada): o formulário de categoria usa um diálogo estreito, e as caixas de marcar do formulário da pergunta ("Exige atendimento presencial", "Fora do escopo do PROCON", "Permitir complemento por IA nesta pergunta", "Pergunta ativa no chatbot") aparecem como cartões, um cartão por caixa de marcar. No formulário da pergunta, a única caixa de agrupamento (`fieldGroup`) contém só o título curto e a descrição curta, empilhados, com a ajuda "Textos exibidos na lista tocável do WhatsApp, quando o cidadão escolhe a pergunta."; texto da pergunta, resposta, base legal e "Documentos úteis" ficam fora de caixa (decisão do Yuta, conforme o protótipo; feito na T23).
+- Linha da pergunta: base legal e quantidade de documentos ficam num mesmo elemento, para o separador "·" entre eles nunca ficar sozinho numa linha.
+- Janela da prévia: a prévia deixa de ser desenhada dentro do formulário e abre como janela modal própria por cima do painel, com o título "Como o cidadão recebe", o botão "Fechar" e a nota fixa do painel no rodapé. Enquanto ela está aberta, o painel fica inerte; o Esc e o clique fora da janela são tratados só pela janela de cima; ao fechar, o foco volta ao botão "Ver como o cidadão recebe".
+
 ### Textos fixos da tela
 
-Todos ficam no arquivo de textos da tela, criado completo em T2: título "Conteúdo do chatbot", aviso (RN-03), "Nova categoria", "Editar categoria", "Nova pergunta", "Editar", "Ativar", "Desativar", "Ativa", "Inativa", "Ativa · oculta no chatbot", os selos das linhas "Não salva" e "Alteração não salva" (RN-29), "Exige atendimento presencial", "Fora do escopo do PROCON", "Permitir complemento por IA nesta pergunta", "Pergunta ativa no chatbot", "Respostas longas ficam difíceis de ler no celular", orientação de RN-21, "Página {n} no WhatsApp", "Ver como o cidadão recebe", "Se a IA estiver indisponível", "Esta categoria ainda não foi salva. Salve para que o cidadão a veja.", "A prévia completa fica disponível depois de salvar", "Já existe uma categoria com este nome", "Este documento já está na lista.", "Carga inicial do sistema", "Ainda não alterado pelo painel", "Algumas alterações foram salvas e outras não. Revise o que ainda está pendente e salve de novo.", "Não foi possível salvar. Nenhuma alteração foi gravada. Tente de novo.", "As alterações foram enviadas, mas não foi possível atualizar a tela. Salve de novo para tentar atualizar antes de gravar mais alguma coisa." (recarga que falha, acrescentada na correção F1), "Você não tem permissão para ver o conteúdo do chatbot." (carga recusada com 403), o diálogo "Descartar as alterações?" com "Descartar alterações" e "Continuar editando" (Esc ou "Cancelar" com formulário alterado, CA-70), "Informe o documento." (Adicionar com o documento vazio, CA-71), os nomes dos botões das linhas com o título ("Editar categoria {título}", "Ativar {título}", "Mover {título} para cima", entre outros), os rótulos dos campos de RN-11, RN-16 e RN-17, as mensagens de erro dos limites e as de carga, sucesso e sem permissão. "Salvar alterações", "Descartar", o contador e "Última alteração por [nome] em [data]" já existem nos textos comuns. Os textos dos balões da prévia não entram aqui: vêm da API (RN-26), salvo o que D-U-04 autorizar. As tarefas que mostram textos dependem de T2 e usam só as chaves criadas lá. Se faltar algum texto, ele é acrescentado em T17, T18 ou T20, que rodam em sequência, para que tarefas em paralelo não editem o mesmo arquivo.
+Todos ficam no arquivo de textos da tela, criado completo em T2: título "Conteúdo do chatbot", aviso (RN-03), "Nova categoria", "Editar categoria", "Nova pergunta", "Editar", "Ativar", "Desativar", "Ativa", "Inativa", "Ativa · oculta no chatbot", os selos das linhas "Não salva" e "Alteração não salva" (RN-29), "Exige atendimento presencial", "Fora do escopo do PROCON", "Permitir complemento por IA nesta pergunta", "Pergunta ativa no chatbot", "Respostas longas ficam difíceis de ler no celular", orientação de RN-21, "Página {n} no WhatsApp", "Ver como o cidadão recebe", "Se a IA estiver indisponível", "Esta categoria ainda não foi salva. Salve para que o cidadão a veja.", "A prévia completa fica disponível depois de salvar", "Já existe uma categoria com este nome", "Este documento já está na lista.", "Carga inicial do sistema", "Ainda não alterado pelo painel", "Algumas alterações foram salvas e outras não. Revise o que ainda está pendente e salve de novo.", "Não foi possível salvar. Nenhuma alteração foi gravada. Tente de novo.", "As alterações foram enviadas, mas não foi possível atualizar a tela. Salve de novo para tentar atualizar antes de gravar mais alguma coisa." (recarga que falha, acrescentada na correção F1), "Você não tem permissão para ver o conteúdo do chatbot." (carga recusada com 403), o diálogo "Descartar as alterações?" com "Descartar alterações" e "Continuar editando" (Esc ou "Cancelar" com formulário alterado, CA-70), "Informe o documento." (Adicionar com o documento vazio, CA-71), os nomes dos botões das linhas com o título ("Editar categoria {título}", "Ativar {título}", "Mover {título} para cima", entre outros; com o alinhamento ao protótipo, as linhas de categoria ficam só com os de mover, e editar e ativar/desativar categoria passam ao cabeçalho), os textos do alinhamento ao protótipo (PR #172): "Aviso obrigatório, ao final de todas as respostas:" e "Este aviso não é configurável." (RN-34), "Desativar categoria" e "Ativar categoria" (RN-12), "Limpar" e o rótulo "Buscar" da busca (RN-31), a dica do "i" em "Ativa · oculta no chatbot": "Categorias só aparecem ao cidadão quando têm ao menos uma pergunta ativa" (RN-30), a ajuda das categorias "Ordem do menu de categorias no WhatsApp. Em negrito, o título curto exibido na lista tocável. Use ↑↓ para reordenar.", a ajuda da ordem das perguntas "Ordem em que as perguntas aparecem ao cidadão no WhatsApp após escolher esta categoria. Em negrito, o título curto exibido na lista tocável. Use ↑↓ para reordenar.", a faixa de paginação "Com mais de 10 itens, o chatbot mostra a lista em páginas: 9 opções por vez e a opção 'Ver mais opções'. Listas curtas são mais fáceis para o cidadão.", no painel lateral o botão "Fechar", o botão "Salvar pergunta" (formulário da pergunta), o botão "Salvar categoria" (diálogo da categoria), a ajuda do grupo de títulos do formulário da pergunta "Textos exibidos na lista tocável do WhatsApp, quando o cidadão escolhe a pergunta." (copiada do protótipo) e o cabeçalho com o nome da categoria acima do título e, só ao editar pergunta já gravada, "Última alteração por [nome] em [data]" ou "Carga inicial do sistema" (pergunta nova sem meta), e na janela da prévia o título "Como o cidadão recebe", o botão "Fechar" e a nota "O aviso ao final da resposta é fixo e enviado em todas as respostas. A aparência real depende do aplicativo do cidadão." (RN-33), os rótulos dos campos de RN-11, RN-16 e RN-17, as mensagens de erro dos limites e as de carga, sucesso e sem permissão. "Salvar alterações", "Descartar", o contador e "Última alteração por [nome] em [data]" já existem nos textos comuns. Os textos dos balões da prévia não entram aqui: vêm da API (RN-26), salvo o que D-U-04 autorizar. As tarefas que mostram textos dependem de T2 e usam só as chaves criadas lá. Se faltar algum texto, ele é acrescentado em T17, T18 ou T20, que rodam em sequência, para que tarefas em paralelo não editem o mesmo arquivo. No alinhamento ao protótipo, só a T22 mexe no arquivo de textos; T23 e T24 usam as chaves que já existem e, se faltar alguma, avisam a orchestrator em vez de editar o arquivo.
 
 ## Plano de execução
 
@@ -299,6 +344,13 @@ Fases:
 - Fase 5: T18 (depois de T9 a T14 e T17)
 - Fase 6: T20 (depois de T18 e das respostas de D-U-04, D-U-05 e D-U-06)
 - Fase 7 (paralelo): T19 [P] · M2 [P] · K3 [P]
+
+Alinhamento ao protótipo (PR #172):
+
+- Fase 8 (paralelo): M3 [P] (contrato de estilos) · K4 [P] (documentação)
+- Fase 9 (paralelo, depois de M3): T22 [P] · T23 [P] · M4 [P]
+- Fase 10: T24 (depois de T23 e M3)
+- Fase 11: M5 (depois de T22, T24 e M4)
 
 Regras para todas as tarefas de código: nunca escrever comentários; TDD em lógica e comportamento (o teste citado em "Teste" é escrito e falha antes do código); no máximo 5 passos; um commit atômico por tarefa no padrão `Feat :sparkles: [#124] <descrição no imperativo>`; nunca alterar teste para fazê-lo passar.
 
@@ -424,6 +476,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Depende de: T1, T2, M1
 - Reaproveita: `StatusBadge`, `EmptyState`, `ContentPageBreak` e `content.json` de T2, estilos de M1.
 - Atende: RN-09, RN-12, RN-24, RN-29, CA-23, CA-24, CA-30, CA-31, CA-50, CA-68, CA-69
+- Observação: com o alinhamento ao protótipo (PR #172), as ações de editar e de ativar/desativar saem da linha de categoria e vão para o cabeçalho da categoria selecionada (RN-12 alterada, CA-74, CA-75), e a linha fica compacta (CA-77). Essa mudança é feita na T22; o que está registrado aqui é o que esta tarefa entregou.
 - Passos: (1) testes: dados da linha, estado oculto, primeira sem ↑ e última sem ↓, separador onde a prop manda, vazio com "Nova categoria"; (2) linha; (3) lista e separador; (4) gate; (5) commit `Feat :sparkles: [#124] Adiciona a lista de categorias do Conteúdo`.
 - Pronto quando: os testes passam; gate rápido passa.
 - Teste: unitário de componente. Falha primeiro "a primeira categoria não tem ↑".
@@ -438,6 +491,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Depende de: T1, T2, M1
 - Reaproveita: `Seal`, `StatusBadge`, `EmptyState`, `formatDate`, texto de `lastChangeNote` do `common.json`, `ContentPageBreak` de T2, estilos de M1.
 - Atende: RN-13, RN-23, RN-24, RN-29, CA-32, CA-44, CA-46, CA-68, CA-69
+- Observação: com o alinhamento ao protótipo (PR #172), a linha de pergunta muda de disposição, com as ações "Desativar" e "Editar" nessa ordem (CA-78), e os tons dos selos mudam (CA-79). Essa mudança é feita na T22 e na M4.
 - Passos: (1) testes: linha completa com "Última alteração por Ana em 05/11/2026", item sem autor com "Carga inicial do sistema", item novo sem linha de alteração, selos, setas ausentes em modo busca, categoria visível no resultado, vazio com "Nova pergunta"; (2) linha; (3) lista; (4) gate; (5) commit `Feat :sparkles: [#124] Adiciona a lista de perguntas do Conteúdo`.
 - Pronto quando: os testes passam; gate rápido passa.
 - Teste: unitário de componente. Falha primeiro "em modo busca não há setas".
@@ -452,6 +506,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Depende de: T1, T2, M1
 - Reaproveita: `ConfirmDialog` ou o padrão de painel lateral definido por M1; campos de texto existentes (`ScheduleTextField` como referência).
 - Atende: RN-11, CA-26, CA-27, CA-28, CA-70
+- Observação: com o alinhamento ao protótipo (PR #172), o formulário da categoria passa a ser um diálogo central estreito, como no protótipo (RN-32, CA-80); só o da pergunta vira painel lateral. Essa mudança é feita na T23.
 - Passos: (1) testes: contador "24/24", erro mostrado junto do campo, "Já existe uma categoria com este nome" quando a prop manda, confirmar chama o callback com os valores; (2) campos e contador; (3) erros e confirmação; (4) gate; (5) commit `Feat :sparkles: [#124] Adiciona o formulário de categoria do Conteúdo`.
 - Pronto quando: os testes passam; gate rápido passa.
 - Teste: unitário de componente. Falha primeiro "contador mostra 24/24 com 24 caracteres".
@@ -480,6 +535,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Depende de: T12
 - Reaproveita: `ContentDocumentsField` de T12; estilos de M1.
 - Atende: RN-15, RN-16, RN-17, RN-19, RN-20, RN-21, RN-22, CA-33, CA-34, CA-35, CA-38, CA-39, CA-40, CA-41, CA-42, CA-70
+- Observação: com o alinhamento ao protótipo (PR #172), o formulário da pergunta vira painel lateral com "Ver como o cidadão recebe" no rodapé fixo (T23), e a prévia deixa de aparecer dentro do formulário e abre em janela própria (T24).
 - Passos: (1) testes: contador do texto da pergunta visível, alerta com 1.000 e sem alerta com 999, marcar presencial desabilita fora do escopo e vice-versa, fora do escopo desliga e desabilita a IA e desmarcar religa, observação some ao desmarcar presencial, orientação só na edição, sem campo de categoria, fechar sem confirmar não devolve nada; (2) campos e contadores; (3) regras entre campos; (4) gate; (5) commit `Feat :sparkles: [#124] Adiciona o formulário de pergunta do Conteúdo`.
 - Pronto quando: os testes passam; gate rápido passa.
 - Teste: unitário de componente. Falha primeiro "marcar Fora do escopo desliga e desabilita a IA".
@@ -494,7 +550,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Depende de: T1, T2, M1
 - Reaproveita: `WhatsAppMessageBubble` e o estilo da prévia de `DocumentsPreview` como referência; estilos de M1.
 - Atende: RN-25, RN-26, RN-27, RN-28, CA-53, CA-54, CA-56, CA-57, CA-58, CA-59, CA-60
-- Observação: as linhas da lista da prévia usam uma chave própria de renderização, única por linha mesmo quando a API repete o id da linha (o painel não usa os ids das linhas como identidade). Ajuste técnico no commit d6a51b2.
+- Observação: as linhas da lista da prévia usam uma chave própria de renderização, única por linha mesmo quando a API repete o id da linha (o painel não usa os ids das linhas como identidade). Ajuste técnico no commit d6a51b2. Com o alinhamento ao protótipo (PR #172), a prévia passa a abrir em janela própria em formato de celular, com os botões em duas colunas (RN-33, CA-82, CA-83). Essa mudança é feita na T24.
 - Passos: (1) testes: pergunta em negrito, indicação de próxima página só com a flag, balão oficial mostra o texto do modelo sem alteração, rótulo de IA no rodapé, alternativa "Se a IA estiver indisponível" com os balões oficial e de passo seguinte, categoria não salva mostra só a lista e os dois avisos; (2) lista; (3) balões e alternativa; (4) gate; (5) commit `Feat :sparkles: [#124] Adiciona a prévia estilo WhatsApp do Conteúdo`.
 - Pronto quando: os testes passam; gate rápido passa.
 - Teste: unitário de componente. Falha primeiro "com IA ligada aparece a alternativa Se a IA estiver indisponível".
@@ -551,6 +607,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Depende de: T9, T10, T11, T12, T13, T14, T17
 - Reaproveita: `UnsavedChangesBar`, `LastChangeNote`, estilos de M1, padrão de `Documents.page.tsx`.
 - Atende: CA-07, CA-08, CA-09, CA-12, CA-14, CA-16, CA-17, CA-22, CA-25, CA-33, CA-45, CA-52, CA-62, CA-64, CA-65, CA-67
+- Observação: com o alinhamento ao protótipo (PR #172), a montagem da página muda: duas caixas lado a lado com filetes horizontais na de perguntas, busca dentro do painel de perguntas, cabeçalho da categoria com as ações dela e bloco do aviso com rótulo e nota (T22), formulário em painel lateral (T23) e prévia em janela própria (T24).
 - Passos: (1) testes de tela: criar categoria e pergunta, editar, reordenar, salvar e ver a ordem gravada; descartar; falha parcial com a mensagem e as quantidades e novo Salvar sem duplicar; falha na primeira gravação; busca; prévia com aviso exato; topo com "Ainda não alterado pelo painel" quando ninguém tem autor; (2) montagem do layout; (3) ligação com o hook; (4) gate completo; (5) commit `Feat :sparkles: [#124] Monta a tela de Conteúdo do chatbot`.
 - Pronto quando: os testes de tela passam; gate completo passa.
 - Teste: integração. Falha primeiro "criar categoria, criar pergunta nela e salvar grava as duas na ordem".
@@ -593,7 +650,7 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Depende de: nada
 - Reaproveita: estilos de Documentos e Horários (`documents.module.css`, `schedule.module.css`, `unsavedChangesBar.module.css`, `whatsappMessageBubble.module.css`), tokens de cor e espaçamento existentes.
 - Atende: RN-03, RN-09, RN-13, RN-24, RN-27, RN-28, CA-07, CA-64, CA-65
-- Observação: se a Miwa só descrever as decisões, sem escrever os arquivos de estilo, os estilos passam para T9 a T14 e T18.
+- Observação: se a Miwa só descrever as decisões, sem escrever os arquivos de estilo, os estilos passam para T9 a T14 e T18. Com o alinhamento ao protótipo (PR #172), a decisão "formulários (painel ou diálogo)" passa a ser painel lateral, e o layout passa a seguir o protótipo (M3 e M4).
 - Passos: (1) estudar as telas de configuração existentes; (2) definir layout de computador e de celular; (3) definir estados e componentes visuais; (4) escrever os arquivos de estilo com nomes de classe por componente; (5) entregar a descrição e commit `Feat :sparkles: [#124] Adiciona os estilos da tela de Conteúdo`.
 - Pronto quando: cada componente de T9 a T14 e T18 tem classes definidas; o celular empilha sem rolagem horizontal; `cd src/frontend && npm run format:check` passa.
 - Teste: nenhum.
@@ -657,6 +714,109 @@ Regras para todas as tarefas de código: nunca escrever comentários; TDD em ló
 - Modelo: economico
 - Status: feita. Evidência: gate doc ok; 06-conteudo.md (Estado da tela e decisões de selos, Cancelar, nasce inativa e aviso de 1.024), regras/README.md, README.md, architecture.md e rastreabilidade.md (Nota 4) dizem que Conteúdo está pronto; links conferidos
 
+### Tarefas do alinhamento ao protótipo (PR #172)
+
+Valem as mesmas regras das tarefas de código acima: nunca escrever comentários, TDD em comportamento (o teste citado em "Teste" é escrito e falha antes do código), no máximo 5 passos, um commit atômico por tarefa e nunca alterar teste para fazê-lo passar. Os testes que hoje esperam "Editar categoria" e "Ativar/Desativar" na linha da categoria, a prévia dentro do formulário ou o bloco do aviso sem rótulo e nota mudam por comportamento, por decisão do usuário (PR #172); isso faz parte da entrega e deve ser citado no commit. Se outro teste quebrar, avisar a orchestrator em vez de editar em silêncio.
+
+#### M3 [P] Contrato de estilos do alinhamento
+- O quê: fixar, nos arquivos de estilo da tela, os nomes de classe de cada região do alinhamento (só os nomes, com o mínimo de regras), e entregar ao Itadori a lista de classe por componente.
+- Onde: `src/frontend/src/styles/pages/content.module.css`, `src/frontend/src/styles/components/contentLists.module.css`, `contentForms.module.css`, `contentPreview.module.css`.
+- Dev: Miwa (designer)
+- Depende de: nada
+- Reaproveita: classes atuais de M1; protótipo e capturas lado a lado.
+- Atende: RN-30 a RN-34 (contrato para CA-72 a CA-84)
+- Passos: (1) mapear as regiões do protótipo contra as capturas da tela; (2) nomear as classes por região (duas caixas lado a lado e filetes horizontais na de perguntas, cabeçalho da categoria, busca no painel, linha compacta de categoria, setas empilhadas, dica do "i", linha e ações de pergunta, selos presencial e fora do escopo, painel lateral e rodapé fixo, janela da prévia e botões em duas colunas, bloco do aviso com rótulo e nota); (3) escrever os nomes nos arquivos; (4) gate; (5) entregar a lista e commit `Style :art: [#124] Define as classes do alinhamento da tela de Conteúdo ao protótipo`.
+- Pronto quando: cada região de CA-72 a CA-84 tem classe com nome fixado e a lista foi entregue; `npm run format:check` passa.
+- Teste: nenhum.
+- Gate: `cd src/frontend && npm run format:check`
+- Modelo: economico
+- Status: feita (contrato de estilos da Miwa entregue em 5e7bc16)
+
+#### K4 [P] Regra de Conteúdo alinhada ao protótipo
+- O quê: atualizar a regra de Conteúdo com o aviso sem selo "FIXO", com rótulo e nota, as ações de categoria no cabeçalho da categoria selecionada, a busca no painel de perguntas, o formulário em painel lateral e a prévia em janela própria.
+- Onde: `.docs/regras/06-conteudo.md` (bloco do aviso, "Ações" das categorias e das perguntas, formulários e "Ver como o cidadão recebe").
+- Dev: Kusakabe (dev-doc)
+- Depende de: nada (alteração já aprovada pelo usuário no PR #172)
+- Reaproveita: texto atual da regra.
+- Atende: RN-12, RN-30 a RN-35
+- Passos: (1) ler RN-12 e RN-30 a RN-35; (2) aviso e ações; (3) busca, painel lateral e prévia; (4) gate doc; (5) commit `Docs :bulb: [#124] Atualiza a regra de Conteúdo com o alinhamento ao protótipo`.
+- Pronto quando: a regra não fala mais em bloco "FIXO" nem em editar/ativar categoria na linha; nenhuma regra inventada; gate doc ok.
+- Teste: nenhum.
+- Gate: doc
+- Modelo: economico
+- Status: feita. Evidência: gate doc ok; 06-conteudo.md sem bloco "FIXO" e sem editar/ativar categoria na linha; aviso com rótulo e nota, ações no cabeçalho da categoria, busca no painel de perguntas, painel lateral e prévia em janela própria, conforme RN-12 e RN-30 a RN-35; só textos literais que estão na spec
+
+#### T22 [P] Cabeçalho da categoria, listas, busca e aviso como no protótipo
+- O quê: tirar editar e ativar/desativar da linha de categoria e colocá-los no cabeçalho da categoria selecionada, deixar a linha de categoria compacta com a dica do "i", reordenar as ações da linha de pergunta, levar a busca com "Limpar" para dentro do painel de perguntas, montar as duas caixas lado a lado com filetes horizontais na de perguntas e mostrar o aviso com rótulo e nota, sem selo "FIXO".
+- Onde: `src/frontend/src/pages/Content.page.tsx`; `src/frontend/src/components/ContentCategoryActions.tsx`, `ContentCategoryList.tsx`, `ContentCategoryRow.tsx`, `ContentQuestionRow.tsx`; `src/frontend/src/locales/pt-BR/content.json`; testes em `src/frontend/src/components/test/` (`ContentCategoryActions.test.tsx`, `ContentCategoryList.test.tsx`, `ContentQuestionList.test.tsx`) e `src/frontend/src/pages/test/Content.page.test.tsx`.
+- Dev: Itadori (dev-frontend)
+- Depende de: M3 (só para ligar as classes; os testes de comportamento podem começar antes)
+- Reaproveita: `ContentCategoryActions` (já tem editar, ativar/desativar e nova pergunta da categoria selecionada), `StatusBadge`, `Seal`, `InfoTooltip` (dica com "i" já usada no painel) e a busca atual do hook.
+- Atende: RN-12, RN-30, RN-31, RN-34, RN-35, CA-29, CA-72, CA-73, CA-74, CA-75, CA-76, CA-77, CA-78, CA-79, CA-84, CA-85, CA-87; no celular, CA-64 sem rolagem horizontal; no computador, CA-65
+- Passos: (1) testes: linha de categoria sem editar nem ativar/desativar; cabeçalho com "Editar categoria", "Desativar categoria" (e "Ativar categoria" na inativa) e "Nova pergunta", nessa ordem; sem categoria selecionada, sem as ações de categoria; "Limpar" só com termo e limpando a busca; ações da pergunta na ordem setas, "Desativar", "Editar"; dica do "i" ao focar e ao passar o mouse; aviso com rótulo, texto exato e nota, sem "FIXO"; (2) textos novos em `content.json`; (3) cabeçalho, linhas e busca; (4) aviso, caixas, classes de M3 e gate completo; (5) commit `Feat :sparkles: [#124] Alinha cabeçalho, listas, busca e aviso da tela de Conteúdo ao protótipo`.
+- Pronto quando: os testes passam; nenhuma linha de categoria tem editar ou ativar/desativar; o aviso entre o rótulo e a nota é só o texto de RN-03; gate rápido e gate completo passam.
+- Teste: unitário de componente e integração da tela. Falha primeiro "a linha da categoria não tem os botões de editar nem de ativar/desativar".
+- Gate: rápido e completo
+- Modelo: padrao
+- Status: feita (commit f5d2d0a; gate: tsc -b e lint limpos; vitest de src com 2092 testes passando, rodado antes do último commit; CA-87 entrou depois e tem evidência no commit 5f59f2c: teste escrito antes que cria a categoria, salva e confere que o cabeçalho continua nela, falhou e passou com a correção; vitest de src com 2101 testes passando)
+
+#### T23 [P] Formulário em painel lateral
+- O quê: desenhar o formulário da pergunta como painel lateral com rodapé fixo ("Cancelar", "Ver como o cidadão recebe" e "Salvar pergunta", nessa ordem) e o formulário da categoria como diálogo central estreito, como no protótipo ("Cancelar" e "Salvar categoria"), mantendo nos dois o foco, o Esc, a confirmação de descarte, o fundo inerte e a rolagem travada.
+- Onde: `src/frontend/src/components/ContentFormDialog.tsx`, `ContentCategoryForm.tsx`, `ContentQuestionForm.tsx`; testes `ContentFormDialog.test.tsx`, `ContentCategoryForm.test.tsx`, `ContentQuestionForm.test.tsx`.
+- Dev: Itadori (dev-frontend)
+- Depende de: M3 (só para ligar as classes)
+- Reaproveita: `ContentFormDialog` (foco, Esc, descarte, inert e trava de rolagem já existem); diálogo "Descartar as alterações?".
+- Atende: RN-32, CA-70, CA-80, CA-81
+- Observação: no formulário da pergunta, a caixa de agrupamento (`fieldGroup`) tem só o título curto e a descrição curta, empilhados, com a ajuda "Textos exibidos na lista tocável do WhatsApp, quando o cidadão escolhe a pergunta."; texto da pergunta, resposta, base legal e "Documentos úteis" ficam fora de caixa; cada caixa de marcar é um cartão (decisão do Yuta, conforme o protótipo).
+- Passos: (1) testes: o rodapé com os botões fica fora da área que rola; "Ver como o cidadão recebe" só no da pergunta; foco entra no painel ao abrir; Esc e "Cancelar" seguem CA-70; fundo inerte e rolagem travada; (2) estrutura do painel e rodapé; (3) classes de M3; (4) gate completo; (5) commit `Feat :sparkles: [#124] Abre os formulários do Conteúdo em painel lateral com rodapé fixo`.
+- Pronto quando: os testes passam; campos, validações e mensagens iguais aos de antes; gate rápido e gate completo passam.
+- Teste: unitário de componente. Falha primeiro "os botões do rodapé ficam fora da área que rola do painel".
+- Gate: rápido e completo
+- Modelo: padrao
+- Status: feita (commits 36ca2b6 e f042c65; testes escritos antes do código do painel lateral e do cabeçalho do painel com a categoria e a meta; vitest com 2095 ou mais testes passando; o botão de confirmar do painel da pergunta passou a se chamar "Salvar pergunta"; diferença registrada: só o formulário da pergunta é painel lateral, e o da categoria permanece em diálogo central estreito, como no protótipo)
+
+#### M4 [P] CSS do alinhamento
+- O quê: escrever o CSS das classes fixadas em M3: duas caixas lado a lado e filetes horizontais na de perguntas, lista compacta, setas empilhadas, selo à direita e dica do "i", linha de pergunta, tons dos selos (presencial lilás, como no protótipo, e fora do escopo âmbar), painel lateral com rodapé fixo, janela da prévia em formato de celular com botões em duas colunas e bloco do aviso com rótulo e nota, em computador e celular.
+- Onde: os mesmos arquivos de estilo de M3.
+- Dev: Miwa (designer)
+- Depende de: M3
+- Reaproveita: tokens de cor e espaçamento existentes; protótipo e capturas.
+- Atende: RN-30, RN-32, RN-33, RN-34, CA-72, CA-77, CA-79, CA-81, CA-83, CA-84; no computador, CA-65
+- Passos: (1) caixas, filetes e listas; (2) selos e dica; (3) painel lateral e janela da prévia; (4) celular sem rolagem horizontal e gate; (5) commit `Feat :sparkles: [#124] Aplica os estilos do alinhamento da tela de Conteúdo ao protótipo`.
+- Pronto quando: cada classe de M3 tem estilo; nada muda nas outras telas; `npm run format:check` passa.
+- Teste: nenhum.
+- Gate: `cd src/frontend && npm run format:check`
+- Modelo: padrao
+- Status: feita (CSS do alinhamento em 5e7bc16, 8e59a7b, 7e13ce4, 6857c50, d216549 e 5a34074; prettier passa; revisados e aprovados pela Nanami)
+
+#### T24 Prévia em janela própria
+- O quê: abrir a prévia numa janela modal própria em formato de celular, por cima do painel do formulário, com os botões das mensagens em duas colunas, foco na janela ao abrir, Esc fechando só a prévia e foco de volta ao botão "Ver como o cidadão recebe".
+- Onde: `src/frontend/src/components/ContentPreview.tsx`, `ContentPreviewBubble.tsx`, `ContentPreviewList.tsx`, `ContentQuestionForm.tsx` (deixa de desenhar a prévia dentro do formulário); testes `ContentPreview.test.tsx`, `ContentQuestionForm.test.tsx`.
+- Dev: Itadori (dev-frontend)
+- Depende de: T23, M3
+- Reaproveita: `ContentPreview` e o modelo de balões de T15/T20/T21; o tratamento de foco e inert do `ContentFormDialog`.
+- Atende: RN-26, RN-33, RN-35, CA-58, CA-59, CA-60, CA-61, CA-82, CA-83, CA-85
+- Passos: (1) testes: ao abrir, o foco vai para a janela; o painel fica inerte; Esc fecha só a prévia e o painel continua com o que foi digitado; o foco volta ao botão; botões das mensagens no contêiner de duas colunas; textos iguais aos da API; estados de carregando, erro, campos a corrigir e categoria não salva continuam; (2) janela modal; (3) foco e Esc; (4) classes de M3 e gate completo; (5) commit `Feat :sparkles: [#124] Abre a prévia do Conteúdo em janela própria em formato de celular`.
+- Pronto quando: os testes passam; nenhum texto do bot escrito no painel; gate rápido e gate completo passam.
+- Teste: unitário de componente. Falha primeiro "Esc com a prévia aberta fecha só a prévia e devolve o foco ao botão Ver como o cidadão recebe".
+- Gate: rápido e completo
+- Modelo: padrao
+- Status: feita (commit bf7ae1b; janela da prévia com testes de Esc, de foco e de clique fora; gate na HEAD: tsc -b ok e 2101 testes passando)
+
+#### M5 Conferência lado a lado com o protótipo
+- O quê: comparar a tela pronta com o protótipo, região por região, em computador e em celular, com capturas novas, e devolver os ajustes ao Itadori e à Miwa.
+- Onde: nenhum arquivo do projeto; capturas no scratchpad da sessão.
+- Dev: Miwa (designer) e Inumaki
+- Depende de: T22, T24, M4
+- Reaproveita: capturas e protótipo da comparação anterior.
+- Atende: CA-72 a CA-87, CA-64, CA-65
+- Passos: (1) gate completo e gate build; (2) capturas da tela e do protótipo no mesmo tamanho, em computador e celular, para cada região de CA-86; (3) conferir disposição, ordem e tons de cada região, e o teclado (foco no painel, foco na prévia, Esc, volta do foco); (4) listar as diferenças que sobrarem com o motivo (RN-35, decisão do usuário ou regra de negócio) e repassar ajustes; (5) registrar no Status.
+- Pronto quando: cada região de CA-86 está conferida, com captura, em computador e celular, e não há diferença sem motivo registrado; gate completo e gate build passam.
+- Teste: nenhum novo.
+- Gate: completo, build e revisão visual por região
+- Modelo: padrao
+- Status: feita (comparação lado a lado com o protótipo, no computador e no celular, feita pela Miwa em 95b4f32, com capturas em /tmp/claude-1000/-home-felipe-faculdade-ProconChat-Jacarei/f07323d1-b961-43cc-be4b-ae3be510a3db/scratchpad/comparacao-2/; validada pelo Inumaki em 43c0c95 (CA-72 a CA-87); as diferenças que restaram foram corrigidas em 5f59f2c, e8bb1e7, 9141ce0, 6857c50, d216549 e 5a34074 e conferidas por captura em d216549 (capturas-d216549/); as diferenças mantidas estão no CA-86, com motivo)
+
 ## Dúvidas
 
 ### Para o product-owner
@@ -671,7 +831,7 @@ Nenhuma.
 
 ## Acréscimo de backend (D-U-04, D-U-05, D-U-06)
 
-> Status do acréscimo: implementada — aprovação do usuário repassada pela orchestrator em 2026-11-20; não bloqueia as tarefas de frontend já aprovadas (T1 a T19, M1, M2, K1 a K3), exceto T20. As respostas do PO (D-PO-B01 a D-PO-B03) foram confirmadas pelo usuário (repasse da orchestrator).
+> Status do acréscimo: implementada — concluído junto com a spec depois do alinhamento ao protótipo (PR #172); nenhuma tarefa dele mudou (B0 a B7, T20 e T21 feitas). Aprovação do usuário repassada pela orchestrator em 2026-11-20; não bloqueia as tarefas de frontend já aprovadas (T1 a T19, M1, M2, K1 a K3), exceto T20. As respostas do PO (D-PO-B01 a D-PO-B03) foram confirmadas pelo usuário (repasse da orchestrator).
 > Tamanho do acréscimo: grande
 > Criado em: 2026-11-20
 

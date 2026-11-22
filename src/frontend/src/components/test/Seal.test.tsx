@@ -22,4 +22,13 @@ describe("Seal", () => {
 
         expect(screen.getByText("Fora da grade atual")).toBeInTheDocument()
     })
+
+    it("aplica as cores recebidas no lugar das do tom", () => {
+        render(<Seal label="Pendente" colors={{ bg: "#FCEFD6", fg: "#7A4F00" }} />)
+
+        expect(screen.getByText("Pendente")).toHaveStyle({
+            backgroundColor: "#FCEFD6",
+            color: "#7A4F00"
+        })
+    })
 })

@@ -36,7 +36,7 @@ async function createCategory(user: ReturnType<typeof userEvent.setup>) {
     await user.click(screen.getAllByRole("button", { name: "Nova categoria" })[0])
     await user.type(screen.getByLabelText(/Título curto/), "Nova")
     await user.type(screen.getByLabelText(/Nome da categoria/), "Categoria nova")
-    await user.click(screen.getByRole("button", { name: "Confirmar" }))
+    await user.click(screen.getByRole("button", { name: "Salvar categoria" }))
 }
 
 async function createQuestion(user: ReturnType<typeof userEvent.setup>) {
@@ -44,7 +44,7 @@ async function createQuestion(user: ReturnType<typeof userEvent.setup>) {
     await user.type(screen.getByLabelText(/Título curto/), "Pergunta nova")
     await user.type(screen.getByLabelText(/Texto da pergunta/), "Posso trocar?")
     await user.type(screen.getByLabelText(/Resposta oficial/), "Pode.")
-    await user.click(screen.getByRole("button", { name: "Confirmar" }))
+    await user.click(screen.getByRole("button", { name: "Salvar pergunta" }))
 }
 
 describe("ContentPage", () => {
@@ -82,6 +82,54 @@ describe("ContentPage", () => {
         ).toBeGreaterThan(0)
     })
 
+    it("o painel lateral mostra a categoria e a última alteração ao editar uma pergunta", async () => {
+        const user = userEvent.setup()
+        await loaded({
+            categories: [stubCategory(1)],
+            questions: [
+                stubQuestion(10, 1, {
+                    updatedBy: { id: 1, name: "Ana" },
+                    updatedAt: "2026-11-05T15:00:00.000Z"
+                }),
+                stubQuestion(11, 1)
+            ]
+        })
+
+        await user.click(screen.getByRole("button", { name: "Editar P10" }))
+
+        const dialog = screen.getByRole("dialog", { name: "Editar pergunta" })
+
+        expect(within(dialog).getByText("Categoria 1")).toBeInTheDocument()
+        expect(
+            within(dialog).getByText("Última alteração por Ana em 05/11/2026")
+        ).toBeInTheDocument()
+    })
+
+    it("o painel lateral mostra a carga inicial quando a pergunta nunca foi alterada", async () => {
+        const user = userEvent.setup()
+        await loaded()
+
+        await user.click(screen.getByRole("button", { name: "Editar P10" }))
+
+        expect(
+            within(screen.getByRole("dialog", { name: "Editar pergunta" })).getByText(
+                "Carga inicial do sistema"
+            )
+        ).toBeInTheDocument()
+    })
+
+    it("o painel lateral de pergunta nova mostra a categoria e não mostra a última alteração", async () => {
+        const user = userEvent.setup()
+        await loaded()
+
+        await user.click(screen.getAllByRole("button", { name: "Nova pergunta" })[0])
+
+        const dialog = screen.getByRole("dialog", { name: "Nova pergunta" })
+
+        expect(within(dialog).getByText("Categoria 1")).toBeInTheDocument()
+        expect(within(dialog).queryByText(/Última alteração|Carga inicial/)).not.toBeInTheDocument()
+    })
+
     it("criar categoria, criar pergunta nela e salvar grava as duas na ordem", async () => {
         const user = userEvent.setup()
         const { server } = await loaded()
@@ -104,6 +152,23 @@ describe("ContentPage", () => {
             shortTitle: "Pergunta nova"
         })
         expect(screen.queryByText(/não salva/)).not.toBeInTheDocument()
+    })
+
+    it("depois de salvar uma categoria nova a seleção continua nela", async () => {
+        const user = userEvent.setup()
+        await loaded()
+
+        await createCategory(user)
+        await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
+
+        await waitFor(() =>
+            expect(screen.getByText("Conteúdo atualizado com sucesso.")).toBeInTheDocument()
+        )
+
+        expect(
+            screen.getByRole("heading", { name: "Categoria nova", level: 2 })
+        ).toBeInTheDocument()
+        expect(screen.queryByRole("heading", { name: "Categoria 1", level: 2 })).toBeNull()
     })
 
     it("Descartar desfaz as alterações", async () => {
@@ -139,7 +204,7 @@ describe("ContentPage", () => {
         const { server } = await loaded()
         server.failNext("PATCH", /active$/)
 
-        await user.click(screen.getAllByRole("button", { name: /^Desativar / })[0])
+        await user.click(screen.getByRole("button", { name: "Desativar categoria" }))
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
 
         expect(
@@ -156,7 +221,8 @@ describe("ContentPage", () => {
         server.failNext("PATCH", /\/categories\/2\/active$/)
 
         await createCategory(user)
-        await user.click(screen.getAllByRole("button", { name: /^Desativar / })[1])
+        await user.click(screen.getByRole("button", { name: "Ver as perguntas de C2" }))
+        await user.click(screen.getByRole("button", { name: "Desativar categoria" }))
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
 
         expect(
@@ -182,7 +248,8 @@ describe("ContentPage", () => {
         server.failNext("GET", /^\/categories$/)
 
         await createCategory(user)
-        await user.click(screen.getAllByRole("button", { name: /^Desativar / })[1])
+        await user.click(screen.getByRole("button", { name: "Ver as perguntas de C2" }))
+        await user.click(screen.getByRole("button", { name: "Desativar categoria" }))
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
 
         expect(
@@ -210,7 +277,9 @@ describe("ContentPage", () => {
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
 
         await waitFor(() => expect(server.log).toContain("POST /categories"))
-        expect(await screen.findByText("Categoria nova")).toBeInTheDocument()
+        expect(
+            await screen.findByRole("heading", { name: "Categoria nova", level: 2 })
+        ).toBeInTheDocument()
 
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
 
@@ -218,7 +287,9 @@ describe("ContentPage", () => {
             expect(screen.getByText("Conteúdo atualizado com sucesso.")).toBeInTheDocument()
         )
         expect(server.log.filter((entry) => entry === "POST /categories")).toHaveLength(1)
-        expect(screen.getByText("Categoria nova")).toBeInTheDocument()
+        expect(
+            screen.getByRole("heading", { name: "Categoria nova", level: 2 })
+        ).toBeInTheDocument()
     })
 
     it("com a recarga ainda falhando, o Salvar não grava nada e avisa", async () => {
@@ -246,7 +317,9 @@ describe("ContentPage", () => {
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
 
         const alerts = await screen.findAllByRole("alert")
-        const row = screen.getByText("Categoria nova").closest("li") as HTMLElement
+        const row = screen
+            .getByRole("button", { name: "Ver as perguntas de Nova" })
+            .closest("li") as HTMLElement
 
         expect(alerts.length).toBeGreaterThan(0)
         expect(within(row).getByRole("alert")).toBeInTheDocument()
@@ -289,7 +362,8 @@ describe("ContentPage", () => {
         const { server } = await loaded()
         server.failNext("PUT", /^\/categories\/reorder$/, 400)
 
-        await user.click(screen.getAllByRole("button", { name: /^Desativar / })[1])
+        await user.click(screen.getByRole("button", { name: "Ver as perguntas de C2" }))
+        await user.click(screen.getByRole("button", { name: "Desativar categoria" }))
         await user.click(screen.getAllByRole("button", { name: /^Mover .+ para baixo$/ })[0])
         expect(screen.getByText("2 alterações não salvas")).toBeInTheDocument()
         const readsBefore = server.log.filter((entry) => entry === "GET /categories").length
@@ -321,7 +395,7 @@ describe("ContentPage", () => {
         await createCategory(user)
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
         await waitFor(() => expect(server.log).toContain("POST /categories"))
-        await screen.findByText("Categoria nova")
+        await screen.findByRole("heading", { name: "Categoria nova", level: 2 })
         const release = server.holdNext("GET", /^\/categories$/)
         const writesBefore = server.log.filter((entry) => !entry.startsWith("GET")).length
 
@@ -350,7 +424,7 @@ describe("ContentPage", () => {
         await user.type(screen.getByLabelText(/Texto da pergunta/), "Posso?")
         await user.type(screen.getByLabelText(/Resposta oficial/), "Pode.")
         await user.click(screen.getByRole("checkbox", { name: /Pergunta ativa no chatbot/ }))
-        await user.click(screen.getByRole("button", { name: "Confirmar" }))
+        await user.click(screen.getByRole("button", { name: "Salvar pergunta" }))
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
 
         await waitFor(() =>
@@ -393,7 +467,8 @@ describe("ContentPage", () => {
         await loaded()
 
         await createCategory(user)
-        await user.click(screen.getAllByRole("button", { name: /^Desativar / })[0])
+        await user.click(screen.getByRole("button", { name: "Ver as perguntas de C1" }))
+        await user.click(screen.getByRole("button", { name: "Desativar categoria" }))
         expect(screen.getByText("Não salva")).toBeInTheDocument()
         expect(screen.getByText("Alteração não salva")).toBeInTheDocument()
 
@@ -412,12 +487,79 @@ describe("ContentPage", () => {
         server.failNext("PATCH", /\/categories\/2\/active$/)
 
         await createCategory(user)
-        await user.click(screen.getAllByRole("button", { name: /^Desativar / })[1])
+        await user.click(screen.getByRole("button", { name: "Ver as perguntas de C2" }))
+        await user.click(screen.getByRole("button", { name: "Desativar categoria" }))
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
 
         await screen.findByText("1 salvas e 1 pendentes.")
         expect(screen.queryByText("Não salva")).not.toBeInTheDocument()
         expect(screen.getAllByText("Alteração não salva")).toHaveLength(1)
+    })
+
+    it("a prévia abre em janela própria por cima do formulário e Esc fecha só ela", async () => {
+        const user = userEvent.setup()
+        await loaded()
+
+        await user.click(screen.getAllByRole("button", { name: /^Editar (?!categoria)/ })[0])
+        await user.type(screen.getByLabelText(/Título curto/), " x")
+        const previewButton = screen.getByRole("button", { name: "Ver como o cidadão recebe" })
+        await user.click(previewButton)
+
+        expect(
+            await screen.findByRole("dialog", { name: "Como o cidadão recebe" })
+        ).toBeInTheDocument()
+
+        await user.keyboard("{Escape}")
+
+        expect(
+            screen.queryByRole("dialog", { name: "Como o cidadão recebe" })
+        ).not.toBeInTheDocument()
+        expect(screen.queryByText("Descartar as alterações?")).not.toBeInTheDocument()
+        expect(screen.getByLabelText(/Título curto/)).toBeInTheDocument()
+        expect(previewButton).toHaveFocus()
+    })
+
+    it("o aviso fixo tem rótulo antes, texto exato e nota depois, sem selo FIXO", async () => {
+        await loaded()
+
+        expect(
+            screen.getByText("Aviso obrigatório, ao final de todas as respostas:")
+        ).toBeInTheDocument()
+        expect(screen.getByText(FIXED_NOTICE)).toBeInTheDocument()
+        expect(screen.getByText("Este aviso não é configurável.")).toBeInTheDocument()
+        expect(screen.queryByText("FIXO")).not.toBeInTheDocument()
+    })
+
+    it("o painel de perguntas mostra o cabeçalho da categoria, a busca e a ordem; Limpar só com termo", async () => {
+        const user = userEvent.setup()
+        await loaded()
+
+        expect(screen.getByRole("heading", { name: "Categoria 1", level: 2 })).toBeInTheDocument()
+        expect(screen.getByText("Título curto: C1")).toBeInTheDocument()
+        expect(screen.getByText(/Ordem em que as perguntas aparecem/)).toBeInTheDocument()
+        expect(screen.queryByRole("button", { name: "Limpar" })).not.toBeInTheDocument()
+
+        await user.type(screen.getByRole("searchbox", { name: "Buscar nas perguntas" }), "dev")
+
+        expect(screen.getByRole("button", { name: "Editar categoria" })).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "Nova pergunta" })).toBeDisabled()
+        expect(screen.queryByText(/Ordem em que as perguntas aparecem/)).not.toBeInTheDocument()
+
+        await user.click(screen.getByRole("button", { name: "Limpar" }))
+
+        expect(screen.getByRole("searchbox", { name: "Buscar nas perguntas" })).toHaveValue("")
+        expect(screen.getByText(/Ordem em que as perguntas aparecem/)).toBeInTheDocument()
+        expect(screen.queryByRole("button", { name: "Limpar" })).not.toBeInTheDocument()
+    })
+
+    it("o botão Nova categoria fica no cabeçalho da coluna de categorias", async () => {
+        await loaded()
+
+        const heading = screen.getByRole("heading", { name: "Categorias", level: 2 })
+
+        expect(heading.parentElement).toContainElement(
+            screen.getAllByRole("button", { name: "Nova categoria" })[0]
+        )
     })
 
     it("a busca procura em todas as categorias e esconde as setas", async () => {

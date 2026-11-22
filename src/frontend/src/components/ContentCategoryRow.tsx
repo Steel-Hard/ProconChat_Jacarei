@@ -1,52 +1,49 @@
 import { useTranslation } from "react-i18next"
+import InfoTooltip from "@/components/InfoTooltip"
 import type ContentCategoryRowView from "@/types/content/ContentCategoryRowView.types"
 import css from "@/styles/components/contentLists.module.css"
 
 type ContentCategoryRowProps = {
     item: ContentCategoryRowView
     onSelect: (key: string) => void
-    onEdit: (key: string) => void
-    onToggle: (key: string) => void
     onMove: (key: string, direction: "up" | "down") => void
 }
 
 const STATE_CLASS = {
     active: css.stateActive,
-    inactive: css.stateInactive,
-    hidden: css.stateHidden
+    inactive: css.stateInactive
 }
 
 const STATE_LABEL = {
     active: "categories.stateActive",
-    inactive: "categories.stateInactive",
-    hidden: "categories.stateHidden"
+    inactive: "categories.stateInactive"
 } as const
 
-function ContentCategoryRow({ item, onSelect, onEdit, onToggle, onMove }: ContentCategoryRowProps) {
+function ContentCategoryRow({ item, onSelect, onMove }: ContentCategoryRowProps) {
     const { t } = useTranslation("content")
-    const classes = [css.row]
+    const classes = [css.categoryRow]
 
     if (item.selected) {
-        classes.push(css.rowSelected)
+        classes.push(css.categoryRowSelected)
     }
 
     if (item.state === "inactive") {
-        classes.push(css.rowInactive)
+        classes.push(css.categoryRowInactive)
     }
 
     if (item.unsaved) {
-        classes.push(css.rowUnsaved)
+        classes.push(css.categoryRowUnsaved)
     }
 
     if (item.invalid) {
-        classes.push(css.rowInvalid)
+        classes.push(css.categoryRowInvalid)
     }
 
     return (
-        <li className={css.item}>
+        <li>
             <div className={classes.join(" ")}>
                 <span className={css.position}>{item.position}</span>
-                <div className={css.body}>
+                <div className={css.categoryBody}>
                     <button
                         type="button"
                         className={css.selectButton}
@@ -62,65 +59,48 @@ function ContentCategoryRow({ item, onSelect, onEdit, onToggle, onMove }: Conten
                         {t("icons.separator")}
                         {t("categories.activeCount", { count: item.activeQuestionsCount })}
                     </span>
-                    <span className={css.seals}>
-                        <span className={STATE_CLASS[item.state]}>
-                            {t(STATE_LABEL[item.state])}
+                    {item.state === "hidden" ? (
+                        <span className={css.stateHiddenWithTip}>
+                            {t("categories.stateHidden")}
+                            <InfoTooltip text={t("categories.hiddenTip")} />
                         </span>
-                        {item.unsaved ? (
-                            <span className={css.stateUnsaved}>
-                                {t(item.isNew ? "categories.unsaved" : "categories.unsavedChange")}
-                            </span>
-                        ) : null}
-                    </span>
+                    ) : null}
                     {item.error !== null ? (
                         <p role="alert" className={css.rowError}>
                             {item.error}
                         </p>
                     ) : null}
                 </div>
-                <div className={css.actions}>
-                    <div className={css.arrows}>
-                        <button
-                            type="button"
-                            className={`${css.actionButton} ${css.arrowButton}`}
-                            aria-label={t("categories.moveUpFor", { title: item.shortTitle })}
-                            disabled={!item.canMoveUp}
-                            onClick={() => onMove(item.key, "up")}
-                        >
-                            {t("icons.up")}
-                        </button>
-                        <button
-                            type="button"
-                            className={`${css.actionButton} ${css.arrowButton}`}
-                            aria-label={t("categories.moveDownFor", { title: item.shortTitle })}
-                            disabled={!item.canMoveDown}
-                            onClick={() => onMove(item.key, "down")}
-                        >
-                            {t("icons.down")}
-                        </button>
-                    </div>
+                <div className={css.categoryState}>
+                    {item.state !== "hidden" ? (
+                        <span className={STATE_CLASS[item.state]}>
+                            {t(STATE_LABEL[item.state])}
+                        </span>
+                    ) : null}
+                    {item.unsaved ? (
+                        <span className={css.stateUnsaved}>
+                            {t(item.isNew ? "categories.unsaved" : "categories.unsavedChange")}
+                        </span>
+                    ) : null}
+                </div>
+                <div className={css.arrowsColumn}>
                     <button
                         type="button"
-                        className={css.actionButton}
-                        aria-label={t("categories.editFor", { title: item.shortTitle })}
-                        onClick={() => onEdit(item.key)}
+                        className={css.categoryArrow}
+                        aria-label={t("categories.moveUpFor", { title: item.shortTitle })}
+                        disabled={!item.canMoveUp}
+                        onClick={() => onMove(item.key, "up")}
                     >
-                        {t("categories.edit")}
+                        {t("icons.up")}
                     </button>
                     <button
                         type="button"
-                        className={css.actionButton}
-                        aria-label={t(
-                            item.state === "inactive"
-                                ? "categories.activateFor"
-                                : "categories.deactivateFor",
-                            { title: item.shortTitle }
-                        )}
-                        onClick={() => onToggle(item.key)}
+                        className={css.categoryArrow}
+                        aria-label={t("categories.moveDownFor", { title: item.shortTitle })}
+                        disabled={!item.canMoveDown}
+                        onClick={() => onMove(item.key, "down")}
                     >
-                        {item.state === "inactive"
-                            ? t("categories.activate")
-                            : t("categories.deactivate")}
+                        {t("icons.down")}
                     </button>
                 </div>
             </div>

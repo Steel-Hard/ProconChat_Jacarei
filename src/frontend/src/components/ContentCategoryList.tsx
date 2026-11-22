@@ -6,14 +6,7 @@ import EmptyState from "@/components/EmptyState"
 import type ContentCategoryListProps from "@/types/content/ContentCategoryListProps.types"
 import css from "@/styles/components/contentLists.module.css"
 
-function ContentCategoryList({
-    items,
-    onSelect,
-    onEdit,
-    onToggle,
-    onMove,
-    onNew
-}: ContentCategoryListProps) {
+function ContentCategoryList({ items, onSelect, onMove, onNew }: ContentCategoryListProps) {
     const { t } = useTranslation("content")
 
     if (items.length === 0) {
@@ -27,17 +20,11 @@ function ContentCategoryList({
     }
 
     return (
-        <ul className={css.list}>
+        <ul className={css.lines}>
             {items.map((item) => (
                 <Fragment key={item.key}>
                     {item.pageBreak !== null ? <ContentPageBreak page={item.pageBreak} /> : null}
-                    <ContentCategoryRow
-                        item={item}
-                        onSelect={onSelect}
-                        onEdit={onEdit}
-                        onToggle={onToggle}
-                        onMove={onMove}
-                    />
+                    <ContentCategoryRow item={item} onSelect={onSelect} onMove={onMove} />
                 </Fragment>
             ))}
         </ul>

@@ -5,6 +5,7 @@ import type {
     ReminderHours,
     ScheduleConfigInput,
     ScheduleRangeInputItem,
+    ScheduleSaveInput,
     SlotMinutes,
 } from "../types/schedule.types"
 
@@ -252,6 +253,71 @@ export const scheduleConfigBodySchema: z.ZodType<ScheduleConfigInput> = z
         }
     })
 
+const SEEN_CONFLICT_ID_REGEX = /^[1-9]\d{0,18}$/
+const MAX_SEEN_CONFLICT_IDS = 5000
+
+export const conflictResolutionRequestSchema = z
+    .object({
+        conflictResolution: z.enum(["KEEP", "CANCEL"]).optional(),
+        seenConflictIds: z
+            .array(
+                z.string().regex(SEEN_CONFLICT_ID_REGEX, {
+                    message: "Identificador de agendamento inválido",
+                }),
+            )
+            .min(1, { message: "Informe os agendamentos vistos" })
+            .max(MAX_SEEN_CONFLICT_IDS, {
+                message: `Informe no máximo ${MAX_SEEN_CONFLICT_IDS} agendamentos`,
+            })
+            .optional(),
+        seenNoticeEnabled: z.boolean({ message: "Estado do aviso inválido" }).optional(),
+    })
+    .superRefine((data, ctx: z.RefinementCtx) => {
+        const hasResolution = data.conflictResolution !== undefined
+        if (data.seenConflictIds !== undefined) {
+            if (new Set(data.seenConflictIds).size !== data.seenConflictIds.length) {
+                ctx.addIssue({
+                    code: "custom",
+                    path: ["seenConflictIds"],
+                    message: "Há agendamentos repetidos na lista",
+                })
+            }
+        }
+        if (hasResolution && data.seenConflictIds === undefined) {
+            ctx.addIssue({
+                code: "custom",
+                path: ["seenConflictIds"],
+                message: "Informe os agendamentos vistos ao resolver conflitos",
+            })
+        }
+        if (!hasResolution && data.seenConflictIds !== undefined) {
+            ctx.addIssue({
+                code: "custom",
+                path: ["seenConflictIds"],
+                message: "Agendamentos vistos só valem com uma resolução",
+            })
+        }
+        if (data.conflictResolution === "CANCEL" && data.seenNoticeEnabled === undefined) {
+            ctx.addIssue({
+                code: "custom",
+                path: ["seenNoticeEnabled"],
+                message: "Informe o estado do aviso visto ao cancelar",
+            })
+        }
+        if (data.conflictResolution !== "CANCEL" && data.seenNoticeEnabled !== undefined) {
+            ctx.addIssue({
+                code: "custom",
+                path: ["seenNoticeEnabled"],
+                message: "O estado do aviso só vale ao cancelar",
+            })
+        }
+    })
+
+export const scheduleSaveBodySchema: z.ZodType<ScheduleSaveInput> = z.intersection(
+    scheduleConfigBodySchema,
+    conflictResolutionRequestSchema,
+)
+
 export const previewScheduleQuerySchema = z.object({
     month: z
         .string()
@@ -291,3 +357,8 @@ export const scheduleDateQuerySchema = z.object({
         .trim()
         .refine(isValidCalendarDate, { message: "Data inválida (use YYYY-MM-DD)" }),
 })
+
+export const deleteScheduledConfigBodySchema = z.preprocess(
+    (body: unknown) => body ?? {},
+    conflictResolutionRequestSchema,
+)

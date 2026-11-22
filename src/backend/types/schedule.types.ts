@@ -1,3 +1,5 @@
+import type { CancellationNoticeProblem } from "./outboundMessage.types"
+
 export type AppointmentReason = "REQUIRES_IN_PERSON" | "NOT_RESOLVED"
 export type AppointmentStatus =
     | "PENDING"
@@ -133,6 +135,27 @@ export interface BlockedDateInputItem {
     description: string
 }
 
+export type ScheduleConflictResolution = "KEEP" | "CANCEL"
+
+export interface ScheduleConflictResolutionSummary {
+    action: ScheduleConflictResolution
+    affectedCount: number
+    notifiedCount: number
+    failedCount: number
+    noticeDisabled: boolean
+}
+
+export interface ScheduleCancellationNoticeState {
+    enabled: boolean
+    problem: CancellationNoticeProblem | null
+}
+
+export interface ConflictResolutionRequest {
+    conflictResolution?: ScheduleConflictResolution
+    seenConflictIds?: string[]
+    seenNoticeEnabled?: boolean
+}
+
 export interface ScheduleConfigInput {
     slotMinutes: SlotMinutes
     seatsPerSlot: number
@@ -146,6 +169,8 @@ export interface ScheduleConfigInput {
     ranges: ScheduleRangeInputItem[]
     blockedDates: BlockedDateInputItem[]
 }
+
+export type ScheduleSaveInput = ScheduleConfigInput & ConflictResolutionRequest
 
 export interface NormalizedScheduleConfig {
     slotMinutes: SlotMinutes
