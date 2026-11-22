@@ -39,12 +39,12 @@ versao: 1.0
 <p class="sec"><a href="#s07-04">Lembrete ao cidadão</a><span>22</span></p>
 <p class="sec"><a href="#s07-05">Datas bloqueadas</a><span>23</span></p>
 <p class="sec"><a href="#s07-06">Mudanças agendadas</a><span>23</span></p>
-<p class="sec"><a href="#s07-07">Quando a mudança afeta agendamentos</a><span>23</span></p>
+<p class="sec"><a href="#s07-07">Quando a mudança afeta agendamentos</a><span>24</span></p>
 <p class="cap"><a href="#s08">7. Documentos</a><span>24</span></p>
-<p class="cap"><a href="#s09">8. Usuários</a><span>25</span></p>
+<p class="cap"><a href="#s09">8. Usuários</a><span>26</span></p>
 <p class="sec"><a href="#s09-01">Criar uma conta</a><span>26</span></p>
 <p class="sec"><a href="#s09-02">Marcar as permissões</a><span>27</span></p>
-<p class="sec"><a href="#s09-03">Redefinir a senha de uma conta</a><span>27</span></p>
+<p class="sec"><a href="#s09-03">Redefinir a senha de uma conta</a><span>28</span></p>
 <p class="sec"><a href="#s09-04">Desativar e reativar uma conta</a><span>28</span></p>
 <p class="sec"><a href="#s09-05">Regras de segurança</a><span>29</span></p>
 <p class="cap"><a href="#s10">9. WhatsApp</a><span>30</span></p>
@@ -303,7 +303,7 @@ A coluna da direita mostra as perguntas da categoria escolhida, com a posição,
 - Os botões **Cancelar** e **Salvar pergunta** ficam no rodapé da janela.
 
 ![Formulário de edição de uma pergunta](images/manual-do-painel/14-conteudo-pergunta.png)
-*Figura 14 – Formulário de edição de uma pergunta (a janela continua abaixo)*
+*Figura 14 – Formulário de edição de uma pergunta, com a dica dos marcadores abaixo da resposta oficial (a janela continua abaixo)*
 
 <h2 id="s06-03">Ver como o cidadão recebe</h2>
 
