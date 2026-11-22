@@ -40,9 +40,9 @@ Esta tarefa deixa a documentação igual ao que está de fato no sistema hoje (R
 | RN-11 | Nada é inventado. Uma data, um resultado ou um status sem fonte vai para "Dúvidas" e não é escrito como fato. A resposta do professor sobre os fluxos decisórios não é inventada. | orquestradora; PO (P-01) |
 | RN-12 | Nenhum documento mostra o valor de uma senha, chave ou token. Os exemplos citam só o nome da configuração. | padrão de segurança |
 | RN-13 | Cada tarefa entra em um commit separado, no formato `Docs :bulb: [#70] <descrição no imperativo>`, sem linha de coautoria. | orquestradora; padrão de commits |
-| RN-14 | A tela de Sessões (#72) foi descartada de propósito pelo grupo, e o PR foi fechado sem merge. No README, na arquitetura e na rastreabilidade, Sessões aparece como "descartada por decisão do grupo". Ela não é entregue nem pendente e não gera issue de lacuna. | usuário |
-| RN-15 | O Dashboard (#71) aparece conforme o estado real: <ul><li>A issue está fechada no GitHub como não planejada, com a etiqueta "Extra".</li><li>A tela não existe no painel, que marca o Dashboard como não pronto.</li></ul>O Dashboard aparece como não entregue (extra) e não gera issue de lacuna. | PO (P-04); GitHub em 22/11/2026 |
-| RN-16 | A tabela de corte de escopo do RP04 deixa de ser proposta e vira o registro oficial do que ficou de fora: <ul><li>Sessões (#72): descartada de propósito.</li><li>Exportação em PDF, Excel e CSV: não entregue, bônus da #73.</li><li>Dashboard (#71): conforme RN-15.</li><li>Os demais itens, conforme o que existe no sistema.</li></ul> | PO (P-04) |
+| RN-14 | As telas de Sessões (#72) e de Dashboard (#71) foram descartadas de propósito pelo grupo. No README, na arquitetura e na rastreabilidade, as duas aparecem como "descartada por decisão do grupo", nunca como entregue, pendente, "não entregue" ou lacuna. Nenhuma delas gera issue de lacuna. Isso vale também para o RF06 e para a tabela de corte do RP04. | usuário |
+| RN-15 | Como não há Dashboard, a tela inicial do painel leva a Agendamentos (PR #115). Os documentos descrevem isso como o comportamento final, não como algo provisório "enquanto não há Dashboard". | usuário |
+| RN-16 | A tabela de corte de escopo do RP04 deixa de ser proposta e vira o registro oficial do que ficou de fora: <ul><li>Sessões (#72): descartada por decisão do grupo.</li><li>Exportação em PDF, Excel e CSV: não entregue, bônus da #73.</li><li>Dashboard (#71): descartado por decisão do grupo.</li><li>Os demais itens, conforme o que existe no sistema.</li></ul> | PO (P-04) |
 | RN-17 | Ficam parciais, e cada um entra na lista de lacunas: <ul><li>**RF02, RF03 e RNF01:** o professor e o PROCON não responderam sobre os fluxos decisórios, e não há registro do teste com usuários. Em RF02, RF03 e na nota 1, isso aparece como "sem resposta até o fechamento", e o teste com usuários como "sem registro".</li><li>**RNF03:** a conferência das citações legais dos prazos da decisão 002 continua aberta.</li></ul> | PO (P-01, P-05); usuário |
 | RN-18 | O placar conta as issues assim: <ul><li>A #122 e a #120 aparecem só como "unificada na #121" e "unificada na #118", sem contar em dobro.</li><li>A #159 conta como organização da Feira, sem código.</li><li>A #18, a #159 e a #164 aparecem como entradas no meio da sprint.</li><li>A #70 conta como a issue de fechamento, aberta no retrato.</li></ul> | PO (P-02) |
 | RN-19 | A #70 também corrige estes textos, inteiros: <ul><li>o modelo de dados, que deixa de dizer "planejado para a Sprint 3";</li><li>a linha da pasta `.tasks/` no índice geral, porque as especificações ficam em `.specs/`, que está no Git;</li><li>os README do backend, do gateway e do painel web, conferidos do começo ao fim contra o que o sistema faz hoje.</li></ul> | PO (P-07); usuário (U-04) |
@@ -66,8 +66,8 @@ Rastreabilidade e arquitetura
 - CA-08 QUANDO um requisito está como parcial ENTÃO a linha DEVE dizer o que falta, em linguagem simples, e o número da issue aberta pela PO. Isso vale no mínimo para RF02, RF03, RNF01 e RNF03. (RN-06, RN-17)
 - CA-09 QUANDO RF02, RF03 e a nota 1 são lidos ENTÃO DEVEM dizer que a consulta sobre os fluxos decisórios ficou "sem resposta até o fechamento" e que o teste com usuários está "sem registro". Nenhuma resposta DEVE ser atribuída ao professor ou ao PROCON. (RN-11, RN-17)
 - CA-10 QUANDO a rastreabilidade fala de pendências antigas que já foram resolvidas ENTÃO o texto DEVE refletir a situação de hoje e citar a issue que resolveu cada uma. Os casos já conhecidos são: o teste ponta a ponta (#18), o guia de passagem para o PROCON (#118) e o painel em construção (#123 a #129). (RN-04)
-- CA-11 QUANDO a arquitetura é aberta ENTÃO a data de atualização DEVE ser a da conferência final. Nenhum item DEVE aparecer como "planejado para a Sprint 2" ou "planejado para a Sprint 3". O que ficou de fora DEVE aparecer com a situação certa e a issue: Sessões descartada por decisão do grupo (#72), Dashboard não entregue (#71) e exportação de relatórios não entregue (bônus da #73). (RN-04, RN-14, RN-15, RN-16)
-- CA-12 QUANDO a tela de Sessões é citada no README, na arquitetura ou na rastreabilidade ENTÃO DEVE aparecer como "descartada por decisão do grupo", nunca como entregue, pendente ou "em construção". Ela não DEVE estar na lista de lacunas. (RN-14)
+- CA-11 QUANDO a arquitetura é aberta ENTÃO a data de atualização DEVE ser a da conferência final. Nenhum item DEVE aparecer como "planejado para a Sprint 2" ou "planejado para a Sprint 3". O que ficou de fora DEVE aparecer com a situação certa e a issue: Sessões (#72) e Dashboard (#71) descartados por decisão do grupo, e exportação de relatórios não entregue (bônus da #73). (RN-04, RN-14, RN-15, RN-16)
+- CA-12 QUANDO a tela de Sessões ou a de Dashboard é citada no README, na arquitetura ou na rastreabilidade (inclusive no RF06 e no RP04) ENTÃO DEVE aparecer como "descartada por decisão do grupo", nunca como entregue, pendente, "não entregue" ou "em construção", e nenhuma das duas DEVE estar na lista de lacunas. QUANDO a tela inicial é citada ENTÃO DEVE levar a Agendamentos. (RN-14, RN-15)
 - CA-13 QUANDO a tabela de corte de escopo do RP04 é lida ENTÃO DEVE ser o registro oficial do que ficou de fora, e não mais uma "proposta a validar". (RN-16)
 - CA-14 QUANDO o README, a arquitetura e a rastreabilidade falam do menu do painel, da exportação de relatórios, da permissão "Ver sessões", dos conflitos em Horários ou do Dashboard ENTÃO DEVEM dizer o mesmo que as decisões da #174 e o que o painel faz hoje. (RN-10)
 - CA-15 QUANDO o modelo de dados é aberto ENTÃO nada que já existe no sistema DEVE aparecer como "planejado para a Sprint 3". (RN-19)
@@ -203,7 +203,7 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
   - o período é de 20/10 a 23/11/2026, e o retrato tem a data da conferência;
   - o placar soma as issues com a etiqueta `SPRINT 3` seguindo RN-18. A #122 e a #120 aparecem só como "unificada na #121" e "unificada na #118". A #159 é a organização da Feira, sem código. A #18, a #159 e a #164 estão marcadas como entradas no meio da sprint. A #70 está como a issue de fechamento, aberta no retrato;
   - o burndown está registrado como pendente, com o motivo (não há registro de "In progress");
-  - os riscos citam as lacunas da T5 e o que ficou de fora (Sessões descartada, Dashboard e exportação não entregues);
+  - os riscos citam as lacunas da T5 e o que ficou de fora (Sessões e Dashboard descartados por decisão do grupo, exportação não entregue);
   - a seção "Em aberto" já lista o que se sabe e deixa lugar para as issues novas, preenchidas na T6.
 - **Teste:** nenhum (documentação).
 - **Gate:** cada número do placar conferido contra a lista do GitHub; a conferência de links; `git status --short` mostra só a pasta `sprint3`.
@@ -263,7 +263,7 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
   - a legenda não tem mais "planejado para a Sprint 2/3";
   - cada ✅ aponta para algo que existe no código;
   - Sessões aparece como "descartada por decisão do grupo" (#72);
-  - o Dashboard aparece como não entregue (extra, #71 fechada como não planejada), conforme RN-15;
+  - o Dashboard aparece como "descartado por decisão do grupo" (#71), e a tela inicial como Agendamentos (RN-15);
   - a exportação de relatórios aparece como não entregue, bônus da #73;
   - os pontos da #174 seguem RN-10. O ajuste final de coerência é da T8;
   - a conferência de links não mostra nada.
@@ -291,8 +291,9 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
   - RF02, RF03 e RNF01 estão como ⚠️. RF02, RF03 e a nota 1 dizem que a consulta ao professor e ao PROCON sobre os fluxos decisórios ficou "sem resposta até o fechamento", e que o teste com usuários está "sem registro";
   - RNF03 está como ⚠️ pela conferência das citações legais da decisão 002;
   - a legenda explica que o 🔴 do RP04 é um risco, não um requisito;
-  - a tabela de corte é o registro oficial (RN-16), com Sessões descartada, Dashboard conforme RN-15 e exportação não entregue (bônus da #73);
-  - a nota 4 não fala mais de Sessões "em construção";
+  - a tabela de corte é o registro oficial (RN-16), com Sessões e Dashboard descartados por decisão do grupo e exportação não entregue (bônus da #73);
+  - o RF06 não trata Sessões nem Dashboard como lacuna: os dois aparecem como descartados por decisão do grupo;
+  - a nota 4 não fala mais de Dashboard e Sessões "em construção", nem da tela inicial "enquanto não há Dashboard";
   - a orquestradora recebeu a lista de lacunas, em linguagem simples e sem caminho de arquivo nem código, para o usuário ver antes de qualquer issue ser aberta (RN-21). A lista traz RF02, RF03 e RNF01 juntos, RNF03 e outras lacunas que a conferência achar;
   - a lista não traz Sessões nem Dashboard;
   - os itens parciais ficam como ⚠️ "issue a abrir" até a T6.
@@ -329,7 +330,7 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 - **Pronto quando:**
   - cada requisito tem o mesmo status no README e na rastreabilidade. Hoje divergem pelo menos o RNF02 ("Pendente" no README, ⚠️ na rastreabilidade) e o RNF05 ("Pendente" no README, ✅ na rastreabilidade);
   - a linha da Sprint 3 está como concluída, com link para `.docs/sprints/sprint3/README.md`, e o burndown está indicado como pendente;
-  - a linha do painel web lista as telas que existem hoje, diz que Sessões foi descartada por decisão do grupo e que o Dashboard não foi entregue, sem "demais telas na Sprint 3";
+  - a linha do painel web lista as telas que existem hoje, diz que Sessões e Dashboard foram descartados por decisão do grupo, sem "demais telas na Sprint 3";
   - a linha do LLM não diz "ligado ao fluxo na Sprint 3" como algo futuro;
   - a nota abaixo do Product Backlog aponta também para o fechamento da Sprint 3.
 - **Teste:** nenhum (documentação).
@@ -351,8 +352,7 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 - **Pronto quando:**
   - o menu, a permissão "Ver sessões" e os conflitos em Horários são descritos como o painel faz hoje;
   - a exportação de relatórios aparece como não entregue, bônus da #73;
-  - nenhum dos três documentos diz que o Dashboard existe;
-  - Sessões aparece como descartada por decisão do grupo;
+  - Sessões e Dashboard aparecem como descartados por decisão do grupo, e a tela inicial como Agendamentos;
   - o status de cada requisito continua igual entre o README e a rastreabilidade.
 
   Se a conferência não achar nada para mudar, isso fica registrado no Status, e não há commit.
@@ -419,7 +419,7 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 - **Atende:** RN-10, RN-12, RN-14, RN-15, RN-19, CA-24, CA-25, CA-27
 - **Pronto quando:**
   - cada comando, rota, tela e variável citados existem no painel com o mesmo nome;
-  - Sessões aparece como descartada por decisão do grupo, e o Dashboard como não entregue;
+  - Sessões e Dashboard aparecem como descartados por decisão do grupo, e a tela inicial como Agendamentos;
   - a exportação de relatórios aparece como não entregue, bônus da #73;
   - o que foi corrigido fica listado no Status.
 - **Teste:** nenhum (documentação).
@@ -431,7 +431,7 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 
 ### Para o product-owner
 
-Nenhuma em aberto. As respostas da PO (P-01 a P-07) foram incorporadas em RN-04, RN-05, RN-08, RN-10 e RN-15 a RN-19.
+Nenhuma em aberto. As respostas da PO (P-01 a P-07) foram incorporadas em RN-04, RN-05, RN-08, RN-10 e RN-16 a RN-19. A resposta sobre o Dashboard foi substituída pela decisão do usuário (RN-14).
 
 ### Para o usuário
 
@@ -443,5 +443,5 @@ Nenhuma em aberto. As respostas da PO (P-01 a P-07) foram incorporadas em RN-04,
 - U-02 O usuário autorizou o teste do zero com o modelo de IA. Quem roda é a QA (Nobara). A validação da T3 pelo dev segue sem `ollama` e `llm-pull` (RN-20).
 - U-04 Tudo entra na #70: o modelo de dados, a linha `.tasks/` e os README de cada serviço, inteiros (RN-19, T9 a T11).
 - A #121 ficou sem resposta do professor e do PROCON. RF02, RF03 e a nota 1 registram "sem resposta até o fechamento" (RN-17).
-- Sessões (#72) foi descartada de propósito pelo grupo (RN-14).
+- Sessões (#72) e Dashboard (#71) foram descartados de propósito pelo grupo, e a tela inicial leva a Agendamentos (RN-14, RN-15).
 - A #174 foi decidida (RN-10).
