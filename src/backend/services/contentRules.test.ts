@@ -618,13 +618,15 @@ describe("contentRules", () => {
                 )
             })
 
-            it("troca os marcadores pelos textos de agenda não configurada quando não há configuração", () => {
+            it("troca os marcadores pelos textos de agenda não configurada na função pura", () => {
                 expect(
                     resolveAnswerPlaceholders("Atendemos de {horarios}, em {endereco}.", null),
                 ).toBe(
                     "Atendemos de sem horários de atendimento configurados, em endereço não configurado.",
                 )
+            })
 
+            it("troca os marcadores pelos textos de agenda não configurada na prévia", () => {
                 const preview = buildQuestionPreview(
                     category,
                     [],
