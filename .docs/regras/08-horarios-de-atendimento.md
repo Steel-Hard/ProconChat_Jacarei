@@ -10,7 +10,7 @@ Definir **quando o PROCON atende presencialmente**. É daqui que o chatbot tira 
 
 ## Estado da tela
 
-**Pronta (backend na issue #64, tela na issue #125, mudanças agendadas na issue #134, envio do lembrete na issue #74, janela de manter ou cancelar os agendamentos afetados na issue #75, bloqueio de parte do dia na issue #77).** O chatbot oferece os horários da configuração salva aqui, seguindo em cada data a versão que vale nela (seção "Mudanças agendadas"). Também estão pendentes, dentro da #75, os itens marcados como pendentes em "Quando a mudança afeta agendamentos existentes".
+**Pronta (backend na issue #64, tela na issue #125, mudanças agendadas na issue #134, envio do lembrete na issue #74, janela de manter ou cancelar os agendamentos afetados na issue #75, bloqueio de parte do dia na issue #77).** O chatbot oferece os horários da configuração salva aqui, seguindo em cada data a versão que vale nela (seção "Mudanças agendadas"). O que ainda não foi entregue da janela de conflitos está em "Pendente", no fim de "Quando a mudança afeta agendamentos existentes".
 
 ## Regras gerais da tela
 
@@ -40,9 +40,9 @@ Definir **quando o PROCON atende presencialmente**. É daqui que o chatbot tira 
 |---|---|
 | **Oferecer horários até N dias à frente** (1 a 180) | O chatbot não oferece nada além disso |
 | **Antecedência mínima** (mesmo dia, 1, 2, 3 ou 5 dias úteis) | O chatbot não oferece horários antes disso. **Contam apenas dias com atendimento configurado e não bloqueados** |
-| **Alertar quando a espera passar de N dias** (1 a 60) | O Dashboard fica em alerta amarelo quando o próximo horário livre está além disso |
+| **Alertar quando a espera passar de N dias** (1 a 60) | Guarda o prazo de espera, em dias, considerado longo para o próximo horário livre. O campo mostra "Prazo de espera considerado longo para o próximo horário livre." Nenhuma tela mostra um aviso a partir dele, porque o Dashboard foi descartado ([decisão 013](../decisoes/013-telas-de-sessoes-e-dashboard-descartadas.md)) |
 
-**"Agenda lotada"** quer dizer **não haver nenhum horário livre dentro da janela**. Nesse caso, o chatbot informa ao cidadão que não há horários disponíveis no momento, e o Dashboard mostra o alerta vermelho.
+**"Agenda lotada"** quer dizer **não haver nenhum horário livre dentro da janela**. Nesse caso, o chatbot informa ao cidadão que não há horários disponíveis no momento.
 
 ### Dados da unidade
 
@@ -110,7 +110,7 @@ Ao salvar, o sistema verifica se algum agendamento **Pendente ou Confirmado futu
 | O dia deixou de ter atendimento | "Dia sem atendimento na nova grade" |
 | O horário deixou de existir por mudança de duração | "Horário deixou de existir com atendimentos de N minutos" |
 | A faixa foi removida ou alterada | "Faixa de horário removida ou alterada" |
-| As vagas foram reduzidas abaixo do que já está ocupado | Os **agendados por último** num horário lotado são os afetados |
+| As vagas foram reduzidas abaixo do que já está ocupado | Os **agendados por último** num horário lotado são os afetados, com o motivo "Vagas reduzidas para N; este horário tem M agendamentos" |
 | A duração aumentou e dois agendamentos **Confirmados** do mesmo responsável passaram a se sobrepor | "Responsável com outro agendamento sobreposto com atendimentos de N minutos (protocolo XXXXXXXX)" |
 | Cancelar uma mudança agendada deixaria agendamentos da vigência dela fora da configuração anterior | O mesmo motivo da linha correspondente, conferido contra a configuração anterior. Em vez de recusar, abre a janela de conflitos, como no salvar |
 
@@ -157,10 +157,13 @@ Ao salvar, o sistema verifica se algum agendamento **Pendente ou Confirmado futu
 - Se a ação não puder ser concluída, a janela continua aberta com "Não foi possível concluir a ação. Tente de novo.".
 - Ao cancelar uma mudança que estava aberta para edição, a tela volta para a configuração de hoje.
 
-**Pendente (não entregue na #75):**
+**Funciona hoje, fora da janela:**
 
-- O botão **"Tentar novamente"** para a falha de envio do cancelamento em massa.
-- A garantia de que os horários cancelados voltam a ficar livres nos dois casos (aviso ligado e desligado).
+- Um agendamento cancelado pela janela deixa o horário livre de novo, porque a contagem de vagas ocupadas considera só agendamentos Pendentes e Confirmados.
+- O botão **"Tentar novamente"** para a falha de envio do aviso existe no histórico do agendamento ([Detalhe do agendamento](04-detalhe-do-agendamento.md)), para cada cancelamento feito pela equipe. A janela de conflitos em si não tem esse botão.
+
+**Pendente (não entregue):**
+
 - O envio dos avisos **em paralelo** (hoje saem um a um).
 - Testes de borda extras.
 
@@ -174,5 +177,5 @@ Ao salvar, o sistema verifica se algum agendamento **Pendente ou Confirmado futu
 
 ## Relações
 
-- Usado pelo chatbot para oferecer horários, pelo [calendário de Agendamentos](03-agendamentos.md) e pelo [Dashboard](02-dashboard.md).
+- Usado pelo chatbot para oferecer horários e pelo [calendário de Agendamentos](03-agendamentos.md).
 - Os documentos da confirmação vêm de [Documentos](09-documentos.md).
