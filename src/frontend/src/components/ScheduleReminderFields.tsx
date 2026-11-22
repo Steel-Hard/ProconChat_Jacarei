@@ -1,5 +1,7 @@
-import { useId } from "react"
+import { useId, useState } from "react"
 import { useTranslation } from "react-i18next"
+import ConfirmDialog from "@/components/ConfirmDialog"
+import ScheduleReminderMeta from "@/components/ScheduleReminderMeta"
 import type ReminderHours from "@/types/schedule/ReminderHours.types"
 import css from "@/styles/components/scheduleForm.module.css"
 
@@ -8,6 +10,7 @@ type ScheduleReminderFieldsProps = {
     hours: ReminderHours
     address: string
     complement: string
+    isAdmin: boolean
     onToggle: () => void
     onChangeHours: (value: ReminderHours) => void
 }
@@ -23,11 +26,15 @@ function ScheduleReminderFields({
     hours,
     address,
     complement,
+    isAdmin,
     onToggle,
     onChangeHours
 }: ScheduleReminderFieldsProps) {
     const { t } = useTranslation("schedule")
     const hoursId = useId()
+    const titleId = useId()
+    const [confirming, setConfirming] = useState(false)
+    const dialogKey = enabled ? "off" : "on"
     const trimmedAddress = address.trim()
     const trimmedComplement = complement.trim()
     const unitAddress =
@@ -44,7 +51,9 @@ function ScheduleReminderFields({
         <section className={css.section}>
             <div className={css.reminderHeader}>
                 <div className={css.reminderText}>
-                    <h2 className={css.sectionTitle}>{t("reminder.title")}</h2>
+                    <h2 className={css.sectionTitle} id={titleId}>
+                        {t("reminder.title")}
+                    </h2>
                     <p className={css.sectionDescription}>{t("reminder.description")}</p>
                 </div>
                 <label className={css.toggle}>
@@ -52,8 +61,8 @@ function ScheduleReminderFields({
                         type="checkbox"
                         className={css.checkbox}
                         checked={enabled}
-                        aria-label={t("reminder.toggle")}
-                        onChange={onToggle}
+                        aria-labelledby={titleId}
+                        onChange={() => setConfirming(true)}
                     />
                     {enabled ? t("reminder.on") : t("reminder.off")}
                 </label>
@@ -97,6 +106,26 @@ function ScheduleReminderFields({
                 </>
             ) : null}
             <p className={css.help}>{t("reminder.cost")}</p>
+            <p className={css.help}>{t("reminder.templateRule")}</p>
+            <p className={css.help}>{t("reminder.limitRule")}</p>
+            {isAdmin ? (
+                <ScheduleReminderMeta />
+            ) : (
+                <p className={css.help}>{t("reminder.nonAdminHint")}</p>
+            )}
+            <ConfirmDialog
+                open={confirming}
+                title={t(`reminder.dialog.${dialogKey}.title`)}
+                description={t(`reminder.dialog.${dialogKey}.description`, { hours })}
+                confirmLabel={t(`reminder.dialog.${dialogKey}.confirm`)}
+                tone={enabled ? "warning" : "primary"}
+                submitOnEnter
+                onConfirm={() => {
+                    setConfirming(false)
+                    onToggle()
+                }}
+                onCancel={() => setConfirming(false)}
+            />
         </section>
     )
 }

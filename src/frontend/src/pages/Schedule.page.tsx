@@ -5,6 +5,7 @@ import ScheduleConflictList from "@/components/ScheduleConflictList"
 import ScheduleConflictModal from "@/components/ScheduleConflictModal"
 import ScheduleDurationSeats from "@/components/ScheduleDurationSeats"
 import SchedulePreview from "@/components/SchedulePreview"
+import ScheduleReminderFields from "@/components/ScheduleReminderFields"
 import ScheduleUnitFields from "@/components/ScheduleUnitFields"
 import ScheduleVersions from "@/components/ScheduleVersions"
 import ScheduleWeekGrid from "@/components/ScheduleWeekGrid"
@@ -100,6 +101,15 @@ function SchedulePage() {
                                 onChangeComplement={(value) =>
                                     actions.setText("unitAddressComplement", value)
                                 }
+                            />
+                            <ScheduleReminderFields
+                                enabled={draft.reminderEnabled}
+                                hours={draft.reminderHours}
+                                address={draft.unitAddress}
+                                complement={draft.unitAddressComplement}
+                                isAdmin={page.isAdmin}
+                                onToggle={actions.toggleReminder}
+                                onChangeHours={actions.setReminderHours}
                             />
                             <ScheduleBlockedDates
                                 blocks={page.blocks}

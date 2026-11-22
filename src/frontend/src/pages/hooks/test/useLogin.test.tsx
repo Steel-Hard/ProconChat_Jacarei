@@ -88,13 +88,13 @@ describe("useLogin", () => {
         expect(result.current.login.destination).toBe("/")
     })
 
-    it("leva à tela inicial a conta que só gerencia conteúdo", async () => {
+    it("leva à tela de Conteúdo a conta que só gerencia conteúdo", async () => {
         stubFetch(() => jsonResponse(200, { data: { user: userWith(["content.manage"]) } }))
         const { result } = renderLogin()
 
         await fillAndSubmit(result)
 
-        expect(result.current.login.destination).toBe("/")
+        expect(result.current.login.destination).toBe("/conteudo")
     })
 
     it("mostra credenciais incorretas no 401, mantém o e-mail e o redirect e limpa a senha", async () => {

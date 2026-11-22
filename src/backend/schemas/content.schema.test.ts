@@ -347,6 +347,70 @@ describe("content.schema", () => {
         })
     })
 
+    describe("questionPreviewBodySchema listRows", () => {
+        const base = {
+            categoryId: 1,
+            shortTitle: "Título",
+            shortDescription: "Descrição",
+            question: "Pergunta?",
+            answer: "Resposta.",
+            legalBasis: null,
+            requiredDocuments: [],
+        }
+
+        function rows(count: number, currentIndex = 0) {
+            return Array.from({ length: count }, (_, index) => ({
+                questionId: index + 1,
+                shortTitle: `Pergunta ${index + 1}`,
+                shortDescription: null,
+                isCurrent: index === currentIndex,
+            }))
+        }
+
+        it("keeps the list out of the result when it is not sent", () => {
+            const parsed = validateSchema(questionPreviewBodySchema, base, { withIssues: true })
+            expect(parsed.listRows).toBeUndefined()
+        })
+
+        it("accepts a list with exactly one current row, including rows without id", () => {
+            const listRows = [
+                { questionId: null, shortTitle: "Nova", shortDescription: "Descrição", isCurrent: true },
+                { questionId: 7, shortTitle: "Outra", shortDescription: null, isCurrent: false },
+            ]
+            const parsed = validateSchema(questionPreviewBodySchema, { ...base, listRows }, { withIssues: true })
+            expect(parsed.listRows).toEqual(listRows)
+        })
+
+        it("rejects a list with no current row or more than one", () => {
+            expect(() =>
+                validateSchema(questionPreviewBodySchema, { ...base, listRows: rows(2).map((r) => ({ ...r, isCurrent: false })) }, { withIssues: true }),
+            ).toThrow(/exatamente uma pergunta atual/)
+            expect(() =>
+                validateSchema(questionPreviewBodySchema, { ...base, listRows: rows(2).map((r) => ({ ...r, isCurrent: true })) }, { withIssues: true }),
+            ).toThrow(/exatamente uma pergunta atual/)
+        })
+
+        it("rejects row titles above 24 characters, descriptions above 72 and control characters", () => {
+            const longTitle = rows(1).map((r) => ({ ...r, shortTitle: "a".repeat(25) }))
+            const longDescription = rows(1).map((r) => ({ ...r, shortDescription: "a".repeat(73) }))
+            const lineBreak = rows(1).map((r) => ({ ...r, shortTitle: "a\nb" }))
+            for (const listRows of [longTitle, longDescription, lineBreak]) {
+                expect(() => validateSchema(questionPreviewBodySchema, { ...base, listRows }, { withIssues: true })).toThrow(BadRequestError)
+            }
+        })
+
+        it("rejects an empty list and a list above 500 rows", () => {
+            expect(() => validateSchema(questionPreviewBodySchema, { ...base, listRows: [] }, { withIssues: true })).toThrow(BadRequestError)
+            expect(() => validateSchema(questionPreviewBodySchema, { ...base, listRows: rows(501) }, { withIssues: true })).toThrow(BadRequestError)
+            expect(validateSchema(questionPreviewBodySchema, { ...base, listRows: rows(500) }, { withIssues: true }).listRows).toHaveLength(500)
+        })
+
+        it("rejects invalid ids in the rows", () => {
+            const listRows = rows(1).map((r) => ({ ...r, questionId: 0 }))
+            expect(() => validateSchema(questionPreviewBodySchema, { ...base, listRows }, { withIssues: true })).toThrow(BadRequestError)
+        })
+    })
+
     describe("questionActiveBodySchema and questionReorderBodySchema", () => {
         it("validates active toggle and unique questionIds", () => {
             expect(

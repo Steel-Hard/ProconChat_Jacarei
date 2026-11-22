@@ -201,7 +201,24 @@
         "addressWithComplement": "{{address}} ({{complement}})",
         "addressMissing": "[endereço não informado em Dados da unidade]",
         "note": "Os documentos do lembrete são os que foram enviados ao cidadão na confirmação de cada agendamento (a lista guardada no agendamento), não a configuração atual de Documentos.",
-        "cost": "Cada lembrete é uma mensagem de modelo e tem custo por mensagem cobrado pela Meta."
+        "cost": "Cada lembrete é uma mensagem de modelo e tem custo por mensagem cobrado pela Meta.",
+        "templateRule": "O lembrete só é enviado com o modelo Lembrete do atendimento aprovado na Meta, na tela WhatsApp. Sem essa aprovação, nenhum lembrete é enviado.",
+        "limitRule": "Os lembretes contam no limite diário de envios da Meta.",
+        "nonAdminHint": "O estado do modelo e o limite diário ficam na tela WhatsApp, que é só do Admin. Se os lembretes não chegarem, fale com quem administra o WhatsApp.",
+        "adminLink": "Abrir a tela WhatsApp",
+        "metaHeading": "Situação na Meta",
+        "dialog": {
+            "on": {
+                "title": "Ligar o lembrete?",
+                "description": "O cidadão receberá uma mensagem pelo WhatsApp {{hours}} horas antes do atendimento. Cada lembrete é uma mensagem de modelo e tem custo por mensagem cobrado pela Meta. A mudança só vale depois de Salvar alterações.",
+                "confirm": "Ligar lembrete"
+            },
+            "off": {
+                "title": "Desligar o lembrete?",
+                "description": "O cidadão deixará de receber a mensagem de lembrete antes do atendimento. A mudança só vale depois de Salvar alterações.",
+                "confirm": "Desligar lembrete"
+            }
+        }
     },
     "blocked": {
         "title": "Datas bloqueadas",

@@ -4,7 +4,7 @@ const NAV_ITEMS_READY: Record<NavKey, boolean> = {
     dashboard: false,
     appointments: true,
     reports: true,
-    content: false,
+    content: true,
     sessions: false,
     schedule: true,
     documents: true,

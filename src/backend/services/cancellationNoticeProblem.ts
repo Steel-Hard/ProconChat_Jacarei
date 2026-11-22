@@ -17,7 +17,7 @@ const RULES: Record<string, ProblemRule> = {
     "131048": { code: "SEND_LIMIT_REACHED", message: "o limite de envios do número foi atingido", scope: "ACCOUNT" },
     "132001": {
         code: "TEMPLATE_NOT_FOUND",
-        message: "o modelo de aviso não existe no idioma usado ou não está aprovado na Meta",
+        message: "o modelo da mensagem não existe no idioma usado ou não está aprovado na Meta",
         scope: "TEMPLATE",
     },
     "132000": {
@@ -37,12 +37,12 @@ const RULES: Record<string, ProblemRule> = {
     },
     "132015": {
         code: "TEMPLATE_PAUSED",
-        message: "o modelo de aviso foi pausado pela Meta por baixa qualidade",
+        message: "o modelo da mensagem foi pausado pela Meta por baixa qualidade",
         scope: "TEMPLATE",
     },
     "132016": {
         code: "TEMPLATE_DISABLED",
-        message: "o modelo de aviso foi desativado de vez pela Meta (é preciso criar um novo, com conteúdo diferente)",
+        message: "o modelo da mensagem foi desativado de vez pela Meta (é preciso criar um novo, com conteúdo diferente)",
         scope: "TEMPLATE",
     },
     "132005": {

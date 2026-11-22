@@ -19,7 +19,7 @@ export interface RespostaFinalOutput {
 }
 ```
 
-Esses campos são embutidos dentro de um prompt de instrução fixo (`JSON.stringify` do objeto inteiro, inclusive `proximos_passos` quando existe), enviado a `POST /api/generate` do Ollama (`OLLAMA_URL`, padrão `http://ollama:11434`) com `"stream": false`, o modelo de `LLM_MODEL` (padrão `llama3.2:3b`) e `"options": { "num_predict": 300 }`, que limita a saída a 300 tokens.
+Esses campos são embutidos dentro de um prompt de instrução fixo (`JSON.stringify` do objeto, inclusive `proximos_passos` quando existe, menos `observacao_presencial`: a observação sobre o atendimento presencial não vai para a IA e só entra na mensagem montada pelo Backend), enviado a `POST /api/generate` do Ollama (`OLLAMA_URL`, padrão `http://ollama:11434`) com `"stream": false`, o modelo de `LLM_MODEL` (padrão `llama3.2:3b`) e `"options": { "num_predict": 300 }`, que limita a saída a 300 tokens.
 
 ### Exemplo de requisição completa
 
@@ -57,7 +57,7 @@ Quem monta a mensagem ao cidadão é o Backend (`messageFormatter.service.ts`):
 
 - `normalizarTextoIa`: troca `\r\n` por `\n`, tira espaços no fim das linhas, remove `#` de título, troca `**x**` por `*x*`, troca marcadores de lista (`- `, `* `, `• `, `1. `, `1) `) por `• `, remove linhas iguais ao rótulo ou ao aviso, reduz 3 ou mais quebras a 2 e tira as pontas. Um bloco único com mais de 2 frases é separado em parágrafos de até 2 frases.
 - `conferirNumerosIa`: compara os conjuntos de sequências de dígitos. O texto precisa ter todos os números do campo `resposta` e nenhum número que não esteja em algum campo dos dados (marcadores de lista numerada não contam). Número por extenso conta como ausente.
-- `montarMensagemIa`: mensagem de botões com o corpo `[texto da IA, base legal e documentos, "O que fazer agora", linha de atendimento presencial se houver, aviso não vinculante, pergunta do passo seguinte]`, os botões Sim/Não (ou Agendar presencial/Agora não) e o rodapé "Gerado com auxílio de IA". O corpo vai até 1024 caracteres (limite da Meta para botões).
+- `montarMensagemIa`: mensagem de botões com o corpo `[texto da IA, base legal e documentos, "O que fazer agora", linha de atendimento presencial e observação sobre o atendimento presencial, se houver, aviso não vinculante, pergunta do passo seguinte]`, os botões Sim/Não (ou Agendar presencial/Agora não) e o rodapé "Gerado com auxílio de IA". O corpo vai até 1024 caracteres (limite da Meta para botões).
 - `mensagensRespostaOficial`: as duas mensagens oficiais de sempre (texto oficial completo e a pergunta com botões), usadas quando a IA não pode ser usada.
 
 ## Falhas e fallback

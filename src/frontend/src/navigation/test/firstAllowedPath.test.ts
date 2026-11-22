@@ -9,7 +9,11 @@ function account(permissions: PermissionKey[], isAdmin = false): PanelAccount {
 
 describe("firstAllowedPath", () => {
     it("devolve null quando a conta só tem telas não prontas", () => {
-        expect(firstAllowedPath(account(["content.manage"]))).toBeNull()
+        expect(firstAllowedPath(account(["sessions.view"]))).toBeNull()
+    })
+
+    it("devolve Conteúdo para quem só tem permissão para gerenciar conteúdo", () => {
+        expect(firstAllowedPath(account(["content.manage"]))).toBe("/conteudo")
     })
 
     it("devolve Relatórios para quem só tem permissão para ver relatórios", () => {
@@ -28,8 +32,8 @@ describe("firstAllowedPath", () => {
         expect(firstAllowedPath(account(["reports.view", "users.manage"]))).toBe("/relatorios")
     })
 
-    it("devolve Usuários para quem gerencia conteúdo e usuários", () => {
-        expect(firstAllowedPath(account(["content.manage", "users.manage"]))).toBe("/usuarios")
+    it("devolve Conteúdo para quem gerencia conteúdo e usuários", () => {
+        expect(firstAllowedPath(account(["content.manage", "users.manage"]))).toBe("/conteudo")
     })
 
     it("devolve Agendamentos para o Admin sem permissões marcadas", () => {

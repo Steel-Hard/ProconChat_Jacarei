@@ -606,7 +606,9 @@ describe("WhatsAppPage, estado do número, falhas e histórico", () => {
 
     it.each([
         ["cancellation_notice_enabled", "Aviso ao cidadão ligado"],
-        ["cancellation_notice_disabled", "Aviso ao cidadão desligado"]
+        ["cancellation_notice_disabled", "Aviso ao cidadão desligado"],
+        ["reminder_enabled", "Lembrete ao cidadão ligado"],
+        ["reminder_disabled", "Lembrete ao cidadão desligado"]
     ])("traduz a ação %s do histórico", async (action, text) => {
         await renderPage({ [`GET ${HISTORY_PATH}`]: historyReply([historyItem({ action })]) })
 

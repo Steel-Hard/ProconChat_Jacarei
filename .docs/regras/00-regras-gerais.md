@@ -32,16 +32,16 @@ Regras:
 
 ## 3. Salvar, descartar e registrar quem alterou
 
-Todas as **telas de configuração** (Horários de atendimento, Documentos, Usuários e WhatsApp) seguem o mesmo padrão:
+Todas as **telas de configuração** (Horários de atendimento, Documentos, Conteúdo, Usuários e WhatsApp) seguem o mesmo padrão:
 
 1. As alterações ficam **pendentes** até clicar em **"Salvar alterações"**.
-2. Enquanto há alterações pendentes, aparece **"N alterações não salvas"**. Passando o mouse, aparece a lista do que mudou. O contador mostra o que difere do que está gravado, não quantas ações foram feitas: adicionar e remover o mesmo item não conta, e voltar ao estado gravado zera o contador.
+2. Enquanto há alterações pendentes, aparece **"N alterações não salvas"**. Passando o mouse ou tocando, aparece a lista do que mudou. O contador mostra o que difere do que está gravado, não quantas ações foram feitas: adicionar e remover o mesmo item não conta, e voltar ao estado gravado zera o contador.
 3. **"Descartar"** desfaz todas as alterações pendentes.
 4. O topo da tela mostra **"Última alteração por [nome] em [data]"**.
 
 As exceções são os interruptores da tela de WhatsApp que agem na hora, com diálogo de confirmação: **"Pausar respostas automáticas"**, porque é de emergência, e **"Avisar o cidadão quando a equipe cancelar"**, porque é uma chave operacional com efeito imediato no próximo cancelamento e não deve se misturar com a barra de alterações não salvas das credenciais.
 
-Nas telas de operação (Agendamentos, Detalhe, Conteúdo), cada ação é aplicada quando confirmada, e fica registrada no histórico correspondente.
+Nas telas de operação (Agendamentos, Detalhe), cada ação é aplicada quando confirmada, e fica registrada no histórico correspondente.
 
 ## 4. Nada é excluído
 

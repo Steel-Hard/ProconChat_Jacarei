@@ -36,4 +36,5 @@ export interface RespostaFinalOutput {
     requer_presencial: boolean
     fora_de_escopo: boolean
     proximos_passos?: string
+    observacao_presencial?: string | null
 }

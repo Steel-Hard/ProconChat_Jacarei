@@ -461,6 +461,7 @@ async function saveScheduledConfig({
                 updated_at = NOW()`,
             [effectiveFrom, JSON.stringify(config), actorUserId],
         )
+        await recordReminderSwitchChange(client, previous.config.reminderEnabled, config.reminderEnabled, actorUserId)
 
         const versions = await selectScheduledVersions(client, effectiveFrom, effectiveFrom)
         const saved = versions.at(-1)?.config
@@ -614,6 +615,22 @@ async function listFutureActiveAppointments(now: Date): Promise<FutureActiveAppo
     return selectFutureActiveAppointments(getPool(), now, false)
 }
 
+async function recordReminderSwitchChange(
+    client: PoolClient,
+    previous: boolean,
+    next: boolean,
+    actorUserId: number,
+): Promise<void> {
+    if (previous === next) {
+        return
+    }
+    await client.query(
+        `INSERT INTO AuditLog (area, action, actor_user_id, data)
+         VALUES ('whatsapp', $1, $2, '{}'::jsonb)`,
+        [next ? "reminder_enabled" : "reminder_disabled", actorUserId],
+    )
+}
+
 async function saveConfig({
     config,
     actorUserId,
@@ -634,10 +651,12 @@ async function saveConfig({
         await validateAgainstAllVersions(client, today, validateAgainstVersions)
         const currentVersions = await selectScheduledVersions(client, today, today)
         const currentVersion = currentVersions.at(-1)
-        const current = await client.query<{ slot_minutes: number }>(
-            "SELECT slot_minutes FROM ScheduleSettings WHERE id = 1 FOR UPDATE",
+        const current = await client.query<{ slot_minutes: number; reminder_enabled: boolean }>(
+            "SELECT slot_minutes, reminder_enabled FROM ScheduleSettings WHERE id = 1 FOR UPDATE",
         )
         const currentSlotMinutes = currentVersion?.config.slotMinutes ?? current.rows[0]?.slot_minutes ?? null
+        const previousReminderEnabled =
+            currentVersion?.config.reminderEnabled ?? current.rows[0]?.reminder_enabled ?? false
 
         const nextDate = await nextScheduleChangeDate(client, today)
         const futureAppointments = appointmentsInScheduleInterval(
@@ -728,6 +747,8 @@ async function saveConfig({
                 )
             }
         }
+
+        await recordReminderSwitchChange(client, previousReminderEnabled, config.reminderEnabled, actorUserId)
 
         const updatedView = currentVersion?.effectiveFrom
             ? (await selectScheduledVersions(client, today, today)).at(-1)?.config ?? null

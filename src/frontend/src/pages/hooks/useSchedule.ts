@@ -478,6 +478,7 @@ function useSchedule() {
         actionError,
         lastChange,
         showContentLink: canAccess(account, "content") && NAV_ITEMS_READY.content,
+        isAdmin: account?.isAdmin === true,
         bookedDays: booked.days,
         bookedDaysFailed: booked.failed,
         preview,

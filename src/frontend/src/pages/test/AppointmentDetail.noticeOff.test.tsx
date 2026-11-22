@@ -110,7 +110,7 @@ describe("AppointmentDetail: modal Cancelar com problema na conta da Meta", () =
         ["PAYMENT_METHOD", "a conta da Meta está sem forma de pagamento"],
         [
             "TEMPLATE_NOT_FOUND",
-            "o modelo de aviso não existe no idioma usado ou não está aprovado na Meta"
+            "o modelo da mensagem não existe no idioma usado ou não está aprovado na Meta"
         ],
         [
             "TEMPLATE_PARAMETER_COUNT",
@@ -122,8 +122,8 @@ describe("AppointmentDetail: modal Cancelar com problema na conta da Meta", () =
         ],
         ["TEMPLATE_TRANSLATION_TOO_LONG", "a tradução do texto do modelo ficou longa demais"],
         ["TEMPLATE_POLICY_VIOLATION", "o conteúdo do modelo viola a política do WhatsApp"],
-        ["TEMPLATE_PAUSED", "o modelo de aviso foi pausado pela Meta por baixa qualidade"],
-        ["TEMPLATE_DISABLED", "o modelo de aviso foi desativado de vez pela Meta"],
+        ["TEMPLATE_PAUSED", "o modelo da mensagem foi pausado pela Meta por baixa qualidade"],
+        ["TEMPLATE_DISABLED", "o modelo da mensagem foi desativado de vez pela Meta"],
         ["INVALID_TOKEN", "o token da Meta está inválido ou expirado"],
         ["SEND_LIMIT_REACHED", "o limite de envios do número foi atingido"]
     ])("mostra a faixa para %s e deixa cancelar", async (code, phrase) => {

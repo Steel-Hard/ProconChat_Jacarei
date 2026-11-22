@@ -102,11 +102,17 @@ Olá, {{1}}. Lembrete do seu atendimento no PROCON Jacareí: {{2}}, {{3}}, às {
 | `{{6}}`  | Endereço da unidade, com o complemento entre parênteses quando houver | `Rua do Procon, 100 (Sala 1)`          |
 | `{{7}}`  | Documentos enviados na confirmação, numa linha só                     | `RG ou CNH; comprovante de residência` |
 
-Para a issue #74, que vai enviar o lembrete: a Meta recusa variável vazia, com quebra de linha, com
-tabulação ou com mais de 4 espaços seguidos. Por isso a lista de documentos (`{{7}}`) precisa ir numa
+No envio do lembrete (issue #74, `parametrosLembreteAtendimento` em `services/messageFormatter.service.ts`): a Meta recusa variável vazia, com quebra de linha, com
+tabulação ou com mais de 4 espaços seguidos. Por isso a lista de documentos (`{{7}}`) vai numa
 linha só, com os itens separados por `; `, e o complemento do endereço só entra em `{{6}}` quando
 existir. O gateway já recusa parâmetros fora dessas regras (rota interna
 `POST /internal/whatsapp/messages/template`).
+
+Regras de envio do lembrete (issue #74): um lembrete por data marcada (a remarcação gera um novo), nenhum
+lembrete para agendamento marcado dentro da janela ou já cancelado, e, sem documentos na lista, `{{7}}`
+vai como `um documento oficial com foto` (o corpo já traz "Traga:"). Falha passageira do gateway
+(fora do ar ou não configurado) é tentada de novo na varredura seguinte; erro definitivo da Meta grava
+`CITIZEN_NOTIFICATION_FAILED` com o código em `errorCode` e não se repete.
 
 ## Conferir a aprovação
 

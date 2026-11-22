@@ -4,6 +4,7 @@ import type {
     CategoryCreateInput,
     CategoryReorderInput,
     CategoryUpdateInput,
+    PreviewListRowInput,
     QuestionActiveInput,
     QuestionListQuery,
     QuestionPreviewInput,
@@ -344,8 +345,26 @@ export const questionReorderBodySchema: z.ZodType<QuestionReorderInput> = z.obje
         }),
 })
 
+const MAX_PREVIEW_LIST_ROWS = 500
+
+const previewListRowSchema = z.object({
+    questionId: positiveIdSchema.nullable(),
+    shortTitle: questionShortTitleSchema,
+    shortDescription: questionShortDescriptionSchema,
+    isCurrent: z.boolean({ message: "Indicação de pergunta atual inválida" }),
+})
+
+const previewListRowsSchema = z
+    .array(previewListRowSchema, { message: "Lista de perguntas da prévia inválida" })
+    .min(1, { message: "Lista de perguntas da prévia não pode ser vazia" })
+    .max(MAX_PREVIEW_LIST_ROWS, { message: "Limite de perguntas da prévia excedido" })
+    .refine((rows) => rows.filter((row) => row.isCurrent).length === 1, {
+        message: "A lista da prévia deve ter exatamente uma pergunta atual",
+    })
+
 interface RawQuestionPreviewFields extends Omit<RawQuestionFields, "active"> {
     questionId?: number
+    listRows?: PreviewListRowInput[]
 }
 
 export const questionPreviewBodySchema: z.ZodType<QuestionPreviewInput> = z
@@ -362,6 +381,7 @@ export const questionPreviewBodySchema: z.ZodType<QuestionPreviewInput> = z
         inPersonNote: inPersonNoteSchema,
         outOfScope: z.boolean({ message: "Campo fora do escopo inválido" }).default(false),
         llmAllowed: z.boolean({ message: "Campo complemento por IA inválido" }).optional(),
+        listRows: previewListRowsSchema.optional(),
     })
     .superRefine((data: RawQuestionPreviewFields, ctx: z.RefinementCtx) => {
         validateQuestionCrossFields(data, ctx)
@@ -380,5 +400,6 @@ export const questionPreviewBodySchema: z.ZodType<QuestionPreviewInput> = z
             inPersonNote: data.requiresInPerson ? data.inPersonNote : null,
             outOfScope: data.outOfScope,
             llmAllowed: data.outOfScope ? false : (data.llmAllowed ?? true),
+            ...(data.listRows === undefined ? {} : { listRows: data.listRows }),
         }),
     )
