@@ -184,22 +184,45 @@ com base nos requisitos e fluxos decisórios fornecidos pelo PROCON.
 ### Pré-requisitos
 
 - [Docker](https://docs.docker.com/get-docker/) e Docker Compose v2 (`docker compose`, sem hífen);
+- Acesso à internet na primeira subida: o Docker baixa as imagens e o serviço `llm-pull` baixa o modelo de IA (cerca de 2 GB), o que pode demorar;
 - Nenhuma outra dependência de host é necessária — Node.js, PostgreSQL e o
   modelo de linguagem rodam todos dentro dos containers.
+
+Os requisitos de hardware (CPU, memória e disco, medidos) e de software para a produção estão no
+[documento do software](.docs/guias/documento-do-software.pdf) (texto-fonte em
+[`.docs/guias/documento-do-software.md`](.docs/guias/documento-do-software.md)).
 
 ### Passo a passo
 
 ```bash
-git clone <URL_DO_REPOSITORIO>
-cd <NOME_DO_REPOSITORIO>
-cp .env.example .env   # ajuste os valores se necessário; os defaults servem para desenvolvimento
+git clone https://github.com/Steel-Hard/ProconChat_Jacarei.git
+cd ProconChat_Jacarei
+cp .env.example .env
+openssl rand -hex 32
+```
+
+Abra o `.env` e preencha duas variáveis, cada uma com o resultado de `openssl rand -hex 32`
+(64 caracteres hexadecimais):
+
+- `ENCRYPTION_KEY`: obrigatória e sem valor padrão. Sem ela, o Docker Compose recusa subir com
+  `defina ENCRYPTION_KEY no .env`. Ela cifra as credenciais da Meta guardadas no banco; depois que
+  houver credenciais salvas, não a troque (README do backend, "Trocar a `ENCRYPTION_KEY`");
+- `AUTH_TOKEN_SECRET`: assina as sessões do painel.
+
+Confira também `ROOT_EMAIL` e `ROOT_PASSWORD`: são o e-mail e a senha da conta Admin criada na primeira
+subida. O `.env.example` traz valores de desenvolvimento; troque-os se outras pessoas acessarem a máquina.
+Os demais valores do `.env.example` servem para desenvolvimento.
+
+Depois, suba tudo:
+
+```bash
 docker compose up --build
 ```
 
-Antes do `up`, preencha `ENCRYPTION_KEY` no `.env` com o resultado de `openssl rand -hex 32`
-(64 caracteres hexadecimais). Ela não tem valor padrão: sem ela, o Docker Compose recusa subir com
-`defina ENCRYPTION_KEY no .env`. Ela cifra as credenciais da Meta guardadas no banco; depois que
-houver credenciais salvas, não a troque (README do backend, "Trocar a `ENCRYPTION_KEY`").
+Na primeira vez, o `llm-pull` baixa o modelo de IA; acompanhe com `docker compose ps -a` até os
+serviços ficarem saudáveis. Abra o painel em `http://localhost:8081` (porta `FRONTEND_PORT`) e entre
+com `ROOT_EMAIL` e `ROOT_PASSWORD`. Nesse modo não há HTTPS, e o WhatsApp real não entrega mensagens
+à máquina; para isso, use a produção ([`.docs/infra/deploy.md`](.docs/infra/deploy.md)).
 
 Isso sobe, com um único comando, todo o ambiente do MVP:
 
@@ -223,6 +246,7 @@ todas são obrigatórias no `.env`. Veja `.env.example` para a lista completa.
 - [`.docs/database/migrations.md`](.docs/database/migrations.md) — schema, migrations e como resetar o banco.
 - [`src/backend/README.md`](src/backend/README.md) — rodar o backend fora do Docker, rotas disponíveis, testes.
 - [`src/gateway/README.md`](src/gateway/README.md) — subir e validar o Gateway WhatsApp com a Cloud API.
+- [`src/frontend/README.md`](src/frontend/README.md) — rodar o painel web fora do Docker, comandos, estrutura e testes.
 - [`.docs/llm/contrato.md`](.docs/llm/contrato.md) — contrato de entrada/saída do serviço LLM.
 - [`.docs/README.md`](.docs/README.md) — índice de toda a documentação: requisitos, decisões, regras das telas e protótipo.
 
