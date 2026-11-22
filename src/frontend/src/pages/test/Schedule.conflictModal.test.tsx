@@ -480,4 +480,37 @@ describe("SchedulePage: modal de conflitos", () => {
 
         expect(await screen.findByText(expected)).toBeInTheDocument()
     })
+
+    it.each(["Manter os agendamentos", "Cancelar e avisar os cidadãos"])(
+        "não deixa a lista de afetados antiga na tela depois de escolher %s",
+        async (choice) => {
+            const { user } = await renderSchedulePage({
+                account: MANAGER_ACCOUNT,
+                handlers: {
+                    "GET /api/v1/schedule/cancellation-notice": () => ({
+                        status: 200,
+                        body: { data: { enabled: true, problem: null } }
+                    }),
+                    "PUT /api/v1/schedule": ({ body }) =>
+                        (body as { conflictResolution?: string }).conflictResolution
+                            ? {
+                                  status: 200,
+                                  body: {
+                                      data: buildScheduleConfig({ seatsPerSlot: 1 }),
+                                      resolution: RESOLUTION_CANCEL
+                                  }
+                              }
+                            : CONFLICTS_REPLY
+                }
+            })
+
+            const dialog = await triggerConflictModal(user)
+            await user.click(await within(dialog).findByRole("button", { name: choice }))
+
+            await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
+            expect(
+                screen.queryByRole("region", { name: /Esta alteração afeta/ })
+            ).not.toBeInTheDocument()
+        }
+    )
 })
