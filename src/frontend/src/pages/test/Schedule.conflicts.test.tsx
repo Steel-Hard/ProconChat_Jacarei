@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import buildMonthlyPreview from "@/testUtils/buildMonthlyPreview"
 import renderSchedulePage from "@/testUtils/renderSchedulePage"
+import type PanelAccount from "@/types/account/PanelAccount.types"
 import type SchedulePreviewConflict from "@/types/schedule/SchedulePreviewConflict.types"
 
 vi.setConfig({ testTimeout: 60000 })
@@ -134,5 +135,47 @@ describe("SchedulePage: agendamentos afetados", () => {
             screen.queryByRole("region", { name: /Esta alteração afeta/ })
         ).not.toBeInTheDocument()
         expect(screen.getByRole("button", { name: "Salvar alterações" })).toBeEnabled()
+    })
+
+    it.each<[string, PanelAccount, string]>([
+        [
+            "conta Admin sem appointments.manage",
+            { id: 1, name: "Ana", email: "ana@exemplo.gov.br", isAdmin: true, permissions: [] },
+            "Ao salvar, você poderá manter estes agendamentos fora da grade atual ou cancelá-los."
+        ],
+        [
+            "conta só com Configurar atendimento presencial",
+            {
+                id: 2,
+                name: "Carlos",
+                email: "carlos@exemplo.gov.br",
+                isAdmin: false,
+                permissions: ["schedule.configure"]
+            },
+            "Ao salvar, você poderá manter estes agendamentos fora da grade atual. Para cancelá-los, peça a quem gerencia os agendamentos."
+        ]
+    ])("mostra a dica certa da lista de afetados para %s", async (_label, account, hint) => {
+        vi.useFakeTimers({ shouldAdvanceTime: true })
+        await renderSchedulePage({
+            account,
+            handlers: {
+                "POST /api/v1/schedule/preview": () => ({
+                    status: 200,
+                    body: {
+                        data: buildMonthlyPreview("2026-11", [], { conflicts: [PREVIEW_CONFLICT] })
+                    }
+                })
+            }
+        })
+        await screen.findByRole("checkbox", { name: "Segunda-feira" })
+        const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+
+        await seats(user, "1")
+        await vi.advanceTimersByTimeAsync(400)
+
+        const list = await screen.findByRole("region", {
+            name: "Esta alteração afeta 1 agendamento"
+        })
+        expect(within(list).getByText(hint)).toBeInTheDocument()
     })
 })
