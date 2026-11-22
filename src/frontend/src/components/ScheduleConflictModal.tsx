@@ -1,13 +1,65 @@
-import { useEffect, useId, type MouseEvent } from "react"
+import { useEffect, useId, useRef } from "react"
 import { useTranslation } from "react-i18next"
 import AppointmentNotice from "@/components/AppointmentNotice"
 import ScheduleConflictRow from "@/components/ScheduleConflictRow"
 import type ScheduleConflict from "@/types/schedule/ScheduleConflict.types"
+import type ScheduleConflictModalOrigin from "@/types/schedule/ScheduleConflictModalOrigin.types"
 import type WhatsAppCancellationNoticeProblemCode from "@/types/whatsapp/WhatsAppCancellationNoticeProblemCode.types"
 import css from "@/styles/components/scheduleConflictModal.module.css"
 
+const FOCUSABLE_SELECTOR =
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+const ORIGIN_TEXT_KEYS = {
+    save: {
+        title: "conflicts.title",
+        descriptionWithCancel: "conflictModal.save.descriptionWithCancel",
+        descriptionKeepOnly: "conflictModal.save.descriptionKeepOnly",
+        keepDescription: "conflictModal.save.keepDescription",
+        keepAction: "conflictModal.save.keepAction",
+        cancelActionOn: "conflictModal.save.cancelActionOn",
+        cancelActionOff: "conflictModal.save.cancelActionOff",
+        back: "conflictModal.save.back"
+    },
+    cancelScheduledChange: {
+        title: "conflictModal.cancelScheduledChange.title",
+        descriptionWithCancel: "conflictModal.cancelScheduledChange.descriptionWithCancel",
+        descriptionKeepOnly: "conflictModal.cancelScheduledChange.descriptionKeepOnly",
+        keepDescription: "conflictModal.cancelScheduledChange.keepDescription",
+        keepAction: "conflictModal.cancelScheduledChange.keepAction",
+        cancelActionOn: "conflictModal.cancelScheduledChange.cancelActionOn",
+        cancelActionOff: "conflictModal.cancelScheduledChange.cancelActionOff",
+        back: "conflictModal.cancelScheduledChange.back"
+    }
+} as const
+
+function trapFocus(event: KeyboardEvent, container: HTMLElement | null) {
+    const focusable = Array.from(container?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? [])
+
+    if (focusable.length === 0) {
+        event.preventDefault()
+        return
+    }
+
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+    const active = document.activeElement
+    const inside = active instanceof Node && container?.contains(active)
+
+    if (event.shiftKey && (active === first || !inside)) {
+        event.preventDefault()
+        last.focus()
+    } else if (!event.shiftKey && (active === last || !inside)) {
+        event.preventDefault()
+        first.focus()
+    }
+}
+
 type ScheduleConflictModalProps = {
     conflicts: ScheduleConflict[] | null
+    origin?: ScheduleConflictModalOrigin
+    changeDate?: string | null
+    changedNotice?: boolean
     canManageAppointments: boolean
     noticeEnabled: boolean | null
     noticeProblemCode: WhatsAppCancellationNoticeProblemCode | null
@@ -23,6 +75,9 @@ type ScheduleConflictModalProps = {
 
 function ScheduleConflictModal({
     conflicts,
+    origin = "save",
+    changeDate = null,
+    changedNotice = false,
     canManageAppointments,
     noticeEnabled,
     noticeProblemCode,
@@ -38,7 +93,23 @@ function ScheduleConflictModal({
     const { t } = useTranslation(["schedule", "common"])
     const titleId = useId()
     const descriptionId = useId()
+    const keepRef = useRef<HTMLButtonElement>(null)
+    const dialogRef = useRef<HTMLDialogElement>(null)
     const open = conflicts !== null && conflicts.length > 0
+
+    useEffect(() => {
+        if (!open) {
+            return
+        }
+
+        const previous =
+            document.activeElement instanceof HTMLElement ? document.activeElement : null
+        keepRef.current?.focus()
+
+        return () => {
+            previous?.focus()
+        }
+    }, [open])
 
     useEffect(() => {
         if (!open) {
@@ -48,6 +119,8 @@ function ScheduleConflictModal({
         function handleKeyDown(event: KeyboardEvent) {
             if (event.key === "Escape" && !busy) {
                 onClose()
+            } else if (event.key === "Tab") {
+                trapFocus(event, dialogRef.current)
             }
         }
 
@@ -59,19 +132,17 @@ function ScheduleConflictModal({
         return null
     }
 
-    function handleOverlayClick(event: MouseEvent<HTMLDivElement>) {
-        if (event.target === event.currentTarget && !busy) {
-            onClose()
-        }
-    }
-
     const count = conflicts.length
     const noticeReady = !noticeLoading && !noticeFailed && noticeEnabled !== null
-    const cancelDisabled = busy || !noticeReady
+    const textKeys = ORIGIN_TEXT_KEYS[origin]
+    const descriptionKey = canManageAppointments
+        ? textKeys.descriptionWithCancel
+        : textKeys.descriptionKeepOnly
 
     return (
-        <div className={css.overlay} role="presentation" onClick={handleOverlayClick}>
+        <div className={css.overlay} role="presentation">
             <dialog
+                ref={dialogRef}
                 open
                 className={css.dialog}
                 aria-modal="true"
@@ -80,11 +151,16 @@ function ScheduleConflictModal({
             >
                 <div className={css.header}>
                     <h2 id={titleId} className={css.title}>
-                        {t("conflicts.title", { count })}
+                        {t(textKeys.title, { count, date: changeDate })}
                     </h2>
                     <p id={descriptionId} className={css.description}>
-                        {t("conflictModal.description")}
+                        {t(descriptionKey)}
                     </p>
+                    {changedNotice ? (
+                        <output className={css.changedNotice}>
+                            {t("conflictModal.changedNotice")}
+                        </output>
+                    ) : null}
                 </div>
                 <ul className={css.list}>
                     {conflicts.map((conflict) => (
@@ -97,14 +173,15 @@ function ScheduleConflictModal({
                 <div className={css.footer}>
                     <div className={css.options}>
                         <div className={css.option}>
-                            <p className={css.optionText}>{t("conflictModal.keepDescription")}</p>
+                            <p className={css.optionText}>{t(textKeys.keepDescription)}</p>
                             <button
+                                ref={keepRef}
                                 type="button"
                                 className={css.keepButton}
                                 disabled={busy}
                                 onClick={onKeep}
                             >
-                                {t("conflictModal.keepAction")}
+                                {t(textKeys.keepAction)}
                             </button>
                         </div>
                         {canManageAppointments ? (
@@ -147,18 +224,20 @@ function ScheduleConflictModal({
                                         {t("conflictModal.cancelSummaryOff", { count })}
                                     </p>
                                 )}
-                                <button
-                                    type="button"
-                                    className={css.cancelButton}
-                                    disabled={cancelDisabled}
-                                    onClick={onCancelAppointments}
-                                >
-                                    {t(
-                                        noticeEnabled
-                                            ? "conflictModal.cancelActionOn"
-                                            : "conflictModal.cancelActionOff"
-                                    )}
-                                </button>
+                                {noticeReady ? (
+                                    <button
+                                        type="button"
+                                        className={css.cancelButton}
+                                        disabled={busy}
+                                        onClick={onCancelAppointments}
+                                    >
+                                        {t(
+                                            noticeEnabled
+                                                ? textKeys.cancelActionOn
+                                                : textKeys.cancelActionOff
+                                        )}
+                                    </button>
+                                ) : null}
                             </div>
                         ) : null}
                     </div>
@@ -173,7 +252,7 @@ function ScheduleConflictModal({
                         disabled={busy}
                         onClick={onClose}
                     >
-                        {t("conflictModal.back")}
+                        {t(textKeys.back)}
                     </button>
                 </div>
             </dialog>

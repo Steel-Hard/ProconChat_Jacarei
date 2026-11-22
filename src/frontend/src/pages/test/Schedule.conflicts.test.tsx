@@ -125,7 +125,7 @@ describe("SchedulePage: agendamentos afetados", () => {
         expect(within(dialog).getByText("Pendente")).toBeInTheDocument()
         await waitFor(() => expect(callsTo("GET", "/api/v1/schedule/booked-days")).toHaveLength(2))
 
-        await user.click(within(dialog).getByRole("button", { name: "Voltar sem salvar" }))
+        await user.click(within(dialog).getByRole("button", { name: "← Voltar sem salvar" }))
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
 
         await seats(user, "4")

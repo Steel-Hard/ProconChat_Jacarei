@@ -104,7 +104,7 @@ describe("SchedulePage: modal de conflitos", () => {
             within(dialog).getByRole("button", { name: "Manter os agendamentos" })
         ).toBeInTheDocument()
         expect(
-            within(dialog).getByRole("button", { name: "Voltar sem salvar" })
+            within(dialog).getByRole("button", { name: "← Voltar sem salvar" })
         ).toBeInTheDocument()
         expect(within(dialog).queryByRole("button", { name: /Cancelar/ })).not.toBeInTheDocument()
         expect(callsTo("GET", "/api/v1/schedule/cancellation-notice")).toHaveLength(0)
@@ -263,7 +263,9 @@ describe("SchedulePage: modal de conflitos", () => {
                 "Não foi possível verificar o aviso ao cidadão. Tente de novo."
             )
         ).toBeInTheDocument()
-        expect(within(dialog).getByRole("button", { name: "Cancelar agendamentos" })).toBeDisabled()
+        expect(
+            within(dialog).queryByRole("button", { name: "Cancelar agendamentos" })
+        ).not.toBeInTheDocument()
 
         await user.click(within(dialog).getByRole("button", { name: "Tentar de novo" }))
 

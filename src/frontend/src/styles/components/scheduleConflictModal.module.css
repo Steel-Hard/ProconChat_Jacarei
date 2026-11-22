@@ -146,3 +146,10 @@
     line-height: 1.45;
     color: var(--danger);
 }
+
+.changedNotice {
+    margin: 8px 0 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--error-text);
+}
