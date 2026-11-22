@@ -1207,11 +1207,12 @@ proteção CSRF (`403 INVALID_ORIGIN` nos métodos que enviam corpo), por `requi
 | Rota | Entrada | Sucesso | Erros |
 | --- | --- | --- | --- |
 | `GET /api/v1/schedule` | — | `200 { data: ScheduleConfigView }` (a versão que vale hoje; `effectiveFrom` é `null` na configuração-base e a data de início quando é uma mudança que já começou) | `401 UNAUTHORIZED`, `403 FORBIDDEN`, `500 SCHEDULE_NOT_CONFIGURED` |
-| `PUT /api/v1/schedule` | `ScheduleConfigInput` | `200 { data: ScheduleConfigView }` | `400 BAD_REQUEST`, `401`, `403`, `409 SCHEDULE_CONFLICTS` com `details.conflicts` |
+| `PUT /api/v1/schedule` | `ScheduleConfigInput`, mais `conflictResolution`, `seenConflictIds` e `seenNoticeEnabled` opcionais (ver "Resolução dos conflitos") | `200 { data: ScheduleConfigView, resolution? }` | `400 BAD_REQUEST`, `401`, `403` (inclusive `CANCEL` sem `appointments.manage`), `409 SCHEDULE_CONFLICTS` e `409 SCHEDULE_CONFLICTS_CHANGED` |
 | `GET /api/v1/schedule/effective?date=YYYY-MM-DD` | `date` obrigatório | `200 { data: ScheduleConfigView }` (a versão que vale na data, com `effectiveFrom`) | `400 BAD_REQUEST`, `401`, `403`, `500 SCHEDULE_NOT_CONFIGURED` |
 | `GET /api/v1/schedule/versions` | — | `200 { data: ScheduleVersion[] }` (as mudanças com início depois de hoje, em ordem de data; `[]` se não houver) | `401`, `403` |
-| `PUT /api/v1/schedule/versions/:effectiveFrom` | `ScheduleConfigInput`; `effectiveFrom` `YYYY-MM-DD` depois de hoje | `200 { data: ScheduleConfigView }` (cria ou substitui a mudança, com novo autor e horário) | `400 BAD_REQUEST` (data inválida, hoje ou passada, ou bloqueio fora da vigência), `401`, `403`, `409 SCHEDULE_CONFLICTS` com `details.conflicts` |
-| `DELETE /api/v1/schedule/versions/:effectiveFrom` | `effectiveFrom` `YYYY-MM-DD` depois de hoje | `204` sem corpo | `400 BAD_REQUEST` (data inválida, hoje ou passada), `401`, `403`, `404 NOT_FOUND`, `409 SCHEDULE_CONFLICTS` com `details.conflicts` |
+| `PUT /api/v1/schedule/versions/:effectiveFrom` | `ScheduleConfigInput`; `effectiveFrom` `YYYY-MM-DD` depois de hoje | `200 { data: ScheduleConfigView }` (cria ou substitui a mudança, com novo autor e horário) | `400 BAD_REQUEST` (data inválida, hoje ou passada, ou bloqueio fora da vigência), `401`, `403`, `409 SCHEDULE_CONFLICTS` e `409 SCHEDULE_CONFLICTS_CHANGED` |
+| `DELETE /api/v1/schedule/versions/:effectiveFrom` | `effectiveFrom` `YYYY-MM-DD` depois de hoje; corpo JSON opcional com `conflictResolution`, `seenConflictIds` e `seenNoticeEnabled` | `204` sem corpo (sem `conflictResolution`) ou `200 { resolution }` (com ele) | `400 BAD_REQUEST` (data inválida, hoje ou passada, ou campos da resolução inválidos), `401`, `403` (inclusive `CANCEL` sem `appointments.manage`), `404 NOT_FOUND`, `409 SCHEDULE_CONFLICTS` e `409 SCHEDULE_CONFLICTS_CHANGED` |
+| `GET /api/v1/schedule/cancellation-notice` | — | `200 { data: { enabled, problem } }` (o estado do aviso de cancelamento ao cidadão, com o `problem` da Meta só quando `enabled` é verdadeiro) | `401`, `403` |
 | `GET /api/v1/schedule/preview?month=YYYY-MM` | `month` opcional (padrão: mês atual em `America/Sao_Paulo`) | `200 { data: MonthlyPreviewResult }` | `400 BAD_REQUEST`, `401`, `403` |
 | `POST /api/v1/schedule/preview` | `{ month?: "YYYY-MM", config?: ScheduleConfigInput, effectiveFrom?: "YYYY-MM-DD" }` | `200 { data: MonthlyPreviewResult }` (calcula sobre o rascunho `config` sem gravar no banco, ou sobre a configuração salva se `config` for omitido; com `effectiveFrom`, o rascunho vale a partir dessa data e os dias anteriores seguem a versão salva) | `400 BAD_REQUEST`, `401`, `403` |
 | `GET /api/v1/schedule/booked-days` | — | `200 { data: { days: BookedDay[] } }` | `401`, `403` |
@@ -1284,7 +1285,7 @@ proteção CSRF (`403 INVALID_ORIGIN` nos métodos que enviam corpo), por `requi
   em `ORDER BY id`, como `lockFutureAppointments` da #62, e depois ordenados por data e `id`) e executa
   `detectScheduleConflicts(config, agendamentos, duraçãoAtual)`. Os agendamentos `off_grid` nunca entram
   na lista: servem só de parceiros na comparação do `RESPONSIBLE_OVERLAP`. Se algum agendamento for
-  afetado, a transação faz `ROLLBACK` e responde `409 SCHEDULE_CONFLICTS` com `{ details: { conflicts } }`.
+  afetado e `conflictResolution` não veio, a transação faz `ROLLBACK` e responde `409 SCHEDULE_CONFLICTS` com `{ details: { conflicts, cancellationNotice } }`.
   Códigos:
   - `DATE_BLOCKED`, `PERIOD_BLOCKED`, `DAY_WITHOUT_SERVICE`, `DURATION_CHANGED` e `RANGE_CHANGED`;
   - `SEATS_REDUCED` para os agendamentos excedentes, ordenados por `request_datetime ASC, id ASC`
@@ -1313,8 +1314,44 @@ proteção CSRF (`403 INVALID_ORIGIN` nos métodos que enviam corpo), por `requi
   }
   ```
 
-  O fluxo de resolução no mesmo salvamento (cancelar pelo Procon ou manter como `off_grid = TRUE`)
-  pertence à #75.
+- **Resolução dos conflitos (#75):** os dois `PUT` e o `DELETE` aceitam estes campos opcionais
+  (no `DELETE`, num corpo JSON; a query `?conflictResolution=` não existe). Eles não entram em
+  `config` do `POST /preview`.
+
+  | Campo | Regra |
+  | --- | --- |
+  | `conflictResolution` | `"KEEP"` ou `"CANCEL"` |
+  | `seenConflictIds` | obrigatório com `conflictResolution`, proibido sem ele; de 1 a 5.000 ids em texto, de 1 a 19 dígitos, sem zero à esquerda e sem repetição; os agendamentos que estavam na janela da tela |
+  | `seenNoticeEnabled` | booleano, obrigatório só com `"CANCEL"` e proibido nos outros casos; o estado do aviso que a tela mostrou |
+
+  Ordem das respostas: `403 INVALID_ORIGIN`, `401`, `403` sem `schedule.configure`, `400` de
+  validação, `403` se `"CANCEL"` sem `appointments.manage` (e sem ser Admin), `404` (DELETE de mudança
+  que não existe) e `400` das demais validações. Depois, dentro da transação (com a trava
+  `schedule_config`, o estado do aviso lido ali e a lista de afetados refeita):
+  - sem `conflictResolution` e com afetados: `409 SCHEDULE_CONFLICTS`, `{ error: { code, message, details: { conflicts, cancellationNotice } } }`;
+  - com `conflictResolution` e lista refeita **vazia**: grava sem mexer em agendamento (`PUT`
+    `200 { data, resolution }`; `DELETE` `200 { resolution }`, com `affectedCount`, `notifiedCount` e
+    `failedCount` zerados);
+  - com `conflictResolution`, lista refeita **diferente** do conjunto de `seenConflictIds` (a ordem
+    não conta) ou, só em `"CANCEL"`, aviso diferente de `seenNoticeEnabled`: `ROLLBACK` e
+    `409 SCHEDULE_CONFLICTS_CHANGED` com `details: { conflicts, cancellationNotice, changes }`, em que
+    `changes` lista `"CONFLICTS"`, `"NOTICE"` ou os dois. Nada é gravado e nenhum aviso é enviado. Uma
+    mudança só no aviso não impede `"KEEP"`;
+  - com tudo igual: aplica a resolução e grava a agenda na mesma transação, e então `COMMIT`.
+
+  `cancellationNotice` é `{ enabled, problem: { code } | null }`, o mesmo formato do
+  `GET /cancellation-notice`. `resolution` é `{ action, affectedCount, notifiedCount, failedCount, noticeDisabled }`.
+  Em `"KEEP"`, cada afetado recebe `off_grid = TRUE` e o evento `KEPT_OFF_GRID` com o motivo, e não é
+  apontado de novo (os `off_grid` não entram na lista de afetados). Em `"CANCEL"`, cada afetado vai a
+  `CANCELED` com o evento `CANCELED_BY_STAFF`, com motivo `UNIT_CLOSED` para `DATE_BLOCKED` e
+  `PERIOD_BLOCKED` e `OTHER` para os demais; com o aviso desligado, grava também
+  `CITIZEN_NOTICE_DISABLED` e não envia nada à Meta. Com o aviso ligado, os avisos saem **depois do
+  `COMMIT`**, um por agendamento e um a um, pelo mesmo `notifyCancellation` do cancelamento
+  individual: uma falha de envio não desfaz os cancelamentos, fica no histórico do agendamento e soma
+  em `failedCount`. No `DELETE`, os afetados são conferidos contra a configuração anterior, que
+  voltaria a valer.
+  - **Pendente na #75:** "Tentar novamente" por falha de envio do cancelamento em massa, a garantia de
+    os horários cancelados voltarem livres, o envio dos avisos em paralelo e testes de borda extras.
 
 - **Conflitos na prévia (#125):** `MonthlyPreviewResult` traz também `conflicts`, no `GET` e no
   `POST /api/v1/schedule/preview`. O service lê os agendamentos futuros ativos **uma vez e sem trava**
