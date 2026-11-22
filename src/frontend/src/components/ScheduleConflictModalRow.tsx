@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next"
+import Seal from "@/components/Seal"
 import APPOINTMENT_STATUS from "@/status/appointmentStatusStyles"
 import type ScheduleConflict from "@/types/schedule/ScheduleConflict.types"
 import dayMonthOf from "@/utils/schedule/dayMonthOf"
@@ -20,12 +21,10 @@ function ScheduleConflictModalRow({ conflict }: ScheduleConflictModalRowProps) {
             <div className={css.details}>
                 <div className={css.identity}>
                     <span className={css.name}>{conflict.name}</span>
-                    <span
-                        className={css.status}
-                        style={{ backgroundColor: statusStyle.bg, color: statusStyle.fg }}
-                    >
-                        {t(`common:status.appointment.${conflict.status}`)}
-                    </span>
+                    <Seal
+                        label={t(`common:status.appointment.${conflict.status}`)}
+                        colors={statusStyle}
+                    />
                 </div>
                 <div className={css.when}>
                     {t("conflicts.when", {
