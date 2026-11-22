@@ -258,6 +258,8 @@ describe("ContentQuestionForm", () => {
 })
 
 const withAnswer = (answer: string) => ({ ...empty, answer })
+const follows = (earlier: Element, later: Element) =>
+    Boolean(earlier.compareDocumentPosition(later) & Node.DOCUMENT_POSITION_FOLLOWING)
 const save = () => screen.getByRole("button", { name: "Salvar pergunta" })
 
 describe("ContentQuestionForm marcador mal escrito", () => {
@@ -352,5 +354,20 @@ describe("ContentQuestionForm marcador mal escrito", () => {
                 "Marcador não reconhecido: {Endereco}. Use {endereco}. Se for isso mesmo que você quer, clique em Salvar de novo."
             )
         ).toBeInTheDocument()
+    })
+
+    it("abaixo do campo ficam, em ordem, a dica, o aviso de marcador e o alerta de resposta longa", () => {
+        renderForm({ initial: withAnswer(`{Endereco} ${"a".repeat(1000)}`) })
+
+        const field = screen.getByLabelText(/Resposta oficial/)
+        const hint = screen.getByText(/Você pode usar/)
+        const placeholderWarning = screen.getByText(/Marcador não reconhecido/)
+        const longAnswerWarning = screen.getByText(
+            "Respostas longas ficam difíceis de ler no celular"
+        )
+
+        expect(follows(field, hint)).toBe(true)
+        expect(follows(hint, placeholderWarning)).toBe(true)
+        expect(follows(placeholderWarning, longAnswerWarning)).toBe(true)
     })
 })

@@ -150,15 +150,15 @@ function ContentQuestionForm({
                     tall
                     error={errorOf("answer")}
                     warnings={placeholderWarnings}
+                    hint={
+                        <Trans
+                            t={t}
+                            i18nKey="questionForm.answerPlaceholdersHint"
+                            components={{ code: <code className={css.hintCode} /> }}
+                        />
+                    }
                     onChange={(value) => patch({ answer: value })}
                 />
-                <p className={css.hint}>
-                    <Trans
-                        t={t}
-                        i18nKey="questionForm.answerPlaceholdersHint"
-                        components={{ code: <code className={css.hintCode} /> }}
-                    />
-                </p>
                 {fields.answer.length >= CONTENT_LIMITS.answerWarningFrom ? (
                     <p className={css.longAnswerAlert}>{t("questionForm.answerWarning")}</p>
                 ) : null}

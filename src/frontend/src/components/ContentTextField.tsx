@@ -1,4 +1,4 @@
-import { useId } from "react"
+import { useId, type ReactNode } from "react"
 import { useTranslation } from "react-i18next"
 import css from "@/styles/components/contentForms.module.css"
 
@@ -10,7 +10,7 @@ type ContentTextFieldProps = {
     optional?: boolean
     multiline?: boolean
     tall?: boolean
-    hint?: string
+    hint?: ReactNode
     error?: string | null
     warnings?: string[]
     placeholder?: string
