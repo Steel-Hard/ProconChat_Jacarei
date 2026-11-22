@@ -4,7 +4,7 @@ export default defineConfig({
     test: {
         testTimeout: 30000,
         include: ["**/*.test.ts"],
-        exclude: ["node_modules", "dist", "tests/integration/**"],
+        exclude: ["node_modules", "dist", "tests/integration/**", "tests/e2e/**"],
         env: {
             DB_URL: "postgres://test:test@localhost:5432/proconchat_test",
             PHONE_HASH_SECRET: "test-only-phone-hash-secret",

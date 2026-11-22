@@ -32,8 +32,9 @@ Backend do chatbot de orientação ao consumidor via WhatsApp (PROCON Jacareí).
 - **Dublês de repositório** em `repositories/mock/` (`*Mock.repository.ts`), como `InMemorySessionRepository` (`sessionMock.repository.ts`, com a mesma regra de página do repositório real e teste próprio). Os agendamentos usam o `AppointmentRepositoryStub` (`appointmentStub.repository.ts`, com teste próprio), um dublê enxuto sem semântica de SQL: devolve a lista e os detalhes do cenário sem filtrar, ordenar, contar nem paginar, guarda as chamadas (`findListCalls`, `actionCalls`), recusa as ações pelo `decideTransition` real e aplica o efeito que o próprio teste descreve (`afterAction`). Os dados vêm dos builders de `appointment.builders.ts` (`buildAppointmentDetail`, `buildListItem`, `buildChipCounts`, a linha do tempo da conversa e o relógio fixo `FIXED_NOW`).
 - **Fixtures e harness dos services** em `services/mock/`: `conversationFlow.fixtures.ts` e `schedule.fixtures.ts` (dados e builders, sem `vitest`) e `conversationFlowHarness.ts` (o fluxo da conversa montado com `vi.fn`). Essas pastas entram no `dist`, porque o build só exclui `*.test.ts` e `tests/**`; código de produção nunca importa delas.
 - **Integração** (`npm run test:integration`, `vitest.integration.config.mts`, em série): `tests/integration/*.test.ts` contra Postgres real, com os apoios em `tests/integration/helpers/` (`scheduleDb.ts`, `appointmentsDb.ts` e `phone.ts`). A busca, os filtros, a ordenação, os chips, o contador de pendentes e as transições do repositório de agendamentos são provados aqui, em `appointments.integration.test.ts`, e não na unidade. A pasta `tests/` inteira fica fora do build (`exclude` do `tsconfig.json`), então esses apoios, que apagam e recriam dados, não vão para o `dist` nem para a imagem.
+- **Ponta a ponta** (`npm run test:e2e`, `vitest.e2e.config.mts`, em série): `tests/e2e/**/*.e2e.test.ts`, com os apoios em `tests/e2e/helpers/`. O Gateway e o Backend sobem no mesmo processo do Vitest, cada um numa porta local, contra Postgres real. O teste assina e envia ao Gateway o que a Meta entregaria, e a Meta é interceptada na saída do Gateway (o `fetch` para `graph.facebook.com` é trocado por um falso, as chamadas a `127.0.0.1` passam ao `fetch` real, e qualquer outro endereço falha o teste, então nenhuma chamada externa real sai). O painel é exercitado na app do Backend com login real. A IA fica desligada: a pergunta de teste não usa o modelo de linguagem. Cobre dois cenários: dúvida nova que termina em agendamento, assumido e marcado como atendido pelo painel; e o retorno do cidadão com agendamento futuro, que remarca e cancela em conversas separadas. Os arquivos ficam fora do `typecheck:test` e do `npm test` (`tsconfig.test.json` e `vitest.config.mts` excluem `tests/e2e`) e têm o próprio `tsconfig.e2e.json`, checado por `npm run typecheck:e2e`.
 - **Limpeza das observações internas:** o trigger `trg_appointment_notes_immutable` recusa `DELETE` em `AppointmentNotes`, e as chaves estrangeiras não têm cascata. Por isso `deleteAppointmentNotes` (`tests/integration/helpers/appointmentsDb.ts`, chamado por `deleteAppointmentScope`) desliga o trigger, apaga as observações e religa o trigger dentro de uma transação. `ALTER TABLE ... DISABLE TRIGGER` exige que o usuário do `DB_URL` seja dono da tabela (ou superusuário, como o `proconchat` do Docker e do CI) e pega `ACCESS EXCLUSIVE` em `AppointmentNotes` até o fim da transação. É mais um motivo para os testes de integração rodarem em série (`fileParallelism: false`) e num banco próprio, nunca no banco em uso pelo app.
-- **Tipos dos testes:** o build não compila os testes nem `tests/`. `npm run typecheck:test` (`tsconfig.test.json`) checa os tipos de todo `.ts`, inclusive os testes, e roda no CI.
+- **Tipos dos testes:** o build não compila os testes nem `tests/`. `npm run typecheck:test` (`tsconfig.test.json`) checa os tipos de todo `.ts`, inclusive os testes, exceto `tests/e2e`, checado por `npm run typecheck:e2e`, e os dois rodam no CI.
 
 ## Variáveis de ambiente
 
@@ -73,7 +74,7 @@ npm run dev     # sobe o servidor em modo desenvolvimento (nodemon + ts-node)
 npm run build   # compila para dist/
 npm start       # roda a versão compilada (dist/index.js)
 npm test        # roda a suíte de testes (Vitest + Supertest)
-npm run typecheck:test  # checa os tipos de todo o código, inclusive dos testes
+npm run typecheck:test  # checa os tipos de todo o código, inclusive dos testes (exceto tests/e2e, checado por typecheck:e2e)
 ```
 
 Rode `npm run test:integration` num **banco separado**, com as migrations aplicadas. A integração
@@ -98,6 +99,19 @@ e `restoreScheduleConfig` em `tests/integration/helpers/scheduleDb.ts`). Os dois
 criam (categorias, perguntas, sessões com os seus eventos, agendamentos e usuários de teste); o da API
 usa o Admin que já existe ou cria um "Admin Teste" e o apaga no fim. Se a execução for interrompida, a configuração da agenda
 pode ficar trocada: rode num banco descartável, como acima.
+
+Para o teste ponta a ponta, instale também as dependências do Gateway (`npm ci` em `src/gateway`), porque o teste importa o Gateway. Rode num **Postgres descartável**, nunca no banco do app: o teste troca a agenda e a configuração do WhatsApp do banco inteiro e as restaura no fim, e uma execução interrompida pode deixá-las trocadas. Não rode junto com a integração no mesmo banco, porque um atrapalha o outro. Por exemplo:
+
+```bash
+docker run --rm -d --name proconchat-e2e -e POSTGRES_DB=proconchat -e POSTGRES_USER=proconchat -e POSTGRES_PASSWORD=proconchat_ci -p 127.0.0.1:55440:5432 postgres:15-alpine
+(cd ../gateway && npm ci)
+export DB_URL=postgresql://proconchat:proconchat_ci@127.0.0.1:55440/proconchat
+npm run db:migrate
+npm run typecheck:e2e
+npm run test:e2e
+```
+
+Os valores acima são os de teste do CI, não são segredos. As demais variáveis do teste vêm do `vitest.e2e.config.mts`; só o `DB_URL` precisa ser informado. No CI, o job `backend-e2e` (`.github/workflows/ci.yml`) faz o mesmo com um Postgres próprio: `npm ci` no Backend e no Gateway, `npm run db:migrate`, `npm run typecheck:e2e` e `npm run test:e2e`.
 
 `npm run test:db` (`db/verify-migrations.cjs`) cria bancos temporários a partir de `DB_TEST_URL` (o
 usuário precisa de `CREATEDB`) e roda as migrations e o seed em processos filhos. Para provar que o
