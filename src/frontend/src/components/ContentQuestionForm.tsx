@@ -29,16 +29,23 @@ function ContentQuestionForm({
     const [attempted, setAttempted] = useState(false)
     const [warnedPlaceholders, setWarnedPlaceholders] = useState<string | null>(null)
     const onChangeRef = useRef(onChange)
+    const placeholderWarningRef = useRef<HTMLOutputElement>(null)
     const errors: ContentFieldError[] = attempted ? validate(fields).errors : []
     const misspelledPlaceholders = findMisspelledPlaceholders(fields.answer)
     const misspelledKey = misspelledPlaceholders.map((item) => item.found).join("|")
+    const awaitingSecondSave = warnedPlaceholders === misspelledKey
     const placeholderWarnings = misspelledPlaceholders.map((item, index) => {
         const line = t("questionForm.misspelledPlaceholder", item)
 
-        return index === misspelledPlaceholders.length - 1
+        return awaitingSecondSave && index === misspelledPlaceholders.length - 1
             ? `${line} ${t("questionForm.misspelledPlaceholderConfirm")}`
             : line
     })
+    useEffect(() => {
+        if (warnedPlaceholders !== null) {
+            placeholderWarningRef.current?.focus()
+        }
+    }, [warnedPlaceholders])
 
     useEffect(() => {
         onChangeRef.current = onChange
@@ -150,6 +157,7 @@ function ContentQuestionForm({
                     tall
                     error={errorOf("answer")}
                     warnings={placeholderWarnings}
+                    warningRef={placeholderWarningRef}
                     hint={
                         <Trans
                             t={t}

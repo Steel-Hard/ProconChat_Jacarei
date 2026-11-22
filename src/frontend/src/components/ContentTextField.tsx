@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from "react"
+import { useId, type ReactNode, type RefObject } from "react"
 import { useTranslation } from "react-i18next"
 import css from "@/styles/components/contentForms.module.css"
 
@@ -13,6 +13,7 @@ type ContentTextFieldProps = {
     hint?: ReactNode
     error?: string | null
     warnings?: string[]
+    warningRef?: RefObject<HTMLOutputElement | null>
     placeholder?: string
     rows?: number
 }
@@ -36,6 +37,7 @@ function ContentTextField({
     hint,
     error = null,
     warnings = [],
+    warningRef,
     placeholder,
     rows
 }: ContentTextFieldProps) {
@@ -97,7 +99,12 @@ function ContentTextField({
                 </p>
             ) : null}
             {warnings.length > 0 ? (
-                <output id={warningId} className={css.longAnswerAlert}>
+                <output
+                    id={warningId}
+                    ref={warningRef}
+                    tabIndex={-1}
+                    className={css.longAnswerAlert}
+                >
                     {warnings.map((warning) => (
                         <p key={warning} className={css.warningLine}>
                             {warning}

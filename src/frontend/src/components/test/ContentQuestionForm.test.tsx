@@ -350,10 +350,32 @@ describe("ContentQuestionForm marcador mal escrito", () => {
         await user.type(screen.getByLabelText(/Resposta oficial/), " {{Endereco}")
 
         expect(
-            screen.getByText(
-                "Marcador não reconhecido: {Endereco}. Use {endereco}. Se for isso mesmo que você quer, clique em Salvar de novo."
-            )
+            screen.getByText("Marcador não reconhecido: {Endereco}. Use {endereco}.")
         ).toBeInTheDocument()
+        expect(screen.queryByText(/clique em Salvar de novo/)).not.toBeInTheDocument()
+    })
+
+    it("o primeiro clique em Salvar leva o foco para o aviso", async () => {
+        const user = userEvent.setup()
+        renderForm({ initial: withAnswer("Fica em {Endereco}.") })
+
+        await user.click(save())
+
+        expect(screen.getByRole("status")).toHaveFocus()
+    })
+
+    it("mudar o texto para outro erro volta ao aviso curto, sem a frase de confirmação", async () => {
+        const user = userEvent.setup()
+        renderForm({ initial: withAnswer("Fica em {Endereco}.") })
+
+        await user.click(save())
+        await user.clear(screen.getByLabelText(/Resposta oficial/))
+        await user.type(screen.getByLabelText(/Resposta oficial/), "Atendemos de {{Horarios}")
+
+        expect(
+            screen.getByText("Marcador não reconhecido: {Horarios}. Use {horarios}.")
+        ).toBeInTheDocument()
+        expect(screen.queryByText(/clique em Salvar de novo/)).not.toBeInTheDocument()
     })
 
     it("abaixo do campo ficam, em ordem, a dica, o aviso de marcador e o alerta de resposta longa", () => {
