@@ -90,6 +90,7 @@ export function createScheduleStubRepository(
     setScheduledSaveError(error: Error | null): void
     setScheduledDeleteError(error: Error | null): void
     setCancellationNoticeEnabled(enabled: boolean): void
+    setCancellationNoticeReadError(error: Error | null): void
     listFutureCalls: Date[]
     versionCalls: ScheduleVersionsCall[]
     configForDateCalls: string[]
@@ -107,6 +108,7 @@ export function createScheduleStubRepository(
     let scheduledSaveError: Error | null = null
     let scheduledDeleteError: Error | null = null
     let cancellationNoticeEnabled = true
+    let cancellationNoticeReadError: Error | null = null
     const users =
         options.users ??
         new Map<number, string>([
@@ -301,6 +303,12 @@ export function createScheduleStubRepository(
             }))
     }
 
+    function failWhenNoticeUnreadable(): void {
+        if (cancellationNoticeReadError) {
+            throw cancellationNoticeReadError
+        }
+    }
+
     function conflictDetails(conflicts: ScheduleConflictItem[]): Record<string, unknown> {
         return {
             conflicts,
@@ -336,6 +344,7 @@ export function createScheduleStubRepository(
         request: ConflictResolutionRequest,
         message: string,
     ): string[] {
+        failWhenNoticeUnreadable()
         if (conflicts.length === 0) {
             return []
         }
@@ -520,6 +529,9 @@ export function createScheduleStubRepository(
         },
         setCancellationNoticeEnabled(enabled: boolean) {
             cancellationNoticeEnabled = enabled
+        },
+        setCancellationNoticeReadError(error: Error | null) {
+            cancellationNoticeReadError = error
         },
         setConfig(config: ScheduleConfigView | null) {
             currentConfig = config

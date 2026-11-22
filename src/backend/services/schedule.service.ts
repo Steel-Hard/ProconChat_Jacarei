@@ -1,9 +1,10 @@
 import { gatewayClient } from "../clients/gateway.client"
 import BadRequestError from "../errors/BadRequestError"
+import ConflictError from "../errors/ConflictError"
 import ScheduleNotConfiguredError from "../errors/ScheduleNotConfiguredError"
 import { appointmentRepository as defaultAppointmentRepository } from "../repositories/appointment.repository"
 import { scheduleRepository } from "../repositories/schedule.repository"
-import { IScheduleRepository } from "../repositories/schedule.repository.interface"
+import { IScheduleRepository, ScheduleResolutionOutcome } from "../repositories/schedule.repository.interface"
 import { isValidCalendarDate, isValidMonthString } from "../schemas/schedule.schema"
 import {
     AvailableSlot,
@@ -195,6 +196,57 @@ export function createScheduleService(
         return { notifiedCount, failedCount }
     }
 
+    async function completeNoticeProblem(error: ConflictError): Promise<ConflictError> {
+        const notice = error.details?.cancellationNotice as { enabled?: boolean } | undefined
+        if (!notice?.enabled) {
+            return error
+        }
+        let problem: ScheduleCancellationNoticeState["problem"] = null
+        try {
+            problem = (await cancellationNotice.getState()).problem
+        } catch {
+            problem = null
+        }
+        return new ConflictError(error.message, error.code, {
+            ...error.details,
+            cancellationNotice: { enabled: true, problem },
+        })
+    }
+
+    async function withNoticeProblem<T>(action: () => Promise<T>): Promise<T> {
+        try {
+            return await action()
+        } catch (error) {
+            if (
+                error instanceof ConflictError &&
+                (error.code === "SCHEDULE_CONFLICTS" || error.code === "SCHEDULE_CONFLICTS_CHANGED")
+            ) {
+                throw await completeNoticeProblem(error)
+            }
+            throw error
+        }
+    }
+
+    async function reportResolution(
+        resolution: ScheduleConflictResolution,
+        outcome: ScheduleResolutionOutcome,
+        actorUserId: number,
+        now: Date,
+        onResolution?: (summary: ScheduleConflictResolutionSummary) => void,
+    ): Promise<void> {
+        const counts =
+            resolution === "CANCEL" && outcome.noticeEnabled
+                ? await sendMassCancellationNotices(outcome.affectedIds, actorUserId, now)
+                : { notifiedCount: 0, failedCount: 0 }
+        onResolution?.({
+            action: resolution,
+            affectedCount: outcome.affectedIds.length,
+            notifiedCount: counts.notifiedCount,
+            failedCount: counts.failedCount,
+            noticeDisabled: resolution === "CANCEL" && !outcome.noticeEnabled,
+        })
+    }
+
     async function getCancellationNoticeState(): Promise<ScheduleCancellationNoticeState> {
         return cancellationNotice.getState()
     }
@@ -380,34 +432,23 @@ export function createScheduleService(
         const normalized = normalizeAndValidateScheduleConfig(input)
         const todayStr = getLocalParts(now).dateStr
         const resolution = input.conflictResolution
-        const noticeEnabled =
-            resolution === "CANCEL" ? await cancellationNotice.isEnabled() : false
-        let affectedIds: string[] = []
-        const saved = await repository.saveConfig({
-            config: normalized,
-            actorUserId,
-            now,
-            validateAgainstVersions: blocksInVigencyCheck(input, todayStr, todayStr),
-            conflictResolution: resolution,
-            noticeDisabled: resolution === "CANCEL" ? !noticeEnabled : false,
-            seenConflictIds: input.seenConflictIds,
-            seenNoticeEnabled: input.seenNoticeEnabled,
-            onResolved: (outcome) => {
-                affectedIds = outcome.affectedIds
-            },
-        })
+        let outcome: ScheduleResolutionOutcome = { affectedIds: [], noticeEnabled: false }
+        const saved = await withNoticeProblem(() =>
+            repository.saveConfig({
+                config: normalized,
+                actorUserId,
+                now,
+                validateAgainstVersions: blocksInVigencyCheck(input, todayStr, todayStr),
+                conflictResolution: resolution,
+                seenConflictIds: input.seenConflictIds,
+                seenNoticeEnabled: input.seenNoticeEnabled,
+                onResolved: (resolved) => {
+                    outcome = resolved
+                },
+            }),
+        )
         if (resolution) {
-            const counts =
-                resolution === "CANCEL" && noticeEnabled
-                    ? await sendMassCancellationNotices(affectedIds, actorUserId, now)
-                    : { notifiedCount: 0, failedCount: 0 }
-            options?.onResolution?.({
-                action: resolution,
-                affectedCount: affectedIds.length,
-                notifiedCount: counts.notifiedCount,
-                failedCount: counts.failedCount,
-                noticeDisabled: resolution === "CANCEL" && !noticeEnabled,
-            })
+            await reportResolution(resolution, outcome, actorUserId, now, options?.onResolution)
         }
         return saved
     }
@@ -427,35 +468,24 @@ export function createScheduleService(
         }
         const normalized = normalizeAndValidateScheduleConfig(input)
         const resolution = input.conflictResolution
-        const noticeEnabled =
-            resolution === "CANCEL" ? await cancellationNotice.isEnabled() : false
-        let affectedIds: string[] = []
-        const saved = await repository.saveScheduledConfig({
-            config: normalized,
-            effectiveFrom,
-            actorUserId,
-            now,
-            validateAgainstVersions: blocksInVigencyCheck(input, effectiveFrom, getLocalParts(now).dateStr),
-            conflictResolution: resolution,
-            noticeDisabled: resolution === "CANCEL" ? !noticeEnabled : false,
-            seenConflictIds: input.seenConflictIds,
-            seenNoticeEnabled: input.seenNoticeEnabled,
-            onResolved: (outcome) => {
-                affectedIds = outcome.affectedIds
-            },
-        })
+        let outcome: ScheduleResolutionOutcome = { affectedIds: [], noticeEnabled: false }
+        const saved = await withNoticeProblem(() =>
+            repository.saveScheduledConfig({
+                config: normalized,
+                effectiveFrom,
+                actorUserId,
+                now,
+                validateAgainstVersions: blocksInVigencyCheck(input, effectiveFrom, getLocalParts(now).dateStr),
+                conflictResolution: resolution,
+                seenConflictIds: input.seenConflictIds,
+                seenNoticeEnabled: input.seenNoticeEnabled,
+                onResolved: (resolved) => {
+                    outcome = resolved
+                },
+            }),
+        )
         if (resolution) {
-            const counts =
-                resolution === "CANCEL" && noticeEnabled
-                    ? await sendMassCancellationNotices(affectedIds, actorUserId, now)
-                    : { notifiedCount: 0, failedCount: 0 }
-            options?.onResolution?.({
-                action: resolution,
-                affectedCount: affectedIds.length,
-                notifiedCount: counts.notifiedCount,
-                failedCount: counts.failedCount,
-                noticeDisabled: resolution === "CANCEL" && !noticeEnabled,
-            })
+            await reportResolution(resolution, outcome, actorUserId, now, options?.onResolution)
         }
         return saved
     }
@@ -470,34 +500,23 @@ export function createScheduleService(
         }
         const resolution = options?.conflictResolution
         if (!resolution) {
-            await repository.deleteScheduledConfig(effectiveFrom, now)
+            await withNoticeProblem(() => repository.deleteScheduledConfig(effectiveFrom, now))
             return
         }
-        const noticeEnabled =
-            resolution === "CANCEL" ? await cancellationNotice.isEnabled() : false
-        let affectedIds: string[] = []
-        await repository.deleteScheduledConfig(effectiveFrom, now, {
-            actorUserId: options?.actorUserId,
-            conflictResolution: resolution,
-            noticeDisabled: resolution === "CANCEL" ? !noticeEnabled : false,
-            seenConflictIds: options?.seenConflictIds,
-            seenNoticeEnabled: options?.seenNoticeEnabled,
-            onResolved: (outcome) => {
-                affectedIds = outcome.affectedIds
-            },
-        })
-        if (resolution && options?.actorUserId !== undefined) {
-            const counts =
-                resolution === "CANCEL" && noticeEnabled
-                    ? await sendMassCancellationNotices(affectedIds, options.actorUserId, now)
-                    : { notifiedCount: 0, failedCount: 0 }
-            options.onResolution?.({
-                action: resolution,
-                affectedCount: affectedIds.length,
-                notifiedCount: counts.notifiedCount,
-                failedCount: counts.failedCount,
-                noticeDisabled: resolution === "CANCEL" && !noticeEnabled,
-            })
+        let outcome: ScheduleResolutionOutcome = { affectedIds: [], noticeEnabled: false }
+        await withNoticeProblem(() =>
+            repository.deleteScheduledConfig(effectiveFrom, now, {
+                actorUserId: options?.actorUserId,
+                conflictResolution: resolution,
+                seenConflictIds: options?.seenConflictIds,
+                seenNoticeEnabled: options?.seenNoticeEnabled,
+                onResolved: (resolved) => {
+                    outcome = resolved
+                },
+            }),
+        )
+        if (options?.actorUserId !== undefined) {
+            await reportResolution(resolution, outcome, options.actorUserId, now, options.onResolution)
         }
     }
 

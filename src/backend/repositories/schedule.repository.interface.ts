@@ -27,7 +27,6 @@ export interface SaveScheduleConfigRepoParams {
     now: Date
     validateAgainstVersions?: (versions: ScheduleVersion[]) => void
     conflictResolution?: ScheduleConflictResolution
-    noticeDisabled?: boolean
     seenConflictIds?: string[]
     seenNoticeEnabled?: boolean
     onResolved?: (outcome: ScheduleResolutionOutcome) => void
@@ -36,7 +35,6 @@ export interface SaveScheduleConfigRepoParams {
 export interface DeleteScheduledConfigRepoOptions {
     actorUserId?: number
     conflictResolution?: ScheduleConflictResolution
-    noticeDisabled?: boolean
     seenConflictIds?: string[]
     seenNoticeEnabled?: boolean
     onResolved?: (outcome: ScheduleResolutionOutcome) => void

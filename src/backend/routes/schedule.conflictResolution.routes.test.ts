@@ -150,4 +150,44 @@ describe("schedule.routes conflict resolution", () => {
         expect(response.status).toBe(403)
         expect(response.body.error.code).toBe("FORBIDDEN")
     })
+
+    it("responde 409 SCHEDULE_CONFLICTS_CHANGED em PUT /schedule quando a lista vista é diferente da refeita", async () => {
+        const app = buildApp()
+        const response = await request(app)
+            .put("/api/v1/schedule")
+            .set("Cookie", cookieOf(2))
+            .send(
+                buildScheduleConfigInput({
+                    ranges: [],
+                    conflictResolution: "CANCEL",
+                    seenConflictIds: ["10", "11"],
+                    seenNoticeEnabled: true,
+                }),
+            )
+
+        expect(response.status).toBe(409)
+        expect(response.body.error.code).toBe("SCHEDULE_CONFLICTS_CHANGED")
+        expect(response.body.error.details).toMatchObject({
+            conflicts: [expect.objectContaining({ id: "10" })],
+            cancellationNotice: { enabled: true, problem: null },
+            changes: ["CONFLICTS"],
+        })
+    })
+
+    it("responde 409 SCHEDULE_CONFLICTS_CHANGED em PUT /versions quando a lista vista é diferente da refeita", async () => {
+        const app = buildApp()
+        const response = await request(app)
+            .put("/api/v1/schedule/versions/2027-10-04")
+            .set("Cookie", cookieOf(2))
+            .send(
+                buildScheduleConfigInput({
+                    ranges: [],
+                    conflictResolution: "KEEP",
+                    seenConflictIds: ["99"],
+                }),
+            )
+
+        expect(response.status).toBe(409)
+        expect(response.body.error.code).toBe("SCHEDULE_CONFLICTS_CHANGED")
+    })
 })

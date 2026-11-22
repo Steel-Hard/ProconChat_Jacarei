@@ -422,7 +422,7 @@ Regras para todas as tarefas de código:
 - Teste: unitário de serviço e de rota com o stub. Falha primeiro o teste do serviço que espera, no DELETE com `"CANCEL"` e aviso ligado, um envio por agendamento afetado.
 - Gate: rápido back
 - Modelo: padrao
-- Status: pendente
+- Status: feita. Código escrito antes dos testes novos (fora da ordem do TDD); os testes novos passaram de primeira. Gate: typecheck:test ok, oxlint ok, suíte do backend 143 arquivos e 2053 testes ok; os testes de integração de T5 e T6 ficam para o CI. Ajustes de montagem em testes antigos de schedule.conflictResolution.test.ts, autorizados pelo usuário, sem mudar expectativa: (1) "cancela agendamentos sem enviar avisos quando o interruptor está desligado" passou a desligar o aviso por repo.setCancellationNoticeEnabled(false), porque o serviço não lê mais o aviso antes de gravar (spec, Desenho do serviço); (2) "não salva a agenda quando a configuração do aviso não pode ser lida" passou a provocar a falha por repo.setCancellationNoticeReadError, porque a leitura agora é feita dentro da transação do repositório.
 
 ### T5 [P] Repositório real: aviso lido na transação, conferência do B1 e lista vazia
 - O quê: nos três caminhos do repositório real, ler o interruptor do aviso dentro da transação com trava compartilhada, comparar com o que foi visto, gravar sem mexer em ninguém quando a lista refeita estiver vazia e responder conforme o contrato, provado com banco real.
@@ -544,7 +544,7 @@ Regras para todas as tarefas de código:
 - Teste: integração de página. Falha primeiro o teste que espera, depois de confirmar "Cancelar mudança" com afetados, a lista só dentro do modal.
 - Gate: rápido front
 - Modelo: padrao
-- Status: pendente
+- Status: feita (fdb89bd). Teste primeiro: 9 novos falharam pelo motivo certo. Gate: vitest 25 (modal e versões), páginas e componentes 1306 passam e 1 falha (ScheduleConflictList, prevista para T8), typecheck, oxlint e prettier ok. Testes autorizados alterados: removido o caso da lista abaixo das mudanças (RN-12) em Schedule.versions.test.tsx e `cancelConflicts` do ScheduleVersions.test.tsx. Também editado useScheduleSave.ts (onConflicts recebe o erro inteiro), fora da lista de arquivos da tarefa.
 
 ### T13 [P] Visual do modal e selo do detalhe, iguais ao protótipo
 - O quê:
@@ -567,7 +567,7 @@ Regras para todas as tarefas de código:
 - Teste: unitário da linha. Falha primeiro o teste que espera o protocolo sem a palavra "Protocolo" e nenhum CPF. O resto é estilo, conferido lado a lado.
 - Gate: rápido front
 - Modelo: padrao
-- Status: pendente
+- Status: feita (42eab83), com a conferência lado a lado pendente da Nobara (não rodei navegador, só CSS conforme o Desenho). Teste primeiro: a linha falhou por componente ausente. Gate: vitest 1309 de componentes e páginas passam e 1 falha (ScheduleConflictList, T8), typecheck, oxlint e prettier ok. Teste alterado por mudança de regra (RN-20): Schedule.conflicts.test.tsx agora espera o modal sem CPF e sem a palavra Protocolo. Seletor do selo do detalhe via [data-tone] dentro de .tags.
 
 ### T8 [P] Dica da lista de afetados por permissão (B3)
 - O quê: a lista de afetados da tela de Horários mostra a dica de RN-14 conforme a permissão de quem usa.
