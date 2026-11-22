@@ -258,7 +258,10 @@
             "dateRequired": "Informe a data.",
             "dateAlreadyBlocked": "Esta data já tem um bloqueio",
             "descriptionRequired": "Descrição do bloqueio obrigatória",
-            "descriptionTooLong": "Descrição deve ter no máximo 150 caracteres"
+            "descriptionTooLong": "Descrição deve ter no máximo 150 caracteres",
+            "periodRequired": "Informe o início e o fim do período.",
+            "periodInvalid": "O fim deve ser depois do início.",
+            "periodOverlap": "Este período se sobrepõe a outro bloqueio desta data"
         }
     },
     "subtitle": "Define os horários livres que o chatbot oferece ao cidadão para o atendimento presencial.",
