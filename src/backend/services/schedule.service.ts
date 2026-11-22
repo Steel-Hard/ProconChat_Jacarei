@@ -77,7 +77,6 @@ export interface GetMonthlyPreviewParams {
 
 export interface ScheduleServiceDependencies {
     cancellationNotice?: {
-        isEnabled(): Promise<boolean>
         getState(): Promise<ScheduleCancellationNoticeState>
     }
     notifications?: CitizenNotificationService
@@ -164,7 +163,6 @@ export function createScheduleService(
     deps: ScheduleServiceDependencies = {},
 ): IScheduleService {
     const cancellationNotice = deps.cancellationNotice ?? {
-        isEnabled: () => whatsappSettingsService.isCancellationNoticeEnabled(),
         getState: () => whatsappSettingsService.getCancellationNoticeState(),
     }
     const notifications =

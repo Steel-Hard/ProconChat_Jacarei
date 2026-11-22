@@ -29,7 +29,6 @@ describe("schedule.service conflict resolution", () => {
         const notifyCancellation = vi.fn()
         const service = createScheduleService(repo, {
             cancellationNotice: {
-                isEnabled: vi.fn().mockResolvedValue(true),
                 getState: vi.fn().mockResolvedValue({ enabled: true, problem: null }),
             },
             notifications: { notifyCancellation },
@@ -76,7 +75,6 @@ describe("schedule.service conflict resolution", () => {
 
         const service = createScheduleService(repo, {
             cancellationNotice: {
-                isEnabled: vi.fn().mockResolvedValue(true),
                 getState: vi.fn().mockResolvedValue({ enabled: true, problem: null }),
             },
             notifications: { notifyCancellation },
@@ -119,7 +117,6 @@ describe("schedule.service conflict resolution", () => {
         const notifyCancellation = vi.fn()
         const service = createScheduleService(repo, {
             cancellationNotice: {
-                isEnabled: vi.fn().mockResolvedValue(false),
                 getState: vi.fn().mockResolvedValue({ enabled: false, problem: null }),
             },
             notifications: { notifyCancellation },
@@ -159,7 +156,6 @@ describe("schedule.service conflict resolution", () => {
         repo.setCancellationNoticeReadError(new Error("db error"))
         const service = createScheduleService(repo, {
             cancellationNotice: {
-                isEnabled: vi.fn().mockRejectedValue(new Error("db error")),
                 getState: vi.fn().mockRejectedValue(new Error("db error")),
             },
             notifications: { notifyCancellation: vi.fn() },
@@ -184,8 +180,7 @@ describe("schedule.service cancelamento de mudança agendada com resolução", (
     const versionDate = "2026-10-12"
     const saturday = makeAppointment("21", "SAB21111", "2026-10-17T10:00:00-03:00")
     const secondSaturday = makeAppointment("22", "SAB22222", "2026-10-17T10:30:00-03:00")
-    const unusedNoticeReader = {
-        isEnabled: vi.fn().mockRejectedValue(new Error("não deve ler o aviso antes da gravação")),
+    const noticeStateReader = {
         getState: vi.fn().mockResolvedValue({ enabled: true, problem: null }),
     }
 
@@ -197,7 +192,7 @@ describe("schedule.service cancelamento de mudança agendada com resolução", (
         const repo = createScheduleStubRepository({ appointments })
         repo.setCancellationNoticeEnabled(noticeEnabled)
         const service = createScheduleService(repo, {
-            cancellationNotice: unusedNoticeReader,
+            cancellationNotice: noticeStateReader,
             notifications: { notifyCancellation },
         })
         return { repo, service }
@@ -330,7 +325,7 @@ describe("schedule.service problema do aviso nos 409", () => {
         })
         repo.setCancellationNoticeEnabled(noticeEnabled)
         const service = createScheduleService(repo, {
-            cancellationNotice: { isEnabled: vi.fn(), getState },
+            cancellationNotice: { getState },
             notifications: { notifyCancellation: vi.fn() },
         })
         return service.saveConfig(buildScheduleConfigInput({ ranges: [] }), 1, DEFAULT_STUB_NOW)

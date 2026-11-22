@@ -8,6 +8,7 @@ import { ScheduleRoutes } from "./schedule.routes"
 import { createScheduleService } from "../services/schedule.service"
 import { buildScheduleConfigInput } from "../services/mock/scheduleConfig.builders"
 import { AuthenticatedUser } from "../types/auth.types"
+import type { ScheduleSaveInput } from "../types/schedule.types"
 import { sessionTokens } from "../utils/sessionToken"
 
 const USERS = new Map<number, AuthenticatedUser>([
@@ -39,7 +40,7 @@ function cookieOf(userId: number): string {
     return `proconchat_access=${sessionTokens.signAccessToken({ userId, sessionVersion: 0 })}`
 }
 
-function buildApp() {
+function buildAppWithRepository() {
     const repo = createScheduleStubRepository({
         appointments: [
             {
@@ -57,7 +58,6 @@ function buildApp() {
     })
     const service = createScheduleService(repo, {
         cancellationNotice: {
-            isEnabled: vi.fn().mockResolvedValue(true),
             getState: vi.fn().mockResolvedValue({ enabled: true, problem: null }),
         },
         notifications: {
@@ -74,7 +74,11 @@ function buildApp() {
     app.use(express.json())
     app.use("/api/v1/schedule", new ScheduleRoutes({ repository: repo, service, authMiddleware }).getRouter())
     app.use(errorHandler)
-    return app
+    return { app, repo }
+}
+
+function buildApp() {
+    return buildAppWithRepository().app
 }
 
 describe("schedule.routes conflict resolution", () => {
@@ -189,5 +193,53 @@ describe("schedule.routes conflict resolution", () => {
 
         expect(response.status).toBe(409)
         expect(response.body.error.code).toBe("SCHEDULE_CONFLICTS_CHANGED")
+    })
+
+    describe("CANCEL sem appointments.manage não grava nada", () => {
+        const cancelBody: Partial<ScheduleSaveInput> = {
+            conflictResolution: "CANCEL",
+            seenConflictIds: ["10"],
+            seenNoticeEnabled: true,
+        }
+
+        it("em PUT /schedule, deixa o agendamento ativo e a agenda como estava", async () => {
+            const { app, repo } = buildAppWithRepository()
+            const seatsBefore = (await repo.getConfig())?.seatsPerSlot
+
+            const response = await request(app)
+                .put("/api/v1/schedule")
+                .set("Cookie", cookieOf(1))
+                .send(buildScheduleConfigInput({ ranges: [], seatsPerSlot: 7, ...cancelBody }))
+
+            expect(response.status).toBe(403)
+            expect(await repo.listFutureActiveAppointments(DEFAULT_STUB_NOW)).toHaveLength(1)
+            expect((await repo.getConfig())?.seatsPerSlot).toBe(seatsBefore)
+        })
+
+        it("em PUT /versions, não chega a gravar a mudança", async () => {
+            const { app, repo } = buildAppWithRepository()
+
+            const response = await request(app)
+                .put("/api/v1/schedule/versions/2027-10-04")
+                .set("Cookie", cookieOf(1))
+                .send(buildScheduleConfigInput({ ranges: [], ...cancelBody }))
+
+            expect(response.status).toBe(403)
+            expect(repo.scheduledSaveCalls).toEqual([])
+            expect(await repo.listFutureActiveAppointments(DEFAULT_STUB_NOW)).toHaveLength(1)
+        })
+
+        it("em DELETE /versions, não chega a cancelar a mudança", async () => {
+            const { app, repo } = buildAppWithRepository()
+
+            const response = await request(app)
+                .delete("/api/v1/schedule/versions/2027-11-01")
+                .set("Cookie", cookieOf(1))
+                .send(cancelBody)
+
+            expect(response.status).toBe(403)
+            expect(repo.scheduledDeleteCalls).toEqual([])
+            expect(await repo.listFutureActiveAppointments(DEFAULT_STUB_NOW)).toHaveLength(1)
+        })
     })
 })

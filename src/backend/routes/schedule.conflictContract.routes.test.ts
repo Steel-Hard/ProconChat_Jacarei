@@ -26,7 +26,6 @@ function buildApp() {
     const repo = createScheduleStubRepository()
     const service = createScheduleService(repo, {
         cancellationNotice: {
-            isEnabled: vi.fn().mockResolvedValue(true),
             getState: vi.fn().mockResolvedValue({ enabled: true, problem: null }),
         },
         notifications: {
