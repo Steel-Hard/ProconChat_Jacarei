@@ -78,6 +78,14 @@ const SHOWN_FIELDS: readonly IssueTarget[] = [
     "unitAddressComplement"
 ]
 
+function isPeriodProblem(problem: BlockedDateProblem | null): boolean {
+    return (
+        problem?.code === "periodRequired" ||
+        problem?.code === "periodInvalid" ||
+        problem?.code === "periodOverlap"
+    )
+}
+
 function useSchedule() {
     const { t } = useTranslation(["schedule", "common"])
     const { showToast } = useToast()
@@ -501,6 +509,7 @@ function useSchedule() {
         blocks,
         newBlock: draft.newBlock,
         newBlockError: draft.newBlockProblem ? blockProblemText(draft.newBlockProblem) : null,
+        newBlockPeriodInvalid: isPeriodProblem(draft.newBlockProblem),
         durationMessages: fieldMessages("slotMinutes", targets.slotMinutes.map(conflictText)),
         seatsMessages: fieldMessages("seatsPerSlot", targets.seatsPerSlot.map(conflictText)),
         windowMessages: fieldMessages("windowDays"),
@@ -555,6 +564,9 @@ function useSchedule() {
             toggleReminder: draft.toggleReminder,
             setNewBlockDate: draft.setNewBlockDate,
             setNewBlockDescription: draft.setNewBlockDescription,
+            setNewBlockFullDay: draft.setNewBlockFullDay,
+            setNewBlockStartTime: draft.setNewBlockStartTime,
+            setNewBlockEndTime: draft.setNewBlockEndTime,
             addBlock: draft.addBlock,
             removeBlock: draft.removeBlock
         }

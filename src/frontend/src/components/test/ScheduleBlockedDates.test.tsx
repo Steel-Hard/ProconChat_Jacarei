@@ -28,9 +28,16 @@ function renderBlocks(overrides: Partial<Parameters<typeof ScheduleBlockedDates>
         blocks: BLOCKS,
         newDate: "",
         newDescription: "",
+        newFullDay: true,
+        newStartTime: "",
+        newEndTime: "",
         newError: null,
+        newPeriodInvalid: false,
         onChangeNewDate: vi.fn(),
         onChangeNewDescription: vi.fn(),
+        onChangeNewFullDay: vi.fn(),
+        onChangeNewStartTime: vi.fn(),
+        onChangeNewEndTime: vi.fn(),
         onAdd: vi.fn(),
         onRemove: vi.fn(),
         ...overrides
@@ -67,7 +74,7 @@ describe("ScheduleBlockedDates", () => {
         expect(screen.getByText("Nenhuma data bloqueada.")).toBeInTheDocument()
         expect(
             screen.getByText(
-                "Feriados e pontos facultativos. O chatbot não oferece horários nos dias bloqueados."
+                "Bloqueie um dia inteiro ou apenas um período. O chatbot não oferece horários durante o bloqueio."
             )
         ).toBeInTheDocument()
     })
@@ -82,6 +89,58 @@ describe("ScheduleBlockedDates", () => {
         expect(onChangeNewDate).toHaveBeenCalledWith("2026-11-05")
         expect(onChangeNewDescription).toHaveBeenCalledWith("P")
         expect(onAdd).toHaveBeenCalled()
+    })
+
+    it("esconde o início e o fim quando o dia inteiro está marcado", () => {
+        renderBlocks({ newFullDay: true })
+
+        expect(screen.getByLabelText("Bloquear o dia inteiro")).toBeChecked()
+        expect(screen.queryByLabelText("Início")).not.toBeInTheDocument()
+        expect(screen.queryByLabelText("Fim")).not.toBeInTheDocument()
+    })
+
+    it("avisa a mudança do dia inteiro", async () => {
+        const { onChangeNewFullDay, user } = renderBlocks()
+
+        await user.click(screen.getByLabelText("Bloquear o dia inteiro"))
+
+        expect(onChangeNewFullDay).toHaveBeenCalledWith(false)
+    })
+
+    it("mostra o início e o fim com os valores quando o dia inteiro está desmarcado", () => {
+        renderBlocks({ newFullDay: false, newStartTime: "13:00", newEndTime: "16:00" })
+
+        expect(screen.getByLabelText("Bloquear o dia inteiro")).not.toBeChecked()
+        expect(screen.getByLabelText("Início")).toHaveValue("13:00")
+        expect(screen.getByLabelText("Fim")).toHaveValue("16:00")
+    })
+
+    it("avisa a mudança do início e do fim", () => {
+        const { onChangeNewStartTime, onChangeNewEndTime } = renderBlocks({ newFullDay: false })
+
+        fireEvent.change(screen.getByLabelText("Início"), { target: { value: "13:00" } })
+        fireEvent.change(screen.getByLabelText("Fim"), { target: { value: "16:00" } })
+
+        expect(onChangeNewStartTime).toHaveBeenCalledWith("13:00")
+        expect(onChangeNewEndTime).toHaveBeenCalledWith("16:00")
+    })
+
+    it("liga o erro do período ao início e ao fim", () => {
+        renderBlocks({
+            newFullDay: false,
+            newError: "O fim deve ser depois do início.",
+            newPeriodInvalid: true
+        })
+
+        expect(screen.getByLabelText("Início")).toHaveAttribute("aria-invalid", "true")
+        expect(screen.getByLabelText("Fim")).toHaveAttribute("aria-invalid", "true")
+    })
+
+    it("não liga o erro da data ao início e ao fim", () => {
+        renderBlocks({ newFullDay: false, newError: "Informe a data.", newPeriodInvalid: false })
+
+        expect(screen.getByLabelText("Início")).not.toHaveAttribute("aria-invalid")
+        expect(screen.getByLabelText("Fim")).not.toHaveAttribute("aria-invalid")
     })
 
     it("mostra o erro do formulário ligado aos campos", () => {
