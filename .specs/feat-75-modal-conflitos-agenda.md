@@ -398,7 +398,7 @@ Regras para todas as tarefas de código:
 - Teste: unitário. Falha primeiro o teste que espera que `deleteScheduledConfig` com `"KEEP"` devolva os ids afetados, e não uma lista vazia.
 - Gate: rápido back
 - Modelo: padrao
-- Status: pendente
+- Status: feita. Teste escrito primeiro: 9 dos 18 testes do bloco novo falharam pelo motivo certo antes do código. Alteração de teste autorizada pelo usuário: o teste antigo "salva a mudança sem conferir conflitos e guarda os argumentos" virou "salva a mudança resolvendo os conflitos e guarda os argumentos", com conflictResolution KEEP e seenConflictIds ["11"] no toEqual de scheduledSaveCalls, porque o stub passou a conferir conflitos. Gate: typecheck:test ok, oxlint ok, suíte do backend 143 arquivos e 2042 testes ok.
 
 ### T4 [P] Serviço do B1 e testes do cancelamento de mudança agendada (B5)
 - O quê:
