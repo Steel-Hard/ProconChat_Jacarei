@@ -248,7 +248,6 @@ const withAnswer = (answer: string) => ({ ...empty, answer })
 const save = () => screen.getByRole("button", { name: "Salvar pergunta" })
 
 describe("ContentQuestionForm marcador mal escrito", () => {
-
     it("no primeiro clique em Salvar não salva e avisa o trecho errado e a forma certa", async () => {
         const user = userEvent.setup()
         const { onConfirm } = renderForm({ initial: withAnswer("Fica em {Endereco}.") })
@@ -257,7 +256,9 @@ describe("ContentQuestionForm marcador mal escrito", () => {
 
         expect(onConfirm).not.toHaveBeenCalled()
         expect(
-            screen.getByText("Marcador não reconhecido: {Endereco}. Use {endereco}.")
+            screen.getByText(
+                "Marcador não reconhecido: {Endereco}. Use {endereco}. Se for isso mesmo que você quer, clique em Salvar de novo."
+            )
         ).toBeInTheDocument()
     })
 
@@ -313,9 +314,14 @@ describe("ContentQuestionForm marcador mal escrito", () => {
 
         await user.click(save())
 
-        expect(screen.getByText(/Marcador não reconhecido: \{Endereco\}/)).toBeInTheDocument()
         expect(
-            screen.getByText("Marcador não reconhecido: {horario}. Use {horarios}.")
+            screen.getByText("Marcador não reconhecido: {Endereco}. Use {endereco}.")
         ).toBeInTheDocument()
+        expect(
+            screen.getByText(
+                "Marcador não reconhecido: {horario}. Use {horarios}. Se for isso mesmo que você quer, clique em Salvar de novo."
+            )
+        ).toBeInTheDocument()
+        expect(screen.getAllByText(/clique em Salvar de novo/)).toHaveLength(1)
     })
 })

@@ -34,7 +34,13 @@ function ContentQuestionForm({
     const misspelledKey = misspelledPlaceholders.map((item) => item.found).join("|")
     const placeholderWarnings =
         warnedPlaceholders === misspelledKey
-            ? misspelledPlaceholders.map((item) => t("questionForm.misspelledPlaceholder", item))
+            ? misspelledPlaceholders.map((item, index) => {
+                  const line = t("questionForm.misspelledPlaceholder", item)
+
+                  return index === misspelledPlaceholders.length - 1
+                      ? `${line} ${t("questionForm.misspelledPlaceholderConfirm")}`
+                      : line
+              })
             : []
 
     useEffect(() => {

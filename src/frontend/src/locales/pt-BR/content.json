@@ -121,6 +121,7 @@
         "answer": "Resposta oficial",
         "answerPlaceholdersHint": "Você pode usar {endereco} e {horarios} para inserir automaticamente o endereço e os horários atuais da unidade.",
         "misspelledPlaceholder": "Marcador não reconhecido: {{found}}. Use {{expected}}.",
+        "misspelledPlaceholderConfirm": "Se for isso mesmo que você quer, clique em Salvar de novo.",
         "answerWarning": "Respostas longas ficam difíceis de ler no celular",
         "legalBasis": "Base legal",
         "legalBasisPlaceholder": "Ex.: CDC, art. 49",
