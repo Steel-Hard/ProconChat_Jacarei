@@ -403,7 +403,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 - **Gate:** documentação. A comparação mecânica da tabela de permissões e da nota do manual com as da decisão 004 não mostra diferença, do mesmo jeito da T8 da especificação #119. A lista de imagens citadas é igual à lista da pasta. `grep -n "ainda não" .docs/guias/manual-do-painel.md` conferido item por item. `.docs/guias/gerar-pdfs.sh manual-do-painel` termina sem erro.
 - **Modelo:** padrao
 - **Commit:** `Docs :bulb: [#174] Atualiza o manual do painel conforme as decisões da #174`
-- **Status:** em-andamento. Texto principal no commit 1f54192. Gate parcial: a tabela de permissões é igual à da decisão 004, e as 28 imagens citadas existem na pasta. Faltam o sumário e as legendas das figuras 14, 17 e 18, que dependem das capturas da T12.
+- **Status:** feita, commits 1f54192 (texto) e e7102a7 (legendas e sumário). Gate: a tabela de permissões é igual à da decisão 004; as 28 imagens citadas existem na pasta; os títulos do sumário foram conferidos página por página com `pdftotext`.
 
 ### T9 Gerar de novo o PDF do manual
 
@@ -421,7 +421,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 - **Gate:** `.docs/guias/gerar-pdfs.sh manual-do-painel` sem erro; `ls -l .docs/guias/manual-do-painel.pdf` com até 10 MB; páginas e destinos do sumário conferidos no leitor de PDF; `git status --short` sem `guia-configuracao-do-bot.pdf` nem `documento-do-software.pdf`.
 - **Modelo:** economico
 - **Commit:** `Docs :bulb: [#174] Gera de novo o PDF do manual do painel`
-- **Status:** pendente
+- **Status:** em-andamento. PDF gerado no commit e7102a7: 38 páginas, 5,0 MB e 28 figuras, e só o manual mudou. Será gerado de novo quando a Mai refizer as capturas com datas em pt-BR (T12).
 
 ### T10 [P] Atualizar a memória do time sobre Horários
 
