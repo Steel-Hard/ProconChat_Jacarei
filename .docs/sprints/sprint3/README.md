@@ -13,7 +13,7 @@
 |---|---|
 | [README.md](README.md) | Placar, tarefas concluídas com datas, tarefas em aberto, itens fora da sprint e riscos |
 
-**Burndown: pendente.** Não há registro de quando cada issue foi para "In progress" no board, e quase todas têm a etiqueta `SPRINT 3` desde a criação (28/09 e 19/10). Sem esses dados, uma curva diária seria inventada, então o gráfico não foi gerado.
+**Burndown: pendente.** Não há registro de quando cada issue foi para "In progress" no board, e quase todas têm a etiqueta `SPRINT 3` desde a criação (27/09 e 19/10, no horário de Brasília). Sem esses dados, uma curva diária seria inventada, então o gráfico não foi gerado.
 
 ---
 
@@ -38,14 +38,14 @@ Por tamanho (o tamanho declarado no corpo de cada issue, nas 22 concluídas com 
 Entradas no meio da sprint:
 
 - **#159** (Feira de Projetos): etiqueta `SPRINT 3` em 17/11.
-- **#164** (interruptor do aviso de cancelamento): criada e etiquetada em 18/11.
-- **#18** (teste ponta a ponta): veio da Sprint 1 (criada em 01/09) e recebeu a etiqueta `SPRINT 3` em 28/09, junto com as demais; foi concluída em 22/11.
+- **#164** (interruptor do aviso de cancelamento): criada e etiquetada em 17/11, às 23:05.
+- **#18** (teste ponta a ponta): veio da Sprint 1 (criada em 01/09) e recebeu a etiqueta `SPRINT 3` em 27/09, às 23:24, junto com as demais; foi concluída em 22/11.
 
 ---
 
 ## 2. Tarefas concluídas
 
-Horários no fuso de Brasília. **Início** é o primeiro commit com `[#N]` na `develop` (o histórico de status do board não registra "In progress"), e o trabalho real pode ter começado antes. **Fim** é o fechamento da issue. As colunas de responsável vêm do campo de responsáveis da issue.
+Horários no fuso de Brasília. **Início** é o primeiro commit com `[#N]` na `develop` (nas #65, #126 e #127, o primeiro commit do PR, que não leva o número no título) (o histórico de status do board não registra "In progress"), e o trabalho real pode ter começado antes. **Fim** é o fechamento da issue. As colunas de responsável vêm do campo de responsáveis da issue.
 
 | # | Tarefa | Tamanho | Responsável | Início | Fim | PR |
 |---|---|---|---|---|---|---|
@@ -62,9 +62,9 @@ Horários no fuso de Brasília. **Início** é o primeiro commit com `[#N]` na `
 | #63 | Backend: API de Conteúdo do chatbot | M | Nickaqui | 27/10 20:21 | 05/11 19:16 | #138 |
 | #68 | Backend: consultas de Relatórios mínimos | P | Nickaqui | 26/10 20:59 | 05/11 23:20 | #137 |
 | #129 | Frontend: estado do número, falhas de entrega e histórico na tela de WhatsApp | P | frevisto | 04/11 19:58 | 06/11 12:50 | #150 |
-| #65 | Tela de Documentos para atendimento presencial | P | felipe-sant, claudsaints | 17/11 11:28 | 17/11 17:32 | #151, #160 |
-| #126 | Frontend: calendário semanal, atribuir, corrigir registro e observações | M | felipe-sant, claudsaints | 15/11 16:33 | 17/11 19:19 | #155, #161 |
-| #127 | Frontend: cancelar agendamento e modelos de mensagem na tela de WhatsApp | P | felipe-sant, claudsaints | 17/11 21:11 | 17/11 23:04 | #154, #163 |
+| #65 | Tela de Documentos para atendimento presencial | P | felipe-sant, claudsaints | 04/11 22:03 | 17/11 17:32 | #151, #160 |
+| #126 | Frontend: calendário semanal, atribuir, corrigir registro e observações | M | felipe-sant, claudsaints | 07/11 15:18 | 17/11 19:19 | #155, #161 |
+| #127 | Frontend: cancelar agendamento e modelos de mensagem na tela de WhatsApp | P | felipe-sant, claudsaints | 07/11 14:40 | 17/11 23:04 | #154, #163 |
 | #164 | Interruptor para ligar e desligar o aviso de cancelamento ao cidadão | M | felipe-sant | 17/11 23:06 | 18/11 08:25 | #165 |
 | #128 | Frontend: tela de Relatórios mínimos | M | claudsaints | 18/11 10:08 | 18/11 11:29 | #157 |
 | #118 | Guias em PDF: configurar o bot (passagem para o PROCON) e documento do software | M | felipe-sant | 20/11 22:00 | 20/11 23:34 | #171 |
