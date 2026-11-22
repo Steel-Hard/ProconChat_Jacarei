@@ -29,7 +29,6 @@ import type ScheduleIssueField from "@/types/schedule/ScheduleIssueField.types"
 import type ScheduleSaveError from "@/types/schedule/ScheduleSaveError.types"
 import type SchedulePreviewConflict from "@/types/schedule/SchedulePreviewConflict.types"
 import type ScheduleProblem from "@/types/schedule/ScheduleProblem.types"
-import bookedDaysInVigency from "@/utils/schedule/bookedDaysInVigency"
 import conflictTargets from "@/utils/schedule/conflictTargets"
 import dayAfter from "@/utils/schedule/dayAfter"
 import dayMonthOf from "@/utils/schedule/dayMonthOf"
@@ -109,10 +108,7 @@ function useSchedule() {
     const [versionActionError, setVersionActionError] = useState<string | null>(null)
     const booked = useBookedDays()
     const versions = versionsQuery.currentData ?? []
-    const nextChange =
-        versions.find((version) => version.effectiveFrom > effectiveFrom)?.effectiveFrom ?? null
-    const vigencyDays = bookedDaysInVigency(booked.days, effectiveFrom, nextChange)
-    const draft = useScheduleDraft(view, vigencyDays)
+    const draft = useScheduleDraft(view)
     const errors = draft.errors
     const errorCount = errors?.count ?? 0
     const hasChanges = draft.changes.length > 0
@@ -159,9 +155,7 @@ function useSchedule() {
     }
 
     function blockProblemText(problem: BlockedDateProblem): string {
-        return problem.code === "dateHasAppointments"
-            ? t("blocked.problems.dateHasAppointments", { count: problem.count })
-            : t(`blocked.problems.${problem.code}`)
+        return t(`blocked.problems.${problem.code}`)
     }
 
     function conflictText(conflict: SchedulePreviewConflict): string {
@@ -182,15 +176,13 @@ function useSchedule() {
     const days: ScheduleDayView[] = (draft.current?.days ?? []).map((day) => ({
         weekday: day.weekday,
         enabled: day.enabled,
-        lockedReason: null,
         ranges: day.ranges.map((range, index) => {
             const key = rangeKey(day.weekday, index)
             const problem = errors?.ranges[key]
 
             return {
                 ...range,
-                error: problem ? problemText(problem) : (rangeIssues[key] ?? null),
-                removeLocked: false
+                error: problem ? problemText(problem) : (rangeIssues[key] ?? null)
             }
         }),
         canAdd: day.enabled && day.ranges.length < MAX_RANGES,

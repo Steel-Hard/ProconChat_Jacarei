@@ -9,10 +9,9 @@ function day(overrides: Partial<ScheduleDayView> = {}): ScheduleDayView {
     return {
         weekday: 1,
         enabled: true,
-        lockedReason: null,
         ranges: [
-            { startTime: "08:30", endTime: "11:30", error: null, removeLocked: false },
-            { startTime: "13:30", endTime: "16:30", error: null, removeLocked: false }
+            { startTime: "08:30", endTime: "11:30", error: null },
+            { startTime: "13:30", endTime: "16:30", error: null }
         ],
         canAdd: true,
         messages: [],
@@ -92,8 +91,8 @@ describe("ScheduleWeekGrid", () => {
         renderGrid([
             day({
                 ranges: [
-                    { startTime: "08:30", endTime: "11:30", error: null, removeLocked: false },
-                    { startTime: "", endTime: "16:30", error: null, removeLocked: false }
+                    { startTime: "08:30", endTime: "11:30", error: null },
+                    { startTime: "", endTime: "16:30", error: null }
                 ]
             }),
             day({ weekday: 4 })
@@ -123,8 +122,7 @@ describe("ScheduleWeekGrid", () => {
                     {
                         startTime: "10:00",
                         endTime: "09:00",
-                        error: "O fim deve ser depois do início",
-                        removeLocked: false
+                        error: "O fim deve ser depois do início"
                     }
                 ]
             })
@@ -133,69 +131,6 @@ describe("ScheduleWeekGrid", () => {
         const start = screen.getByLabelText("Início da faixa 1 de Segunda-feira")
         expect(start).toHaveAttribute("aria-invalid", "true")
         expect(start).toHaveAccessibleDescription("O fim deve ser depois do início")
-    })
-
-    it("trava o checkbox do dia com agendamento e explica o motivo", async () => {
-        const reason =
-            "Há agendamentos em 04/11 e 11/11. Para desligar este dia, cancele ou remarque."
-        const { onToggleDay, user } = renderGrid([day({ lockedReason: reason })])
-
-        const checkbox = screen.getByRole("checkbox", { name: "Segunda-feira" })
-        await user.click(checkbox)
-        await user.keyboard(" ")
-
-        expect(checkbox).toHaveAttribute("aria-disabled", "true")
-        expect(checkbox).toBeChecked()
-        expect(checkbox).toHaveAccessibleDescription(reason)
-        expect(onToggleDay).not.toHaveBeenCalled()
-    })
-
-    it("deixa o checkbox travado receber foco pelo teclado com o motivo", async () => {
-        const reason = "Há agendamentos em 04/11."
-        const { user } = renderGrid([day({ lockedReason: reason })])
-
-        await user.tab()
-
-        expect(screen.getByRole("checkbox", { name: "Segunda-feira" })).toHaveFocus()
-    })
-
-    it("deixa o × travado receber foco e não remove a faixa", async () => {
-        const { onRemoveRange, user } = renderGrid([
-            day({
-                ranges: [{ startTime: "08:30", endTime: "11:30", error: null, removeLocked: true }]
-            })
-        ])
-        const remove = screen.getByRole("button", {
-            name: /^Remover faixa 08:30 às 11:30 de Segunda-feira indisponível/
-        })
-
-        remove.focus()
-        await user.keyboard("{Enter}")
-        await user.click(remove)
-
-        expect(remove).toHaveFocus()
-        expect(remove).toHaveAttribute("aria-disabled", "true")
-        expect(onRemoveRange).not.toHaveBeenCalled()
-    })
-
-    it("trava o × da faixa com agendamento com o motivo no nome acessível", () => {
-        renderGrid([
-            day({
-                ranges: [
-                    { startTime: "08:30", endTime: "11:30", error: null, removeLocked: true },
-                    { startTime: "13:30", endTime: "16:30", error: null, removeLocked: false }
-                ]
-            })
-        ])
-
-        expect(
-            screen.getByRole("button", {
-                name: /^Remover faixa 08:30 às 11:30 de Segunda-feira indisponível: há agendamento nesta faixa/
-            })
-        ).toHaveAttribute("aria-disabled", "true")
-        expect(
-            screen.getByRole("button", { name: "Remover faixa 13:30 às 16:30 de Segunda-feira" })
-        ).not.toHaveAttribute("aria-disabled")
     })
 
     it("deixa tudo livre sem agendamento", () => {

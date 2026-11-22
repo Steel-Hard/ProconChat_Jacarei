@@ -90,7 +90,6 @@
     "conflicts": {
         "title_one": "Esta alteração afeta {{count}} agendamento",
         "title_other": "Esta alteração afeta {{count}} agendamentos",
-        "hint": "Ao salvar, você poderá manter estes agendamentos fora da grade atual ou cancelá-los.",
         "hintWithCancel": "Ao salvar, você poderá manter estes agendamentos fora da grade atual ou cancelá-los.",
         "hintKeepOnly": "Ao salvar, você poderá manter estes agendamentos fora da grade atual. Para cancelá-los, peça a quem gerencia os agendamentos.",
         "when": "{{weekday}}, {{date}} às {{time}}",
@@ -128,19 +127,13 @@
             "canceledOffToast_one": "Mudança cancelada. {{count}} agendamento cancelado. O cidadão não foi avisado pelo sistema.",
             "canceledOffToast_other": "Mudança cancelada. {{count}} agendamentos cancelados. Os cidadãos não foram avisados pelo sistema."
         },
-        "description": "Estes agendamentos Pendentes ou Confirmados deixam de caber na configuração nova. Escolha o que fazer antes de salvar.",
-        "keepDescription": "Continuam válidos e ganham o selo \"Fora da grade atual\" na lista e no detalhe. Nenhum aviso é enviado.",
-        "keepAction": "Manter os agendamentos",
         "cancelSummaryOn_one": "{{count}} cidadão receberá um aviso por WhatsApp. Cada aviso é uma mensagem de modelo e tem custo por mensagem cobrado pela Meta.",
         "cancelSummaryOn_other": "{{count}} cidadãos receberão um aviso por WhatsApp. Cada aviso é uma mensagem de modelo e tem custo por mensagem cobrado pela Meta.",
         "cancelSummaryOff_one": "{{count}} cidadão não será avisado pelo sistema. A equipe precisa avisar por outro meio.",
         "cancelSummaryOff_other": "{{count}} cidadãos não serão avisados pelo sistema. A equipe precisa avisar por outro meio.",
-        "cancelActionOn": "Cancelar e avisar os cidadãos",
-        "cancelActionOff": "Cancelar agendamentos",
         "noticeLoading": "Verificando o aviso ao cidadão...",
         "noticeFailed": "Não foi possível verificar o aviso ao cidadão. Tente de novo.",
         "retryNotice": "Tentar de novo",
-        "back": "Voltar sem salvar",
         "resolveFailed": "Não foi possível concluir a ação. Tente de novo.",
         "keptToast_one": "Alteração salva. {{count}} agendamento mantido com o selo \"Fora da grade atual\".",
         "keptToast_other": "Alteração salva. {{count}} agendamentos mantidos com o selo \"Fora da grade atual\".",
@@ -148,8 +141,6 @@
         "canceledOnToast_other": "{{count}} agendamentos cancelados e cidadãos avisados por WhatsApp.",
         "canceledOffToast_one": "{{count}} agendamento cancelado. O cidadão não foi avisado pelo sistema.",
         "canceledOffToast_other": "{{count}} agendamentos cancelados. Os cidadãos não foram avisados pelo sistema.",
-        "canceledCount_one": "{{count}} agendamento cancelado",
-        "canceledCount_other": "{{count}} agendamentos cancelados",
         "failedCount_one": "{{count}} aviso falhou",
         "failedCount_other": "{{count}} avisos falharam"
     },
@@ -183,9 +174,6 @@
         "separator": "–",
         "removeSymbol": "×",
         "remove": "Remover faixa {{start}} às {{end}} de {{day}}",
-        "removeLocked": "{{target}} indisponível: há agendamento nesta faixa. Para removê-la, peça a quem gerencia os agendamentos para cancelar ou remarcar antes.",
-        "dayLocked": "Há agendamentos em {{dates}}. Para desligar este dia, peça a quem gerencia os agendamentos para cancelar ou remarcar antes.",
-        "dayLockedMore": "Há agendamentos em {{dates}} e em outras datas. Para desligar este dia, peça a quem gerencia os agendamentos para cancelar ou remarcar antes.",
         "removeAt": "Remover faixa {{position}} de {{day}}"
     },
     "durationSeats": {
@@ -269,8 +257,6 @@
         "problems": {
             "dateRequired": "Informe a data.",
             "dateAlreadyBlocked": "Esta data já tem um bloqueio",
-            "dateHasAppointments_one": "Esta data tem {{count}} agendamento. Para bloqueá-la, peça a quem gerencia os agendamentos para cancelar ou remarcar antes.",
-            "dateHasAppointments_other": "Esta data tem {{count}} agendamentos. Para bloqueá-la, peça a quem gerencia os agendamentos para cancelar ou remarcar antes.",
             "descriptionRequired": "Descrição do bloqueio obrigatória",
             "descriptionTooLong": "Descrição deve ter no máximo 150 caracteres"
         }

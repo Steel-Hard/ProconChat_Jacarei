@@ -1,6 +1,5 @@
 import type BlockedDate from "@/types/schedule/BlockedDate.types"
 import type BlockedDateProblem from "@/types/schedule/BlockedDateProblem.types"
-import type BookedDay from "@/types/schedule/BookedDay.types"
 
 const MAX_DESCRIPTION_LENGTH = 150
 
@@ -8,7 +7,6 @@ type NewBlock = { date: string; description: string }
 
 function validateNewBlock(
     blocks: BlockedDate[],
-    _bookedDays: BookedDay[],
     { date, description }: NewBlock
 ): BlockedDateProblem | null {
     if (date === "") {

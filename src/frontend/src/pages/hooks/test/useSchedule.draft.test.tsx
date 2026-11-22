@@ -228,7 +228,6 @@ describe("useSchedule: dias com agendamento", () => {
         act(() => result.current.actions.toggleDay(3))
         act(() => result.current.actions.removeRange(1, 0))
 
-        expect(result.current.days.every((day) => day.lockedReason === null)).toBe(true)
         expect(result.current.days.find((day) => day.weekday === 3)?.enabled).toBe(false)
         expect(result.current.days[0].ranges).toHaveLength(1)
     })

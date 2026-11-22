@@ -20,7 +20,6 @@ function ScheduleRangeField({ range, day, position, onChange, onRemove }: Schedu
         range.startTime && range.endTime
             ? t("grid.remove", { start: range.startTime, end: range.endTime, day })
             : t("grid.removeAt", { position, day })
-    const removeLabel = range.removeLocked ? t("grid.removeLocked", { target }) : target
 
     return (
         <div className={css.rangeField}>
@@ -47,14 +46,9 @@ function ScheduleRangeField({ range, day, position, onChange, onRemove }: Schedu
                 <button
                     type="button"
                     className={css.removeRange}
-                    aria-disabled={range.removeLocked || undefined}
-                    aria-label={removeLabel}
-                    title={removeLabel}
-                    onClick={() => {
-                        if (!range.removeLocked) {
-                            onRemove()
-                        }
-                    }}
+                    aria-label={target}
+                    title={target}
+                    onClick={onRemove}
                 >
                     {t("grid.removeSymbol")}
                 </button>

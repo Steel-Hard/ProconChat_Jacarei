@@ -1,6 +1,5 @@
 import { useRef, useState } from "react"
 import type BlockedDateProblem from "@/types/schedule/BlockedDateProblem.types"
-import type BookedDay from "@/types/schedule/BookedDay.types"
 import type MinNoticeDays from "@/types/schedule/MinNoticeDays.types"
 import type RangeField from "@/types/schedule/RangeField.types"
 import type ReminderHours from "@/types/schedule/ReminderHours.types"
@@ -22,7 +21,7 @@ const FIRST_RANGE = { startTime: "08:30", endTime: "11:30" }
 const NEXT_RANGE = { startTime: "13:30", endTime: "16:30" }
 const EMPTY_BLOCK = { date: "", description: "" }
 
-function useScheduleDraft(view: ScheduleConfigView | undefined, bookedDays: BookedDay[]) {
+function useScheduleDraft(view: ScheduleConfigView | undefined) {
     const [draft, setDraft] = useState<ScheduleDraft | null>(null)
     const [revision, setRevision] = useState(0)
     const revisionRef = useRef(0)
@@ -115,7 +114,7 @@ function useScheduleDraft(view: ScheduleConfigView | undefined, bookedDays: Book
             return
         }
 
-        const problem = validateNewBlock(current.blockedDates, bookedDays, newBlock)
+        const problem = validateNewBlock(current.blockedDates, newBlock)
         setNewBlockProblem(problem)
 
         if (problem !== null) {
