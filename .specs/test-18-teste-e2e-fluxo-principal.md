@@ -83,7 +83,7 @@ Cenário 2: retorno de quem já tem agendamento
 
 Regras gerais
 
-- **CA-13** (RN-10): QUANDO qualquer conversa dos cenários termina, ENTÃO nenhum evento dessa conversa DEVE conter o nome ou o CPF digitados, e o rascunho da conversa DEVE estar vazio.
+- **CA-13** (RN-10): QUANDO qualquer conversa dos cenários termina (desfecho diferente de "Em andamento"), ENTÃO nenhum evento dessa conversa DEVE conter o nome ou o CPF digitados, e o rascunho da conversa DEVE estar vazio. A conversa da checagem do CA-12 fica em andamento na escolha do horário, com o rascunho preenchido por desenho, e não entra nesta checagem.
 - **CA-14** (RN-11): QUANDO qualquer teste termina, ENTÃO nenhuma chamada DEVE ter saído para um endereço que não seja a Meta interceptada ou os próprios Gateway e Backend do teste. Toda resposta interceptada DEVE ir para o número do cidadão do teste, com o identificador do número e o token de acesso configurados para o teste.
 - **CA-15** (RN-11): QUANDO a IA está desligada para a pergunta do teste, ENTÃO a resposta DEVE ser entregue sem IA (evento de resposta com "IA não chamada").
 - **CA-16** (RN-12): QUANDO um pull request ou um push roda o CI, ENTÃO o job do teste ponta a ponta DEVE subir o próprio Postgres, aplicar as migrations, checar os tipos do teste e rodar o teste. Os jobs que já existem DEVEM continuar como estão.
@@ -160,9 +160,10 @@ export const E2E_PHONES = {
     cancelar: "5512999990783",
 } as const
 export const ALL_E2E_PHONES: string[]
+export const E2E_CPFS: Record<keyof typeof E2E_PHONES, string>
 ```
 
-Cada cenário usa só o próprio telefone. O CA-12 reusa o telefone `cancelar`, porque a regra é a do mesmo cidadão.
+Cada cenário usa só o próprio telefone e o próprio CPF (válido e fictício, um por chave de `E2E_PHONES`). O CA-12 reusa o telefone e o CPF de `cancelar`, porque a regra é a do mesmo cidadão. A recusa de agendamento duplicado compara o CPF e o horário exato (`hasActiveAppointmentForCpf`). CPFs diferentes por telefone evitam que um cenário dependa do outro.
 
 **`tests/e2e/helpers/metaFake.ts`**
 
@@ -279,21 +280,19 @@ export function stopE2eEnvironment(env: E2eEnvironment | undefined): Promise<voi
 **`tests/e2e/helpers/journeys.ts`**
 
 ```ts
-export const E2E_HOLDER_CPF: string
 export function protocolOf(replyText: string): string
 export function expectedWhen(datetime: Date): string
-export function bookThroughChat(env: E2eEnvironment, citizen: Citizen, holderName: string): Promise<string>
-export function goToSlotList(env: E2eEnvironment, citizen: Citizen): Promise<void>
+export function bookThroughChat(env: E2eEnvironment, citizen: Citizen, holder: { name: string; cpf: string }): Promise<string>
+export function goToSlotList(env: E2eEnvironment, citizen: Citizen, holder: { name: string; cpf: string }): Promise<void>
 ```
 
-- `E2E_HOLDER_CPF` é um CPF válido e fictício.
 - `protocolOf` extrai os 8 caracteres depois de "Protocolo:".
 - `expectedWhen` devolve "dd/mm às HH:MM" no fuso `America/Sao_Paulo`, calculado com `Intl`, sem importar `formatarQuando`.
 - `bookThroughChat` faz este caminho e devolve o protocolo:
   1. "oi", a categoria `cat_{categoryId}` e a pergunta `q_{questionId}`;
   2. exige `resolved_yes` e `resolved_no`, e toca `resolved_no`;
   3. toca `schedule_yes` e `attendee_self`;
-  4. informa o nome e o CPF;
+  4. informa o nome e o CPF de `holder`;
   5. toca o primeiro `slot_*` e exige "Agendamento realizado".
 - `goToSlotList` faz o mesmo caminho até a lista de horários, sem escolher um horário.
 
@@ -347,7 +346,7 @@ Gates do projeto (rodar a partir da raiz da worktree):
   - Marte usa a porta `55418` e Vênus a `55419`;
   - modelo: `docker run --rm -d --name proconchat-e2e-<dev> -e POSTGRES_DB=proconchat -e POSTGRES_USER=proconchat -e POSTGRES_PASSWORD=proconchat_ci -p 127.0.0.1:<porta>:5432 postgres:15-alpine`, depois `DB_URL=postgresql://proconchat:proconchat_ci@127.0.0.1:<porta>/proconchat npm run db:migrate`;
   - os valores são os mesmos do CI e não são segredos.
-- Gate CI (T4): `python3 -c "import yaml; yaml.safe_load(open('.github/workflows/ci.yml'))"` e a leitura do diff. O job só roda de verdade depois do push, que os devs não fazem.
+- Gate CI (T4): `cd src/backend && npm run typecheck:test`, `python3 -c "import yaml; yaml.safe_load(open('.github/workflows/ci.yml'))"` e a leitura do diff. O job só roda de verdade depois do push, que os devs não fazem.
 - Gate doc (T5): os links relativos abrem, os comandos batem com os scripts de `package.json` e com o job do CI, e nenhum valor do `.env` aparece.
 - Typecheck: `typecheck:test` leva cerca de 5 s (medido em 2026-11-22). Não é lento e fica no gate de cada tarefa.
 
@@ -478,7 +477,7 @@ Regras para todas as tarefas:
      - `CANCELED_BY_CITIZEN`, sem `CITIZEN_NOTIFIED` nem `CITIZEN_NOTIFICATION_FAILED`;
      - nenhuma mensagem `template` para o telefone;
      - a conversa com `APPOINTMENT_CONSULTED` e `APPOINTMENT_CANCELED` e o desfecho `MANAGED_APPOINTMENT`.
-  5. Com o mesmo telefone, mandar "oi" e conferir a lista de categorias, sem o menu de retorno. Seguir com `goToSlotList` e conferir que o `slot_` do horário cancelado voltou a ser oferecido (CA-12). Rodar o gate e commitar: `Test :test_tube: [#18] Cobre a remarcação e o cancelamento pelo cidadão de ponta a ponta`.
+  5. Com o mesmo telefone, mandar "oi" e conferir a lista de categorias, sem o menu de retorno. Seguir com `goToSlotList` (essa conversa fica em andamento e fica fora do CA-13, que olha só as conversas terminadas) e conferir que o `slot_` do horário cancelado voltou a ser oferecido (CA-12). Rodar o gate e commitar: `Test :test_tube: [#18] Cobre a remarcação e o cancelamento pelo cidadão de ponta a ponta`.
 - Pronto quando:
   - o arquivo passa no Postgres descartável, sozinho e junto com o de T2 (`npm run test:e2e`);
   - não deixa dados depois do `afterAll`;
@@ -560,6 +559,6 @@ Riscos:
 
 - **Agenda e relógio:** com antecedência de 1 dia e janela de 30 dias, sempre há horário livre, a qualquer hora em que o CI rode. Se a regra de antecedência ou de janela mudar, a agenda fixa do teste precisa acompanhar.
 - **Banco compartilhado:** o e2e troca a agenda e a configuração do WhatsApp do banco inteiro. No CI ele tem um Postgres próprio. Localmente, rodar contra o banco do app ou junto com a integração no mesmo banco atrapalha os dois. Isso fica documentado em T5.
-- **Duas cópias do Express:** Backend e Gateway carregam cada um o seu `node_modules`. Funciona, mas um erro de tipo cruzado aparece só no `typecheck:e2e`.
+- **Duas cópias do Express:** Backend e Gateway carregam cada um o seu `node_modules`. Funciona, mas um erro de tipo cruzado aparece só no `typecheck:e2e`. Os `tsconfig.json` do Backend e do Gateway têm as mesmas opções estritas (conferido em 2026-11-22), então o `typecheck:e2e` não deve acusar erro no código do Gateway. Se acusar, isso é registrado como achado, e T1 não muda o Gateway.
 - **Cache da configuração no Gateway (60 s):** se um teste mudar a configuração do WhatsApp que o Gateway lê (segredo ou token), o Gateway continua com a antiga. O contrato só muda o interruptor de aviso, que o Gateway não lê.
 - **Contrato:** uma mudança de assinatura em T1 depois que Vênus começou atrasa T3. Toda mudança é registrada nesta spec antes de ser feita.
