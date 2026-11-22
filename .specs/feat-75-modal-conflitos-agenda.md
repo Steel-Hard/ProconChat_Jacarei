@@ -652,7 +652,7 @@ Regras para todas as tarefas de código:
 - Teste: nenhum
 - Gate: doc
 - Modelo: padrao
-- Status: pendente
+- Status: feita (c253a5e). Gate doc: regra 08, índice das regras e os READMEs do painel e do servidor conferidos contra a spec (RN-09 a RN-16, contrato da API) e contra o código (campos, eventos, ordem dos avisos); sem Co-Authored-By. Pendentes registrados nos quatro arquivos: "Tentar novamente", horários cancelados voltarem livres, avisos em paralelo e testes de borda extras.
 
 ## Dúvidas
 
