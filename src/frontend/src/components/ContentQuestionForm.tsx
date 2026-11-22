@@ -12,6 +12,12 @@ import contentErrorText from "@/utils/content/contentErrorText"
 import CONTENT_LIMITS from "@/utils/content/contentLimits"
 import css from "@/styles/components/contentForms.module.css"
 
+function misspelledKeyOf(answer: string): string {
+    return findMisspelledPlaceholders(answer)
+        .map((item) => item.found)
+        .join("|")
+}
+
 function ContentQuestionForm({
     mode,
     initial,
@@ -32,7 +38,7 @@ function ContentQuestionForm({
     const placeholderWarningRef = useRef<HTMLOutputElement>(null)
     const errors: ContentFieldError[] = attempted ? validate(fields).errors : []
     const misspelledPlaceholders = findMisspelledPlaceholders(fields.answer)
-    const misspelledKey = misspelledPlaceholders.map((item) => item.found).join("|")
+    const misspelledKey = misspelledKeyOf(fields.answer)
     const awaitingSecondSave = warnedPlaceholders === misspelledKey
     const placeholderWarnings = misspelledPlaceholders.map((item, index) => {
         const line = t("questionForm.misspelledPlaceholder", item)
@@ -63,6 +69,14 @@ function ContentQuestionForm({
 
     function patch(next: Partial<ContentQuestionFormFields>) {
         setFields((current) => ({ ...current, ...next }))
+    }
+
+    function changeAnswer(value: string) {
+        if (misspelledKeyOf(value) !== misspelledKey) {
+            setWarnedPlaceholders(null)
+        }
+
+        patch({ answer: value })
     }
 
     function toggleOutOfScope(checked: boolean) {
@@ -165,7 +179,7 @@ function ContentQuestionForm({
                             components={{ code: <code className={css.hintCode} /> }}
                         />
                     }
-                    onChange={(value) => patch({ answer: value })}
+                    onChange={changeAnswer}
                 />
                 {fields.answer.length >= CONTENT_LIMITS.answerWarningFrom ? (
                     <p className={css.longAnswerAlert}>{t("questionForm.answerWarning")}</p>

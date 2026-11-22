@@ -378,6 +378,25 @@ describe("ContentQuestionForm marcador mal escrito", () => {
         expect(screen.queryByText(/clique em Salvar de novo/)).not.toBeInTheDocument()
     })
 
+    it("corrigir e reescrever o mesmo erro volta ao início: sem frase e o próximo clique não salva", async () => {
+        const user = userEvent.setup()
+        const { onConfirm } = renderForm({ initial: withAnswer("Fica em {Endereco}.") })
+        const answerField = screen.getByLabelText(/Resposta oficial/)
+
+        await user.click(save())
+        await user.clear(answerField)
+        await user.type(answerField, "Fica em endereco")
+        await user.clear(answerField)
+        await user.type(answerField, "Fica em {{Endereco}")
+
+        expect(screen.queryByText(/clique em Salvar de novo/)).not.toBeInTheDocument()
+
+        await user.click(save())
+
+        expect(onConfirm).not.toHaveBeenCalled()
+        expect(screen.getByText(/clique em Salvar de novo/)).toBeInTheDocument()
+    })
+
     it("abaixo do campo ficam, em ordem, a dica, o aviso de marcador e o alerta de resposta longa", () => {
         renderForm({ initial: withAnswer(`{Endereco} ${"a".repeat(1000)}`) })
 
