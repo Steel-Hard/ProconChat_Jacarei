@@ -210,5 +210,5 @@ Quem alterou o quê e quando. **Os valores do token e do App Secret não são re
 
 ## Relações
 
-- A **Saúde do chatbot** no [Dashboard](02-dashboard.md) (também só Admin) resume os itens de "Estado do número" e a pausa, quando o Dashboard (issue #71) e a tela do Estado do número (issues #127 e #88) forem entregues.
+- A **Saúde do chatbot**, prevista no Dashboard, não existe: o Dashboard foi descartado ([decisão 013](../decisoes/013-telas-de-sessoes-e-dashboard-descartadas.md)). Os itens de "Estado do número" e a pausa ficam só nesta tela.
 - Durante o desenvolvimento, o sistema usa um número de testes do time. O PROCON troca pelo próprio número por esta tela, seguindo o guia de passagem.
