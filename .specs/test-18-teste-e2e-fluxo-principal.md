@@ -1,6 +1,6 @@
 # Teste ponta a ponta do fluxo principal do chatbot (#18)
 
-> Status: rascunho
+> Status: aprovada
 > Tipo: funcionalidade
 > Tamanho: grande
 > Branch: test/18-teste-e2e-fluxo-principal
@@ -101,7 +101,7 @@ Regras gerais
 - IA e Ollama: ficam desligados (a pergunta do teste não permite IA). Qualquer chamada para fora faz o teste falhar.
 - Teste de tela do painel: o painel é exercitado só pela API.
 - WhatsApp real, a Meta real, Playwright e Cypress: só Vitest.
-- "Tenho outra dúvida" no menu de retorno, remarcação sem horário livre, perguntas fora do escopo e perguntas que exigem atendimento presencial. São caminhos já cobertos por testes de unidade e de integração. Ver a dúvida D-PO-01.
+- "Tenho outra dúvida" no menu de retorno, remarcação sem horário livre, perguntas fora do escopo e perguntas que exigem atendimento presencial. São caminhos já cobertos por testes de unidade e de integração. Decisão da PO (D-PO-01).
 - Lembrete, aviso de cancelamento pela equipe e mensagens de modelo: são outros fluxos.
 - Atomicidade do desfecho com o evento ("mesma transação"): um teste ponta a ponta não observa isso. Ela já é provada pelos testes de integração do repositório (`citizenAppointment.integration.test.ts` e `citizenReschedule.race.integration.test.ts`). Aqui o teste confere só que o desfecho e o evento estão os dois gravados.
 - Issue #59: fechada no PR #142 e não bloqueia.
@@ -132,7 +132,7 @@ Backend e Gateway rodam no mesmo processo do Vitest, cada um ouvindo numa porta 
 - O desfecho da conversa e o evento que a fecha são gravados por `finishSessionWith`, que também limpa o rascunho (`draft = NULL`).
 - `PHONE_NOTICE_SHOWN` é gravado sempre que o agendamento é criado, com ou sem lembrete e aviso ligados.
 - As mensagens de modelo saem do Backend para o Gateway (`POST {GATEWAY_INTERNAL_URL}/internal/whatsapp/messages/template`) e do Gateway para a Graph API. Com as duas portas reais e o falso da Meta, um modelo enviado por engano aparece no falso como `type: "template"`.
-- "Marcar como atendido" usa o relógio do processo (`isDateOnOrBeforeToday`). O agendamento sempre nasce no futuro, porque a agenda do teste tem antecedência mínima de 1 dia. Por isso, no CA-06 o teste muda a data do agendamento direto no banco para 1 minuto atrás, antes de marcar como atendido. Isso é preparo de dado do teste, e não comportamento do painel. Ver a dúvida D-US-02.
+- "Marcar como atendido" usa o relógio do processo (`isDateOnOrBeforeToday`). O agendamento sempre nasce no futuro, porque a agenda do teste tem antecedência mínima de 1 dia. Por isso, no CA-06 o teste muda a data do agendamento direto no banco para 1 minuto atrás, antes de marcar como atendido, com `moveAppointmentToPast`, sem relógio falso (decisão do usuário, D-US-02). Isso é preparo de dado do teste, e não comportamento do painel.
 - O login real é `POST /api/v1/auth/login` com `{ email, password }` e `Origin` igual a `FRONTEND_ORIGIN`. Ele devolve o cookie `proconchat_access` em `Set-Cookie`. `createTestUser({ password })` grava a senha com bcrypt. O login só atualiza `last_login_at`, então `deleteTestUsers` continua apagando a conta.
 - Os testes de integração usam os telefones `5500000000981` a `5512999991006`, incluindo `5512999990740`. A faixa `5512999990781` a `5512999990784` está livre.
 
@@ -387,7 +387,7 @@ Regras para todas as tarefas:
 - um commit atômico por tarefa, só com os caminhos exatos (`git add <arquivo>` e `git commit -m "..." -- <arquivos>`), sem `Co-Authored-By` e sem push;
 - padrão de commit:
   - `Test :test_tube: [#18] ...` para T1, T2 e T3;
-  - `Build :rocket: [#18] ...` para T4 (proposta, ver D-US-01);
+  - `Build :rocket: [#18] ...` para T4 (decisão do usuário, D-US-01);
   - `Docs :bulb: [#18] ...` para T5.
 
 ## Tarefas
@@ -543,17 +543,13 @@ Regras para todas as tarefas:
 
 Do product-owner:
 
-- **D-PO-01:** o escopo lista só os cenários 1 e 2. Falta decidir se o teste ponta a ponta também deve cobrir as duas variações da regra RN-02:
-  - a pergunta que exige atendimento presencial, que oferece o agendamento direto com o motivo "exige presencial";
-  - a pergunta fora do escopo, que não oferece agendamento.
-
-  Hoje elas ficam fora (cobertas por testes de unidade e de integração). Se entrarem, viram uma tarefa nova de Marte, com outro telefone.
-- **D-PO-02:** a remarcação foi planejada a partir de um agendamento Confirmado, para provar a volta a Pendente, e o cancelamento a partir de um Pendente. Falta confirmar se basta ou se o cancelamento também deve partir de um Confirmado.
+- **D-PO-01 (resolvida):** o teste ponta a ponta não cobre as variações da regra RN-02 (pergunta que exige atendimento presencial e pergunta fora do escopo). Elas ficam em "Fora do escopo", cobertas pelos testes de unidade e de integração. Decisão da PO.
+- **D-PO-02 (resolvida):** o cancelamento parte só de um agendamento Pendente, sem caso extra a partir de Confirmado, porque o resultado é o mesmo nos dois estados. A remarcação continua partindo de um Confirmado, para provar a volta a Pendente. Decisão do usuário, recomendada pela PO.
 
 Só o usuário:
 
-- **D-US-01:** a tabela de tipos de commit não tem um tipo para CI. Proposta para o commit do `ci.yml`: `Build :rocket:`, ou `Chore :see_no_evil:` se o usuário preferir.
-- **D-US-02:** para chegar ao "dia do atendimento" no CA-06, o plano muda a data do agendamento no banco para 1 minuto atrás (preparo de dado). A alternativa é um relógio falso só de `Date` no processo (`vi.useFakeTimers({ toFake: ["Date"] })`), que o padrão de testes aceita como fronteira. Ela exige um login novo depois de avançar o relógio, porque o cookie de acesso vale 1 hora. Falta confirmar qual dos dois usar.
+- **D-US-01 (resolvida):** a tabela de tipos de commit não tem um tipo para CI. O usuário decidiu usar `Build :rocket:` no commit do `ci.yml` (T4).
+- **D-US-02 (resolvida):** para chegar ao "dia do atendimento" no CA-06, o usuário decidiu preparar a data no passado direto no banco, com `moveAppointmentToPast` (1 minuto atrás), sem relógio falso.
 
 Riscos:
 
