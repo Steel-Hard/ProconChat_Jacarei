@@ -5,10 +5,8 @@ import ScheduleConflictModalRow from "@/components/ScheduleConflictModalRow"
 import type ScheduleConflict from "@/types/schedule/ScheduleConflict.types"
 import type ScheduleConflictModalOrigin from "@/types/schedule/ScheduleConflictModalOrigin.types"
 import type WhatsAppCancellationNoticeProblemCode from "@/types/whatsapp/WhatsAppCancellationNoticeProblemCode.types"
+import trapFocus from "@/utils/trapFocus"
 import css from "@/styles/components/scheduleConflictModal.module.css"
-
-const FOCUSABLE_SELECTOR =
-    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 const ORIGIN_TEXT_KEYS = {
     save: {
@@ -32,28 +30,6 @@ const ORIGIN_TEXT_KEYS = {
         back: "conflictModal.cancelScheduledChange.back"
     }
 } as const
-
-function trapFocus(event: KeyboardEvent, container: HTMLElement | null) {
-    const focusable = Array.from(container?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? [])
-
-    if (focusable.length === 0) {
-        event.preventDefault()
-        return
-    }
-
-    const first = focusable[0]
-    const last = focusable[focusable.length - 1]
-    const active = document.activeElement
-    const inside = active instanceof Node && container?.contains(active)
-
-    if (event.shiftKey && (active === first || !inside)) {
-        event.preventDefault()
-        last.focus()
-    } else if (!event.shiftKey && (active === last || !inside)) {
-        event.preventDefault()
-        first.focus()
-    }
-}
 
 type ScheduleConflictModalProps = {
     conflicts: ScheduleConflict[] | null
@@ -157,7 +133,7 @@ function ScheduleConflictModal({
                         {t(descriptionKey)}
                     </p>
                     {changedNotice ? (
-                        <output className={css.changedNotice}>
+                        <output aria-live="polite" className={css.changedNotice}>
                             {t("conflictModal.changedNotice")}
                         </output>
                     ) : null}
