@@ -618,6 +618,26 @@ describe("contentRules", () => {
                 )
             })
 
+            it("troca os marcadores pelos textos de agenda não configurada quando não há configuração", () => {
+                expect(
+                    resolveAnswerPlaceholders("Atendemos de {horarios}, em {endereco}.", null),
+                ).toBe(
+                    "Atendemos de sem horários de atendimento configurados, em endereço não configurado.",
+                )
+
+                const preview = buildQuestionPreview(
+                    category,
+                    [],
+                    { ...baseInput, answer: "Atendemos de {horarios}, em {endereco}." },
+                    null,
+                )
+                const text = preview.botMessages.officialMessages[0]?.text ?? ""
+                expect(text).toContain(
+                    "Resposta: Atendemos de sem horários de atendimento configurados, em endereço não configurado.",
+                )
+                expect(text).not.toContain("{")
+            })
+
             it("substitui {endereco} e {horarios} na prévia da resposta", () => {
                 const preview = buildQuestionPreview(
                     category,

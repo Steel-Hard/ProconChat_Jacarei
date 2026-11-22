@@ -30,6 +30,8 @@ export const AI_SAMPLE_TEXT =
 
 export const NO_SCHEDULE_HOURS_MESSAGE = "sem horários de atendimento configurados"
 
+export const NO_SCHEDULE_ADDRESS_MESSAGE = "endereço não configurado"
+
 const WEEKDAY_DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0] as const
 
 const WEEKDAY_FULL_NAMES: Record<number, string> = {
@@ -139,19 +141,16 @@ export function resolveAnswerPlaceholders(
     answer: string,
     schedule: SchedulePlaceholdersSource | null | undefined,
 ): string {
-    if (!schedule || !hasAnswerPlaceholders(answer)) {
+    if (!hasAnswerPlaceholders(answer)) {
         return answer
     }
-    let resolved = answer
-    if (resolved.includes("{endereco}")) {
-        const formattedAddress = formatUnitAddressForAnswer(schedule)
-        resolved = resolved.replace(/\{endereco\}/g, () => formattedAddress)
-    }
-    if (resolved.includes("{horarios}")) {
-        const formattedHours = formatScheduleHoursForAnswer(schedule.ranges)
-        resolved = resolved.replace(/\{horarios\}/g, () => formattedHours)
-    }
-    return resolved
+    const formattedAddress = schedule ? formatUnitAddressForAnswer(schedule) : NO_SCHEDULE_ADDRESS_MESSAGE
+    const formattedHours = schedule
+        ? formatScheduleHoursForAnswer(schedule.ranges)
+        : NO_SCHEDULE_HOURS_MESSAGE
+    return answer
+        .replace(/\{endereco\}/g, () => formattedAddress)
+        .replace(/\{horarios\}/g, () => formattedHours)
 }
 
 interface PreviewRow {
