@@ -17,6 +17,9 @@ Para o chatbot agendar sozinho (RF07), ele precisa saber quais horários existem
    - **janela de agendamento**: até quantos dias à frente o chatbot oferece horários;
    - **antecedência mínima**, em "dias úteis", que aqui significa **dias com atendimento configurado e não bloqueados**;
    - **limite de espera para alerta**: o Dashboard avisa quando o próximo horário livre passa desse prazo;
+
+     > **Estado em 2026-11-22:** a tela de Dashboard foi descartada pelo grupo e não existe no painel, então nenhuma tela avisa a partir desse prazo. Ele continua salvo na tela de Horários, onde o campo diz "Prazo de espera considerado longo para o próximo horário livre." Ver a [decisão 013](013-telas-de-sessoes-e-dashboard-descartadas.md).
+
    - **datas bloqueadas**, do dia inteiro ou de um período;
    - **dados da unidade** (endereço e complemento), usados nas mensagens;
    - **lembrete** (liga/desliga e quantas horas antes).
