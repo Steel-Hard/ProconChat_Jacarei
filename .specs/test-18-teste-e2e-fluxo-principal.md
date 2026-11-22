@@ -379,7 +379,7 @@ Fases:
   - T5 é conferida de novo contra o que T2 e T3 entregaram.
   - Resultado do gate de fase (em b99543f): passou. Frontend com 2248 testes, backend com 2068, gateway com 256, integração com 438 e `test:db`, e2e com 26. A branch está 0 commits atrás de `origin/develop`, sem conflito.
   - Revisão final do Saturno: a #18 está aprovada, sem achado em aberto. As 3 sugestões do primeiro relatório (commits ed1c51d, e411983 e 05ea021) e a sugestão (a) da rodada seguinte (commit e90ac51) foram aplicadas por decisão do usuário.
-  - Pendência: conferir o job `backend-e2e` no CI depois do push.
+  - Pendência do CI resolvida: no PR #177 (run 45061194673), os 5 checks passaram, incluindo o `backend-e2e` (33 s, 6 arquivos e 29 testes).
 
 Quem edita o quê, para as tarefas [P] não se cruzarem:
 
@@ -521,7 +521,7 @@ Regras para todas as tarefas:
 - Teste: nenhum (configuração de CI). A verificação é a execução no CI.
 - Gate: CI
 - Modelo: economico
-- Status: feita (commit 1c8cf6a). Evidência: o YAML carrega com `yaml.safe_load` e lista os 5 jobs; actionlint indisponível. Pendente: o job `backend-e2e` só roda de verdade depois do push e depende dos scripts `typecheck:e2e` e `test:e2e` da T1. Revisão final do Saturno: aprovada. Pendência registrada na aprovação final: conferir o job `backend-e2e` no CI depois do push.
+- Status: feita (commit 1c8cf6a). Evidência: o YAML carrega com `yaml.safe_load` e lista os 5 jobs; actionlint indisponível. Pendente: o job `backend-e2e` só roda de verdade depois do push e depende dos scripts `typecheck:e2e` e `test:e2e` da T1. Revisão final do Saturno: aprovada. Pendência do CI resolvida: no PR #177 (run 45061194673), os 5 checks passaram; o `backend-e2e` passou em 33 s (`typecheck:e2e` ok; 6 arquivos e 29 testes em 4,29 s), igual ao resultado local, e `backend`, `gateway`, `backend-integration` e `frontend` também passaram.
 
 ### T5 [P] Documentação de como rodar o teste ponta a ponta
 - O quê: explicar o que o teste cobre e como rodá-lo, localmente e no CI.
