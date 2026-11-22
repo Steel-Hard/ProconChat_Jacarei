@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { useTranslation } from "react-i18next"
+import { Trans, useTranslation } from "react-i18next"
 import ContentCheckField from "@/components/ContentCheckField"
 import ContentDocumentsField from "@/components/ContentDocumentsField"
 import ContentFormDialog from "@/components/ContentFormDialog"
@@ -152,7 +152,13 @@ function ContentQuestionForm({
                     warnings={placeholderWarnings}
                     onChange={(value) => patch({ answer: value })}
                 />
-                <p className={css.hint}>{t("questionForm.answerPlaceholdersHint")}</p>
+                <p className={css.hint}>
+                    <Trans
+                        t={t}
+                        i18nKey="questionForm.answerPlaceholdersHint"
+                        components={{ code: <code className={css.hintCode} /> }}
+                    />
+                </p>
                 {fields.answer.length >= CONTENT_LIMITS.answerWarningFrom ? (
                     <p className={css.longAnswerAlert}>{t("questionForm.answerWarning")}</p>
                 ) : null}

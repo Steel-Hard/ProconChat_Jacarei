@@ -238,9 +238,22 @@ describe("ContentQuestionForm", () => {
 
         expect(
             screen.getByText(
-                "Você pode usar {endereco} e {horarios} para inserir automaticamente o endereço e os horários atuais da unidade."
+                (_, element) =>
+                    element?.tagName === "P" &&
+                    element.textContent ===
+                        "Você pode usar {endereco} e {horarios} para inserir automaticamente o endereço e os horários atuais da unidade."
             )
         ).toBeInTheDocument()
+    })
+
+    it("destaca {endereco} e {horarios} na dica como código", () => {
+        renderForm()
+
+        const highlighted = Array.from(document.querySelectorAll("code")).map(
+            (element) => element.textContent
+        )
+
+        expect(highlighted).toEqual(["{endereco}", "{horarios}"])
     })
 })
 
