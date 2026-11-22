@@ -269,13 +269,24 @@ export function stopE2eEnvironment(env: E2eEnvironment | undefined): Promise<voi
 4. Cria a pergunta com `createTestQuestion` e a troca para `requires_in_person = false`, `out_of_scope = false` e `llm_allowed = false`.
 5. Cria a conta da equipe com `createTestUser({ permissions: ["appointments.view", "appointments.manage"], password })` e guarda o e-mail e a senha.
 
-`stopE2eEnvironment` faz o inverso, sempre até o fim (`try/finally`), e aceita `undefined` quando o início falhou:
+`stopE2eEnvironment` faz o inverso, sempre até o fim (com `runAllSteps`: cada passo roda mesmo se o anterior falhar), e aceita `undefined` quando o início falhou:
 
 1. Desfaz o falso da Meta.
 2. Limpa os dados de `ALL_E2E_PHONES`.
 3. Restaura a agenda e o WhatsApp.
 4. Apaga a conta da equipe.
 5. Fecha os dois servidores e encerra o pool (`getPool().end()`).
+
+**`tests/e2e/helpers/runAllSteps.ts`** (acrescentado depois da revisão, sugestão b do Saturno, commit 05ea021)
+
+```ts
+export function runAllSteps(steps: (() => Promise<void>)[]): Promise<void>
+```
+
+- Roda os passos na ordem, um depois do outro.
+- Se um passo falha, os seguintes rodam mesmo assim.
+- No fim, se algum falhou, lança o primeiro erro, e não os seguintes.
+- Teste próprio: `runAllSteps.e2e.test.ts`.
 
 **`tests/e2e/helpers/journeys.ts`**
 
@@ -397,8 +408,8 @@ Regras para todas as tarefas:
 - O quê: configuração, scripts e todos os helpers do contrato, com teste próprio dos helpers que têm lógica.
 - Onde:
   - `src/backend/vitest.e2e.config.mts`, `src/backend/tsconfig.e2e.json`, `src/backend/tsconfig.test.json`, `src/backend/vitest.config.mts` e `src/backend/package.json` (só os dois scripts);
-  - `src/backend/tests/e2e/helpers/` (`phones.ts`, `metaFake.ts`, `whatsappSettingsDb.ts`, `citizen.ts`, `e2eEnvironment.ts`, `journeys.ts`, `panel.ts` e `e2eDb.ts`);
-  - os testes `metaFake.e2e.test.ts`, `citizen.e2e.test.ts` e `journeys.e2e.test.ts`.
+  - `src/backend/tests/e2e/helpers/` (`phones.ts`, `metaFake.ts`, `whatsappSettingsDb.ts`, `citizen.ts`, `e2eEnvironment.ts`, `journeys.ts`, `panel.ts`, `e2eDb.ts` e `runAllSteps.ts`);
+  - os testes `metaFake.e2e.test.ts`, `citizen.e2e.test.ts`, `journeys.e2e.test.ts` e `runAllSteps.e2e.test.ts`.
 - Dev: Marte (dev-backend)
 - Depende de: nada
 - Reaproveita:
@@ -428,7 +439,7 @@ Regras para todas as tarefas:
 - Teste: unitário dos helpers, dentro da config e2e. Falha primeiro o teste de `toSentMessage` que espera `type: "buttons"` com os ids dos botões.
 - Gate: rápido e2e
 - Modelo: padrao
-- Status: feita (commit edc880c). Evidência: vermelho por módulo inexistente antes do código; verde com `test:e2e` (23 testes, 3 arquivos); `npm test` do backend com 2068 testes e sem `tests/e2e`; `typecheck:test` e `typecheck:e2e` ok; oxlint ok no backend e no gateway; build do backend e do gateway ok; 256 testes do gateway ok; verificação real no Postgres descartável passou e deixou o banco limpo. Revisão final do Saturno: aprovada. Sugestão do Saturno aplicada a pedido do usuário no commit 05ea021 (`stopE2eEnvironment` com `runAllSteps`: cada passo de restauração roda mesmo se o anterior falhar, com teste escrito antes; `test:e2e` com 6 arquivos e 29 testes ok); aguardando a revisão final.
+- Status: feita (commit edc880c). Evidência: vermelho por módulo inexistente antes do código; verde com `test:e2e` (23 testes, 3 arquivos); `npm test` do backend com 2068 testes e sem `tests/e2e`; `typecheck:test` e `typecheck:e2e` ok; oxlint ok no backend e no gateway; build do backend e do gateway ok; 256 testes do gateway ok; verificação real no Postgres descartável passou e deixou o banco limpo. Revisão final do Saturno: aprovada. Sugestão do Saturno aplicada a pedido do usuário no commit 05ea021 (`stopE2eEnvironment` com `runAllSteps`: cada passo de restauração roda mesmo se o anterior falhar, com teste escrito antes; `test:e2e` com 6 arquivos e 29 testes ok). Vermelho do `runAllSteps.e2e.test.ts` antes do código: 3 casos (tudo na ordem; segue após falha; lança o primeiro erro e não os seguintes) falharam com "Cannot find module './helpers/runAllSteps'". Prova por mutação do Saturno: com o `runAllSteps` parando no primeiro erro, o teste "roda os passos seguintes..." falha. Revisão final do Saturno: 05ea021 aprovado, com lint, build, `typecheck:test`, `npm test` (2068), `db:migrate`, `typecheck:e2e` e `test:e2e` (6 arquivos, 29 testes) ok em 05ea021; branch 0 commits atrás de `origin/develop`.
 
 ### T2 [P] Cenário 1: dúvida nova termina em agendamento, assumido e atendido pelo painel
 - O quê: o arquivo `fluxoPrincipal.e2e.test.ts`, com o cenário 1 de ponta a ponta.
@@ -450,7 +461,7 @@ Regras para todas as tarefas:
 - Teste: e2e. A regra já existe, então o teste deve passar de primeira, e isso fica registrado. Para provar que ele pega erro, confira uma vez, sem commitar, que trocar o segredo do app no corpo assinado faz o teste falhar.
 - Gate: rápido e2e
 - Modelo: padrao
-- Status: feita (commit d5ecc24). Cobre CA-01 a CA-06, CA-13, CA-14 e CA-15. Evidência: passou de primeira, como previsto, por cobrir regra que já existia; a prova de que pega erro foi trocar o segredo da assinatura, que deu 401 (troca revertida); `test:e2e` com 5 arquivos e 26 testes passando; `typecheck:e2e` e oxlint ok; backend com lint, build, `typecheck:test` e `npm test` (2068) ok; gateway com lint, build e 256 testes ok. Revisão final do Saturno: achado que bloqueia (o CA-13 só conferia o CPF sem pontuação), corrigido no commit 1f3f9fe; a correção foi aprovada pelo Saturno (`test:e2e` com 26 testes ok), e a revisão aprovou a #18 sem achado que bloqueia.
+- Status: feita (commit d5ecc24). Cobre CA-01 a CA-06, CA-13, CA-14 e CA-15. Evidência: passou de primeira, como previsto, por cobrir regra que já existia; a prova de que pega erro foi trocar o segredo da assinatura, que deu 401 (troca revertida); `test:e2e` com 5 arquivos e 26 testes passando; `typecheck:e2e` e oxlint ok; backend com lint, build, `typecheck:test` e `npm test` (2068) ok; gateway com lint, build e 256 testes ok. Revisão final do Saturno: achado que bloqueia (o CA-13 só conferia o CPF sem pontuação), corrigido no commit 1f3f9fe; a correção foi aprovada pelo Saturno (`test:e2e` com 26 testes ok), e a revisão aprovou a #18 sem achado que bloqueia, aprovação mantida depois dos ajustes e411983 (T3) e 05ea021 (T1).
 
 ### T3 [P] Cenário 2: retorno do cidadão, remarcar e cancelar
 - O quê: o arquivo `retornoCidadao.e2e.test.ts`, com dois testes, um por conversa (remarcar e cancelar), cada um com o próprio telefone.
@@ -486,7 +497,7 @@ Regras para todas as tarefas:
 - Teste: e2e. A regra já existe, então o teste deve passar de primeira, e isso fica registrado. Uma falha por defeito do sistema vira achado para o reviewer, e o teste não é ajustado.
 - Gate: rápido e2e
 - Modelo: padrao
-- Status: feita (commit 3ddfe55). Cobre CA-07 a CA-14 e CA-18. Evidência: `typecheck:test` ok; `typecheck:e2e` sem erro no arquivo da tarefa; oxlint ok; os 2 testes passam. Passaram de primeira, como previsto, porque cobrem regra que já existia, e não acharam defeito no sistema. Revisão final do Saturno: aprovada. Sugestões do Saturno aplicadas a pedido do usuário no commit e411983 (CPF só com dígitos; o CA-12 com um "oi" só, independente da página de categorias); aguardando a revisão final.
+- Status: feita (commit 3ddfe55). Cobre CA-07 a CA-14 e CA-18. Evidência: `typecheck:test` ok; `typecheck:e2e` sem erro no arquivo da tarefa; oxlint ok; os 2 testes passam. Passaram de primeira, como previsto, porque cobrem regra que já existia, e não acharam defeito no sistema. Revisão final do Saturno: aprovada. Sugestões do Saturno aplicadas a pedido do usuário no commit e411983 (CPF só com dígitos; o CA-12 com um "oi" só, independente da página de categorias). Revisão final do Saturno: e411983 aprovado.
 
 ### T4 [P] Job `backend-e2e` no CI
 - O quê: um job novo no CI que sobe o Postgres, instala o Backend e o Gateway, aplica as migrations, checa os tipos do e2e e roda o teste.
