@@ -16,6 +16,7 @@ import { createTestUser, deleteTestUsers } from "../../integration/helpers/users
 import { hashPhone } from "../../integration/helpers/phone"
 import { installMetaFake, MetaFake } from "./metaFake"
 import { ALL_E2E_PHONES } from "./phones"
+import { runAllSteps } from "./runAllSteps"
 import {
     restoreWhatsAppSettings,
     snapshotWhatsAppSettings,
@@ -142,19 +143,22 @@ export async function stopE2eEnvironment(environment: E2eEnvironment | undefined
     if (!restorable) {
         return
     }
-    try {
-        restorable.meta?.restore()
-        await cleanupScheduleTestData({ phoneHashes: ALL_E2E_PHONES.map(hashPhone), appointmentIds: [] })
-        if (restorable.schedule) {
-            await restoreScheduleConfig(restorable.schedule)
-        }
-        if (restorable.whatsapp) {
-            await restoreWhatsAppSettings(restorable.whatsapp.snapshot)
-        }
-        await deleteTestUsers([restorable.staffId ?? null])
-    } finally {
-        await close(restorable.gatewayServer)
-        await close(restorable.backendServer)
-        await getPool().end()
-    }
+    await runAllSteps([
+        async () => restorable.meta?.restore(),
+        () => cleanupScheduleTestData({ phoneHashes: ALL_E2E_PHONES.map(hashPhone), appointmentIds: [] }),
+        async () => {
+            if (restorable.schedule) {
+                await restoreScheduleConfig(restorable.schedule)
+            }
+        },
+        async () => {
+            if (restorable.whatsapp) {
+                await restoreWhatsAppSettings(restorable.whatsapp.snapshot)
+            }
+        },
+        () => deleteTestUsers([restorable.staffId ?? null]),
+        () => close(restorable.gatewayServer),
+        () => close(restorable.backendServer),
+        () => getPool().end(),
+    ])
 }
