@@ -54,6 +54,21 @@ type ConflictModalSource =
           effectiveFrom: string
       }
 
+const RESULT_TEXT_KEYS = {
+    save: {
+        kept: "conflictModal.keptToast",
+        canceledWithFailures: "conflictModal.save.canceledWithFailures",
+        canceledOn: "conflictModal.canceledOnToast",
+        canceledOff: "conflictModal.canceledOffToast"
+    },
+    cancelScheduledChange: {
+        kept: "conflictModal.cancelScheduledChange.keptToast",
+        canceledWithFailures: "conflictModal.cancelScheduledChange.canceledWithFailures",
+        canceledOn: "conflictModal.cancelScheduledChange.canceledOnToast",
+        canceledOff: "conflictModal.cancelScheduledChange.canceledOffToast"
+    }
+} as const
+
 const MAX_RANGES = 3
 const SHOWN_FIELDS: readonly IssueTarget[] = [
     "slotMinutes",
@@ -212,20 +227,27 @@ function useSchedule() {
             ? { changedBy: view.updatedBy.name, changedAt: view.updatedAt }
             : null
 
-    function resolutionToast(summary: ScheduleConflictResolutionSummary): string {
+    function resolutionToast(
+        summary: ScheduleConflictResolutionSummary,
+        origin: ScheduleConflictModalOrigin,
+        plainMessage: string
+    ): string {
+        if (summary.affectedCount === 0) {
+            return plainMessage
+        }
+
+        const keys = RESULT_TEXT_KEYS[origin]
+        const count = summary.affectedCount
+
         if (summary.action === "KEEP") {
-            return t("conflictModal.keptToast", { count: summary.affectedCount })
+            return t(keys.kept, { count })
         }
 
         if (summary.failedCount > 0) {
-            return `${t("conflictModal.canceledCount", { count: summary.affectedCount })}. ${t("conflictModal.failedCount", { count: summary.failedCount })}.`
+            return t(keys.canceledWithFailures, { count, failedCount: summary.failedCount })
         }
 
-        if (summary.noticeDisabled) {
-            return t("conflictModal.canceledOffToast", { count: summary.affectedCount })
-        }
-
-        return t("conflictModal.canceledOnToast", { count: summary.affectedCount })
+        return t(summary.noticeDisabled ? keys.canceledOff : keys.canceledOn, { count })
     }
 
     function closeConflictModal() {
@@ -317,10 +339,13 @@ function useSchedule() {
                     setModalSource(null)
                     setModalChanged(false)
                     booked.refetch()
+                    const plainMessage = t(
+                        modalSource.effectiveFrom ? "save.scheduledToast" : "save.toast"
+                    )
                     showToast(
                         resolution
-                            ? resolutionToast(resolution)
-                            : t(modalSource.effectiveFrom ? "save.scheduledToast" : "save.toast")
+                            ? resolutionToast(resolution, "save", plainMessage)
+                            : plainMessage
                     )
                 },
                 onConflicts: (error) => {
@@ -350,8 +375,11 @@ function useSchedule() {
                 applyVersion("")
             }
 
+            const plainMessage = t("versions.cancelled")
             showToast(
-                result?.resolution ? resolutionToast(result.resolution) : t("versions.cancelled")
+                result?.resolution
+                    ? resolutionToast(result.resolution, "cancelScheduledChange", plainMessage)
+                    : plainMessage
             )
         } catch (caught) {
             const error = scheduleSaveErrorOf(caught)

@@ -431,4 +431,53 @@ describe("SchedulePage: modal de conflitos", () => {
             seenNoticeEnabled: false
         })
     })
+
+    it.each([
+        [
+            "falhas de aviso numa frase só",
+            { ...RESOLUTION_CANCEL, affectedCount: 1, failedCount: 1 },
+            "1 agendamento cancelado. 1 aviso falhou."
+        ],
+        [
+            "nenhum afetado ao cancelar",
+            { ...RESOLUTION_CANCEL, affectedCount: 0, notifiedCount: 0 },
+            "Horários salvos. O chatbot passa a oferecer a nova grade."
+        ],
+        [
+            "nenhum afetado ao manter",
+            { ...RESOLUTION_CANCEL, action: "KEEP", affectedCount: 0, notifiedCount: 0 },
+            "Horários salvos. O chatbot passa a oferecer a nova grade."
+        ]
+    ])("mostra a mensagem certa da origem salvar com %s", async (_label, summary, expected) => {
+        const { user } = await renderSchedulePage({
+            account: MANAGER_ACCOUNT,
+            handlers: {
+                "GET /api/v1/schedule/cancellation-notice": () => ({
+                    status: 200,
+                    body: { data: { enabled: true, problem: null } }
+                }),
+                "PUT /api/v1/schedule": ({ body }) =>
+                    (body as { conflictResolution?: string }).conflictResolution
+                        ? {
+                              status: 200,
+                              body: {
+                                  data: buildScheduleConfig({ seatsPerSlot: 1 }),
+                                  resolution: summary
+                              }
+                          }
+                        : CONFLICTS_REPLY
+            }
+        })
+
+        const dialog = await triggerConflictModal(user)
+        await user.click(
+            summary.action === "KEEP"
+                ? within(dialog).getByRole("button", { name: "Manter os agendamentos" })
+                : await within(dialog).findByRole("button", {
+                      name: "Cancelar e avisar os cidadãos"
+                  })
+        )
+
+        expect(await screen.findByText(expected)).toBeInTheDocument()
+    })
 })

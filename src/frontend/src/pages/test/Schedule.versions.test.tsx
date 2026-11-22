@@ -490,4 +490,108 @@ describe("SchedulePage: mudanças agendadas", () => {
             )
         ).not.toBeInTheDocument()
     })
+
+    describe("mensagem de resultado ao cancelar uma mudança pelo modal", () => {
+        const SUMMARY = {
+            action: "CANCEL",
+            affectedCount: 1,
+            notifiedCount: 0,
+            failedCount: 0,
+            noticeDisabled: false
+        }
+
+        it.each([
+            [
+                "manter 1",
+                "Manter os agendamentos",
+                false,
+                { ...SUMMARY, action: "KEEP" },
+                'Mudança cancelada. 1 agendamento mantido com o selo "Fora da grade atual".'
+            ],
+            [
+                "manter 2",
+                "Manter os agendamentos",
+                false,
+                { ...SUMMARY, action: "KEEP", affectedCount: 2 },
+                'Mudança cancelada. 2 agendamentos mantidos com o selo "Fora da grade atual".'
+            ],
+            [
+                "cancelar com aviso ligado",
+                "Cancelar a mudança, os agendamentos e avisar os cidadãos",
+                true,
+                { ...SUMMARY, affectedCount: 2, notifiedCount: 2 },
+                "Mudança cancelada. 2 agendamentos cancelados e cidadãos avisados por WhatsApp."
+            ],
+            [
+                "cancelar com aviso desligado",
+                "Cancelar a mudança e os agendamentos",
+                false,
+                { ...SUMMARY, noticeDisabled: true },
+                "Mudança cancelada. 1 agendamento cancelado. O cidadão não foi avisado pelo sistema."
+            ],
+            [
+                "cancelar com falhas de aviso",
+                "Cancelar a mudança, os agendamentos e avisar os cidadãos",
+                true,
+                { ...SUMMARY, affectedCount: 3, notifiedCount: 1, failedCount: 2 },
+                "Mudança cancelada. 3 agendamentos cancelados. 2 avisos falharam."
+            ],
+            [
+                "manter sem nenhum afetado",
+                "Manter os agendamentos",
+                false,
+                { ...SUMMARY, action: "KEEP", affectedCount: 0 },
+                "Mudança de horários cancelada."
+            ],
+            [
+                "cancelar sem nenhum afetado",
+                "Cancelar a mudança e os agendamentos",
+                false,
+                { ...SUMMARY, affectedCount: 0 },
+                "Mudança de horários cancelada."
+            ]
+        ])(
+            "mostra o texto certo ao %s",
+            async (_label, choice, noticeEnabled, summary, expected) => {
+                const { user } = await withVersions({
+                    "GET /api/v1/schedule/cancellation-notice": () => ({
+                        status: 200,
+                        body: { data: { enabled: noticeEnabled, problem: null } }
+                    }),
+                    [`DELETE /api/v1/schedule/versions/${CHANGE}`]: ({ body }) =>
+                        (body as { conflictResolution?: string } | undefined)?.conflictResolution
+                            ? { status: 200, body: { resolution: summary } }
+                            : {
+                                  status: 409,
+                                  body: {
+                                      error: {
+                                          code: "SCHEDULE_CONFLICTS",
+                                          message: "x",
+                                          details: {
+                                              conflicts: [
+                                                  {
+                                                      id: "7",
+                                                      protocol: "ABCD1234",
+                                                      name: "Maria Oliveira",
+                                                      cpfMasked: "***.456.789-**",
+                                                      date: "2026-11-14",
+                                                      time: "09:00",
+                                                      status: "CONFIRMED",
+                                                      code: "DAY_WITHOUT_SERVICE",
+                                                      reason: "Dia sem atendimento na nova grade"
+                                                  }
+                                              ]
+                                          }
+                                      }
+                                  }
+                              }
+                })
+
+                const dialog = await openModal(user)
+                await user.click(await within(dialog).findByRole("button", { name: choice }))
+
+                expect(await screen.findByText(expected, {}, SLOW)).toBeInTheDocument()
+            }
+        )
+    })
 })
