@@ -91,10 +91,24 @@
         "title_one": "Esta alteração afeta {{count}} agendamento",
         "title_other": "Esta alteração afeta {{count}} agendamentos",
         "hint": "Ao salvar, você poderá manter estes agendamentos fora da grade atual ou cancelá-los.",
+        "hintWithCancel": "Ao salvar, você poderá manter estes agendamentos fora da grade atual ou cancelá-los.",
+        "hintKeepOnly": "Ao salvar, você poderá manter estes agendamentos fora da grade atual. Para cancelá-los, peça a quem gerencia os agendamentos.",
         "when": "{{weekday}}, {{date}} às {{time}}",
         "protocol": "Protocolo {{protocol}}"
     },
     "conflictModal": {
+        "changedNotice": "A lista de agendamentos afetados ou o aviso ao cidadão mudou desde que você abriu esta janela. Confira antes de escolher.",
+        "save": {
+            "descriptionWithCancel": "Estes agendamentos Pendentes ou Confirmados deixam de caber na configuração nova. Escolha o que fazer antes de salvar.",
+            "descriptionKeepOnly": "Estes agendamentos Pendentes ou Confirmados deixam de caber na configuração nova. Você não pode cancelar agendamentos. Mantenha-os para salvar a alteração, ou volte sem salvar.",
+            "keepDescription": "Continuam válidos e ganham o selo \"Fora da grade atual\" na lista e no detalhe. Nenhum aviso é enviado.",
+            "keepAction": "Manter os agendamentos",
+            "cancelActionOn": "Cancelar e avisar os cidadãos",
+            "cancelActionOff": "Cancelar agendamentos",
+            "back": "← Voltar sem salvar",
+            "canceledWithFailures_one": "{{count}} agendamento cancelado. $t(schedule:conflictModal.failedCount, {\"count\": {{failedCount}} }).",
+            "canceledWithFailures_other": "{{count}} agendamentos cancelados. $t(schedule:conflictModal.failedCount, {\"count\": {{failedCount}} })."
+        },
         "description": "Estes agendamentos Pendentes ou Confirmados deixam de caber na configuração nova. Escolha o que fazer antes de salvar.",
         "keepDescription": "Continuam válidos e ganham o selo \"Fora da grade atual\" na lista e no detalhe. Nenhum aviso é enviado.",
         "keepAction": "Manter os agendamentos",
