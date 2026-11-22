@@ -32,16 +32,13 @@ function ContentQuestionForm({
     const errors: ContentFieldError[] = attempted ? validate(fields).errors : []
     const misspelledPlaceholders = findMisspelledPlaceholders(fields.answer)
     const misspelledKey = misspelledPlaceholders.map((item) => item.found).join("|")
-    const placeholderWarnings =
-        warnedPlaceholders === misspelledKey
-            ? misspelledPlaceholders.map((item, index) => {
-                  const line = t("questionForm.misspelledPlaceholder", item)
+    const placeholderWarnings = misspelledPlaceholders.map((item, index) => {
+        const line = t("questionForm.misspelledPlaceholder", item)
 
-                  return index === misspelledPlaceholders.length - 1
-                      ? `${line} ${t("questionForm.misspelledPlaceholderConfirm")}`
-                      : line
-              })
-            : []
+        return index === misspelledPlaceholders.length - 1
+            ? `${line} ${t("questionForm.misspelledPlaceholderConfirm")}`
+            : line
+    })
 
     useEffect(() => {
         onChangeRef.current = onChange

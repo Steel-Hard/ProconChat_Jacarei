@@ -324,4 +324,20 @@ describe("ContentQuestionForm marcador mal escrito", () => {
         ).toBeInTheDocument()
         expect(screen.getAllByText(/clique em Salvar de novo/)).toHaveLength(1)
     })
+
+    it("mostra o aviso enquanto a pessoa digita, antes de qualquer clique", async () => {
+        const user = userEvent.setup()
+        renderForm()
+
+        await user.type(screen.getByLabelText(/Resposta oficial/), "Fica em endereço")
+        expect(screen.queryByText(/Marcador não reconhecido/)).not.toBeInTheDocument()
+
+        await user.type(screen.getByLabelText(/Resposta oficial/), " {{Endereco}")
+
+        expect(
+            screen.getByText(
+                "Marcador não reconhecido: {Endereco}. Use {endereco}. Se for isso mesmo que você quer, clique em Salvar de novo."
+            )
+        ).toBeInTheDocument()
+    })
 })
