@@ -24,9 +24,9 @@ Chatbot de orientação ao consumidor via WhatsApp, desenvolvido para o PROCON d
 | [`whatsapp/`](whatsapp/) | Pesquisa de integração com o WhatsApp (issue #3), [guia do app de teste da Meta](whatsapp/app-de-teste.md) para desenvolvimento e [guia dos modelos de mensagem](whatsapp/modelos-de-mensagem.md) (aviso de cancelamento e lembrete) | Atual como pesquisa; a decisão final está em [003](decisoes/003-migracao-whatsapp-cloud-api.md) |
 | [`lgpd/`](lgpd/) | [Procedimento para pedidos do titular](lgpd/pedidos-do-titular.md) (acesso e exclusão por anonimização) | Atual |
 | [`guias/`](guias/) | Guias em PDF (texto-fonte em Markdown e PDF gerado): [configuração do bot](guias/guia-configuracao-do-bot.pdf), [documento do software](guias/documento-do-software.pdf) e [manual do painel](guias/manual-do-painel.pdf), com o que cada tela faz e o que cada permissão libera, além de visão geral, regras de dados e de IA, requisitos medidos, instalação e atualização. O [README da pasta](guias/README.md) explica como gerar os PDFs | Atual |
-| [`sprints/`](sprints/) | Fechamento da Sprint 1 e acompanhamento da Sprint 2 (retrato de 19/10/2026, último dia da sprint) | Atual |
+| [`sprints/`](sprints/) | Fechamento das Sprints [1](sprints/sprint1/README.md), [2](sprints/sprint2/README.md) e [3](sprints/sprint3/README.md) | Atual |
 | [`historico/`](historico/) | Documentos superados, mantidos só para contexto | Não usar como referência |
-| `.tasks/` | Pasta local, fora do Git, com as specs e tasks do fluxo de planejamento (`sdd` → `executor` → `reviewer`) | Local, não versionada |
+| [`../.specs/`](../.specs/) | Especificações das tarefas (regras, critérios de aceite e tarefas executáveis), uma por arquivo, escritas antes da implementação. Ficam no Git | Atual |
 
 ## Regras que valem em todo o sistema
 
