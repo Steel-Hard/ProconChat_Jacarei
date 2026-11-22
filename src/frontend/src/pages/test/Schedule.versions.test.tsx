@@ -298,6 +298,56 @@ describe("SchedulePage: mudanças agendadas", () => {
             ).toBeInTheDocument()
         })
 
+        it("leva o foco para a seção das mudanças agendadas depois de manter os agendamentos", async () => {
+            let canceled = false
+            const { user } = await withConflicts({
+                "GET /api/v1/schedule/versions": () => ({
+                    status: 200,
+                    body: {
+                        data: canceled
+                            ? []
+                            : [
+                                  {
+                                      effectiveFrom: CHANGE,
+                                      config: { ...VERSION, effectiveFrom: CHANGE }
+                                  }
+                              ]
+                    }
+                }),
+                [DELETE_PATH]: ({ body }) => {
+                    const sent = body as { conflictResolution?: "KEEP" | "CANCEL" } | undefined
+
+                    if (sent?.conflictResolution) {
+                        canceled = true
+                        return { status: 200, body: { resolution: resolutionOf("KEEP") } }
+                    }
+
+                    return {
+                        status: 409,
+                        body: {
+                            error: {
+                                code: "SCHEDULE_CONFLICTS",
+                                message: "x",
+                                details: { conflicts: [AFFECTED] }
+                            }
+                        }
+                    }
+                }
+            })
+
+            const dialog = await openModal(user)
+            await user.click(within(dialog).getByRole("button", { name: "Manter os agendamentos" }))
+
+            await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
+            await waitFor(
+                () =>
+                    expect(
+                        screen.getByRole("region", { name: "Mudanças agendadas" })
+                    ).toHaveFocus(),
+                SLOW
+            )
+        })
+
         it("não cancela a mudança ao voltar sem cancelar", async () => {
             const { user, callsTo } = await withConflicts()
 
