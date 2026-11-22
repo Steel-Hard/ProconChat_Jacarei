@@ -78,9 +78,11 @@ Ordem das verificações, da primeira para a última:
 
 | Situação | Status e código | Corpo |
 |---|---|---|
-| Corpo ou parâmetros inválidos, incluindo as regras da tabela acima | 400, no formato de hoje (com `details.issues`) | erro |
+| Origem não confiável (`INVALID_ORIGIN`) | 403 | erro |
 | Sem sessão | 401 | erro |
-| Sem "Configurar atendimento presencial"; `"CANCEL"` sem "Gerenciar agendamentos" e sem ser Admin; origem não confiável (`INVALID_ORIGIN`) | 403 | erro |
+| Sem "Configurar atendimento presencial" | 403 | erro |
+| Corpo ou parâmetros inválidos, incluindo as regras da tabela acima | 400, no formato de hoje (com `details.issues`) | erro |
+| `"CANCEL"` sem "Gerenciar agendamentos" e sem ser Admin | 403 | erro |
 | DELETE de mudança que não existe | 404 | erro |
 | Bloqueio novo fora da vigência e demais validações de hoje | 400 (como hoje) | erro |
 | Há afetados e `conflictResolution` não veio | 409 `SCHEDULE_CONFLICTS` | `{ error: { code, message, details: { conflicts, cancellationNotice } } }` |
@@ -362,7 +364,7 @@ Regras para todas as tarefas de código:
 - Teste: unitário de rota com o stub. Falha primeiro o teste que espera 400 quando `conflictResolution: "CANCEL"` vem sem `seenConflictIds`.
 - Gate: rápido back
 - Modelo: padrao
-- Status: feita. Teste escrito primeiro: 19 dos 22 testes novos falharam pelo motivo certo (sem validação) antes do código. Gate: typecheck:test ok, oxlint ok, suíte do backend 143 arquivos e 2032 testes ok.
+- Status: feita (71081f5). Teste escrito primeiro: 19 dos 22 testes novos falharam pelo motivo certo (sem validação) antes do código. Gate: typecheck:test ok, oxlint ok, suíte do backend 143 arquivos e 2032 testes ok.
 
 ### T2 [P] Contrato do B1 no painel: tipos, leitura do erro e chamadas
 - O quê: manter o `id` dos afetados, ler os dois 409 com `cancellationNotice` e `changes`, e enviar os campos do contrato nos dois PUT e no corpo do DELETE.
@@ -477,7 +479,7 @@ Regras para todas as tarefas de código:
 - Teste: unitário. Falha primeiro o teste da frase com 3 cancelados e 2 falhas.
 - Gate: rápido front
 - Modelo: economico
-- Status: feita (71081f5). Teste primeiro: 8 falharam por chave ausente. Gate: vitest 42 passaram (i18n), typecheck, oxlint e prettier ok.
+- Status: feita (6595cf1). Teste primeiro: 8 falharam por chave ausente. Gate: vitest 42 passaram (i18n), typecheck, oxlint e prettier ok.
 
 ### T15 [P] Textos da origem cancelar mudança agendada
 - O quê: acrescentar as chaves `conflictModal.cancelScheduledChange.*` de RN-16, conforme "Textos", incluindo os resultados sem falha com o prefixo "Mudança cancelada. ".
@@ -584,7 +586,7 @@ Regras para todas as tarefas de código:
 - Teste: unitário de componente. Falha primeiro o caso "só com Configurar atendimento presencial".
 - Gate: rápido front
 - Modelo: economico
-- Status: pendente
+- Status: feita (da08007). Teste primeiro: o caso só com Configurar falhou pelo motivo certo. Gate: vitest 840 (páginas e lista) passam, typecheck, oxlint e prettier ok. Testes alterados (autorizado): o teste antigo da dica foi trocado pelos dois casos de permissão, e as renderizações dos outros testes do arquivo passaram a levar a propriedade nova obrigatória, sem mudar o que verificam.
 
 ### T11 [P] Mensagens de resultado por origem e sem "0 agendamentos"
 - O quê: usar a frase com falhas de cada origem, os resultados sem falha da origem cancelar mudança agendada (com "Mudança cancelada. " antes, RN-16) e a mensagem normal quando `affectedCount` é 0.
