@@ -507,7 +507,7 @@ Regras para todas as tarefas:
 - Teste: nenhum (configuração de CI). A verificação é a execução no CI.
 - Gate: CI
 - Modelo: economico
-- Status: em-andamento
+- Status: feita (commit 1c8cf6a). Evidência: o YAML carrega com `yaml.safe_load` e lista os 5 jobs; actionlint indisponível. Pendente: o job `backend-e2e` só roda de verdade depois do push e depende dos scripts `typecheck:e2e` e `test:e2e` da T1.
 
 ### T5 [P] Documentação de como rodar o teste ponta a ponta
 - O quê: explicar o que o teste cobre e como rodá-lo, localmente e no CI.
@@ -537,7 +537,7 @@ Regras para todas as tarefas:
 - Teste: nenhum (documentação)
 - Gate: doc
 - Modelo: economico
-- Status: em-andamento
+- Status: feita (commit 5100d75). Evidência: não há formatador de docs para esses arquivos. Pendente: conferir contra o código real depois de T2, T3 e T4.
 
 ## Dúvidas
 
