@@ -32,8 +32,12 @@ describe("scheduleSaveErrorOf", () => {
 
         expect(scheduleSaveErrorOf(error)).toEqual({
             kind: "conflicts",
+            changed: false,
+            notice: null,
+            changes: [],
             conflicts: [
                 {
+                    id: "41",
                     protocol: "A1B2C3D4",
                     name: "Maria Souza",
                     cpfMasked: "***.982.247-**",
@@ -45,6 +49,66 @@ describe("scheduleSaveErrorOf", () => {
                 }
             ]
         })
+    })
+
+    it("lê o 409 SCHEDULE_CONFLICTS_CHANGED com a lista nova, o aviso atual e o que mudou", () => {
+        const error = failure(409, {
+            code: "SCHEDULE_CONFLICTS_CHANGED",
+            message: "x",
+            details: {
+                conflicts: [CONFLICT],
+                cancellationNotice: { enabled: true, problem: null },
+                changes: ["CONFLICTS", "NOTICE", "OUTRO"]
+            }
+        })
+
+        expect(scheduleSaveErrorOf(error)).toEqual({
+            kind: "conflicts",
+            changed: true,
+            notice: { enabled: true, problem: null },
+            changes: ["CONFLICTS", "NOTICE"],
+            conflicts: [
+                {
+                    id: "41",
+                    protocol: "A1B2C3D4",
+                    name: "Maria Souza",
+                    cpfMasked: "***.982.247-**",
+                    date: "2026-11-04",
+                    time: "09:00",
+                    status: "CONFIRMED",
+                    code: "DATE_BLOCKED",
+                    reason: "Data bloqueada: Feriado"
+                }
+            ]
+        })
+    })
+
+    it("lê o aviso do 409 SCHEDULE_CONFLICTS quando ele vem", () => {
+        const problem = { code: "INVALID_TOKEN", metaErrorCode: null, message: "x" }
+        const error = failure(409, {
+            code: "SCHEDULE_CONFLICTS",
+            message: "x",
+            details: {
+                conflicts: [CONFLICT],
+                cancellationNotice: { enabled: true, problem }
+            }
+        })
+
+        expect(scheduleSaveErrorOf(error)).toMatchObject({
+            kind: "conflicts",
+            changed: false,
+            notice: { enabled: true, problem }
+        })
+    })
+
+    it("devolve falha geral no 409 de divergência sem o aviso", () => {
+        const error = failure(409, {
+            code: "SCHEDULE_CONFLICTS_CHANGED",
+            message: "x",
+            details: { conflicts: [CONFLICT], changes: ["CONFLICTS"] }
+        })
+
+        expect(scheduleSaveErrorOf(error)).toEqual({ kind: "failed" })
     })
 
     it("lê os problemas por campo do 400", () => {

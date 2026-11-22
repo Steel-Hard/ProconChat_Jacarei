@@ -1,7 +1,10 @@
+import type ScheduleCancellationNoticeState from "@/types/schedule/ScheduleCancellationNoticeState.types"
 import type ScheduleConflict from "@/types/schedule/ScheduleConflict.types"
+import type ScheduleConflictChange from "@/types/schedule/ScheduleConflictChange.types"
 import type ScheduleConflictCode from "@/types/schedule/ScheduleConflictCode.types"
 import type ScheduleFieldIssue from "@/types/schedule/ScheduleFieldIssue.types"
 import type ScheduleSaveError from "@/types/schedule/ScheduleSaveError.types"
+import type WhatsAppCancellationNoticeProblemCode from "@/types/whatsapp/WhatsAppCancellationNoticeProblemCode.types"
 
 const CONFLICT_CODES: readonly string[] = [
     "DATE_BLOCKED",
@@ -26,8 +29,9 @@ function conflictOf(item: unknown): ScheduleConflict | null {
         return null
     }
 
-    const { protocol, name, cpfMasked, date, time, status, code, reason } = item
+    const { id, protocol, name, cpfMasked, date, time, status, code, reason } = item
     const valid =
+        isText(id) &&
         isText(protocol) &&
         isText(name) &&
         isText(cpfMasked) &&
@@ -43,6 +47,7 @@ function conflictOf(item: unknown): ScheduleConflict | null {
     }
 
     return {
+        id,
         protocol,
         name,
         cpfMasked,
@@ -52,6 +57,46 @@ function conflictOf(item: unknown): ScheduleConflict | null {
         code: code as ScheduleConflictCode,
         reason
     }
+}
+
+function noticeOf(value: unknown): ScheduleCancellationNoticeState | null {
+    if (!isRecord(value) || typeof value.enabled !== "boolean") {
+        return null
+    }
+
+    const { problem } = value
+
+    if (problem === null || problem === undefined) {
+        return { enabled: value.enabled, problem: null }
+    }
+
+    if (
+        !isRecord(problem) ||
+        !isText(problem.code) ||
+        !isText(problem.message) ||
+        !(problem.metaErrorCode === null || isText(problem.metaErrorCode))
+    ) {
+        return null
+    }
+
+    return {
+        enabled: value.enabled,
+        problem: {
+            code: problem.code as WhatsAppCancellationNoticeProblemCode,
+            metaErrorCode: problem.metaErrorCode,
+            message: problem.message
+        }
+    }
+}
+
+function changesOf(value: unknown): ScheduleConflictChange[] {
+    if (!Array.isArray(value)) {
+        return []
+    }
+
+    return value.filter(
+        (item): item is ScheduleConflictChange => item === "CONFLICTS" || item === "NOTICE"
+    )
 }
 
 function issueOf(item: unknown): ScheduleFieldIssue | null {
@@ -82,11 +127,22 @@ function scheduleSaveErrorOf(error: unknown): ScheduleSaveError | null {
     const body = isRecord(error.data) && isRecord(error.data.error) ? error.data.error : {}
     const details = isRecord(body.details) ? body.details : {}
 
-    if (error.status === 409 && body.code === "SCHEDULE_CONFLICTS") {
+    if (
+        error.status === 409 &&
+        (body.code === "SCHEDULE_CONFLICTS" || body.code === "SCHEDULE_CONFLICTS_CHANGED")
+    ) {
+        const changed = body.code === "SCHEDULE_CONFLICTS_CHANGED"
         const conflicts = listOf(details.conflicts, conflictOf)
+        const notice = noticeOf(details.cancellationNotice)
 
-        if (conflicts !== null && conflicts.length > 0) {
-            return { kind: "conflicts", conflicts }
+        if (conflicts !== null && conflicts.length > 0 && (!changed || notice !== null)) {
+            return {
+                kind: "conflicts",
+                conflicts,
+                changed,
+                notice,
+                changes: changed ? changesOf(details.changes) : []
+            }
         }
     }
 

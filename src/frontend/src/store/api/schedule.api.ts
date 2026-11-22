@@ -4,23 +4,22 @@ import type MonthlyPreview from "@/types/schedule/MonthlyPreview.types"
 import type ScheduleCancellationNoticeState from "@/types/schedule/ScheduleCancellationNoticeState.types"
 import type ScheduleConfigInput from "@/types/schedule/ScheduleConfigInput.types"
 import type ScheduleConfigView from "@/types/schedule/ScheduleConfigView.types"
-import type ScheduleConflictResolution from "@/types/schedule/ScheduleConflictResolution.types"
+import type ScheduleConflictResolutionRequest from "@/types/schedule/ScheduleConflictResolutionRequest.types"
 import type ScheduleConflictResolutionSummary from "@/types/schedule/ScheduleConflictResolutionSummary.types"
 import type ScheduleVersion from "@/types/schedule/ScheduleVersion.types"
 
 type Envelope<T> = { data: T }
 
 type DraftPreviewArgs = { month?: string; config: ScheduleConfigInput; effectiveFrom?: string }
-type SaveScheduleArgs = {
+type SaveScheduleArgs = ScheduleConflictResolutionRequest & {
     config: ScheduleConfigInput
     effectiveFrom?: string
-    conflictResolution?: ScheduleConflictResolution
 }
 type SaveScheduleResult = ScheduleConfigView & {
     resolution?: ScheduleConflictResolutionSummary
 }
 type DeleteScheduleVersionArgs =
-    string | { effectiveFrom: string; conflictResolution?: ScheduleConflictResolution }
+    string | (ScheduleConflictResolutionRequest & { effectiveFrom: string })
 type DeleteScheduleVersionResult = {
     resolution?: ScheduleConflictResolutionSummary
 } | null
@@ -31,6 +30,22 @@ const DRAFT_PREVIEW_CACHE_SECONDS = 5
 
 function unwrap<T>(response: Envelope<T>): T {
     return response.data
+}
+
+function resolutionBodyOf({
+    conflictResolution,
+    seenConflictIds,
+    seenNoticeEnabled
+}: ScheduleConflictResolutionRequest): ScheduleConflictResolutionRequest {
+    if (!conflictResolution) {
+        return {}
+    }
+
+    return {
+        conflictResolution,
+        seenConflictIds,
+        ...(seenNoticeEnabled === undefined ? {} : { seenNoticeEnabled })
+    }
 }
 
 function previewPath(month: string | undefined): string {
@@ -54,10 +69,10 @@ const scheduleApi = api.injectEndpoints({
             providesTags: ["ScheduleVersions"]
         }),
         saveSchedule: build.mutation<SaveScheduleResult, SaveScheduleArgs>({
-            query: ({ config, effectiveFrom, conflictResolution }) => ({
+            query: ({ config, effectiveFrom, ...resolution }) => ({
                 url: effectiveFrom ? `${SCHEDULE_PATH}/versions/${effectiveFrom}` : SCHEDULE_PATH,
                 method: "PUT",
-                body: conflictResolution ? { ...config, conflictResolution } : config
+                body: { ...config, ...resolutionBodyOf(resolution) }
             }),
             transformResponse: (
                 response: Envelope<ScheduleConfigView> & {
@@ -107,16 +122,17 @@ const scheduleApi = api.injectEndpoints({
             DeleteScheduleVersionArgs
         >({
             query: (arg) => {
-                const effectiveFrom = typeof arg === "string" ? arg : arg.effectiveFrom
-                const conflictResolution =
-                    typeof arg === "string" ? undefined : arg.conflictResolution
-                const query = conflictResolution
-                    ? `?conflictResolution=${encodeURIComponent(conflictResolution)}`
-                    : ""
+                if (typeof arg === "string") {
+                    return { url: `${SCHEDULE_PATH}/versions/${arg}`, method: "DELETE" }
+                }
+
+                const { effectiveFrom, ...resolution } = arg
+                const body = resolutionBodyOf(resolution)
 
                 return {
-                    url: `${SCHEDULE_PATH}/versions/${effectiveFrom}${query}`,
-                    method: "DELETE"
+                    url: `${SCHEDULE_PATH}/versions/${effectiveFrom}`,
+                    method: "DELETE",
+                    ...(body.conflictResolution ? { body } : {})
                 }
             },
             transformResponse: (
