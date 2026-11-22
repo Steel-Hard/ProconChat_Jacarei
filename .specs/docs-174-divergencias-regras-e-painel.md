@@ -244,7 +244,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 - **Gate:** em `src/frontend`, `npm run typecheck`, `npx vitest run src/components/test/ScheduleFormFields.test.tsx`, `npx prettier --check src/locales/pt-BR/schedule.json` (e o arquivo de teste, se mudou) e `npm run lint`. Conferência visual a 320 px e em tamanho de computador.
 - **Modelo:** economico
 - **Commit:** `Fix :bug: [#174] Troca o texto do alerta de espera que citava o Dashboard`
-- **Status:** pendente
+- **Status:** feita, commit 34a43a5. TDD: o teste "explica o alerta de espera sem citar o Dashboard" falhou antes da troca e passou depois. Gate do CI do frontend passou: `format:check`, `lint`, `build` com typecheck e `test:run` (2249 testes).
 
 ### T2 [P] Atualizar o menu e os estados na regra de Login e no índice das regras
 
@@ -370,7 +370,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 - **Gate:** `file` nas três imagens com PNG e as dimensões combinadas; `du -ch .docs/guias/images/manual-do-painel/*.png` abaixo de 6 MB; `git status --short` só com as três imagens; conferência visual de cada captura contra a tela.
 - **Modelo:** economico
 - **Commit:** `Docs :bulb: [#174] Atualiza as capturas das figuras 14, 17 e 18 do manual`
-- **Status:** pendente
+- **Status:** em-andamento. Capturas no commit 3b73b3c. A Mai vai refazer as capturas que mostram datas, para que apareçam em pt-BR.
 
 ### T8 Atualizar o texto do manual
 
