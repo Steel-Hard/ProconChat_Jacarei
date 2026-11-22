@@ -1,6 +1,6 @@
 # Arquitetura — ProconChat Jacareí
 
-> Atualizado em 22/11/2026, no fechamento da Sprint 3, com o estado de `develop` depois das issues da Sprint 3 (#18, #59 a #69, #87, #88, #118, #119, #123 a #129 e #164) e dos extras #74, #75, #77, #78 e #134. A arquitetura foi definida em 27/09/2026, na revisão do protótipo do painel. Este documento descreve a arquitetura **entregue em 23/11/2026** e marca o que ficou de fora. As decisões que levaram a ela estão em [`../decisoes/`](../decisoes/); as regras de cada tela, em [`../regras/`](../regras/).
+> Atualizado em 22/11/2026, no fechamento da Sprint 3, com o estado de `develop` depois das issues da Sprint 3 (#18, #59, #62 a #69, #87, #88, #118, #119, #123 a #129 e #164) e dos extras #74, #75, #77, #78 e #134. A arquitetura foi definida em 27/09/2026, na revisão do protótipo do painel. Este documento descreve a arquitetura **entregue em 23/11/2026** e marca o que ficou de fora. As decisões que levaram a ela estão em [`../decisoes/`](../decisoes/); as regras de cada tela, em [`../regras/`](../regras/).
 
 **Legenda de estado:** ✅ implementado em `develop` · ⚪ descartado por decisão do grupo ou não entregue (com a situação e a issue).
 
