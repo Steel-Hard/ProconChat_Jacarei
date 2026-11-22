@@ -84,9 +84,9 @@ O projeto busca:
 |---|---|---|
 | Backend e Gateway | Node.js + TypeScript (Express), Vitest | Implementado |
 | Banco | PostgreSQL 15, migrations com `node-pg-migrate` | Implementado |
-| LLM | Ollama + `llama3.2:3b`, local (RP05: nenhuma API externa de LLM) | Serviço implementado; ligado ao fluxo na Sprint 3 |
+| LLM | Ollama + `llama3.2:3b`, local (RP05: nenhuma API externa de LLM) | Implementado, ligado ao fluxo (#66) |
 | WhatsApp | **WhatsApp Cloud API** oficial | Implementado |
-| Painel web | React 19 + Vite + TypeScript, a partir do `template-react` | Parcial: login, "Minha conta", Agendamentos, Detalhe do agendamento, WhatsApp e Conteúdo; demais telas na Sprint 3 |
+| Painel web | React 19 + Vite + TypeScript, a partir do `template-react` | Implementado: login, "Minha conta", Agendamentos, Detalhe do agendamento, Conteúdo, Horários, Documentos, Usuários, Relatórios, WhatsApp e política de privacidade. Dashboard e Sessões foram descartados por decisão do grupo |
 | Infraestrutura | Docker Compose, GitHub Actions (CI/CD), VM na nuvem com HTTPS | Implementado |
 
 Detalhes em [`.docs/architecture/architecture.md`](.docs/architecture/architecture.md).
@@ -99,11 +99,13 @@ Detalhes em [`.docs/architecture/architecture.md`](.docs/architecture/architectu
 | :----: | :--------: | :--------: | :-------------: | :----------------------------------: | :-------------------: |
 |   1   | 10/08/2026 | 14/09/2026 | 🟢 Concluída | [Ver Gráfico](.docs/sprints/sprint1/burndown.svg) | [Ver](.docs/sprints/sprint1/README.md) |
 |   2   | 15/09/2026 | 19/10/2026 | 🟢 Concluída | [Ver Gráfico](.docs/sprints/sprint2/burndown.svg) | [Ver](.docs/sprints/sprint2/README.md) |
-|   3   | 20/10/2026 | 23/11/2026 |   ⚪ Pendente   | — | — |
+|   3   | 20/10/2026 | 23/11/2026 | 🟢 Concluída | Pendente ([motivo](.docs/sprints/sprint3/README.md)) | [Ver](.docs/sprints/sprint3/README.md) |
 
 > O gráfico e as tabelas de origem do burndown da Sprint 1 estão em
 > [`.docs/sprints/sprint1/05-burndown.md`](.docs/sprints/sprint1/05-burndown.md). Os da Sprint 2 (18 de 18
-> issues concluídas) estão em [`.docs/sprints/sprint2/burndown.md`](.docs/sprints/sprint2/burndown.md).
+> issues concluídas) estão em [`.docs/sprints/sprint2/burndown.md`](.docs/sprints/sprint2/burndown.md). O burndown da Sprint 3 ficou
+> pendente: não há registro de quando cada issue foi para "In progress" (veja o
+> [fechamento da Sprint 3](.docs/sprints/sprint3/README.md)).
 
 ---
 
@@ -115,25 +117,26 @@ Detalhes em [`.docs/architecture/architecture.md`](.docs/architecture/architectu
 |  RF02  | Tabela de Decisões       |       Apresentar opções de resposta com base nos fluxos fornecidos pelo PROCON.       | 🟢 Concluído |
 |  RF03  | Fluxos Decisórios        |       Apresentar perguntas e alternativas de maneira sequencial e compreensível.       | 🟢 Concluído |
 |  RF04  | Resposta Orientadora      |      Gerar ao final do fluxo um resumo do caso e os próximos passos recomendados.      | 🟢 Concluído |
-|  RF05  | Complemento com LLM       | Permitir geração textual explicativa por LLM dentro dos limites definidos pelo PROCON. | 🟡 Parcial |
-|  RF06  | Registro de Interações  |       Registrar interações para análise posterior dos fluxos mais utilizados.       | 🟡 Parcial |
-|  RF07  | Agendamento Presencial    |       Realizar agendamento quando o chatbot não solucionar a dúvida do cidadão.       | 🟡 Parcial |
-|  RF08  | Gerenciamento Web         |       Disponibilizar interface web para gerenciamento dos atendimentos agendados.       | 🟡 Parcial |
+|  RF05  | Complemento com LLM       | Permitir geração textual explicativa por LLM dentro dos limites definidos pelo PROCON. | 🟢 Concluído |
+|  RF06  | Registro de Interações  |       Registrar interações para análise posterior dos fluxos mais utilizados.       | 🟢 Concluído |
+|  RF07  | Agendamento Presencial    |       Realizar agendamento quando o chatbot não solucionar a dúvida do cidadão.       | 🟢 Concluído |
+|  RF08  | Gerenciamento Web         |       Disponibilizar interface web para gerenciamento dos atendimentos agendados.       | 🟢 Concluído |
 
 | Número | Recurso Não-Funcional |                                   Síntese do Requisito                                   |   Status   |
 | :-----: | ---------------------- | :---------------------------------------------------------------------------------------: | :---------: |
-|  RNF01  | Usabilidade            |            Utilizar linguagem clara, objetiva e acessível ao público geral.            | 🟡 Parcial |
-|  RNF02  | Disponibilidade        | Garantir alta disponibilidade e tempo de resposta adequado para conversas em tempo real. | ⚪ Pendente |
+|  RNF01  | Usabilidade            |            Utilizar linguagem clara, objetiva e acessível ao público geral.            | 🟢 Concluído |
+|  RNF02  | Disponibilidade        | Garantir alta disponibilidade e tempo de resposta adequado para conversas em tempo real. | 🟢 Concluído |
 |  RNF03  | LGPD                   |        Garantir tratamento adequado e proteção das informações dos usuários.        | 🟢 Concluído |
 |  RNF04  | Caráter Orientativo   |        Informar explicitamente que as respostas não substituem atendimento formal        | 🟢 Concluído |
-|  RNF05  | Transparência LLM     |      Identificar claramente respostas geradas com auxílio de modelos de linguagem.      | ⚪ Pendente |
+|  RNF05  | Transparência LLM     |      Identificar claramente respostas geradas com auxílio de modelos de linguagem.      | 🟢 Concluído |
 |  RNF06  | Docker                 |                      Garantir a execução da aplicação em Docker                      | 🟢 Concluído |
 |  RNF07  | Documentação         |         Documentar instalação e requisitos necessários de hardware e software.         | 🟢 Concluído |
 |  RNF08  | Boas Práticas         | Adotar metodologia ágil, CI/CD, versionamento, testes e documentação técnica mínima. | 🟢 Concluído |
 
-> Detalhamento completo do que foi entregue, testado e do que ficou pendente/em risco no
-> [fechamento da Sprint 1](.docs/sprints/sprint1/README.md): [issues e PRs](.docs/sprints/sprint1/04-issues-e-prs.md),
-> [entregas de 14/09](.docs/sprints/sprint1/06-entregas-14-09.md) e [riscos](.docs/sprints/sprint1/07-riscos-e-proximos-passos.md).
+> O status de cada requisito, com a fonte, está na [rastreabilidade](.docs/desafio/rastreabilidade.md). O que foi entregue, testado e o que ficou
+> de fora está no fechamento de cada sprint: [Sprint 1](.docs/sprints/sprint1/README.md) ([issues e PRs](.docs/sprints/sprint1/04-issues-e-prs.md),
+> [entregas de 14/09](.docs/sprints/sprint1/06-entregas-14-09.md) e [riscos](.docs/sprints/sprint1/07-riscos-e-proximos-passos.md)),
+> [Sprint 2](.docs/sprints/sprint2/README.md) e [Sprint 3](.docs/sprints/sprint3/README.md).
 
 ---
 
