@@ -546,7 +546,7 @@ Regras para todas as tarefas de código:
 - Teste: integração de página. Falha primeiro o teste que espera, depois de confirmar "Cancelar mudança" com afetados, a lista só dentro do modal.
 - Gate: rápido front
 - Modelo: padrao
-- Status: feita (fdb89bd). Teste primeiro: 9 novos falharam pelo motivo certo. Gate: vitest 25 (modal e versões), páginas e componentes 1306 passam e 1 falha (ScheduleConflictList, prevista para T8), typecheck, oxlint e prettier ok. Testes autorizados alterados: removido o caso da lista abaixo das mudanças (RN-12) em Schedule.versions.test.tsx e `cancelConflicts` do ScheduleVersions.test.tsx. Também editado useScheduleSave.ts (onConflicts recebe o erro inteiro), fora da lista de arquivos da tarefa.
+- Status: feita (fdb89bd). Teste primeiro: 9 novos falharam pelo motivo certo. Gate: vitest 25 (modal e versões), páginas e componentes 1306 passam e 1 falha (ScheduleConflictList, prevista para T8), typecheck, oxlint e prettier ok. Testes autorizados alterados: removido o caso da lista abaixo das mudanças (RN-12) em Schedule.versions.test.tsx e `cancelConflicts` do ScheduleVersions.test.tsx. Também editado useScheduleSave.ts (onConflicts recebe o erro inteiro), fora da lista de arquivos da tarefa. Correção posterior (89fb895, vinda da validação da Maki, QA): ao cancelar uma mudança agendada, o botão que tinha o foco some junto com a linha; o ScheduleVersions passa a levar o foco para a própria seção (tabIndex -1), cobrindo a RN-18. Testes de componente (ScheduleVersions.test.tsx) e de página (Schedule.versions.test.tsx).
 
 ### T13 [P] Visual do modal e selo do detalhe, iguais ao protótipo
 - O quê:
