@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 import { IMotorDecisaoRepository } from "../repositories/motorDecisao.repository.interface"
 import { CategoryRecord, QuestionPreviewInput } from "../types/content.types"
 import { Pergunta } from "../types/motorDecisao.types"
-import { AI_SAMPLE_TEXT, buildQuestionPreview } from "./contentRules"
+import { AI_SAMPLE_TEXT, buildQuestionPreview, SchedulePlaceholdersSource } from "./contentRules"
 import { mensagensRespostaOficial, montarMensagemIa } from "./messageFormatter.service"
 import { MotorDecisaoService } from "./motorDecisao.service"
 
@@ -93,12 +93,27 @@ const cases: [string, StoredQuestion][] = [
     ["pergunta presencial com observação em branco", { ...base, requiresInPerson: true, inPersonNote: "   " }],
     ["pergunta fora do escopo", { ...base, outOfScope: true, llmAllowed: false, requiresInPerson: false }],
     ["pergunta fora do escopo sem base legal e sem documentos", { ...base, outOfScope: true, llmAllowed: false, legalBasis: null, documents: [] }],
+    ["pergunta com marcadores {endereco} e {horarios}", { ...base, answer: "O PROCON atende de {horarios} no endereço {endereco}." }],
 ]
+
+const sampleSchedule: SchedulePlaceholdersSource = {
+    unitAddress: "Av. Nove de Julho, 215 - Centro, Jacareí - SP",
+    unitAddressComplement: "Sala 2",
+    ranges: [1, 2, 3, 4, 5].map((weekday) => ({
+        weekday,
+        slotIndex: 1,
+        startTime: "08:30",
+        endTime: "16:30",
+    })),
+}
 
 describe("prévia do Conteúdo igual ao que o bot envia", () => {
     it.each(cases)("%s: a prévia devolve as mesmas mensagens que o bot envia", async (_name, stored) => {
-        const resposta = await new MotorDecisaoService(botRepository(stored)).processarPergunta(1)
-        const preview = buildQuestionPreview(category, [], previewInputOf(stored))
+        const resposta = await new MotorDecisaoService(
+            botRepository(stored),
+            async () => sampleSchedule,
+        ).processarPergunta(1)
+        const preview = buildQuestionPreview(category, [], previewInputOf(stored), sampleSchedule)
 
         expect(preview.botMessages.officialMessages).toEqual(mensagensRespostaOficial(resposta))
         expect(preview.botMessages.aiMessage).toEqual(

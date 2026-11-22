@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { useTranslation } from "react-i18next"
+import { Trans, useTranslation } from "react-i18next"
 import ContentCheckField from "@/components/ContentCheckField"
 import ContentDocumentsField from "@/components/ContentDocumentsField"
 import ContentFormDialog from "@/components/ContentFormDialog"
@@ -7,9 +7,16 @@ import ContentTextField from "@/components/ContentTextField"
 import type ContentFieldError from "@/types/content/ContentFieldError.types"
 import type ContentQuestionFormFields from "@/types/content/ContentQuestionFormFields.types"
 import type ContentQuestionFormProps from "@/types/content/ContentQuestionFormProps.types"
+import findMisspelledPlaceholders from "@/utils/content/findMisspelledPlaceholders"
 import contentErrorText from "@/utils/content/contentErrorText"
 import CONTENT_LIMITS from "@/utils/content/contentLimits"
 import css from "@/styles/components/contentForms.module.css"
+
+function misspelledKeyOf(answer: string): string {
+    return findMisspelledPlaceholders(answer)
+        .map((item) => item.found)
+        .join("|")
+}
 
 function ContentQuestionForm({
     mode,
@@ -26,8 +33,25 @@ function ContentQuestionForm({
     const { t } = useTranslation("content")
     const [fields, setFields] = useState<ContentQuestionFormFields>(initial)
     const [attempted, setAttempted] = useState(false)
+    const [warnedPlaceholders, setWarnedPlaceholders] = useState<string | null>(null)
     const onChangeRef = useRef(onChange)
+    const placeholderWarningRef = useRef<HTMLOutputElement>(null)
     const errors: ContentFieldError[] = attempted ? validate(fields).errors : []
+    const misspelledPlaceholders = findMisspelledPlaceholders(fields.answer)
+    const misspelledKey = misspelledKeyOf(fields.answer)
+    const awaitingSecondSave = warnedPlaceholders === misspelledKey
+    const placeholderWarnings = misspelledPlaceholders.map((item, index) => {
+        const line = t("questionForm.misspelledPlaceholder", item)
+
+        return awaitingSecondSave && index === misspelledPlaceholders.length - 1
+            ? `${line} ${t("questionForm.misspelledPlaceholderConfirm")}`
+            : line
+    })
+    useEffect(() => {
+        if (warnedPlaceholders !== null) {
+            placeholderWarningRef.current?.focus()
+        }
+    }, [warnedPlaceholders])
 
     useEffect(() => {
         onChangeRef.current = onChange
@@ -45,6 +69,14 @@ function ContentQuestionForm({
 
     function patch(next: Partial<ContentQuestionFormFields>) {
         setFields((current) => ({ ...current, ...next }))
+    }
+
+    function changeAnswer(value: string) {
+        if (misspelledKeyOf(value) !== misspelledKey) {
+            setWarnedPlaceholders(null)
+        }
+
+        patch({ answer: value })
     }
 
     function toggleOutOfScope(checked: boolean) {
@@ -68,9 +100,16 @@ function ContentQuestionForm({
     function confirm() {
         setAttempted(true)
 
-        if (validate(fields).valid) {
-            onConfirm(fields)
+        if (!validate(fields).valid) {
+            return
         }
+
+        if (misspelledPlaceholders.length > 0 && warnedPlaceholders !== misspelledKey) {
+            setWarnedPlaceholders(misspelledKey)
+            return
+        }
+
+        onConfirm(fields)
     }
 
     const crossErrors = errors.filter(
@@ -131,7 +170,16 @@ function ContentQuestionForm({
                     multiline
                     tall
                     error={errorOf("answer")}
-                    onChange={(value) => patch({ answer: value })}
+                    warnings={placeholderWarnings}
+                    warningRef={placeholderWarningRef}
+                    hint={
+                        <Trans
+                            t={t}
+                            i18nKey="questionForm.answerPlaceholdersHint"
+                            components={{ code: <code className={css.hintCode} /> }}
+                        />
+                    }
+                    onChange={changeAnswer}
                 />
                 {fields.answer.length >= CONTENT_LIMITS.answerWarningFrom ? (
                     <p className={css.longAnswerAlert}>{t("questionForm.answerWarning")}</p>

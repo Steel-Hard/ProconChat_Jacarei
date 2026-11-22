@@ -225,3 +225,19 @@ describe("ContentPreview", () => {
         expect(scroll).toHaveBeenCalled()
     })
 })
+
+describe("ContentPreview marcador mal escrito", () => {
+    it("mostra o aviso com o trecho errado e a forma certa", () => {
+        renderPreview({ misspelledPlaceholders: [{ found: "{Endereco}", expected: "{endereco}" }] })
+
+        expect(
+            screen.getByText("Marcador não reconhecido: {Endereco}. Use {endereco}.")
+        ).toBeInTheDocument()
+    })
+
+    it("sem marcador mal escrito, não mostra o aviso", () => {
+        renderPreview()
+
+        expect(screen.queryByText(/Marcador não reconhecido/)).not.toBeInTheDocument()
+    })
+})

@@ -246,6 +246,7 @@ export default function ContentPage() {
                                 <ContentPreviewWindow
                                     status={page.preview.status}
                                     model={page.preview.model}
+                                    misspelledPlaceholders={page.misspelledPlaceholders}
                                     onClose={page.closePreview}
                                     onRetry={page.retryPreview}
                                 />

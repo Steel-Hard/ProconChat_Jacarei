@@ -7,6 +7,7 @@ import {
 } from "./messageFormatter.service"
 import type { OutgoingMessage } from "../types/message.types"
 import type { Pergunta, RespostaFinalOutput } from "../types/motorDecisao.types"
+import type { ScheduleRangeItem } from "../types/schedule.types"
 import {
     CategoryItem,
     CategoryRecord,
@@ -26,6 +27,131 @@ export const AI_LENGTH_WARNING_MESSAGE =
 
 export const AI_SAMPLE_TEXT =
     "Exemplo ilustrativo de complemento redigido pela IA a partir da orientação oficial acima, sem alterar prazos, documentos nem fundamento legal."
+
+export const NO_SCHEDULE_HOURS_MESSAGE = "sem horários de atendimento configurados"
+
+export const NO_SCHEDULE_ADDRESS_MESSAGE = "endereço não configurado"
+
+const WEEKDAY_DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0] as const
+
+const WEEKDAY_FULL_NAMES: Record<number, string> = {
+    0: "domingo",
+    1: "segunda-feira",
+    2: "terça-feira",
+    3: "quarta-feira",
+    4: "quinta-feira",
+    5: "sexta-feira",
+    6: "sábado",
+}
+
+const WEEKDAY_SHORT_NAMES: Record<number, string> = {
+    0: "domingo",
+    1: "segunda",
+    2: "terça",
+    3: "quarta",
+    4: "quinta",
+    5: "sexta",
+    6: "sábado",
+}
+
+export interface SchedulePlaceholdersSource {
+    unitAddress: string
+    unitAddressComplement: string | null
+    ranges: Pick<ScheduleRangeItem, "weekday" | "slotIndex" | "startTime" | "endTime">[]
+}
+
+export function hasAnswerPlaceholders(answer: string): boolean {
+    return answer.includes("{endereco}") || answer.includes("{horarios}")
+}
+
+export function formatUnitAddressForAnswer(
+    source: Pick<SchedulePlaceholdersSource, "unitAddress" | "unitAddressComplement">,
+): string {
+    const address = source.unitAddress.trim()
+    const complement = source.unitAddressComplement?.trim()
+    return complement ? `${address} (${complement})` : address
+}
+
+function formatDayRangesText(
+    ranges: Pick<ScheduleRangeItem, "startTime" | "endTime" | "slotIndex">[],
+): string {
+    const ordered = [...ranges].sort(
+        (a, b) => a.startTime.localeCompare(b.startTime) || a.slotIndex - b.slotIndex,
+    )
+    const parts = ordered.map(
+        (range) => `das ${range.startTime.trim().slice(0, 5)} às ${range.endTime.trim().slice(0, 5)}`,
+    )
+    if (parts.length <= 1) {
+        return parts[0] ?? ""
+    }
+    return `${parts.slice(0, -1).join(", ")} e ${parts[parts.length - 1]}`
+}
+
+function formatDayGroupLabel(positions: number[]): string {
+    const weekdays = positions.map((pos) => WEEKDAY_DISPLAY_ORDER[pos]!)
+    if (weekdays.length === 1) {
+        return WEEKDAY_FULL_NAMES[weekdays[0]!] ?? ""
+    }
+    const first = WEEKDAY_SHORT_NAMES[weekdays[0]!] ?? ""
+    const last = WEEKDAY_SHORT_NAMES[weekdays[weekdays.length - 1]!] ?? ""
+    return weekdays.length === 2 ? `${first} e ${last}` : `${first} a ${last}`
+}
+
+export function formatScheduleHoursForAnswer(
+    ranges: Pick<ScheduleRangeItem, "weekday" | "slotIndex" | "startTime" | "endTime">[],
+): string {
+    const activeDays: Array<{ position: number; rangesText: string }> = []
+
+    WEEKDAY_DISPLAY_ORDER.forEach((weekday, position) => {
+        const dayRanges = ranges.filter((r) => r.weekday === weekday)
+        if (dayRanges.length > 0) {
+            activeDays.push({
+                position,
+                rangesText: formatDayRangesText(dayRanges),
+            })
+        }
+    })
+
+    if (activeDays.length === 0) {
+        return NO_SCHEDULE_HOURS_MESSAGE
+    }
+
+    const groups: Array<{ positions: number[]; rangesText: string }> = []
+    for (const day of activeDays) {
+        const lastGroup = groups[groups.length - 1]
+        const lastPosition = lastGroup?.positions[lastGroup.positions.length - 1]
+        if (
+            lastGroup &&
+            lastPosition !== undefined &&
+            day.position === lastPosition + 1 &&
+            lastGroup.rangesText === day.rangesText
+        ) {
+            lastGroup.positions.push(day.position)
+        } else {
+            groups.push({ positions: [day.position], rangesText: day.rangesText })
+        }
+    }
+
+    return groups
+        .map((group) => `${formatDayGroupLabel(group.positions)}, ${group.rangesText}`)
+        .join("; ")
+}
+
+export function resolveAnswerPlaceholders(
+    answer: string,
+    schedule: SchedulePlaceholdersSource | null | undefined,
+): string {
+    if (!hasAnswerPlaceholders(answer)) {
+        return answer
+    }
+    const formattedAddress = schedule ? formatUnitAddressForAnswer(schedule) : NO_SCHEDULE_ADDRESS_MESSAGE
+    const formattedHours = schedule
+        ? formatScheduleHoursForAnswer(schedule.ranges)
+        : NO_SCHEDULE_HOURS_MESSAGE
+    return answer
+        .replace(/\{endereco\}/g, () => formattedAddress)
+        .replace(/\{horarios\}/g, () => formattedHours)
+}
 
 interface PreviewRow {
     id: number | null
@@ -246,15 +372,17 @@ export function buildQuestionPreview(
     category: CategoryRecord,
     existingQuestions: QuestionRecord[],
     input: QuestionPreviewInput,
+    schedule: SchedulePlaceholdersSource | null = null,
 ): QuestionPreviewResult {
     const allActiveRows = buildPreviewRows(existingQuestions, input)
     const { botList } = buildBotCategoryList(allActiveRows, category.id)
+    const resolvedAnswer = resolveAnswerPlaceholders(input.answer, schedule)
 
     const resposta: RespostaFinalOutput = {
         categoria: category.title,
         pergunta: input.question,
         base_legal: input.legalBasis ?? "",
-        resposta: input.answer,
+        resposta: resolvedAnswer,
         documentos_necessarios: input.requiredDocuments,
         requer_presencial: input.requiresInPerson,
         fora_de_escopo: input.outOfScope,
@@ -267,7 +395,7 @@ export function buildQuestionPreview(
     const aiCandidate =
         input.llmAllowed && !input.outOfScope ? montarMensagemIa(AI_SAMPLE_TEXT, resposta) : null
     const aiMessage = aiCandidate?.type === "buttons" ? aiCandidate : null
-    const answerLengthWarning = input.answer.length >= ANSWER_WARNING_THRESHOLD
+    const answerLengthWarning = resolvedAnswer.length >= ANSWER_WARNING_THRESHOLD
 
     return {
         answerLengthWarning,

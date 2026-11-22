@@ -105,4 +105,48 @@ describe("MotorDecisaoService", () => {
             "Categoria não encontrada."
         )
     })
+
+    it("deve substituir {endereco} e {horarios} na resposta quando presentes e não consultar a agenda quando ausentes", async () => {
+        const getScheduleConfig = vi.fn().mockResolvedValue({
+            unitAddress: "Av. Nove de Julho, 215 - Centro, Jacareí - SP",
+            unitAddressComplement: "Sala 2",
+            ranges: [1, 2, 3, 4, 5].flatMap((weekday) => [
+                { weekday, slotIndex: 1, startTime: "08:30", endTime: "11:30" },
+                { weekday, slotIndex: 2, startTime: "13:30", endTime: "16:30" },
+            ]),
+        })
+        const serviceWithSchedule = new MotorDecisaoService(repository, getScheduleConfig)
+
+        await serviceWithSchedule.processarPergunta(1)
+        expect(getScheduleConfig).not.toHaveBeenCalled()
+
+        const original = await repository.getPerguntaById(1)
+        vi.spyOn(repository, "getPerguntaById").mockResolvedValue({
+            ...original!,
+            question: "Qual é o horário e o endereço do PROCON?",
+            answer: "O atendimento funciona de {horarios}, em {endereco}.",
+        })
+
+        const resposta = await serviceWithSchedule.processarPergunta(1)
+        expect(getScheduleConfig).toHaveBeenCalledTimes(1)
+        expect(resposta.resposta).toBe(
+            "O atendimento funciona de segunda a sexta, das 08:30 às 11:30 e das 13:30 às 16:30, em Av. Nove de Julho, 215 - Centro, Jacareí - SP (Sala 2).",
+        )
+    })
+
+    it("deve trocar os marcadores pelos textos de agenda não configurada quando não há configuração de Horários", async () => {
+        const getScheduleConfig = vi.fn().mockResolvedValue(null)
+        const serviceWithoutSchedule = new MotorDecisaoService(repository, getScheduleConfig)
+
+        const original = await repository.getPerguntaById(1)
+        vi.spyOn(repository, "getPerguntaById").mockResolvedValue({
+            ...original!,
+            answer: "Atendemos de {horarios}, em {endereco}.",
+        })
+
+        const resposta = await serviceWithoutSchedule.processarPergunta(1)
+        expect(resposta.resposta).toBe(
+            "Atendemos de sem horários de atendimento configurados, em endereço não configurado.",
+        )
+    })
 })

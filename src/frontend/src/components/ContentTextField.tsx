@@ -1,4 +1,4 @@
-import { useId } from "react"
+import { useId, type ReactNode, type RefObject } from "react"
 import { useTranslation } from "react-i18next"
 import css from "@/styles/components/contentForms.module.css"
 
@@ -10,8 +10,10 @@ type ContentTextFieldProps = {
     optional?: boolean
     multiline?: boolean
     tall?: boolean
-    hint?: string
+    hint?: ReactNode
     error?: string | null
+    warnings?: string[]
+    warningRef?: RefObject<HTMLOutputElement | null>
     placeholder?: string
     rows?: number
 }
@@ -34,16 +36,20 @@ function ContentTextField({
     tall = false,
     hint,
     error = null,
+    warnings = [],
+    warningRef,
     placeholder,
     rows
 }: ContentTextFieldProps) {
     const { t } = useTranslation("content")
     const id = useId()
     const errorId = `${id}-error`
+    const warningId = `${id}-warning`
     const hintId = `${id}-hint`
     const counterId = `${id}-counter`
     const describedBy = [
         error ? errorId : null,
+        warnings.length > 0 ? warningId : null,
         hint ? hintId : null,
         max !== undefined ? counterId : null
     ]
@@ -91,6 +97,20 @@ function ContentTextField({
                 <p id={hintId} className={css.hint}>
                     {hint}
                 </p>
+            ) : null}
+            {warnings.length > 0 ? (
+                <output
+                    id={warningId}
+                    ref={warningRef}
+                    tabIndex={-1}
+                    className={css.longAnswerAlert}
+                >
+                    {warnings.map((warning) => (
+                        <p key={warning} className={css.warningLine}>
+                            {warning}
+                        </p>
+                    ))}
+                </output>
             ) : null}
             {error ? (
                 <p id={errorId} className={css.error}>

@@ -3,6 +3,13 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import app from "../../app"
 import getPool from "../../db/connection"
 import { seedContent } from "../../db/seeds/content.seed"
+import { PgMotorDecisaoRepository } from "../../repositories/motorDecisao.repository"
+import { MotorDecisaoService } from "../../services/motorDecisao.service"
+import {
+    restoreScheduleConfig,
+    snapshotScheduleConfig,
+    useScheduleConfig,
+} from "./helpers/scheduleDb"
 import { createTestUser, deleteTestUsers, TestUser } from "./helpers/usersDb"
 
 const ORIGIN = process.env.FRONTEND_ORIGIN as string
@@ -422,5 +429,82 @@ describe("Content API integration tests (Postgres)", () => {
             [seededRow.id],
         )
         expect(afterSeedRes.rows[0]?.answer).toBe(customAnswer)
+    })
+
+    it("resolves {endereco} and {horarios} from the active schedule in Postgres for both preview and bot (#78)", async () => {
+        const scheduleSnapshot = await snapshotScheduleConfig()
+        const catId = createdCategoryIds[0]!
+        try {
+            await useScheduleConfig({
+                settings: {
+                    slot_minutes: 30,
+                    seats_per_slot: 2,
+                    window_days: 30,
+                    min_notice_days: 1,
+                    wait_alert_days: 7,
+                    unit_address: "Av. Nove de Julho, 215 - Centro, Jacareí - SP",
+                    unit_address_complement: "Sala 2",
+                    reminder_enabled: true,
+                    reminder_hours: 24,
+                },
+                ranges: [1, 2, 3, 4, 5].flatMap((weekday) => [
+                    { weekday, slot_index: 1, start_time: "08:30", end_time: "11:30" },
+                    { weekday, slot_index: 2, start_time: "13:30", end_time: "16:30" },
+                ]),
+            })
+
+            const createRes = await request(app)
+                .post("/api/v1/content/questions")
+                .set("Origin", ORIGIN)
+                .set("Cookie", editor.cookie)
+                .send({
+                    categoryId: catId,
+                    shortTitle: "Horário e endereço",
+                    shortDescription: "Atendimento presencial",
+                    question: "Qual é o horário e o endereço do PROCON?",
+                    answer: "Atendemos de {horarios}, em {endereco}.",
+                    legalBasis: null,
+                    requiredDocuments: [],
+                    requiresInPerson: false,
+                    outOfScope: false,
+                    llmAllowed: true,
+                    active: true,
+                })
+            expect(createRes.status).toBe(201)
+            const questionId = createRes.body.data.id as number
+            createdQuestionIds.push(questionId)
+            expect(createRes.body.data.answer).toBe("Atendemos de {horarios}, em {endereco}.")
+
+            const expectedResolved =
+                "Atendemos de segunda a sexta, das 08:30 às 11:30 e das 13:30 às 16:30, em Av. Nove de Julho, 215 - Centro, Jacareí - SP (Sala 2)."
+
+            const previewRes = await request(app)
+                .post("/api/v1/content/preview")
+                .set("Origin", ORIGIN)
+                .set("Cookie", editor.cookie)
+                .send({
+                    questionId,
+                    categoryId: catId,
+                    shortTitle: "Horário e endereço",
+                    shortDescription: "Atendimento presencial",
+                    question: "Qual é o horário e o endereço do PROCON?",
+                    answer: "Atendemos de {horarios}, em {endereco}.",
+                    legalBasis: null,
+                    requiredDocuments: [],
+                    requiresInPerson: false,
+                    outOfScope: false,
+                    llmAllowed: true,
+                })
+            expect(previewRes.status).toBe(200)
+            expect(previewRes.body.data.botMessages.officialMessages[0].text).toContain(
+                `Resposta: ${expectedResolved}`,
+            )
+
+            const motor = new MotorDecisaoService(new PgMotorDecisaoRepository())
+            const botOutput = await motor.processarPergunta(questionId)
+            expect(botOutput.resposta).toBe(expectedResolved)
+        } finally {
+            await restoreScheduleConfig(scheduleSnapshot)
+        }
     })
 })

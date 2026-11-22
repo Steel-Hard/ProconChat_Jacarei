@@ -21,6 +21,7 @@ import buildPreviewArgs from "@/utils/content/buildPreviewArgs"
 import buildPreviewListRows from "@/utils/content/buildPreviewListRows"
 import buildPreviewModel from "@/utils/content/buildPreviewModel"
 import buildQuestionRows from "@/utils/content/buildQuestionRows"
+import findMisspelledPlaceholders from "@/utils/content/findMisspelledPlaceholders"
 import contentChangesOf from "@/utils/content/contentChanges"
 import addDraftCategory from "@/utils/content/draft/addDraftCategory"
 import addDraftQuestion from "@/utils/content/draft/addDraftQuestion"
@@ -576,6 +577,7 @@ export default function useContent() {
         confirmCategory,
         confirmQuestion,
         preview,
+        misspelledPlaceholders: findMisspelledPlaceholders(formFields?.answer ?? ""),
         openPreview: () => setPreviewOpen(true),
         closePreview: () => setPreviewOpen(false),
         changeFormFields: setFormFields,
