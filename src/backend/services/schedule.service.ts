@@ -21,6 +21,7 @@ import {
     ReturningAppointment,
     ScheduleCancellationNoticeState,
     ScheduleConfigInput,
+    ScheduleSaveInput,
     ScheduleConfigView,
     ScheduleConflictItem,
     ScheduleConflictResolution,
@@ -102,13 +103,13 @@ export interface IScheduleService {
     listScheduledConfigs(fromDate?: string, now?: Date): Promise<ScheduleVersion[]>
     getCancellationNoticeState(): Promise<ScheduleCancellationNoticeState>
     saveConfig(
-        input: ScheduleConfigInput,
+        input: ScheduleSaveInput,
         actorUserId: number,
         now?: Date,
         options?: SaveScheduleOptions,
     ): Promise<ScheduleConfigView>
     saveScheduledConfig(
-        input: ScheduleConfigInput,
+        input: ScheduleSaveInput,
         effectiveFrom: string,
         actorUserId: number,
         now?: Date,
@@ -424,7 +425,7 @@ export function createScheduleService(
     }
 
     async function saveConfig(
-        input: ScheduleConfigInput,
+        input: ScheduleSaveInput,
         actorUserId: number,
         now = new Date(),
         options?: SaveScheduleOptions,
@@ -454,7 +455,7 @@ export function createScheduleService(
     }
 
     async function saveScheduledConfig(
-        input: ScheduleConfigInput,
+        input: ScheduleSaveInput,
         effectiveFrom: string,
         actorUserId: number,
         now = new Date(),

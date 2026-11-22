@@ -4,6 +4,7 @@ import UnauthorizedError from "../errors/UnauthorizedError"
 import { IScheduleService, scheduleService } from "../services/schedule.service"
 import {
     ScheduleConfigInput,
+    ScheduleSaveInput,
     ConflictResolutionRequest,
     ScheduleConflictResolutionSummary,
 } from "../types/schedule.types"
@@ -63,7 +64,7 @@ class ScheduleController {
     public async saveConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const actorUserId = this.userId(req)
-            const body = req.body as ScheduleConfigInput
+            const body = req.body as ScheduleSaveInput
             if (body.conflictResolution === "CANCEL") {
                 this.ensureCanCancelAppointments(req)
             }
@@ -82,7 +83,7 @@ class ScheduleController {
     public async saveScheduledConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const actorUserId = this.userId(req)
-            const body = req.body as ScheduleConfigInput
+            const body = req.body as ScheduleSaveInput
             if (body.conflictResolution === "CANCEL") {
                 this.ensureCanCancelAppointments(req)
             }

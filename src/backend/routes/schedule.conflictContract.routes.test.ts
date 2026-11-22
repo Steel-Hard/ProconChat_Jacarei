@@ -44,6 +44,10 @@ function buildApp() {
     return app
 }
 
+function issuePathsOf(response: request.Response): string[] {
+    return response.body.error.details.issues.map((issue: { path: string }) => issue.path)
+}
+
 function putSchedule(body: Record<string, unknown>) {
     return request(buildApp())
         .put("/api/v1/schedule")
@@ -68,25 +72,28 @@ describe("contrato de conflitos nos PUT", () => {
         const response = await putSchedule({ conflictResolution: "CANCEL", seenNoticeEnabled: true })
 
         expect(response.status).toBe(400)
-        expect(response.body.error.details.issues.length).toBeGreaterThan(0)
+        expect(issuePathsOf(response)).toContain("seenConflictIds")
     })
 
     it("recusa seenConflictIds sem conflictResolution", async () => {
         const response = await putSchedule({ seenConflictIds: ["10"] })
 
         expect(response.status).toBe(400)
+        expect(issuePathsOf(response)).toContain("seenConflictIds")
     })
 
     it("recusa seenNoticeEnabled sem conflictResolution", async () => {
         const response = await putSchedule({ seenNoticeEnabled: true })
 
         expect(response.status).toBe(400)
+        expect(issuePathsOf(response)).toContain("seenNoticeEnabled")
     })
 
     it("recusa CANCEL sem seenNoticeEnabled", async () => {
         const response = await putSchedule({ conflictResolution: "CANCEL", seenConflictIds: ["10"] })
 
         expect(response.status).toBe(400)
+        expect(issuePathsOf(response)).toContain("seenNoticeEnabled")
     })
 
     it("recusa KEEP com seenNoticeEnabled", async () => {
@@ -97,6 +104,7 @@ describe("contrato de conflitos nos PUT", () => {
         })
 
         expect(response.status).toBe(400)
+        expect(issuePathsOf(response)).toContain("seenNoticeEnabled")
     })
 
     it.each([
@@ -109,18 +117,21 @@ describe("contrato de conflitos nos PUT", () => {
         const response = await putSchedule({ conflictResolution: "KEEP", seenConflictIds: [id] })
 
         expect(response.status).toBe(400)
+        expect(issuePathsOf(response)).toContain("seenConflictIds.0")
     })
 
     it("recusa id repetido em seenConflictIds", async () => {
         const response = await putSchedule({ conflictResolution: "KEEP", seenConflictIds: ["10", "10"] })
 
         expect(response.status).toBe(400)
+        expect(issuePathsOf(response)).toContain("seenConflictIds")
     })
 
     it("recusa seenConflictIds vazio", async () => {
         const response = await putSchedule({ conflictResolution: "KEEP", seenConflictIds: [] })
 
         expect(response.status).toBe(400)
+        expect(issuePathsOf(response)).toContain("seenConflictIds")
     })
 
     it("recusa seenConflictIds com mais de 5000 itens", async () => {
@@ -128,6 +139,7 @@ describe("contrato de conflitos nos PUT", () => {
         const response = await putSchedule({ conflictResolution: "KEEP", seenConflictIds: ids })
 
         expect(response.status).toBe(400)
+        expect(issuePathsOf(response)).toContain("seenConflictIds")
     })
 
     it("aceita seenConflictIds com 5000 itens", async () => {
@@ -141,6 +153,7 @@ describe("contrato de conflitos nos PUT", () => {
         const response = await putScheduledVersion({ conflictResolution: "CANCEL", seenNoticeEnabled: true })
 
         expect(response.status).toBe(400)
+        expect(issuePathsOf(response)).toContain("seenConflictIds")
     })
 
     it("aceita KEEP com seenConflictIds válidos no PUT de mudança agendada", async () => {
@@ -161,13 +174,14 @@ describe("contrato de conflitos no DELETE", () => {
         const response = await deleteVersion({ conflictResolution: "CANCEL", seenNoticeEnabled: true })
 
         expect(response.status).toBe(400)
-        expect(response.body.error.details.issues.length).toBeGreaterThan(0)
+        expect(issuePathsOf(response)).toContain("seenConflictIds")
     })
 
     it("recusa corpo com seenConflictIds sem conflictResolution", async () => {
         const response = await deleteVersion({ seenConflictIds: ["10"] })
 
         expect(response.status).toBe(400)
+        expect(issuePathsOf(response)).toContain("seenConflictIds")
     })
 
     it("recusa corpo com KEEP e seenNoticeEnabled", async () => {
@@ -178,6 +192,7 @@ describe("contrato de conflitos no DELETE", () => {
         })
 
         expect(response.status).toBe(400)
+        expect(issuePathsOf(response)).toContain("seenNoticeEnabled")
     })
 
     it("ignora o parâmetro de endereço conflictResolution", async () => {

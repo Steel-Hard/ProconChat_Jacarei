@@ -168,10 +168,9 @@ export interface ScheduleConfigInput {
     reminderHours: ReminderHours
     ranges: ScheduleRangeInputItem[]
     blockedDates: BlockedDateInputItem[]
-    conflictResolution?: ScheduleConflictResolution
-    seenConflictIds?: string[]
-    seenNoticeEnabled?: boolean
 }
+
+export type ScheduleSaveInput = ScheduleConfigInput & ConflictResolutionRequest
 
 export interface NormalizedScheduleConfig {
     slotMinutes: SlotMinutes

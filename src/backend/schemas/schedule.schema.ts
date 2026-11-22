@@ -5,6 +5,7 @@ import type {
     ReminderHours,
     ScheduleConfigInput,
     ScheduleRangeInputItem,
+    ScheduleSaveInput,
     SlotMinutes,
 } from "../types/schedule.types"
 
@@ -312,10 +313,10 @@ export const conflictResolutionRequestSchema = z
         }
     })
 
-export const scheduleSaveBodySchema = z.intersection(
+export const scheduleSaveBodySchema: z.ZodType<ScheduleSaveInput> = z.intersection(
     scheduleConfigBodySchema,
     conflictResolutionRequestSchema,
-) as unknown as z.ZodType<ScheduleConfigInput>
+)
 
 export const previewScheduleQuerySchema = z.object({
     month: z
