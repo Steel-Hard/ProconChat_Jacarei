@@ -93,6 +93,28 @@ describe("ScheduleWindowFields", () => {
         expect(handlers.onChangeWaitAlertDays).toHaveBeenCalledWith("71")
         expect(handlers.onChangeWindowDays).toHaveBeenCalledWith("305")
     })
+
+    it("explica o alerta de espera sem citar o Dashboard", () => {
+        render(
+            <ScheduleWindowFields
+                windowDays="30"
+                minNoticeDays={1}
+                waitAlertDays="7"
+                windowMessages={[]}
+                waitAlertMessages={[]}
+                onChangeWindowDays={vi.fn()}
+                onChangeMinNoticeDays={vi.fn()}
+                onChangeWaitAlertDays={vi.fn()}
+            />
+        )
+
+        expect(
+            screen.getByLabelText("Alertar quando a espera passar de")
+        ).toHaveAccessibleDescription(
+            "Prazo de espera considerado longo para o próximo horário livre."
+        )
+        expect(document.body).not.toHaveTextContent("Dashboard")
+    })
 })
 
 describe("ScheduleUnitFields", () => {
