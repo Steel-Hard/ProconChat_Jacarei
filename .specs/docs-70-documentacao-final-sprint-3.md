@@ -184,7 +184,7 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 - **Teste:** nenhum (documentação).
 - **Gate:** a conferência de links (na fase); `git status --short` mostra só `.docs/README.md`.
 - **Modelo:** economico
-- **Status:** feita, commit b86718e. Gate: conferência de links sem saída.
+- **Status:** feita, commit b86718e. Gate: conferência de links sem saída. Ajuste da revisão (Kusakabe) em d5694e4, com a revisão das correções em andamento.
 
 ### T2 [P] Criar o fechamento da Sprint 3
 
@@ -207,7 +207,7 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 - **Teste:** nenhum (documentação).
 - **Gate:** cada número do placar conferido contra a lista do GitHub; a conferência de links; `git status --short` mostra só a pasta `sprint3`.
 - **Modelo:** padrao
-- **Status:** pendente. Reaberta em 22/11/2026 pela revisão (Kusakabe), que bloqueou a tarefa: o fechamento da Sprint 3 ainda usa a redação antiga das lacunas e tem datas em UTC, e não no horário de Brasília (RN-17, CA-23). Volta para feita quando chegar o commit de correção. Commits anteriores: 81b2ce2 e 514e859.
+- **Status:** feita, commits 81b2ce2, 514e859 (redação das decisões de 22/11/2026) e d5e0f39 (datas no horário de Brasília e "Início" a partir do primeiro commit do PR). Foi reaberta em 22/11/2026 pela revisão (Kusakabe) e corrigida nesses dois commits, com a revisão das correções em andamento.
 
 ### T3 [P] Conferir e completar a instalação no README
 
@@ -239,7 +239,7 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
   - a conferência de links;
   - `git status --short` mostra só `README.md`.
 - **Modelo:** padrao
-- **Status:** feita, commit 38b7457. Gate: sistema subido do zero sem `ollama` e `llm-pull`, painel respondeu 200 e a entrada com a conta Admin respondeu 200; conferência de links sem saída. O teste com o modelo de IA continua com a QA (CA-01).
+- **Status:** feita, commit 38b7457. Gate: sistema subido do zero sem `ollama` e `llm-pull`, painel respondeu 200 e a entrada com a conta Admin respondeu 200; conferência de links sem saída. O teste com o modelo de IA continua com a QA (CA-01). Ajuste da revisão (Kusakabe) em 2d75c7c (openssl, healthchecks, senha do Admin e endereço do painel), com a revisão das correções em andamento.
 
 ### T4 [P] Atualizar a arquitetura e o modelo de dados para o estado final
 
@@ -269,7 +269,7 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 - **Teste:** nenhum (documentação).
 - **Gate:** cada item alterado aponta a sua fonte no código, na migration ou na decisão; a conferência de links; `git status --short` mostra só `architecture.md` e `database.md`.
 - **Modelo:** padrao
-- **Status:** feita, commits 9e07b72 e 48ddf63. Gate: links relativos conferidos em todos os arquivos alterados; `git status` limpo.
+- **Status:** feita, commits 9e07b72 e 48ddf63. Gate: links relativos conferidos em todos os arquivos alterados; `git status` limpo. Ajuste da revisão (Kusakabe) em 7462bd0, com a revisão das correções em andamento.
 
 ### T5 [P] Conferir a rastreabilidade item a item
 
@@ -301,7 +301,7 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 - **Teste:** nenhum (documentação).
 - **Gate:** cada linha cita a sua fonte (issue, decisão, código ou registro escrito); a conferência de links; `git status --short` mostra só `rastreabilidade.md`.
 - **Modelo:** padrao
-- **Status:** feita, commit c463ea4. Gate: links relativos conferidos em todos os arquivos alterados; `git status` limpo. As duas ressalvas levantadas na conferência foram respondidas pelo usuário (U-05 e U-06): o RNF03 fica entregue sem ressalva, e o RF05 e o RNF02 ficam entregues, citando a medição de 20/11/2026.
+- **Status:** feita, commit c463ea4. Gate: links relativos conferidos em todos os arquivos alterados; `git status` limpo. As duas ressalvas levantadas na conferência foram respondidas pelo usuário (U-05 e U-06): o RNF03 fica entregue sem ressalva, e o RF05 e o RNF02 ficam entregues, citando a medição de 20/11/2026. Ajuste da revisão (Kusakabe) em 9b3e75f (RNF03 sem ressalva), com a revisão das correções em andamento.
 
 ### T6 (não se aplica) Registrar os requisitos parciais com as issues da PO
 
