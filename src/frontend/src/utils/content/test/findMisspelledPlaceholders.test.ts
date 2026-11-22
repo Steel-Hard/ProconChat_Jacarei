@@ -54,6 +54,8 @@ describe("findMisspelledPlaceholders", () => {
         ["{horarioss}", "{horarios}"],
         ["{horaros}", "{horarios}"],
         ["{end}", "{endereco}"],
+        ["{hora}", "{horarios}"],
+        ["{horas}", "{horarios}"],
         ["{hor}", "{horarios}"],
         ["{ ender }", "{endereco}"]
     ])("aponta o erro de digitação em %s", (found, expected) => {
@@ -71,7 +73,7 @@ describe("findMisspelledPlaceholders", () => {
         ])
     })
 
-    it.each(["{nome}", "{cep}", "{horas}", "{en}", "{ho}", "{}", "{ }", "{protocolo}"])(
+    it.each(["{nome}", "{cep}", "{en}", "{ho}", "{}", "{ }", "{protocolo}"])(
         "ignora a chave sem relação %s",
         (unrelated) => {
             expect(findMisspelledPlaceholders(`Texto ${unrelated} fim.`)).toEqual([])

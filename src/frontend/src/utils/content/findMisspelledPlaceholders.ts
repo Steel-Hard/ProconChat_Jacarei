@@ -10,6 +10,14 @@ const MIN_PREFIX_LENGTH = 3
 
 const CANONICAL_PLACEHOLDERS = ["{endereco}", "{horarios}"]
 
+function isAbbreviationOf(target: string, normalized: string): boolean {
+    const withoutPlural = normalized.replace(/s$/, "")
+
+    return [normalized, withoutPlural].some(
+        (candidate) => candidate.length >= MIN_PREFIX_LENGTH && target.startsWith(candidate)
+    )
+}
+
 function expectedPlaceholderOf(name: string): string | null {
     const normalized = normalizeComparisonText(name).replace(/\s+/g, "")
 
@@ -19,7 +27,7 @@ function expectedPlaceholderOf(name: string): string | null {
 
             return (
                 editDistance(normalized, target) <= MAX_EDIT_DISTANCE ||
-                (normalized.length >= MIN_PREFIX_LENGTH && target.startsWith(normalized))
+                isAbbreviationOf(target, normalized)
             )
         }) ?? null
     )
