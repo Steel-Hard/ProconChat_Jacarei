@@ -1,10 +1,11 @@
 # Documentação final da Sprint 3 (#70)
 
-> Status: em-revisao
+> Status: aprovada
 > Tipo: funcionalidade
 > Tamanho: media
 > Branch: docs/70-documentacao-final-sprint-3
 > Criada em: 2026-11-22
+> Aprovada em: 2026-11-22
 
 ## Objetivo
 
