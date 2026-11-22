@@ -130,7 +130,7 @@ O índice das regras e o estado da regra 08 citam pendências "na #75", mas a #7
 - CA-17 QUANDO o PDF do manual é gerado de novo ENTÃO o gerador DEVE terminar sem erro, o sumário DEVE levar cada item à página certa, e nenhum outro PDF da pasta de guias DEVE mudar no commit. (RN-09)
 - CA-18 QUANDO alguém clica em um link mudado ou novo na documentação ENTÃO ele DEVE abrir um arquivo e uma seção que existem. (RN-01)
 - CA-19 QUANDO a memória do time sobre Horários é lida depois desta tarefa ENTÃO ela DEVE descrever a janela de conflitos como a regra 08 descreve, com a fonte e a data da leitura. (RN-10)
-- CA-20 QUANDO alguém lê o painel e a documentação depois desta tarefa ENTÃO a única diferença conhecida que sobra DEVE ser a descrição de "Ver relatórios" na tela de Usuários, registrada em Riscos, além do que ficar em aberto pelas respostas da D-U-07. (RN-11)
+- CA-20 QUANDO alguém compara o painel e a documentação depois desta tarefa ENTÃO toda diferença conhecida que sobrar DEVE estar listada em Riscos, com a decisão, a dúvida ou a issue que a mantém aberta (por exemplo, a descrição de "Ver relatórios" na tela de Usuários e o que ficar para outra issue pelas respostas da D-U-05, da D-U-07 e da D-U-10). (RN-11, RN-12)
 
 ## Critérios de sucesso
 
@@ -151,7 +151,7 @@ O índice das regras e o estado da regra 08 citam pendências "na #75", mas a #7
 ## Riscos
 
 - **A descrição de "Ver relatórios" na tela de Usuários continua prometendo exportar em PDF, Excel ou CSV.** O painel fica diferente da documentação nesse ponto, por decisão do usuário. O manual mantém o aviso sobre isso.
-- **O painel ainda tem Sessões no código.** A rota mostra "Em construção.", e o item de menu e a permissão estão escondidos porque a tela não está pronta. No servidor, a permissão existe e libera o Dashboard. Se a documentação disser que Sessões e "Ver sessões" saíram do modelo, o código continua com elas, sem efeito visível para a equipe, até alguém abrir uma tarefa de código.
+- **O painel ainda tem Sessões no código.** A rota mostra "Em construção.", e o item de menu e a permissão estão escondidos porque a tela não está pronta. As regras de acesso das telas do painel contam "Ver sessões" para abrir o Dashboard, e o servidor mantém a permissão na lista de permissões. Se a documentação disser que Sessões e "Ver sessões" saíram do modelo, o código continua com elas, sem efeito visível para a equipe, até alguém abrir uma tarefa de código.
 - **A figura 17 do manual mostra a frase antiga.** Depois da T1, a captura deixa de bater com a tela. O dev-doc não tira capturas sem apoio (D-U-06).
 - **O sumário do manual tem os números de página escritos à mão.** Reescrever a seção de conflitos muda a paginação. O gate da T9 confere cada número e cada link.
 - **O documento do software tem PDF próprio.** Mudar o texto dele obriga a gerar outro PDF, o que bate com a regra de que nenhum outro PDF muda (D-U-10).
@@ -163,7 +163,7 @@ O índice das regras e o estado da regra 08 citam pendências "na #75", mas a #7
 Nenhuma tarefa começa antes de o usuário aprovar esta especificação e responder as dúvidas de que ela depende (campo "Depende de"). Nas tarefas de documentação, o gate é o de documentação: links abrem, o texto bate com o painel e com a regra, e o manual fica coerente. Typecheck, lint e suíte não se aplicam a elas. Só a T1 mexe em código e tem o gate do frontend, com as mesmas checagens do CI.
 
 - Fase 1 (paralelo): T1 [P], T2 [P], T3 [P], T4 [P], T5 [P]
-  - Gate de fase: no frontend, `npm run build` (inclui o typecheck), `npm run test:run`, `npm run lint` e `npm run format:check` sem erro. Na documentação, as buscas da T5 sem nenhum trecho que trate Sessões como futura, e todos os links mudados abrindo.
+  - Gate de fase: no frontend, `npm run build` (inclui o typecheck), `npm run test:run`, `npm run lint` e `npm run format:check` sem erro. Na documentação, as buscas da T5 rodadas em `.docs/regras/` e `.docs/decisoes/` sem nenhum trecho que trate Sessões como futura, e todos os links mudados abrindo.
 - Fase 2 (paralelo): T6 [P], T7 [P]
   - Gate de fase: regra 08 conferida contra o painel, item por item; decisão 007 e regra 08 com o mesmo texto que o painel sobre o alerta de espera.
 - Fase 3 (sequencial): T8 → T9
@@ -195,12 +195,12 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 ### T2 [P] Atualizar o menu e os estados na regra de Login e no índice das regras
 
 - **O quê:** descrever o menu de hoje, com as sete telas prontas, e acertar o estado de cada tela no índice das regras, incluindo Sessões e Dashboard.
-- **Onde:** `.docs/regras/01-login-e-conta.md` (linhas 13, 26 a 35) e `.docs/regras/README.md` (linhas 21, 22, 27, 28 e 33).
+- **Onde:** `.docs/regras/01-login-e-conta.md` (linhas 13, 26 a 35) e `.docs/regras/README.md` (linhas 21, 22, 27 e 33). A linha 28 (regra 08) fica com a T6.
 - **Dev:** dev-doc
 - **Depende de:** D-PO-01 (Sessões) e D-U-02 (Dashboard)
 - **Reaproveita:** a lista de telas prontas do painel (`src/frontend/src/navigation/navItemsReady.ts`) e a tabela do menu do manual, que já mostra as sete telas.
 - **Atende:** RN-01, RN-02, RN-04, RN-05, CA-01, CA-02, CA-05, CA-18
-- **Pronto quando:** a regra 01 lista as sete telas prontas, a tabela do menu e a frase da tela inicial seguem as respostas da D-PO-01 e da D-U-02, o estado da tela cita as entregas certas, e o índice mostra o estado certo de cada tela. A frase "Cada arquivo de tela pendente descreve como a tela vai funcionar" fica coerente com o descarte de Sessões. Na linha da regra 08, as pendências não citam a #75 como aberta: o texto final vem da T6, e esta tarefa só deixa a linha coerente com ele.
+- **Pronto quando:** a regra 01 lista as sete telas prontas, a tabela do menu e a frase da tela inicial seguem as respostas da D-PO-01 e da D-U-02, o estado da tela cita as entregas certas, e o índice mostra o estado certo de cada tela. A frase "Cada arquivo de tela pendente descreve como a tela vai funcionar" fica coerente com o descarte de Sessões.
 - **Teste:** nenhum (documentação).
 - **Gate:** documentação. A lista do menu na regra é igual à do painel, tela por tela. Todo link mudado abre o arquivo e a seção que existem.
 - **Modelo:** economico
@@ -247,7 +247,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 - **Atende:** RN-03, RN-04, RN-05, CA-05, CA-18
 - **Pronto quando:** os cinco arquivos seguem a D-PO-01. O Detalhe do agendamento não promete link para Sessões. As regras gerais não prometem a tela nem a exportação ("Relatórios e exportações" passa a dizer só o que existe). A regra de Usuários não promete que "Ver sessões" vai aparecer.
 - **Teste:** nenhum (documentação).
-- **Gate:** documentação. Uma busca por `Sessões`, `Ver sessões`, `#72` e `07-sessoes` em `.docs/regras/` e `.docs/decisoes/` só encontra o registro do descarte (ou o que a D-PO-01 mandar manter) e o uso técnico da palavra "sessão" (sessão de login, sessão da conversa no banco). Todo link para `07-sessoes.md` abre, ou foi retirado se o arquivo saiu.
+- **Gate:** documentação. Uma busca por `Sessões`, `Ver sessões`, `#72` e `07-sessoes` em `.docs/regras/` só encontra o registro do descarte (ou o que a D-PO-01 mandar manter) e o uso técnico da palavra "sessão" (sessão de login, sessão da conversa no banco). Todo link para `07-sessoes.md` abre, ou foi retirado se o arquivo saiu.
 - **Modelo:** padrao
 - **Commit:** `Docs :bulb: [#174] Retira Sessões como tela futura das regras`
 - **Status:** pendente
@@ -255,9 +255,9 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 ### T6 [P] Conferir e corrigir a regra 08 contra o painel
 
 - **O quê:** corrigir a regra 08 nos pontos da tabela da divergência 4, e alinhar o alerta de espera e a agenda lotada com o texto novo do painel.
-- **Onde:** `.docs/regras/08-horarios-de-atendimento.md`: estado da tela (linha 13), janela de agendamento (linhas 43 e 45), motivo das vagas reduzidas (linha 113), pendentes (linhas 160 a 165) e Relações (linha 177).
+- **Onde:** `.docs/regras/08-horarios-de-atendimento.md`: estado da tela (linha 13), janela de agendamento (linhas 43 e 45), motivo das vagas reduzidas (linha 113), pendentes (linhas 160 a 165) e Relações (linha 177); e a linha da regra 08 no índice das regras (`.docs/regras/README.md`, linha 28).
 - **Dev:** dev-doc
-- **Depende de:** T1 (texto do painel), D-U-02 (Dashboard) e D-U-08 (testes de borda)
+- **Depende de:** T1 (texto do painel), T2 (mesmo arquivo do índice), D-U-02 (Dashboard) e D-U-08 (testes de borda)
 - **Reaproveita:** os textos do painel em `src/frontend/src/locales/pt-BR/schedule.json` (chaves `conflicts`, `conflictModal` e `window`), os motivos do servidor em `src/backend/services/scheduleRules.ts`, a regra de reenvio em `src/backend/services/appointmentTransitions.ts` (`decideRetryCancellationNotice`), o envio em massa em `src/backend/services/schedule.service.ts` (`sendMassCancellationNotices`) e a contagem de vagas em `src/backend/repositories/schedule.repository.ts`.
 - **Atende:** RN-06, RN-08, CA-07, CA-08, CA-12, CA-18
 - **Pronto quando:**
@@ -265,7 +265,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
   - Cada pendente foi conferido no código e o resultado está no Status desta tarefa. Fica na lista só o que não foi entregue, sem citar a #75 como aberta.
   - Se o reenvio pelo Detalhe valer para o cancelamento em massa, a regra diz isso e explica que a janela de conflitos não tem o botão.
   - As linhas 43 e 45 dizem o mesmo que o texto novo do painel e seguem a D-U-02.
-  - O texto final da linha da regra 08 no índice das regras fica no Status, para a T2 conferir.
+  - A linha da regra 08 no índice das regras diz o mesmo que o estado e os pendentes da regra.
 - **Teste:** nenhum (documentação).
 - **Gate:** documentação. Cada texto citado entre aspas na regra existe igual no painel ou no servidor. Todo link mudado abre.
 - **Modelo:** padrao
@@ -300,7 +300,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
   - a linha 352 e a figura 18 (bloqueio de parte do dia), só se a D-U-05 incluir;
   - capturas novas em `.docs/guias/images/manual-do-painel/`, só se a D-U-06 decidir assim.
 - **Dev:** dev-doc
-- **Depende de:** T1, T4, T6, D-U-05 e D-U-06
+- **Depende de:** T1, T3, T4, T6, D-U-05 e D-U-06
 - **Reaproveita:** a regra 08 corrigida (T6), a tabela da decisão 004 (T4) e a linguagem e o formato de avisos que o manual já usa.
 - **Atende:** RN-01, RN-03, RN-04, RN-05, RN-08, RN-09, RN-11, CA-13, CA-14, CA-15, CA-16, CA-18
 - **Pronto quando:**
@@ -380,7 +380,7 @@ A numeração é única para as duas listas (1 a 10), para facilitar levar ao us
 - **D-U-04. Como registrar numa decisão o que não foi entregue?** As decisões 004, 007 e 010 descrevem o que foi decidido na época, e a exportação e o aviso do Dashboard não foram entregues. Há duas formas: (a) manter a decisão como está e incluir uma nota de estado ("Estado em 2026-11-22: a exportação não foi entregue; era um bônus da #73"); ou (b) mudar o texto da decisão, ou o status dela, para tirar a exportação do que foi decidido. Também falta definir como citar a #73, que está fechada: "bônus da #73, não entregue" ou outro texto. Afeta T3, T4 e T7.
 - **D-U-05. Entram nesta tarefa as partes do manual que ficaram desatualizadas por entregas depois da #119?** O manual diz que bloquear só um período do dia "ainda não está disponível", mas isso foi entregue na #77, e a figura 18 provavelmente mostra o formulário antigo. A #78 (marcadores de horário e endereço no Conteúdo) também entrou depois do manual e não foi conferida. Incluir aqui ou abrir outra issue?
 - **D-U-06. Quem tira as capturas novas, se forem precisas?** A figura 17 mostra a frase antiga do Dashboard e deixa de bater com a tela depois da T1. A seção de conflitos ficaria mais clara com uma captura da janela, e a figura 18 pode estar desatualizada (D-U-05). O dev-doc não tira capturas sem apoio. As saídas são: (a) alguém tira as capturas no painel local com dados fictícios, como na #119; (b) recortar a figura 17 para tirar a frase; ou (c) manter a figura e explicar na legenda que a frase mudou.
-- **D-U-07. Abrir uma issue de código para tirar Sessões do painel?** O painel ainda tem a rota "Em construção.", o item de menu escondido, a permissão "Ver sessões" (no painel e no servidor, onde ela também libera o Dashboard) e os textos da tela. Não é desta tarefa. Fica como risco até alguém decidir.
+- **D-U-07. Abrir uma issue de código para tirar Sessões do painel?** O painel ainda tem a rota "Em construção.", o item de menu escondido, a permissão "Ver sessões" (na lista de permissões do painel e do servidor; no painel, ela também conta para abrir o Dashboard) e os textos da tela. Não é desta tarefa. Fica como risco até alguém decidir.
 - **D-U-08. "Testes de borda extras" continua na lista de pendentes da regra 08?** A regra é escrita para quem não é de TI, e esse item não é comportamento da tela. Manter, tirar da regra ou levar para a issue?
 - **D-U-09. Atualizar também a memória do time sobre Relatórios, Sessões, Dashboard e WhatsApp?** Ela trata o Dashboard e Sessões como pendentes e descreve a exportação como se existisse. Isso diverge da documentação depois desta tarefa.
 - **D-U-10. Entram nesta tarefa a arquitetura, a rastreabilidade do desafio e o documento do software?** Os três citam Sessões (e o Dashboard) como em construção ou como entrega. O documento do software tem PDF próprio: mudar o texto exige gerar outro PDF, o que hoje vai contra a regra de que nenhum outro PDF muda.
