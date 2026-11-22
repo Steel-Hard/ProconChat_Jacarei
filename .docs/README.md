@@ -17,9 +17,9 @@ Chatbot de orientação ao consumidor via WhatsApp, desenvolvido para o PROCON d
 | [`decisoes/`](decisoes/) | Registros de decisão, um por arquivo | Atual |
 | [`regras/`](regras/) | Regras de cada tela do painel: o que mostra, quem acessa, o que dá para fazer e o que não existe de propósito. O índice diz quais telas já foram entregues | Atual |
 | [`prototipo/`](prototipo/) | Protótipo navegável do painel, aprovado no Claude Design (referência visual) | Atual |
-| [`architecture/`](architecture/) | Arquitetura: componentes, módulos do backend, fluxos, infraestrutura e segurança (estado atual e alvo da entrega) | Atual |
+| [`architecture/`](architecture/) | Arquitetura: componentes, módulos do backend, fluxos, infraestrutura e segurança (estado entregue) | Atual |
 | [`infra/`](infra/) | Ambiente de produção: VM, deploy contínuo, rollback, backup e diagnóstico | Atual |
-| [`database/`](database/) | Modelo de dados (schema atual e planejado), migrations e o FAQ real do PROCON (`Dúvidas Frequentes.odt`) | Atual |
+| [`database/`](database/) | Modelo de dados (schema atual), migrations e o FAQ real do PROCON (`Dúvidas Frequentes.odt`) | Atual |
 | [`llm/`](llm/) | Contrato e escolha do modelo do serviço de LLM | Atual |
 | [`whatsapp/`](whatsapp/) | Pesquisa de integração com o WhatsApp (issue #3), [guia do app de teste da Meta](whatsapp/app-de-teste.md) para desenvolvimento e [guia dos modelos de mensagem](whatsapp/modelos-de-mensagem.md) (aviso de cancelamento e lembrete) | Atual como pesquisa; a decisão final está em [003](decisoes/003-migracao-whatsapp-cloud-api.md) |
 | [`lgpd/`](lgpd/) | [Procedimento para pedidos do titular](lgpd/pedidos-do-titular.md) (acesso e exclusão por anonimização) | Atual |
