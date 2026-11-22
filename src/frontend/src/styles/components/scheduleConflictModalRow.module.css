@@ -1,0 +1,55 @@
+.row {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 4px 14px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--divider);
+}
+
+.protocol {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-primary);
+    overflow-wrap: anywhere;
+}
+
+.details {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.identity {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.name {
+    font-size: 14px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.status {
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+.when {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.reason {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--error-text);
+    overflow-wrap: anywhere;
+}

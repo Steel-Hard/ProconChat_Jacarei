@@ -95,7 +95,7 @@ describe("SchedulePage: agendamentos afetados", () => {
         )
     })
 
-    it("mostra o 409 com nome e CPF mascarado no modal, relê os dias e fecha ao voltar sem salvar", async () => {
+    it("mostra o 409 com nome e sem CPF no modal, relê os dias e fecha ao voltar sem salvar", async () => {
         const { user, callsTo } = await renderSchedulePage({
             handlers: {
                 "PUT /api/v1/schedule": () => ({
@@ -119,8 +119,8 @@ describe("SchedulePage: agendamentos afetados", () => {
             name: "Esta alteração afeta 1 agendamento"
         })
         expect(within(dialog).getByText("Maria Souza")).toBeInTheDocument()
-        expect(within(dialog).getByText("***.982.247-**")).toBeInTheDocument()
-        expect(within(dialog).getByText("Protocolo E5F6A7B8")).toBeInTheDocument()
+        expect(within(dialog).queryByText("***.982.247-**")).not.toBeInTheDocument()
+        expect(within(dialog).getByText("E5F6A7B8")).toBeInTheDocument()
         expect(within(dialog).getByText("Quinta-feira, 05/11 às 09:00")).toBeInTheDocument()
         expect(within(dialog).getByText("Pendente")).toBeInTheDocument()
         await waitFor(() => expect(callsTo("GET", "/api/v1/schedule/booked-days")).toHaveLength(2))

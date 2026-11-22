@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef } from "react"
 import { useTranslation } from "react-i18next"
 import AppointmentNotice from "@/components/AppointmentNotice"
-import ScheduleConflictRow from "@/components/ScheduleConflictRow"
+import ScheduleConflictModalRow from "@/components/ScheduleConflictModalRow"
 import type ScheduleConflict from "@/types/schedule/ScheduleConflict.types"
 import type ScheduleConflictModalOrigin from "@/types/schedule/ScheduleConflictModalOrigin.types"
 import type WhatsAppCancellationNoticeProblemCode from "@/types/whatsapp/WhatsAppCancellationNoticeProblemCode.types"
@@ -164,10 +164,7 @@ function ScheduleConflictModal({
                 </div>
                 <ul className={css.list}>
                     {conflicts.map((conflict) => (
-                        <ScheduleConflictRow
-                            key={`${conflict.protocol}-${conflict.code}`}
-                            conflict={conflict}
-                        />
+                        <ScheduleConflictModalRow key={conflict.id} conflict={conflict} />
                     ))}
                 </ul>
                 <div className={css.footer}>
