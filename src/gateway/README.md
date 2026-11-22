@@ -25,7 +25,7 @@ Para montar o seu próprio app de teste na Meta, com número de teste e túnel, 
 - Docker Desktop (ou Docker Engine) com Docker Compose;
 - WSL 2 habilitado, se estiver no Windows;
 - Git;
-- Node.js 20+ (só necessário para rodar fora do Docker).
+- Node.js 24 ou mais novo, como pedem os `engines` do `package.json` e o `Dockerfile` (só necessário para rodar fora do Docker).
 
 ## 1. Primeira execução
 
@@ -91,7 +91,7 @@ Nenhum desses valores aparece em log nem em arquivo versionado.
 
 ### Envio de modelo (#67)
 
-O Backend pede ao gateway o envio de um modelo aprovado pela Meta (hoje, o aviso de cancelamento) em
+O Backend pede ao gateway o envio de um modelo aprovado pela Meta (hoje, o aviso de cancelamento e o lembrete antes do atendimento) em
 `POST /internal/whatsapp/messages/template`, com `X-Internal-Token`:
 
 ```json
