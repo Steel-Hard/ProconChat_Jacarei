@@ -27,13 +27,13 @@ describe("ScheduleConflictList", () => {
         [[FROM_PREVIEW], "Esta alteração afeta 1 agendamento"],
         [[FROM_PREVIEW, FROM_SAVE], "Esta alteração afeta 2 agendamentos"]
     ])("mostra o título com o plural certo", (conflicts, title) => {
-        render(<ScheduleConflictList conflicts={conflicts} />)
+        render(<ScheduleConflictList conflicts={conflicts} canCancelAppointments />)
 
         expect(screen.getByRole("heading", { name: title })).toBeInTheDocument()
     })
 
     it("mostra o item do salvamento com nome, CPF mascarado, protocolo, quando, status e motivo", () => {
-        render(<ScheduleConflictList conflicts={[FROM_SAVE]} />)
+        render(<ScheduleConflictList conflicts={[FROM_SAVE]} canCancelAppointments />)
 
         const row = screen.getByRole("listitem")
         expect(within(row).getByText("Maria Souza")).toBeInTheDocument()
@@ -45,7 +45,7 @@ describe("ScheduleConflictList", () => {
     })
 
     it("mostra o item da prévia sem nome nem CPF", () => {
-        render(<ScheduleConflictList conflicts={[FROM_PREVIEW]} />)
+        render(<ScheduleConflictList conflicts={[FROM_PREVIEW]} canCancelAppointments />)
 
         const row = screen.getByRole("listitem")
         expect(within(row).getByText("Protocolo A1B2C3D4")).toBeInTheDocument()
@@ -57,14 +57,30 @@ describe("ScheduleConflictList", () => {
     })
 
     it("mostra o protocolo como texto e não oferece manter nem cancelar", () => {
-        render(<ScheduleConflictList conflicts={[FROM_SAVE]} />)
+        render(<ScheduleConflictList conflicts={[FROM_SAVE]} canCancelAppointments />)
 
         expect(screen.queryByRole("link")).not.toBeInTheDocument()
         expect(screen.queryByRole("button")).not.toBeInTheDocument()
+    })
+
+    it("com as duas permissões diz que dá para manter ou cancelar", () => {
+        render(<ScheduleConflictList conflicts={[FROM_SAVE]} canCancelAppointments />)
+
         expect(
             screen.getByText(
-                "Para fazer esta alteração, peça a quem gerencia os agendamentos para cancelar ou remarcar esses agendamentos antes de salvar."
+                "Ao salvar, você poderá manter estes agendamentos fora da grade atual ou cancelá-los."
             )
         ).toBeInTheDocument()
+    })
+
+    it("só com Configurar atendimento presencial diz que dá para manter e pede a quem gerencia para cancelar", () => {
+        render(<ScheduleConflictList conflicts={[FROM_SAVE]} canCancelAppointments={false} />)
+
+        expect(
+            screen.getByText(
+                "Ao salvar, você poderá manter estes agendamentos fora da grade atual. Para cancelá-los, peça a quem gerencia os agendamentos."
+            )
+        ).toBeInTheDocument()
+        expect(screen.queryByText(/ou cancelá-los/)).not.toBeInTheDocument()
     })
 })

@@ -58,7 +58,10 @@ function SchedulePage() {
                     <p className={css.warning}>{t("bookedDaysFailed")}</p>
                 ) : null}
                 {draft && page.conflictRows ? (
-                    <ScheduleConflictList conflicts={page.conflictRows} />
+                    <ScheduleConflictList
+                        conflicts={page.conflictRows}
+                        canCancelAppointments={page.conflictModal.canManageAppointments}
+                    />
                 ) : null}
                 {draft ? (
                     <div className={css.columns}>
