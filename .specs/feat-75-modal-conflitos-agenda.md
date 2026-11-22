@@ -523,7 +523,7 @@ Regras para todas as tarefas de código:
 - Teste: unitário de componente. Falha primeiro o teste que espera o foco em "Manter os agendamentos" ao abrir.
 - Gate: rápido front
 - Modelo: padrao
-- Status: feita (30d5547). Teste primeiro: 15 dos 20 falharam pelo motivo certo. Gate: vitest 845 (modal e páginas), typecheck, oxlint e prettier ok. Divergência registrada: 3 asserções de teste de página ajustadas por mudança de regra (voltar com a seta, RN-15; cancelar escondido em vez de desabilitado, RN-19), em Schedule.conflictModal.test.tsx e Schedule.conflicts.test.tsx. Estilo da mensagem de atualização (changedNotice) entra em T13.
+- Status: feita (30d5547). Teste primeiro: 15 dos 20 falharam pelo motivo certo. Gate: vitest 845 (modal e páginas), typecheck, oxlint e prettier ok. Divergência registrada: 3 asserções de teste de página ajustadas por mudança de regra (voltar com a seta, RN-15; cancelar escondido em vez de desabilitado, RN-19), em Schedule.conflictModal.test.tsx e Schedule.conflicts.test.tsx. Exceção registrada: a T9 acrescentou a classe .changedNotice em scheduleConflictModal.module.css, arquivo que a spec reservava à T13 (depois estilizada no tom de aviso, com aria-live polite, e com reserva de 100vh na altura). O controle de foco foi extraído para utils/trapFocus.ts e é usado também pelo ConfirmDialog, por decisão da orchestrator.
 
 ### T10 [P] Página: envio do que foi visto, atualização após recusa, origem e fim da lista abaixo das mudanças (B1, B4 e B5)
 - O quê:
