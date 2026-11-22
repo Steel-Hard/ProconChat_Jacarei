@@ -150,7 +150,7 @@ Ao salvar, o sistema verifica se algum agendamento **Pendente ou Confirmado futu
 
 - Origem "salvar": cancelou com o aviso ligado, "N agendamentos cancelados e cidadãos avisados por WhatsApp."; com o aviso desligado, "N agendamentos cancelados. Os cidadãos não foram avisados pelo sistema."; manteve, "Alteração salva. N agendamentos mantidos com o selo "Fora da grade atual"."; com falha de aviso, numa frase só, "N agendamentos cancelados. M avisos falharam." (plural certo nas duas partes).
 - Origem "cancelar mudança agendada": as mesmas mensagens com "Mudança cancelada. " antes, e a de mantidos sem "Alteração salva.": "Mudança cancelada. N agendamentos mantidos com o selo "Fora da grade atual"."; com falha, "Mudança cancelada. N agendamentos cancelados. M avisos falharam.".
-- Uma falha de envio **não desfaz** os cancelamentos e fica registrada no histórico de cada agendamento, no mesmo formato do cancelamento individual ([Detalhe do agendamento](04-detalhe-do-agendamento.md)).
+- Uma falha de envio **não desfaz** os cancelamentos e soma na mensagem de resultado. Nos casos de falha do envio (telefone ausente, gateway fora do ar, recusa da Meta), ela fica registrada também no histórico do agendamento, no mesmo formato do cancelamento individual ([Detalhe do agendamento](04-detalhe-do-agendamento.md)). Se o envio quebrar antes de registrar (falha de banco ou envio do mesmo agendamento já em andamento), ela entra só na contagem do resultado.
 - Se a ação não puder ser concluída, a janela continua aberta com "Não foi possível concluir a ação. Tente de novo.".
 - Ao cancelar uma mudança que estava aberta para edição, a tela volta para a configuração de hoje.
 

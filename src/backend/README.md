@@ -1339,7 +1339,7 @@ proteção CSRF (`403 INVALID_ORIGIN` nos métodos que enviam corpo), por `requi
     mudança só no aviso não impede `"KEEP"`;
   - com tudo igual: aplica a resolução e grava a agenda na mesma transação, e então `COMMIT`.
 
-  `cancellationNotice` é `{ enabled, problem: { code } | null }`, o mesmo formato do
+  `cancellationNotice` é `{ enabled, problem: { code, metaErrorCode, message } | null }`, o mesmo formato do
   `GET /cancellation-notice`. `resolution` é `{ action, affectedCount, notifiedCount, failedCount, noticeDisabled }`.
   Em `"KEEP"`, cada afetado recebe `off_grid = TRUE` e o evento `KEPT_OFF_GRID` com o motivo, e não é
   apontado de novo (os `off_grid` não entram na lista de afetados). Em `"CANCEL"`, cada afetado vai a
@@ -1347,8 +1347,10 @@ proteção CSRF (`403 INVALID_ORIGIN` nos métodos que enviam corpo), por `requi
   `PERIOD_BLOCKED` e `OTHER` para os demais; com o aviso desligado, grava também
   `CITIZEN_NOTICE_DISABLED` e não envia nada à Meta. Com o aviso ligado, os avisos saem **depois do
   `COMMIT`**, um por agendamento e um a um, pelo mesmo `notifyCancellation` do cancelamento
-  individual: uma falha de envio não desfaz os cancelamentos, fica no histórico do agendamento e soma
-  em `failedCount`. No `DELETE`, os afetados são conferidos contra a configuração anterior, que
+  individual: uma falha de envio não desfaz os cancelamentos e soma em `failedCount`. Nos casos de falha do
+  envio (telefone ausente, gateway fora do ar, recusa da Meta), ela fica também no histórico do
+  agendamento. Se o envio quebrar antes de registrar (falha de banco ou envio do mesmo agendamento já
+  em andamento), ela entra só na contagem do resultado. No `DELETE`, os afetados são conferidos contra a configuração anterior, que
   voltaria a valer.
   - **Pendente na #75:** "Tentar novamente" por falha de envio do cancelamento em massa, a garantia de
     os horários cancelados voltarem livres, o envio dos avisos em paralelo e testes de borda extras.
