@@ -18,6 +18,7 @@
     flex-direction: column;
     width: 100%;
     max-width: 640px;
+    max-height: calc(100vh - 40px);
     max-height: calc(100dvh - 40px);
     padding: 0;
     border-radius: 14px;
@@ -157,8 +158,13 @@
 }
 
 .changedNotice {
-    margin: 8px 0 0;
+    display: block;
+    margin: 10px 0 0;
+    padding: 9px 11px;
+    border: 1px solid var(--warn-border);
+    border-radius: 8px;
+    background: var(--warn-bg);
+    color: var(--warn-text);
     font-size: 13px;
-    font-weight: 600;
-    color: var(--error-text);
+    line-height: 1.45;
 }
