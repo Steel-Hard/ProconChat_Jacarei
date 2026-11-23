@@ -1,11 +1,12 @@
 # Divergências entre a documentação de regras e o painel (#174)
 
-> Status: em-andamento
+> Status: implementada
 > Tipo: funcionalidade
 > Tamanho: media
 > Branch: docs/174-divergencias-regras-e-painel
 > Criada em: 2026-11-22
 > Aprovada em: 2026-11-22
+> Implementada em: 2026-11-22. Revisão do reviewer (Kusakabe) aprovada no commit 7355e79, sem nenhum achado em aberto, nem bloqueante nem sugestão.
 
 ## Objetivo
 
@@ -274,7 +275,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 - **Gate:** documentação. Uma busca por "Exportar", "exportação", "Sessões" e "Dashboard" nos dois arquivos só encontra a nota, o trecho que diz que a exportação não foi entregue ou o uso técnico de "sessão". Todo link mudado abre.
 - **Modelo:** padrao
 - **Commit:** `Docs :bulb: [#174] Registra a exportação de relatórios como não entregue`
-- **Status:** feita, commit 134a83b. Gate: 0 links quebrados em regras e decisões; a busca por Sessões e Dashboard mostra só as marcas de descarte e as notas para a decisão 013. Correção da revisão (Kusakabe) em cd95b62: linha em branco depois da nota de estado da decisão 010 e o item 5 de volta à lista. A revisão desse ajuste está em andamento.
+- **Status:** feita, commit 134a83b. Gate: 0 links quebrados em regras e decisões; a busca por Sessões e Dashboard mostra só as marcas de descarte e as notas para a decisão 013. Correção da revisão (Kusakabe) em cd95b62: linha em branco depois da nota de estado da decisão 010 e o item 5 de volta à lista. Revisado.
 
 ### T4 [P] Criar a decisão 013 e pôr as notas de estado nas decisões antigas
 
@@ -294,7 +295,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 - **Gate:** documentação. A tabela de permissões e a nota da decisão 004 ficam copiadas no Status da tarefa, para a T8 levar ao manual. O índice das decisões abre a decisão nova. Todo link mudado abre.
 - **Modelo:** padrao
 - **Commit:** `Docs :bulb: [#174] Registra o descarte das telas de Sessões e Dashboard nas decisões`
-- **Status:** feita, commit a8f97eb. Gate: 0 links quebrados em regras e decisões; a busca por Sessões e Dashboard mostra só as marcas de descarte e as notas para a decisão 013. Correção da revisão (Kusakabe) em b81e8e1: a decisão 013 diz que os trechos "foram ajustadas na #70". A revisão desse ajuste está em andamento.
+- **Status:** feita, commit a8f97eb. Gate: 0 links quebrados em regras e decisões; a busca por Sessões e Dashboard mostra só as marcas de descarte e as notas para a decisão 013. Correção da revisão (Kusakabe) em b81e8e1: a decisão 013 diz que os trechos "foram ajustadas na #70", com o ajuste final em 7355e79 (vírgula retirada da consequência). Revisado.
 
 ### T5 [P] Tirar Sessões e Dashboard como telas futuras das regras das telas
 
@@ -449,7 +450,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 - **Teste:** nenhum.
 - **Gate:** `git diff --stat develop...HEAD` só com os arquivos das tarefas; `git diff develop...HEAD -- .docs/guias/gerar-pdf.mjs .docs/guias/gerar-pdfs.sh .docs/guias/documento-do-software.md .docs/guias/documento-do-software.pdf .docs/guias/guia-configuracao-do-bot.pdf .docs/architecture .docs/desafio` sem saída; CI verde.
 - **Modelo:** padrao
-- **Status:** pendente
+- **Status:** feita. O reviewer (Kusakabe) aprovou no commit 7355e79, sem nenhum achado em aberto, nem bloqueante nem sugestão.
 
 ## Dúvidas
 
