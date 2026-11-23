@@ -22,4 +22,4 @@ Ao escrever o manual do painel (#119), a documentação e o painel apareceram di
 - As regras [02](../regras/02-dashboard.md) e [07](../regras/07-sessoes.md) continuam na pasta só como registro, marcadas como telas descartadas.
 - As decisões antigas que citam as duas telas mantêm o texto e ganharam uma nota de estado que aponta para esta decisão.
 - O painel ainda tem, no código, a rota e os textos das duas telas, o item de menu escondido e a permissão. Não há issue aberta para retirá-los.
-- A arquitetura e a rastreabilidade do desafio, que ainda tratam as duas telas como em construção ou como entrega, são ajustadas na #70.
+- A arquitetura e a rastreabilidade do desafio, foram ajustadas na #70.
