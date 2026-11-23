@@ -370,7 +370,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 - **Gate:** `file` nas três imagens com PNG e as dimensões combinadas; `du -ch .docs/guias/images/manual-do-painel/*.png` abaixo de 6 MB; `git status --short` só com as três imagens; conferência visual de cada captura contra a tela.
 - **Modelo:** economico
 - **Commit:** `Docs :bulb: [#174] Atualiza as capturas das figuras 14, 17 e 18 do manual`
-- **Status:** em-andamento. Capturas no commit 3b73b3c. A Mai vai refazer as capturas que mostram datas, para que apareçam em pt-BR.
+- **Status:** feita, commits 3b73b3c e d0ad084 (figura 18 refeita com as datas em pt-BR; as figuras 14 e 17 não têm campo de data). Gate: a soma das imagens é 5,1 MB, abaixo de 6 MB, e o projeto de captura foi derrubado.
 
 ### T8 Atualizar o texto do manual
 
