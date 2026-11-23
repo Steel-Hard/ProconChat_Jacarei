@@ -1,0 +1,56 @@
+{
+    "meta": {
+        "title": "Política de privacidade - ProconChat"
+    },
+    "brand": "ProconChat Jacareí · PROCON Jacareí-SP",
+    "heading": "Política de privacidade",
+    "intro": "Esta página explica como o assistente virtual do PROCON Jacareí no WhatsApp trata os seus dados pessoais, conforme a Lei Geral de Proteção de Dados (LGPD).",
+    "notRegistered": "Informação ainda não cadastrada",
+    "loadFailed": "Não foi possível carregar os dados de contato agora. Tente de novo em instantes.",
+    "controller": {
+        "heading": "Quem trata os seus dados",
+        "controllerLabel": "Controlador",
+        "dpoLabel": "Encarregado pelo tratamento de dados (DPO)"
+    },
+    "collected": {
+        "heading": "Quais dados coletamos",
+        "phone": "O número de telefone de quem conversa com o assistente. Nas conversas, ele é guardado só como um código, sem o número legível.",
+        "appointment": "Para agendar um atendimento presencial: o nome e o CPF do titular e o telefone para os avisos. O CPF é guardado só como código e na versão mascarada (***.456.789-**). O telefone é guardado criptografado.",
+        "steps": "As opções escolhidas na conversa, para saber em que ponto do atendimento você parou."
+    },
+    "purpose": {
+        "heading": "Para que usamos",
+        "guidance": "Para orientar você sobre a sua dúvida de consumo e, quando for preciso, agendar o atendimento presencial.",
+        "notices": "Para enviar, no número informado no agendamento, a confirmação, o lembrete do atendimento e o aviso de cancelamento pela equipe.",
+        "reports": "Para relatórios do PROCON, que usam só números agregados, sem nome, CPF ou protocolo."
+    },
+    "notStored": {
+        "heading": "O que não guardamos",
+        "freeText": "O texto que você digita na conversa não é guardado. Só ficam registradas as opções escolhidas.",
+        "cpf": "O CPF completo não é guardado e nunca aparece no painel da equipe.",
+        "phone": "O seu telefone nunca aparece no painel da equipe."
+    },
+    "whatsapp": {
+        "heading": "Mensagens pelo WhatsApp",
+        "meta": "O atendimento acontece pelo WhatsApp, por meio da WhatsApp Cloud API, oficial da Meta. Por isso, as mensagens trocadas com o assistente passam pelos servidores da Meta."
+    },
+    "retention": {
+        "heading": "Por quanto tempo guardamos",
+        "phone": "O telefone informado no agendamento é apagado quando chega o horário do atendimento.",
+        "sessions": "As conversas deixam de ficar ligadas ao seu número {{days}} dias depois de terminarem. A conversa que gerou um agendamento segue o prazo do agendamento.",
+        "appointments": "O nome e o CPF do agendamento são removidos {{days}} dias depois da data do atendimento.",
+        "anonymous": "As opções escolhidas nas conversas, sem identificação, continuam nos relatórios do PROCON.",
+        "backups": "As cópias de segurança do sistema são guardadas por até 7 dias. Por isso, um dado apagado pode continuar numa cópia de segurança por menos de 7 dias.",
+        "otherLabel": "Demais prazos"
+    },
+    "rights": {
+        "heading": "Seus direitos e como pedir",
+        "text": "Você pode pedir para ver os dados que temos sobre você ou para apagá-los. Envie o pedido para o e-mail abaixo.",
+        "emailLabel": "E-mail para pedidos"
+    },
+    "contact": {
+        "heading": "Contato",
+        "emailLabel": "E-mail",
+        "inPersonLabel": "Atendimento presencial"
+    }
+}

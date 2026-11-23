@@ -12,6 +12,13 @@ import authRoutes from "./routes/auth.routes"
 import appointmentRoutes from "./routes/appointment.routes"
 import whatsappSettingsRoutes from "./routes/whatsappSettings.routes"
 import whatsappInternalConfigRoutes from "./routes/whatsappInternalConfig.routes"
+import whatsappInternalEventsRoutes from "./routes/whatsappInternalEvents.routes"
+import userAccountRoutes from "./routes/userAccount.routes"
+import scheduleRoutes from "./routes/schedule.routes"
+import documentsRoutes from "./routes/documents.routes"
+import privacyPublicRoutes from "./routes/privacyPublic.routes"
+import contentRoutes from "./routes/content.routes"
+import reportRoutes from "./routes/report.routes"
 import { createRequireTrustedOrigin } from "./middleware/trustedOrigin.middleware"
 
 dotenv.config({ quiet: true })
@@ -31,10 +38,17 @@ app.use(requestLoggerMiddleware)
 app.use("/health", healthRoutes)
 app.use("/api/v1/whatsapp/sessions", whatsappSessionRoutes)
 app.use("/api/v1/internal/whatsapp/config", whatsappInternalConfigRoutes)
+app.use("/api/v1/internal/whatsapp/events", whatsappInternalEventsRoutes)
 app.use("/api/v1", createRequireTrustedOrigin(frontendOrigin))
 app.use("/api/v1/auth", authRoutes)
 app.use("/api/v1/appointments", appointmentRoutes)
 app.use("/api/v1/whatsapp/settings", whatsappSettingsRoutes)
+app.use("/api/v1/users", userAccountRoutes)
+app.use("/api/v1/schedule", scheduleRoutes)
+app.use("/api/v1/documents", documentsRoutes)
+app.use("/api/v1/privacy", privacyPublicRoutes)
+app.use("/api/v1/content", contentRoutes)
+app.use("/api/v1/reports", reportRoutes)
 
 app.use("/", (_req: Request, _res: Response, next: NextFunction) =>
     next(new NotFoundError("Route not found")),

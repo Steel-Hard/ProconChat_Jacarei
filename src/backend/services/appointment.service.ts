@@ -1,3 +1,4 @@
+import { gatewayClient } from "../clients/gateway.client"
 import NotFoundError from "../errors/NotFoundError"
 import { AppointmentRepository } from "../repositories/appointment.repository.interface"
 import { appointmentRepository as defaultAppointmentRepository } from "../repositories/appointment.repository"
@@ -6,15 +7,37 @@ import {
     AppointmentDetailRecord,
     AppointmentListFilters,
     AppointmentListResponse,
+    CANCELLATION_REASONS,
+    CancellationNoticeStatus,
+    CancellationNoticeTarget,
+    CancellationPreview,
+    CancellationReason,
     ConversationTimelineStep,
+    CorrectionWarning,
+    StaffMember,
 } from "../types/appointment.types"
 import { errorCodeOf } from "../utils/conversationEventLog"
-import { availableActions } from "./appointmentTransitions"
+import {
+    ActionAccess,
+    availableActions,
+    CancellationNoticeState,
+    decideRetryCancellationNotice,
+} from "./appointmentTransitions"
 import {
     conversationEventService as defaultConversationEventService,
     ConversationEventService,
 } from "./conversationEvent.service"
 import type { RecordedConversationEvent } from "../types/conversationEvent.types"
+import { decrypt } from "../utils/crypto.utils"
+import { CitizenNotificationService, createCitizenNotificationService } from "./citizenNotification.service"
+import type { CancellationNoticeSetting } from "../types/whatsappSettings.types"
+import { whatsappSettingsService } from "./whatsappSettings.service"
+import { CORPO_AVISO_CANCELAMENTO, parametrosAvisoCancelamento, renderizarModelo } from "./messageFormatter.service"
+
+export interface CorrectedAppointment {
+    detail: AppointmentDetail
+    warning: CorrectionWarning | null
+}
 
 export interface AppointmentService {
     listAppointments(
@@ -24,28 +47,75 @@ export interface AppointmentService {
 
     getPendingCount(): Promise<{ count: number }>
 
+    listStaff(access: ActionAccess): Promise<StaffMember[]>
+
     getAppointmentDetail(
         idOrCode: number | string,
+        access: ActionAccess,
         now?: Date,
     ): Promise<AppointmentDetail>
 
     claimAppointment(
         idOrCode: number | string,
         actorUserId: number,
+        access: ActionAccess,
+        now?: Date,
+    ): Promise<AppointmentDetail>
+
+    assignAppointment(
+        idOrCode: number | string,
+        assigneeUserId: number,
+        actorUserId: number,
+        access: ActionAccess,
+        now?: Date,
+    ): Promise<AppointmentDetail>
+
+    correctRecord(
+        idOrCode: number | string,
+        actorUserId: number,
+        access: ActionAccess,
+        now?: Date,
+    ): Promise<CorrectedAppointment>
+
+    addNote(
+        idOrCode: number | string,
+        authorUserId: number,
+        text: string,
+        access: ActionAccess,
         now?: Date,
     ): Promise<AppointmentDetail>
 
     markAttended(
         idOrCode: number | string,
         actorUserId: number,
+        access: ActionAccess,
         now?: Date,
     ): Promise<AppointmentDetail>
 
     markNoShow(
         idOrCode: number | string,
         actorUserId: number,
+        access: ActionAccess,
         now?: Date,
     ): Promise<AppointmentDetail>
+
+    cancelAppointment(
+        idOrCode: number | string,
+        actorUserId: number,
+        reason: CancellationReason,
+        note: string | undefined,
+        access: ActionAccess,
+        now?: Date,
+    ): Promise<AppointmentDetail>
+
+    retryCancellationNotice(
+        idOrCode: number | string,
+        actorUserId: number,
+        access: ActionAccess,
+        now?: Date,
+    ): Promise<AppointmentDetail>
+
+    getCancellationPreview(idOrCode: number | string): Promise<CancellationPreview>
 }
 
 type TimelineTitles = { categories: Record<number, string>; questions: Record<number, string> }
@@ -108,6 +178,34 @@ function buildTimeline(
     })
 }
 
+function noticeStateOf(target: CancellationNoticeTarget, noticeEnabled: boolean): CancellationNoticeState {
+    return {
+        noticeEnabled,
+        status: target.status,
+        hasStaffCancellation: target.lastStaffCancelReason !== null,
+        lastCancellationNotice: target.lastCancellationNotice,
+        hasPhone: target.phoneEncrypted !== null,
+        appointmentDatetime: target.appointmentDatetime,
+    }
+}
+
+export interface CancellationNoticeSwitch {
+    isEnabled(): Promise<boolean>
+    getState(): Promise<CancellationNoticeSetting>
+}
+
+const defaultCancellationNoticeSwitch: CancellationNoticeSwitch = {
+    isEnabled: () => whatsappSettingsService.isCancellationNoticeEnabled(),
+    getState: () => whatsappSettingsService.getCancellationNoticeState(),
+}
+
+function cancellationNoticeStatusOf(notice: CancellationNoticeTarget | null): CancellationNoticeStatus | null {
+    if (!notice || notice.status !== "CANCELED" || notice.lastStaffCancelReason === null) {
+        return null
+    }
+    return notice.lastCancellationNotice
+}
+
 export interface AppointmentTimelineFailureLog {
     appointmentId: string
     code: string
@@ -121,13 +219,19 @@ export function createAppointmentService(deps?: {
     repository?: AppointmentRepository
     conversationEvents?: ConversationEventService
     logger?: AppointmentServiceLogger
+    notifications?: CitizenNotificationService
+    cancellationNotice?: CancellationNoticeSwitch
 }): AppointmentService {
     const repository = deps?.repository ?? defaultAppointmentRepository
     const conversationEvents = deps?.conversationEvents ?? defaultConversationEventService
     const logger = deps?.logger ?? console
+    const cancellationNotice = deps?.cancellationNotice ?? defaultCancellationNoticeSwitch
+    const notifications =
+        deps?.notifications ?? createCitizenNotificationService({ appointments: repository, gateway: gatewayClient, decrypt })
 
     async function getAppointmentDetail(
         idOrCode: number | string,
+        access: ActionAccess,
         now: Date = new Date(),
     ): Promise<AppointmentDetail> {
         const appointment = await repository.findById(idOrCode)
@@ -162,6 +266,9 @@ export function createAppointmentService(deps?: {
             }
         }
 
+        const notice = await repository.findCancellationNoticeTarget(appointment.id)
+        const noticeEnabled = cancellationNoticeStatusOf(notice) === null ? true : await cancellationNotice.isEnabled()
+
         return {
             ...appointment,
             available_actions: availableActions(
@@ -170,7 +277,10 @@ export function createAppointmentService(deps?: {
                     appointmentDatetime: new Date(appointment.appointment_datetime),
                 },
                 now,
+                access,
+                notice ? noticeStateOf(notice, noticeEnabled) : undefined,
             ),
+            cancellation_notice_status: cancellationNoticeStatusOf(notice),
         }
     }
 
@@ -204,33 +314,145 @@ export function createAppointmentService(deps?: {
             return { count }
         },
 
+        async listStaff(access: ActionAccess): Promise<StaffMember[]> {
+            const staff = await repository.findStaff()
+            return staff.map(({ email, ...member }) => ({
+                ...member,
+                email: access.canManage && member.active ? email : null,
+            }))
+        },
+
         getAppointmentDetail,
 
         async claimAppointment(
             idOrCode: number | string,
             actorUserId: number,
+            access: ActionAccess,
             now: Date = new Date(),
         ): Promise<AppointmentDetail> {
             await repository.claim(String(idOrCode), actorUserId, now)
-            return getAppointmentDetail(idOrCode, now)
+            return getAppointmentDetail(idOrCode, access, now)
+        },
+
+        async assignAppointment(
+            idOrCode: number | string,
+            assigneeUserId: number,
+            actorUserId: number,
+            access: ActionAccess,
+            now: Date = new Date(),
+        ): Promise<AppointmentDetail> {
+            await repository.assign(String(idOrCode), assigneeUserId, actorUserId, now)
+            return getAppointmentDetail(idOrCode, access, now)
+        },
+
+        async correctRecord(
+            idOrCode: number | string,
+            actorUserId: number,
+            access: ActionAccess,
+            now: Date = new Date(),
+        ): Promise<CorrectedAppointment> {
+            const { warning } = await repository.correctRecord(String(idOrCode), actorUserId, now)
+            const detail = await getAppointmentDetail(idOrCode, access, now)
+            return { detail, warning }
+        },
+
+        async addNote(
+            idOrCode: number | string,
+            authorUserId: number,
+            text: string,
+            access: ActionAccess,
+            now: Date = new Date(),
+        ): Promise<AppointmentDetail> {
+            await repository.addNote(String(idOrCode), authorUserId, text, now)
+            return getAppointmentDetail(idOrCode, access, now)
         },
 
         async markAttended(
             idOrCode: number | string,
             actorUserId: number,
+            access: ActionAccess,
             now: Date = new Date(),
         ): Promise<AppointmentDetail> {
             await repository.markAttended(String(idOrCode), actorUserId, now)
-            return getAppointmentDetail(idOrCode, now)
+            return getAppointmentDetail(idOrCode, access, now)
         },
 
         async markNoShow(
             idOrCode: number | string,
             actorUserId: number,
+            access: ActionAccess,
             now: Date = new Date(),
         ): Promise<AppointmentDetail> {
             await repository.markNoShow(String(idOrCode), actorUserId, now)
-            return getAppointmentDetail(idOrCode, now)
+            return getAppointmentDetail(idOrCode, access, now)
+        },
+
+        async cancelAppointment(
+            idOrCode: number | string,
+            actorUserId: number,
+            reason: CancellationReason,
+            note: string | undefined,
+            access: ActionAccess,
+            now: Date = new Date(),
+        ): Promise<AppointmentDetail> {
+            const noticeEnabled = await cancellationNotice.isEnabled()
+            await repository.cancel(String(idOrCode), actorUserId, reason, note, now, { noticeDisabled: !noticeEnabled })
+            if (noticeEnabled) {
+                try {
+                    await notifications.notifyCancellation(String(idOrCode), actorUserId, now)
+                } catch (error) {
+                    logger.error("Erro no aviso de cancelamento ao cidadão depois do cancelamento", {
+                        appointmentId: String(idOrCode),
+                        code: errorCodeOf(error),
+                    })
+                }
+            }
+            return getAppointmentDetail(idOrCode, access, now)
+        },
+
+        async retryCancellationNotice(
+            idOrCode: number | string,
+            actorUserId: number,
+            access: ActionAccess,
+            now: Date = new Date(),
+        ): Promise<AppointmentDetail> {
+            const target = await repository.findCancellationNoticeTarget(String(idOrCode))
+            if (!target) {
+                throw new NotFoundError("Agendamento não encontrado")
+            }
+            const decision = decideRetryCancellationNotice(noticeStateOf(target, await cancellationNotice.isEnabled()), now)
+            if (!decision.allowed) {
+                throw decision.error
+            }
+            await notifications.notifyCancellation(String(idOrCode), actorUserId, now)
+            return getAppointmentDetail(idOrCode, access, now)
+        },
+
+        async getCancellationPreview(idOrCode: number | string): Promise<CancellationPreview> {
+            const target = await repository.findCancellationNoticeTarget(String(idOrCode))
+            if (!target) {
+                throw new NotFoundError("Agendamento não encontrado")
+            }
+            const state = await cancellationNotice.getState()
+            if (!state.enabled) {
+                return { noticeEnabled: false, problem: null, previews: [] }
+            }
+            return {
+                noticeEnabled: true,
+                problem: state.problem,
+                previews: CANCELLATION_REASONS.map((reason) => ({
+                    reason,
+                    message: renderizarModelo(
+                        CORPO_AVISO_CANCELAMENTO,
+                        parametrosAvisoCancelamento({
+                            name: target.name,
+                            protocol: target.protocol,
+                            appointmentDatetime: target.appointmentDatetime,
+                            reason,
+                        }),
+                    ),
+                })),
+            }
         },
     }
 }

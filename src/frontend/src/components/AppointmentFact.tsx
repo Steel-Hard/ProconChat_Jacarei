@@ -20,12 +20,20 @@ function valueClass(fact: AppointmentFactView): string {
     return classes.join(" ")
 }
 
+function factClass(fact: AppointmentFactView): string | undefined {
+    const classes = [fact.wide ? css.wide : "", fact.divided ? css.divided : ""].filter(Boolean)
+
+    return classes.length > 0 ? classes.join(" ") : undefined
+}
+
 function AppointmentFact({ fact }: AppointmentFactProps) {
     return (
-        <div className={fact.wide ? css.wide : undefined}>
+        <div className={factClass(fact)}>
             <dt className={css.factLabel}>{fact.label}</dt>
             <dd className={valueClass(fact)}>
-                {fact.status ? <StatusBadge kind="appointment" status={fact.status} /> : fact.value}
+                {fact.status ? <StatusBadge kind="appointment" status={fact.status} /> : null}
+                {fact.prefix ? <span className={css.prefix}>{fact.prefix}</span> : null}
+                {fact.prefix ? ` ${fact.value}` : fact.status ? null : fact.value}
             </dd>
         </div>
     )

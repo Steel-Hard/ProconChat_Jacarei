@@ -1,11 +1,15 @@
 import { useEffect, useId, useRef, type FormEvent, type MouseEvent, type ReactNode } from "react"
 import { useTranslation } from "react-i18next"
+import trapFocus from "@/utils/trapFocus"
 import css from "@/styles/components/confirmDialog.module.css"
 
 const FIELD_SELECTOR = "input:not([disabled]), select:not([disabled]), textarea:not([disabled])"
 
-const FOCUSABLE_SELECTOR =
-    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+const TONE_CLASS = {
+    primary: css.confirm,
+    danger: `${css.confirm} ${css.danger}`,
+    warning: `${css.confirm} ${css.warning}`
+}
 
 type ConfirmDialogProps = {
     open: boolean
@@ -14,10 +18,11 @@ type ConfirmDialogProps = {
     children?: ReactNode
     confirmLabel: string
     cancelLabel?: string
-    tone?: "primary" | "danger"
+    tone?: keyof typeof TONE_CLASS
     confirmDisabled?: boolean
     busy?: boolean
     submitOnEnter?: boolean
+    narrow?: boolean
     onConfirm: () => void
     onCancel: () => void
 }
@@ -33,6 +38,7 @@ function ConfirmDialog({
     confirmDisabled = false,
     busy = false,
     submitOnEnter = false,
+    narrow = false,
     onConfirm,
     onCancel
 }: ConfirmDialogProps) {
@@ -72,31 +78,7 @@ function ConfirmDialog({
             }
 
             if (event.key === "Tab") {
-                trapFocus(event)
-            }
-        }
-
-        function trapFocus(event: KeyboardEvent) {
-            const focusable = Array.from(
-                dialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? []
-            )
-
-            if (focusable.length === 0) {
-                event.preventDefault()
-                return
-            }
-
-            const first = focusable[0]
-            const last = focusable[focusable.length - 1]
-            const active = document.activeElement
-            const inside = active instanceof Node && dialogRef.current?.contains(active)
-
-            if (event.shiftKey && (active === first || !inside)) {
-                event.preventDefault()
-                last.focus()
-            } else if (!event.shiftKey && (active === last || !inside)) {
-                event.preventDefault()
-                first.focus()
+                trapFocus(event, dialogRef.current)
             }
         }
 
@@ -125,7 +107,7 @@ function ConfirmDialog({
         }
     }
 
-    const confirmClass = tone === "danger" ? `${css.confirm} ${css.danger}` : css.confirm
+    const confirmClass = TONE_CLASS[tone]
 
     const content = (
         <>
@@ -162,7 +144,7 @@ function ConfirmDialog({
             <dialog
                 ref={dialogRef}
                 open
-                className={css.dialog}
+                className={narrow ? `${css.dialog} ${css.narrow}` : css.dialog}
                 aria-modal="true"
                 aria-labelledby={titleId}
                 aria-describedby={description ? descriptionId : undefined}

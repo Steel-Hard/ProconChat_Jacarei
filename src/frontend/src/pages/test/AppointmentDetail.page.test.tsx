@@ -172,7 +172,7 @@ describe("AppointmentDetail.page: cabeçalho e dados", () => {
 
         const scope = within(name.closest("header") as HTMLElement)
         expect(scope.getByText("Comparece por representante")).toBeInTheDocument()
-        expect(scope.getByText("Remarcado pelo cidadão")).toBeInTheDocument()
+        expect(scope.getByText("Remarcado pelo cidadão")).toHaveAttribute("data-tone", "info")
         expect(scope.getByText("Fora da grade atual")).toBeInTheDocument()
         expect(factValue("Data original")).toBe("15/10/2026 às 14:30")
     })
@@ -231,6 +231,14 @@ describe("AppointmentDetail.page: cabeçalho e dados", () => {
                 "O titular indicou no chatbot que outra pessoa comparecerá em seu nome. Nome e CPF acima são sempre do titular; confira os documentos exigidos para representante."
             )
         ).toBeInTheDocument()
+    })
+
+    it("mostra CPF removido no fato CPF do agendamento anonimizado", async () => {
+        await withDetail(buildAppointmentDetail({ name: "Titular removido", cpf_masked: null }))
+
+        await screen.findByRole("heading", { level: 1, name: "Titular removido" })
+
+        expect(factValue("CPF do titular")).toBe("CPF removido")
     })
 
     it("não mostra nenhuma sequência de 11 dígitos na página", async () => {
@@ -309,7 +317,9 @@ describe("AppointmentDetail.page: linha do tempo e histórico", () => {
         expect(within(steps[0]).queryByText("Gerado com auxílio de IA")).not.toBeInTheDocument()
         expect(within(steps[1]).getByText("Resposta entregue")).toBeInTheDocument()
         expect(
-            within(steps[1]).getByText("Texto complementar gerado para contextualizar a resposta.")
+            within(steps[1]).getByText(
+                "Resposta escrita com auxílio de IA a partir do texto oficial."
+            )
         ).toBeInTheDocument()
         expect(within(steps[1]).getByText("Gerado com auxílio de IA")).toBeInTheDocument()
         expect(within(steps[2]).getByText("Protocolo F10464F0")).toBeInTheDocument()
@@ -391,7 +401,7 @@ describe("AppointmentDetail.page: linha do tempo e histórico", () => {
 
         const items = within(section("Histórico")).getAllByRole("listitem")
         expect(items.map((item) => item.textContent)).toEqual([
-            "Falha ao avisar o cidadão pelo WhatsApp19/10/2026 às 09:00",
+            "Falha ao avisar o cidadão do cancelamento19/10/2026 às 09:00",
             "Evento registrado19/10/2026 às 08:30",
             "Assumido automaticamente por Admin · Confirmado18/10/2026 às 10:47",
             "Criado pelo chatbot como Pendente18/10/2026 às 10:46"

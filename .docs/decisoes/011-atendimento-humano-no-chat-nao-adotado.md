@@ -22,3 +22,5 @@ Motivos:
 
 - O guia foi movido para `historico/`, com uma nota dizendo que não foi adotado.
 - A tela de Sessões continua somente leitura, sem ação de "assumir conversa".
+
+> **Estado em 2026-11-22:** a tela de Sessões foi descartada pelo grupo e não existe no painel. Ver a [decisão 013](013-telas-de-sessoes-e-dashboard-descartadas.md).

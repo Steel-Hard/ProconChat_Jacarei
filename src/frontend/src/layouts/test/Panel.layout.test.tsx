@@ -9,7 +9,6 @@ import ROUTES from "@/routers/paths"
 import mockMatchMedia from "@/testUtils/mockMatchMedia"
 import setViewportWidth from "@/testUtils/setViewportWidth"
 import loadPanelRoutes from "@/testUtils/loadPanelRoutes"
-import withPendingCount from "@/testUtils/withPendingCount"
 import type PanelAccount from "@/types/account/PanelAccount.types"
 
 vi.mock("@/navigation/navItemsReady", () => ({
@@ -58,7 +57,7 @@ function stubLogout(response: () => Response) {
     const fetchMock = vi.fn((_url: RequestInfo | URL, _init?: RequestInit) =>
         Promise.resolve(response())
     )
-    vi.stubGlobal("fetch", vi.fn(withPendingCount(fetchMock)))
+    vi.stubGlobal("fetch", fetchMock)
     return fetchMock
 }
 
@@ -81,7 +80,10 @@ describe("PanelLayout", { timeout: 15000 }, () => {
     })
 
     beforeEach(() => {
-        vi.stubGlobal("fetch", vi.fn(withPendingCount()))
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(() => new Promise<Response>(() => {}))
+        )
     })
 
     afterEach(() => {
@@ -97,6 +99,26 @@ describe("PanelLayout", { timeout: 15000 }, () => {
         expect(screen.getByRole("main")).toContainElement(
             screen.getByRole("heading", { name: "Sessões" })
         )
+    })
+
+    it("mostra Agendamentos no menu sem selo de pendentes e sem pedir a contagem", async () => {
+        const fetchMock = vi.fn((_url: RequestInfo | URL, _init?: RequestInit) =>
+            Promise.resolve(
+                new Response(JSON.stringify({ data: { count: 375 } }), {
+                    status: 200,
+                    headers: { "Content-Type": "application/json" }
+                })
+            )
+        )
+        vi.stubGlobal("fetch", fetchMock)
+
+        await renderPanel()
+
+        const link = screen.getByRole("link", { name: "Agendamentos" })
+        expect(link).toHaveTextContent(/^Agendamentos$/)
+        expect(
+            fetchMock.mock.calls.filter(([url]) => String(url).includes("pending-count"))
+        ).toHaveLength(0)
     })
 
     it("navega pelo menu sem sair do layout", async () => {
@@ -263,7 +285,7 @@ describe("PanelLayout", { timeout: 15000 }, () => {
                                     name: "Bruno Lima",
                                     email: "bruno@exemplo.gov.br",
                                     isAdmin: false,
-                                    permissions: ["sessions.view"]
+                                    permissions: ["appointments.view"]
                                 }
                             }
                         }),
@@ -369,33 +391,5 @@ describe("PanelLayout", { timeout: 15000 }, () => {
         expect(screen.getByRole("main")).toHaveTextContent("Carregando...")
         expect(screen.getByRole("navigation", { name: "Menu principal" })).toBeInTheDocument()
         expect(screen.getByRole("banner")).toBeInTheDocument()
-    })
-    it("mostra no menu o número de agendamentos pendentes vindo da API", async () => {
-        vi.stubEnv("VITE_API_URL", "http://api.test")
-        vi.resetModules()
-        vi.stubGlobal(
-            "fetch",
-            vi.fn(
-                async () =>
-                    new Response(JSON.stringify({ data: { count: 3 } }), {
-                        status: 200,
-                        headers: { "Content-Type": "application/json" }
-                    })
-            )
-        )
-        const { default: FreshPanelLayout } = await import("@/layouts/Panel.layout")
-        const { default: freshRenderWithStore } = await import("@/testUtils/renderWithStore")
-        const router = createMemoryRouter(
-            [{ element: <FreshPanelLayout />, children: [{ path: "/", element: <p /> }] }],
-            { initialEntries: ["/"] }
-        )
-
-        freshRenderWithStore(<RouterProvider router={router} />, {
-            preloadedState: { account: { current: admin, status: "authenticated" } }
-        })
-
-        expect(
-            await screen.findByRole("link", { name: "Agendamentos 3 agendamentos pendentes" })
-        ).toBeInTheDocument()
     })
 })

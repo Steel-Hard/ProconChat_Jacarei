@@ -84,9 +84,9 @@ O projeto busca:
 |---|---|---|
 | Backend e Gateway | Node.js + TypeScript (Express), Vitest | Implementado |
 | Banco | PostgreSQL 15, migrations com `node-pg-migrate` | Implementado |
-| LLM | Ollama + `llama3.2:3b`, local (RP05: nenhuma API externa de LLM) | Serviço implementado; ligado ao fluxo na Sprint 3 |
+| LLM | Ollama + `llama3.2:3b`, local (RP05: nenhuma API externa de LLM) | Implementado, ligado ao fluxo (#66) |
 | WhatsApp | **WhatsApp Cloud API** oficial | Implementado |
-| Painel web | React 19 + Vite + TypeScript, a partir do `template-react` | Parcial: login, "Minha conta", Agendamentos, Detalhe do agendamento e WhatsApp; demais telas na Sprint 3 |
+| Painel web | React 19 + Vite + TypeScript, a partir do `template-react` | Implementado: login, "Minha conta", Agendamentos, Detalhe do agendamento, Conteúdo, Horários, Documentos, Usuários, Relatórios, WhatsApp e política de privacidade. Dashboard e Sessões foram descartados por decisão do grupo |
 | Infraestrutura | Docker Compose, GitHub Actions (CI/CD), VM na nuvem com HTTPS | Implementado |
 
 Detalhes em [`.docs/architecture/architecture.md`](.docs/architecture/architecture.md).
@@ -99,11 +99,12 @@ Detalhes em [`.docs/architecture/architecture.md`](.docs/architecture/architectu
 | :----: | :--------: | :--------: | :-------------: | :----------------------------------: | :-------------------: |
 |   1   | 10/08/2026 | 14/09/2026 | 🟢 Concluída | [Ver Gráfico](.docs/sprints/sprint1/burndown.svg) | [Ver](.docs/sprints/sprint1/README.md) |
 |   2   | 15/09/2026 | 19/10/2026 | 🟢 Concluída | [Ver Gráfico](.docs/sprints/sprint2/burndown.svg) | [Ver](.docs/sprints/sprint2/README.md) |
-|   3   | 20/10/2026 | 23/11/2026 |   ⚪ Pendente   | — | — |
+|   3   | 20/10/2026 | 23/11/2026 | 🟢 Concluída | [Ver Gráfico](.docs/sprints/sprint3/burndown.svg) | [Ver](.docs/sprints/sprint3/README.md) |
 
 > O gráfico e as tabelas de origem do burndown da Sprint 1 estão em
 > [`.docs/sprints/sprint1/05-burndown.md`](.docs/sprints/sprint1/05-burndown.md). Os da Sprint 2 (18 de 18
-> issues concluídas) estão em [`.docs/sprints/sprint2/burndown.md`](.docs/sprints/sprint2/burndown.md).
+> issues concluídas) estão em [`.docs/sprints/sprint2/burndown.md`](.docs/sprints/sprint2/burndown.md). Os da Sprint 3 (25 issues
+> no escopo, todas concluídas) estão em [`.docs/sprints/sprint3/burndown.md`](.docs/sprints/sprint3/burndown.md).
 
 ---
 
@@ -115,25 +116,26 @@ Detalhes em [`.docs/architecture/architecture.md`](.docs/architecture/architectu
 |  RF02  | Tabela de Decisões       |       Apresentar opções de resposta com base nos fluxos fornecidos pelo PROCON.       | 🟢 Concluído |
 |  RF03  | Fluxos Decisórios        |       Apresentar perguntas e alternativas de maneira sequencial e compreensível.       | 🟢 Concluído |
 |  RF04  | Resposta Orientadora      |      Gerar ao final do fluxo um resumo do caso e os próximos passos recomendados.      | 🟢 Concluído |
-|  RF05  | Complemento com LLM       | Permitir geração textual explicativa por LLM dentro dos limites definidos pelo PROCON. | 🟡 Parcial |
-|  RF06  | Registro de Interações  |       Registrar interações para análise posterior dos fluxos mais utilizados.       | 🟡 Parcial |
-|  RF07  | Agendamento Presencial    |       Realizar agendamento quando o chatbot não solucionar a dúvida do cidadão.       | 🟡 Parcial |
-|  RF08  | Gerenciamento Web         |       Disponibilizar interface web para gerenciamento dos atendimentos agendados.       | 🟡 Parcial |
+|  RF05  | Complemento com LLM       | Permitir geração textual explicativa por LLM dentro dos limites definidos pelo PROCON. | 🟢 Concluído |
+|  RF06  | Registro de Interações  |       Registrar interações para análise posterior dos fluxos mais utilizados.       | 🟢 Concluído |
+|  RF07  | Agendamento Presencial    |       Realizar agendamento quando o chatbot não solucionar a dúvida do cidadão.       | 🟢 Concluído |
+|  RF08  | Gerenciamento Web         |       Disponibilizar interface web para gerenciamento dos atendimentos agendados.       | 🟢 Concluído |
 
 | Número | Recurso Não-Funcional |                                   Síntese do Requisito                                   |   Status   |
 | :-----: | ---------------------- | :---------------------------------------------------------------------------------------: | :---------: |
-|  RNF01  | Usabilidade            |            Utilizar linguagem clara, objetiva e acessível ao público geral.            | 🟡 Parcial |
-|  RNF02  | Disponibilidade        | Garantir alta disponibilidade e tempo de resposta adequado para conversas em tempo real. | ⚪ Pendente |
+|  RNF01  | Usabilidade            |            Utilizar linguagem clara, objetiva e acessível ao público geral.            | 🟢 Concluído |
+|  RNF02  | Disponibilidade        | Garantir alta disponibilidade e tempo de resposta adequado para conversas em tempo real. | 🟢 Concluído |
 |  RNF03  | LGPD                   |        Garantir tratamento adequado e proteção das informações dos usuários.        | 🟢 Concluído |
 |  RNF04  | Caráter Orientativo   |        Informar explicitamente que as respostas não substituem atendimento formal        | 🟢 Concluído |
-|  RNF05  | Transparência LLM     |      Identificar claramente respostas geradas com auxílio de modelos de linguagem.      | ⚪ Pendente |
+|  RNF05  | Transparência LLM     |      Identificar claramente respostas geradas com auxílio de modelos de linguagem.      | 🟢 Concluído |
 |  RNF06  | Docker                 |                      Garantir a execução da aplicação em Docker                      | 🟢 Concluído |
 |  RNF07  | Documentação         |         Documentar instalação e requisitos necessários de hardware e software.         | 🟢 Concluído |
 |  RNF08  | Boas Práticas         | Adotar metodologia ágil, CI/CD, versionamento, testes e documentação técnica mínima. | 🟢 Concluído |
 
-> Detalhamento completo do que foi entregue, testado e do que ficou pendente/em risco no
-> [fechamento da Sprint 1](.docs/sprints/sprint1/README.md): [issues e PRs](.docs/sprints/sprint1/04-issues-e-prs.md),
-> [entregas de 14/09](.docs/sprints/sprint1/06-entregas-14-09.md) e [riscos](.docs/sprints/sprint1/07-riscos-e-proximos-passos.md).
+> O status de cada requisito, com a fonte, está na [rastreabilidade](.docs/desafio/rastreabilidade.md). O que foi entregue, testado e o que ficou
+> de fora está no fechamento de cada sprint: [Sprint 1](.docs/sprints/sprint1/README.md) ([issues e PRs](.docs/sprints/sprint1/04-issues-e-prs.md),
+> [entregas de 14/09](.docs/sprints/sprint1/06-entregas-14-09.md) e [riscos](.docs/sprints/sprint1/07-riscos-e-proximos-passos.md)),
+> [Sprint 2](.docs/sprints/sprint2/README.md) e [Sprint 3](.docs/sprints/sprint3/README.md).
 
 ---
 
@@ -184,22 +186,48 @@ com base nos requisitos e fluxos decisórios fornecidos pelo PROCON.
 ### Pré-requisitos
 
 - [Docker](https://docs.docker.com/get-docker/) e Docker Compose v2 (`docker compose`, sem hífen);
+- `openssl`, para gerar as chaves do `.env` (já vem no Linux e no macOS; no Windows, use o WSL);
+- Acesso à internet na primeira subida: o Docker baixa as imagens e o serviço `llm-pull` baixa o modelo de IA (cerca de 2 GB), o que pode demorar;
 - Nenhuma outra dependência de host é necessária — Node.js, PostgreSQL e o
   modelo de linguagem rodam todos dentro dos containers.
+
+Os requisitos de hardware (CPU, memória e disco, medidos) e de software para a produção estão no
+[documento do software](.docs/guias/documento-do-software.pdf) (texto-fonte em
+[`.docs/guias/documento-do-software.md`](.docs/guias/documento-do-software.md)).
 
 ### Passo a passo
 
 ```bash
-git clone <URL_DO_REPOSITORIO>
-cd <NOME_DO_REPOSITORIO>
-cp .env.example .env   # ajuste os valores se necessário; os defaults servem para desenvolvimento
+git clone https://github.com/Steel-Hard/ProconChat_Jacarei.git
+cd ProconChat_Jacarei
+cp .env.example .env
+openssl rand -hex 32
+```
+
+Abra o `.env` e preencha duas variáveis, cada uma com o resultado de `openssl rand -hex 32`
+(64 caracteres hexadecimais):
+
+- `ENCRYPTION_KEY`: obrigatória e sem valor padrão. Sem ela, o Docker Compose recusa subir com
+  `defina ENCRYPTION_KEY no .env`. Ela cifra as credenciais da Meta guardadas no banco; depois que
+  houver credenciais salvas, não a troque (README do backend, "Trocar a `ENCRYPTION_KEY`");
+- `AUTH_TOKEN_SECRET`: assina as sessões do painel.
+
+Confira também `ROOT_EMAIL` e `ROOT_PASSWORD`: são o e-mail e a senha da conta Admin criada na primeira
+subida. A senha precisa ter de 8 caracteres a 72 bytes. O `.env.example` traz valores de desenvolvimento; troque-os se outras pessoas acessarem a máquina.
+Os demais valores do `.env.example` servem para desenvolvimento.
+
+Depois, suba tudo:
+
+```bash
 docker compose up --build
 ```
 
-Antes do `up`, preencha `ENCRYPTION_KEY` no `.env` com o resultado de `openssl rand -hex 32`
-(64 caracteres hexadecimais). Ela não tem valor padrão: sem ela, o Docker Compose recusa subir com
-`defina ENCRYPTION_KEY no .env`. Ela cifra as credenciais da Meta guardadas no banco; depois que
-houver credenciais salvas, não a troque (README do backend, "Trocar a `ENCRYPTION_KEY`").
+Na primeira vez, o `llm-pull` baixa o modelo de IA; acompanhe com `docker compose ps -a`. Nem todo
+serviço tem healthcheck: `postgres`, `backend` e `ollama` aparecem como `healthy`, `frontend` e `gateway`
+como `Up`, e `migrate`, `seed` e `llm-pull` terminam sozinhos com código `0`. Abra o painel exatamente em
+`http://localhost:8081` (porta `FRONTEND_PORT`), e não em `127.0.0.1`: nesse endereço o login dá `403`,
+pela proteção de origem. Entre com `ROOT_EMAIL` e `ROOT_PASSWORD`. Nesse modo não há HTTPS, e o WhatsApp real não entrega mensagens
+à máquina; para isso, use a produção ([`.docs/infra/deploy.md`](.docs/infra/deploy.md)).
 
 Isso sobe, com um único comando, todo o ambiente do MVP:
 
@@ -223,6 +251,7 @@ todas são obrigatórias no `.env`. Veja `.env.example` para a lista completa.
 - [`.docs/database/migrations.md`](.docs/database/migrations.md) — schema, migrations e como resetar o banco.
 - [`src/backend/README.md`](src/backend/README.md) — rodar o backend fora do Docker, rotas disponíveis, testes.
 - [`src/gateway/README.md`](src/gateway/README.md) — subir e validar o Gateway WhatsApp com a Cloud API.
+- [`src/frontend/README.md`](src/frontend/README.md) — rodar o painel web fora do Docker, comandos, estrutura e testes.
 - [`.docs/llm/contrato.md`](.docs/llm/contrato.md) — contrato de entrada/saída do serviço LLM.
 - [`.docs/README.md`](.docs/README.md) — índice de toda a documentação: requisitos, decisões, regras das telas e protótipo.
 

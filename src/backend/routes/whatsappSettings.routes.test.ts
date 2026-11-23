@@ -4,6 +4,10 @@ import app from "../app"
 import { authRepository } from "../repositories/auth.repository"
 import { whatsappSettingsRepository } from "../repositories/whatsappSettings.repository"
 import { MockWhatsAppSettingsRepository } from "../repositories/mock/whatsappSettingsMock.repository"
+import { AuditLogStubRepository } from "../repositories/mock/auditLogStub.repository"
+import { auditLogRepository } from "../repositories/auditLog.repository"
+import { OutboundMessageStubRepository } from "../repositories/mock/outboundMessageStub.repository"
+import { outboundMessageRepository } from "../repositories/outboundMessage.repository"
 import { metaGraphClient } from "../clients/metaGraph.client"
 import { MockMetaGraphClient } from "../clients/metaGraphMock.client"
 import { gatewayClient } from "../clients/gateway.client"
@@ -18,6 +22,15 @@ vi.mock("../repositories/auth.repository", () => ({
 vi.mock("../repositories/whatsappSettings.repository", async () => {
     const { MockWhatsAppSettingsRepository: Repository } = await import("../repositories/mock/whatsappSettingsMock.repository")
     return { whatsappSettingsRepository: new Repository(null) }
+})
+
+vi.mock("../repositories/outboundMessage.repository", async () => {
+    const { OutboundMessageStubRepository: Repository } = await import("../repositories/mock/outboundMessageStub.repository")
+    return { outboundMessageRepository: new Repository() }
+})
+vi.mock("../repositories/auditLog.repository", async () => {
+    const { AuditLogStubRepository: Repository } = await import("../repositories/mock/auditLogStub.repository")
+    return { auditLogRepository: new Repository() }
 })
 
 vi.mock("../clients/metaGraph.client", async (importOriginal) => {
@@ -44,6 +57,7 @@ const staff = { id: 2, name: "Equipe", email: "equipe@exemplo.test", isAdmin: fa
 
 const settings = whatsappSettingsRepository as unknown as MockWhatsAppSettingsRepository
 const meta = metaGraphClient as unknown as MockMetaGraphClient
+const audit = auditLogRepository as unknown as AuditLogStubRepository
 
 const routes = [
     { method: "get", path: "/api/v1/whatsapp/settings" },
@@ -51,6 +65,8 @@ const routes = [
     { method: "put", path: "/api/v1/whatsapp/settings" },
     { method: "post", path: "/api/v1/whatsapp/settings/pause" },
     { method: "post", path: "/api/v1/whatsapp/settings/resume" },
+    { method: "put", path: "/api/v1/whatsapp/settings/cancellation-notice" },
+    { method: "get", path: "/api/v1/whatsapp/settings/history" },
 ] as const
 
 const stateChangingRoutes = routes.filter((route) => route.method !== "get")
@@ -75,12 +91,16 @@ function savedView(overrides: Record<string, unknown> = {}) {
         credentialsValid: null,
         credentialsCheckedAt: null,
         autoReplyPaused: false,
+        cancellationNoticeEnabled: false,
+        cancellationNoticeProblem: null,
         pausedMessage: PAUSED_MESSAGE,
         updatedBy: null,
         updatedAt: NOW.toISOString(),
         displayPhoneNumber: null,
         verifiedName: null,
         accessTokenLifetime: { kind: "UNKNOWN", expiresAt: null },
+        credentialsStatus: "NOT_CHECKED",
+        webhook: { lastEventAt: null, stale: true },
         ...overrides,
     }
 }
@@ -97,11 +117,13 @@ describe("/api/v1/whatsapp/settings", () => {
             appSecretEncrypted: encrypt(SAVED_SECRET),
             verifyToken: VERIFY_TOKEN,
             autoReplyPaused: false,
+            cancellationNoticeEnabled: false,
             credentialsCheckedAt: null,
             credentialsValid: null,
             displayPhoneNumber: null,
             verifiedName: null,
             accessTokenLifetime: { kind: "UNKNOWN", expiresAt: null },
+            lastWebhookEventAt: null,
             updatedBy: null,
             updatedAt: NOW,
         }
@@ -150,6 +172,19 @@ describe("/api/v1/whatsapp/settings", () => {
         expect(response.text).not.toContain(SAVED_TOKEN)
         expect(response.text).not.toContain(SAVED_SECRET)
         expect(response.text).not.toContain("v1:")
+    })
+
+    test("GET devolve ao Admin o estado das credenciais e o ultimo evento do webhook", async () => {
+        if (settings.row) {
+            settings.row.credentialsValid = false
+            settings.row.lastWebhookEventAt = new Date(NOW.getTime() - 60 * 60 * 1000)
+        }
+
+        const response = await call("get", "/api/v1/whatsapp/settings")
+
+        expect(response.status).toBe(200)
+        expect(response.body.data.credentialsStatus).toBe("INVALID")
+        expect(response.body.data.webhook).toEqual({ lastEventAt: "2026-10-14T12:00:00.000Z", stale: false })
     })
 
     test("GET devolve o tipo do token guardado sem consultar a Meta", async () => {
@@ -224,6 +259,7 @@ describe("/api/v1/whatsapp/settings", () => {
             data: savedView({
                 accessToken: { configured: true, last4: "77Zz" },
                 credentialsValid: true,
+                credentialsStatus: "VALID",
                 credentialsCheckedAt: NOW.toISOString(),
                 updatedBy: { id: 1, name: "Admin" },
                 displayPhoneNumber: "+55 12 99999-0000",
@@ -284,5 +320,106 @@ describe("/api/v1/whatsapp/settings", () => {
         expect(response.status).toBe(200)
         expect(response.body).toEqual({ data: savedView({ autoReplyPaused: false, updatedBy: { id: 1, name: "Admin" } }) })
         expect(settings.row?.autoReplyPaused).toBe(false)
+    })
+
+    test("GET / devolve o aviso de cancelamento desligado por padrão", async () => {
+        const response = await call("get", "/api/v1/whatsapp/settings")
+
+        expect(response.status).toBe(200)
+        expect(response.body.data.cancellationNoticeEnabled).toBe(false)
+    })
+
+    test("GET / com o aviso ligado e falha de pagamento recente traz cancellationNoticeProblem sem telefone", async () => {
+        const outbound = outboundMessageRepository as unknown as OutboundMessageStubRepository
+        outbound.problemSignals = {
+            failures: [{ kind: "CANCELLATION", errorCode: "131042", failedAt: new Date(NOW.getTime() - 60_000) }],
+            lastSuccessByKind: {},
+        }
+        if (settings.row) {
+            settings.row.cancellationNoticeEnabled = true
+        }
+
+        const response = await call("get", "/api/v1/whatsapp/settings")
+
+        expect(response.body.data.cancellationNoticeProblem).toEqual({
+            code: "PAYMENT_METHOD",
+            metaErrorCode: "131042",
+            message: "a conta da Meta está sem forma de pagamento",
+        })
+        outbound.problemSignals = { failures: [], lastSuccessByKind: {} }
+    })
+
+    test("PUT /cancellation-notice liga o aviso na hora e devolve a leitura com quem alterou", async () => {
+        const response = await call("put", "/api/v1/whatsapp/settings/cancellation-notice").send({ enabled: true })
+
+        expect(response.status).toBe(200)
+        expect(response.body).toEqual({ data: savedView({ cancellationNoticeEnabled: true, updatedBy: { id: 1, name: "Admin" } }) })
+        expect(response.headers["cache-control"]).toBe("no-store")
+        expect(settings.row?.cancellationNoticeEnabled).toBe(true)
+    })
+
+    test("PUT /cancellation-notice desliga o aviso", async () => {
+        if (settings.row) {
+            settings.row.cancellationNoticeEnabled = true
+        }
+
+        const response = await call("put", "/api/v1/whatsapp/settings/cancellation-notice").send({ enabled: false })
+
+        expect(response.status).toBe(200)
+        expect(response.body.data.cancellationNoticeEnabled).toBe(false)
+        expect(settings.row?.cancellationNoticeEnabled).toBe(false)
+    })
+
+    test("PUT /cancellation-notice recusa campo extra no corpo com 400 e não altera o aviso", async () => {
+        const response = await call("put", "/api/v1/whatsapp/settings/cancellation-notice").send({ enabled: true, extra: 1 })
+
+        expect(response.status).toBe(400)
+        expect(settings.row?.cancellationNoticeEnabled).toBe(false)
+    })
+
+    test.each([{}, { enabled: "true" }, { enabled: 1 }, { enabled: null }])("PUT /cancellation-notice recusa o corpo %j com 400 e não altera o aviso", async (body) => {
+        const response = await call("put", "/api/v1/whatsapp/settings/cancellation-notice").send(body)
+
+        expect(response.status).toBe(400)
+        expect(settings.row?.cancellationNoticeEnabled).toBe(false)
+    })
+
+    test("GET /history devolve ao Admin as alterações com no-store, sem token nem App Secret em nenhuma forma", async () => {
+        if (settings.row) {
+            settings.row.accessTokenEncrypted = encrypt("EAAtokenSecreto123456")
+            settings.row.appSecretEncrypted = encrypt("appsecret987654")
+        }
+        audit.entries = [
+            {
+                id: "12",
+                action: "credentials_saved",
+                fields: ["businessAccountId", "accessToken"],
+                actor: { id: 1, name: "Admin" },
+                createdAt: new Date("2026-10-14T12:59:00.000Z"),
+            },
+            { id: "11", action: "auto_reply_resumed", fields: [], actor: null, createdAt: new Date("2026-10-14T12:00:00.000Z") },
+        ]
+
+        const response = await call("get", "/api/v1/whatsapp/settings/history")
+
+        expect(response.status).toBe(200)
+        expect(response.headers["cache-control"]).toBe("no-store")
+        expect(response.body).toEqual({
+            data: {
+                items: [
+                    {
+                        id: "12",
+                        action: "credentials_saved",
+                        fields: ["businessAccountId", "accessToken"],
+                        actor: { id: 1, name: "Admin" },
+                        createdAt: "2026-10-14T12:59:00.000Z",
+                    },
+                    { id: "11", action: "auto_reply_resumed", fields: [], actor: null, createdAt: "2026-10-14T12:00:00.000Z" },
+                ],
+            },
+        })
+        for (const secret of ["EAAtokenSecreto123456", "appsecret987654", "v1:", "3456", "7654"]) {
+            expect(response.text).not.toContain(secret)
+        }
     })
 })

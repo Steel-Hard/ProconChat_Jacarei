@@ -15,7 +15,7 @@ Não são serviços 1:1 — são responsabilidades separadas conforme RP03 (modu
 | ↳ **Motor de Decisão** (módulo interno do Backend) | Lê categorias/perguntas do banco e decide a navegação do fluxo | Não — módulo de código | Implementado e ligado ao fluxo |
 | ↳ **Scheduler / Agendamento** (módulo interno do Backend) | Aciona quando o fluxo não resolve a dúvida (RF07) | Não — módulo de código | **Não implementado** |
 | **LLM Service** | Ollama + modelo local pequeno; gera **só** o texto explicativo final, nunca decide o fluxo | Sim (`ollama` + `llm-pull`) | Implementado, não plugado ao fluxo |
-| **Interface Web Admin** | Painel autenticado da equipe do PROCON (login único, sem RBAC — RF12) | Planejado | **Não implementado** |
+| **Interface Web Admin** | Painel autenticado da equipe do PROCON (login único, sem RBAC — RF12, substituído pela [decisão 004](../../decisoes/004-contas-e-permissoes-granulares.md)) | Planejado | **Não implementado** |
 | **PostgreSQL** | Persistência única, compartilhada entre chatbot e admin | Sim (`postgres`) | Implementado |
 
 ### 4.2 Relações entre os componentes
@@ -63,7 +63,7 @@ Persistência única em PostgreSQL. As tabelas vivem em dois lugares mantidos em
 | **Categories** | As categorias do fluxo decisório (7 no total) | `active BOOLEAN` implementa RF11 — desativar sem excluir, preservando o histórico de interações |
 | **Questions** | Um item do fluxo dentro de uma categoria; corresponde a um item do FAQ do PROCON | Campos espelham 1:1 o FAQ real: `question`, `legal_basis`, `answer`, `requires_in_person`, `in_person_note`, `out_of_scope`, `active` |
 | **RequiredDocuments** | Documentos exigidos por uma pergunta (0..N) | Ligada a `Questions` por `question_id` |
-| **Users** | Conta de acesso ao painel admin | **Sem coluna de papel/role** — decisão do grupo (RF12): um único nível de permissão para toda a equipe |
+| **Users** | Conta de acesso ao painel admin | **Sem coluna de papel/role** — decisão do grupo (RF12): um único nível de permissão para toda a equipe. Substituído pela [decisão 004](../../decisoes/004-contas-e-permissoes-granulares.md) |
 | **Sessions** | Uma conversa no WhatsApp, do início ao fim do fluxo | Ver seção 5.2 (LGPD) e 5.3 (estado de navegação) |
 | **Interactions** | Registro estruturado de cada passo do fluxo, local e independente do histórico do WhatsApp (RF06/RF14) | `answered_via_llm` sustenta a rastreabilidade exigida por RNF05. **Tabela criada, mas nada escreve nela ainda** |
 | **Appointments** | Atendimento presencial acionado quando o fluxo não resolve (RF07) | CPF guardado como `cpf_hash`; `name` em texto puro porque a equipe precisa identificar a pessoa visualmente. **Tabela criada, sem fluxo que a alimente** |

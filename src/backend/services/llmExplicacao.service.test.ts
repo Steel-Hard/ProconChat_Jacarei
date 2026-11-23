@@ -14,7 +14,7 @@ const resumoBase: RespostaFinalOutput = {
 }
 
 function criarClientMock(): ILlmClient {
-    return { gerarTextoExplicativo: vi.fn() }
+    return { gerarTextoExplicativo: vi.fn(), isAvailable: vi.fn() }
 }
 
 describe("llmExplicacaoService", () => {

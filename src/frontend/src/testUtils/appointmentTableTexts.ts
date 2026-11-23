@@ -20,7 +20,8 @@ const APPOINTMENT_TABLE_TEXTS: AppointmentTableTexts = {
         offGrid: "Fora da grade atual",
         byRepresentative: "Por representante",
         claim: "Assumir",
-        separator: "·"
+        separator: "·",
+        cpfRemoved: "CPF removido"
     }
 }
 

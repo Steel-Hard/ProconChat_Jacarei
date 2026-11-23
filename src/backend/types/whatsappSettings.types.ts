@@ -1,3 +1,5 @@
+import { CancellationNoticeProblem, OutboundKind } from "./outboundMessage.types"
+
 export type AccessTokenLifetime =
     | { kind: "PERMANENT"; expiresAt: null }
     | { kind: "EXPIRING"; expiresAt: string }
@@ -15,11 +17,13 @@ export interface WhatsAppSettingsRow {
     appSecretEncrypted: string | null
     verifyToken: string
     autoReplyPaused: boolean
+    cancellationNoticeEnabled: boolean
     credentialsCheckedAt: Date | null
     credentialsValid: boolean | null
     displayPhoneNumber: string | null
     verifiedName: string | null
     accessTokenLifetime: AccessTokenLifetime
+    lastWebhookEventAt: Date | null
     updatedBy: WhatsAppSettingsUpdatedBy | null
     updatedAt: Date
 }
@@ -38,7 +42,22 @@ export interface SaveCredentialsInput {
     verifiedName: string
     accessTokenLifetime: AccessTokenLifetime | null
     updatedBy: number
+    auditFields: WhatsAppAuditField[]
 }
+
+export interface WhatsAppHistoryItemView {
+    id: string
+    action: string
+    fields: string[]
+    actor: WhatsAppSettingsUpdatedBy | null
+    createdAt: string
+}
+
+export interface WhatsAppHistoryView {
+    items: WhatsAppHistoryItemView[]
+}
+
+export type WhatsAppAuditField = "phoneNumberId" | "businessAccountId" | "accessToken" | "appSecret"
 
 export interface SecretView {
     configured: boolean
@@ -56,12 +75,37 @@ export interface WhatsAppSettingsView {
     credentialsValid: boolean | null
     credentialsCheckedAt: string | null
     autoReplyPaused: boolean
+    cancellationNoticeEnabled: boolean
+    cancellationNoticeProblem: CancellationNoticeProblem | null
     pausedMessage: string
     updatedBy: WhatsAppSettingsUpdatedBy | null
     updatedAt: string
     displayPhoneNumber: string | null
     verifiedName: string | null
     accessTokenLifetime: AccessTokenLifetime
+    credentialsStatus: CredentialsStatus
+    webhook: WebhookStatusView
+}
+
+export interface DeliveryFailureView {
+    id: string
+    kind: OutboundKind
+    errorCode: string | null
+    failedAt: string
+    appointmentId: string | null
+}
+
+export interface DeliveryFailuresView {
+    since: string
+    count: number
+    items: DeliveryFailureView[]
+}
+
+export type CredentialsStatus = "NOT_CHECKED" | "INVALID" | "EXPIRED" | "VALID"
+
+export interface WebhookStatusView {
+    lastEventAt: string | null
+    stale: boolean
 }
 
 export interface WhatsAppSettingsInput {
@@ -103,4 +147,48 @@ export interface WhatsAppInternalConfig {
     appSecret: string | null
     verifyToken: string
     graphApiVersion: string
+}
+
+export type MetaAuthInput = Pick<ConnectionCheckInput, "accessToken" | "appSecret" | "graphApiVersion">
+
+export type MessageTemplateKind = "CANCELLATION" | "REMINDER"
+
+export type MessageTemplateStatusCode = "APPROVED" | "PENDING" | "REJECTED" | "NOT_FOUND" | "OTHER"
+
+export interface MessageTemplateRef {
+    kind: MessageTemplateKind
+    name: string
+    languageCode: string
+}
+
+export interface MessageTemplateStatus extends MessageTemplateRef {
+    status: MessageTemplateStatusCode
+    metaStatus: string | null
+}
+
+export type TemplatesStatusResult =
+    | { ok: true; templates: MessageTemplateStatus[] }
+    | { ok: false; reason: ConnectionTestReason }
+
+export interface TemplatesStatusView {
+    checkedAt: string
+    templates: MessageTemplateStatus[]
+}
+
+export type QualityRating = "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN"
+
+export type PhoneNumberStatusResult =
+    | { ok: true; qualityRating: QualityRating; tier: string | null; dailyLimit: number | null }
+    | { ok: false; reason: ConnectionTestReason }
+
+export interface NumberStatusView {
+    checkedAt: string
+    qualityRating: QualityRating
+    messagingLimit: { tier: string | null; dailyLimit: number | null; usedLast24h: number }
+}
+
+
+export interface CancellationNoticeSetting {
+    enabled: boolean
+    problem: CancellationNoticeProblem | null
 }

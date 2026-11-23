@@ -22,24 +22,118 @@ const staffWithAllPermissions: PanelAccount = {
 }
 
 describe("sidebarNavGroups com as flags de produção", () => {
-    it("Agendamentos e WhatsApp estão liberados", () => {
+    it("Agendamentos, Relatórios, Conteúdo, Horários de atendimento, Documentos, Usuários e WhatsApp estão liberados", () => {
         expect(
             Object.entries(NAV_ITEMS_READY)
                 .filter(([, ready]) => ready)
                 .map(([key]) => key)
-        ).toEqual(["appointments", "whatsapp"])
-    })
-
-    it("o Admin vê Agendamentos em Operação e WhatsApp em Configurações", () => {
-        expect(sidebarNavGroups(admin)).toEqual([
-            { key: "operation", items: [{ key: "appointments", path: ROUTES.appointments }] },
-            { key: "settings", items: [{ key: "whatsapp", path: ROUTES.whatsapp }] }
+        ).toEqual([
+            "appointments",
+            "reports",
+            "content",
+            "schedule",
+            "documents",
+            "users",
+            "whatsapp"
         ])
     })
 
-    it("um funcionário com todas as permissões vê só Agendamentos em Operação", () => {
+    it("o Admin vê Agendamentos e Relatórios em Operação, Conteúdo em Chatbot e as outras telas prontas em Configurações", () => {
+        expect(sidebarNavGroups(admin)).toEqual([
+            {
+                key: "operation",
+                items: [
+                    { key: "appointments", path: ROUTES.appointments },
+                    { key: "reports", path: ROUTES.reports }
+                ]
+            },
+            { key: "chatbot", items: [{ key: "content", path: ROUTES.content }] },
+            {
+                key: "settings",
+                items: [
+                    { key: "schedule", path: ROUTES.schedule },
+                    { key: "documents", path: ROUTES.documents },
+                    { key: "users", path: ROUTES.users },
+                    { key: "whatsapp", path: ROUTES.whatsapp }
+                ]
+            }
+        ])
+    })
+
+    it("um funcionário com todas as permissões vê Operação, Chatbot e Configurações sem WhatsApp", () => {
         expect(sidebarNavGroups(staffWithAllPermissions)).toEqual([
-            { key: "operation", items: [{ key: "appointments", path: ROUTES.appointments }] }
+            {
+                key: "operation",
+                items: [
+                    { key: "appointments", path: ROUTES.appointments },
+                    { key: "reports", path: ROUTES.reports }
+                ]
+            },
+            { key: "chatbot", items: [{ key: "content", path: ROUTES.content }] },
+            {
+                key: "settings",
+                items: [
+                    { key: "schedule", path: ROUTES.schedule },
+                    { key: "documents", path: ROUTES.documents },
+                    { key: "users", path: ROUTES.users }
+                ]
+            }
+        ])
+    })
+
+    it("um funcionário sem Gerenciar conteúdo, usuários, atendimento nem Documentos vê só Operação", () => {
+        const staffWithoutUsers: PanelAccount = {
+            ...staffWithAllPermissions,
+            permissions: PERMISSION_KEYS.filter(
+                (key) =>
+                    key !== "content.manage" &&
+                    key !== "users.manage" &&
+                    key !== "schedule.configure" &&
+                    key !== "documents.configure"
+            )
+        }
+
+        expect(sidebarNavGroups(staffWithoutUsers)).toEqual([
+            {
+                key: "operation",
+                items: [
+                    { key: "appointments", path: ROUTES.appointments },
+                    { key: "reports", path: ROUTES.reports }
+                ]
+            }
+        ])
+    })
+
+    it("um funcionário só com Gerenciar conteúdo vê só Conteúdo", () => {
+        const contentOnly: PanelAccount = {
+            ...staffWithAllPermissions,
+            permissions: ["content.manage"]
+        }
+
+        expect(sidebarNavGroups(contentOnly)).toEqual([
+            { key: "chatbot", items: [{ key: "content", path: ROUTES.content }] }
+        ])
+    })
+
+    it("um funcionário só com Configurar atendimento presencial vê só Horários de atendimento", () => {
+        const scheduleOnly: PanelAccount = {
+            ...staffWithAllPermissions,
+            permissions: ["schedule.configure"]
+        }
+
+        expect(sidebarNavGroups(scheduleOnly)).toEqual([
+            { key: "settings", items: [{ key: "schedule", path: ROUTES.schedule }] }
+        ])
+    })
+
+    it("um funcionário só com Configurar documentos vê só Documentos", () => {
+        const documentsOnly: PanelAccount = {
+            ...staffWithAllPermissions,
+            permissions: ["documents.configure"]
+        }
+
+        expect(sidebarNavGroups(documentsOnly)).toEqual([
+            { key: "settings", items: [{ key: "documents", path: ROUTES.documents }] }
         ])
     })
 })

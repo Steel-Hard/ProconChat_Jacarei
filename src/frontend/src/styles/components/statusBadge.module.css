@@ -7,3 +7,18 @@
     line-height: 1.5;
     white-space: nowrap;
 }
+
+.whatsapp {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px;
+    font-size: 13.5px;
+}
+
+.dot {
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}

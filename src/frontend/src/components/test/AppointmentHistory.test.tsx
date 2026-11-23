@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 import AppointmentHistory from "@/components/AppointmentHistory"
 
@@ -7,21 +8,30 @@ vi.setConfig({ testTimeout: 20000 })
 const ENTRIES = [
     {
         id: "3",
-        text: "Falha ao avisar o cidadão pelo WhatsApp",
+        text: "Falha ao avisar o cidadão do cancelamento",
         when: "19/10/2026 às 09:00",
-        highlight: true
+        highlight: true,
+        retryable: true,
+        muted: false,
+        detail: null
     },
     {
         id: "2",
         text: "Assumido por Admin · Confirmado",
         when: "18/10/2026 às 10:47",
-        highlight: false
+        highlight: false,
+        retryable: false,
+        muted: false,
+        detail: null
     },
     {
         id: "1",
         text: "Criado pelo chatbot como Pendente",
         when: "18/10/2026 às 10:46",
-        highlight: false
+        highlight: false,
+        retryable: false,
+        muted: false,
+        detail: null
     }
 ]
 
@@ -32,7 +42,7 @@ describe("AppointmentHistory", () => {
         expect(screen.getByRole("heading", { level: 2, name: "Histórico" })).toBeInTheDocument()
         const items = within(screen.getByRole("list")).getAllByRole("listitem")
         expect(items.map((item) => item.textContent)).toEqual([
-            "Falha ao avisar o cidadão pelo WhatsApp19/10/2026 às 09:00",
+            "Falha ao avisar o cidadão do cancelamento19/10/2026 às 09:00",
             "Assumido por Admin · Confirmado18/10/2026 às 10:47",
             "Criado pelo chatbot como Pendente18/10/2026 às 10:46"
         ])
@@ -45,5 +55,123 @@ describe("AppointmentHistory", () => {
         expect(items[0]).toHaveAttribute("data-highlight", "true")
         expect(items[1]).not.toHaveAttribute("data-highlight")
         expect(screen.queryByRole("button")).not.toBeInTheDocument()
+    })
+
+    it("mostra o retry junto da falha e executa a ação", async () => {
+        const user = userEvent.setup()
+        const onRetry = vi.fn()
+        render(
+            <AppointmentHistory
+                title="Histórico"
+                entries={ENTRIES}
+                retry={{
+                    allowed: true,
+                    busy: false,
+                    label: "Tentar novamente",
+                    error: null,
+                    onRetry
+                }}
+            />
+        )
+
+        await user.click(screen.getByRole("button", { name: "Tentar novamente" }))
+
+        expect(onRetry).toHaveBeenCalledOnce()
+        expect(
+            within(screen.getAllByRole("listitem")[0] as HTMLElement).getByRole("button", {
+                name: "Tentar novamente"
+            })
+        ).toBeInTheDocument()
+    })
+
+    it("mantém o retry disponível sem evento de falha quando autorizado pelo backend", () => {
+        render(
+            <AppointmentHistory
+                title="Histórico"
+                entries={ENTRIES.slice(1)}
+                retry={{
+                    allowed: true,
+                    busy: false,
+                    label: "Tentar novamente",
+                    error: "Não foi possível concluir a ação. Tente de novo.",
+                    onRetry: vi.fn()
+                }}
+            />
+        )
+
+        expect(screen.getByRole("button", { name: "Tentar novamente" })).toBeInTheDocument()
+        expect(screen.getByRole("alert")).toHaveTextContent(
+            "Não foi possível concluir a ação. Tente de novo."
+        )
+    })
+
+    it("não oferece o retry na falha de lembrete e mostra o botão no fim", () => {
+        render(
+            <AppointmentHistory
+                title="Histórico"
+                entries={[
+                    {
+                        id: "9",
+                        text: "Falha ao avisar o cidadão do lembrete",
+                        when: "19/10/2026 às 09:00",
+                        highlight: true,
+                        retryable: false,
+                        muted: false,
+                        detail: null
+                    },
+                    ...ENTRIES.slice(1)
+                ]}
+                retry={{
+                    allowed: true,
+                    busy: false,
+                    label: "Tentar novamente",
+                    error: null,
+                    onRetry: vi.fn()
+                }}
+            />
+        )
+
+        const items = within(screen.getByRole("list")).getAllByRole("listitem")
+        expect(items[0]).toHaveAttribute("data-highlight", "true")
+        expect(within(items[0] as HTMLElement).queryByRole("button")).not.toBeInTheDocument()
+        expect(screen.getAllByRole("button", { name: "Tentar novamente" })).toHaveLength(1)
+    })
+
+    it("mostra o motivo da falha abaixo do texto e marca o evento neutro", () => {
+        render(
+            <AppointmentHistory
+                title="Histórico"
+                entries={[
+                    {
+                        id: "7",
+                        text: "Falha ao avisar o cidadão do cancelamento",
+                        when: "19/10/2026 às 09:00",
+                        highlight: true,
+                        retryable: true,
+                        muted: false,
+                        detail: "A conta da Meta está sem forma de pagamento."
+                    },
+                    {
+                        id: "6",
+                        text: "Aviso ao cidadão desativado: cidadão não avisado pelo sistema",
+                        when: "19/10/2026 às 08:59",
+                        highlight: false,
+                        retryable: false,
+                        muted: true,
+                        detail: null
+                    }
+                ]}
+            />
+        )
+
+        const items = within(screen.getByRole("list")).getAllByRole("listitem")
+        expect(
+            within(items[0] as HTMLElement).getByText(
+                "A conta da Meta está sem forma de pagamento."
+            )
+        ).toBeInTheDocument()
+        expect(items[1]).toHaveAttribute("data-muted", "true")
+        expect(items[1]).not.toHaveAttribute("data-highlight")
+        expect(items[0]).not.toHaveAttribute("data-muted")
     })
 })

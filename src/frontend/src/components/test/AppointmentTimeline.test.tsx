@@ -13,7 +13,7 @@ const STEPS: AppointmentTimelineStepView[] = [
     {
         id: "2",
         title: "Resposta entregue",
-        detail: "Texto complementar gerado para contextualizar a resposta.",
+        detail: "Resposta escrita com auxílio de IA a partir do texto oficial.",
         time: "10:47",
         ai: true
     },

@@ -1,8 +1,8 @@
 import AppError from "./AppError"
 
 class NotFoundError extends AppError {
-    constructor(message: string) {
-        super(message, 404, "NOT_FOUND")
+    constructor(message: string, details?: Record<string, unknown>) {
+        super(message, 404, "NOT_FOUND", details)
     }
 }
 

@@ -166,7 +166,6 @@ describe("useSession", () => {
         })
         store.dispatch(
             appointmentsApi.util.upsertQueryEntries([
-                { endpointName: "getPendingAppointmentsCount", arg: undefined, value: 3 },
                 {
                     endpointName: "getAppointments",
                     arg: { ...LIST_FILTERS, search: FICTITIOUS_CPF },
@@ -174,7 +173,7 @@ describe("useSession", () => {
                 }
             ])
         )
-        expect(Object.keys(store.getState().api.queries)).toHaveLength(2)
+        expect(Object.keys(store.getState().api.queries)).toHaveLength(1)
         expect(JSON.stringify(store.getState().api)).toContain(FICTITIOUS_CPF)
 
         act(() => handlers.unauthorizedHandler?.())

@@ -1,18 +1,33 @@
 import { NextFunction, Request, Response } from "express"
-import { appointmentService as defaultAppointmentService, AppointmentService } from "../services/appointment.service"
-import { ListAppointmentsQuery, UpdateStatusBody } from "../schemas/appointment.schema"
+import { AppointmentService } from "../services/appointment.service"
+import { AddNoteBody, CalendarQuery, ListAppointmentsQuery, UpdateStatusBody } from "../schemas/appointment.schema"
+import { AppointmentCalendarService } from "../services/appointmentCalendar.service"
 import { AppointmentListFilters } from "../types/appointment.types"
+import BadRequestError from "../errors/BadRequestError"
 import UnauthorizedError from "../errors/UnauthorizedError"
+import { ActionAccess } from "../services/appointmentTransitions"
+import { AuthenticatedUser } from "../types/auth.types"
+
+function accessOf(user: AuthenticatedUser | undefined): ActionAccess {
+    return { canManage: Boolean(user && (user.isAdmin || user.permissions.includes("appointments.manage"))) }
+}
+
+function unhandledAction(_body: never): never {
+    throw new BadRequestError("Ação inválida")
+}
 
 interface AppointmentControllerDependencies {
     service: AppointmentService
+    calendar: AppointmentCalendarService
 }
 
 class AppointmentController {
     private service: AppointmentService
+    private calendar: AppointmentCalendarService
 
-    constructor({ service }: AppointmentControllerDependencies = { service: defaultAppointmentService }) {
+    constructor({ service, calendar }: AppointmentControllerDependencies) {
         this.service = service
+        this.calendar = calendar
     }
 
     public async listAppointments(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -45,10 +60,19 @@ class AppointmentController {
         }
     }
 
+    public async listStaff(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const result = await this.service.listStaff(accessOf(req.authUser))
+            res.status(200).json({ data: result })
+        } catch (error) {
+            next(error)
+        }
+    }
+
     public async getAppointmentDetail(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const { id } = req.params as { id: string }
-            const result = await this.service.getAppointmentDetail(id)
+            const result = await this.service.getAppointmentDetail(id, accessOf(req.authUser))
             res.status(200).json({ data: result })
         } catch (error) {
             next(error)
@@ -58,22 +82,87 @@ class AppointmentController {
     public async updateAppointmentStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const { id } = req.params as { id: string }
-            const { action } = req.body as UpdateStatusBody
+            const body = req.body as UpdateStatusBody
 
             if (!req.authUser) {
                 throw new UnauthorizedError("Authentication required")
             }
             const actorUserId = req.authUser.id
+            const access = accessOf(req.authUser)
 
             let result
-            if (action === "claim") {
-                result = await this.service.claimAppointment(id, actorUserId)
-            } else if (action === "attended") {
-                result = await this.service.markAttended(id, actorUserId)
-            } else if (action === "no_show") {
-                result = await this.service.markNoShow(id, actorUserId)
+            if (body.action === "claim") {
+                result = await this.service.claimAppointment(id, actorUserId, access)
+            } else if (body.action === "attended") {
+                result = await this.service.markAttended(id, actorUserId, access)
+            } else if (body.action === "no_show") {
+                result = await this.service.markNoShow(id, actorUserId, access)
+            } else if (body.action === "assign") {
+                result = await this.service.assignAppointment(id, body.assigneeUserId, actorUserId, access)
+            } else if (body.action === "cancel") {
+                result = await this.service.cancelAppointment(id, actorUserId, body.reason, body.note, access)
+            } else if (body.action === "correct_record") {
+                const corrected = await this.service.correctRecord(id, actorUserId, access)
+                res.status(200).json(
+                    corrected.warning ? { data: corrected.detail, warning: corrected.warning } : { data: corrected.detail },
+                )
+                return
+            } else {
+                unhandledAction(body)
             }
 
+            res.status(200).json({ data: result })
+        } catch (error) {
+            next(error)
+        }
+    }
+
+    public async addNote(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const { id } = req.params as { id: string }
+            const { text } = req.body as AddNoteBody
+            if (!req.authUser) {
+                throw new UnauthorizedError("Authentication required")
+            }
+            const result = await this.service.addNote(id, req.authUser.id, text, accessOf(req.authUser))
+            res.status(201).json({ data: result })
+        } catch (error) {
+            next(error)
+        }
+    }
+
+    public async getCancellationPreview(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const { id } = req.params as { id: string }
+            const result = await this.service.getCancellationPreview(id)
+            res.status(200).json({ data: result })
+        } catch (error) {
+            next(error)
+        }
+    }
+
+    public async retryCancellationNotice(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const { id } = req.params as { id: string }
+            if (!req.authUser) {
+                throw new UnauthorizedError("Authentication required")
+            }
+            const result = await this.service.retryCancellationNotice(id, req.authUser.id, accessOf(req.authUser))
+            res.status(200).json({ data: result })
+        } catch (error) {
+            next(error)
+        }
+    }
+
+    public async getCalendar(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const query = req.query as unknown as CalendarQuery
+            const result = await this.calendar.getCalendar({
+                date: query.date,
+                status: query.status,
+                responsible: query.responsible,
+                currentUserId: req.authUser?.id,
+            })
             res.status(200).json({ data: result })
         } catch (error) {
             next(error)

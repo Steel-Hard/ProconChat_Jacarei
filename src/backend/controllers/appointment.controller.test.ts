@@ -30,6 +30,9 @@ describe("appointment.controller", () => {
         sessionVersion: 0,
     }
 
+    const calendarResult = { weekStart: "2026-10-18", weekEnd: "2026-10-24", weekStartDay: 0, days: [], appointments: [] }
+    const calendar = { getCalendar: vi.fn().mockResolvedValue(calendarResult) }
+
     const mockConversationEvents = {
         record: vi.fn(),
         finish: vi.fn(),
@@ -50,7 +53,7 @@ describe("appointment.controller", () => {
             }),
         })
         service = createAppointmentService({ repository, conversationEvents: mockConversationEvents })
-        controller = new AppointmentController({ service })
+        controller = new AppointmentController({ service, calendar })
     })
 
     afterEach(() => {
@@ -140,6 +143,22 @@ describe("appointment.controller", () => {
         expect(repository.actionCalls).toEqual([{ action: "claim", id: "1", actorUserId: 10, now: FIXED_NOW }])
     })
 
+    it("updateAppointmentStatus com uma ação sem ramo recusa com 400 BAD_REQUEST e não corrige o registro", async () => {
+        const req = {
+            params: { id: "1" },
+            body: { action: "acao_nova" },
+            authUser: mockStaffUser,
+        } as unknown as Request
+        const res = mockResponse()
+        const next = vi.fn()
+
+        await controller.updateAppointmentStatus(req, res, next)
+
+        expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 400, code: "BAD_REQUEST", message: "Ação inválida" }))
+        expect(res.status).not.toHaveBeenCalled()
+        expect(repository.actionCalls).toEqual([])
+    })
+
     it("propaga erro para o middleware next se o serviço lançar", async () => {
         const req = { params: { id: "9999" }, authUser: mockAdminUser } as unknown as Request
         const res = mockResponse()
@@ -148,5 +167,25 @@ describe("appointment.controller", () => {
         await controller.getAppointmentDetail(req, res, next)
 
         expect(next).toHaveBeenCalledWith(expect.any(Error))
+    })
+
+    it("getCalendar repassa a query e a conta logada e devolve 200 com o calendário", async () => {
+        const req = {
+            query: { date: "2026-10-21", status: "all", responsible: "me" },
+            authUser: mockStaffUser,
+        } as unknown as Request
+        const res = mockResponse()
+        const next = vi.fn()
+
+        await controller.getCalendar(req, res, next)
+
+        expect(calendar.getCalendar).toHaveBeenCalledWith({
+            date: "2026-10-21",
+            status: "all",
+            responsible: "me",
+            currentUserId: 10,
+        })
+        expect(res.status).toHaveBeenCalledWith(200)
+        expect(res.json).toHaveBeenCalledWith({ data: calendarResult })
     })
 })

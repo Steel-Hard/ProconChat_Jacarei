@@ -14,6 +14,9 @@ function errorHandler(err: unknown, _req: Request, res: Response, next: NextFunc
 
     if (err instanceof AppError) {
         const body: ErrorResponseBody = { error: { code: err.code, message: err.message } }
+        if (err.details) {
+            body.error.details = err.details
+        }
         res.status(err.statusCode).json(body)
         return
     }

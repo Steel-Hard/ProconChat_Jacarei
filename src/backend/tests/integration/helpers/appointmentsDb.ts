@@ -105,3 +105,81 @@ export async function createTestAppointment(
     scope.createdAppointmentIds.push(id)
     return id
 }
+
+export interface OwnedAppointmentScope extends TestAppointmentScope {
+    categoryId: number
+}
+
+export async function createAppointmentScope(adminUserId: number, label: string): Promise<OwnedAppointmentScope> {
+    const pool = getPool()
+    const key = `${label}_${process.pid}_${Date.now()}`
+    const categoryId = Number(
+        firstRow(
+            (
+                await pool.query<{ id: string }>(
+                    `INSERT INTO Categories (title, short_title, position, seed_key)
+                     VALUES ('Categoria Contas', 'Cat Contas', 99, $1)
+                     RETURNING id`,
+                    [`cat_${key}`],
+                )
+            ).rows,
+        ).id,
+    )
+    const questionId = Number(
+        firstRow(
+            (
+                await pool.query<{ id: string }>(
+                    `INSERT INTO Questions (category_id, question, short_title, answer, requires_in_person, out_of_scope, llm_allowed, position, seed_key)
+                     VALUES ($1, 'Pergunta Contas', 'Perg Contas', 'Resposta teste', true, false, false, 0, $2)
+                     RETURNING id`,
+                    [categoryId, `q_${key}`],
+                )
+            ).rows,
+        ).id,
+    )
+    const sessionId = Number(
+        firstRow(
+            (
+                await pool.query<{ id: string }>(
+                    `INSERT INTO Sessions (phone_hash, status, outcome, current_step)
+                     VALUES ($1, 'FINISHED', 'SCHEDULED', 'FINISHED')
+                     RETURNING id`,
+                    [hashCpf(key)],
+                )
+            ).rows,
+        ).id,
+    )
+    return { sessionId, questionId, categoryId, adminUserId, createdAppointmentIds: [] }
+}
+
+export async function deleteAppointmentNotes(appointmentIds: number[]): Promise<void> {
+    if (appointmentIds.length === 0) {
+        return
+    }
+    const client = await getPool().connect()
+    try {
+        await client.query("BEGIN")
+        await client.query("ALTER TABLE AppointmentNotes DISABLE TRIGGER trg_appointment_notes_immutable")
+        await client.query("DELETE FROM AppointmentNotes WHERE appointment_id = ANY($1::bigint[])", [appointmentIds])
+        await client.query("ALTER TABLE AppointmentNotes ENABLE TRIGGER trg_appointment_notes_immutable")
+        await client.query("COMMIT")
+    } catch (error) {
+        await client.query("ROLLBACK")
+        throw error
+    } finally {
+        client.release()
+    }
+}
+
+export async function deleteAppointmentScope(scope: OwnedAppointmentScope): Promise<void> {
+    const pool = getPool()
+    if (scope.createdAppointmentIds.length > 0) {
+        await deleteAppointmentNotes(scope.createdAppointmentIds)
+        await pool.query("DELETE FROM OutboundMessages WHERE appointment_id = ANY($1::bigint[])", [scope.createdAppointmentIds])
+        await pool.query("DELETE FROM AppointmentEvents WHERE appointment_id = ANY($1::bigint[])", [scope.createdAppointmentIds])
+        await pool.query("DELETE FROM Appointments WHERE id = ANY($1::bigint[])", [scope.createdAppointmentIds])
+    }
+    await pool.query("DELETE FROM Sessions WHERE id = $1", [scope.sessionId])
+    await pool.query("DELETE FROM Questions WHERE id = $1", [scope.questionId])
+    await pool.query("DELETE FROM Categories WHERE id = $1", [scope.categoryId])
+}

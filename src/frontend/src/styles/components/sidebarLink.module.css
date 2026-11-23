@@ -24,26 +24,3 @@
     background: var(--sidebar-active);
     color: #ffffff;
 }
-
-.count {
-    min-width: 22px;
-    padding: 1px 7px;
-    border-radius: 999px;
-    background: var(--badge-count-bg);
-    color: var(--badge-count-text);
-    font-size: 12px;
-    font-weight: 700;
-    text-align: center;
-}
-
-.visuallyHidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: -1px;
-    padding: 0;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-    border: 0;
-}

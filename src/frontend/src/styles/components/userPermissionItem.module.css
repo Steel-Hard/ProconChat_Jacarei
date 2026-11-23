@@ -1,0 +1,66 @@
+.item {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr);
+    gap: 12px;
+    padding: 11px 0;
+    border-top: 1px solid var(--divider);
+    cursor: pointer;
+}
+
+.disabled {
+    cursor: not-allowed;
+}
+
+.disabled .name,
+.disabled .description,
+.disabled .checkbox {
+    opacity: 0.55;
+}
+
+.checkbox {
+    width: 17px;
+    height: 17px;
+    margin-top: 2px;
+    accent-color: var(--color-primary);
+}
+
+.checkbox:disabled {
+    cursor: not-allowed;
+}
+
+.body {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.name {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.includes {
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: var(--bg-accent-soft);
+    color: var(--color-primary);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.description {
+    margin-top: 2px;
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--text-muted);
+}
+
+.warning {
+    margin-top: 3px;
+    font-size: 12px;
+    color: var(--warn-text);
+}

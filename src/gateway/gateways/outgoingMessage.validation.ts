@@ -1,4 +1,4 @@
-import { ListRow, OutgoingMessage, ReplyButton } from "../types/message.types"
+import { ListRow, OutgoingMessage, OutgoingTemplateRequest, ReplyButton } from "../types/message.types"
 
 export const OUTGOING_LIMITS = {
     textBody: 4096,
@@ -12,6 +12,7 @@ export const OUTGOING_LIMITS = {
     buttonsMax: 3,
     buttonTitle: 20,
     buttonId: 256,
+    footer: 60,
 } as const
 
 export type OutgoingMessageValidation = { ok: true } | { ok: false; reason: string }
@@ -45,7 +46,7 @@ function findIdProblem(ids: string[], max: number): string | undefined {
 }
 
 function validateRows(rows: ListRow[]): string | undefined {
-    if (rows.length < 1 || rows.length > OUTGOING_LIMITS.listRowsMax) {
+    if (!Array.isArray(rows) || rows.length < 1 || rows.length > OUTGOING_LIMITS.listRowsMax) {
         return "invalid_row_count"
     }
     if (rows.some((row) => !isFilledWithin(row.title, OUTGOING_LIMITS.rowTitle))) {
@@ -61,7 +62,7 @@ function validateRows(rows: ListRow[]): string | undefined {
 }
 
 function validateButtons(buttons: ReplyButton[]): string | undefined {
-    if (buttons.length < 1 || buttons.length > OUTGOING_LIMITS.buttonsMax) {
+    if (!Array.isArray(buttons) || buttons.length < 1 || buttons.length > OUTGOING_LIMITS.buttonsMax) {
         return "invalid_button_count"
     }
     if (buttons.some((button) => !isFilledWithin(button.title, OUTGOING_LIMITS.buttonTitle))) {
@@ -74,6 +75,9 @@ function validateButtons(buttons: ReplyButton[]): string | undefined {
 }
 
 function findProblem(message: OutgoingMessage): string | undefined {
+    if (typeof message !== "object" || message === null) {
+        return "unsupported_type"
+    }
     switch (message.type) {
         case "text":
             return isFilledWithin(message.text, OUTGOING_LIMITS.textBody) ? undefined : "invalid_text"
@@ -84,10 +88,16 @@ function findProblem(message: OutgoingMessage): string | undefined {
             if (!isFilledWithin(message.buttonText, OUTGOING_LIMITS.listButtonText)) {
                 return "invalid_button_text"
             }
+            if (message.footer !== undefined && !isFilledWithin(message.footer, OUTGOING_LIMITS.footer)) {
+                return "invalid_footer"
+            }
             return validateRows(message.rows)
         case "buttons":
             if (!isFilledWithin(message.text, OUTGOING_LIMITS.buttonsBody)) {
                 return "invalid_text"
+            }
+            if (message.footer !== undefined && !isFilledWithin(message.footer, OUTGOING_LIMITS.footer)) {
+                return "invalid_footer"
             }
             return validateButtons(message.buttons)
         default:
@@ -98,4 +108,64 @@ function findProblem(message: OutgoingMessage): string | undefined {
 export function validateOutgoingMessage(message: OutgoingMessage): OutgoingMessageValidation {
     const reason = findProblem(message)
     return reason === undefined ? { ok: true } : { ok: false, reason }
+}
+
+const TEMPLATE_TO_PATTERN = /^\d{8,15}$/
+const TEMPLATE_NAME_PATTERN = /^[a-z0-9_]{1,512}$/
+const TEMPLATE_LANGUAGE_PATTERN = /^[a-z]{2}(_[A-Z]{2})?$/
+
+function isValidParameter(value: unknown): value is string {
+    return typeof value === "string" && value.trim() !== "" && !/[\n\t]/.test(value) && !/ {5,}/.test(value)
+}
+
+function isValidParameterList(value: unknown): value is string[] {
+    return Array.isArray(value) && value.every(isValidParameter)
+}
+
+export type OutgoingTemplateValidation = { ok: true; value: OutgoingTemplateRequest } | { ok: false; reason: string }
+
+export function validateOutgoingTemplate(input: unknown): OutgoingTemplateValidation {
+    const { to, name, languageCode, bodyParameters } = (input ?? {}) as Record<string, unknown>
+    if (typeof to !== "string" || !TEMPLATE_TO_PATTERN.test(to)) {
+        return { ok: false, reason: "invalid_to" }
+    }
+    if (typeof name !== "string" || !TEMPLATE_NAME_PATTERN.test(name)) {
+        return { ok: false, reason: "invalid_template_name" }
+    }
+    if (typeof languageCode !== "string" || !TEMPLATE_LANGUAGE_PATTERN.test(languageCode)) {
+        return { ok: false, reason: "invalid_language_code" }
+    }
+    if (!isValidParameterList(bodyParameters)) {
+        return { ok: false, reason: "invalid_parameter" }
+    }
+    return {
+        ok: true,
+        value: {
+            to,
+            template: { name, languageCode, bodyParameters },
+        },
+    }
+}
+
+const OUTGOING_MESSAGES_MAX = 3
+
+export type OutgoingMessagesValidation =
+    | { ok: true; value: { to: string; messages: OutgoingMessage[] } }
+    | { ok: false; reason: string }
+
+export function validateOutgoingMessages(input: unknown): OutgoingMessagesValidation {
+    const { to, messages } = (input ?? {}) as Record<string, unknown>
+    if (typeof to !== "string" || !TEMPLATE_TO_PATTERN.test(to)) {
+        return { ok: false, reason: "invalid_to" }
+    }
+    if (!Array.isArray(messages) || messages.length < 1 || messages.length > OUTGOING_MESSAGES_MAX) {
+        return { ok: false, reason: "invalid_messages" }
+    }
+    for (const message of messages as OutgoingMessage[]) {
+        const validation = validateOutgoingMessage(message)
+        if (!validation.ok) {
+            return validation
+        }
+    }
+    return { ok: true, value: { to, messages: messages as OutgoingMessage[] } }
 }

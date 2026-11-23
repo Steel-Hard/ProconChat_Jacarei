@@ -1,12 +1,62 @@
-import { IScheduleRepository } from "../repositories/schedule.repository.interface"
+import { gatewayClient } from "../clients/gateway.client"
+import BadRequestError from "../errors/BadRequestError"
+import ConflictError from "../errors/ConflictError"
+import ScheduleNotConfiguredError from "../errors/ScheduleNotConfiguredError"
+import { appointmentRepository as defaultAppointmentRepository } from "../repositories/appointment.repository"
+import { scheduleRepository } from "../repositories/schedule.repository"
+import { IScheduleRepository, ScheduleResolutionOutcome } from "../repositories/schedule.repository.interface"
+import { isValidCalendarDate, isValidMonthString } from "../schemas/schedule.schema"
 import {
     AvailableSlot,
-    BlockedDate,
     BookAppointmentInput,
     BookAppointmentResult,
-    ScheduleRange,
+    BookedDay,
+    BookedDaysResult,
+    CitizenCancelInput,
+    CitizenCancelResult,
+    CitizenRescheduleInput,
+    CitizenRescheduleResult,
+    MonthlyPreviewResult,
+    NormalizedScheduleConfig,
+    ReturningAppointment,
+    ScheduleCancellationNoticeState,
+    ScheduleConfigInput,
+    ScheduleSaveInput,
+    ScheduleConfigView,
+    ScheduleConflictItem,
+    ScheduleConflictResolution,
+    ScheduleConflictResolutionSummary,
+    SchedulePreviewConflict,
+    ScheduleVersion,
 } from "../types/schedule.types"
+import { decrypt } from "../utils/crypto.utils"
 import { addDaysToDateString, getLocalParts, parseLocalDate } from "../utils/date.utils"
+import {
+    CitizenNotificationService,
+    createCitizenNotificationService,
+} from "./citizenNotification.service"
+import { whatsappSettingsService } from "./whatsappSettings.service"
+import {
+    appointmentsInScheduleInterval,
+    blockVigencyIssues,
+    calculateMonthlyPreview,
+    computeVersionedWindowBounds,
+    DayGrid,
+    detectScheduleConflicts,
+    effectiveVersionOf,
+    freeSlotStartsOfDay,
+    fromMinutes,
+    getDowFromDateStr,
+    getMonthDateBounds,
+    normalizeAndValidateScheduleConfig,
+    scheduleBlockedDatesOf,
+    scheduleRangesOf,
+    scheduleSettingsOf,
+    toMinutes,
+    WindowBounds,
+} from "./scheduleRules"
+
+export { freeSlotStartsOfDay, fromMinutes, getDowFromDateStr, toMinutes }
 
 const WEEKDAYS_PT = [
     "Domingo",
@@ -18,146 +68,249 @@ const WEEKDAYS_PT = [
     "Sábado",
 ]
 
-export function toMinutes(timeStr: string): number {
-    const [h, m] = timeStr.split(":").map(Number)
-    return (h ?? 0) * 60 + (m ?? 0)
+export interface GetMonthlyPreviewParams {
+    month?: string
+    draftConfig?: ScheduleConfigInput
+    draftEffectiveFrom?: string
+    now?: Date
 }
 
-export function fromMinutes(mins: number): string {
-    const h = Math.floor(mins / 60)
-    const m = mins % 60
-    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
-}
-
-export function getDowFromDateStr(dateStr: string): number {
-    const [y, m, d] = dateStr.split("-").map(Number)
-    const dt = new Date(Date.UTC(y!, m! - 1, d!, 12, 0, 0))
-    return dt.getUTCDay()
-}
-
-function freeSlotStartsOfDay(
-    dateStr: string,
-    ranges: ScheduleRange[],
-    blockedDates: BlockedDate[],
-    slotMinutes: number,
-): number[] {
-    const dow = getDowFromDateStr(dateStr)
-    const rangesForDay = ranges
-        .filter((r) => r.weekday === dow)
-        .sort((a, b) => a.slot_index - b.slot_index)
-
-    const fullDayBlocked = blockedDates.some(
-        (b) => b.date === dateStr && (!b.start_time || !b.end_time),
-    )
-
-    if (rangesForDay.length === 0 || fullDayBlocked) {
-        return []
+export interface ScheduleServiceDependencies {
+    cancellationNotice?: {
+        getState(): Promise<ScheduleCancellationNoticeState>
     }
-
-    const partialBlocks = blockedDates.filter(
-        (b) => b.date === dateStr && b.start_time && b.end_time,
-    )
-
-    const starts: number[] = []
-
-    for (const range of rangesForDay) {
-        const startMin = toMinutes(range.start_time)
-        const endMin = toMinutes(range.end_time)
-
-        for (let t = startMin; t + slotMinutes <= endMin; t += slotMinutes) {
-            const slotStart = t
-            const slotEnd = t + slotMinutes
-            const isBlocked = partialBlocks.some((p) => {
-                const pStart = toMinutes(p.start_time!)
-                const pEnd = toMinutes(p.end_time!)
-                return slotStart < pEnd && slotEnd > pStart
-            })
-
-            if (!isBlocked) {
-                starts.push(t)
-            }
-        }
-    }
-
-    return starts
+    notifications?: CitizenNotificationService
 }
 
-function isBusinessDay(
-    dateStr: string,
-    ranges: ScheduleRange[],
-    blockedDates: BlockedDate[],
-    slotMinutes: number,
-): boolean {
-    return freeSlotStartsOfDay(dateStr, ranges, blockedDates, slotMinutes).length > 0
+export interface SaveScheduleOptions {
+    onResolution?: (summary: ScheduleConflictResolutionSummary) => void
+}
+
+export interface DeleteScheduleOptions {
+    actorUserId?: number
+    conflictResolution?: ScheduleConflictResolution
+    seenConflictIds?: string[]
+    seenNoticeEnabled?: boolean
+    onResolution?: (summary: ScheduleConflictResolutionSummary) => void
 }
 
 export interface IScheduleService {
     getAvailableSlots(now?: Date): Promise<AvailableSlot[]>
     bookSlot(input: BookAppointmentInput): Promise<BookAppointmentResult>
+    getConfig(): Promise<ScheduleConfigView>
+    getConfigForDate(date: string): Promise<ScheduleConfigView>
+    listScheduledConfigs(fromDate?: string, now?: Date): Promise<ScheduleVersion[]>
+    getCancellationNoticeState(): Promise<ScheduleCancellationNoticeState>
+    saveConfig(
+        input: ScheduleSaveInput,
+        actorUserId: number,
+        now?: Date,
+        options?: SaveScheduleOptions,
+    ): Promise<ScheduleConfigView>
+    saveScheduledConfig(
+        input: ScheduleSaveInput,
+        effectiveFrom: string,
+        actorUserId: number,
+        now?: Date,
+        options?: SaveScheduleOptions,
+    ): Promise<ScheduleConfigView>
+    deleteScheduledConfig(
+        effectiveFrom: string,
+        now?: Date,
+        options?: DeleteScheduleOptions,
+    ): Promise<void>
+    getMonthlyPreview(params?: GetMonthlyPreviewParams): Promise<MonthlyPreviewResult>
+    getBookedDays(now?: Date): Promise<BookedDaysResult>
+    findReturningAppointment(phoneHash: string, now?: Date): Promise<ReturningAppointment | null>
+    cancelByCitizen(input: CitizenCancelInput): Promise<CitizenCancelResult>
+    rescheduleByCitizen(input: CitizenRescheduleInput): Promise<CitizenRescheduleResult>
+}
+
+function previewConflictOf(item: ScheduleConflictItem): SchedulePreviewConflict {
+    return {
+        protocol: item.protocol,
+        date: item.date,
+        time: item.time,
+        status: item.status,
+        code: item.code,
+        reason: item.reason,
+    }
+}
+
+function dayGridOf(config: ScheduleConfigView): DayGrid {
+    return {
+        ranges: scheduleRangesOf(config),
+        blockedDates: scheduleBlockedDatesOf(config),
+        slotMinutes: config.slotMinutes,
+    }
+}
+
+function windowBoundsOf(versions: ScheduleVersion[], current: ScheduleVersion, todayStr: string): WindowBounds {
+    const grids = new Map(versions.map((version) => [version, dayGridOf(version.config)]))
+    return computeVersionedWindowBounds(
+        todayStr,
+        scheduleSettingsOf(current.config),
+        (dateStr) => {
+            const version = effectiveVersionOf(versions, dateStr)
+            return version ? grids.get(version) ?? null : null
+        },
+        versions.some((version) => version.config.ranges.length > 0),
+    )
 }
 
 export function createScheduleService(
     repository: IScheduleRepository,
+    deps: ScheduleServiceDependencies = {},
 ): IScheduleService {
-    async function getAvailableSlots(now = new Date()): Promise<AvailableSlot[]> {
-        const settings = await repository.getSettings()
-        if (!settings) {
-            return []
-        }
+    const cancellationNotice = deps.cancellationNotice ?? {
+        getState: () => whatsappSettingsService.getCancellationNoticeState(),
+    }
+    const notifications =
+        deps.notifications ??
+        createCitizenNotificationService({
+            appointments: defaultAppointmentRepository,
+            gateway: gatewayClient,
+            decrypt,
+        })
 
-        const { dateStr: todayStr, timeStr: nowTimeStr } = getLocalParts(now)
-        const nowMinutes = toMinutes(nowTimeStr)
-
-        const ranges = await repository.getRanges()
-        if (ranges.length === 0) {
-            return []
-        }
-
-        const maxDateStr = addDaysToDateString(todayStr, settings.window_days + 15)
-        const blockedDates = await repository.getBlockedDates(
-            todayStr,
-            maxDateStr,
-        )
-
-        let startDateStr = todayStr
-        if (settings.min_notice_days > 0) {
-            let n = 0
-            let d = todayStr
-            let iterations = 0
-            const maxIterations = settings.window_days + 30
-            while (n < settings.min_notice_days && iterations < maxIterations) {
-                iterations++
-                d = addDaysToDateString(d, 1)
-                if (
-                    isBusinessDay(
-                        d,
-                        ranges,
-                        blockedDates,
-                        settings.slot_minutes,
-                    )
-                ) {
-                    n++
+    async function sendMassCancellationNotices(
+        affectedIds: string[],
+        actorUserId: number,
+        now: Date,
+    ): Promise<{ notifiedCount: number; failedCount: number }> {
+        let notifiedCount = 0
+        let failedCount = 0
+        for (const id of affectedIds) {
+            try {
+                const outcome = await notifications.notifyCancellation(id, actorUserId, now)
+                if (outcome === "NOTIFIED") {
+                    notifiedCount += 1
+                } else {
+                    failedCount += 1
                 }
+            } catch {
+                failedCount += 1
             }
-            if (n < settings.min_notice_days) {
-                return []
+        }
+        return { notifiedCount, failedCount }
+    }
+
+    async function completeNoticeProblem(error: ConflictError): Promise<ConflictError> {
+        const notice = error.details?.cancellationNotice as { enabled?: boolean } | undefined
+        if (!notice?.enabled) {
+            return error
+        }
+        let problem: ScheduleCancellationNoticeState["problem"] = null
+        try {
+            problem = (await cancellationNotice.getState()).problem
+        } catch {
+            problem = null
+        }
+        return new ConflictError(error.message, error.code, {
+            ...error.details,
+            cancellationNotice: { enabled: true, problem },
+        })
+    }
+
+    async function withNoticeProblem<T>(action: () => Promise<T>): Promise<T> {
+        try {
+            return await action()
+        } catch (error) {
+            if (
+                error instanceof ConflictError &&
+                (error.code === "SCHEDULE_CONFLICTS" || error.code === "SCHEDULE_CONFLICTS_CHANGED")
+            ) {
+                throw await completeNoticeProblem(error)
             }
-            startDateStr = d
+            throw error
+        }
+    }
+
+    async function reportResolution(
+        resolution: ScheduleConflictResolution,
+        outcome: ScheduleResolutionOutcome,
+        actorUserId: number,
+        now: Date,
+        onResolution?: (summary: ScheduleConflictResolutionSummary) => void,
+    ): Promise<void> {
+        const counts =
+            resolution === "CANCEL" && outcome.noticeEnabled
+                ? await sendMassCancellationNotices(outcome.affectedIds, actorUserId, now)
+                : { notifiedCount: 0, failedCount: 0 }
+        onResolution?.({
+            action: resolution,
+            affectedCount: outcome.affectedIds.length,
+            notifiedCount: counts.notifiedCount,
+            failedCount: counts.failedCount,
+            noticeDisabled: resolution === "CANCEL" && !outcome.noticeEnabled,
+        })
+    }
+
+    async function getCancellationNoticeState(): Promise<ScheduleCancellationNoticeState> {
+        return cancellationNotice.getState()
+    }
+    function blocksInVigencyCheck(
+        input: ScheduleConfigInput,
+        start: string,
+        todayStr: string,
+    ): (versions: ScheduleVersion[]) => void {
+        return (versions) => {
+            const reference = effectiveVersionOf(versions, start)
+            const next = versions.find((version) =>
+                version.effectiveFrom !== null && version.effectiveFrom > start,
+            )?.effectiveFrom ?? null
+            const issues = blockVigencyIssues(input.blockedDates, reference?.config.blockedDates ?? [], {
+                today: todayStr,
+                start,
+                next,
+            })
+            if (issues.length > 0) {
+                throw new BadRequestError(
+                    `Dados inválidos: ${issues.map((issue) => `${issue.path}: ${issue.message}`).join("; ")}`,
+                    { issues },
+                )
+            }
+        }
+    }
+
+    async function getAvailableSlots(now = new Date()): Promise<AvailableSlot[]> {
+        const { dateStr: todayStr, timeStr: nowTimeStr } = getLocalParts(now)
+        const versions = await repository.getScheduleVersions(
+            todayStr,
+            addDaysToDateString(todayStr, 195),
+        )
+        if (versions.length === 0) {
+            return []
         }
 
-        const endDateStr = addDaysToDateString(todayStr, settings.window_days)
+        const currentVersion = effectiveVersionOf(versions, todayStr)
+        if (!currentVersion) {
+            return []
+        }
+        const { startDateStr, endDateStr, hasValidStart } = windowBoundsOf(versions, currentVersion, todayStr)
+        if (!hasValidStart) {
+            return []
+        }
+
+        const nowMinutes = toMinutes(nowTimeStr)
 
         interface CandidateSlot {
             datetime: Date
             dateStr: string
             timeStr: string
             formatted: string
+            seatsPerSlot: number
         }
 
         const candidateSlots: CandidateSlot[] = []
         let curr = startDateStr
 
         while (curr <= endDateStr) {
+            const config = (effectiveVersionOf(versions, curr) ?? currentVersion).config
+            const settings = scheduleSettingsOf(config)
+            const ranges = scheduleRangesOf(config)
+            const blockedDates = scheduleBlockedDatesOf(config)
+
             const dow = getDowFromDateStr(curr)
             const freeStarts = freeSlotStartsOfDay(
                 curr,
@@ -182,6 +335,7 @@ export function createScheduleService(
                     dateStr: curr,
                     timeStr: slotTimeStr,
                     formatted,
+                    seatsPerSlot: settings.seats_per_slot,
                 })
             }
 
@@ -204,7 +358,7 @@ export function createScheduleService(
 
         for (const slot of candidateSlots) {
             const active = activeCounts.get(slot.datetime.toISOString()) ?? 0
-            const remainingSeats = settings.seats_per_slot - active
+            const remainingSeats = slot.seatsPerSlot - active
 
             if (remainingSeats > 0) {
                 availableSlots.push({
@@ -226,8 +380,358 @@ export function createScheduleService(
         return repository.bookAppointment(input)
     }
 
+    async function findReturningAppointment(
+        phoneHash: string,
+        now?: Date,
+    ): Promise<ReturningAppointment | null> {
+        return repository.findReturningAppointment(phoneHash, now)
+    }
+
+    async function cancelByCitizen(input: CitizenCancelInput): Promise<CitizenCancelResult> {
+        return repository.cancelByCitizen(input)
+    }
+
+    async function rescheduleByCitizen(input: CitizenRescheduleInput): Promise<CitizenRescheduleResult> {
+        return repository.rescheduleByCitizen(input)
+    }
+
+    async function getConfig(): Promise<ScheduleConfigView> {
+        const config = await repository.getConfig()
+        if (!config) {
+            throw new ScheduleNotConfiguredError()
+        }
+        return config
+    }
+
+    async function getConfigForDate(date: string): Promise<ScheduleConfigView> {
+        if (!isValidCalendarDate(date)) {
+            throw new BadRequestError("Data inválida")
+        }
+        const version = await repository.getConfigForDate(date)
+        if (!version) {
+            throw new ScheduleNotConfiguredError()
+        }
+        return version.config
+    }
+
+    async function listScheduledConfigs(fromDate?: string, now = new Date()): Promise<ScheduleVersion[]> {
+        const startDate = fromDate ?? getLocalParts(now).dateStr
+        if (!isValidCalendarDate(startDate)) {
+            throw new BadRequestError("Data inválida")
+        }
+        return repository.listScheduledConfigs(startDate)
+    }
+
+    async function saveConfig(
+        input: ScheduleSaveInput,
+        actorUserId: number,
+        now = new Date(),
+        options?: SaveScheduleOptions,
+    ): Promise<ScheduleConfigView> {
+        const normalized = normalizeAndValidateScheduleConfig(input)
+        const todayStr = getLocalParts(now).dateStr
+        const resolution = input.conflictResolution
+        let outcome: ScheduleResolutionOutcome = { affectedIds: [], noticeEnabled: false }
+        const saved = await withNoticeProblem(() =>
+            repository.saveConfig({
+                config: normalized,
+                actorUserId,
+                now,
+                validateAgainstVersions: blocksInVigencyCheck(input, todayStr, todayStr),
+                conflictResolution: resolution,
+                seenConflictIds: input.seenConflictIds,
+                seenNoticeEnabled: input.seenNoticeEnabled,
+                onResolved: (resolved) => {
+                    outcome = resolved
+                },
+            }),
+        )
+        if (resolution) {
+            await reportResolution(resolution, outcome, actorUserId, now, options?.onResolution)
+        }
+        return saved
+    }
+
+    async function saveScheduledConfig(
+        input: ScheduleSaveInput,
+        effectiveFrom: string,
+        actorUserId: number,
+        now = new Date(),
+        options?: SaveScheduleOptions,
+    ): Promise<ScheduleConfigView> {
+        if (!isValidCalendarDate(effectiveFrom)) {
+            throw new BadRequestError("Data de início inválida")
+        }
+        if (effectiveFrom <= getLocalParts(now).dateStr) {
+            throw new BadRequestError("A data de início da mudança deve ser futura")
+        }
+        const normalized = normalizeAndValidateScheduleConfig(input)
+        const resolution = input.conflictResolution
+        let outcome: ScheduleResolutionOutcome = { affectedIds: [], noticeEnabled: false }
+        const saved = await withNoticeProblem(() =>
+            repository.saveScheduledConfig({
+                config: normalized,
+                effectiveFrom,
+                actorUserId,
+                now,
+                validateAgainstVersions: blocksInVigencyCheck(input, effectiveFrom, getLocalParts(now).dateStr),
+                conflictResolution: resolution,
+                seenConflictIds: input.seenConflictIds,
+                seenNoticeEnabled: input.seenNoticeEnabled,
+                onResolved: (resolved) => {
+                    outcome = resolved
+                },
+            }),
+        )
+        if (resolution) {
+            await reportResolution(resolution, outcome, actorUserId, now, options?.onResolution)
+        }
+        return saved
+    }
+
+    async function deleteScheduledConfig(
+        effectiveFrom: string,
+        now = new Date(),
+        options?: DeleteScheduleOptions,
+    ): Promise<void> {
+        if (!isValidCalendarDate(effectiveFrom)) {
+            throw new BadRequestError("Data de início inválida")
+        }
+        const resolution = options?.conflictResolution
+        if (!resolution) {
+            await withNoticeProblem(() => repository.deleteScheduledConfig(effectiveFrom, now))
+            return
+        }
+        let outcome: ScheduleResolutionOutcome = { affectedIds: [], noticeEnabled: false }
+        await withNoticeProblem(() =>
+            repository.deleteScheduledConfig(effectiveFrom, now, {
+                actorUserId: options?.actorUserId,
+                conflictResolution: resolution,
+                seenConflictIds: options?.seenConflictIds,
+                seenNoticeEnabled: options?.seenNoticeEnabled,
+                onResolved: (resolved) => {
+                    outcome = resolved
+                },
+            }),
+        )
+        if (options?.actorUserId !== undefined) {
+            await reportResolution(resolution, outcome, options.actorUserId, now, options.onResolution)
+        }
+    }
+
+    async function getMonthlyPreview(
+        params: GetMonthlyPreviewParams = {},
+    ): Promise<MonthlyPreviewResult> {
+        const now = params.now ?? new Date()
+        const { dateStr: todayStr } = getLocalParts(now)
+        const targetMonth = params.month ?? todayStr.slice(0, 7)
+
+        if (!isValidMonthString(targetMonth)) {
+            throw new BadRequestError("Mês inválido")
+        }
+
+        const { firstDateStr, lastDateStr } = getMonthDateBounds(targetMonth)
+        const minDateStr = firstDateStr < todayStr ? firstDateStr : todayStr
+        const versionsEnd = lastDateStr > addDaysToDateString(todayStr, 195)
+            ? lastDateStr
+            : addDaysToDateString(todayStr, 195)
+        let versions = await repository.getScheduleVersions(minDateStr, versionsEnd)
+        let draftConfig: NormalizedScheduleConfig | null = null
+        let draftEffectiveFrom: string | null = null
+        let previousVersion: ScheduleVersion | null = null
+
+        if (params.draftConfig) {
+            draftConfig = normalizeAndValidateScheduleConfig(params.draftConfig)
+            draftEffectiveFrom = params.draftEffectiveFrom ?? todayStr
+            if (!isValidCalendarDate(draftEffectiveFrom)) {
+                throw new BadRequestError("Data de início inválida")
+            }
+            const existing = versions.find((version) => version.effectiveFrom === draftEffectiveFrom)
+            const priorDate = addDaysToDateString(draftEffectiveFrom, -1)
+            previousVersion = effectiveVersionOf(versions, priorDate)
+            const draftView: ScheduleConfigView = {
+                ...draftConfig,
+                effectiveFrom: draftEffectiveFrom,
+                updatedBy: existing?.config.updatedBy ?? null,
+                updatedAt: existing?.config.updatedAt ?? null,
+            }
+            versions = versions
+                .filter((version) => version.effectiveFrom !== draftEffectiveFrom)
+                .concat({ effectiveFrom: draftEffectiveFrom, config: draftView })
+                .sort((a, b) => (a.effectiveFrom ?? "").localeCompare(b.effectiveFrom ?? ""))
+        }
+
+        if (versions.length === 0) {
+            throw new ScheduleNotConfiguredError()
+        }
+
+        const currentVersion = effectiveVersionOf(versions, todayStr)
+        if (!currentVersion) {
+            throw new ScheduleNotConfiguredError()
+        }
+        const windowBounds = windowBoundsOf(versions, currentVersion, todayStr)
+        const windowEnd = windowBounds.endDateStr
+        const maxDateStr = lastDateStr > windowEnd ? lastDateStr : windowEnd
+
+        const fromDatetime = parseLocalDate(minDateStr, "00:00")
+        const toDatetime = parseLocalDate(maxDateStr, "23:59")
+
+        const activeCounts = await repository.countActiveAppointmentsPerSlot(
+            fromDatetime,
+            toDatetime,
+        )
+
+        const months: string[] = []
+        let monthCursor = minDateStr.slice(0, 7)
+        const lastMonth = maxDateStr.slice(0, 7)
+        while (monthCursor <= lastMonth) {
+            months.push(monthCursor)
+            const [year, month] = monthCursor.split("-").map(Number)
+            const nextMonth = month === 12 ? 1 : month! + 1
+            const nextYear = month === 12 ? year! + 1 : year!
+            monthCursor = `${nextYear}-${String(nextMonth).padStart(2, "0")}`
+        }
+
+        const previewCache = new Map<string, Map<string, MonthlyPreviewResult>>()
+        for (const version of versions) {
+            const key = version.effectiveFrom ?? "baseline"
+            const perMonth = new Map<string, MonthlyPreviewResult>()
+            const settings = scheduleSettingsOf(version.config)
+            const ranges = scheduleRangesOf(version.config)
+            const blockedDates = scheduleBlockedDatesOf(version.config)
+            for (const month of months) {
+                perMonth.set(month, {
+                    ...calculateMonthlyPreview({
+                        month,
+                        now,
+                        settings,
+                        ranges,
+                        blockedDates,
+                        activeCounts,
+                        windowBounds,
+                    }),
+                    conflicts: [],
+                })
+            }
+            previewCache.set(key, perMonth)
+        }
+
+        function dayPreview(date: string) {
+            const version = effectiveVersionOf(versions, date)
+            if (!version) {
+                return null
+            }
+            return previewCache.get(version.effectiveFrom ?? "baseline")?.get(date.slice(0, 7))
+                ?.days.find((day) => day.date === date) ?? null
+        }
+
+        const weekdaysVersion = draftEffectiveFrom ?? currentVersion.effectiveFrom ?? "baseline"
+        const weekdaysPreview = previewCache.get(weekdaysVersion)?.get(todayStr.slice(0, 7))
+        if (!weekdaysPreview) {
+            throw new ScheduleNotConfiguredError()
+        }
+        const requestedDays = Array.from({ length: Number(lastDateStr.slice(-2)) }, (_, index) => {
+            const date = `${targetMonth}-${String(index + 1).padStart(2, "0")}`
+            return dayPreview(date)!
+        })
+        let totalWindowSlots = 0
+        let totalWindowSeats = 0
+        let usedWindowSeats = 0
+        for (let date = windowBounds.startDateStr; date <= windowEnd; date = addDaysToDateString(date, 1)) {
+            const day = dayPreview(date)
+            if (!day) {
+                continue
+            }
+            totalWindowSlots += day.slots.filter((slot) => slot.offered).length
+            totalWindowSeats += day.capacity
+            usedWindowSeats += day.usedSeats
+        }
+
+        const futureAppointments = await repository.listFutureActiveAppointments(now)
+        let conflicts: SchedulePreviewConflict[]
+        if (draftConfig && draftEffectiveFrom) {
+            const draftStart = draftEffectiveFrom
+            const nextVersion = versions.find((version) =>
+                version.effectiveFrom !== null && version.effectiveFrom > draftStart,
+            )
+            conflicts = detectScheduleConflicts(
+                draftConfig,
+                appointmentsInScheduleInterval(futureAppointments, draftStart, nextVersion?.effectiveFrom ?? null),
+                previousVersion?.config.slotMinutes ?? null,
+            ).map(previewConflictOf)
+        } else {
+            conflicts = versions.flatMap((version, index) => {
+                const start = version.effectiveFrom !== null && version.effectiveFrom > todayStr
+                    ? version.effectiveFrom
+                    : todayStr
+                const next = versions[index + 1]?.effectiveFrom ?? null
+                return detectScheduleConflicts(
+                    version.config,
+                    appointmentsInScheduleInterval(futureAppointments, start, next),
+                    version.config.slotMinutes,
+                ).map(previewConflictOf)
+            })
+        }
+
+        return {
+            month: targetMonth,
+            today: todayStr,
+            windowStart: windowBounds.startDateStr,
+            windowEnd,
+            totalWindowSlots,
+            totalWindowSeats,
+            usedWindowSeats,
+            freeWindowSeats: totalWindowSeats - usedWindowSeats,
+            weekdays: weekdaysPreview.weekdays,
+            days: requestedDays,
+            conflicts,
+        }
+    }
+
+    async function getBookedDays(now = new Date()): Promise<BookedDaysResult> {
+        const appointments = await repository.listFutureActiveAppointments(now)
+        const byDate = new Map<string, Map<string, number>>()
+
+        for (const appointment of appointments.filter((a) => !a.offGrid)) {
+            const { dateStr, timeStr } = getLocalParts(appointment.appointmentDatetime)
+            const times = byDate.get(dateStr) ?? new Map<string, number>()
+            times.set(timeStr, (times.get(timeStr) ?? 0) + 1)
+            byDate.set(dateStr, times)
+        }
+
+        const days: BookedDay[] = [...byDate.entries()]
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([date, times]) => {
+                const sortedTimes = [...times.entries()]
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .map(([time, count]) => ({ time, count }))
+                return {
+                    date,
+                    weekday: getDowFromDateStr(date),
+                    total: sortedTimes.reduce((sum, item) => sum + item.count, 0),
+                    times: sortedTimes,
+                }
+            })
+
+        return { days }
+    }
+
     return {
         getAvailableSlots,
         bookSlot,
+        getConfig,
+        getConfigForDate,
+        listScheduledConfigs,
+        getCancellationNoticeState,
+        saveConfig,
+        saveScheduledConfig,
+        deleteScheduledConfig,
+        getMonthlyPreview,
+        getBookedDays,
+        findReturningAppointment,
+        cancelByCitizen,
+        rescheduleByCitizen,
     }
 }
+
+export const scheduleService = createScheduleService(scheduleRepository)

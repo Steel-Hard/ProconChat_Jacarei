@@ -17,6 +17,7 @@ export interface Pergunta {
     requires_in_person: boolean
     in_person_note?: string | null
     out_of_scope: boolean
+    llm_allowed: boolean
     active: boolean
 }
 
@@ -35,4 +36,5 @@ export interface RespostaFinalOutput {
     requer_presencial: boolean
     fora_de_escopo: boolean
     proximos_passos?: string
+    observacao_presencial?: string | null
 }

@@ -23,7 +23,7 @@ export type {
 } from "../utils/conversationEventLog"
 
 export interface ConversationEventService {
-    record(sessionId: string, event: ConversationEvent): Promise<void>
+    record(sessionId: string, event: ConversationEvent, occurredAt?: Date): Promise<void>
     finish(sessionId: string, closing: SessionClosing): Promise<void>
     listBySession(sessionId: string): Promise<RecordedConversationEvent[]>
 }
@@ -40,9 +40,9 @@ export function createConversationEventService({
     logger,
 }: ConversationEventDependencies): ConversationEventService {
     return {
-        async record(sessionId, event) {
+        async record(sessionId, event, occurredAt) {
             try {
-                await events.record(sessionId, event)
+                await events.record(sessionId, event, occurredAt)
             } catch (error) {
                 logger.error(
                     "Failed to record conversation event",

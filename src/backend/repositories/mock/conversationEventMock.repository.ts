@@ -18,8 +18,8 @@ export class MockConversationEventRepository implements ConversationEventReposit
         this.failure = error
     }
 
-    async record(sessionId: string, event: ConversationEvent): Promise<void> {
-        this.calls.push({ method: "record", args: [sessionId, event] })
+    async record(sessionId: string, event: ConversationEvent, occurredAt?: Date): Promise<void> {
+        this.calls.push({ method: "record", args: occurredAt === undefined ? [sessionId, event] : [sessionId, event, occurredAt] })
 
         if (this.failure) {
             throw this.failure
@@ -28,7 +28,7 @@ export class MockConversationEventRepository implements ConversationEventReposit
         buildConversationEventRow(sessionId, event)
         this.stored.push({
             sessionId,
-            event: { ...validateConversationEvent(event), createdAt: new Date() },
+            event: { ...validateConversationEvent(event), createdAt: occurredAt ?? new Date() },
         })
     }
 

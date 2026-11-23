@@ -9,7 +9,7 @@ vi.mock("../services/whatsappWebhook.service", () => ({
 }))
 
 vi.mock("../clients/backend.client", () => ({
-    backendClient: { createWhatsappSession: vi.fn(), getWhatsappConfig: vi.fn() },
+    backendClient: { createWhatsappSession: vi.fn(), getWhatsappConfig: vi.fn(), reportWebhookEvents: vi.fn() },
 }))
 
 const PATH = "/internal/whatsapp/config/reload"

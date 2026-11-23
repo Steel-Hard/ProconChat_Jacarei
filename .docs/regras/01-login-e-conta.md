@@ -10,7 +10,7 @@ Qualquer conta **ativa**. Uma conta desativada não consegue entrar.
 
 ## Estado da tela
 
-**Entregue (issue #84).** O contador de agendamentos pendentes no menu chegou com a tela de Agendamentos (issue #85).
+**Entregue (issues #84 e #85).** O menu mostra as sete telas prontas do painel: Agendamentos, Relatórios, Conteúdo, Horários de atendimento, Documentos, Usuários e WhatsApp. As telas de Dashboard e de Sessões foram descartadas ([decisão 013](../decisoes/013-telas-de-sessoes-e-dashboard-descartadas.md)).
 
 ## Login
 
@@ -25,15 +25,15 @@ Agrupado em três seções:
 
 | Seção | Itens |
 |---|---|
-| Operação | Dashboard, Agendamentos, Relatórios |
-| Chatbot | Conteúdo, Sessões |
+| Operação | Agendamentos, Relatórios |
+| Chatbot | Conteúdo |
 | Configurações | Horários de atendimento, Documentos, Usuários, WhatsApp |
 
 - **Só aparecem os itens que a conta pode acessar** ([regras gerais](00-regras-gerais.md#2-contas-e-permissões)).
-- **Enquanto uma tela não está pronta, o item dela não aparece no menu**, mesmo para quem tem a permissão. Aberta pelo endereço, a tela mostra "Em construção.". Hoje o menu mostra Agendamentos e WhatsApp, conforme a permissão.
-- O item **Agendamentos** mostra um contador com a quantidade de **agendamentos pendentes**. Sem pendentes, o contador não aparece.
-- **Enquanto o Dashboard não existe (issue #71), a tela inicial do painel abre direto em Agendamentos.**
-- **Quem não tem permissão para nenhum bloco do Dashboard** entra direto na primeira tela que pode acessar.
+- **O menu mostra cada uma das sete telas prontas conforme a permissão da conta.** As telas de Dashboard e de Sessões foram descartadas e não têm item no menu ([decisão 013](../decisoes/013-telas-de-sessoes-e-dashboard-descartadas.md)). Quem só tem permissões de telas sem item no menu vê o aviso de conta sem tela disponível, descrito abaixo.
+- O item **Agendamentos** do menu **não mostra contador** de agendamentos pendentes. Os pendentes são acompanhados dentro da tela de Agendamentos (chip "Pendentes", com contagem).
+- **A tela inicial do painel abre na primeira tela que a conta pode acessar e que já está pronta**, na ordem do menu. Hoje isso é Agendamentos para quem pode vê-los.
+- **Quem não tem acesso a nenhuma tela pronta** (por exemplo, uma conta recém-criada, que nasce sem permissões, ou uma conta que só tem permissão de telas descartadas) vê o aviso "Sua conta ainda não tem acesso a nenhuma tela", com a orientação de pedir acesso a um administrador do sistema, e o botão **Voltar para o login**, que encerra a sessão. O aviso aparece fora do painel, sem menu, em qualquer endereço. Quem tem ao menos uma tela pronta continua vendo "404 - Not Found" ao abrir um endereço que não existe ou uma tela sem permissão.
 
 ## "Minha conta" (canto superior direito)
 

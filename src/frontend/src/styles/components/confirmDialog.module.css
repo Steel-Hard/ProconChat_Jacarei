@@ -40,7 +40,7 @@
     margin-top: 6px;
     font-size: 14px;
     line-height: 1.55;
-    color: #4a4660;
+    color: var(--text-strong);
 }
 
 .actions {
@@ -80,8 +80,21 @@
     background: var(--danger);
 }
 
-.danger:hover {
-    background: #861e15;
+.danger:hover:not(:disabled) {
+    background: var(--danger);
+    filter: brightness(0.9);
+}
+
+.warning {
+    background: var(--warn-text);
+}
+
+.warning:hover {
+    background: var(--warn-text);
+}
+
+.warning:hover:not(:disabled) {
+    filter: brightness(0.92);
 }
 
 .confirm:disabled {
@@ -91,4 +104,8 @@
 
 .cancel:hover {
     filter: brightness(0.94);
+}
+
+.narrow {
+    max-width: 460px;
 }

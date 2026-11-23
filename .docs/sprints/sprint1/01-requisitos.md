@@ -17,7 +17,7 @@
 | RF07 *(adição)* | Quando a resposta não solucionar a dúvida, realizar agendamento presencial | ❌ Não implementado — tabela `Appointments` existe; o Scheduler não foi construído |
 | RF08 *(adição)* | Interface web para gerenciamento dos atendimentos agendados | ❌ Não implementado — apenas o Figma foi planejado (issue #19 aberta) |
 
-> Observação: o grupo também trabalha com requisitos internos numerados acima de RF08 (RF09-RF14), que não constam do documento oficial do desafio. Os mais citados nas decisões técnicas são: **RF11** (desativar conteúdo sem excluir, via coluna `active`), **RF12** (perfil único de acesso ao admin, sem RBAC — decisão explícita do grupo) e **RF14** (histórico local estruturado, coberto na prática pela tabela `Interactions`).
+> Observação: o grupo também trabalha com requisitos internos numerados acima de RF08 (RF09-RF14), que não constam do documento oficial do desafio. Os mais citados nas decisões técnicas são: **RF11** (desativar conteúdo sem excluir, via coluna `active`), **RF12** (perfil único de acesso ao admin, sem RBAC — decisão explícita do grupo; substituído pela [decisão 004](../../decisoes/004-contas-e-permissoes-granulares.md)) e **RF14** (histórico local estruturado, coberto na prática pela tabela `Interactions`).
 
 ### 3.2 Requisitos Não Funcionais (RNF)
 

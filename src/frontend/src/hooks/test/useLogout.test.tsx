@@ -122,18 +122,13 @@ describe("useLogout", () => {
         store.dispatch(
             appointmentsApi.util.upsertQueryEntries([
                 {
-                    endpointName: "getPendingAppointmentsCount",
-                    arg: undefined,
-                    value: 3
-                },
-                {
                     endpointName: "getAppointments",
                     arg: { ...LIST_FILTERS, search: FICTITIOUS_CPF },
                     value: EMPTY_LIST
                 }
             ])
         )
-        expect(Object.keys(store.getState().api.queries)).toHaveLength(2)
+        expect(Object.keys(store.getState().api.queries)).toHaveLength(1)
         expect(JSON.stringify(store.getState().api)).toContain(FICTITIOUS_CPF)
 
         await user.click(screen.getByRole("button", { name: "Sair" }))

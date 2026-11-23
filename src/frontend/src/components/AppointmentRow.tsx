@@ -28,7 +28,7 @@ function AppointmentRow({ row, texts, linkState, onOpen, onClaim }: AppointmentR
             <td>
                 <div className={css.stack}>
                     <span className={css.name}>{row.name}</span>
-                    <span className={css.cpf}>{row.cpfMasked}</span>
+                    <span className={css.cpf}>{row.cpfMasked ?? texts.cpfRemoved}</span>
                     {row.offGrid ? <Seal label={texts.offGrid} tone="warning" /> : null}
                 </div>
             </td>

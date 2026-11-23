@@ -4,7 +4,19 @@ import baseQueryWithSessionRenewal from "@/store/baseQueryWithSessionRenewal"
 const api = createApi({
     reducerPath: "api",
     baseQuery: baseQueryWithSessionRenewal,
-    tagTypes: ["Appointment", "AppointmentList", "AppointmentPendingCount"],
+    tagTypes: [
+        "Appointment",
+        "AppointmentList",
+        "UserList",
+        "SchedulePreview",
+        "ScheduleEffective",
+        "ScheduleVersions",
+        "Documents",
+        "DocumentsPreview",
+        "WhatsAppHistory",
+        "WhatsAppMeta",
+        "ContentSnapshot"
+    ],
     endpoints: () => ({})
 })
 

@@ -1,4 +1,4 @@
-import { IncomingMessage, OutgoingMessage } from "../types/message.types"
+import { DeliveryStatus, IncomingMessage, OutgoingMessage, OutgoingTemplate } from "../types/message.types"
 
 export interface IgnoredIncoming {
     reason: string
@@ -7,11 +7,15 @@ export interface IgnoredIncoming {
 
 export interface ParsedIncoming {
     messages: IncomingMessage[]
+    statuses: DeliveryStatus[]
     ignored: IgnoredIncoming[]
+    eventReceived: boolean
 }
 
 export interface MessageProvider {
     verifySignature(rawBody: Buffer, signatureHeader: string | undefined): boolean
     parseIncoming(payload: unknown): ParsedIncoming
     send(to: string, message: OutgoingMessage): Promise<void>
+    sendTemplate(to: string, template: OutgoingTemplate): Promise<{ providerMessageId: string | null }>
+    showTyping(messageId: string): Promise<void>
 }

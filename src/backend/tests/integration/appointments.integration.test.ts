@@ -398,6 +398,7 @@ describe("Agendamentos com Postgres (integração)", () => {
             name: "Cidadão Claim Concorrente",
             status: "PENDING",
             cpf: "66699933344",
+            appointmentDatetime: new Date("2032-01-05T16:00:00.000Z"),
         })
 
         const pool = getPool()
@@ -444,7 +445,11 @@ describe("Agendamentos com Postgres (integração)", () => {
         const pool = getPool()
         await insertConversationEvent(pool, String(sessionId), { type: "STARTED" })
         await insertConversationEvent(pool, String(sessionId), { type: "CATEGORY_CHOSEN", categoryId })
-        const apptId = await createAppointment({ name: "Cidadão Linha do Tempo", cpf: "77711144455" })
+        const apptId = await createAppointment({
+            name: "Cidadão Linha do Tempo",
+            cpf: "77711144455",
+            appointmentDatetime: new Date("2032-01-06T16:00:00.000Z"),
+        })
 
         const res = await request(app)
             .patch(`/api/v1/appointments/${apptId}/status`)
@@ -554,6 +559,42 @@ describe("Agendamentos com Postgres (integração)", () => {
         expect(listed.protocol).toBe(botProtocol)
     })
 
+    async function anonymizedAppointment(): Promise<{ id: number; protocol: string }> {
+        const id = await createAppointment({ name: "Cidadão Anonimizado", cpf: "20230340455", status: "CANCELED" })
+        const res = await getPool().query<{ appointment_code: string }>(
+            `UPDATE Appointments
+             SET name = 'Titular removido', cpf_hash = NULL, cpf_masked = NULL, phone_encrypted = NULL, anonymized_at = now()
+             WHERE id = $1
+             RETURNING appointment_code::text AS appointment_code`,
+            [id],
+        )
+        return { id, protocol: firstRow(res.rows).appointment_code.slice(0, 8).toUpperCase() }
+    }
+
+    it("o detalhe de um agendamento anonimizado devolve Titular removido e o CPF nulo", async () => {
+        const { id } = await anonymizedAppointment()
+
+        const res = await request(app).get(`/api/v1/appointments/${id}`).set("Cookie", adminCookie)
+
+        expect(res.status).toBe(200)
+        expect({ name: res.body.data.name, cpf_masked: res.body.data.cpf_masked }).toEqual({
+            name: "Titular removido",
+            cpf_masked: null,
+        })
+    })
+
+    it("a lista filtrada pelo protocolo traz o agendamento anonimizado com o CPF nulo", async () => {
+        const { id, protocol } = await anonymizedAppointment()
+
+        const res = await request(app)
+            .get(`/api/v1/appointments?period=all&search=${protocol}`)
+            .set("Cookie", adminCookie)
+
+        expect(res.status).toBe(200)
+        const listed = res.body.data.items.find((item: { id: string }) => item.id === String(id))
+        expect({ name: listed.name, cpf_masked: listed.cpf_masked }).toEqual({ name: "Titular removido", cpf_masked: null })
+    })
+
     it("conta os chips respeitando período e responsável, e Aguardando registro só pelo responsável", async () => {
         const pool = getPool()
         const userRes = await pool.query<{ id: string }>(
@@ -621,6 +662,7 @@ describe("Agendamentos com Postgres (integração)", () => {
             "assigned_user_name",
             "available_actions",
             "by_representative",
+            "cancellation_notice_status",
             "category_id",
             "category_name",
             "cpf_masked",
@@ -629,6 +671,7 @@ describe("Agendamentos com Postgres (integração)", () => {
             "id",
             "is_documents_config_different",
             "name",
+            "notes",
             "off_grid",
             "protocol",
             "question_id",
@@ -945,7 +988,12 @@ describe("Agendamentos com Postgres (integração)", () => {
     })
 
     it("assumir grava CONFIRMED, o responsável e o CLAIMED com quem clicou", async () => {
-        const apptId = await createAppointment({ name: "Cidadão Assumir", status: "PENDING", cpf: "31231231228" })
+        const apptId = await createAppointment({
+            name: "Cidadão Assumir",
+            status: "PENDING",
+            cpf: "31231231228",
+            appointmentDatetime: new Date("2032-01-07T16:00:00.000Z"),
+        })
 
         const res = await request(app)
             .patch(`/api/v1/appointments/${apptId}/status`)

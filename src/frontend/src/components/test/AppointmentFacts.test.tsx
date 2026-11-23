@@ -9,7 +9,13 @@ const FACTS = [
     { label: "CPF do titular", value: "***.982.247-**", mono: true },
     { label: "Status", value: "", status: "CONFIRMED" as const },
     { label: "Responsável", value: "Sem responsável", emphasis: true },
-    { label: "Origem no chatbot", value: "Bancos → Cobrança indevida", wide: true }
+    {
+        label: "Origem no chatbot",
+        value: "Cobrança indevida",
+        prefix: "Bancos →",
+        wide: true,
+        divided: true
+    }
 ]
 
 describe("AppointmentFacts", () => {
@@ -33,6 +39,13 @@ describe("AppointmentFacts", () => {
             "Sem responsável",
             "Bancos → Cobrança indevida"
         ])
+    })
+
+    it("mostra a categoria como prefixo separado da pergunta na origem", () => {
+        render(<AppointmentFacts title="Dados do agendamento" facts={FACTS} notice={null} />)
+
+        expect(screen.getByText("Bancos →")).toBeInTheDocument()
+        expect(screen.getByText("Bancos →").nextSibling?.textContent).toBe(" Cobrança indevida")
     })
 
     it("mostra o status como selo de status", () => {

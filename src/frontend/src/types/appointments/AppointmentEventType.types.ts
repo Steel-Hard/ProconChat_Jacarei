@@ -11,6 +11,7 @@ type AppointmentEventType =
     | "CANCELED_BY_STAFF"
     | "CITIZEN_NOTIFIED"
     | "CITIZEN_NOTIFICATION_FAILED"
+    | "CITIZEN_NOTICE_DISABLED"
     | "REMINDER_SENT"
     | "KEPT_OFF_GRID"
 

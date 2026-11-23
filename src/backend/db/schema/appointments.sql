@@ -10,8 +10,8 @@ CREATE TABLE Appointments (
     reason appointment_reason NOT NULL,
 
     name VARCHAR(150) NOT NULL,
-    cpf_hash VARCHAR(64) NOT NULL,
-    cpf_masked VARCHAR(14) NOT NULL,
+    cpf_hash VARCHAR(64),
+    cpf_masked VARCHAR(14),
     phone_encrypted TEXT,
     by_representative BOOLEAN NOT NULL DEFAULT FALSE,
     documents_sent JSONB NOT NULL,
@@ -24,6 +24,7 @@ CREATE TABLE Appointments (
     assigned_user_id BIGINT REFERENCES Users(id),
 
     request_datetime TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    anonymized_at TIMESTAMPTZ,
 
     CONSTRAINT uniq_appointments_code UNIQUE (appointment_code),
     CONSTRAINT chk_appointments_cpf_hash CHECK (cpf_hash ~ '^[0-9a-f]{64}$'),
@@ -35,7 +36,11 @@ CREATE TABLE Appointments (
         AND jsonb_typeof(documents_sent -> 'question') IS NOT DISTINCT FROM 'array'
     ),
     CONSTRAINT chk_appointments_pending_unassigned CHECK (status <> 'PENDING' OR assigned_user_id IS NULL),
-    CONSTRAINT chk_appointments_confirmed_assigned CHECK (status NOT IN ('CONFIRMED', 'ATTENDED', 'NO_SHOW') OR assigned_user_id IS NOT NULL)
+    CONSTRAINT chk_appointments_confirmed_assigned CHECK (status NOT IN ('CONFIRMED', 'ATTENDED', 'NO_SHOW') OR assigned_user_id IS NOT NULL),
+    CONSTRAINT chk_appointments_anonymized CHECK (
+        (anonymized_at IS NULL AND cpf_hash IS NOT NULL AND cpf_masked IS NOT NULL)
+        OR (anonymized_at IS NOT NULL AND cpf_hash IS NULL AND cpf_masked IS NULL AND phone_encrypted IS NULL AND name = 'Titular removido')
+    )
 );
 
 CREATE INDEX idx_appointments_cpf_hash ON Appointments(cpf_hash);
@@ -44,6 +49,7 @@ CREATE INDEX idx_appointments_datetime_active ON Appointments(appointment_dateti
 CREATE INDEX idx_appointments_assigned ON Appointments(assigned_user_id);
 CREATE INDEX idx_appointments_session ON Appointments(session_id);
 CREATE INDEX idx_appointments_question ON Appointments(question_id);
+CREATE INDEX idx_appointments_retention ON Appointments(appointment_datetime) WHERE anonymized_at IS NULL;
 
 CREATE UNIQUE INDEX uniq_appointments_active
     ON Appointments(cpf_hash, appointment_datetime)

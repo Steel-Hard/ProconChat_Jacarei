@@ -433,3 +433,6 @@ FodyWeavers.xsd
 
 # Rascunhos locais (planejamento de tasks antes de virarem issues)
 .temp/
+
+# Especificações das tarefas (ficam só no disco)
+.specs/

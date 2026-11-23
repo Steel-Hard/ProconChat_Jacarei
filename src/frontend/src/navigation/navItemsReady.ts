@@ -3,12 +3,12 @@ import type NavKey from "@/types/navigation/NavKey.types"
 const NAV_ITEMS_READY: Record<NavKey, boolean> = {
     dashboard: false,
     appointments: true,
-    reports: false,
-    content: false,
+    reports: true,
+    content: true,
     sessions: false,
-    schedule: false,
-    documents: false,
-    users: false,
+    schedule: true,
+    documents: true,
+    users: true,
     whatsapp: true
 }
 

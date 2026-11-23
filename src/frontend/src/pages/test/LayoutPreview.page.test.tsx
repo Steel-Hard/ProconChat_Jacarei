@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { screen } from "@testing-library/react"
 import { createMemoryRouter, RouterProvider, type RouteObject } from "react-router-dom"
 import loadPanelRoutes from "@/testUtils/loadPanelRoutes"
-import withPendingCount from "@/testUtils/withPendingCount"
 
 vi.mock("@/navigation/navItemsReady", () => ({
     default: {
@@ -33,7 +32,10 @@ describe("LayoutPreviewPage", { timeout: 15000 }, () => {
     })
 
     it("mostra um exemplo de cada componente dentro do layout em desenvolvimento", async () => {
-        vi.stubGlobal("fetch", vi.fn(withPendingCount()))
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(() => new Promise<Response>(() => {}))
+        )
         const { routes, renderWithStore } = await loadPanelRoutes([
             () => import("@/pages/LayoutPreview.page")
         ])

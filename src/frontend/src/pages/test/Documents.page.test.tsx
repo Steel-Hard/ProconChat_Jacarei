@@ -1,0 +1,812 @@
+import { afterEach, describe, expect, it, vi } from "vitest"
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
+import renderDocumentsPage from "@/testUtils/renderDocumentsPage"
+import holderContract from "@/testUtils/documentsPreviewHolder.json"
+import representativeContract from "@/testUtils/documentsPreviewRepresentative.json"
+import withoutQuestionContract from "@/testUtils/documentsPreviewWithoutQuestion.json"
+import type DocumentsConfigView from "@/types/documents/DocumentsConfigView.types"
+
+const initialDocuments: DocumentsConfigView = {
+    holder: [
+        "RG ou outro documento oficial com foto",
+        "CPF",
+        "Comprovante de endereço",
+        "Comprovante da reclamação"
+    ],
+    representative: [
+        "RG e CPF do titular (cópia)",
+        "RG ou outro documento do representante",
+        "Procuração assinada",
+        "Comprovante da reclamação"
+    ],
+    updatedBy: { id: 1, name: "Mariana Couto" },
+    updatedAt: "2026-10-15T14:30:00.000Z",
+    sampleQuestions: [
+        {
+            id: "12",
+            title: "Cobrança indevida no cartão",
+            categoryTitle: "Bancos e cartões",
+            documents: ["RG", "Fatura do cartão"]
+        },
+        {
+            id: "2",
+            title: "Direito de arrependimento",
+            categoryTitle: "Compras",
+            documents: []
+        }
+    ]
+}
+
+function invalidPreviewRequest(
+    body: Record<string, unknown> | null,
+    questions: Array<{ id: string }>
+): { status: number; message: string } | null {
+    if (body === null || typeof body.byRepresentative !== "boolean") {
+        return { status: 400, message: "byRepresentative inválido" }
+    }
+    const documents = body.groupDocuments
+    if (!Array.isArray(documents) || documents.length > 10) {
+        return { status: 400, message: "groupDocuments inválido" }
+    }
+    const seen = new Set<string>()
+    for (const document of documents) {
+        const key = typeof document === "string" ? document.trim().toLowerCase() : ""
+        if (key === "" || document.length > 255 || seen.has(key)) {
+            return { status: 400, message: "documento inválido" }
+        }
+        seen.add(key)
+    }
+    if (body.questionId !== undefined) {
+        if (!Number.isInteger(body.questionId) || (body.questionId as number) <= 0) {
+            return { status: 400, message: "questionId inválido" }
+        }
+        if (!questions.some((question) => question.id === String(body.questionId))) {
+            return { status: 404, message: "Pergunta não encontrada." }
+        }
+    }
+    return null
+}
+
+function stubDocumentsFetch(
+    response: {
+        status?: number
+        data?: unknown
+        error?: unknown
+        put?: { status: number; body: unknown }
+        previewContract?: unknown
+        holdPreviewFrom?: number
+    } = {
+        status: 200,
+        data: initialDocuments
+    }
+) {
+    let capturedPutBody: unknown = null
+    let currentData = response.data
+    const previewBodies: Array<Record<string, unknown> | null> = []
+    let heldPreview: (() => void) | null = null
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const request =
+            typeof input === "object" &&
+            input !== null &&
+            "url" in input &&
+            "method" in input &&
+            "clone" in input
+                ? (input as Request)
+                : null
+        const url = request ? request.url : typeof input === "string" ? input : input.toString()
+        const method = request?.method ?? init?.method ?? "GET"
+        const rawBody = request ? await request.clone().text() : init?.body
+        const body =
+            typeof rawBody === "string" && rawBody.length > 0
+                ? (JSON.parse(rawBody) as Record<string, unknown>)
+                : null
+
+        if (url.endsWith("/api/v1/documents") && method === "GET") {
+            if (response.status && response.status >= 400) {
+                return Promise.resolve(
+                    new Response(JSON.stringify(response.error ?? { error: "Failed" }), {
+                        status: response.status,
+                        headers: { "Content-Type": "application/json" }
+                    })
+                )
+            }
+            return Promise.resolve(
+                new Response(JSON.stringify({ data: currentData }), {
+                    status: 200,
+                    headers: { "Content-Type": "application/json" }
+                })
+            )
+        }
+
+        if (url.endsWith("/api/v1/documents") && method === "PUT") {
+            capturedPutBody = body
+            if (response.put) {
+                return new Response(JSON.stringify(response.put.body), {
+                    status: response.put.status,
+                    headers: { "Content-Type": "application/json" }
+                })
+            }
+            const updatedData = {
+                ...initialDocuments,
+                ...(capturedPutBody as object),
+                updatedAt: new Date().toISOString()
+            }
+            currentData = updatedData
+            return Promise.resolve(
+                new Response(JSON.stringify({ data: updatedData }), {
+                    status: 200,
+                    headers: { "Content-Type": "application/json" }
+                })
+            )
+        }
+
+        if (url.endsWith("/api/v1/documents/preview") && method === "POST") {
+            previewBodies.push(body)
+            if (
+                response.holdPreviewFrom !== undefined &&
+                previewBodies.length >= response.holdPreviewFrom
+            ) {
+                await new Promise<void>((resolve) => {
+                    heldPreview = resolve
+                })
+            }
+            const questions =
+                (currentData as DocumentsConfigView | undefined)?.sampleQuestions ?? []
+            const invalid = invalidPreviewRequest(body, questions)
+            if (invalid !== null) {
+                return new Response(
+                    JSON.stringify({ error: { code: "BAD_REQUEST", message: invalid.message } }),
+                    { status: invalid.status, headers: { "Content-Type": "application/json" } }
+                )
+            }
+            const contract =
+                response.previewContract !== undefined
+                    ? response.previewContract
+                    : body?.byRepresentative === true
+                      ? representativeContract
+                      : body?.questionId === undefined
+                        ? withoutQuestionContract
+                        : holderContract
+            return new Response(JSON.stringify({ data: contract }), {
+                status: 200,
+                headers: { "Content-Type": "application/json" }
+            })
+        }
+
+        return Promise.resolve(new Response(null, { status: 404 }))
+    })
+
+    return {
+        fetchMock,
+        getCapturedPutBody: () => capturedPutBody,
+        previewBodies,
+        releaseHeldPreview: () => heldPreview?.()
+    }
+}
+
+function buildTwelveQuestions() {
+    return Array.from({ length: 12 }, (_, index) => ({
+        id: String(index + 1),
+        title: `Pergunta ${index + 1}`,
+        categoryTitle: index < 7 ? "Bancos e cartões" : "Compras",
+        documents: []
+    }))
+}
+
+async function failSaving(put: { status: number; body: unknown }) {
+    const user = userEvent.setup()
+    const { fetchMock } = stubDocumentsFetch({ status: 200, data: initialDocuments, put })
+    await renderDocumentsPage(fetchMock)
+    await user.click(await screen.findByRole("button", { name: "Remover CPF" }))
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
+    return screen.findByRole("alert")
+}
+
+const realSetTimeout = globalThis.setTimeout
+
+async function until(condition: () => boolean) {
+    for (let attempt = 0; attempt < 100 && !condition(); attempt += 1) {
+        await act(async () => {
+            await new Promise((resolve) => realSetTimeout(resolve, 50))
+        })
+    }
+    expect(condition()).toBe(true)
+}
+
+async function advance(ms: number) {
+    await act(async () => {
+        vi.advanceTimersByTime(ms)
+    })
+}
+
+async function renderWithFakeTimers(stub = stubDocumentsFetch()) {
+    await renderDocumentsPage(stub.fetchMock)
+    await waitFor(() => expect(stub.previewBodies).toHaveLength(1), { timeout: 5000 })
+    await screen.findByText("Agendamento realizado", {}, { timeout: 5000 })
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    return stub
+}
+
+function addDocument(text: string) {
+    const input = screen.getByRole("textbox", {
+        name: "Novo documento (Quando o próprio titular comparece)"
+    })
+    fireEvent.change(input, { target: { value: text } })
+    fireEvent.submit(input.closest("form")!)
+}
+
+afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
+    vi.resetModules()
+})
+
+describe("DocumentsPage", () => {
+    it("exibe mensagem de carregando inicialmente", async () => {
+        await renderDocumentsPage(vi.fn(() => new Promise<Response>(() => {})))
+
+        expect(screen.getByText("Carregando...")).toBeInTheDocument()
+    })
+
+    it("exibe alerta de erro se a requisição falhar", async () => {
+        const { fetchMock } = stubDocumentsFetch({
+            status: 500,
+            error: { message: "Erro interno" }
+        })
+        await renderDocumentsPage(fetchMock)
+
+        expect(
+            await screen.findByText(
+                "Não foi possível carregar os documentos para atendimento presencial."
+            )
+        ).toBeInTheDocument()
+    })
+
+    it("carrega e renderiza o cabeçalho, aviso de próximos agendamentos e última alteração", async () => {
+        const { fetchMock } = stubDocumentsFetch()
+        await renderDocumentsPage(fetchMock)
+
+        expect(
+            await screen.findByRole("heading", { name: "Documentos para atendimento presencial" })
+        ).toBeInTheDocument()
+        expect(
+            screen.getByText(
+                "As alterações valem só para os próximos agendamentos. Os já criados mantêm a lista que foi enviada ao cidadão na época."
+            )
+        ).toBeInTheDocument()
+        expect(
+            await screen.findByText("Última alteração por Mariana Couto em 15/10/2026")
+        ).toBeInTheDocument()
+    })
+
+    it("renderiza os dois grupos e seus itens", async () => {
+        const { fetchMock } = stubDocumentsFetch()
+        await renderDocumentsPage(fetchMock)
+
+        expect(
+            await screen.findByRole("heading", { name: "Quando o próprio titular comparece" })
+        ).toBeInTheDocument()
+        expect(
+            screen.getByRole("heading", {
+                name: "Quando um representante comparece em nome do titular"
+            })
+        ).toBeInTheDocument()
+
+        expect(
+            screen.getByRole("button", { name: "RG ou outro documento oficial com foto" })
+        ).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "Procuração assinada" })).toBeInTheDocument()
+    })
+
+    it("adiciona um documento e exibe alterações não salvas", async () => {
+        const user = userEvent.setup()
+        const { fetchMock } = stubDocumentsFetch()
+        await renderDocumentsPage(fetchMock)
+
+        await screen.findByRole("heading", { name: "Quando o próprio titular comparece" })
+
+        const input = screen.getByRole("textbox", {
+            name: "Novo documento (Quando o próprio titular comparece)"
+        })
+        await user.type(input, "Carteira de Trabalho (CTPS){enter}")
+
+        expect(
+            screen.getByRole("button", { name: "Carteira de Trabalho (CTPS)" })
+        ).toBeInTheDocument()
+        expect(screen.getByText("1 alteração não salva")).toBeInTheDocument()
+    })
+
+    it("edita um item inline", async () => {
+        const user = userEvent.setup()
+        const { fetchMock } = stubDocumentsFetch()
+        await renderDocumentsPage(fetchMock)
+
+        const holderList = await screen.findByRole("list", {
+            name: "Quando o próprio titular comparece"
+        })
+        const itemButton = within(holderList).getByRole("button", {
+            name: "Comprovante da reclamação"
+        })
+        await user.click(itemButton)
+
+        const input = screen.getByRole("textbox", { name: "Editar Comprovante da reclamação" })
+        await user.clear(input)
+        await user.type(input, "Nota fiscal ou contrato{enter}")
+
+        expect(screen.getByRole("button", { name: "Nota fiscal ou contrato" })).toBeInTheDocument()
+        expect(screen.getByText("1 alteração não salva")).toBeInTheDocument()
+    })
+
+    it("reordena itens e envia a ordem final no corpo do PUT", async () => {
+        const user = userEvent.setup()
+        const { fetchMock, getCapturedPutBody } = stubDocumentsFetch()
+        await renderDocumentsPage(fetchMock)
+
+        const holderList = await screen.findByRole("list", {
+            name: "Quando o próprio titular comparece"
+        })
+        await user.click(within(holderList).getByRole("button", { name: "Mover CPF para cima" }))
+
+        const titles = within(holderList)
+            .getAllByRole("listitem")
+            .map((item) => within(item).getAllByRole("button")[0]!.textContent)
+        expect(titles).toEqual([
+            "CPF",
+            "RG ou outro documento oficial com foto",
+            "Comprovante de endereço",
+            "Comprovante da reclamação"
+        ])
+        expect(screen.getByText("1 alteração não salva")).toBeInTheDocument()
+
+        await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
+
+        await waitFor(() => expect(getCapturedPutBody()).not.toBeNull())
+        expect(getCapturedPutBody()).toEqual({
+            holder: [
+                "CPF",
+                "RG ou outro documento oficial com foto",
+                "Comprovante de endereço",
+                "Comprovante da reclamação"
+            ],
+            representative: initialDocuments.representative
+        })
+    })
+
+    it("conta a mudança líquida e lista as pendentes ao passar o mouse", async () => {
+        const user = userEvent.setup()
+        const { fetchMock } = stubDocumentsFetch()
+        await renderDocumentsPage(fetchMock)
+
+        const holderList = await screen.findByRole("list", {
+            name: "Quando o próprio titular comparece"
+        })
+        await user.type(
+            screen.getByRole("textbox", {
+                name: "Novo documento (Quando o próprio titular comparece)"
+            }),
+            "Carteira de Trabalho{enter}"
+        )
+        await user.click(within(holderList).getByRole("button", { name: "Remover CPF" }))
+        await user.click(
+            within(holderList).getByRole("button", {
+                name: "Mover Comprovante de endereço para cima"
+            })
+        )
+
+        const chip = screen.getByText("3 alterações não salvas")
+        await user.hover(chip)
+
+        expect(screen.getByRole("tooltip")).toHaveTextContent(
+            "Pendentes: Adicionado: Carteira de Trabalho (titular); Removido: CPF (titular); Ordem dos documentos do titular alterada"
+        )
+    })
+
+    it("exibe alerta de grupo vazio mas permite salvar", async () => {
+        const user = userEvent.setup()
+        const { fetchMock, getCapturedPutBody } = stubDocumentsFetch()
+        await renderDocumentsPage(fetchMock)
+
+        await screen.findByRole("heading", { name: "Quando o próprio titular comparece" })
+
+        for (let i = 0; i < 4; i++) {
+            const removeButtons = screen.getAllByTitle("Remover")
+            await user.click(removeButtons[0]!)
+        }
+
+        expect(
+            screen.getByText(
+                "Nenhum documento será pedido quando o titular comparecer. O cidadão pode chegar sem o necessário para o atendimento."
+            )
+        ).toBeInTheDocument()
+
+        const saveButton = screen.getByRole("button", { name: "Salvar alterações" })
+        expect(saveButton).not.toBeDisabled()
+
+        await user.click(saveButton)
+
+        await waitFor(() => expect(getCapturedPutBody()).not.toBeNull())
+        expect((getCapturedPutBody() as { holder: string[] }).holder).toEqual([])
+        expect(screen.getByText("Documentos atualizados com sucesso.")).toBeInTheDocument()
+    })
+
+    it("descartar desfaz todas as alterações pendentes", async () => {
+        const user = userEvent.setup()
+        const { fetchMock } = stubDocumentsFetch()
+        await renderDocumentsPage(fetchMock)
+
+        await screen.findByRole("heading", { name: "Quando o próprio titular comparece" })
+
+        const input = screen.getByRole("textbox", {
+            name: "Novo documento (Quando o próprio titular comparece)"
+        })
+        await user.type(input, "Documento extra{enter}")
+
+        expect(screen.getByRole("button", { name: "Documento extra" })).toBeInTheDocument()
+        expect(screen.getByText("1 alteração não salva")).toBeInTheDocument()
+
+        await user.click(screen.getByRole("button", { name: "Descartar" }))
+
+        expect(screen.queryByRole("button", { name: "Documento extra" })).not.toBeInTheDocument()
+        expect(screen.queryByText("1 alteração não salva")).not.toBeInTheDocument()
+    })
+
+    it("prévia monta título, detalhes, grupo e pergunta pela resposta do backend", async () => {
+        const { fetchMock } = stubDocumentsFetch()
+        await renderDocumentsPage(fetchMock)
+
+        const bubble = await screen.findByTestId("preview-bubble")
+        await within(bubble).findByText("Agendamento realizado")
+
+        expect(within(bubble).getByText("Protocolo: A3F9C21B")).toBeInTheDocument()
+        expect(
+            within(bubble).getByText("Endereço: Avenida Central, 100 (Térreo)")
+        ).toBeInTheDocument()
+        expect(within(bubble).getByText("Leve ao atendimento:")).toBeInTheDocument()
+        expect(within(bubble).getByText("• CPF")).toBeInTheDocument()
+        expect(within(bubble).getByText("Documentos úteis para esta dúvida:")).toBeInTheDocument()
+        expect(within(bubble).getByText("• Fatura do cartão")).toBeInTheDocument()
+        expect(within(bubble).getByText(/Você receberá neste número avisos/)).toBeInTheDocument()
+    })
+
+    it("lista todas as perguntas ativas agrupadas por categoria, na ordem recebida", async () => {
+        const { fetchMock } = stubDocumentsFetch({
+            status: 200,
+            data: { ...initialDocuments, sampleQuestions: buildTwelveQuestions() }
+        })
+        await renderDocumentsPage(fetchMock)
+
+        const select = await screen.findByLabelText("Pergunta de exemplo")
+        const groups = within(select).getAllByRole("group")
+
+        expect(groups.map((group) => group.getAttribute("label"))).toEqual([
+            "Bancos e cartões",
+            "Compras"
+        ])
+        expect(
+            within(select)
+                .getAllByRole("option")
+                .map((option) => option.textContent)
+        ).toEqual(Array.from({ length: 12 }, (_, index) => `Pergunta ${index + 1}`))
+    })
+
+    it("não oferece campo de busca de pergunta", async () => {
+        const { fetchMock } = stubDocumentsFetch({
+            status: 200,
+            data: { ...initialDocuments, sampleQuestions: buildTwelveQuestions() }
+        })
+        await renderDocumentsPage(fetchMock)
+
+        await screen.findByLabelText("Pergunta de exemplo")
+        expect(screen.queryByRole("searchbox")).not.toBeInTheDocument()
+        expect(screen.queryByLabelText("Buscar pergunta")).not.toBeInTheDocument()
+    })
+
+    it("sem perguntas ativas mostra o estado vazio e nenhuma pergunta inventada", async () => {
+        const { fetchMock } = stubDocumentsFetch({
+            status: 200,
+            data: { ...initialDocuments, sampleQuestions: [] }
+        })
+        await renderDocumentsPage(fetchMock)
+
+        expect(
+            await screen.findByText("Nenhuma pergunta ativa cadastrada na tela Conteúdo")
+        ).toBeInTheDocument()
+        expect(screen.queryByLabelText("Pergunta de exemplo")).not.toBeInTheDocument()
+        expect(screen.queryByText("Cobrança indevida no cartão de crédito")).not.toBeInTheDocument()
+    })
+
+    it("400 ao salvar mostra o item e o motivo vindos do backend sem aninhamento inválido", async () => {
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+        const alert = await failSaving({
+            status: 400,
+            body: {
+                error: {
+                    code: "BAD_REQUEST",
+                    message:
+                        'Dados inválidos: representative.1: O documento "CPF" já está na lista.',
+                    details: {
+                        issues: [
+                            {
+                                path: "representative.1",
+                                message: 'O documento "CPF" já está na lista.'
+                            },
+                            { path: "holder", message: "Limite de 10 documentos por grupo." }
+                        ]
+                    }
+                }
+            }
+        })
+
+        expect(alert).toHaveTextContent("Confira os documentos informados antes de salvar.")
+        expect(alert).toHaveTextContent(
+            'Representante, item 2: O documento "CPF" já está na lista.'
+        )
+        expect(alert).toHaveTextContent("Titular: Limite de 10 documentos por grupo.")
+        expect(
+            consoleError.mock.calls.filter((call) => String(call[0]).includes("validateDOMNesting"))
+        ).toHaveLength(0)
+        expect(alert.tagName).toBe("DIV")
+        consoleError.mockRestore()
+    })
+
+    it("401 ao salvar pede para entrar de novo", async () => {
+        const alert = await failSaving({
+            status: 401,
+            body: { error: { code: "UNAUTHORIZED", message: "Unauthorized" } }
+        })
+
+        expect(alert).toHaveTextContent("Sua sessão expirou. Entre novamente para salvar.")
+    })
+
+    it("403 ao salvar informa a falta de permissão", async () => {
+        const alert = await failSaving({
+            status: 403,
+            body: { error: { code: "FORBIDDEN", message: "Forbidden" } }
+        })
+
+        expect(alert).toHaveTextContent("Você não tem permissão para alterar os documentos.")
+    })
+
+    it("falha inesperada ao salvar mostra a mensagem genérica e mantém o rascunho", async () => {
+        const alert = await failSaving({
+            status: 500,
+            body: { error: { code: "INTERNAL_SERVER_ERROR", message: "Internal Server Error" } }
+        })
+
+        expect(alert).toHaveTextContent("Não foi possível salvar os documentos. Tente novamente.")
+        expect(screen.getByText("1 alteração não salva")).toBeInTheDocument()
+        expect(screen.queryByRole("button", { name: "CPF" })).not.toBeInTheDocument()
+    })
+
+    describe("atraso da prévia", () => {
+        afterEach(() => {
+            vi.useRealTimers()
+        })
+
+        it("com os timers falsos ligados antes de abrir a tela, o primeiro pedido sai sem avançar 400 ms", async () => {
+            vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+            const stub = stubDocumentsFetch()
+            await renderDocumentsPage(stub.fetchMock)
+
+            await until(() => stub.previewBodies.length === 1)
+
+            expect(stub.previewBodies[0]).toEqual({
+                byRepresentative: false,
+                groupDocuments: initialDocuments.holder,
+                questionId: 12
+            })
+        })
+
+        it("enquanto a resposta nova não chega, a bolha segue com a prévia anterior e avisa que está atualizando", async () => {
+            const stub = stubDocumentsFetch({
+                status: 200,
+                data: initialDocuments,
+                holdPreviewFrom: 2
+            })
+            await renderWithFakeTimers(stub)
+
+            addDocument("Doc A")
+            await advance(400)
+            await until(() => stub.previewBodies.length === 2)
+
+            expect(
+                within(screen.getByTestId("preview-bubble")).getByText("Agendamento realizado")
+            ).toBeInTheDocument()
+            expect(screen.getByText("Atualizando a prévia…")).toBeInTheDocument()
+
+            stub.releaseHeldPreview()
+            await until(() => screen.queryByText("Atualizando a prévia…") === null)
+            expect(
+                within(screen.getByTestId("preview-bubble")).getByText("Agendamento realizado")
+            ).toBeInTheDocument()
+        })
+
+        it("a primeira prévia sai sem esperar o atraso e leva o corpo do rascunho", async () => {
+            const { previewBodies } = await renderWithFakeTimers()
+
+            expect(previewBodies[0]).toEqual({
+                byRepresentative: false,
+                groupDocuments: initialDocuments.holder,
+                questionId: 12
+            })
+        })
+
+        it("não pede nada antes de 400 ms e pede exatamente uma vez depois", async () => {
+            const { previewBodies } = await renderWithFakeTimers()
+
+            addDocument("Doc A")
+            await advance(399)
+            expect(previewBodies).toHaveLength(1)
+
+            await advance(1)
+            await until(() => previewBodies.length === 2)
+            expect(previewBodies[1]).toEqual({
+                byRepresentative: false,
+                groupDocuments: [...initialDocuments.holder, "Doc A"],
+                questionId: 12
+            })
+
+            await advance(5000)
+            expect(previewBodies).toHaveLength(2)
+        })
+
+        it("mudanças espaçadas de 150 ms reiniciam o atraso e geram uma só requisição", async () => {
+            const { previewBodies } = await renderWithFakeTimers()
+
+            addDocument("Doc A")
+            await advance(150)
+            addDocument("Doc B")
+            await advance(150)
+            addDocument("Doc C")
+            await advance(399)
+            expect(previewBodies).toHaveLength(1)
+
+            await advance(1)
+            await until(() => previewBodies.length === 2)
+            expect(previewBodies[1]).toEqual({
+                byRepresentative: false,
+                groupDocuments: [...initialDocuments.holder, "Doc A", "Doc B", "Doc C"],
+                questionId: 12
+            })
+
+            await advance(5000)
+            expect(previewBodies).toHaveLength(2)
+        })
+
+        it("mantém a prévia anterior visível e avisa que está atualizando", async () => {
+            const { previewBodies } = await renderWithFakeTimers()
+            const bubble = screen.getByTestId("preview-bubble")
+            addDocument("Doc A")
+
+            expect(within(bubble).getByText("Agendamento realizado")).toBeInTheDocument()
+            expect(screen.getByText("Atualizando a prévia…")).toBeInTheDocument()
+
+            await advance(400)
+            await until(() => previewBodies.length === 2)
+            await until(() => screen.queryByText("Atualizando a prévia…") === null)
+            expect(within(bubble).getByText("Agendamento realizado")).toBeInTheDocument()
+        })
+    })
+
+    it("edita um item do grupo do representante, salva e mostra o item gravado", async () => {
+        const user = userEvent.setup()
+        const { fetchMock, getCapturedPutBody } = stubDocumentsFetch()
+        await renderDocumentsPage(fetchMock)
+
+        const representativeList = await screen.findByRole("list", {
+            name: "Quando um representante comparece em nome do titular"
+        })
+        await user.click(
+            within(representativeList).getByRole("button", { name: "Procuração assinada" })
+        )
+        const input = screen.getByRole("textbox", { name: "Editar Procuração assinada" })
+        await user.clear(input)
+        await user.type(input, "Procuração com firma reconhecida{enter}")
+
+        await user.click(screen.getByRole("button", { name: "Salvar alterações" }))
+
+        await waitFor(() => expect(getCapturedPutBody()).not.toBeNull())
+        expect(getCapturedPutBody()).toEqual({
+            holder: initialDocuments.holder,
+            representative: [
+                "RG e CPF do titular (cópia)",
+                "RG ou outro documento do representante",
+                "Procuração com firma reconhecida",
+                "Comprovante da reclamação"
+            ]
+        })
+        expect(await screen.findByText("Documentos atualizados com sucesso.")).toBeInTheDocument()
+        expect(
+            await screen.findByRole("button", { name: "Procuração com firma reconhecida" })
+        ).toBeInTheDocument()
+        expect(
+            screen.queryByText(/alteração não salva|alterações não salvas/)
+        ).not.toBeInTheDocument()
+    })
+
+    it("a prévia do representante envia a lista do representante", async () => {
+        const user = userEvent.setup()
+        const { fetchMock, previewBodies } = stubDocumentsFetch()
+        await renderDocumentsPage(fetchMock)
+
+        await user.click(await screen.findByRole("button", { name: "Representante comparece" }))
+
+        await waitFor(
+            () =>
+                expect(previewBodies.at(-1)).toEqual({
+                    byRepresentative: true,
+                    groupDocuments: initialDocuments.representative,
+                    questionId: 12
+                }),
+            { timeout: 5000 }
+        )
+    })
+
+    it("não perde o texto digitado em um item quando outro item é reordenado", async () => {
+        const user = userEvent.setup()
+        const { fetchMock } = stubDocumentsFetch()
+        await renderDocumentsPage(fetchMock)
+
+        const holderList = await screen.findByRole("list", {
+            name: "Quando o próprio titular comparece"
+        })
+        await user.click(within(holderList).getByRole("button", { name: "CPF" }))
+        const input = screen.getByRole("textbox", { name: "Editar CPF" })
+        await user.type(input, " do titular")
+
+        await user.click(
+            within(holderList).getByRole("button", {
+                name: "Mover Comprovante de endereço para cima"
+            })
+        )
+
+        expect(screen.getByRole("textbox", { name: "Editar CPF" })).toHaveValue("CPF do titular")
+    })
+
+    it("não avisa pergunta sem documentos quando a prévia traz o bloco da pergunta", async () => {
+        const { fetchMock } = stubDocumentsFetch({
+            status: 200,
+            data: {
+                ...initialDocuments,
+                sampleQuestions: [{ id: "12", title: "P", categoryTitle: "C", documents: [] }]
+            },
+            previewContract: holderContract
+        })
+        await renderDocumentsPage(fetchMock)
+
+        await within(await screen.findByTestId("preview-bubble")).findByText(
+            "• Fatura do cartão",
+            {},
+            { timeout: 5000 }
+        )
+        expect(
+            screen.queryByText(
+                "Esta pergunta não tem documentos úteis cadastrados. A mensagem mostra só a lista do grupo."
+            )
+        ).not.toBeInTheDocument()
+    })
+
+    it("avisa pergunta sem documentos quando a prévia não traz o bloco da pergunta", async () => {
+        const { fetchMock } = stubDocumentsFetch({
+            status: 200,
+            data: {
+                ...initialDocuments,
+                sampleQuestions: [
+                    { id: "12", title: "P", categoryTitle: "C", documents: ["Fatura do cartão"] }
+                ]
+            },
+            previewContract: withoutQuestionContract
+        })
+        await renderDocumentsPage(fetchMock)
+
+        expect(
+            await screen.findByText(
+                "Esta pergunta não tem documentos úteis cadastrados. A mensagem mostra só a lista do grupo.",
+                {},
+                { timeout: 5000 }
+            )
+        ).toBeInTheDocument()
+    })
+})

@@ -3,6 +3,8 @@ import { validateSchema } from "../middleware/validateRequest.middleware"
 import {
     appointmentIdParamSchema,
     listAppointmentsQuerySchema,
+    addNoteBodySchema,
+    calendarQuerySchema,
     updateStatusBodySchema,
 } from "./appointment.schema"
 
@@ -114,10 +116,132 @@ describe("appointment.schema", () => {
             })
         })
 
+        it("aceita correct_record sem outros campos", () => {
+            expect(validateSchema(updateStatusBodySchema, { action: "correct_record" })).toEqual({
+                action: "correct_record",
+            })
+        })
+
         it("rejeita ação inválida", () => {
             expect(() =>
                 validateSchema(updateStatusBodySchema, { action: "cancel" }),
             ).toThrow("Dados inválidos")
+        })
+
+        it("aceita assign com o id do destino em número ou em texto numérico", () => {
+            expect(validateSchema(updateStatusBodySchema, { action: "assign", assigneeUserId: 7 })).toEqual({
+                action: "assign",
+                assigneeUserId: 7,
+            })
+            expect(validateSchema(updateStatusBodySchema, { action: "assign", assigneeUserId: "12" })).toEqual({
+                action: "assign",
+                assigneeUserId: 12,
+            })
+        })
+
+        it.each([
+            { label: "sem o destino", body: { action: "assign" } },
+            { label: "com destino não numérico", body: { action: "assign", assigneeUserId: "abc" } },
+            { label: "com destino zero", body: { action: "assign", assigneeUserId: 0 } },
+            { label: "com destino fracionário", body: { action: "assign", assigneeUserId: 1.5 } },
+        ])("rejeita assign $label", ({ body }) => {
+            expect(() => validateSchema(updateStatusBodySchema, body)).toThrow("Dados inválidos")
+        })
+
+        describe("cancel", () => {
+            it("recusa cancel sem o motivo", () => {
+                expect(() => validateSchema(updateStatusBodySchema, { action: "cancel" })).toThrow(
+                    "Dados inválidos: reason: Motivo inválido. Valores aceitos: UNIT_CLOSED, CITIZEN_REQUEST, DUPLICATE, OTHER",
+                )
+            })
+
+            it("recusa um motivo fora da lista", () => {
+                expect(() => validateSchema(updateStatusBodySchema, { action: "cancel", reason: "OUTRO" })).toThrow(
+                    "Dados inválidos: reason: Motivo inválido. Valores aceitos: UNIT_CLOSED, CITIZEN_REQUEST, DUPLICATE, OTHER",
+                )
+            })
+
+            it.each(["UNIT_CLOSED", "CITIZEN_REQUEST", "DUPLICATE", "OTHER"])("aceita o motivo %s", (reason) => {
+                expect(validateSchema(updateStatusBodySchema, { action: "cancel", reason })).toEqual({
+                    action: "cancel",
+                    reason,
+                })
+            })
+
+            it("recusa a observação com 2001 caracteres", () => {
+                expect(() =>
+                    validateSchema(updateStatusBodySchema, { action: "cancel", reason: "OTHER", note: "a".repeat(2001) }),
+                ).toThrow("Dados inválidos: note: A observação pode ter no máximo 2000 caracteres")
+            })
+
+            it("aceita a observação com 2000 caracteres", () => {
+                const note = "a".repeat(2000)
+
+                expect(validateSchema(updateStatusBodySchema, { action: "cancel", reason: "OTHER", note })).toEqual({
+                    action: "cancel",
+                    reason: "OTHER",
+                    note,
+                })
+            })
+
+            it("descarta a observação que fica vazia depois do trim", () => {
+                const parsed = validateSchema(updateStatusBodySchema, { action: "cancel", reason: "DUPLICATE", note: "   " })
+
+                expect(parsed).toEqual({ action: "cancel", reason: "DUPLICATE" })
+                expect("note" in parsed).toBe(false)
+            })
+
+            it("apara a observação", () => {
+                expect(
+                    validateSchema(updateStatusBodySchema, { action: "cancel", reason: "UNIT_CLOSED", note: "  texto  " }),
+                ).toEqual({ action: "cancel", reason: "UNIT_CLOSED", note: "texto" })
+            })
+
+            it("lista cancel na mensagem de ação inválida", () => {
+                expect(() => validateSchema(updateStatusBodySchema, { action: "excluir" })).toThrow(
+                    "Dados inválidos: action: Ação inválida. Valores aceitos: claim, attended, no_show, assign, correct_record, cancel",
+                )
+            })
+        })
+    })
+
+    describe("addNoteBodySchema", () => {
+        it("apara o texto e aceita até 2000 caracteres", () => {
+            expect(validateSchema(addNoteBodySchema, { text: "  Cidadão trouxe o contrato.  " })).toEqual({
+                text: "Cidadão trouxe o contrato.",
+            })
+            expect(validateSchema(addNoteBodySchema, { text: ` ${"a".repeat(2000)} ` })).toEqual({ text: "a".repeat(2000) })
+        })
+
+        it.each([
+            { label: "vazio", body: { text: "" } },
+            { label: "só com espaços", body: { text: "    " } },
+            { label: "com 2001 caracteres", body: { text: "a".repeat(2001) } },
+            { label: "sem texto", body: {} },
+        ])("rejeita texto $label", ({ body }) => {
+            expect(() => validateSchema(addNoteBodySchema, body)).toThrow("Dados inválidos")
+        })
+    })
+
+    describe("calendarQuerySchema", () => {
+        it("aceita data válida e aplica os padrões de status e responsável", () => {
+            expect(validateSchema(calendarQuerySchema, { date: "2026-10-21" })).toEqual({
+                date: "2026-10-21",
+                status: "all",
+                responsible: "all",
+            })
+            expect(validateSchema(calendarQuerySchema, {})).toEqual({ status: "all", responsible: "all" })
+        })
+
+        it("aceita os mesmos filtros de status e responsável da lista", () => {
+            expect(validateSchema(calendarQuerySchema, { status: "CANCELED", responsible: "12" })).toEqual({
+                status: "CANCELED",
+                responsible: "12",
+            })
+        })
+
+        it.each(["2026-02-30", "21/10/2026", "2026-13-01", "amanha"])("rejeita a data %s", (date) => {
+            expect(() => validateSchema(calendarQuerySchema, { date })).toThrow("Dados inválidos")
         })
     })
 })

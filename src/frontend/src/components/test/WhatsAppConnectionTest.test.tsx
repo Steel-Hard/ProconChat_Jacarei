@@ -41,4 +41,41 @@ describe("WhatsAppConnectionTest", () => {
         )
         expect(screen.getByRole("button", { name: "Testar conexão" })).toBeEnabled()
     })
+    it("mostra a dica na mesma linha do botão Testar conexão", () => {
+        render(
+            <WhatsAppConnectionTest
+                buttonLabel="Testar conexão"
+                testingText="Testando conexão com a Meta…"
+                testing={false}
+                disabled={false}
+                message={null}
+                hint="Teste a conexão com as credenciais novas antes de salvar."
+                hintId="dica-teste"
+                onTest={vi.fn()}
+            />
+        )
+
+        expect(
+            screen.getByRole("button", { name: "Testar conexão" }).parentElement
+        ).toContainElement(
+            screen.getByText("Teste a conexão com as credenciais novas antes de salvar.")
+        )
+    })
+    it("sem dica mostra só o botão Testar conexão", () => {
+        render(
+            <WhatsAppConnectionTest
+                buttonLabel="Testar conexão"
+                testingText="Testando conexão com a Meta…"
+                testing={false}
+                disabled={false}
+                message={null}
+                onTest={vi.fn()}
+            />
+        )
+
+        expect(screen.getByRole("button", { name: "Testar conexão" })).toBeInTheDocument()
+        expect(
+            screen.queryByText("Teste a conexão com as credenciais novas antes de salvar.")
+        ).not.toBeInTheDocument()
+    })
 })

@@ -1,3 +1,4 @@
+import type { CancellationNoticeProblem } from "./outboundMessage.types"
 export type AppointmentStatus =
     | "PENDING"
     | "CONFIRMED"
@@ -23,6 +24,17 @@ export type AppointmentEventType =
     | "REMINDER_SENT"
     | "KEPT_OFF_GRID"
 
+export type AppointmentReassignmentReason = "USER_DEACTIVATED" | "MANAGE_PERMISSION_REMOVED"
+
+export interface AssignedEventData {
+    assignee_user_id: number
+    reason?: AppointmentReassignmentReason
+}
+
+export interface BackToPendingEventData {
+    reason: AppointmentReassignmentReason | "RESCHEDULED"
+}
+
 export type AppointmentFilterStatus =
     | "all"
     | "PENDING"
@@ -47,14 +59,46 @@ export type AppointmentSortBy =
 
 export type AppointmentSortOrder = "asc" | "desc"
 
-export type AppointmentActionType = "claim" | "attended" | "no_show"
+export const CANCELLATION_REASONS = ["UNIT_CLOSED", "CITIZEN_REQUEST", "DUPLICATE", "OTHER"] as const
+
+export type CancellationReason = (typeof CANCELLATION_REASONS)[number]
+
+export type CitizenNotificationKind = "CANCELLATION"
+
+export type CitizenNotificationOutcome = "NOTIFIED" | "FAILED"
+
+export interface CancelOptions {
+    noticeDisabled: boolean
+}
+
+export type CancellationNoticeStatus = CitizenNotificationOutcome | "DISABLED"
+
+export interface CancellationPreview {
+    noticeEnabled: boolean
+    problem: CancellationNoticeProblem | null
+    previews: { reason: CancellationReason; message: string }[]
+}
+
+export interface CancellationNoticeTarget {
+    status: AppointmentStatus
+    appointmentDatetime: Date
+    name: string
+    protocol: string
+    phoneEncrypted: string | null
+    lastStaffCancelReason: CancellationReason | null
+    lastCancellationNotice: CancellationNoticeStatus | null
+}
+
+export type AppointmentActionType = "claim" | "attended" | "no_show" | "assign" | "correct_record" | "cancel"
+
+export type AppointmentAvailableActionKey = AppointmentActionType | "add_note" | "retry_cancellation_notice"
 
 export interface AppointmentListItem {
     id: string
     protocol: string
     appointment_code: string
     name: string
-    cpf_masked: string
+    cpf_masked: string | null
     category_name: string
     question_title: string
     appointment_datetime: string
@@ -94,6 +138,14 @@ export interface AppointmentEventItem {
     created_at: string
 }
 
+export interface AppointmentNote {
+    id: string
+    author_user_id: string
+    author_user_name: string | null
+    text: string
+    created_at: string
+}
+
 export interface ConversationTimelineStep {
     id: string
     type: string
@@ -109,13 +161,34 @@ export type TransitionErrorCode =
     | "APPOINTMENT_CANCELED"
     | "ATTENDANCE_NOT_YET_AVAILABLE"
     | "NO_SHOW_NOT_YET_AVAILABLE"
+    | "RECORD_NOT_CORRECTABLE"
+    | "ALREADY_ASSIGNED_TO_USER"
+    | "INVALID_ASSIGNEE"
+    | "ASSIGNEE_BUSY"
+    | "PERMISSION_REQUIRED"
+    | "CANCEL_AFTER_START"
+    | "NOTIFICATION_NOT_RETRYABLE"
+    | "NOTIFICATION_DISABLED"
+    | "CITIZEN_PHONE_UNAVAILABLE"
+    | "NOTIFICATION_AFTER_START"
 
 export interface AppointmentActionAvailability {
     allowed: boolean
     code: TransitionErrorCode | null
 }
 
-export type AppointmentAvailableActions = Record<AppointmentActionType, AppointmentActionAvailability>
+export type AppointmentAvailableActions = Record<AppointmentAvailableActionKey, AppointmentActionAvailability>
+
+export interface CorrectionHistoryEvent {
+    id: string
+    type: AppointmentEventType
+    data: Record<string, unknown>
+    createdAt: Date
+}
+
+export type CorrectionTarget =
+    | { status: "PENDING"; assignedUserId: null }
+    | { status: "CONFIRMED"; assignedUserId: number }
 
 export interface AppointmentDetail {
     id: string
@@ -124,7 +197,7 @@ export interface AppointmentDetail {
     session_id: string
     status: AppointmentStatus
     name: string
-    cpf_masked: string
+    cpf_masked: string | null
     by_representative: boolean
     reason: AppointmentReason
     appointment_datetime: string
@@ -146,11 +219,13 @@ export interface AppointmentDetail {
     is_documents_config_different: boolean
 
     events: AppointmentEventItem[]
+    notes: AppointmentNote[]
     timeline: ConversationTimelineStep[]
     available_actions: AppointmentAvailableActions
+    cancellation_notice_status: CancellationNoticeStatus | null
 }
 
-export type AppointmentDetailRecord = Omit<AppointmentDetail, "available_actions">
+export type AppointmentDetailRecord = Omit<AppointmentDetail, "available_actions" | "cancellation_notice_status">
 
 export interface AppointmentListFilters {
     search?: string
@@ -162,4 +237,90 @@ export interface AppointmentListFilters {
     page?: number
     limit?: number
     currentUserId?: number
+}
+
+export interface StaffRecord {
+    id: string
+    name: string
+    active: boolean
+    email: string
+}
+
+export interface StaffMember {
+    id: string
+    name: string
+    active: boolean
+    email: string | null
+}
+
+export interface CorrectionWarningDetails {
+    appointmentId: string
+    protocol: string
+    previousAssignedUserId: string
+    previousAssignedUserName: string
+    conflictingAppointmentId?: string
+    conflictingProtocol?: string
+    freeStaffCount: number
+}
+
+export interface CorrectionWarning {
+    code: "RESPONSIBLE_BUSY" | "RESPONSIBLE_UNAVAILABLE"
+    message: string
+    details: CorrectionWarningDetails
+}
+
+export interface CorrectionResult {
+    warning: CorrectionWarning | null
+}
+
+export interface WeekAppointmentRecord {
+    id: string
+    protocol: string
+    shortName: string
+    appointmentDatetime: Date
+    status: AppointmentStatus
+    assigned_user_id: string | null
+    off_grid: boolean
+}
+
+export interface CalendarFilters {
+    status?: AppointmentFilterStatus
+    responsible?: string
+    currentUserId?: number
+}
+
+export interface CalendarBlockedPeriod {
+    start: string
+    end: string
+    description: string
+}
+
+export interface CalendarDay {
+    date: string
+    blocked: {
+        fullDay: boolean
+        description: string | null
+        periods: CalendarBlockedPeriod[]
+    }
+    slots: { time: string; freeSeats: number | null }[]
+}
+
+export interface CalendarAppointment {
+    id: string
+    protocol: string
+    shortName: string
+    date: string
+    time: string
+    status: AppointmentStatus
+    assigned_user_id: string | null
+    off_grid: boolean
+}
+
+export interface AppointmentCalendar {
+    weekStart: string
+    weekEnd: string
+    weekStartDay: number
+    days: CalendarDay[]
+    seatsPerSlot: number | null
+    appointments: CalendarAppointment[]
 }

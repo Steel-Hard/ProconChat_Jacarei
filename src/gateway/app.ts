@@ -9,6 +9,7 @@ import NotFoundError from "./errors/NotFoundError"
 import healthRoutes from "./routes/health.routes"
 import whatsappWebhookRoutes from "./routes/whatsappWebhook.routes"
 import internalConfigRoutes from "./routes/internalConfig.routes"
+import internalMessagesRoutes from "./routes/internalMessages.routes"
 
 dotenv.config({ quiet: true })
 
@@ -24,6 +25,7 @@ app.use(express.json())
 
 app.use("/health", healthRoutes)
 app.use("/internal/whatsapp/config", internalConfigRoutes)
+app.use("/internal/whatsapp/messages", internalMessagesRoutes)
 
 app.use("/", (_req: Request, _res: Response, next: NextFunction) =>
     next(new NotFoundError("Route not found")),

@@ -56,6 +56,7 @@ export function buildAppointmentDetail(overrides: Partial<AppointmentDetailRecor
                 created_at: FIXED_NOW.toISOString(),
             },
         ],
+        notes: [],
         timeline: [],
         ...overrides,
     }

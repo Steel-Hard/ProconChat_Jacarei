@@ -18,6 +18,7 @@ export class MockMotorDecisaoRepository implements IMotorDecisaoRepository {
             answer: "Sim, em compras online você tem até 7 dias corridos após o recebimento para desistir.",
             requires_in_person: false,
             out_of_scope: false,
+            llm_allowed: false,
             active: true,
         },
         {
@@ -25,9 +26,10 @@ export class MockMotorDecisaoRepository implements IMotorDecisaoRepository {
             category_id: 1,
             question: "Como denunciar um crime cibernético?",
             legal_basis: null,
-            answer: "",
+            answer: "Procure a delegacia de polícia mais próxima.",
             requires_in_person: false,
             out_of_scope: true,
+            llm_allowed: false,
             active: true,
         },
         {
@@ -38,6 +40,7 @@ export class MockMotorDecisaoRepository implements IMotorDecisaoRepository {
             answer: "Procure a assistência técnica autorizada. Se não resolverem em 30 dias, você pode exigir a troca.",
             requires_in_person: true,
             out_of_scope: false,
+            llm_allowed: false,
             active: true,
         },
         {
@@ -48,6 +51,7 @@ export class MockMotorDecisaoRepository implements IMotorDecisaoRepository {
             answer: "N/A",
             requires_in_person: false,
             out_of_scope: false,
+            llm_allowed: false,
             active: false,
         },
         {
@@ -58,6 +62,7 @@ export class MockMotorDecisaoRepository implements IMotorDecisaoRepository {
             answer: "N/A",
             requires_in_person: false,
             out_of_scope: false,
+            llm_allowed: false,
             active: true,
         },
         {
@@ -68,6 +73,7 @@ export class MockMotorDecisaoRepository implements IMotorDecisaoRepository {
             answer: "N/A",
             requires_in_person: false,
             out_of_scope: false,
+            llm_allowed: false,
             active: false,
         },
     ]
@@ -77,6 +83,7 @@ export class MockMotorDecisaoRepository implements IMotorDecisaoRepository {
         { id: 2, question_id: 1, description: "Comprovante de pagamento" },
         { id: 3, question_id: 3, description: "Nota fiscal" },
         { id: 4, question_id: 3, description: "Ordem de serviço da assistência" },
+        { id: 5, question_id: 2, description: "Documento de identificação" },
     ]
 
     async getCategoriasAtivas(): Promise<Categoria[]> {

@@ -1,8 +1,8 @@
 # Arquitetura — ProconChat Jacareí
 
-> Atualizado em 19/10/2026, no fechamento da Sprint 2, com o estado de `develop` depois das issues #16, #51 a #58, #60, #61, #81 a #86 e do PR #115. A arquitetura alvo foi definida em 27/09/2026, na revisão do protótipo do painel. Este documento descreve a arquitetura **alvo da entrega (23/11/2026)** e marca o que já está implementado. As decisões que levaram a ela estão em [`../decisoes/`](../decisoes/); as regras de cada tela, em [`../regras/`](../regras/).
+> Atualizado em 22/11/2026, no fechamento da Sprint 3, com o estado de `develop` depois das issues da Sprint 3 (#18, #59, #62 a #69, #87, #88, #118, #119, #123 a #129 e #164) e dos extras #74, #75, #77, #78 e #134. A arquitetura foi definida em 27/09/2026, na revisão do protótipo do painel. Este documento descreve a arquitetura **entregue em 23/11/2026** e marca o que ficou de fora. As decisões que levaram a ela estão em [`../decisoes/`](../decisoes/); as regras de cada tela, em [`../regras/`](../regras/).
 
-**Legenda de estado:** ✅ implementado em `develop` · 🟡 planejado para a Sprint 2 · 🟠 planejado para a Sprint 3.
+**Legenda de estado:** ✅ implementado em `develop` · ⚪ descartado por decisão do grupo ou não entregue (com a situação e a issue).
 
 ## Visão geral
 
@@ -49,11 +49,11 @@ O LLM Service só recebe chamadas do Backend e não tem acesso ao banco nem à s
 
 | Componente | Papel | Container | Estado |
 |---|---|---|---|
-| **Gateway WhatsApp** | Recebe o webhook da Meta, valida a assinatura, deduplica, processa em fila por telefone e repassa ao Backend; envia as respostas do Backend (texto, lista, botões); lê a configuração do WhatsApp no Backend; envio de modelos e repasse dos status de entrega | `gateway` | ✅ Cloud API, respostas e configuração (#53, #83) · 🟠 modelos (S3-06) e status de entrega (#88): hoje os eventos de status são descartados |
-| **Backend API** | Orquestrador: conversa, Motor de Decisão, agenda, mensagens ao cidadão, registro de eventos, API do painel, autenticação e permissões | `backend` | ✅ parcial (ver módulos) · 🟠 demais módulos |
-| **Frontend (painel)** | Painel da equipe do PROCON (RF08), a partir do `template-react` | `frontend` (nginx) | ✅ estrutura, layout, login, "Minha conta", Agendamentos, Detalhe do agendamento e WhatsApp (#58, #81, #84, #85, #86, #54); `/` redireciona para Agendamentos enquanto não há Dashboard (PR #115) · 🟠 Dashboard, Relatórios, Conteúdo, Sessões, Horários, Documentos e Usuários (hoje "Em construção") |
-| **LLM Service** | Ollama com `llama3.2:3b`; gera só o texto complementar (RF05) | `ollama` + `llm-pull` | ✅ serviço pronto · 🟠 ligado ao fluxo (S3-05) |
-| **PostgreSQL** | Persistência única | `postgres` (+ `migrate`, `seed`) | ✅ schema da Sprint 2 (#52) e migrations até a `15` |
+| **Gateway WhatsApp** | Recebe o webhook da Meta, valida a assinatura, deduplica, processa em fila por telefone e repassa ao Backend; envia as respostas do Backend (texto, lista, botões); lê a configuração do WhatsApp no Backend; envio de modelos e repasse dos status de entrega | `gateway` | ✅ Cloud API, respostas e configuração (#53, #83) · ✅ envio de modelos pela rota interna `POST /internal/whatsapp/messages/template` (#67) · ✅ status de entrega (#88): repassa `sent`/`delivered`/`read`/`failed` ao Backend, sem o telefone do destinatário · ✅ envio de uma resposta com até 3 mensagens pela rota interna `POST /internal/whatsapp/messages`, numa única tarefa da fila por telefone, e indicador "digitando…" quando o Backend devolve `typing: true` (#66, [decisão 009](../decisoes/009-complemento-por-llm.md)) |
+| **Backend API** | Orquestrador: conversa, Motor de Decisão, agenda, mensagens ao cidadão, registro de eventos, API do painel, autenticação e permissões | `backend` | ✅ todos os módulos abaixo |
+| **Frontend (painel)** | Painel da equipe do PROCON (RF08), a partir do `template-react` | `frontend` (nginx) | ✅ estrutura, layout, login, "Minha conta", Agendamentos, Detalhe do agendamento, WhatsApp, Conteúdo, Horários, Documentos, Usuários e Relatórios (#58, #81, #84, #85, #86, #54, #124, #125, #65, #123, #128), mais calendário semanal, atribuir, corrigir registro e observações (#126), cancelar e modelos de mensagem (#127), estado do número e histórico (#129); `/` leva a Agendamentos (PR #115) · ⚪ Dashboard (#71) e Sessões (#72): descartados por decisão do grupo |
+| **LLM Service** | Ollama com `llama3.2:3b`; reescreve só a explicação da resposta oficial (RF05, [decisão 009](../decisoes/009-complemento-por-llm.md)) | `ollama` + `llm-pull` | ✅ serviço pronto · ✅ ligado ao fluxo (#66) |
+| **PostgreSQL** | Persistência única | `postgres` (+ `migrate`, `seed`) | ✅ schema da Sprint 2 (#52) e migrations até a `21` (interruptor do aviso de cancelamento, #164) |
 | **Proxy HTTPS** | Certificado e roteamento para painel, API e webhook; responde 404 nas rotas internas `/api/v1/whatsapp/sessions` e `/api/v1/internal*` | `caddy` | ✅ (`compose.prod.yaml`, `deploy/Caddyfile`) |
 | ~~Evolution API + Redis~~ | Integração não oficial usada na Sprint 1 | `evolution-api`, `redis` | Removidos na #82. Ver [decisão 003](../decisoes/003-migracao-whatsapp-cloud-api.md) |
 
@@ -63,14 +63,14 @@ Não são containers separados: são módulos de código, organizados no padrão
 
 | Módulo | Responsabilidade | Estado |
 |---|---|---|
-| **Conversa** | Máquina de estados do bot: saudação, listas, "resolveu?", agendamento, retorno, timeout de 30 minutos, pausa | ✅ saudação, listas, "resolveu?", agendamento, timeout com varredura periódica e pausa (#55, #56, #83) · 🟠 retorno de quem já tem agendamento (#59) |
+| **Conversa** | Máquina de estados do bot: saudação, listas, "resolveu?", agendamento, retorno, timeout de 30 minutos, pausa | ✅ saudação, listas, "resolveu?", agendamento, timeout com varredura periódica e pausa (#55, #56, #83) · ✅ retorno de quem já tem agendamento (#59) |
 | **Motor de Decisão** | Lê categorias e perguntas do banco e monta as opções e a resposta final. Não guarda estado | ✅ com paginação e categoria oculta |
-| **Agenda** | Calcula horários livres a partir da configuração; cria, remarca e cancela agendamentos; controla vagas com concorrência | ✅ horários livres e reserva com trava por horário (#56) · 🟠 remarcar e cancelar (#59) |
-| **Mensagens ao cidadão** | Monta os textos fixos (confirmação, pausa) e os modelos (cancelamento, lembrete); registra falhas de envio | ✅ textos fixos de confirmação e de pausa · 🟠 modelos (S3-06) e falhas de envio (#88) |
+| **Agenda** | Calcula horários livres a partir da configuração; cria, remarca e cancela agendamentos; controla vagas com concorrência | ✅ horários livres e reserva com trava por horário (#56) · ✅ remarcar e cancelar pelo cidadão (#59) |
+| **Mensagens ao cidadão** | Monta os textos fixos (confirmação, pausa) e os modelos (cancelamento, lembrete); registra falhas de envio | ✅ textos fixos de confirmação e de pausa · ✅ modelo do aviso de cancelamento, com a falha síncrona de envio no histórico e o reenvio (#67) · ✅ falhas de entrega assíncronas (#88), com a do aviso de cancelamento e a do lembrete no histórico do agendamento · ✅ lembrete antes do atendimento na varredura periódica (#74) · ✅ interruptor do aviso de cancelamento, desligado por padrão (#164) · ✅ marcadores de horário e endereço nas respostas (#78) |
 | **Registro de eventos** | Grava cada passo da conversa e o desfecho da sessão | ✅ (#16) |
-| **API do painel** | Agendamentos, conteúdo, configuração, usuários, relatórios, configuração do WhatsApp | ✅ agendamentos: lista, detalhe, assumir, atendido e não compareceu (#60), usados pelas telas de Agendamentos e Detalhe (#85, #86); configuração do WhatsApp (#83) · 🟠 demais |
-| **Autenticação e permissões** | Login, sessão, `requirePermission` com 8 permissões; na Sprint 2 só a conta Admin | ✅ login, sessão, troca de senha e `requirePermission`, só a conta Admin (#57, #84) · 🟠 permissões por conta (#62) |
-| **LLM** | Cliente do Ollama com fallback; envio do complemento com rótulo | ✅ cliente · 🟠 ligado ao fluxo (S3-05, #66) |
+| **API do painel** | Agendamentos, conteúdo, configuração, usuários, relatórios, configuração do WhatsApp | ✅ agendamentos: lista, detalhe, assumir, atendido e não compareceu (#60), usados pelas telas de Agendamentos e Detalhe (#85, #86); atribuir, corrigir registro, observações internas, lista de funcionários e calendário semanal (#87, telas na #126); configuração do WhatsApp (#83); contas e permissões: listar, criar, salvar em lote, redefinir senha e agendamentos futuros de uma conta (#62, tela na #123); conteúdo do chatbot (#63, tela na #124); horários de atendimento, vagas e mudanças agendadas (#64, #134, tela na #125), com modal de conflitos ao alterar a agenda (#75) e bloqueio de parte do dia (#77); documentos de atendimento (tela na #65); cancelamento pela equipe (#67, tela na #127); relatórios mínimos (#68, tela na #128); política de privacidade (#69). A exportação de relatórios (PDF, Excel, CSV) não foi entregue (bônus da #73) |
+| **Autenticação e permissões** | Login, sessão, `requirePermission` com 8 permissões marcadas por conta; o Admin tem todas | ✅ login, sessão, troca de senha e `requirePermission` (#57, #84); permissões reais de cada conta, lidas a cada requisição, e regras contra escalada validadas na API (#62). A permissão "Ver sessões" existe na API, mas não aparece na tela de Usuários, porque a tela de Sessões foi descartada |
+| **LLM** | Cliente do Ollama com sondagem e fallback; entrega da resposta escrita pela IA com rótulo no rodapé | ✅ cliente · ✅ ligado ao fluxo, em segundo plano: mensagem única da IA com o bloco oficial e os botões, ou as mensagens oficiais quando a IA não pode ser usada (#66, [decisão 009](../decisoes/009-complemento-por-llm.md)) |
 
 ## Fluxos principais
 
@@ -93,22 +93,27 @@ sequenceDiagram
     B-->>G: resposta (texto, lista ou botões)
     G->>M: envia
     M->>C: entrega
-    opt pergunta com IA permitida (Sprint 3)
-        B->>L: resposta oficial estruturada
-        L-->>B: texto complementar
-        B-->>G: complemento com "Gerado com auxílio de IA"
+    opt pergunta com IA permitida (#66, decisão 009)
+        B-->>G: reply vazia com typing: true
+        G->>M: marca como lida e mostra "digitando…"
+        B->>L: GET /api/tags (2 s) e, se no ar, resposta oficial estruturada
+        L-->>B: explicação reescrita
+        B->>B: normaliza, confere os números, monta a mensagem (≤ 1024)
+        B->>G: POST /internal/whatsapp/messages, mensagem única com botões e "Gerado com auxílio de IA" no rodapé, ou as mensagens oficiais
+        G->>M: envia na fila do telefone
+        B->>B: ANSWER_SENT (USED ou FAILED) na hora do envio
     end
-    opt status de entrega (#88, ainda não implementado)
-        M->>G: status (entregue / falhou)
-        G->>B: status, gravado se falhou
+    opt status de entrega (#88)
+        M->>G: status (enviado / entregue / lido / falhou)
+        G->>B: POST /internal/whatsapp/events, sem o telefone
     end
 ```
 
-Hoje o Gateway recebe os eventos de status da Meta e os descarta (`status_update` no log). O registro das falhas de entrega é da #88.
+O Gateway repassa os status de entrega uma vez por webhook aceito, antes das mensagens, em `POST /api/v1/internal/whatsapp/events` (só `id`, status, data e o código numérico do erro; nunca o `recipient_id` nem os textos do erro). O Backend grava o último evento do webhook em `WhatsAppSettings.last_webhook_event_at` e as falhas em `OutboundMessages`. A falha do aviso de cancelamento entra no histórico do agendamento e libera o "Tentar novamente". Se o Backend estiver fora, os status daquele webhook se perdem, e a resposta à Meta continua `200`.
 
 ### Mensagem iniciada pelo sistema
 
-Aviso de cancelamento pela equipe (🟠 S3-06) e lembrete (bônus). O Backend decifra o telefone guardado no agendamento e pede ao Gateway o envio de um **modelo aprovado pela Meta**, porque fora da janela de 24h não se pode enviar texto livre. Ver [decisão 005](../decisoes/005-mensagens-ao-cidadao.md).
+Aviso de cancelamento pela equipe (✅ #67) e lembrete antes do atendimento (✅ #74). O Backend decifra o telefone guardado no agendamento e pede ao Gateway o envio de um **modelo aprovado pela Meta**, porque fora da janela de 24h não se pode enviar texto livre. Ver [decisão 005](../decisoes/005-mensagens-ao-cidadao.md).
 
 ### Configuração do WhatsApp
 
@@ -119,15 +124,16 @@ As credenciais da Cloud API ficam no banco, **criptografadas com uma chave-mestr
 | Ambiente | Onde | WhatsApp |
 |---|---|---|
 | **Desenvolvimento** | Máquina de cada pessoa (`docker compose up`) + túnel HTTPS | App de teste próprio na Meta, com o número de teste gratuito da Meta |
-| **Produção / demonstração** | VM AWS EC2 `t4g.small` (arm64, 2 GB + 2 GB de swap) em `us-east-2`, com `compose.prod.yaml`: `caddy`, `postgres`, `migrate`, `seed`, `backend`, `gateway` e `frontend`. Sem Evolution e Redis. O Ollama (`ollama` e `llm-pull`, perfil `llm`) fica desligado até haver uma VM com mais memória (#66) | Número real da equipe; depois das sprints, o número do PROCON |
+| **Produção / demonstração** | VM AWS EC2 `t4g.small` (arm64, 2 GB + 2 GB de swap) em `us-east-2`, com `compose.prod.yaml`: `caddy`, `postgres`, `migrate`, `seed`, `backend`, `gateway` e `frontend`. Sem Evolution e Redis. O Ollama é opcional em produção: perfil `llm` (`ollama` e `llm-pull`) na própria VM, ou `OLLAMA_URL` apontando para um Ollama da equipe em outra máquina ([decisão 009](../decisoes/009-complemento-por-llm.md)). A VM atual não usa nenhum dos dois | Número real da equipe; depois das sprints, o número do PROCON |
 
-- **CI** (✅ #58, `.github/workflows/ci.yml`): GitHub Actions roda, em todo PR e push para `develop` e `main`, formatação, lint, build e testes do frontend; lint, build e testes do backend (com `typecheck:test`) e do gateway; e, com um Postgres, as migrations, os testes de integração e o `test:db` do backend. O CI verde é obrigatório para o merge.
+- **CI** (✅ #58, `.github/workflows/ci.yml`): GitHub Actions roda, em todo PR e push para `develop` e `main`, formatação, lint, build e testes do frontend; lint, build e testes do backend (com `typecheck:test`) e do gateway; e, com um Postgres, as migrations, os testes de integração e o `test:db` do backend, além do job `backend-e2e`, que roda o teste ponta a ponta do fluxo principal (Gateway e Backend juntos, com a Meta interceptada) num Postgres próprio. O CI verde é obrigatório para o merge.
 - **CD** (✅ #51): push com CI verde na branch de `DEPLOY_BRANCH` (hoje `develop`; `main` no fim do semestre) gera as imagens no GitHub Container Registry e atualiza a VM por SSH com `deploy/deploy.sh <sha>`. As migrations rodam pelo serviço `migrate`. Operação, rollback e backup: [`infra/deploy.md`](../infra/deploy.md).
 - **Segredos:** no GitHub, só os de acesso SSH (environment `production`); os da aplicação ficam no `.env` da VM. Continuam no `.env`: banco, `PHONE_HASH_SECRET`, `CPF_HASH_SECRET`, segredo dos cookies de sessão do painel (`AUTH_TOKEN_SECRET`), conta Admin inicial (`ROOT_EMAIL`, `ROOT_PASSWORD`), token interno Gateway ↔ Backend (`GATEWAY_INTERNAL_TOKEN`), chave-mestra de criptografia (`ENCRYPTION_KEY`) e URL pública (`PUBLIC_BASE_URL`, derivada de `SITE_ADDRESS` em produção).
 
 ## Segurança e dados pessoais
 
-- **Telefone:** nas sessões, só o hash (`phone_hash`); nos agendamentos, criptografado e apagado quando o agendamento termina. Nunca aparece no painel.
+- **Telefone:** nas sessões, só o hash (`phone_hash`); nos agendamentos, criptografado e apagado quando chega o horário do agendamento, por uma varredura do backend a cada 60 s (#69). Nunca aparece no painel.
+- **Política de privacidade:** página pública `/privacidade` do painel, que lê sem login `GET /api/v1/privacy` (os cinco textos da aba Privacidade, sem quem alterou). A saudação do bot leva o link quando o controlador e o e-mail estão cadastrados e `PUBLIC_BASE_URL` existe.
 - **CPF:** hash + versão mascarada. O CPF completo nunca é exibido.
 - **Texto digitado pelo cidadão:** não é gravado.
 - **Webhook:** só aceita eventos com assinatura válida da Meta.
@@ -147,7 +153,7 @@ As credenciais da Cloud API ficam no banco, **criptografadas com uma chave-mestr
 
 ## Modelo de dados
 
-Ver [`../database/database.md`](../database/database.md): o schema atual e o planejado para a Sprint 3.
+Ver [`../database/database.md`](../database/database.md): o schema, as migrations até a `21` e o que mudou em relação à proposta da Sprint 2.
 
 ## Como a arquitetura atende aos requisitos
 
@@ -156,8 +162,8 @@ Ver [`../database/database.md`](../database/database.md): o schema atual e o pla
 | RF01, RP01 | Cloud API oficial pelo Gateway |
 | RF02, RF03 | Motor de Decisão e Conversa, com listas e botões tocáveis (a escolha chega como ID, não como texto interpretado) |
 | RF04, RNF04 | Resposta final montada no Backend com "O que fazer agora" e o aviso de texto único |
-| RF05, RNF05, RP05 | LLM local, chamado só pelo Backend, sem acesso ao banco; complemento sempre rotulado |
-| RF06 | Registro de eventos e desfechos; relatórios agregados |
+| RF05, RNF05, RP05 | LLM local, chamado só pelo Backend, sem acesso ao banco; texto gerado sempre rotulado |
+| RF06 | Registro de eventos e desfechos; relatórios mínimos agregados (#68, #128). Dashboard (#71) e Sessões (#72) foram descartados por decisão do grupo, e a exportação de relatórios não foi entregue (bônus da #73) |
 | RF07 | Módulos Agenda e Mensagens ao cidadão |
 | RF08 | Frontend + API do painel com permissões |
 | RNF02 | Resposta oficial não espera o LLM; `restart` e healthchecks; Cloud API em vez de automação não oficial |

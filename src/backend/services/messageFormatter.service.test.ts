@@ -10,13 +10,36 @@ import {
     formatarListaPerguntas,
     formatarListaSlots,
     formatarRespostaFinal,
+    mensagensRespostaOficial,
     paginarItens,
     criarBotoesAttendee,
+    criarBotoesOfertaAgendamento,
     criarMensagensCategorias,
     criarMensagensPerguntas,
     criarMensagensSlots,
     formatarErroSlot,
     ERRO_NOME,
+    CORPO_AVISO_CANCELAMENTO,
+    CORPO_LEMBRETE_ATENDIMENTO,
+    MODELO_AVISO_CANCELAMENTO,
+    MODELO_LEMBRETE_ATENDIMENTO,
+    parametrosAvisoCancelamento,
+    parametrosLembreteAtendimento,
+    renderizarModelo,
+    formatarQuando,
+    MENU_RETORNO,
+    criarBotoesRetorno,
+    RODAPE_ATENDIMENTO,
+    CONFIRMA_CANCELAMENTO,
+    criarBotoesConfirmaCancelamento,
+    RESPOSTA_CANCELADO,
+    SEM_HORARIOS_REMARCACAO,
+    ERRO_MENU_RETORNO,
+    ERRO_CONFIRMA_CANCELAMENTO,
+    AGENDAMENTO_NAO_ALTERAVEL,
+    ERRO_FALHA_ALTERACAO,
+    TEXTO_BOTOES_RETORNO,
+    SAUDACAO,
 } from "./messageFormatter.service"
 import type { OutgoingMessage } from "../types/message.types"
 import type { AvailableSlot } from "../types/schedule.types"
@@ -36,6 +59,7 @@ const perguntas: Pergunta[] = [
         answer: "Sim.",
         requires_in_person: false,
         out_of_scope: false,
+        llm_allowed: false,
         active: true,
     },
     {
@@ -46,6 +70,7 @@ const perguntas: Pergunta[] = [
         answer: "Depende do contrato.",
         requires_in_person: false,
         out_of_scope: false,
+        llm_allowed: false,
         active: true,
     },
 ]
@@ -113,6 +138,89 @@ describe("messageFormatter.service", () => {
         expect(texto).not.toContain("Esta situação pode exigir atendimento presencial")
     })
 
+    describe("observação do atendimento presencial", () => {
+        const linhaPresencial =
+            "Esta situação pode exigir atendimento presencial no PROCON Jacareí para andamento formal."
+
+        test("aparece em linha própria logo depois da linha de atendimento presencial", () => {
+            const texto = formatarRespostaFinal({
+                ...respostaBase,
+                requer_presencial: true,
+                observacao_presencial: "Traga o contrato impresso.",
+            })
+
+            expect(texto).toContain(
+                `${linhaPresencial}\nSobre o atendimento presencial: Traga o contrato impresso.\n\n${AVISO_NAO_VINCULANTE}`,
+            )
+        })
+
+        test("sem observação o texto é igual ao de antes", () => {
+            const semCampo = formatarRespostaFinal({ ...respostaBase, requer_presencial: true })
+            const vazia = formatarRespostaFinal({ ...respostaBase, requer_presencial: true, observacao_presencial: null })
+
+            expect(vazia).toBe(semCampo)
+            expect(semCampo).not.toContain("Sobre o atendimento presencial")
+            expect(semCampo).toContain(`${linhaPresencial}\n\n${AVISO_NAO_VINCULANTE}`)
+        })
+
+        test("não aparece na pergunta que não exige atendimento presencial", () => {
+            const texto = formatarRespostaFinal({ ...respostaBase, observacao_presencial: "Traga o contrato." })
+
+            expect(texto).not.toContain("Sobre o atendimento presencial")
+        })
+
+        test("não é repetida no balão da oferta de agendamento", () => {
+            const mensagens = mensagensRespostaOficial({
+                ...respostaBase,
+                requer_presencial: true,
+                observacao_presencial: "Traga o contrato impresso.",
+            })
+
+            expect(mensagens[1]).toEqual({
+                type: "buttons",
+                text: "Deseja agendar um atendimento presencial no PROCON Jacareí?",
+                buttons: criarBotoesOfertaAgendamento(),
+            })
+        })
+    })
+
+    describe("fora do escopo", () => {
+        const respostaForaDoEscopo: RespostaFinalOutput = {
+            ...respostaBase,
+            resposta: "Procure a delegacia de polícia.",
+            fora_de_escopo: true,
+        }
+        const encaminhamento =
+            "Como esta demanda não compete ao PROCON, dirija-se ao órgão indicado na orientação acima portando seus documentos e comprovantes para atendimento especializado."
+
+        test("o balão oficial traz a resposta da equipe, base legal, documentos e aviso, sem 'O que fazer agora' nem o encaminhamento", () => {
+            const texto = formatarRespostaFinal(respostaForaDoEscopo)
+
+            expect(texto).toContain("Resposta: Procure a delegacia de polícia.")
+            expect(texto).toContain("Base legal: Art. 49 do CDC")
+            expect(texto).toContain("Documentos necessários: Nota fiscal, Comprovante de pagamento")
+            expect(texto).not.toContain("O que fazer agora")
+            expect(texto).not.toContain(encaminhamento)
+            expect(texto.endsWith(AVISO_NAO_VINCULANTE)).toBe(true)
+        })
+
+        test("sem base legal e sem documentos o balão oficial não traz essas linhas", () => {
+            const texto = formatarRespostaFinal({ ...respostaForaDoEscopo, base_legal: "", documentos_necessarios: [] })
+
+            expect(texto).not.toContain("Base legal:")
+            expect(texto).not.toContain("Documentos necessários:")
+        })
+
+        test("mensagensRespostaOficial devolve o balão oficial e o balão separado de encaminhamento, sem botões", () => {
+            const mensagens = mensagensRespostaOficial(respostaForaDoEscopo)
+
+            expect(mensagens).toEqual([
+                { type: "text", text: formatarRespostaFinal(respostaForaDoEscopo) },
+                { type: "text", text: encaminhamento },
+            ])
+        })
+    })
+
     test("formatarRespostaFinal inclui aviso de atendimento presencial quando requer_presencial e verdadeiro", () => {
         const texto = formatarRespostaFinal({ ...respostaBase, requer_presencial: true })
 
@@ -131,11 +239,21 @@ describe("messageFormatter.service", () => {
         expect(texto).toContain(AVISO_NAO_VINCULANTE)
     })
 
-    test("formatarListaCategorias menciona o carater informativo e LGPD na saudacao de abertura", () => {
+    test("SAUDACAO mantém o caráter informativo sem o parágrafo de privacidade nem a instrução de digitar o número", () => {
+        expect(SAUDACAO).toBe(
+            "Olá! Sou o assistente virtual do PROCON Jacareí. As orientações a seguir têm caráter informativo e não substituem o atendimento formal.",
+        )
+        expect(SAUDACAO).not.toContain("Privacidade (LGPD)")
+        expect(SAUDACAO).not.toContain("anonimizada")
+        expect(SAUDACAO).not.toContain("digitando o número")
+    })
+
+    test("formatarListaCategorias abre com a saudação e termina com o rodapé de LGPD no texto de reserva", () => {
         const texto = formatarListaCategorias(categorias)
 
-        expect(texto).toContain("caráter informativo")
-        expect(texto).toContain("LGPD")
+        expect(texto).toBe(
+            `${SAUDACAO}\n\nEscolha uma das opções abaixo digitando o número correspondente:\n1. Contrato\n2. Garantias\n3. Cobrança Indevida\n\n${RODAPE_ATENDIMENTO}`,
+        )
         expect(texto).not.toContain(AVISO_NAO_VINCULANTE)
     })
 
@@ -328,6 +446,7 @@ describe("messageFormatter.service", () => {
                 questionDocuments: ["Contrato"],
                 reminderEnabled: true,
                 reminderHours: 24,
+                cancellationNoticeEnabled: true,
             })
 
             expect(texto).toContain("Agendamento realizado")
@@ -353,6 +472,7 @@ describe("messageFormatter.service", () => {
                 questionDocuments: [],
                 reminderEnabled: false,
                 reminderHours: 24,
+                cancellationNoticeEnabled: true,
             })
 
             expect(texto).toContain("A pessoa que comparecer em seu nome deve levar:")
@@ -378,6 +498,7 @@ describe("messageFormatter.service", () => {
             answer: "Resposta.",
             requires_in_person: false,
             out_of_scope: false,
+            llm_allowed: false,
             active: true,
         }))
 
@@ -429,6 +550,45 @@ describe("messageFormatter.service", () => {
                 { id: "page_1", title: "Voltar opções", description: "Ver categorias anteriores" },
                 { id: "page_3", title: "Ver mais opções", description: "Exibir mais categorias" },
             ])
+        })
+
+        test("criarMensagensCategorias põe o rodapé de LGPD na lista da primeira e da segunda página, depois da saudação", () => {
+            const primeira = criarMensagensCategorias(vinteCategorias, 1)
+            const segunda = criarMensagensCategorias(vinteCategorias, 2)
+
+            for (const [mensagens, pagina] of [
+                [primeira, 1],
+                [segunda, 2],
+            ] as const) {
+                expect(mensagens).toEqual([
+                    { type: "text", text: SAUDACAO },
+                    {
+                        type: "list",
+                        text: "Selecione a categoria correspondente à sua dúvida:",
+                        buttonText: "Ver categorias",
+                        rows: linhasDaLista(criarMensagensCategorias(vinteCategorias, pagina)),
+                        footer: RODAPE_ATENDIMENTO,
+                    },
+                ])
+            }
+        })
+
+        test("criarMensagensCategorias usa o título curto da categoria na linha da lista em vez de cortar o título completo", () => {
+            const linhas = linhasDaLista(
+                criarMensagensCategorias([
+                    { id: 7, title: "Cobrança/Desconto Indevido em conta", short_title: "Cobrança indevida", active: true },
+                ]),
+            )
+
+            expect(linhas).toEqual([{ id: "cat_7", title: "Cobrança indevida", description: undefined }])
+        })
+
+        test("criarMensagensPerguntas e criarMensagensSlots devolvem a lista sem a chave footer", () => {
+            const [listaPerguntas] = criarMensagensPerguntas(vintePerguntas, 1)
+            const [listaSlots] = criarMensagensSlots(vinteSlots, 1)
+
+            expect(listaPerguntas).not.toHaveProperty("footer")
+            expect(listaSlots).not.toHaveProperty("footer")
         })
 
         test("criarMensagensPerguntas na última página termina só com Voltar opções", () => {
@@ -524,5 +684,281 @@ describe("messageFormatter.service", () => {
                 ].join("\n"),
             )
         })
+    })
+
+    describe("Aviso de cancelamento pela equipe (#67)", () => {
+        const aviso = {
+            name: "  Maria  da Silva",
+            protocol: "1A2B3C4D",
+            appointmentDatetime: new Date("2026-11-05T17:00:00.000Z"),
+            reason: "UNIT_CLOSED" as const,
+        }
+
+        test.each([
+            { name: "  Maria  da Silva" },
+            { name: "Maria" },
+            { name: "Maria\tda Silva" },
+        ])("usa só o primeiro nome em {{1}} para o nome $name", ({ name }) => {
+            expect(parametrosAvisoCancelamento({ ...aviso, name })[0]).toBe("Maria")
+        })
+
+        test("usa a data e a hora de Brasília em {{3}} e {{4}}, e não as de UTC", () => {
+            const parametros = parametrosAvisoCancelamento({
+                ...aviso,
+                appointmentDatetime: new Date("2026-11-05T03:30:00.000Z"),
+            })
+
+            expect(parametros.slice(2, 4)).toEqual(["05/11", "00:30"])
+        })
+
+        test.each([
+            { reason: "UNIT_CLOSED", frase: "a unidade estará fechada nesta data" },
+            { reason: "CITIZEN_REQUEST", frase: "cancelamento solicitado por você" },
+            { reason: "DUPLICATE", frase: "foi identificado outro agendamento em seu nome" },
+            { reason: "OTHER", frase: "não será possível realizar o atendimento neste horário" },
+        ] as const)("põe em {{5}} a frase do motivo $reason", ({ reason, frase }) => {
+            expect(parametrosAvisoCancelamento({ ...aviso, reason })[4]).toBe(frase)
+        })
+
+        test("renderiza o aviso do caso fixo exatamente como a prévia da spec", () => {
+            const texto = renderizarModelo(
+                CORPO_AVISO_CANCELAMENTO,
+                parametrosAvisoCancelamento({ ...aviso, protocol: "1a2b3c4d".toUpperCase() }),
+            )
+
+            expect(texto).toBe(
+                "Olá, Maria. Seu agendamento 1A2B3C4D no PROCON Jacareí, marcado para 05/11 às 14:00, foi cancelado. Motivo: a unidade estará fechada nesta data. Para agendar novamente, envie uma mensagem para este número.",
+            )
+        })
+
+        test("troca {{1}} a {{5}} na ordem e não deixa nenhum {{ no texto", () => {
+            const texto = renderizarModelo("{{2}}|{{1}}|{{5}}|{{3}}|{{4}}|{{1}}", ["um", "dois", "três", "quatro", "cinco"])
+
+            expect(texto).toBe("dois|um|cinco|três|quatro|um")
+            expect(texto).not.toContain("{{")
+        })
+
+        test("usa os modelos aviso_cancelamento e lembrete_atendimento em pt_BR, com o corpo do aviso cadastrado na Meta", () => {
+            expect(MODELO_AVISO_CANCELAMENTO).toEqual({ name: "aviso_cancelamento", languageCode: "pt_BR" })
+            expect(MODELO_LEMBRETE_ATENDIMENTO).toEqual({ name: "lembrete_atendimento", languageCode: "pt_BR" })
+            expect(CORPO_AVISO_CANCELAMENTO).toBe(
+                "Olá, {{1}}. Seu agendamento {{2}} no PROCON Jacareí, marcado para {{3}} às {{4}}, foi cancelado. Motivo: {{5}}. Para agendar novamente, envie uma mensagem para este número.",
+            )
+            expect(CORPO_LEMBRETE_ATENDIMENTO).toBe(
+                "Olá, {{1}}. Lembrete do seu atendimento no PROCON Jacareí: {{2}}, {{3}}, às {{4}} (protocolo {{5}}). Endereço: {{6}}. Traga: {{7}}. Se não puder comparecer, remarque ou cancele respondendo a esta mensagem.",
+            )
+        })
+    })
+
+    describe("Lembrete do atendimento (#74)", () => {
+        const lembrete = {
+            name: "  Maria  da Silva",
+            protocol: "1A2B3C4D",
+            appointmentDatetime: new Date("2026-11-05T17:00:00.000Z"),
+            unitAddress: "Rua do Procon, 100",
+            unitAddressComplement: "Sala 1",
+            documentsSent: {
+                group: ["RG ou CNH"],
+                question: ["comprovante de residência"],
+            },
+        }
+
+        test("monta os 7 parâmetros na ordem e renderiza exatamente como a prévia da spec", () => {
+            const parametros = parametrosLembreteAtendimento(lembrete)
+
+            expect(parametros).toEqual([
+                "Maria",
+                "quinta-feira",
+                "05/11",
+                "14:00",
+                "1A2B3C4D",
+                "Rua do Procon, 100 (Sala 1)",
+                "RG ou CNH; comprovante de residência",
+            ])
+            expect(renderizarModelo(CORPO_LEMBRETE_ATENDIMENTO, parametros)).toBe(
+                "Olá, Maria. Lembrete do seu atendimento no PROCON Jacareí: quinta-feira, 05/11, às 14:00 (protocolo 1A2B3C4D). Endereço: Rua do Procon, 100 (Sala 1). Traga: RG ou CNH; comprovante de residência. Se não puder comparecer, remarque ou cancele respondendo a esta mensagem.",
+            )
+        })
+
+        test("usa o dia da semana, a data e a hora de Brasília perto da virada de dia em UTC", () => {
+            const parametros = parametrosLembreteAtendimento({
+                ...lembrete,
+                appointmentDatetime: new Date("2026-11-01T01:30:00.000Z"),
+            })
+
+            expect(parametros.slice(1, 4)).toEqual(["sábado", "31/10", "22:30"])
+        })
+
+        test("omite os parênteses em {{6}} quando o complemento é nulo ou só espaços", () => {
+            expect(parametrosLembreteAtendimento({ ...lembrete, unitAddressComplement: null })[5]).toBe("Rua do Procon, 100")
+            expect(parametrosLembreteAtendimento({ ...lembrete, unitAddressComplement: "   " })[5]).toBe("Rua do Procon, 100")
+        })
+
+        test("junta documentos do grupo e da pergunta numa linha só, removendo quebras de linha, tabs e espaços múltiplos", () => {
+            const parametros = parametrosLembreteAtendimento({
+                ...lembrete,
+                unitAddress: "Rua do Procon,\n100     Centro",
+                unitAddressComplement: "2º andar\tSala 1",
+                documentsSent: {
+                    group: ["RG\nou CNH", "  CPF   do titular  "],
+                    question: ["Nota\tfiscal", "   "],
+                },
+            })
+
+            expect(parametros[5]).toBe("Rua do Procon, 100 Centro (2º andar Sala 1)")
+            expect(parametros[6]).toBe("RG ou CNH; CPF do titular; Nota fiscal")
+        })
+
+        test("usa um documento oficial com foto quando a lista de documentos do agendamento está vazia", () => {
+            const parametros = parametrosLembreteAtendimento({
+                ...lembrete,
+                documentsSent: { group: [], question: [] },
+            })
+
+            expect(parametros[6]).toBe("um documento oficial com foto")
+        })
+    })
+
+    describe("Retorno de quem já tem agendamento (#59)", () => {
+        test("formatarQuando mostra dia, mês e hora de São Paulo perto da virada do dia em UTC", () => {
+            const texto = formatarQuando(new Date("2026-11-10T02:30:00Z"))
+
+            expect(texto).toBe("09/11 às 23:30")
+        })
+
+        test("MENU_RETORNO lista as três opções depois do horário marcado", () => {
+            const texto = MENU_RETORNO("09/11 às 23:30")
+
+            expect(texto).toBe(
+                "Você tem atendimento marcado em 09/11 às 23:30.\n1. Remarcar\n2. Cancelar\n3. Tenho outra dúvida",
+            )
+        })
+
+        test("criarBotoesRetorno devolve Remarcar, Cancelar e Tenho outra dúvida, nessa ordem e dentro do limite de 20 caracteres", () => {
+            const botoes = criarBotoesRetorno()
+
+            expect(botoes).toEqual([
+                { id: "return_reschedule", title: "Remarcar" },
+                { id: "return_cancel", title: "Cancelar" },
+                { id: "return_other", title: "Tenho outra dúvida" },
+            ])
+            expect(botoes.every((botao) => Array.from(botao.title).length <= 20)).toBe(true)
+        })
+
+        test("RODAPE_ATENDIMENTO é o aviso curto de LGPD decidido e cabe nos 60 caracteres do rodapé da Cloud API", () => {
+            expect(RODAPE_ATENDIMENTO).toBe("Orientação informativa · Dados tratados conforme a LGPD")
+            expect(Array.from(RODAPE_ATENDIMENTO).length).toBeLessThanOrEqual(60)
+        })
+
+        test("CONFIRMA_CANCELAMENTO pede a confirmação com o horário e as duas opções", () => {
+            const texto = CONFIRMA_CANCELAMENTO("09/11 às 23:30")
+
+            expect(texto).toBe(
+                "Deseja mesmo cancelar o atendimento marcado em 09/11 às 23:30? O cancelamento não pode ser desfeito.\n1. Sim, cancelar\n2. Não, manter",
+            )
+        })
+
+        test("criarBotoesConfirmaCancelamento devolve Sim, cancelar e Não, manter", () => {
+            const botoes = criarBotoesConfirmaCancelamento()
+
+            expect(botoes).toEqual([
+                { id: "cancel_yes", title: "Sim, cancelar" },
+                { id: "cancel_no", title: "Não, manter" },
+            ])
+        })
+
+        test("RESPOSTA_CANCELADO informa o protocolo cancelado e o horário liberado", () => {
+            const texto = RESPOSTA_CANCELADO("AB12CD34")
+
+            expect(texto).toBe(
+                "Seu agendamento AB12CD34 foi cancelado e o horário foi liberado. Para agendar novamente, envie uma mensagem para este número.",
+            )
+        })
+
+        test("SEM_HORARIOS_REMARCACAO avisa que não há outro horário e que o atendimento continua marcado", () => {
+            const texto = SEM_HORARIOS_REMARCACAO("09/11 às 23:30")
+
+            expect(texto).toBe(
+                "No momento não há outros horários disponíveis para remarcar. Seu atendimento continua marcado em 09/11 às 23:30.",
+            )
+        })
+
+        test("formatarConfirmacaoAgendamento começa pelo título Agendamento remarcado quando recebe o título, e por Agendamento realizado sem ele", () => {
+            const confirmacao = {
+                protocol: "A3F9C21B",
+                quando: "Terça-feira, 10/11 às 09:30",
+                unitAddress: "Rua do Procon, 100",
+                byRepresentative: false,
+                groupDocuments: ["RG"],
+                questionDocuments: [],
+                reminderEnabled: true,
+                reminderHours: 24,
+                cancellationNoticeEnabled: true,
+            }
+
+            const remarcado = formatarConfirmacaoAgendamento({ ...confirmacao, titulo: "Agendamento remarcado" })
+            const realizado = formatarConfirmacaoAgendamento(confirmacao)
+
+            expect(remarcado.split("\n")[0]).toBe("Agendamento remarcado")
+            expect(remarcado).not.toContain("Agendamento realizado")
+            expect(realizado.split("\n")[0]).toBe("Agendamento realizado")
+        })
+
+        test("os textos fixos de erro e de alvo não alterável do retorno são os aprovados", () => {
+            expect(ERRO_MENU_RETORNO).toBe(
+                "Não entendi. Por favor, escolha uma das opções:\n1. Remarcar\n2. Cancelar\n3. Tenho outra dúvida",
+            )
+            expect(ERRO_CONFIRMA_CANCELAMENTO).toBe(
+                "Não entendi. Por favor, confirme se deseja cancelar o atendimento:\n1. Sim, cancelar\n2. Não, manter",
+            )
+            expect(AGENDAMENTO_NAO_ALTERAVEL).toBe(
+                "Este agendamento não pode mais ser alterado pelo chatbot. Se precisar de orientação, escolha uma das opções abaixo.",
+            )
+            expect(ERRO_FALHA_ALTERACAO).toBe(
+                "Não foi possível concluir a alteração no momento devido a uma instabilidade. Seu agendamento não foi alterado. Por favor, tente novamente mais tarde.",
+            )
+        })
+
+        test("TEXTO_BOTOES_RETORNO é a frase do horário marcado, sem as opções numeradas", () => {
+            const texto = TEXTO_BOTOES_RETORNO("09/11 às 23:30")
+
+            expect(texto).toBe("Você tem atendimento marcado em 09/11 às 23:30.")
+        })
+    })
+})
+
+describe("Link da política de privacidade na saudação", () => {
+    const LINK = "https://exemplo.sslip.io/privacidade"
+    const categoriasDoLink: Categoria[] = [
+        { id: 1, title: "Contrato", short_title: "Contrato", active: true },
+        { id: 2, title: "Garantias", short_title: "Garantias", active: true },
+    ]
+
+    test("com link null, a saudação e o texto de reserva ficam como hoje", () => {
+        expect(criarMensagensCategorias(categoriasDoLink, 1, null)).toEqual(criarMensagensCategorias(categoriasDoLink, 1))
+        expect(formatarListaCategorias(categoriasDoLink, 1, null)).toBe(
+            `${SAUDACAO}\n\nEscolha uma das opções abaixo digitando o número correspondente:\n1. Contrato\n2. Garantias\n\n${RODAPE_ATENDIMENTO}`,
+        )
+    })
+
+    test("com catálogo vazio, a mensagem de catálogo em atualização fica como hoje, sem o link", () => {
+        expect(criarMensagensCategorias([], 1, LINK)).toEqual(criarMensagensCategorias([], 1))
+        expect(formatarListaCategorias([], 1, LINK)).toBe(formatarListaCategorias([]))
+    })
+
+    test("com link, a primeira mensagem traz a saudação e a linha da política, e a lista mantém o rodapé", () => {
+        const mensagens = criarMensagensCategorias(categoriasDoLink, 1, LINK)
+
+        expect(mensagens[0]).toEqual({
+            type: "text",
+            text: `${SAUDACAO}\n\nSaiba como tratamos seus dados: https://exemplo.sslip.io/privacidade`,
+        })
+        expect(mensagens[1]).toMatchObject({ type: "list", footer: RODAPE_ATENDIMENTO })
+    })
+
+    test("com link, o texto de reserva traz a linha da política entre a saudação e a instrução", () => {
+        expect(formatarListaCategorias(categoriasDoLink, 1, LINK)).toBe(
+            `${SAUDACAO}\n\nSaiba como tratamos seus dados: https://exemplo.sslip.io/privacidade\n\nEscolha uma das opções abaixo digitando o número correspondente:\n1. Contrato\n2. Garantias\n\n${RODAPE_ATENDIMENTO}`,
+        )
     })
 })

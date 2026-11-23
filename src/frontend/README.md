@@ -10,20 +10,22 @@ Painel administrativo do ProconChat (RF08), feito com React 19, TypeScript (`str
 
 Rode dentro de `src/frontend/`.
 
-| Comando                                   | O que faz                                                                     |
-| ----------------------------------------- | ----------------------------------------------------------------------------- |
-| `npm ci`                                  | Instala as dependências e ativa o hook de pre-commit                          |
-| `npm run dev`                             | Sobe o servidor de desenvolvimento do Vite                                    |
-| `npm run typecheck`                       | Checa os tipos com `tsc -b` (`src/` e `vite.config.ts`)                       |
-| `npm run build`                           | Roda o `typecheck` e gera `dist/`                                             |
-| `npm run preview`                         | Serve o `dist/` já gerado                                                     |
-| `npm test`                                | Vitest em modo interativo                                                     |
-| `npm run test:run`                        | Vitest uma única vez (usado no CI)                                            |
-| `npm run test:cov`                        | Suíte inteira com cobertura (`coverage/`), mínimo de 80% em todas as métricas |
-| `npm run lint` / `npm run lint:fix`       | oxlint                                                                        |
-| `npm run format` / `npm run format:check` | Prettier em `ts`, `tsx`, `css`, `json`, `md`, `yml` e `html`                  |
+| Comando                                   | O que faz                                                                   |
+| ----------------------------------------- | --------------------------------------------------------------------------- |
+| `npm ci`                                  | Instala as dependências e ativa o hook de pre-commit                        |
+| `npm run dev`                             | Sobe o servidor de desenvolvimento do Vite                                  |
+| `npm run typecheck`                       | Checa os tipos com `tsc -b` (`src/` e `vite.config.ts`)                     |
+| `npm run build`                           | Roda o `typecheck` e gera `dist/`                                           |
+| `npm run preview`                         | Serve o `dist/` já gerado                                                   |
+| `npm test`                                | Vitest em modo interativo                                                   |
+| `npm run test:run`                        | Vitest uma única vez, com 4 workers (usado no CI)                           |
+| `npm run test:cov`                        | Suíte inteira com cobertura (`coverage/`), 4 workers, mínimo de 80% em tudo |
+| `npm run lint` / `npm run lint:fix`       | oxlint                                                                      |
+| `npm run format` / `npm run format:check` | Prettier em `ts`, `tsx`, `css`, `json`, `md`, `yml` e `html`                |
 
 O CI (`.github/workflows/ci.yml`) roda `format:check`, `lint`, `build` e `test:run`.
+
+Os scripts `test:run` e `test:cov` limitam o Vitest a 4 workers (`--maxWorkers=4`). Com vários processos de teste ao mesmo tempo, o padrão (um worker por núcleo) satura a CPU e causa timeouts de 1 s em testes que passam isolados. O `test:cov` já executa todos os testes: no gate completo do frontend use só ele, sem rodar o `test:run` junto.
 
 ## Variáveis de ambiente
 
@@ -38,14 +40,14 @@ O CI (`.github/workflows/ci.yml`) roda `format:check`, `lint`, `build` e `test:r
 - `components/`: componentes compartilhados entre telas (`Nome.tsx`), inclusive o `PanelShell` (o conteúdo do `PanelLayout`) e o `ChangePasswordDialog`.
 - `hooks/`: hooks compartilhados (`useSession`, `useLogout`, `useChangePasswordForm`, `useMediaQuery`, `useIsDocked`, `useCompactTable`, `useShowAccountEmail`, `useNavBadges`, `useToast`).
 - `contexts/`: contextos React (`toastContext`).
-- `navigation/`: itens do menu, regras de acesso e trilha (`navGroups`, `permissionKeys`, `canAccess`, `hasPermission`, `visibleNavGroups`, `firstAllowedPath`, `activeNavKey`, `breadcrumbFor`).
+- `navigation/`: itens do menu, regras de acesso e trilha (`navGroups`, `permissionKeys`, `permissionScreens`, `readyPermissionKeys`, `canAccess`, `hasPermission`, `visibleNavGroups`, `firstAllowedPath`, `activeNavKey`, `breadcrumbFor`).
 - `status/`: cores e ordem dos status de agendamento e dos desfechos de conversa, e as cores da situação do WhatsApp.
 - `i18n/`: configuração do i18next (um símbolo por arquivo). `locales/pt-BR/<namespace>.json`: os textos.
 - `store/`: Redux Toolkit e RTK Query (`api.ts`, `baseQueryWithSessionRenewal.ts`, `rootReducer.ts`, `createStore.ts`, `store.ts`, `useAppDispatch.ts`, `useAppSelector.ts` e `slices/`).
-- `services/http/`: cliente HTTP, um arquivo por função (`apiUrl`, `get`, `post`, `put`, `patch`, `del`, `request`, `parseResponse`, `HttpError`, `refreshSession`, `onUnauthorized`). `services/auth/`: as chamadas de `/api/v1/auth` (`fetchCurrentAccount`, `signIn`, `signOut`, `changePassword` e `toPanelAccount`). `services/whatsapp/`: teste de conexão e salvar da configuração do WhatsApp (`testWhatsAppConnection`, `saveWhatsAppSettings`), fora do RTK Query porque levam o token e o App Secret digitados.
+- `services/http/`: cliente HTTP, um arquivo por função (`apiUrl`, `get`, `post`, `put`, `patch`, `del`, `request`, `parseResponse`, `HttpError`, `refreshSession`, `onUnauthorized`). `services/auth/`: as chamadas de `/api/v1/auth` (`fetchCurrentAccount`, `signIn`, `signOut`, `changePassword` e `toPanelAccount`). `services/whatsapp/`: teste de conexão e salvar da configuração do WhatsApp (`testWhatsAppConnection`, `saveWhatsAppSettings`), fora do RTK Query porque levam o token e o App Secret digitados. `services/users/`: criar conta e redefinir a senha de outra conta (`createUserAccount`, `resetUserPassword`), fora do RTK Query pelo mesmo motivo: levam a senha digitada.
 - `styles/`: `global.css` (fontes, cores e reset) e CSS Modules em `styles/<components|layouts|pages>/<nome>.module.css`.
 - `types/<dominio>/<Nome>.types.ts`: tipos exportados, um por arquivo.
-- `utils/`: funções puras (`formatDate`, `formatTime`, `formatDayMonth`, `weekdayOf`, `initialsOf`, `safeRedirectPath`, `loginPathFor`, e as da lista de agendamentos: `appointmentListDefaults`, `parseAppointmentListParams`, `toAppointmentListParams`, `appointmentStatusFilters`, `appointmentPeriods`, `appointmentResponsibleFilters`, `minAppointmentSearchLength`, `defaultSortMode`, `appointmentActionErrorKey`).
+- `utils/`: funções puras (`formatDate`, `formatTime`, `formatDayMonth`, `weekdayOf`, `initialsOf`, `safeRedirectPath`, `loginPathFor`, e as da lista de agendamentos: `appointmentListDefaults`, `parseAppointmentListParams`, `toAppointmentListParams`, `appointmentStatusFilters`, `appointmentPeriods`, `appointmentResponsibleFilters`, `minAppointmentSearchLength`, `defaultSortMode`, `appointmentActionErrorKey`; e as da tela de Usuários: `userApiErrorOf` e `utils/users/`; e as da tela de Horários: `utils/schedule/`).
 - `testUtils/`: apoio aos testes (`renderWithStore`, `mockMatchMedia`, `setViewportWidth`, e os da tela de Agendamentos: `renderAppointmentsPage`, `buildAppointmentList`, `buildAppointmentListItem`, `buildAppointmentRowView`, `appointmentTableTexts`).
 
 ## Convenções
@@ -67,7 +69,7 @@ Só pt-BR (`SUPPORTED_LANGUAGES = ["pt-BR"]`, fallback `pt-BR`). A estrutura do 
 - Testes de componente que leem a store usam `renderWithStore(ui, { preloadedState })`.
 - A busca da tela de Agendamentos fica no slice `appointmentSearch` (`state.appointmentSearch.term`, ações `searchChanged` e `searchCleared`), nunca na URL nem no `history.state`. O `accountCleared` também apaga o termo.
 - "Sair" e a sessão expirada (`onUnauthorized` registrado pelo `useSession`) despacham `api.util.resetApiState()` junto com `accountCleared`, para o cache do RTK Query (inclusive o argumento da última busca) não sobrar para a próxima conta na mesma aba.
-- Segredos digitados (token de acesso e App Secret do WhatsApp) nunca entram na store: o RTK Query guarda o argumento de cada mutation em `state.api.mutations`. Por isso o teste de conexão e o salvar usam `services/whatsapp/` sobre o cliente HTTP, e o valor digitado fica só no estado React do hook da tela até salvar, descartar ou cancelar.
+- Segredos digitados (token de acesso e App Secret do WhatsApp, senhas da tela de Usuários) nunca entram na store: o RTK Query guarda o argumento de cada mutation em `state.api.mutations`. Por isso o teste de conexão e o salvar usam `services/whatsapp/`, e criar conta e redefinir senha usam `services/users/`, sobre o cliente HTTP. O valor digitado fica só no estado React do hook da tela até salvar, descartar ou cancelar.
 
 ## Autenticação no cliente
 
@@ -75,8 +77,8 @@ Só pt-BR (`SUPPORTED_LANGUAGES = ["pt-BR"]`, fallback `pt-BR`). A estrutura do 
 - Quem está logado é decidido por `GET /api/v1/auth/me`. O `RequireAuth` usa `hooks/useSession.ts`: com `status: "unknown"`, mostra "Carregando...", chama o `/me` e despacha `accountLoaded` ou `accountCleared`. Uma falha de rede ou 5xx no `/me` também leva ao login. Com `anonymous`, qualquer rota fora de `/login`, inclusive uma inexistente, vai para `/login?redirect=<caminho e query codificados>`.
 - 401: o cliente HTTP (`services/http/request.ts`) chama `POST /api/v1/auth/refresh` (`services/http/refreshSession.ts`, uma única chamada compartilhada entre requisições simultâneas). No `204`, repete a requisição uma vez. Se o refresh falhar, ou se a repetição também der 401, chama o handler de `onUnauthorized` e rejeita com o `HttpError` 401 original. O `useSession` registra esse handler, que despacha `accountCleared`, e o `RequireAuth` leva ao login com o `redirect` da tela atual.
 - `skipSessionRenewal: true` (em `HttpOptions`) desliga esse fluxo: o 401 só rejeita com `HttpError`. Usam o flag o login (senha errada não pode virar refresh nem logout) e o logout. O `/me` e a troca de senha passam pelo refresh.
-- Login (`pages/Login.page.tsx` e `pages/hooks/useLogin.ts`): depois de entrar, a pessoa vai para o `redirect` validado por `utils/safeRedirectPath.ts`, que só aceita caminho interno da mesma origem (recusa `//`, `/\`, endereço absoluto, `javascript:`, caracteres de controle e o próprio `/login`). Sem `redirect` válido, vai para a primeira tela permitida da conta. As mensagens de erro são mapeadas por status e `code`; o texto do Backend (em inglês) nunca aparece.
-- Permissão da rota (`routers/RequireAccess.tsx`): uma tela que a conta não pode acessar, uma rota inexistente e uma conta sem nenhuma tela permitida mostram a NotFound, sem o layout. Quem não pode ver o Dashboard e abre `/` vai para a primeira tela permitida. Enquanto o Dashboard não existe, `/` redireciona para `/agendamentos` (`routers/routes.tsx`, PR #115) para quem pode ver o Dashboard; uma conta que vê o Dashboard sem ver agendamentos (só Sessões ou Relatórios) cai, assim, na NotFound. Isso não é controle de acesso: a API valida de novo.
+- Login (`pages/Login.page.tsx` e `pages/hooks/useLogin.ts`): depois de entrar, a pessoa vai para o `redirect` validado por `utils/safeRedirectPath.ts`, que só aceita caminho interno da mesma origem (recusa `//`, `/\`, endereço absoluto, `javascript:`, caracteres de controle e o próprio `/login`). Sem `redirect` válido, vai para a primeira tela permitida e pronta da conta, ou para `/` quando não há nenhuma. As mensagens de erro são mapeadas por status e `code`; o texto do Backend (em inglês) nunca aparece.
+- Permissão da rota (`routers/RequireAccess.tsx`): `navigation/firstAllowedPath.ts` devolve a primeira tela permitida e pronta (`navigation/navItemsReady.ts`), na ordem do menu, ou `null`. Uma conta sem nenhuma tela permitida e pronta (sem permissões, ou só com permissões de telas ainda não prontas, como a tela de Sessões, descartada) vê o aviso `NoAccessPage` em qualquer endereço, inclusive numa rota inexistente, sem o layout e sem mudar a URL. O botão "Voltar para o login" do aviso usa o `useLogout`, com um `ToastProvider` próprio para o aviso de falha. Para quem tem ao menos uma tela pronta, `/` redireciona (`replace`) para essa tela, já que o Dashboard foi descartado, uma tela sem permissão ou uma rota inexistente mostra a NotFound, sem o layout, e as telas permitidas ainda não prontas abertas pelo endereço mostram "Em construção." dentro do painel. Isso não é controle de acesso: a API valida de novo.
 - "Sair" (`hooks/useLogout.ts`) chama `POST /api/v1/auth/logout`. Só no `204` a conta é limpa e a pessoa vai para `/login`, sem `redirect`. Se falhar, a pessoa continua logada na mesma tela e vê o aviso "Não foi possível sair agora. Tente de novo.". A conta é limpa no mesmo tick da navegação, que usa `flushSync`, para o `RequireAuth` não montar um `redirect` para a tela de onde a pessoa saiu.
 - "Alterar minha senha" (`components/ChangePasswordDialog.tsx` e `hooks/useChangePasswordForm.ts`): `POST /api/v1/auth/change-password`. A senha atual errada (`400 INVALID_CURRENT_PASSWORD`) mostra o erro no modal e não desloga.
 - `403 INVALID_ORIGIN` só chega ao JavaScript quando o painel e a API estão na mesma origem, como em produção (`VITE_API_URL` vazia atrás do Caddy). Com outra origem, o navegador barra o CORS, o `fetch` falha, e a tela mostra a mensagem genérica de falha.
@@ -85,7 +87,7 @@ Só pt-BR (`SUPPORTED_LANGUAGES = ["pt-BR"]`, fallback `pt-BR`). A estrutura do 
 
 ## Layout e componentes compartilhados
 
-Toda rota protegida é renderizada dentro do `PanelLayout`: menu lateral (`Sidebar`, com `SidebarGroup` e `SidebarLink`), topo com trilha e "Minha conta" (`Topbar` e `AccountMenu`), área principal e o `ToastProvider`. O `PanelLayout` só monta o `ToastProvider` em volta do `PanelShell`, que tem o resto, para o "Sair" e a troca de senha conseguirem mostrar avisos. Login e a página 404 ficam fora dele.
+Toda rota protegida é renderizada dentro do `PanelLayout`: menu lateral (`Sidebar`, com `SidebarGroup` e `SidebarLink`), topo com trilha e "Minha conta" (`Topbar` e `AccountMenu`), área principal e o `ToastProvider`. O `PanelLayout` só monta o `ToastProvider` em volta do `PanelShell`, que tem o resto, para o "Sair" e a troca de senha conseguirem mostrar avisos. Login, a página 404 e o aviso de conta sem tela disponível ficam fora dele.
 
 - Menu por permissão: `navigation/` define os itens, a trilha e quem vê cada item. O Admin vê tudo; WhatsApp é só do Admin; "Gerenciar agendamentos" inclui "Ver agendamentos". Esconder o item não é controle de acesso: a API valida de novo. Os rótulos ficam em `common:navigation`.
 - Conta logada: vem do `/me` ou do login (`accountLoaded`). Com conta `null` o menu fica vazio e o topo não mostra o bloco da conta. "Minha conta" tem "Alterar minha senha" e "Sair" (ver "Autenticação no cliente").
@@ -103,7 +105,7 @@ Toda rota protegida é renderizada dentro do `PanelLayout`: menu lateral (`Sideb
     - Partes da lista de agendamentos, que recebem os textos já traduzidos por props: `AppointmentStatusChips`, `AppointmentListFilters`, `AppointmentSortSelect`, `AppointmentTable` (com `AppointmentSortHeader`, `AppointmentRow` e `AppointmentCompactRow`), `AppointmentProtocolLink` e `AppointmentClaimButton`.
     - Seções do detalhe do agendamento, que também recebem os textos prontos por props: `AppointmentDetailHeader`, `AppointmentFacts` (com `AppointmentFact`), `AppointmentDocuments` (com `AppointmentDocumentGroup`), `AppointmentTimeline` (com `AppointmentTimelineStep`), `AppointmentHistory` (com `AppointmentHistoryEntry`) e `AppointmentActions` (com `AppointmentActionItem`).
     - `LastChangeNote`: "Última alteração por [nome] em [data]". Recebe `{ changedBy, changedAt }`, com `changedAt` em ISO 8601 com fuso, e mostra a data em dd/mm/aaaa no fuso de Brasília por `utils/formatDate.ts`. Sem alteração ou com data inválida, não mostra nada. O `formatDate` também aceita data sem hora (`AAAA-MM-DD`, como uma coluna `DATE`) e a formata como está, sem conversão de fuso.
-- Telas liberadas no menu (`navigation/navItemsReady.ts`): Agendamentos (#85) e WhatsApp (#54). O detalhe do agendamento (`/agendamentos/:id`, #86) abre pela lista. As outras rotas continuam com "Em construção" até a issue de cada tela.
+- Telas liberadas no menu (`navigation/navItemsReady.ts`): Agendamentos, Relatórios, Conteúdo, Horários de atendimento, Documentos, Usuários e WhatsApp. O detalhe do agendamento (`/agendamentos/:id`, #86) abre pela lista, e a política de privacidade (`/privacidade`) é pública. O Dashboard e a tela de Sessões foram descartados por decisão do grupo: as rotas `/` e `/sessoes` ainda existem como "Em construção", mas ficam fora do menu (`dashboard: false` e `sessions: false`) e a pessoa logada cai na primeira tela permitida e pronta, em geral Agendamentos. A permissão "Ver sessões" existe na API e não aparece na tela de Usuários, porque não há tela que ela libere.
 - Prévia: com `npm run dev`, a rota `/dev/layout` mostra o layout com uma conta Admin de exemplo e um exemplo de cada componente. Ela só existe em desenvolvimento e não entra no build de produção, nem os textos dela.
 
 ## Tela de Agendamentos
@@ -117,7 +119,7 @@ Rota `/agendamentos`, para quem tem Ver ou Gerenciar agendamentos (e o Admin). A
 - "Assumir" aparece só na linha de um pendente e só para quem gerencia agendamentos (`navigation/hasPermission.ts`), age na hora e mostra o aviso. O erro vira mensagem por `utils/appointmentActionErrorKey.ts` (`common:appointmentActions`).
 - Até 1431 px a tabela fica compacta e a ordem é escolhida em "Ordenar por".
 - Abrir a lista busca de novo o contador do menu.
-- Fora desta tela por enquanto: o calendário semanal e o filtro por um funcionário específico (#87 e #62).
+- Também tem o calendário semanal (`components/AppointmentCalendar*.tsx`, `pages/hooks/useAppointmentCalendar.ts`, `GET /api/v1/appointments/calendar`) e o filtro por funcionário (`GET /api/v1/appointments/staff`), da #126.
 
 ## Tela de Detalhe do agendamento
 
@@ -130,7 +132,49 @@ Rota `/agendamentos/:id`, para quem tem Ver ou Gerenciar agendamentos (e o Admin
 - Cada ação pede confirmação. No sucesso, a tela se atualiza com a resposta do `PATCH`, sem novo `GET`. Com `409` ou `500`/falha de rede, a tela espera reler o detalhe e só então mostra o erro na caixa "Ações" (`role="alert"`), que some na próxima ação. `403` e `404` só mostram a mensagem.
 - Quem só vê agendamentos vê tudo, sem botões, com "Sua conta pode apenas visualizar agendamentos." num Pendente ou Confirmado.
 - A partir de 1200 px a tela tem duas colunas; abaixo, as seções empilham.
-- Fora desta tela por enquanto: atribuir, observações internas e corrigir registro (#87), cancelar e "Tentar novamente" do aviso ao cidadão (#67) e o link da sessão de origem (#72).
+- Também tem atribuir a outro funcionário (`AppointmentAssignDialog`), observações internas (`AppointmentNotes`) e corrigir registro (`AppointmentActions`), da #126; e cancelar o agendamento com a prévia do aviso ao cidadão (`AppointmentCancelDialog`, `GET /api/v1/appointments/:id/cancellation-preview`) e o reenvio do aviso que falhou, das #127 e #164. Não há link para a sessão de origem, porque a tela de Sessões foi descartada.
+
+## Tela de Horários de atendimento
+
+Rota `/horarios`, para quem tem Configurar atendimento presencial (e o Admin). A página `pages/Schedule.page.tsx` só renderiza; a lógica fica em `pages/hooks/useSchedule.ts`, que compõe `useScheduleDraft` (rascunho, validação e alterações pendentes), `useSchedulePreview` (mês, prévia salva ou do rascunho), `useScheduleSave` (salvar, `409` e `400`) e `useBookedDays` (dias com agendamento). Os textos ficam no namespace `schedule`.
+
+- Endpoints em `store/api/schedule.api.ts`: `getSchedule`, `getScheduleEffective` (`GET /api/v1/schedule/effective?date=`, a versão que vale na data), `getScheduleVersions` (`GET /api/v1/schedule/versions`, as mudanças agendadas), `saveSchedule` (`{ config, effectiveFrom? }`: sem `effectiveFrom`, `PUT /api/v1/schedule`, que grava a resposta no cache de `getSchedule`; com `effectiveFrom`, `PUT /api/v1/schedule/versions/:effectiveFrom`; os dois invalidam as tags `SchedulePreview`, `ScheduleVersions` e `ScheduleEffective`), `deleteScheduleVersion` (`DELETE /api/v1/schedule/versions/:effectiveFrom`, invalida as mesmas tags; a resolução vai num corpo JSON opcional, não na query), `getScheduleCancellationNotice` (`GET /api/v1/schedule/cancellation-notice`, o estado do aviso ao cidadão que a janela de conflitos mostra), `getSchedulePreview` (`GET /api/v1/schedule/preview`, mês opcional), `previewScheduleDraft` (`POST /api/v1/schedule/preview` com `{ month, config, effectiveFrom? }`) e `getBookedDays` (`GET /api/v1/schedule/booked-days`, sem cache, lido de novo depois de um `409`). Os erros do salvamento saem de `error.data.error.details` por `utils/schedule/scheduleSaveErrorOf.ts`.
+- As regras ficam em funções puras de `utils/schedule/`: o rascunho (`toScheduleDraft`, segunda a domingo, números como texto), o corpo completo do `PUT` e do `POST /preview` (`toScheduleInput`, com todos os bloqueios, inclusive parciais e passados, e as origens de cada faixa e bloqueio), a validação espelhando `schedule.schema.ts` do backend (`validateScheduleDraft`, `validateNewBlock`, que devolvem códigos e não texto), a lista da barra (`scheduleChanges`), o caminho do `400` até o campo (`fieldOfIssuePath`), os conflitos da prévia por campo (`conflictTargets`).
+- Datas puras (`AAAA-MM-DD`) nunca passam por `new Date` local: o dia da semana sai de `utils/schedule/weekdayOfDate.ts` (`Date.UTC`) ou do `weekday` da prévia, e `dd/mm` de `utils/schedule/dayMonthOf.ts`.
+- A prévia vem sempre do servidor (o mesmo cálculo do chatbot). Sem alteração, `GET`; com alteração e sem erro local, `POST` 400 ms depois da última edição, mostrando só a resposta do rascunho atual (`currentData`). Com erro local, a última prévia fica com o aviso.
+- Mudanças agendadas (#134, `components/ScheduleVersions.tsx` e `ScheduleVersionItem.tsx`): o topo diz qual versão está em edição ("Valendo desde dd/mm/aaaa" quando a de hoje é uma mudança já iniciada), o campo "Valer a partir de" só aceita data depois do `today` da prévia (senão mostra o erro no campo, não carrega a versão e não deixa salvar), a lista tem "Editar" e "Cancelar mudança" com o nome acessível da data e o aviso de cópia própria, cancelar pede confirmação no `ConfirmDialog` e o `409 SCHEDULE_CONFLICTS` do cancelamento abre a janela de conflitos (sem lista abaixo das mudanças), e trocar de versão com alterações pendentes pede confirmação para descartar.
+- Dias com agendamento (#75): não há mais trava no formulário. Desligar um dia, remover uma faixa e bloquear uma data com agendamento são permitidos, e "Salvar alterações" só fica desabilitado por erro de formulário ou data inválida. A prévia continua marcando os dias com agendamento, os `conflicts` da prévia aparecem no campo e na lista `ScheduleConflictList`, com a dica por permissão (`conflicts.hintWithCancel` para quem também gerencia agendamentos e `conflicts.hintKeepOnly` para quem só configura). O bloqueio de data em outra vigência continua recusado no campo (`validateNewBlock`).
+- Janela de conflitos (#75, `components/ScheduleConflictModal.tsx`, aberta por `useSchedule`): abre quando o salvar (configuração de hoje ou mudança agendada) ou o cancelamento de uma mudança agendada recebe `409 SCHEDULE_CONFLICTS`. Tem duas origens, "salvar" e "cancelar mudança agendada", cada uma com os textos em `conflictModal.save.*` e `conflictModal.cancelScheduledChange.*` (título, abertura, opção Manter, botões de cancelar e voltar, resultados), e a abertura e a dica mudam com a permissão: cancelar só aparece com "Gerenciar agendamentos" (ou Admin). O estado do aviso vem de `getScheduleCancellationNotice`; enquanto carrega ou se falhar, o botão de cancelar some e ficam "Verificando o aviso ao cidadão..." ou o erro com "Tentar de novo". A escolha envia `conflictResolution` (`KEEP` ou `CANCEL`), os `seenConflictIds` (ids que estavam na janela) e, em `CANCEL`, `seenNoticeEnabled`. Num `409 SCHEDULE_CONFLICTS_CHANGED` a janela troca a lista, grava o `cancellationNotice` novo no cache do aviso e mostra "A lista de agendamentos afetados ou o aviso ao cidadão mudou desde que você abriu esta janela. Confira antes de escolher." (só depois de uma recusa). Teclado: o foco abre em "Manter os agendamentos", o Tab circula só dentro (`utils/trapFocus.ts`), o foco volta ao elemento anterior ao fechar, o Esc equivale a voltar e clicar fora não fecha. Durante a ação nada fecha. A mensagem de resultado vem por origem: sem "0 agendamentos" (lista vazia mostra a mensagem normal), com "Mudança cancelada. " antes na origem de cancelar mudança, e a frase de falha de aviso numa só ("N agendamentos cancelados. M avisos falharam."). Ao cancelar a mudança que estava em edição, a tela volta para a configuração de hoje.
+- Pendente na #75: "Tentar novamente" por falha de envio do cancelamento em massa, garantia de os horários cancelados voltarem livres, envio dos avisos em paralelo e testes de borda extras.
+- A seção "Lembrete ao cidadão" (`components/ScheduleReminderFields.tsx`) aparece na página, com o interruptor e o prazo (`reminderEnabled` e `reminderHours`), porque o envio do lembrete existe (#74).
+- Bloqueios de data: a tela lista datas inteiras e períodos de parte do dia (`ScheduleBlockedDates`, `ScheduleBlockedDateItem`, #77).
+
+## Tela de Usuários
+
+Rota `/usuarios`, para quem tem "Gerenciar usuários" (e o Admin). A página `pages/Users.page.tsx` só renderiza; a lógica fica em `pages/hooks/useUsers.ts`, que junta `useUserDraft.ts` (rascunho, redistribuição e salvar) e `useUserViews.ts` (textos da lista, do painel, da barra e da janela). Os formulários das janelas ficam em `useCreateAccountForm.ts` e `useResetPasswordForm.ts`. Os textos ficam no namespace `users`, e as partes da tela (`components/UserAccount*.tsx`, `UserPermissionItem`, `CreateAccountDialog`, `ResetPasswordDialog` e `ReassignmentDialog`) recebem os textos já traduzidos por props.
+
+- Endpoints em `store/api/users.api.ts`: `getUsers` (tag `UserList`), `saveUserChanges` (`PATCH /api/v1/users`) e `getFutureAppointments`. Salvar grava `items` e `lastChange` da resposta no cache de `getUsers`, sem novo `GET`, e só invalida `AppointmentList`, `AppointmentPendingCount` e `Appointment` quando `redistributed > 0`. Criar conta invalida `UserList` e seleciona a conta nova.
+- As regras ficam em funções puras de `utils/users/`: a cascata "Gerenciar agendamentos inclui Ver agendamentos" (`applyPermissionToggle`), o rascunho por conta (`updateDraftEntry`, `effectiveAccounts`, `pruneReassignments`), os bloqueios contra escalada (`permissionLocks`, `accountLocks`), a lista da barra (`draftChangeList`) e o corpo do lote (`buildAccountBatch`, um item por conta alterada em ordem de `userId`, com `permissions` e `active` só quando mudaram).
+- O painel e a contagem da lista ("N de M permissões") mostram só as permissões de telas prontas (`readyPermissionKeys`). O filtro fica só na montagem dos textos, em `useUserViews.ts`: o rascunho e o `PATCH` continuam com o conjunto completo de permissões da conta, então uma permissão de tela não pronta nunca é removida pelo envio.
+- Desativar uma conta ativa, ou tirar "Gerenciar agendamentos" de uma conta ativa, consulta `GET /api/v1/users/:id/future-appointments` sempre de novo (sem cache). Lista vazia aplica a mudança; senão abre a janela de redistribuição, e a escolha entra no rascunho. A conta que volta a poder atender perde a redistribuição do rascunho.
+- Os erros da API viram mensagem por `utils/userApiErrorOf.ts`, a partir do `code` (nunca do texto do servidor). Um erro com `details.userId` seleciona a conta; `REASSIGNMENT_REQUIRED` reabre a janela de redistribuição; o 401 não mostra mensagem.
+- A partir de 1200 px a lista e o painel ficam lado a lado; abaixo, empilham.
+
+## Tela de Conteúdo
+
+Rota `/conteudo`, para quem tem Gerenciar conteúdo do chatbot (e o Admin). A página `pages/Content.page.tsx` só renderiza; a lógica fica em `pages/hooks/useContent.ts` e `useContentSave.ts`. Endpoints em `store/api/content.api.ts`: `getContentSnapshot`, criar, editar, ativar e desativar e reordenar categorias e perguntas, e `previewContentQuestion` (`POST /api/v1/content/questions/preview`), que alimenta a prévia "Ver como o cidadão recebe" (`components/ContentPreview*.tsx`). As regras da tela estão em [`.docs/regras/06-conteudo.md`](../../.docs/regras/06-conteudo.md).
+
+## Tela de Documentos
+
+Rota `/documentos`, para quem tem Configurar documentos para atendimento presencial (e o Admin). A página `pages/Documents.page.tsx` só renderiza; o rascunho fica em `pages/hooks/useDocumentsDraft.ts`. Endpoints em `store/api/documents.api.ts`: `getDocuments`, `saveDocuments` e `previewDocuments` (`GET /api/v1/documents/preview`), usado pela prévia de como a lista chega ao cidadão (`components/DocumentsPreview.tsx`). As regras estão em [`.docs/regras/09-documentos.md`](../../.docs/regras/09-documentos.md).
+
+## Tela de Relatórios
+
+Rota `/relatorios`, para quem tem Ver relatórios (e o Admin). A página `pages/Reports.page.tsx` só renderiza; a lógica fica em `pages/hooks/useReports.ts`, que chama `getReports` (`GET /api/v1/reports?period=...`, com `startDate` e `endDate` no período personalizado). As seções são `ReportsPeriod`, `ReportsConversations`, `ReportsOutcomes`, `ReportsCategories`, `ReportsQuestions` e `ReportsAppointments`. É o relatório mínimo da #128: a exportação em PDF, Excel ou CSV e os gráficos extras não foram entregues (bônus da #73). As regras estão em [`.docs/regras/05-relatorios.md`](../../.docs/regras/05-relatorios.md).
+
+## Política de privacidade
+
+Rota pública `/privacidade` (`pages/PrivacyPolicy.page.tsx` e `pages/hooks/usePrivacyPolicy.ts`), que lê sem login `GET /api/v1/privacy`. Os textos são cadastrados na aba Privacidade da tela de WhatsApp.
 
 ## Tela de WhatsApp
 
@@ -143,7 +187,7 @@ Rota `/whatsapp`, só para o Admin (o funcionário vê a tela de não encontrado
 - Pausar pede confirmação com a prévia da mensagem fixa e age na hora; reativar não pede confirmação. Os dois mantêm o rascunho e o resultado do teste.
 - Sem `PUBLIC_BASE_URL` no Backend, a URL do webhook não existe e a tela mostra um aviso no lugar.
 - O fundo da conversa nas prévias (`public/images/whatsapp-chat-background.webp`) é uma imagem de uso livre, sem licença, informada pelo usuário.
-- Fora desta tela por enquanto: "Estado do número" e "Histórico de alterações" (#88) e "Modelos de mensagem" (#67).
+- A tela tem duas abas, "Conexão" e "Privacidade" (`useWhatsAppTab`). Na conexão aparecem o estado do número (`WhatsAppNumberStatus`), as falhas de entrega (`WhatsAppDeliveryFailures`), o histórico de alterações (`WhatsAppSettingsHistory`), os modelos de mensagem (`WhatsAppTemplateItem`) e o interruptor do aviso de cancelamento (`WhatsAppCancellationNotice`), das #88, #127 e #164. Na aba Privacidade ficam os textos e os prazos da política de privacidade (`usePrivacySettings`, `GET` e `PUT /api/v1/privacy`).
 
 ## Fontes
 

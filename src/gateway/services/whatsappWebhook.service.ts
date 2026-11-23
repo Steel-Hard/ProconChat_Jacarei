@@ -5,7 +5,7 @@ import { OutgoingMessageValidationError } from "../gateways/outgoingMessage.vali
 import { IncomingMessage, OutgoingMessage } from "../types/message.types"
 import { WhatsappMessageResult, WhatsappWebhookResult } from "../types/whatsappWebhook.types"
 import { MemoryMessageDeduplicator, MessageDeduplicator } from "./messageDeduplicator"
-import { createPhoneQueue, PhoneQueue } from "./phoneQueue"
+import { PhoneQueue, whatsappPhoneQueue } from "./phoneQueue"
 import { messageRef } from "../utils/messageRef"
 
 const MESSAGE_MAX_AGE_MS = 300_000
@@ -67,6 +67,14 @@ async function sendReply(
     }
 }
 
+async function showTyping(provider: MessageProvider, messageId: string): Promise<void> {
+    try {
+        await provider.showTyping(messageId)
+    } catch {
+        log("typing_failed", messageId)
+    }
+}
+
 export function createWhatsappWebhookService({
     backend,
     provider,
@@ -94,6 +102,9 @@ export function createWhatsappWebhookService({
                 deduplicator.forget?.(message.id)
                 throw error
             }
+            if (session.reply?.typing === true) {
+                await showTyping(provider, message.id)
+            }
             await sendReply(provider, message.from, toOutgoing(session.reply), message.id)
         })
 
@@ -101,13 +112,21 @@ export function createWhatsappWebhookService({
     }
 
     return async (payload: unknown): Promise<WhatsappWebhookResult> => {
-        const { messages, ignored } = provider.parseIncoming(payload)
+        const { messages, statuses, ignored, eventReceived } = provider.parseIncoming(payload)
         const results: WhatsappMessageResult[] = ignored.map(({ reason, messageId }) => {
             log(reason, messageId)
             return messageId === undefined
                 ? { status: "ignored", reason }
                 : { status: "ignored", reason, messageId }
         })
+
+        if (eventReceived) {
+            try {
+                await backend.reportWebhookEvents({ statuses })
+            } catch (error) {
+                log("events_forward_failed", undefined, error instanceof Error ? error.message : undefined)
+            }
+        }
 
         for (const message of messages) {
             results.push(await processMessage(message))
@@ -123,5 +142,5 @@ export const processWhatsappWebhook = createWhatsappWebhookService({
     backend: backendClient,
     provider: cloudApiProvider,
     deduplicator: whatsappDeduplicator,
-    queue: createPhoneQueue(),
+    queue: whatsappPhoneQueue,
 })

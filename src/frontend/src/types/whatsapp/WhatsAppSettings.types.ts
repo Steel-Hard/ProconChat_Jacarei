@@ -1,3 +1,4 @@
+import type WhatsAppCancellationNoticeProblem from "@/types/whatsapp/WhatsAppCancellationNoticeProblem.types"
 import type WhatsAppAccessTokenLifetime from "@/types/whatsapp/WhatsAppAccessTokenLifetime.types"
 
 type WhatsAppSettings = {
@@ -10,8 +11,12 @@ type WhatsAppSettings = {
     graphApiVersion: string
     credentialsValid: boolean | null
     credentialsCheckedAt: string | null
+    credentialsStatus: "NOT_CHECKED" | "INVALID" | "EXPIRED" | "VALID"
+    webhook: { lastEventAt: string | null; stale: boolean }
     autoReplyPaused: boolean
     pausedMessage: string
+    cancellationNoticeEnabled: boolean
+    cancellationNoticeProblem: WhatsAppCancellationNoticeProblem | null
     updatedBy: { id: number; name: string } | null
     updatedAt: string
     displayPhoneNumber: string | null

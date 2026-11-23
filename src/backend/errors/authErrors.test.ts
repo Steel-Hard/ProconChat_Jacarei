@@ -41,4 +41,19 @@ describe("erros da autenticacao", () => {
         expect(error.statusCode).toBe(400)
         expect(error.code).toBe("INVALID_CURRENT_PASSWORD")
     })
+
+    it("mantem o ForbiddenError sem codigo como FORBIDDEN e sem details", () => {
+        const error = new ForbiddenError("sem permissao")
+
+        expect(error.code).toBe("FORBIDDEN")
+        expect(error.details).toBeUndefined()
+    })
+
+    it("cria o ForbiddenError com o codigo e o details informados", () => {
+        const error = new ForbiddenError("conta propria", "SELF_ACCOUNT_LOCKED", { userId: 7 })
+
+        expect(error.statusCode).toBe(403)
+        expect(error.code).toBe("SELF_ACCOUNT_LOCKED")
+        expect(error.details).toEqual({ userId: 7 })
+    })
 })

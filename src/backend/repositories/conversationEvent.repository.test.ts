@@ -96,6 +96,16 @@ describe("conversationEventRepository", () => {
         ])
     })
 
+    it("insertConversationEvent sem horário informado não grava created_at e mantém os parâmetros de hoje", async () => {
+        const client = { query: vi.fn().mockResolvedValue({ rows: [], rowCount: 1 }) }
+
+        await insertConversationEvent(client as never, "7", { type: "ANSWER_SENT", categoryId: 10, questionId: 20, llm: "NOT_CALLED" })
+
+        const [sql, values] = client.query.mock.calls[0] as [string, unknown[]]
+        expect(sql).not.toContain("created_at")
+        expect(values).toEqual(["7", "ANSWER_SENT", 10, 20, null, JSON.stringify({ llm: "NOT_CALLED" })])
+    })
+
     it("insertConversationEvent propaga o erro do banco", async () => {
         const client = { query: vi.fn().mockRejectedValue(new Error("db down")) }
 

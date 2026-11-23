@@ -1,0 +1,157 @@
+import { fireEvent, render, screen, within } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
+import { describe, expect, it, vi } from "vitest"
+import ScheduleBlockedDates from "@/components/ScheduleBlockedDates"
+import type ScheduleBlockedDateView from "@/types/schedule/ScheduleBlockedDateView.types"
+
+const BLOCKS: ScheduleBlockedDateView[] = [
+    {
+        index: 1,
+        date: "2026-11-04",
+        startTime: null,
+        endTime: null,
+        description: "Ponto facultativo",
+        messages: []
+    },
+    {
+        index: 0,
+        date: "2026-11-20",
+        startTime: "08:30",
+        endTime: "10:00",
+        description: "Reunião de equipe",
+        messages: ["Afeta o agendamento A1B2C3D4 (20/11 às 09:00): Período bloqueado (08:30–10:00)"]
+    }
+]
+
+function renderBlocks(overrides: Partial<Parameters<typeof ScheduleBlockedDates>[0]> = {}) {
+    const props = {
+        blocks: BLOCKS,
+        newDate: "",
+        newDescription: "",
+        newFullDay: true,
+        newStartTime: "",
+        newEndTime: "",
+        newError: null,
+        newPeriodInvalid: false,
+        onChangeNewDate: vi.fn(),
+        onChangeNewDescription: vi.fn(),
+        onChangeNewFullDay: vi.fn(),
+        onChangeNewStartTime: vi.fn(),
+        onChangeNewEndTime: vi.fn(),
+        onAdd: vi.fn(),
+        onRemove: vi.fn(),
+        ...overrides
+    }
+    render(<ScheduleBlockedDates {...props} />)
+
+    return { ...props, user: userEvent.setup() }
+}
+
+describe("ScheduleBlockedDates", () => {
+    it("mostra cada bloqueio com a data, o dia da semana, a descrição e o período", () => {
+        renderBlocks()
+
+        const [first, second] = screen.getAllByRole("listitem")
+        expect(within(first).getByText("04/11/2026")).toBeInTheDocument()
+        expect(within(first).getByText("Quarta-feira")).toBeInTheDocument()
+        expect(within(first).getByText("Dia inteiro")).toBeInTheDocument()
+        expect(within(second).getByText("Sexta-feira")).toBeInTheDocument()
+        expect(within(second).getByText("08:30–10:00")).toBeInTheDocument()
+        expect(within(second).getByText(/Período bloqueado/)).toBeInTheDocument()
+    })
+
+    it("remove o bloqueio pela posição no rascunho", async () => {
+        const { onRemove, user } = renderBlocks()
+
+        await user.click(screen.getByRole("button", { name: "Remover o bloqueio de 20/11/2026" }))
+
+        expect(onRemove).toHaveBeenCalledWith(0)
+    })
+
+    it("mostra a lista vazia", () => {
+        renderBlocks({ blocks: [] })
+
+        expect(screen.getByText("Nenhuma data bloqueada.")).toBeInTheDocument()
+        expect(
+            screen.getByText(
+                "Bloqueie um dia inteiro ou apenas um período. O chatbot não oferece horários durante o bloqueio."
+            )
+        ).toBeInTheDocument()
+    })
+
+    it("preenche o formulário de dia inteiro e adiciona", async () => {
+        const { onChangeNewDate, onChangeNewDescription, onAdd, user } = renderBlocks()
+
+        fireEvent.change(screen.getByLabelText("Data"), { target: { value: "2026-11-05" } })
+        await user.type(screen.getByLabelText("Descrição"), "P")
+        await user.click(screen.getByRole("button", { name: "Adicionar" }))
+
+        expect(onChangeNewDate).toHaveBeenCalledWith("2026-11-05")
+        expect(onChangeNewDescription).toHaveBeenCalledWith("P")
+        expect(onAdd).toHaveBeenCalled()
+    })
+
+    it("esconde o início e o fim quando o dia inteiro está marcado", () => {
+        renderBlocks({ newFullDay: true })
+
+        expect(screen.getByLabelText("Bloquear o dia inteiro")).toBeChecked()
+        expect(screen.queryByLabelText("Início")).not.toBeInTheDocument()
+        expect(screen.queryByLabelText("Fim")).not.toBeInTheDocument()
+    })
+
+    it("avisa a mudança do dia inteiro", async () => {
+        const { onChangeNewFullDay, user } = renderBlocks()
+
+        await user.click(screen.getByLabelText("Bloquear o dia inteiro"))
+
+        expect(onChangeNewFullDay).toHaveBeenCalledWith(false)
+    })
+
+    it("mostra o início e o fim com os valores quando o dia inteiro está desmarcado", () => {
+        renderBlocks({ newFullDay: false, newStartTime: "13:00", newEndTime: "16:00" })
+
+        expect(screen.getByLabelText("Bloquear o dia inteiro")).not.toBeChecked()
+        expect(screen.getByLabelText("Início")).toHaveValue("13:00")
+        expect(screen.getByLabelText("Fim")).toHaveValue("16:00")
+    })
+
+    it("avisa a mudança do início e do fim", () => {
+        const { onChangeNewStartTime, onChangeNewEndTime } = renderBlocks({ newFullDay: false })
+
+        fireEvent.change(screen.getByLabelText("Início"), { target: { value: "13:00" } })
+        fireEvent.change(screen.getByLabelText("Fim"), { target: { value: "16:00" } })
+
+        expect(onChangeNewStartTime).toHaveBeenCalledWith("13:00")
+        expect(onChangeNewEndTime).toHaveBeenCalledWith("16:00")
+    })
+
+    it("liga o erro do período ao início e ao fim", () => {
+        renderBlocks({
+            newFullDay: false,
+            newError: "O fim deve ser depois do início.",
+            newPeriodInvalid: true
+        })
+
+        expect(screen.getByLabelText("Início")).toHaveAttribute("aria-invalid", "true")
+        expect(screen.getByLabelText("Fim")).toHaveAttribute("aria-invalid", "true")
+    })
+
+    it("não liga o erro da data ao início e ao fim", () => {
+        renderBlocks({ newFullDay: false, newError: "Informe a data.", newPeriodInvalid: false })
+
+        expect(screen.getByLabelText("Início")).not.toHaveAttribute("aria-invalid")
+        expect(screen.getByLabelText("Fim")).not.toHaveAttribute("aria-invalid")
+    })
+
+    it("mostra o erro do formulário ligado aos campos", () => {
+        renderBlocks({
+            newDate: "2026-11-04",
+            newError:
+                "Esta data tem 2 agendamentos. Para bloqueá-la, peça a quem gerencia os agendamentos para cancelar ou remarcar antes."
+        })
+
+        expect(screen.getByRole("alert")).toHaveTextContent("Esta data tem 2 agendamentos.")
+        expect(screen.getByLabelText("Data")).toHaveAttribute("aria-invalid", "true")
+        expect(screen.getByLabelText("Data")).toHaveValue("2026-11-04")
+    })
+})

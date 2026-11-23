@@ -27,8 +27,12 @@ void i18n.init({
         "appointmentDetail",
         "error",
         "login",
+        "noAccess",
         "notFound",
+        "privacyPolicy",
+        "schedule",
         "underConstruction",
+        "users",
         "whatsapp"
     ],
     initAsync: false,

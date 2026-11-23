@@ -1,7 +1,15 @@
 import api from "@/store/api"
 import type WhatsAppSettings from "@/types/whatsapp/WhatsAppSettings.types"
+import type WhatsAppDeliveryFailures from "@/types/whatsapp/WhatsAppDeliveryFailures.types"
+import type WhatsAppHistory from "@/types/whatsapp/WhatsAppHistory.types"
+import type WhatsAppNumberMetaStatus from "@/types/whatsapp/WhatsAppNumberMetaStatus.types"
+import type WhatsAppTemplatesStatus from "@/types/whatsapp/WhatsAppTemplatesStatus.types"
 
 type SettingsEnvelope = { data: WhatsAppSettings }
+type DeliveryFailuresEnvelope = { data: WhatsAppDeliveryFailures }
+type HistoryEnvelope = { data: WhatsAppHistory }
+type TemplatesStatusEnvelope = { data: WhatsAppTemplatesStatus }
+type NumberStatusEnvelope = { data: WhatsAppNumberMetaStatus }
 
 const SETTINGS_PATH = "/api/v1/whatsapp/settings"
 
@@ -23,9 +31,49 @@ const whatsappSettingsApi = api.injectEndpoints({
             query: () => SETTINGS_PATH,
             transformResponse: unwrap
         }),
+        getWhatsAppDeliveryFailures: build.query<WhatsAppDeliveryFailures, void>({
+            query: () => `${SETTINGS_PATH}/delivery-failures`,
+            transformResponse: (response: DeliveryFailuresEnvelope) => response.data
+        }),
+        getWhatsAppHistory: build.query<WhatsAppHistory, void>({
+            query: () => `${SETTINGS_PATH}/history`,
+            transformResponse: (response: HistoryEnvelope) => response.data,
+            providesTags: ["WhatsAppHistory"]
+        }),
+        getWhatsAppTemplatesStatus: build.query<WhatsAppTemplatesStatus, void>({
+            query: () => `${SETTINGS_PATH}/templates`,
+            transformResponse: (response: TemplatesStatusEnvelope) => response.data,
+            providesTags: ["WhatsAppMeta"]
+        }),
+        getWhatsAppNumberMetaStatus: build.query<WhatsAppNumberMetaStatus, void>({
+            query: () => `${SETTINGS_PATH}/number-status`,
+            transformResponse: (response: NumberStatusEnvelope) => response.data,
+            providesTags: ["WhatsAppMeta"]
+        }),
         pauseWhatsAppReplies: build.mutation<WhatsAppSettings, void>({
             query: () => ({ url: `${SETTINGS_PATH}/pause`, method: "POST" }),
             transformResponse: unwrap,
+            invalidatesTags: (result) => (result ? ["WhatsAppHistory"] : []),
+            async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+                const view = await settledView(queryFulfilled)
+
+                if (view !== null) {
+                    dispatch(
+                        whatsappSettingsApi.util.upsertQueryEntries([
+                            { endpointName: "getWhatsAppSettings", arg: undefined, value: view }
+                        ])
+                    )
+                }
+            }
+        }),
+        setWhatsAppCancellationNotice: build.mutation<WhatsAppSettings, boolean>({
+            query: (enabled) => ({
+                url: `${SETTINGS_PATH}/cancellation-notice`,
+                method: "PUT",
+                body: { enabled }
+            }),
+            transformResponse: unwrap,
+            invalidatesTags: (result) => (result ? ["WhatsAppHistory"] : []),
             async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
                 const view = await settledView(queryFulfilled)
 
@@ -41,6 +89,7 @@ const whatsappSettingsApi = api.injectEndpoints({
         resumeWhatsAppReplies: build.mutation<WhatsAppSettings, void>({
             query: () => ({ url: `${SETTINGS_PATH}/resume`, method: "POST" }),
             transformResponse: unwrap,
+            invalidatesTags: (result) => (result ? ["WhatsAppHistory"] : []),
             async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
                 const view = await settledView(queryFulfilled)
 

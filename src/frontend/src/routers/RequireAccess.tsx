@@ -1,8 +1,11 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom"
+import ToastProvider from "@/components/ToastProvider"
 import activeNavKey from "@/navigation/activeNavKey"
 import canAccess from "@/navigation/canAccess"
 import firstAllowedPath from "@/navigation/firstAllowedPath"
+import NoAccessPage from "@/pages/NoAccess.page"
 import NotFoundPage from "@/pages/NotFound.page"
+import ROUTES from "@/routers/paths"
 import useAppSelector from "@/store/useAppSelector"
 
 function RequireAccess() {
@@ -11,12 +14,16 @@ function RequireAccess() {
     const firstPath = firstAllowedPath(account)
 
     if (firstPath === null) {
-        return <NotFoundPage />
+        return (
+            <ToastProvider>
+                <NoAccessPage />
+            </ToastProvider>
+        )
     }
 
     const key = activeNavKey(pathname)
 
-    if (key === "dashboard" && !canAccess(account, key)) {
+    if (key === "dashboard" && firstPath !== ROUTES.dashboard) {
         return <Navigate to={firstPath} replace />
     }
 

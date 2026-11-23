@@ -1,20 +1,34 @@
 import ptBRAppointmentDetail from "@/locales/pt-BR/appointmentDetail.json"
 import ptBRAppointments from "@/locales/pt-BR/appointments.json"
 import ptBRCommon from "@/locales/pt-BR/common.json"
+import ptBRContent from "@/locales/pt-BR/content.json"
+import ptBRDocuments from "@/locales/pt-BR/documents.json"
 import ptBRError from "@/locales/pt-BR/error.json"
 import ptBRLogin from "@/locales/pt-BR/login.json"
+import ptBRNoAccess from "@/locales/pt-BR/noAccess.json"
 import ptBRNotFound from "@/locales/pt-BR/notFound.json"
+import ptBRPrivacyPolicy from "@/locales/pt-BR/privacyPolicy.json"
+import ptBRReports from "@/locales/pt-BR/reports.json"
+import ptBRSchedule from "@/locales/pt-BR/schedule.json"
 import ptBRUnderConstruction from "@/locales/pt-BR/underConstruction.json"
+import ptBRUsers from "@/locales/pt-BR/users.json"
 import ptBRWhatsApp from "@/locales/pt-BR/whatsapp.json"
 
 const ptBR = {
     appointmentDetail: ptBRAppointmentDetail,
     appointments: ptBRAppointments,
     common: ptBRCommon,
+    content: ptBRContent,
+    documents: ptBRDocuments,
     error: ptBRError,
     login: ptBRLogin,
+    noAccess: ptBRNoAccess,
     notFound: ptBRNotFound,
+    privacyPolicy: ptBRPrivacyPolicy,
+    reports: ptBRReports,
+    schedule: ptBRSchedule,
     underConstruction: ptBRUnderConstruction,
+    users: ptBRUsers,
     whatsapp: ptBRWhatsApp
 }
 

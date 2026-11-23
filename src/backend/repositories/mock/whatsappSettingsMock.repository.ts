@@ -5,6 +5,8 @@ export class MockWhatsAppSettingsRepository implements WhatsAppSettingsRepositor
     public row: WhatsAppSettingsRow | null
     public readonly credentialChecks: boolean[] = []
     public saveCalls = 0
+    public readonly saveInputs: SaveCredentialsInput[] = []
+    public readonly webhookEventTouches: Date[] = []
 
     private readonly userNames = new Map<number, string>()
     private readonly clock: () => Date
@@ -36,6 +38,7 @@ export class MockWhatsAppSettingsRepository implements WhatsAppSettingsRepositor
     async saveCredentials(input: SaveCredentialsInput): Promise<WhatsAppSettingsRow> {
         const row = this.requireRow()
         this.saveCalls += 1
+        this.saveInputs.push(input)
         this.row = {
             ...row,
             phoneNumberId: input.phoneNumberId,
@@ -71,6 +74,20 @@ export class MockWhatsAppSettingsRepository implements WhatsAppSettingsRepositor
         return { ...this.row }
     }
 
+    async isCancellationNoticeEnabled(): Promise<boolean> {
+        return this.row?.cancellationNoticeEnabled ?? false
+    }
+
+    async setCancellationNoticeEnabled(enabled: boolean, updatedBy: number): Promise<WhatsAppSettingsRow> {
+        const row = this.requireRow()
+        this.row = { ...row, cancellationNoticeEnabled: enabled, updatedBy: this.userOf(updatedBy), updatedAt: this.clock() }
+        return { ...this.row }
+    }
+
+    async touchLastWebhookEvent(at: Date): Promise<void> {
+        this.webhookEventTouches.push(at)
+    }
+
     private userOf(id: number): { id: number; name: string } {
         return { id, name: this.userNames.get(id) ?? "Admin" }
     }
@@ -90,11 +107,13 @@ export class MockWhatsAppSettingsRepository implements WhatsAppSettingsRepositor
             appSecretEncrypted: null,
             verifyToken,
             autoReplyPaused: false,
+            cancellationNoticeEnabled: false,
             credentialsCheckedAt: null,
             credentialsValid: null,
             displayPhoneNumber: null,
             verifiedName: null,
             accessTokenLifetime: { kind: "UNKNOWN", expiresAt: null },
+            lastWebhookEventAt: null,
             updatedBy: null,
             updatedAt: this.clock(),
         }

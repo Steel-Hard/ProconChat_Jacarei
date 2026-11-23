@@ -4,8 +4,11 @@ import { screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import ROUTES from "@/routers/paths"
 import loadPanelRoutes from "@/testUtils/loadPanelRoutes"
+import settleSchedulePage from "@/testUtils/settleSchedulePage"
+import stubScheduleFetch from "@/testUtils/stubScheduleFetch"
 import PERMISSION_KEYS from "@/navigation/permissionKeys"
 import type PanelAccount from "@/types/account/PanelAccount.types"
+import type PermissionKey from "@/types/account/PermissionKey.types"
 import type RootState from "@/types/store/RootState.types"
 
 const admin: PanelAccount = {
@@ -45,20 +48,18 @@ function renderRoutes(initialEntries: string[], preloadedState?: Partial<RootSta
     return { ...result, router }
 }
 
-const underConstructionRoutes: Array<[string, string]> = [
-    [ROUTES.reports, "Relatórios"],
-    [ROUTES.content, "Conteúdo"],
-    [ROUTES.sessions, "Sessões"],
-    [ROUTES.schedule, "Horários"],
-    [ROUTES.documents, "Documentos"],
-    [ROUTES.users, "Usuários"]
-]
+const underConstructionRoutes: Array<[string, string]> = [[ROUTES.sessions, "Sessões"]]
 
 const protectedRoutes: Array<[string, string]> = [
     [ROUTES.dashboard, "Painel"],
     ...underConstructionRoutes,
+    [ROUTES.content, "Conteúdo do chatbot"],
+    [ROUTES.reports, "Relatórios"],
     [ROUTES.appointments, "Agendamentos"],
     ["/agendamentos/1", "Detalhe do agendamento"],
+    [ROUTES.schedule, "Horários de atendimento"],
+    [ROUTES.documents, "Documentos para atendimento presencial"],
+    [ROUTES.users, "Usuários"],
     [ROUTES.whatsapp, "WhatsApp"]
 ]
 
@@ -68,6 +69,70 @@ function requestedUrls(): string[] {
     return fetchMock.mock.calls.map(([input]) =>
         input instanceof Request ? input.url : String(input)
     )
+}
+
+const NO_ACCESS_HEADING = "Sua conta ainda não tem acesso a nenhuma tela"
+
+function staffWith(permissions: PermissionKey[]): PanelAccount {
+    return { ...staffWithAllPermissions, permissions }
+}
+
+function stubFetchByUrl(respond: (url: string) => Response) {
+    vi.stubGlobal(
+        "fetch",
+        vi.fn((input: RequestInfo | URL) =>
+            Promise.resolve(respond(input instanceof Request ? input.url : String(input)))
+        )
+    )
+}
+
+function stubLoginAs(permissions: PermissionKey[]) {
+    stubFetchByUrl((url) => {
+        if (url.endsWith("/api/v1/auth/login")) {
+            return new Response(JSON.stringify({ data: { user: staffWith(permissions) } }), {
+                status: 200
+            })
+        }
+
+        if (url.includes("/api/v1/reports?")) {
+            return new Response(
+                JSON.stringify({
+                    data: {
+                        period: {
+                            preset: "30d",
+                            startDate: "2026-10-08",
+                            endDate: "2026-11-06",
+                            daysCount: 30,
+                            today: "2026-11-07"
+                        },
+                        conversations: { total: 0, dailyAverage: 0, appointmentsCreated: 0 },
+                        outcomes: [],
+                        topCategories: [],
+                        topQuestions: [],
+                        appointmentsResult: {
+                            attended: 0,
+                            noShow: 0,
+                            canceled: 0,
+                            waitingRecord: 0,
+                            upcoming: 0,
+                            total: 0,
+                            recordedTotal: 0,
+                            noShowRate: 0
+                        }
+                    }
+                }),
+                { status: 200, headers: { "Content-Type": "application/json" } }
+            )
+        }
+
+        return new Response(null, { status: 204 })
+    })
+}
+
+async function submitLogin(user: ReturnType<typeof userEvent.setup>) {
+    await user.type(await screen.findByRole("textbox", { name: "E-mail" }), "bruno@exemplo.gov.br")
+    await user.type(screen.getByLabelText("Senha"), "senha-segura")
+    await user.click(screen.getByRole("button", { name: "Entrar" }))
 }
 
 function stubNeverAnsweringFetch() {
@@ -95,6 +160,8 @@ describe("routes antes de carregar as páginas", () => {
     })
 })
 
+const LAZY_LOAD_TIMEOUT = 10000
+
 describe("routes", () => {
     beforeAll(async () => {
         panel = await loadPanelRoutes([
@@ -103,7 +170,12 @@ describe("routes", () => {
             () => import("@/pages/UnderConstruction.page"),
             () => import("@/pages/WhatsApp.page"),
             () => import("@/pages/Appointments.page"),
-            () => import("@/pages/AppointmentDetail.page")
+            () => import("@/pages/AppointmentDetail.page"),
+            () => import("@/pages/Users.page"),
+            () => import("@/pages/Schedule.page"),
+            () => import("@/pages/Documents.page"),
+            () => import("@/pages/Reports.page"),
+            () => import("@/pages/PrivacyPolicy.page")
         ])
     })
 
@@ -123,11 +195,33 @@ describe("routes", () => {
         expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument()
     })
 
+    it("renderiza a política de privacidade sem sessão, sem desviar para o login nem mostrar o menu", async () => {
+        const { router } = renderRoutes([ROUTES.privacyPolicy], withoutSession)
+
+        expect(
+            await screen.findByRole("heading", { level: 1, name: "Política de privacidade" })
+        ).toBeInTheDocument()
+        expect(router.state.location.pathname).toBe("/privacidade")
+        expect(screen.queryByRole("link", { name: "Agendamentos" })).not.toBeInTheDocument()
+    })
+
     it.each(underConstructionRoutes)("renderiza %s com sessão", async (path, title) => {
         renderRoutes([path], withSession)
 
         expect(await screen.findByRole("heading", { name: title })).toBeInTheDocument()
         expect(screen.getByText("Em construção.")).toBeInTheDocument()
+    })
+
+    it("renderiza a tela de Relatórios e consulta o período padrão", async () => {
+        renderRoutes([ROUTES.reports], withSession)
+
+        expect(await screen.findByRole("heading", { name: "Relatórios" })).toBeInTheDocument()
+        expect(screen.queryByText("Em construção.")).not.toBeInTheDocument()
+        await waitFor(() =>
+            expect(requestedUrls().some((url) => url.includes("/api/v1/reports?period=30d"))).toBe(
+                true
+            )
+        )
     })
 
     it("renderiza a tela de WhatsApp para o Admin, carregando a configuração", async () => {
@@ -146,15 +240,113 @@ describe("routes", () => {
     it("renderiza a tela de Agendamentos com sessão, pedindo a lista e o contador", async () => {
         renderRoutes([ROUTES.appointments], withSession)
 
-        expect(await screen.findByRole("heading", { name: "Agendamentos" })).toBeInTheDocument()
+        expect(
+            await screen.findByRole(
+                "heading",
+                { name: "Agendamentos" },
+                { timeout: LAZY_LOAD_TIMEOUT }
+            )
+        ).toBeInTheDocument()
         expect(screen.queryByText("Em construção.")).not.toBeInTheDocument()
         expect(screen.getByRole("searchbox", { name: "Buscar" })).toBeInTheDocument()
         await waitFor(() =>
             expect(requestedUrls().some((url) => url.includes("/api/v1/appointments?"))).toBe(true)
         )
+    })
+
+    it("renderiza a tela de Usuários para o Admin, carregando as contas", async () => {
+        renderRoutes([ROUTES.users], withSession)
+
+        expect(await screen.findByRole("heading", { name: "Usuários" })).toBeInTheDocument()
+        expect(screen.getByText("Carregando...")).toBeInTheDocument()
+        expect(screen.queryByText("Em construção.")).not.toBeInTheDocument()
+        await waitFor(() =>
+            expect(requestedUrls().some((url) => url.endsWith("/api/v1/users"))).toBe(true)
+        )
+    })
+
+    it("renderiza a tela de Usuários para quem gerencia usuários", async () => {
+        renderRoutes([ROUTES.users], {
+            account: {
+                current: { ...staffWithAllPermissions, permissions: ["users.manage"] },
+                status: "authenticated"
+            }
+        })
+
+        expect(await screen.findByRole("heading", { name: "Usuários" })).toBeInTheDocument()
+        expect(screen.queryByText("Em construção.")).not.toBeInTheDocument()
+    })
+
+    it("renderiza a tela de Horários de atendimento para o Admin, carregando a configuração", async () => {
+        const release = stubScheduleFetch()
+        const { unmount } = renderRoutes([ROUTES.schedule], withSession)
+
         expect(
-            requestedUrls().some((url) => url.endsWith("/api/v1/appointments/pending-count"))
-        ).toBe(true)
+            await screen.findByRole("heading", { name: "Horários de atendimento", level: 1 })
+        ).toBeInTheDocument()
+        expect(screen.getByText("Carregando...")).toBeInTheDocument()
+        expect(screen.queryByText("Em construção.")).not.toBeInTheDocument()
+        await waitFor(() =>
+            expect(requestedUrls().some((url) => url.endsWith("/api/v1/schedule"))).toBe(true)
+        )
+        release()
+        await settleSchedulePage(unmount)
+    }, 20000)
+
+    it("renderiza a tela de Horários de atendimento para quem configura o atendimento", async () => {
+        stubScheduleFetch()()
+        const { unmount } = renderRoutes([ROUTES.schedule], {
+            account: {
+                current: { ...staffWithAllPermissions, permissions: ["schedule.configure"] },
+                status: "authenticated"
+            }
+        })
+
+        expect(
+            await screen.findByRole("heading", { name: "Horários de atendimento", level: 1 })
+        ).toBeInTheDocument()
+        expect(screen.getByRole("link", { name: "Horários de atendimento" })).toBeInTheDocument()
+        await settleSchedulePage(unmount)
+    }, 20000)
+
+    it("mostra a NotFound em /horarios a quem não configura o atendimento, sem chamar a API de horários", async () => {
+        renderRoutes([ROUTES.schedule], {
+            account: {
+                current: { ...staffWithAllPermissions, permissions: ["users.manage"] },
+                status: "authenticated"
+            }
+        })
+
+        expect(await screen.findByRole("heading", { name: "404 - Not Found" })).toBeInTheDocument()
+        expect(requestedUrls().some((url) => url.includes("/api/v1/schedule"))).toBe(false)
+    })
+
+    it("renderiza a tela de Documentos para o Admin, carregando os documentos", async () => {
+        renderRoutes([ROUTES.documents], withSession)
+
+        expect(
+            await screen.findByRole("heading", {
+                name: "Documentos para atendimento presencial",
+                level: 1
+            })
+        ).toBeInTheDocument()
+        expect(screen.getByText("Carregando...")).toBeInTheDocument()
+        expect(screen.queryByText("Em construção.")).not.toBeInTheDocument()
+        await waitFor(() =>
+            expect(requestedUrls().some((url) => url.endsWith("/api/v1/documents"))).toBe(true)
+        )
+    })
+
+    it("mostra a NotFound em /documentos a quem não tem permissão", async () => {
+        renderRoutes([ROUTES.documents], {
+            account: {
+                current: { ...staffWithAllPermissions, permissions: ["users.manage"] },
+                status: "authenticated"
+            }
+        })
+
+        expect(await screen.findByRole("heading", { name: "404 - Not Found" })).toBeInTheDocument()
+        expect(requestedUrls().some((url) => url.includes("/api/v1/documents"))).toBe(false)
     })
 
     it("renderiza o detalhe do agendamento com sessão, pedindo o agendamento pelo id", async () => {
@@ -217,6 +409,87 @@ describe("routes", () => {
 
         await user.click(await screen.findByRole("link", { name: "Vá para a página inicial." }))
 
-        expect(await screen.findByRole("heading", { name: "Agendamentos" })).toBeInTheDocument()
+        expect(
+            await screen.findByRole(
+                "heading",
+                { name: "Agendamentos" },
+                { timeout: LAZY_LOAD_TIMEOUT }
+            )
+        ).toBeInTheDocument()
+    })
+
+    it("volta do aviso para a tela de entrada sem redirect quando o logout dá certo", async () => {
+        const user = userEvent.setup()
+        stubFetchByUrl(() => new Response(null, { status: 204 }))
+        const { router, store } = renderRoutes([ROUTES.dashboard], {
+            account: { current: staffWith([]), status: "authenticated" }
+        })
+
+        await user.click(await screen.findByRole("button", { name: "Voltar para o login" }))
+
+        expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument()
+        expect(requestedUrls().some((url) => url.endsWith("/api/v1/auth/logout"))).toBe(true)
+        expect(store.getState().account).toEqual({ current: null, status: "anonymous" })
+        expect(router.state.location.pathname).toBe(ROUTES.login)
+        expect(router.state.location.search).toBe("")
+        expect(router.state.historyAction).toBe("REPLACE")
+        expect(screen.queryByRole("heading", { name: NO_ACCESS_HEADING })).not.toBeInTheDocument()
+    })
+
+    it("mantém o aviso e mostra o toast quando o logout falha", async () => {
+        const user = userEvent.setup()
+        stubFetchByUrl(
+            () =>
+                new Response(JSON.stringify({ error: { code: "INTERNAL_ERROR", message: "x" } }), {
+                    status: 500
+                })
+        )
+        const { router, store } = renderRoutes([ROUTES.dashboard], {
+            account: { current: staffWith([]), status: "authenticated" }
+        })
+
+        await user.click(await screen.findByRole("button", { name: "Voltar para o login" }))
+
+        expect(
+            await screen.findByText("Não foi possível sair agora. Tente de novo.")
+        ).toBeInTheDocument()
+        expect(screen.getByRole("heading", { name: NO_ACCESS_HEADING })).toBeInTheDocument()
+        expect(store.getState().account.status).toBe("authenticated")
+        expect(router.state.location.pathname).toBe(ROUTES.dashboard)
+    })
+
+    it("mostra o aviso quando a conta sem permissões entra com o redirect para Usuários", async () => {
+        const user = userEvent.setup()
+        stubLoginAs([])
+        const { router } = renderRoutes(["/login?redirect=%2Fusuarios"], withoutSession)
+
+        await submitLogin(user)
+
+        expect(await screen.findByRole("heading", { name: NO_ACCESS_HEADING })).toBeInTheDocument()
+        expect(router.state.location.pathname).toBe(ROUTES.users)
+        expect(screen.queryByRole("heading", { name: "404 - Not Found" })).not.toBeInTheDocument()
+    })
+
+    it("mostra o aviso quando a conta que só vê sessões entra sem redirect", async () => {
+        const user = userEvent.setup()
+        stubLoginAs(["sessions.view"])
+        renderRoutes([ROUTES.login], withoutSession)
+
+        await submitLogin(user)
+
+        expect(await screen.findByRole("heading", { name: NO_ACCESS_HEADING })).toBeInTheDocument()
+        expect(screen.queryByRole("heading", { name: "404 - Not Found" })).not.toBeInTheDocument()
+    })
+
+    it("abre Relatórios quando a conta que vê relatórios e gerencia usuários entra sem redirect", async () => {
+        const user = userEvent.setup()
+        stubLoginAs(["reports.view", "users.manage"])
+        const { router } = renderRoutes([ROUTES.login], withoutSession)
+
+        await submitLogin(user)
+
+        expect(await screen.findByRole("heading", { name: "Relatórios" })).toBeInTheDocument()
+        expect(router.state.location.pathname).toBe(ROUTES.reports)
+        expect(screen.queryByRole("heading", { name: "404 - Not Found" })).not.toBeInTheDocument()
     })
 })

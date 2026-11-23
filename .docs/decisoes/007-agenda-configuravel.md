@@ -17,6 +17,9 @@ Para o chatbot agendar sozinho (RF07), ele precisa saber quais horários existem
    - **janela de agendamento**: até quantos dias à frente o chatbot oferece horários;
    - **antecedência mínima**, em "dias úteis", que aqui significa **dias com atendimento configurado e não bloqueados**;
    - **limite de espera para alerta**: o Dashboard avisa quando o próximo horário livre passa desse prazo;
+
+     > **Estado em 2026-11-22:** a tela de Dashboard foi descartada pelo grupo e não existe no painel, então nenhuma tela avisa a partir desse prazo. Ele continua salvo na tela de Horários, onde o campo diz "Prazo de espera considerado longo para o próximo horário livre." Ver a [decisão 013](013-telas-de-sessoes-e-dashboard-descartadas.md).
+
    - **datas bloqueadas**, do dia inteiro ou de um período;
    - **dados da unidade** (endereço e complemento), usados nas mensagens;
    - **lembrete** (liga/desliga e quantas horas antes).
@@ -26,10 +29,11 @@ Para o chatbot agendar sozinho (RF07), ele precisa saber quais horários existem
    - **manter**: continuam válidos, com o selo "Fora da grade atual";
    - **cancelar e avisar os cidadãos**, com o motivo "Unidade fechada nesta data" ou "Outro motivo".
 6. **Todas as alterações ficam pendentes até "Salvar"**, com "Descartar" e o registro de quem alterou e quando. Esse padrão vale para todas as telas de configuração.
-7. **Limitação conhecida:** a resposta do FAQ "Qual é o horário e o endereço do PROCON?" repete esses dados em texto. A tela avisa para revisar o Conteúdo quando horário ou endereço mudarem. Uma solução melhor (marcadores como `{endereco}` na resposta) fica para depois.
+7. **Marcadores de horário e endereço no Conteúdo (#78):** para evitar que respostas como "Qual é o horário e o endereço do PROCON?" fiquem desatualizadas quando a agenda mudar, o texto da resposta aceita os marcadores `{endereco}` e `{horarios}`, preenchidos pelo sistema no envio e na prévia de Conteúdo com os valores da configuração vigente hoje. A tela de Horários mantém o aviso para revisar perguntas que ainda citem essas informações em texto fixo.
 
 ## Consequências
 
 - Novas tabelas ou colunas de configuração para grade, bloqueios, janela, lembrete e dados da unidade.
 - A verificação de conflitos precisa rodar **no servidor** ao salvar.
 - O cancelamento em massa reaproveita o envio de avisos de [005](005-mensagens-ao-cidadao.md).
+- A configuração continua única por data, mas pode ter versões com data de início: a [decisão 012](012-horarios-agendados.md) complementa esta com as mudanças de horários agendadas.

@@ -10,6 +10,7 @@ const ROUTES = {
     documents: "/documentos",
     users: "/usuarios",
     whatsapp: "/whatsapp",
+    privacyPolicy: "/privacidade",
     notFound: "*"
 } as const
 

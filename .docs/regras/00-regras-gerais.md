@@ -15,15 +15,15 @@ Existem dois tipos de conta ([decisão 004](../decisoes/004-contas-e-permissoes-
 
 | Permissão | Telas e ações que libera |
 |---|---|
-| Ver agendamentos | Agendamentos (lista, calendário, busca), Detalhe do agendamento (só leitura), blocos de agenda do Dashboard |
+| Ver agendamentos | Agendamentos (lista, calendário, busca), Detalhe do agendamento (só leitura) |
 | Gerenciar agendamentos (inclui Ver agendamentos) | Assumir, atribuir, marcar atendido ou não compareceu, corrigir registro, cancelar, escrever observações |
 | Gerenciar conteúdo do chatbot | Conteúdo |
 | Configurar atendimento presencial | Horários de atendimento |
 | Configurar documentos para atendimento presencial | Documentos |
-| Ver sessões | Sessões, link da sessão de origem no Detalhe do agendamento |
-| Ver relatórios | Relatórios, blocos de indicadores do Dashboard |
+| Ver sessões | Nenhuma tela: a tela de Sessões foi descartada ([decisão 013](../decisoes/013-telas-de-sessoes-e-dashboard-descartadas.md)). A permissão continua no servidor e não aparece na tela de Usuários |
+| Ver relatórios | Relatórios |
 | Gerenciar usuários | Usuários |
-| *(só Admin)* | WhatsApp, bloco "Saúde do chatbot" do Dashboard |
+| *(só Admin)* | WhatsApp |
 
 Regras:
 
@@ -32,16 +32,16 @@ Regras:
 
 ## 3. Salvar, descartar e registrar quem alterou
 
-Todas as **telas de configuração** (Horários de atendimento, Documentos, Usuários e WhatsApp) seguem o mesmo padrão:
+Todas as **telas de configuração** (Horários de atendimento, Documentos, Conteúdo, Usuários e WhatsApp) seguem o mesmo padrão:
 
 1. As alterações ficam **pendentes** até clicar em **"Salvar alterações"**.
-2. Enquanto há alterações pendentes, aparece **"N alterações não salvas"**. Passando o mouse, aparece a lista do que mudou.
+2. Enquanto há alterações pendentes, aparece **"N alterações não salvas"**. Passando o mouse ou tocando, aparece a lista do que mudou. O contador mostra o que difere do que está gravado, não quantas ações foram feitas: adicionar e remover o mesmo item não conta, e voltar ao estado gravado zera o contador.
 3. **"Descartar"** desfaz todas as alterações pendentes.
 4. O topo da tela mostra **"Última alteração por [nome] em [data]"**.
 
-A única exceção é o interruptor **"Pausar respostas automáticas"**, na tela de WhatsApp, que age na hora porque é de emergência.
+As exceções são os interruptores da tela de WhatsApp que agem na hora, com diálogo de confirmação: **"Pausar respostas automáticas"**, porque é de emergência, e **"Avisar o cidadão quando a equipe cancelar"**, porque é uma chave operacional com efeito imediato no próximo cancelamento e não deve se misturar com a barra de alterações não salvas das credenciais.
 
-Nas telas de operação (Agendamentos, Detalhe, Conteúdo), cada ação é aplicada quando confirmada, e fica registrada no histórico correspondente.
+Nas telas de operação (Agendamentos, Detalhe), cada ação é aplicada quando confirmada, e fica registrada no histórico correspondente.
 
 ## 4. Nada é excluído
 
@@ -49,6 +49,7 @@ Nas telas de operação (Agendamentos, Detalhe, Conteúdo), cada ação é aplic
 - **Contas** são **desativadas**, não excluídas.
 - **Observações** dos agendamentos não podem ser editadas nem apagadas.
 - **Agendamentos** são cancelados, não apagados.
+- **Anonimizar não é excluir.** Com a anonimização automática ligada (aba Privacidade da tela de WhatsApp), conversas e agendamentos que passaram do prazo perdem o dado pessoal (número, nome e CPF), mas a linha, os eventos, o histórico e as observações continuam ([decisão 002](../decisoes/002-lgpd-dados-pessoais.md#anonimização-por-prazo)).
 
 Isso preserva o histórico, os relatórios e a autoria de cada registro.
 
@@ -62,7 +63,7 @@ Ver [decisão 002](../decisoes/002-lgpd-dados-pessoais.md).
 | CPF | Sempre mascarado: `***.456.789-**`. **O CPF completo nunca aparece**, nem em resultados de busca |
 | Telefone do cidadão | **Nunca aparece**, em nenhuma tela |
 | Texto que o cidadão digitou no WhatsApp | **Não existe no sistema.** O painel mostra só os passos que o cidadão percorreu |
-| Relatórios e exportações | Só números agregados. Sem nome, CPF ou protocolo |
+| Relatórios | Só números agregados. Sem nome, CPF ou protocolo |
 
 ## 6. Mensagens enviadas ao cidadão
 

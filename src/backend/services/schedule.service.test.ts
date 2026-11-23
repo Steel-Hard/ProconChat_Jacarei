@@ -1,6 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import BadRequestError from "../errors/BadRequestError"
+import ConflictError from "../errors/ConflictError"
+import ScheduleNotConfiguredError from "../errors/ScheduleNotConfiguredError"
+import {
+    buildDefaultScheduleConfigView,
+    createScheduleStubRepository,
+} from "../repositories/mock/scheduleStub.repository"
 import { IScheduleRepository } from "../repositories/schedule.repository.interface"
-import { createScheduleService, IScheduleService } from "./schedule.service"
+import { createScheduleService, freeSlotStartsOfDay, IScheduleService } from "./schedule.service"
+import { scheduleVersionOf } from "./mock/scheduleVersion.builders"
 import {
     buildScheduleSettings,
     fullDayBlock,
@@ -21,8 +29,24 @@ describe("ScheduleService", () => {
             getSettings: vi.fn().mockResolvedValue(defaultSettings),
             getRanges: vi.fn().mockResolvedValue(defaultRanges),
             getBlockedDates: vi.fn().mockResolvedValue([]),
+            getConfigForDate: vi.fn(),
+            getScheduleVersions: vi.fn(async (fromDate: string, toDate: string) => {
+                const settings = await repoMock.getSettings()
+                return settings
+                    ? [scheduleVersionOf(settings, await repoMock.getRanges(), await repoMock.getBlockedDates(fromDate, toDate))]
+                    : []
+            }),
+            listScheduledConfigs: vi.fn().mockResolvedValue([]),
             countActiveAppointmentsPerSlot: vi.fn().mockResolvedValue(new Map()),
             bookAppointment: vi.fn(),
+            getConfig: vi.fn().mockResolvedValue(buildDefaultScheduleConfigView()),
+            saveConfig: vi.fn().mockResolvedValue(buildDefaultScheduleConfigView()),
+            saveScheduledConfig: vi.fn(),
+            deleteScheduledConfig: vi.fn(),
+            listFutureActiveAppointments: vi.fn().mockResolvedValue([]),
+            findReturningAppointment: vi.fn(),
+            cancelByCitizen: vi.fn(),
+            rescheduleByCitizen: vi.fn(),
         }
         service = createScheduleService(repoMock)
     })
@@ -132,6 +156,14 @@ describe("ScheduleService", () => {
         expect(slots).toEqual([])
     })
 
+    it("devolve lista vazia quando a grade não tem nenhuma faixa", async () => {
+        vi.mocked(repoMock.getRanges).mockResolvedValueOnce([])
+
+        const slots = await service.getAvailableSlots(new Date("2026-10-05T09:00:00-03:00"))
+
+        expect(slots).toEqual([])
+    })
+
     it("deve respeitar estritamente o limite da janela de agendamento (window_days)", async () => {
         vi.mocked(repoMock.getSettings).mockResolvedValueOnce(
             buildScheduleSettings({ window_days: 2, min_notice_days: 1 }),
@@ -155,5 +187,291 @@ describe("ScheduleService", () => {
         const slots = await service.getAvailableSlots(now)
 
         expect(slots).toEqual([])
+    })
+
+    it("usa a configuração vigente em cada data ao oferecer horários", async () => {
+        const baseline = buildDefaultScheduleConfigView({
+            windowDays: 10,
+            minNoticeDays: 0,
+            ranges: [{ weekday: 2, slotIndex: 1, startTime: "08:00", endTime: "10:00" }],
+        })
+        const scheduled = buildDefaultScheduleConfigView({
+            windowDays: 10,
+            minNoticeDays: 0,
+            seatsPerSlot: 4,
+            ranges: [{ weekday: 3, slotIndex: 1, startTime: "14:00", endTime: "16:00" }],
+        })
+        vi.mocked(repoMock.getScheduleVersions).mockResolvedValueOnce([
+            { effectiveFrom: null, config: baseline },
+            { effectiveFrom: "2026-10-07", config: scheduled },
+        ])
+
+        const slots = await service.getAvailableSlots(new Date("2026-10-05T07:00:00-03:00"))
+
+        expect(slots.filter((slot) => slot.dateStr === "2026-10-06").map((slot) => slot.timeStr)).toEqual([
+            "08:00", "08:30", "09:00", "09:30",
+        ])
+        expect(slots.filter((slot) => slot.dateStr === "2026-10-07").map((slot) => slot.timeStr)).toEqual([
+            "14:00", "14:30", "15:00", "15:30",
+        ])
+        expect(slots.find((slot) => slot.dateStr === "2026-10-07")?.remainingSeats).toBe(4)
+    })
+
+    describe("getConfig, saveConfig e getMonthlyPreview", () => {
+        it("lança ScheduleNotConfiguredError quando não há configuração salva", async () => {
+            vi.mocked(repoMock.getConfig).mockResolvedValueOnce(null)
+            await expect(service.getConfig()).rejects.toBeInstanceOf(
+                ScheduleNotConfiguredError,
+            )
+        })
+
+        it("mantém 100% de consistência entre getAvailableSlots (bot) e getMonthlyPreview (painel)", async () => {
+            const stubRepo = createScheduleStubRepository({
+                config: buildDefaultScheduleConfigView({
+                    slotMinutes: 30,
+                    seatsPerSlot: 2,
+                    windowDays: 10,
+                    minNoticeDays: 1,
+                    ranges: [1, 2, 3, 4, 5].map((weekday) => ({
+                        weekday,
+                        slotIndex: 1,
+                        startTime: "08:00",
+                        endTime: "10:00",
+                    })),
+                    blockedDates: [
+                        {
+                            date: "2026-10-07",
+                            startTime: null,
+                            endTime: null,
+                            description: "Feriado",
+                        },
+                        {
+                            date: "2026-10-08",
+                            startTime: "08:30",
+                            endTime: "09:30",
+                            description: "Reunião",
+                        },
+                    ],
+                }),
+                appointments: [
+                    {
+                        id: "1",
+                        protocol: "AAAA1111",
+                        name: "João Silva",
+                        cpfMasked: "***.111.222-**",
+                        appointmentDatetime: new Date("2026-10-06T08:00:00-03:00"),
+                        requestDatetime: new Date("2026-10-01T10:00:00-03:00"),
+                        status: "PENDING",
+                    },
+                    {
+                        id: "2",
+                        protocol: "BBBB2222",
+                        name: "Maria Souza",
+                        cpfMasked: "***.333.444-**",
+                        appointmentDatetime: new Date("2026-10-06T08:00:00-03:00"),
+                        requestDatetime: new Date("2026-10-01T11:00:00-03:00"),
+                        status: "CONFIRMED",
+                    },
+                    {
+                        id: "3",
+                        protocol: "CCCC3333",
+                        name: "Carlos Lima",
+                        cpfMasked: "***.555.666-**",
+                        appointmentDatetime: new Date("2026-10-06T08:30:00-03:00"),
+                        requestDatetime: new Date("2026-10-01T12:00:00-03:00"),
+                        status: "PENDING",
+                    },
+                ],
+            })
+
+            const realService = createScheduleService(stubRepo)
+            const now = new Date("2026-10-05T09:00:00-03:00")
+
+            const botSlots = await realService.getAvailableSlots(now)
+            const preview = await realService.getMonthlyPreview({
+                month: "2026-10",
+                now,
+            })
+
+            const totalSeatsOfferedByBot = botSlots.reduce(
+                (acc, s) => acc + s.remainingSeats,
+                0,
+            )
+            expect(preview.freeWindowSeats).toBe(totalSeatsOfferedByBot)
+
+            const previewOfferedSlots = preview.days.flatMap((d) =>
+                d.slots
+                    .filter((s) => s.offered && s.freeSeats > 0)
+                    .map((s) => ({
+                        dateStr: d.date,
+                        timeStr: s.time,
+                        remainingSeats: s.freeSeats,
+                    })),
+            )
+            expect(previewOfferedSlots).toEqual(
+                botSlots.map((s) => ({
+                    dateStr: s.dateStr,
+                    timeStr: s.timeStr,
+                    remainingSeats: s.remainingSeats,
+                })),
+            )
+        })
+
+        it("recusa salvar configuração que gera conflito com agendamentos futuros", async () => {
+            const stubRepo = createScheduleStubRepository({
+                appointments: [
+                    {
+                        id: "10",
+                        protocol: "A1B2C3D4",
+                        name: "Maria Oliveira",
+                        cpfMasked: "***.456.789-**",
+                        appointmentDatetime: new Date("2026-10-06T08:00:00-03:00"),
+                        requestDatetime: new Date("2026-10-01T10:00:00-03:00"),
+                        status: "CONFIRMED",
+                    },
+                ],
+            })
+            const realService = createScheduleService(stubRepo)
+            const current = await realService.getConfig()
+
+            await expect(
+                realService.saveConfig(
+                    {
+                        ...current,
+                        blockedDates: [
+                            {
+                                date: "2026-10-06",
+                                startTime: null,
+                                endTime: null,
+                                description: "Ponto facultativo",
+                            },
+                        ],
+                    },
+                    2,
+                    new Date("2026-10-05T09:00:00-03:00"),
+                ),
+            ).rejects.toBeInstanceOf(ConflictError)
+        })
+
+        it("prévia mensal usa a configuração efetiva em cada dia", async () => {
+            const baseline = buildDefaultScheduleConfigView({
+                windowDays: 10,
+                minNoticeDays: 0,
+                ranges: [{ weekday: 2, slotIndex: 1, startTime: "08:00", endTime: "10:00" }],
+            })
+            const scheduled = buildDefaultScheduleConfigView({
+                windowDays: 10,
+                minNoticeDays: 0,
+                ranges: [{ weekday: 3, slotIndex: 1, startTime: "14:00", endTime: "16:00" }],
+            })
+            const repository = createScheduleStubRepository({
+                config: baseline,
+                scheduledConfigs: [{ effectiveFrom: "2026-10-07", config: scheduled }],
+            })
+            const realService = createScheduleService(repository)
+
+            const preview = await realService.getMonthlyPreview({
+                month: "2026-10",
+                now: new Date("2026-10-05T07:00:00-03:00"),
+            })
+
+            expect(preview.days.find((day) => day.date === "2026-10-06")?.slots.map((slot) => slot.time)).toEqual([
+                "08:00", "08:30", "09:00", "09:30",
+            ])
+            expect(preview.days.find((day) => day.date === "2026-10-07")?.slots.map((slot) => slot.time)).toEqual([
+                "14:00", "14:30", "15:00", "15:30",
+            ])
+        })
+
+        it("repassa ao repositório a mudança futura normalizada com a data de início, o autor e o instante", async () => {
+            const current = buildDefaultScheduleConfigView()
+            const repository = createScheduleStubRepository({ config: current })
+            const realService = createScheduleService(repository)
+            const now = new Date("2026-10-05T09:00:00-03:00")
+
+            await expect(realService.saveScheduledConfig(
+                {
+                    ...current,
+                    ranges: [],
+                },
+                "2026-10-07",
+                2,
+                now,
+            )).resolves.toMatchObject({ effectiveFrom: "2026-10-07" })
+            expect(repository.scheduledSaveCalls).toEqual([
+                expect.objectContaining({
+                    effectiveFrom: "2026-10-07",
+                    actorUserId: 2,
+                    now,
+                    config: expect.objectContaining({ ranges: [], unitAddress: current.unitAddress }),
+                    validateAgainstVersions: expect.any(Function),
+                }),
+            ])
+        })
+
+        it("rejeita mês inválido em getMonthlyPreview", async () => {
+            await expect(
+                service.getMonthlyPreview({ month: "2026-13" }),
+            ).rejects.toBeInstanceOf(BadRequestError)
+        })
+    })
+
+    describe("freeSlotStartsOfDay", () => {
+        it("gera os inícios da grade do dia em minutos e tira os horários com bloqueio", () => {
+            expect(freeSlotStartsOfDay("2026-10-21", defaultRanges, [], 30)).toEqual([480, 510, 540, 570])
+            expect(
+                freeSlotStartsOfDay("2026-10-21", defaultRanges, [partialBlock("2026-10-21", "08:00:00", "09:00:00")], 30),
+            ).toEqual([540, 570])
+            expect(freeSlotStartsOfDay("2026-10-24", defaultRanges, [], 30)).toEqual([])
+        })
+    })
+
+    describe("retorno do cidadão (#59)", () => {
+        it("findReturningAppointment repassa o hash do telefone e o instante ao repositório e devolve o resultado", async () => {
+            const now = new Date("2026-11-01T12:00:00Z")
+            const returning = { id: "7", appointmentDatetime: new Date("2026-11-10T13:00:00Z"), status: "PENDING" as const }
+            vi.mocked(repoMock.findReturningAppointment).mockResolvedValue(returning)
+
+            const found = await service.findReturningAppointment("hash-5512", now)
+
+            expect(repoMock.findReturningAppointment).toHaveBeenCalledWith("hash-5512", now)
+            expect(found).toBe(returning)
+        })
+
+        it("cancelByCitizen repassa a entrada ao repositório e devolve o protocolo", async () => {
+            const input = { sessionId: "s1", appointmentId: 7, phoneHash: "hash-5512" }
+            vi.mocked(repoMock.cancelByCitizen).mockResolvedValue({ protocol: "AB12CD34" })
+
+            const result = await service.cancelByCitizen(input)
+
+            expect(repoMock.cancelByCitizen).toHaveBeenCalledWith(input)
+            expect(result).toEqual({ protocol: "AB12CD34" })
+        })
+
+        it("rescheduleByCitizen repassa a entrada ao repositório e devolve o resultado", async () => {
+            const input = {
+                sessionId: "s1",
+                appointmentId: 7,
+                phoneHash: "hash-5512",
+                appointmentDatetime: new Date("2026-11-10T12:00:00Z"),
+            }
+            const rescheduled = {
+                protocol: "AB12CD34",
+                from: new Date("2026-11-09T12:00:00Z"),
+                appointmentDatetime: input.appointmentDatetime,
+                unitAddress: "Rua do Procon, 100",
+                unitAddressComplement: null,
+                documentsSent: { group: ["RG"], question: [] },
+                byRepresentative: false,
+                reminderEnabled: true,
+                reminderHours: 24,
+            }
+            vi.mocked(repoMock.rescheduleByCitizen).mockResolvedValue(rescheduled)
+
+            const result = await service.rescheduleByCitizen(input)
+
+            expect(repoMock.rescheduleByCitizen).toHaveBeenCalledWith(input)
+            expect(result).toBe(rescheduled)
+        })
     })
 })

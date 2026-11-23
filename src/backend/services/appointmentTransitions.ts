@@ -5,6 +5,9 @@ import type {
     AppointmentActionType,
     AppointmentAvailableActions,
     AppointmentStatus,
+    CancellationNoticeStatus,
+    CorrectionHistoryEvent,
+    CorrectionTarget,
     TransitionErrorCode,
 } from "../types/appointment.types"
 import { isDateOnOrBeforeToday, isDatetimePast } from "../utils/date.utils"
@@ -12,6 +15,28 @@ import { isDateOnOrBeforeToday, isDatetimePast } from "../utils/date.utils"
 export interface TransitionTarget {
     status: AppointmentStatus
     appointmentDatetime: Date
+}
+
+export interface ActionAccess {
+    canManage: boolean
+}
+
+export interface CancellationNoticeState {
+    status: AppointmentStatus
+    hasStaffCancellation: boolean
+    lastCancellationNotice: CancellationNoticeStatus | null
+    hasPhone: boolean
+    appointmentDatetime: Date
+    noticeEnabled: boolean
+}
+
+export type CancellationNoticeFacts = Omit<CancellationNoticeState, "status" | "appointmentDatetime">
+
+const NO_CANCELLATION_NOTICE: CancellationNoticeFacts = {
+    hasStaffCancellation: false,
+    lastCancellationNotice: null,
+    hasPhone: false,
+    noticeEnabled: true,
 }
 
 export type TransitionDecision =
@@ -38,6 +63,26 @@ function decideClaim(status: AppointmentStatus): TransitionDecision {
         return refuse("Apenas agendamentos pendentes podem ser assumidos", "APPOINTMENT_ALREADY_CLAIMED")
     }
     return ALLOWED
+}
+
+function decideAssign(status: AppointmentStatus): TransitionDecision {
+    if (status === "CANCELED") {
+        return refuse("Não é possível atribuir um agendamento cancelado", "APPOINTMENT_CANCELED")
+    }
+    if (status === "ATTENDED") {
+        return refuse("Agendamento já foi atendido", "ALREADY_ATTENDED")
+    }
+    if (status === "NO_SHOW") {
+        return refuse("Agendamento já registrado como não compareceu", "ALREADY_NO_SHOW")
+    }
+    return ALLOWED
+}
+
+function decideCorrectRecord(status: AppointmentStatus): TransitionDecision {
+    if (status === "ATTENDED" || status === "NO_SHOW") {
+        return ALLOWED
+    }
+    return refuse("Só é possível corrigir um agendamento atendido ou não compareceu", "RECORD_NOT_CORRECTABLE")
 }
 
 function decideRecordStatus(status: AppointmentStatus, canceledMessage: string): TransitionDecision | null {
@@ -81,6 +126,17 @@ function decideNoShow(target: TransitionTarget, now: Date): TransitionDecision {
     return ALLOWED
 }
 
+function decideCancel(target: TransitionTarget, now: Date): TransitionDecision {
+    const statusDecision = decideRecordStatus(target.status, "Agendamento já está cancelado")
+    if (statusDecision) {
+        return statusDecision
+    }
+    if (isDatetimePast(target.appointmentDatetime, now)) {
+        return refuse("Só é possível cancelar antes do horário do atendimento", "CANCEL_AFTER_START")
+    }
+    return ALLOWED
+}
+
 export function decideTransition(
     action: AppointmentActionType,
     target: TransitionTarget,
@@ -92,7 +148,32 @@ export function decideTransition(
     if (action === "attended") {
         return decideAttended(target, now)
     }
+    if (action === "assign") {
+        return decideAssign(target.status)
+    }
+    if (action === "correct_record") {
+        return decideCorrectRecord(target.status)
+    }
+    if (action === "cancel") {
+        return decideCancel(target, now)
+    }
     return decideNoShow(target, now)
+}
+
+export function decideRetryCancellationNotice(state: CancellationNoticeState, now: Date): TransitionDecision {
+    if (state.status !== "CANCELED" || !state.hasStaffCancellation || state.lastCancellationNotice === "NOTIFIED" || state.lastCancellationNotice === "DISABLED") {
+        return refuse("Não há aviso de cancelamento com falha para reenviar", "NOTIFICATION_NOT_RETRYABLE")
+    }
+    if (isDatetimePast(state.appointmentDatetime, now)) {
+        return refuse("O horário do atendimento já passou e o aviso não serve mais", "NOTIFICATION_AFTER_START")
+    }
+    if (!state.noticeEnabled) {
+        return refuse("O aviso de cancelamento está desligado", "NOTIFICATION_DISABLED")
+    }
+    if (!state.hasPhone) {
+        return refuse("O agendamento não tem telefone para enviar o aviso", "CITIZEN_PHONE_UNAVAILABLE")
+    }
+    return ALLOWED
 }
 
 function availabilityOf(decision: TransitionDecision): AppointmentActionAvailability {
@@ -101,10 +182,62 @@ function availabilityOf(decision: TransitionDecision): AppointmentActionAvailabi
         : { allowed: false, code: decision.code }
 }
 
-export function availableActions(target: TransitionTarget, now: Date): AppointmentAvailableActions {
+const PERMISSION_REQUIRED: AppointmentActionAvailability = { allowed: false, code: "PERMISSION_REQUIRED" }
+
+export function availableActions(
+    target: TransitionTarget,
+    now: Date,
+    access: ActionAccess,
+    notice: CancellationNoticeFacts = NO_CANCELLATION_NOTICE,
+): AppointmentAvailableActions {
+    if (!access.canManage) {
+        return {
+            claim: PERMISSION_REQUIRED,
+            attended: PERMISSION_REQUIRED,
+            no_show: PERMISSION_REQUIRED,
+            assign: PERMISSION_REQUIRED,
+            correct_record: PERMISSION_REQUIRED,
+            add_note: PERMISSION_REQUIRED,
+            cancel: PERMISSION_REQUIRED,
+            retry_cancellation_notice: PERMISSION_REQUIRED,
+        }
+    }
     return {
         claim: availabilityOf(decideTransition("claim", target, now)),
         attended: availabilityOf(decideTransition("attended", target, now)),
         no_show: availabilityOf(decideTransition("no_show", target, now)),
+        assign: availabilityOf(decideTransition("assign", target, now)),
+        correct_record: availabilityOf(decideTransition("correct_record", target, now)),
+        add_note: { allowed: true, code: null },
+        cancel: availabilityOf(decideTransition("cancel", target, now)),
+        retry_cancellation_notice: availabilityOf(decideRetryCancellationNotice({ ...notice, ...target }, now)),
     }
+}
+
+const TERMINAL_EVENTS = new Set(["ATTENDED", "NO_SHOW"])
+
+function isLater(a: CorrectionHistoryEvent, b: CorrectionHistoryEvent): boolean {
+    const diff = a.createdAt.getTime() - b.createdAt.getTime()
+    return diff > 0 || (diff === 0 && Number(a.id) > Number(b.id))
+}
+
+export function restoredStateAfterCorrection(
+    events: CorrectionHistoryEvent[],
+    current: { assignedUserId: number | null },
+): CorrectionTarget {
+    const terminal = events
+        .filter((event) => TERMINAL_EVENTS.has(event.type))
+        .reduce<CorrectionHistoryEvent | null>((latest, event) => (!latest || isLater(event, latest) ? event : latest), null)
+    const autoClaimed =
+        terminal !== null &&
+        events.some(
+            (event) =>
+                event.type === "CLAIMED" &&
+                event.data.auto_claimed === true &&
+                event.createdAt.getTime() === terminal.createdAt.getTime(),
+        )
+    if (autoClaimed || current.assignedUserId === null) {
+        return { status: "PENDING", assignedUserId: null }
+    }
+    return { status: "CONFIRMED", assignedUserId: current.assignedUserId }
 }

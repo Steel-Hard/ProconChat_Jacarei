@@ -1,5 +1,5 @@
 import { lazy } from "react"
-import { Navigate, type RouteObject } from "react-router-dom"
+import type { RouteObject } from "react-router-dom"
 import PanelLayout from "@/layouts/Panel.layout"
 import RootLayout from "@/layouts/Root.layout"
 import ErrorPage from "@/pages/Error.page"
@@ -14,6 +14,12 @@ const Login = lazy(() => import("@/pages/Login.page"))
 const WhatsApp = lazy(() => import("@/pages/WhatsApp.page"))
 const Appointments = lazy(() => import("@/pages/Appointments.page"))
 const AppointmentDetail = lazy(() => import("@/pages/AppointmentDetail.page"))
+const Users = lazy(() => import("@/pages/Users.page"))
+const Schedule = lazy(() => import("@/pages/Schedule.page"))
+const Documents = lazy(() => import("@/pages/Documents.page"))
+const Content = lazy(() => import("@/pages/Content.page"))
+const Reports = lazy(() => import("@/pages/Reports.page"))
+const PrivacyPolicy = lazy(() => import("@/pages/PrivacyPolicy.page"))
 
 function previewRoutes(): RouteObject[] {
     if (!import.meta.env.DEV) {
@@ -46,6 +52,7 @@ const routes: RouteObject[] = [
         errorElement: <ErrorPage />,
         children: [
             { path: ROUTES.login, element: <Login /> },
+            { path: ROUTES.privacyPolicy, element: <PrivacyPolicy /> },
             {
                 element: <RequireAuth />,
                 children: [
@@ -55,21 +62,18 @@ const routes: RouteObject[] = [
                             {
                                 element: <PanelLayout />,
                                 children: [
-                                    {
-                                        path: ROUTES.dashboard,
-                                        element: <Navigate to={ROUTES.appointments} replace />
-                                    },
+                                    underConstruction(ROUTES.dashboard, "dashboard"),
                                     { path: ROUTES.appointments, element: <Appointments /> },
                                     {
                                         path: ROUTES.appointmentDetail,
                                         element: <AppointmentDetail />
                                     },
-                                    underConstruction(ROUTES.reports, "reports"),
-                                    underConstruction(ROUTES.content, "content"),
+                                    { path: ROUTES.reports, element: <Reports /> },
+                                    { path: ROUTES.content, element: <Content /> },
                                     underConstruction(ROUTES.sessions, "sessions"),
-                                    underConstruction(ROUTES.schedule, "schedule"),
-                                    underConstruction(ROUTES.documents, "documents"),
-                                    underConstruction(ROUTES.users, "users"),
+                                    { path: ROUTES.schedule, element: <Schedule /> },
+                                    { path: ROUTES.documents, element: <Documents /> },
+                                    { path: ROUTES.users, element: <Users /> },
                                     { path: ROUTES.whatsapp, element: <WhatsApp /> }
                                 ]
                             },

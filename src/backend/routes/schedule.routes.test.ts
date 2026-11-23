@@ -1,0 +1,569 @@
+import express from "express"
+import request from "supertest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import ConflictError from "../errors/ConflictError"
+import { createRequireAuth } from "../middleware/auth.middleware"
+import errorHandler from "../middleware/errorHandler.middleware"
+import { MockAuthRepository } from "../repositories/mock/authMock.repository"
+import {
+    buildDefaultScheduleConfigView,
+    createScheduleStubRepository,
+    DEFAULT_STUB_NOW,
+} from "../repositories/mock/scheduleStub.repository"
+import { sessionTokens } from "../utils/sessionToken"
+import { ScheduleRoutes } from "./schedule.routes"
+
+const ADMIN_ID = 1
+const CONFIGURER_ID = 2
+const VIEWER_ID = 3
+
+const authUsers = new MockAuthRepository([
+    {
+        id: ADMIN_ID,
+        email: "admin@exemplo.test",
+        passwordHash: "x",
+        name: "Marcos Costa",
+        isAdmin: true,
+    },
+    {
+        id: CONFIGURER_ID,
+        email: "patricia@exemplo.test",
+        passwordHash: "x",
+        name: "Patrícia Lima",
+        permissions: ["schedule.configure"],
+    },
+    {
+        id: VIEWER_ID,
+        email: "lucas@exemplo.test",
+        passwordHash: "x",
+        name: "Lucas",
+        permissions: ["appointments.view"],
+    },
+])
+
+function cookieOf(userId: number): string {
+    return `proconchat_access=${sessionTokens.signAccessToken({ userId, sessionVersion: 0 })}`
+}
+
+describe("schedule.routes (HTTP)", () => {
+    let repository: ReturnType<typeof createScheduleStubRepository>
+    let app: express.Express
+
+    beforeEach(() => {
+        vi.useFakeTimers({ toFake: ["Date"] })
+        vi.setSystemTime(DEFAULT_STUB_NOW)
+        repository = createScheduleStubRepository()
+        const authMiddleware = createRequireAuth({
+            users: authUsers,
+            tokens: sessionTokens,
+        })
+        app = express()
+        app.use(express.json())
+        app.use(
+            "/api/v1/schedule",
+            new ScheduleRoutes({ repository, authMiddleware }).getRouter(),
+        )
+        app.use(errorHandler)
+    })
+
+    afterEach(() => {
+        vi.useRealTimers()
+    })
+
+    const routes = [
+        ["get", "/api/v1/schedule"],
+        ["get", "/api/v1/schedule/effective?date=2027-11-01"],
+        ["get", "/api/v1/schedule/versions"],
+        ["put", "/api/v1/schedule"],
+        ["put", "/api/v1/schedule/versions/2027-11-01"],
+        ["delete", "/api/v1/schedule/versions/2027-11-01"],
+        ["get", "/api/v1/schedule/preview"],
+        ["post", "/api/v1/schedule/preview"],
+        ["get", "/api/v1/schedule/booked-days"],
+    ] as const
+
+    it.each(routes)("responde 401 em %s %s sem autenticação", async (method, path) => {
+        const response = await request(app)[method](path)
+
+        expect(response.status).toBe(401)
+        expect(response.body.error.code).toBe("UNAUTHORIZED")
+    })
+
+    it.each(routes)(
+        "responde 403 FORBIDDEN em %s %s sem permissão schedule.configure",
+        async (method, path) => {
+            const response = await request(app)[method](path)
+                .set("Cookie", cookieOf(VIEWER_ID))
+                .send({})
+
+            expect(response.status).toBe(403)
+            expect(response.body).toEqual({
+                error: { code: "FORBIDDEN", message: "Insufficient permission" },
+            })
+        },
+    )
+
+    it("retorna a configuração atual em GET /api/v1/schedule com Cache-Control no-store", async () => {
+        const response = await request(app)
+            .get("/api/v1/schedule")
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+
+        expect(response.status).toBe(200)
+        expect(response.headers["cache-control"]).toBe("no-store")
+        expect(response.body.data).toMatchObject({
+            slotMinutes: 30,
+            seatsPerSlot: 2,
+            windowDays: 30,
+            minNoticeDays: 1,
+            waitAlertDays: 7,
+            unitAddress: "Av. Nove de Julho, 215 - Centro, Jacareí - SP",
+            reminderEnabled: true,
+            reminderHours: 24,
+            updatedBy: { id: 1, name: "Marcos Costa" },
+        })
+    })
+
+    it("atualiza a configuração em PUT /api/v1/schedule e registra o autor da alteração", async () => {
+        const base = buildDefaultScheduleConfigView()
+        const response = await request(app)
+            .put("/api/v1/schedule")
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+            .send({
+                slotMinutes: 60,
+                seatsPerSlot: 3,
+                windowDays: 45,
+                minNoticeDays: 2,
+                waitAlertDays: 10,
+                unitAddress: "Rua Nova, 500 - Centro",
+                unitAddressComplement: null,
+                reminderEnabled: false,
+                reminderHours: 12,
+                ranges: base.ranges,
+                blockedDates: [
+                    {
+                        date: "2027-12-25",
+                        startTime: null,
+                        endTime: null,
+                        description: "Natal",
+                    },
+                ],
+            })
+
+        expect(response.status).toBe(200)
+        expect(response.body.data).toMatchObject({
+            slotMinutes: 60,
+            seatsPerSlot: 3,
+            windowDays: 45,
+            minNoticeDays: 2,
+            waitAlertDays: 10,
+            unitAddress: "Rua Nova, 500 - Centro",
+            unitAddressComplement: null,
+            reminderEnabled: false,
+            reminderHours: 12,
+            blockedDates: [
+                {
+                    date: "2027-12-25",
+                    startTime: null,
+                    endTime: null,
+                    description: "Natal",
+                },
+            ],
+            updatedBy: { id: CONFIGURER_ID, name: "Patrícia Lima" },
+        })
+    })
+
+    it("consulta configuração efetiva e lista as mudanças futuras", async () => {
+        const effective = await request(app)
+            .get("/api/v1/schedule/effective?date=2027-11-01")
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+        const versions = await request(app)
+            .get("/api/v1/schedule/versions")
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+
+        expect(effective.status).toBe(200)
+        expect(effective.body.data.slotMinutes).toBe(30)
+        expect(versions.status).toBe(200)
+        expect(versions.body.data).toEqual([])
+    })
+
+    it("responde 500 SCHEDULE_NOT_CONFIGURED em GET /effective sem configuração-base nem mudança", async () => {
+        repository.setConfig(null)
+
+        const response = await request(app)
+            .get("/api/v1/schedule/effective?date=2027-11-01")
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+
+        expect(response.status).toBe(500)
+        expect(response.body.error.code).toBe("SCHEDULE_NOT_CONFIGURED")
+    })
+
+    it("salva e cancela uma mudança futura pela data efetiva", async () => {
+        const base = buildDefaultScheduleConfigView()
+        const date = "2027-11-01"
+        const saved = await request(app)
+            .put(`/api/v1/schedule/versions/${date}`)
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+            .send({ ...base, ranges: [] })
+        const canceled = await request(app)
+            .delete(`/api/v1/schedule/versions/${date}`)
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+
+        expect(saved.status).toBe(200)
+        expect(saved.body.data.effectiveFrom).toBe(date)
+        expect(canceled.status).toBe(204)
+    })
+
+    it("responde 409 SCHEDULE_CONFLICTS em PUT /versions com os conflitos que o repositório devolve e repassa a mudança", async () => {
+        const conflict = {
+            id: "43",
+            protocol: "ABCD4321",
+            name: "Ana Beatriz",
+            cpfMasked: "***.123.456-**",
+            appointmentDatetime: "2027-11-03T11:00:00.000Z",
+            date: "2027-11-03",
+            time: "08:00",
+            status: "CONFIRMED",
+            code: "DATE_BLOCKED",
+            reason: "Data bloqueada: Recesso",
+        }
+        repository.setScheduledSaveError(
+            new ConflictError("Esta alteração afeta agendamentos futuros", "SCHEDULE_CONFLICTS", { conflicts: [conflict] }),
+        )
+        const base = buildDefaultScheduleConfigView()
+        const recess = { date: "2027-11-03", startTime: null, endTime: null, description: "Recesso" }
+
+        const response = await request(app)
+            .put("/api/v1/schedule/versions/2027-11-01")
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+            .send({ ...base, blockedDates: [recess] })
+
+        expect(response.status).toBe(409)
+        expect(response.body).toEqual({
+            error: {
+                code: "SCHEDULE_CONFLICTS",
+                message: "Esta alteração afeta agendamentos futuros",
+                details: { conflicts: [conflict] },
+            },
+        })
+        expect(repository.scheduledSaveCalls).toEqual([
+            expect.objectContaining({
+                effectiveFrom: "2027-11-01",
+                actorUserId: CONFIGURER_ID,
+                now: DEFAULT_STUB_NOW,
+                config: expect.objectContaining({ blockedDates: [recess] }),
+            }),
+        ])
+    })
+
+    it("responde 409 SCHEDULE_CONFLICTS em DELETE /versions com os conflitos que o repositório devolve", async () => {
+        repository.setScheduledDeleteError(
+            new ConflictError("O cancelamento afeta agendamentos futuros", "SCHEDULE_CONFLICTS", { conflicts: [] }),
+        )
+
+        const response = await request(app)
+            .delete("/api/v1/schedule/versions/2027-11-01")
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+
+        expect(response.status).toBe(409)
+        expect(response.body.error.code).toBe("SCHEDULE_CONFLICTS")
+        expect(repository.scheduledDeleteCalls).toEqual([{ effectiveFrom: "2027-11-01", now: DEFAULT_STUB_NOW }])
+    })
+
+    it("aceita PUT /api/v1/schedule sem nenhuma faixa quando não há agendamentos futuros", async () => {
+        const base = buildDefaultScheduleConfigView()
+        const { updatedBy: _updatedBy, updatedAt: _updatedAt, ...body } = base
+
+        const response = await request(app)
+            .put("/api/v1/schedule")
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+            .send({ ...body, ranges: [] })
+
+        expect(response.status).toBe(200)
+        expect(response.body.data.ranges).toEqual([])
+    })
+
+    it("responde 409 SCHEDULE_CONFLICTS em PUT /api/v1/schedule quando há agendamento futuro afetado", async () => {
+        repository.setAppointments([
+            {
+                id: "42",
+                protocol: "ABCD1234",
+                name: "Ana Beatriz",
+                cpfMasked: "***.123.456-**",
+                appointmentDatetime: new Date("2027-11-03T08:00:00-03:00"),
+                requestDatetime: new Date("2026-10-01T10:00:00-03:00"),
+                status: "CONFIRMED",
+            },
+        ])
+
+        const base = buildDefaultScheduleConfigView()
+        const response = await request(app)
+            .put("/api/v1/schedule")
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+            .send({
+                slotMinutes: base.slotMinutes,
+                seatsPerSlot: base.seatsPerSlot,
+                windowDays: base.windowDays,
+                minNoticeDays: base.minNoticeDays,
+                waitAlertDays: base.waitAlertDays,
+                unitAddress: base.unitAddress,
+                unitAddressComplement: base.unitAddressComplement,
+                reminderEnabled: base.reminderEnabled,
+                reminderHours: base.reminderHours,
+                ranges: base.ranges,
+                blockedDates: [
+                    {
+                        date: "2027-11-03",
+                        startTime: null,
+                        endTime: null,
+                        description: "Recesso",
+                    },
+                ],
+            })
+
+        expect(response.status).toBe(409)
+        expect(response.body.error.code).toBe("SCHEDULE_CONFLICTS")
+        expect(response.body.error.details.conflicts).toEqual([
+            expect.objectContaining({
+                id: "42",
+                protocol: "ABCD1234",
+                name: "Ana Beatriz",
+                date: "2027-11-03",
+                time: "08:00",
+                code: "DATE_BLOCKED",
+                reason: "Data bloqueada: Recesso",
+            }),
+        ])
+    })
+
+    it("responde 400 BAD_REQUEST em PUT /api/v1/schedule para duração inválida ou faixas sobrepostas", async () => {
+        const base = buildDefaultScheduleConfigView()
+
+        const badDuration = await request(app)
+            .put("/api/v1/schedule")
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+            .send({
+                ...base,
+                slotMinutes: 45,
+            })
+        expect(badDuration.status).toBe(400)
+
+        const overlapping = await request(app)
+            .put("/api/v1/schedule")
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+            .send({
+                ...base,
+                ranges: [
+                    { weekday: 1, startTime: "08:00", endTime: "12:00" },
+                    { weekday: 1, startTime: "11:00", endTime: "15:00" },
+                ],
+            })
+        expect(overlapping.status).toBe(400)
+        expect(overlapping.body.error.message).toContain("sobrepõe")
+    })
+
+    it("responde 400 com o caminho e a mensagem da faixa inválida em error.details.issues", async () => {
+        const base = buildDefaultScheduleConfigView()
+
+        const response = await request(app)
+            .put("/api/v1/schedule")
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+            .send({
+                ...base,
+                ranges: [
+                    { weekday: 1, startTime: "08:00", endTime: "12:00" },
+                    { weekday: 2, startTime: "08:00", endTime: "12:00" },
+                    { weekday: 3, startTime: "08:00", endTime: "08:20" },
+                ],
+            })
+
+        expect(response.status).toBe(400)
+        expect(response.body).toEqual({
+            error: {
+                code: "BAD_REQUEST",
+                message: "Dados inválidos: ranges.2.endTime: Esta faixa não comporta nenhum atendimento de 30 minutos",
+                details: {
+                    issues: [
+                        {
+                            path: "ranges.2.endTime",
+                            message: "Esta faixa não comporta nenhum atendimento de 30 minutos",
+                        },
+                    ],
+                },
+            },
+        })
+    })
+
+    it("retorna prévia mensal em GET /api/v1/schedule/preview e POST /api/v1/schedule/preview (rascunho)", async () => {
+        const getRes = await request(app)
+            .get("/api/v1/schedule/preview?month=2026-10")
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+
+        expect(getRes.status).toBe(200)
+        expect(getRes.body.data.month).toBe("2026-10")
+        expect(getRes.body.data.days).toHaveLength(31)
+        expect(getRes.body.data.weekdays).toHaveLength(7)
+
+        const base = buildDefaultScheduleConfigView()
+        const postRes = await request(app)
+            .post("/api/v1/schedule/preview")
+            .set("Cookie", cookieOf(CONFIGURER_ID))
+            .send({
+                month: "2026-10",
+                effectiveFrom: "2026-10-01",
+                config: {
+                    slotMinutes: 60,
+                    seatsPerSlot: 1,
+                    windowDays: base.windowDays,
+                    minNoticeDays: base.minNoticeDays,
+                    waitAlertDays: base.waitAlertDays,
+                    unitAddress: base.unitAddress,
+                    unitAddressComplement: base.unitAddressComplement,
+                    reminderEnabled: base.reminderEnabled,
+                    reminderHours: base.reminderHours,
+                    ranges: [{ weekday: 1, startTime: "08:00", endTime: "12:00" }],
+                    blockedDates: [],
+                },
+            })
+
+        expect(postRes.status).toBe(200)
+        const monday = postRes.body.data.weekdays.find(
+            (w: { weekday: number }) => w.weekday === 1,
+        )
+        expect(monday).toEqual({
+            weekday: 1,
+            slots: ["08:00", "09:00", "10:00", "11:00"],
+            totalSlots: 4,
+            totalSeats: 4,
+        })
+    })
+
+    describe("GET /api/v1/schedule/booked-days", () => {
+        const bookedAppointments = [
+            {
+                id: "51",
+                protocol: "DIAS0001",
+                name: "Ana Beatriz",
+                cpfMasked: "***.123.456-**",
+                appointmentDatetime: new Date("2027-11-03T09:00:00-03:00"),
+                requestDatetime: new Date("2026-10-01T10:00:00-03:00"),
+                status: "CONFIRMED" as const,
+                assignedUserId: 2,
+            },
+            {
+                id: "52",
+                protocol: "DIAS0002",
+                name: "Bruno Dias",
+                cpfMasked: "***.654.321-**",
+                appointmentDatetime: new Date("2027-11-03T09:00:00-03:00"),
+                requestDatetime: new Date("2026-10-01T11:00:00-03:00"),
+                status: "PENDING" as const,
+            },
+            {
+                id: "53",
+                protocol: "DIAS0003",
+                name: "Carla Reis",
+                cpfMasked: "***.111.222-**",
+                appointmentDatetime: new Date("2027-11-04T10:30:00-03:00"),
+                requestDatetime: new Date("2026-10-01T12:00:00-03:00"),
+                status: "PENDING" as const,
+                offGrid: true,
+            },
+        ]
+
+        it.each([
+            ["quem tem schedule.configure", CONFIGURER_ID],
+            ["o Admin", ADMIN_ID],
+        ])("responde 200 para %s com os dias, sem dados pessoais e com Cache-Control no-store", async (_label, userId) => {
+            repository.setAppointments(bookedAppointments)
+
+            const response = await request(app)
+                .get("/api/v1/schedule/booked-days")
+                .set("Cookie", cookieOf(userId))
+
+            expect(response.status).toBe(200)
+            expect(response.headers["cache-control"]).toBe("no-store")
+            expect(response.body).toEqual({
+                data: {
+                    days: [
+                        {
+                            date: "2027-11-03",
+                            weekday: 3,
+                            total: 2,
+                            times: [{ time: "09:00", count: 2 }],
+                        },
+                    ],
+                },
+            })
+        })
+
+        it("responde 200 com a lista vazia quando não há agendamento futuro", async () => {
+            const response = await request(app)
+                .get("/api/v1/schedule/booked-days")
+                .set("Cookie", cookieOf(CONFIGURER_ID))
+
+            expect(response.status).toBe(200)
+            expect(response.body).toEqual({ data: { days: [] } })
+        })
+    })
+
+    describe("conflitos na prévia", () => {
+        beforeEach(() => {
+            repository.setAppointments([
+                {
+                    id: "61",
+                    protocol: "PREV0001",
+                    name: "Ana Beatriz",
+                    cpfMasked: "***.123.456-**",
+                    appointmentDatetime: new Date("2027-11-03T14:00:00-03:00"),
+                    requestDatetime: new Date("2026-10-01T10:00:00-03:00"),
+                    status: "CONFIRMED",
+                    assignedUserId: 2,
+                },
+            ])
+        })
+
+        it("traz conflitos vazios em GET /api/v1/schedule/preview quando a grade salva comporta os agendamentos", async () => {
+            const response = await request(app)
+                .get("/api/v1/schedule/preview?month=2027-11")
+                .set("Cookie", cookieOf(CONFIGURER_ID))
+
+            expect(response.status).toBe(200)
+            expect(response.body.data.conflicts).toEqual([])
+        }, 60000)
+
+        it("traz em POST /api/v1/schedule/preview o agendamento que o rascunho afeta, sem nome, CPF nem ids", async () => {
+            const base = buildDefaultScheduleConfigView()
+            const response = await request(app)
+                .post("/api/v1/schedule/preview")
+                .set("Cookie", cookieOf(CONFIGURER_ID))
+                .send({
+                    month: "2027-11",
+                    config: {
+                        slotMinutes: base.slotMinutes,
+                        seatsPerSlot: base.seatsPerSlot,
+                        windowDays: base.windowDays,
+                        minNoticeDays: base.minNoticeDays,
+                        waitAlertDays: base.waitAlertDays,
+                        unitAddress: base.unitAddress,
+                        unitAddressComplement: base.unitAddressComplement,
+                        reminderEnabled: base.reminderEnabled,
+                        reminderHours: base.reminderHours,
+                        ranges: [1, 2, 3, 4, 5].map((weekday) => ({ weekday, startTime: "08:00", endTime: "12:00" })),
+                        blockedDates: [],
+                    },
+                })
+
+            expect(response.status).toBe(200)
+            expect(response.body.data.conflicts).toEqual([
+                {
+                    protocol: "PREV0001",
+                    date: "2027-11-03",
+                    time: "14:00",
+                    status: "CONFIRMED",
+                    code: "RANGE_CHANGED",
+                    reason: "Faixa de horário removida ou alterada",
+                },
+            ])
+        }, 60000)
+    })
+})

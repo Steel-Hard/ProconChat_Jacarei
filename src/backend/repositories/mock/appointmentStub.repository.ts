@@ -6,6 +6,16 @@ import type {
     AppointmentDetailRecord,
     AppointmentListFilters,
     AppointmentListItem,
+    CancelOptions,
+    CancellationNoticeTarget,
+    CancellationReason,
+    CitizenNotificationKind,
+    CitizenNotificationOutcome,
+    CorrectionResult,
+    CalendarFilters,
+    CorrectionWarning,
+    StaffRecord,
+    WeekAppointmentRecord,
 } from "../../types/appointment.types"
 import type { AppointmentRepository } from "../appointment.repository.interface"
 import { buildChipCounts } from "./appointment.builders"
@@ -25,8 +35,39 @@ export interface AppointmentActionCall {
     action: AppointmentActionType
     id: string
     actorUserId: number
+    assigneeUserId?: number
     now: Date | undefined
 }
+
+export interface AppointmentNoteCall {
+    id: string
+    authorUserId: number
+    text: string
+    now: Date | undefined
+}
+
+export interface AppointmentCancelCall {
+    id: string
+    actorUserId: number
+    reason: CancellationReason
+    note: string | undefined
+    now: Date | undefined
+    noticeDisabled: boolean
+}
+
+export interface CitizenNotificationCall {
+    id: string
+    outcome: CitizenNotificationOutcome
+    kind: CitizenNotificationKind
+    actorUserId: number
+    now: Date | undefined
+    providerMessageId: string | null
+    errorCode?: string
+}
+
+export type AppointmentCorrectionWarning = (call: AppointmentActionCall) => CorrectionWarning | null
+
+export type AppointmentFailAction = (call: AppointmentActionCall) => Error | null
 
 export type AppointmentAfterAction = (
     call: AppointmentActionCall,
@@ -37,25 +78,49 @@ export interface AppointmentStubScenario {
     details?: AppointmentDetailRecord[]
     list?: AppointmentStubList
     pendingCount?: number
+    staff?: StaffRecord[]
+    week?: WeekAppointmentRecord[]
     titles?: AppointmentStubTitles
     afterAction?: AppointmentAfterAction
+    failAction?: AppointmentFailAction
+    correctionWarning?: AppointmentCorrectionWarning
+    noticeTargets?: Record<string, CancellationNoticeTarget>
+    notifiedPhones?: number
 }
 
 export class AppointmentRepositoryStub implements AppointmentRepository {
     public readonly findListCalls: { filters: AppointmentListFilters; now: Date | undefined }[] = []
     public readonly actionCalls: AppointmentActionCall[] = []
+    public readonly noteCalls: AppointmentNoteCall[] = []
+    public readonly cancelCalls: AppointmentCancelCall[] = []
+    public readonly notificationCalls: CitizenNotificationCall[] = []
+    public readonly callOrder: string[] = []
+    public readonly findWeekCalls: { from: Date; to: Date; filters: CalendarFilters; now: Date | undefined }[] = []
     private details: AppointmentDetailRecord[]
     private readonly list: AppointmentStubList
     private readonly pendingCount: number
+    private readonly staff: StaffRecord[]
+    private readonly week: WeekAppointmentRecord[]
     private readonly titles: AppointmentStubTitles
     private readonly afterAction: AppointmentAfterAction | undefined
+    private readonly failAction: AppointmentFailAction | undefined
+    private readonly correctionWarning: AppointmentCorrectionWarning | undefined
+    private readonly noticeTargets: Record<string, CancellationNoticeTarget>
+    private readonly notifiedPhones: number
+    public readonly countNotifiedCalls: { from: Date; to: Date }[] = []
 
     constructor(scenario: AppointmentStubScenario = {}) {
         this.details = (scenario.details ?? []).map((detail) => structuredClone(detail))
         this.list = scenario.list ?? { items: [], total: 0, chipCounts: buildChipCounts() }
         this.pendingCount = scenario.pendingCount ?? 0
+        this.staff = scenario.staff ?? []
+        this.week = scenario.week ?? []
         this.titles = scenario.titles ?? { categories: {}, questions: {} }
         this.afterAction = scenario.afterAction
+        this.failAction = scenario.failAction
+        this.correctionWarning = scenario.correctionWarning
+        this.noticeTargets = scenario.noticeTargets ?? {}
+        this.notifiedPhones = scenario.notifiedPhones ?? 0
     }
 
     async findList(filters: AppointmentListFilters, now?: Date): Promise<AppointmentStubList> {
@@ -65,6 +130,15 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
 
     async countPending(): Promise<number> {
         return this.pendingCount
+    }
+
+    async findWeek(from: Date, to: Date, filters: CalendarFilters, now?: Date): Promise<WeekAppointmentRecord[]> {
+        this.findWeekCalls.push({ from, to, filters: structuredClone(filters), now })
+        return structuredClone(this.week)
+    }
+
+    async findStaff(): Promise<StaffRecord[]> {
+        return structuredClone(this.staff)
     }
 
     async findById(idOrCode: number | string): Promise<AppointmentDetailRecord | null> {
@@ -86,6 +160,77 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
 
     async markNoShow(id: string, actorUserId: number, now?: Date): Promise<void> {
         this.applyAction({ action: "no_show", id, actorUserId, now })
+    }
+
+    async assign(id: string, assigneeUserId: number, actorUserId: number, now?: Date): Promise<void> {
+        this.applyAction({ action: "assign", id, actorUserId, assigneeUserId, now })
+    }
+
+    async correctRecord(id: string, actorUserId: number, now?: Date): Promise<CorrectionResult> {
+        const call: AppointmentActionCall = { action: "correct_record", id, actorUserId, now }
+        this.applyAction(call)
+        return { warning: this.correctionWarning?.(call) ?? null }
+    }
+
+    async addNote(id: string, authorUserId: number, text: string, now?: Date): Promise<void> {
+        this.noteCalls.push({ id, authorUserId, text, now })
+        const current = this.details.find((record) => record.id === id)
+        if (!current) {
+            throw new NotFoundError("Agendamento não encontrado")
+        }
+        current.notes.push({
+            id: String(this.noteCalls.length),
+            author_user_id: String(authorUserId),
+            author_user_name: null,
+            text,
+            created_at: (now ?? new Date()).toISOString(),
+        })
+    }
+
+    async cancel(
+        id: string,
+        actorUserId: number,
+        reason: CancellationReason,
+        note: string | undefined,
+        now?: Date,
+        options?: CancelOptions,
+    ): Promise<void> {
+        this.callOrder.push("cancel")
+        this.cancelCalls.push({ id, actorUserId, reason, note, now, noticeDisabled: options?.noticeDisabled ?? false })
+        this.applyAction({ action: "cancel", id, actorUserId, now })
+    }
+
+    async findCancellationNoticeTarget(id: string): Promise<CancellationNoticeTarget | null> {
+        this.callOrder.push("findCancellationNoticeTarget")
+        const target = this.noticeTargets[id]
+        return target ? structuredClone(target) : null
+    }
+
+    async recordCitizenNotification(
+        id: string,
+        outcome: CitizenNotificationOutcome,
+        kind: CitizenNotificationKind,
+        actorUserId: number,
+        now?: Date,
+        providerMessageId: string | null = null,
+        errorCode: string | null = null,
+    ): Promise<void> {
+        this.callOrder.push("recordCitizenNotification")
+        this.notificationCalls.push({ id, outcome, kind, actorUserId, now, providerMessageId, ...(errorCode === null ? {} : { errorCode }) })
+        const current = this.details.find((record) => record.id === id)
+        current?.events.unshift({
+            id: String(current.events.length + 1),
+            type: outcome === "NOTIFIED" ? "CITIZEN_NOTIFIED" : "CITIZEN_NOTIFICATION_FAILED",
+            actor_user_id: String(actorUserId),
+            actor_user_name: null,
+            data: outcome === "FAILED" && errorCode !== null ? { kind, errorCode } : { kind },
+            created_at: (now ?? new Date()).toISOString(),
+        })
+    }
+
+    async countNotifiedPhonesBetween(from: Date, to: Date): Promise<number> {
+        this.countNotifiedCalls.push({ from, to })
+        return this.notifiedPhones
     }
 
     async getCurrentDocumentsConfig(): Promise<{ group: string[]; question: string[] }> {
@@ -125,6 +270,10 @@ export class AppointmentRepositoryStub implements AppointmentRepository {
         )
         if (!decision.allowed) {
             throw decision.error
+        }
+        const failure = this.failAction?.(call) ?? null
+        if (failure) {
+            throw failure
         }
         if (!this.afterAction) {
             throw new Error(`Cenário incompleto: falta afterAction para a ação ${call.action}`)
