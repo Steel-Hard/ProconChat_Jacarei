@@ -26,6 +26,8 @@ O RF12 previa uma única conta de acesso ao painel. Na revisão do protótipo o 
    | Ver relatórios | Indicadores e exportação |
    | Gerenciar usuários | Criar contas, ativar/desativar, editar permissões |
 
+   > **Estado em 2026-11-22:** a permissão Ver sessões ficou registrada como descartada, junto com a tela de Sessões, e não aparece na tela de Usuários (decisão 013). A exportação de relatórios é um bônus da #73, não entregue.
+
 4. **Regras contra escalada de privilégio**, validadas **no servidor** e não só escondidas na tela:
    - ninguém edita as próprias permissões nem se desativa;
    - só se concede ou remove permissões que você mesmo tem;

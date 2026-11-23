@@ -75,26 +75,15 @@ Mapa de calor das conversas iniciadas por **dia da semana** e **faixa de horári
 
 ## Exportar
 
-Botão **"Exportar ▾"** com três formatos, todos do período selecionado e com **todas as seções**:
-
-| Formato | Conteúdo |
-|---|---|
-| **PDF** | Relatório para apresentação: cabeçalho "PROCON Jacareí · Relatório do ProconChat", período, data e hora de geração, nome de quem gerou, gráficos e tabelas na ordem da tela, páginas numeradas |
-| **Excel (.xlsx)** | Uma aba por seção, cabeçalhos em negrito, números como números |
-| **CSV (.zip)** | Um CSV por seção, separador `;`, UTF-8 com BOM (abre corretamente no Excel em português) |
-
-Antes de gerar, a tela mostra o que será gerado (ex.: "PDF com 9 seções · período 01/09 a 30/09") e depois o estado "Gerando…".
-
-**Todos os formatos contêm apenas dados agregados, sem nome, CPF, protocolo ou qualquer informação pessoal.** A tela diz isso ao lado do botão.
+**Não entregue.** A exportação de relatórios (PDF, Excel e CSV) é um bônus da #73, não entregue. A tela de Relatórios não tem botão de exportar. Se ela for feita, valerá a [decisão 010](../decisoes/010-registro-de-interacoes-e-relatorios.md) e a [decisão 002](../decisoes/002-lgpd-dados-pessoais.md): só dados agregados, sem nome, CPF, protocolo ou qualquer informação pessoal.
 
 ## O que não existe de propósito
 
 | O que não existe | Por quê |
 |---|---|
-| Lista de conversas ou agendamentos individuais | Relatório é agregado. Casos individuais ficam em [Sessões](07-sessoes.md) e [Agendamentos](03-agendamentos.md) |
-| Dados pessoais na exportação | LGPD ([decisão 002](../decisoes/002-lgpd-dados-pessoais.md)) |
+| Lista de conversas ou agendamentos individuais | Relatório é agregado. Casos individuais ficam em [Agendamentos](03-agendamentos.md) |
+| Dados pessoais nos relatórios | LGPD ([decisão 002](../decisoes/002-lgpd-dados-pessoais.md)) |
 
 ## Relações
 
-- Definições dos indicadores: [decisão 010](../decisoes/010-registro-de-interacoes-e-relatorios.md). O [Dashboard](02-dashboard.md) usa as mesmas.
-- Os nomes das etapas de abandono são os mesmos da tela de [Sessões](07-sessoes.md).
+- Definições dos indicadores: [decisão 010](../decisoes/010-registro-de-interacoes-e-relatorios.md).

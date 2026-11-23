@@ -15,15 +15,15 @@ Existem dois tipos de conta ([decisão 004](../decisoes/004-contas-e-permissoes-
 
 | Permissão | Telas e ações que libera |
 |---|---|
-| Ver agendamentos | Agendamentos (lista, calendário, busca), Detalhe do agendamento (só leitura), blocos de agenda do Dashboard |
+| Ver agendamentos | Agendamentos (lista, calendário, busca), Detalhe do agendamento (só leitura) |
 | Gerenciar agendamentos (inclui Ver agendamentos) | Assumir, atribuir, marcar atendido ou não compareceu, corrigir registro, cancelar, escrever observações |
 | Gerenciar conteúdo do chatbot | Conteúdo |
 | Configurar atendimento presencial | Horários de atendimento |
 | Configurar documentos para atendimento presencial | Documentos |
-| Ver sessões | Sessões, link da sessão de origem no Detalhe do agendamento |
-| Ver relatórios | Relatórios, blocos de indicadores do Dashboard |
+| Ver sessões | Nenhuma tela: a tela de Sessões foi descartada ([decisão 013](../decisoes/013-telas-de-sessoes-e-dashboard-descartadas.md)). A permissão continua no servidor e não aparece na tela de Usuários |
+| Ver relatórios | Relatórios |
 | Gerenciar usuários | Usuários |
-| *(só Admin)* | WhatsApp, bloco "Saúde do chatbot" do Dashboard |
+| *(só Admin)* | WhatsApp |
 
 Regras:
 
@@ -63,7 +63,7 @@ Ver [decisão 002](../decisoes/002-lgpd-dados-pessoais.md).
 | CPF | Sempre mascarado: `***.456.789-**`. **O CPF completo nunca aparece**, nem em resultados de busca |
 | Telefone do cidadão | **Nunca aparece**, em nenhuma tela |
 | Texto que o cidadão digitou no WhatsApp | **Não existe no sistema.** O painel mostra só os passos que o cidadão percorreu |
-| Relatórios e exportações | Só números agregados. Sem nome, CPF ou protocolo |
+| Relatórios | Só números agregados. Sem nome, CPF ou protocolo |
 
 ## 6. Mensagens enviadas ao cidadão
 

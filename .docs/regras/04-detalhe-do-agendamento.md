@@ -42,7 +42,7 @@ Abaixo: nome do titular, data e hora por extenso, e "Criado pelo chatbot em [dat
 Os **passos** que o cidadão percorreu no chatbot, na ordem, com horário: início, categoria, pergunta, resposta entregue (com o rótulo **"Gerado com auxílio de IA"** quando for o caso), "A dúvida foi resolvida?" ou "A pergunta exige atendimento presencial", agendamento oferecido, quem vai comparecer, aviso de que receberá mensagens neste número, e agendamento criado.
 
 - O sistema **não guarda o texto que o cidadão digitou**, e a tela diz isso.
-- O código da sessão vira link para a tela de Sessões **só para quem tem Ver sessões**.
+- O código da sessão não vira link, porque a tela de Sessões foi descartada ([decisão 013](../decisoes/013-telas-de-sessoes-e-dashboard-descartadas.md)).
 
 ### Observações internas
 
@@ -113,12 +113,11 @@ Quando **Corrigir registro** devolve o agendamento a Pendente sem responsável p
 ## Relações
 
 - [Decisão 006](../decisoes/006-ciclo-de-vida-do-agendamento.md) (estados e dados) e [decisão 005](../decisoes/005-mensagens-ao-cidadao.md) (avisos).
-- A linha do tempo usa os mesmos passos da tela de [Sessões](07-sessoes.md).
 
 ## Estado da tela
 
 - **Construído pela #86:** cabeçalho com selos, dados do agendamento, documentos enviados pelo chatbot, linha do tempo da conversa de origem, histórico e as ações "Assumir para mim", "Marcar como atendido" e "Marcar como não compareceu", cada uma com confirmação. Antes do horário, "Marcar como não compareceu" também mostra "disponível depois do horário do atendimento". O erro de uma ação aparece na caixa "Ações" até a próxima ação.
 - **Atribuir a outro funcionário, observações internas e corrigir registro:** integrados à API #87, com a permissão por ação (`PERMISSION_REQUIRED` em `available_actions`) e a regra de horário por pessoa (`ASSIGNEE_BUSY` também em "Assumir para mim" e no assumir automático). Observações podem ser acrescentadas pela equipe, mas não editadas nem apagadas.
 - **Cancelar agendamento** e **"Tentar novamente"** foram integrados à tela na #127. O modal exige um motivo, mostra a prévia devolvida pelo backend (a mesma mensagem enviada ao cidadão), aceita observação interna opcional e confirma o cancelamento irreversível. A ação só aparece antes do horário; depois dele a tela explica que o caso deve ser registrado como atendido ou não compareceu. O botão de reenvio segue `available_actions.retry_cancellation_notice`, e não a existência de um evento de falha no histórico: ele também aparece quando o cancelamento não deixou evento de aviso (#67).
-- **Código da sessão com link para Sessões:** fica com a #72. A API ainda não devolve o código `S-XXXXXX`, então a tela não mostra a sessão.
+- **Código da sessão:** a tela não o mostra, e ele não vira link, porque a tela de Sessões foi descartada ([decisão 013](../decisoes/013-telas-de-sessoes-e-dashboard-descartadas.md)).
 - A linha do tempo vazia e a falha ao lê-la aparecem com o mesmo texto ("Os passos desta conversa não estão disponíveis."), porque a API responde igual nos dois casos.

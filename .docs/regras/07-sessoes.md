@@ -1,5 +1,7 @@
 # Sessões
 
+> **Tela descartada (decisão 013).** Ver a [decisão 013](../decisoes/013-telas-de-sessoes-e-dashboard-descartadas.md). O texto abaixo fica só como registro.
+
 ## Para que serve
 
 Consultar as conversas do chatbot, uma a uma: que caminho o cidadão percorreu e como a conversa terminou. É **somente leitura**.
@@ -10,7 +12,7 @@ Consultar as conversas do chatbot, uma a uma: que caminho o cidadão percorreu e
 
 ## Estado da tela
 
-**Ainda não construída (issues #72 e #76).** O sistema já registra as sessões, os passos e os desfechos que esta tela vai mostrar.
+**Descartada pelo grupo (decisão 013).** A tela não existe no painel. O sistema registra as sessões, os passos e os desfechos que ela mostraria.
 
 ## O que é uma sessão
 

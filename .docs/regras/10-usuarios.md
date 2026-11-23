@@ -32,7 +32,7 @@ Criar as contas da equipe e definir o que cada pessoa pode fazer no painel.
 ### Permissões
 
 - Marcar e desmarcar permissões, uma a uma.
-- **Só aparecem as permissões de telas prontas.** Enquanto a tela de uma permissão não está pronta (o item dela não aparece no [menu lateral](01-login-e-conta.md#menu-lateral)), a permissão não aparece no painel e não pode ser concedida. Ela aparece quando a tela ficar pronta. Uma permissão que a conta já tenha e cuja tela não esteja pronta continua salva na conta.
+- **Só aparecem as permissões de telas prontas.** Enquanto a tela de uma permissão não está pronta (o item dela não aparece no [menu lateral](01-login-e-conta.md#menu-lateral)), a permissão não aparece no painel e não pode ser concedida. É o caso de Ver sessões, cuja tela foi descartada ([decisão 013](../decisoes/013-telas-de-sessoes-e-dashboard-descartadas.md)). Uma permissão que a conta já tenha e cuja tela não esteja pronta continua salva na conta.
 - **"Gerenciar agendamentos" inclui "Ver agendamentos":** marcar a primeira marca a segunda, e desmarcar a segunda desmarca a primeira.
 - **Segue o padrão de salvar** ([regras gerais](00-regras-gerais.md#3-salvar-descartar-e-registrar-quem-alterou)).
 - Enquanto as alterações estão sendo salvas, ou enquanto a tela consulta os agendamentos futuros de uma conta, as permissões e o botão Desativar/Reativar ficam bloqueados.

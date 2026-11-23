@@ -1,5 +1,7 @@
 # Dashboard
 
+> **Tela descartada (decisão 013).** Ver a [decisão 013](../decisoes/013-telas-de-sessoes-e-dashboard-descartadas.md). O texto abaixo fica só como registro.
+
 ## Para que serve
 
 Responder à pergunta **"o que eu preciso fazer hoje?"**. Análises mais longas ficam em [Relatórios](05-relatorios.md).
@@ -10,7 +12,7 @@ Qualquer conta que tenha **pelo menos uma** das permissões Ver agendamentos, Ve
 
 ## Estado da tela
 
-**Ainda não construída (issue #71).** Até lá, a tela inicial do painel abre direto em [Agendamentos](03-agendamentos.md).
+**Descartada pelo grupo (decisão 013).** A tela não existe no painel, e a tela inicial abre direto em [Agendamentos](03-agendamentos.md).
 
 ## Cabeçalho
 
@@ -76,7 +78,7 @@ Top 3 perguntas em que mais cidadãos responderam que a dúvida **não** foi res
 
 | O que não existe | Por quê |
 |---|---|
-| Lista de conversas em andamento | A equipe não tem o que fazer com ela, porque não existe atendimento humano pelo chat ([decisão 011](../decisoes/011-atendimento-humano-no-chat-nao-adotado.md)). As conversas ficam na tela de Sessões |
+| Lista de conversas em andamento | A equipe não tem o que fazer com ela, porque não existe atendimento humano pelo chat ([decisão 011](../decisoes/011-atendimento-humano-no-chat-nao-adotado.md)). A tela de Sessões também foi descartada |
 | Configurar os períodos dos blocos | "Últimos 7 dias", "hoje e amanhã" e "últimas 24h" são parte da definição de cada indicador. Outros recortes ficam em Relatórios |
 
 ## Relações

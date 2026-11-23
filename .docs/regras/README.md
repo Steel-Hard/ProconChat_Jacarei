@@ -18,18 +18,18 @@ A referência visual é o protótipo navegável aprovado no Claude Design, copia
 | Arquivo | Tela | Estado |
 |---|---|---|
 | [00-regras-gerais.md](00-regras-gerais.md) | Regras que valem para o painel inteiro: permissões, salvar/descartar, dados pessoais, mensagens ao cidadão | — |
-| [01-login-e-conta.md](01-login-e-conta.md) | Login, "Minha conta" e menu | Entregue (#84) |
-| [02-dashboard.md](02-dashboard.md) | Dashboard | Pendente (#71) |
+| [01-login-e-conta.md](01-login-e-conta.md) | Login, "Minha conta" e menu | Entregue (#84, #85). Menu com as sete telas prontas |
+| [02-dashboard.md](02-dashboard.md) | Dashboard | Descartada (013) |
 | [03-agendamentos.md](03-agendamentos.md) | Agendamentos: lista, calendário e busca | Entregue (#85). Calendário semanal: API na #87, tela na #126 |
 | [04-detalhe-do-agendamento.md](04-detalhe-do-agendamento.md) | Detalhe do agendamento | Entregue (#86). Atribuir, observações internas e corrigir registro: tela na #126. Cancelar com aviso ao cidadão: tela na #127 (API #67) |
 | [05-relatorios.md](05-relatorios.md) | Relatórios | Mínimo entregue (#68, #128). Itens bônus e exportação: #73 |
 | [06-conteudo.md](06-conteudo.md) | Conteúdo do chatbot | Entregue (#63, #124) |
-| [07-sessoes.md](07-sessoes.md) | Sessões | Pendente (#72, #76) |
-| [08-horarios-de-atendimento.md](08-horarios-de-atendimento.md) | Horários de atendimento | Entregue em parte (#64, #125, #134, #74, #75, #77). Pendente (na #75, "Tentar novamente" por falha de envio, horários cancelados voltarem livres, avisos em paralelo e testes de borda extras) |
+| [07-sessoes.md](07-sessoes.md) | Sessões | Descartada (013) |
+| [08-horarios-de-atendimento.md](08-horarios-de-atendimento.md) | Horários de atendimento | Entregue em parte (#64, #125, #134, #74, #75, #77). Pendente: avisos de cancelamento em paralelo e testes de borda extras |
 | [09-documentos.md](09-documentos.md) | Documentos para atendimento presencial | Entregue (#65) |
 | [10-usuarios.md](10-usuarios.md) | Usuários | Entregue (#62, #123) |
 | [11-whatsapp.md](11-whatsapp.md) | WhatsApp | Entregue (#54, #69, #127, #129). Modelos, qualidade e limite de envios integrados à Meta; credenciais, webhook e histórico de alterações |
 
-Enquanto uma tela está pendente, o item dela não aparece no menu e o endereço da tela mostra "Em construção.". A tela inicial abre na primeira tela pronta que a conta pode acessar, e quem não tem nenhuma tela pronta vê o aviso de conta sem tela disponível ([Login e conta](01-login-e-conta.md#menu-lateral)). Cada arquivo de tela pendente descreve como a tela **vai** funcionar.
+O menu mostra as sete telas prontas. As telas de Dashboard e de Sessões foram descartadas ([decisão 013](../decisoes/013-telas-de-sessoes-e-dashboard-descartadas.md)): os arquivos delas ficam aqui só como registro e não descrevem telas que vão existir. A tela inicial abre na primeira tela pronta que a conta pode acessar, e quem não tem nenhuma tela pronta vê o aviso de conta sem tela disponível ([Login e conta](01-login-e-conta.md#menu-lateral)).
 
 O comportamento do **chatbot** (o que o cidadão vê no WhatsApp) está descrito em [`../decisoes/008-fluxo-da-conversa-e-desfechos.md`](../decisoes/008-fluxo-da-conversa-e-desfechos.md) e [`../decisoes/005-mensagens-ao-cidadao.md`](../decisoes/005-mensagens-ao-cidadao.md).

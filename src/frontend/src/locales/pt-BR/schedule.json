@@ -198,7 +198,7 @@
         "minNoticeHelp": "O chatbot não oferece horários antes disso. Contam apenas dias com atendimento.",
         "waitAlert": "Alertar quando a espera passar de",
         "waitAlertSuffix": "dias",
-        "waitAlertHelp": "O Dashboard avisa quando o próximo horário livre estiver além deste prazo."
+        "waitAlertHelp": "Prazo de espera considerado longo para o próximo horário livre."
     },
     "unit": {
         "title": "Dados da unidade",
