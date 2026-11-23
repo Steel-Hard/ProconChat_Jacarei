@@ -29,6 +29,7 @@ O RF06 pede o registro das interações para "análise posterior dos fluxos mais
 4. **Exportação em PDF, Excel (uma aba por seção) e CSV (um arquivo por seção, em .zip).** Todas são geradas no backend e contêm **apenas dados agregados**, sem nome, CPF ou protocolo.
 
 > **Estado em 2026-11-22:** a exportação de relatórios (PDF, Excel e CSV) é um bônus da #73, não entregue.
+
 5. **A tela de Sessões é somente leitura** e mostra os passos, nunca o texto digitado.
 
 > **Estado em 2026-11-22:** a tela de Sessões foi descartada pelo grupo e não existe no painel. Ver a [decisão 013](013-telas-de-sessoes-e-dashboard-descartadas.md).
