@@ -77,6 +77,16 @@ npm test        # roda a suíte de testes (Vitest + Supertest)
 npm run typecheck:test  # checa os tipos de todo o código, inclusive dos testes (exceto tests/e2e, checado por typecheck:e2e)
 ```
 
+Outros comandos do `package.json`:
+
+| Comando | O que faz |
+| --- | --- |
+| `npm run lint` e `npm run lint:fix` | Roda o oxlint, sem e com correção automática |
+| `npm run db:migrate` | Aplica as migrations de `db/migrations/` (precisa de `DB_URL`) |
+| `npm run db:rollback` | Desfaz a última migration |
+| `npm run db:migration:create` | Cria uma migration nova em SQL |
+| `npm run db:seed` | Carrega o conteúdo, a configuração inicial, a conta Admin e a configuração do WhatsApp (`db/seeds/README.md`) |
+
 Rode `npm run test:integration` num **banco separado**, com as migrations aplicadas. A integração
 passa com ou sem o seed (o CI roda sem). O banco precisa ser separado porque o teste da configuração
 do WhatsApp (#83) apaga a linha de `WhatsAppSettings` durante a execução e a restaura no fim, e os
