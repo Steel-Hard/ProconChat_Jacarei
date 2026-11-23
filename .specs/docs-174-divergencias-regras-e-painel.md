@@ -274,7 +274,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 - **Gate:** documentação. Uma busca por "Exportar", "exportação", "Sessões" e "Dashboard" nos dois arquivos só encontra a nota, o trecho que diz que a exportação não foi entregue ou o uso técnico de "sessão". Todo link mudado abre.
 - **Modelo:** padrao
 - **Commit:** `Docs :bulb: [#174] Registra a exportação de relatórios como não entregue`
-- **Status:** feita, commit 134a83b. Gate: 0 links quebrados em regras e decisões; a busca por Sessões e Dashboard mostra só as marcas de descarte e as notas para a decisão 013.
+- **Status:** feita, commit 134a83b. Gate: 0 links quebrados em regras e decisões; a busca por Sessões e Dashboard mostra só as marcas de descarte e as notas para a decisão 013. Correção da revisão (Kusakabe) em cd95b62: linha em branco depois da nota de estado da decisão 010 e o item 5 de volta à lista. A revisão desse ajuste está em andamento.
 
 ### T4 [P] Criar a decisão 013 e pôr as notas de estado nas decisões antigas
 
@@ -294,7 +294,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 - **Gate:** documentação. A tabela de permissões e a nota da decisão 004 ficam copiadas no Status da tarefa, para a T8 levar ao manual. O índice das decisões abre a decisão nova. Todo link mudado abre.
 - **Modelo:** padrao
 - **Commit:** `Docs :bulb: [#174] Registra o descarte das telas de Sessões e Dashboard nas decisões`
-- **Status:** feita, commit a8f97eb. Gate: 0 links quebrados em regras e decisões; a busca por Sessões e Dashboard mostra só as marcas de descarte e as notas para a decisão 013.
+- **Status:** feita, commit a8f97eb. Gate: 0 links quebrados em regras e decisões; a busca por Sessões e Dashboard mostra só as marcas de descarte e as notas para a decisão 013. Correção da revisão (Kusakabe) em b81e8e1: a decisão 013 diz que os trechos "foram ajustadas na #70". A revisão desse ajuste está em andamento.
 
 ### T5 [P] Tirar Sessões e Dashboard como telas futuras das regras das telas
 
@@ -370,7 +370,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 - **Gate:** `file` nas três imagens com PNG e as dimensões combinadas; `du -ch .docs/guias/images/manual-do-painel/*.png` abaixo de 6 MB; `git status --short` só com as três imagens; conferência visual de cada captura contra a tela.
 - **Modelo:** economico
 - **Commit:** `Docs :bulb: [#174] Atualiza as capturas das figuras 14, 17 e 18 do manual`
-- **Status:** feita, commits 3b73b3c e d0ad084 (figura 18 refeita com as datas em pt-BR; as figuras 14 e 17 não têm campo de data). Gate: a soma das imagens é 5,1 MB, abaixo de 6 MB, e o projeto de captura foi derrubado.
+- **Status:** feita, commits 3b73b3c e d0ad084 (figura 18 refeita com as datas em pt-BR; as figuras 14 e 17 não têm campo de data). Gate: a soma das imagens é 5,1 MB, abaixo de 6 MB, e o projeto de captura foi derrubado. Tamanho em pixels diferente do combinado na RN-13, aceito pelo usuário em 22/11/2026 (D-U-11): a figura 17 ficou com 974 × 838 (era 974 × 872), porque o texto novo é mais curto, e a figura 18 com 2060 × 952 (era 2060 × 792), porque mostra 2 bloqueios fictícios e o formulário de período. A largura não mudou, e as imagens não serão refeitas.
 
 ### T8 Atualizar o texto do manual
 
@@ -403,7 +403,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 - **Gate:** documentação. A comparação mecânica da tabela de permissões e da nota do manual com as da decisão 004 não mostra diferença, do mesmo jeito da T8 da especificação #119. A lista de imagens citadas é igual à lista da pasta. `grep -n "ainda não" .docs/guias/manual-do-painel.md` conferido item por item. `.docs/guias/gerar-pdfs.sh manual-do-painel` termina sem erro.
 - **Modelo:** padrao
 - **Commit:** `Docs :bulb: [#174] Atualiza o manual do painel conforme as decisões da #174`
-- **Status:** feita, commits 1f54192 (texto) e e7102a7 (legendas e sumário). Gate: a tabela de permissões é igual à da decisão 004; as 28 imagens citadas existem na pasta; os títulos do sumário foram conferidos página por página com `pdftotext`.
+- **Status:** feita, commits 1f54192 (texto) e e7102a7 (legendas e sumário). Gate: a tabela de permissões é igual à da decisão 004; as 28 imagens citadas existem na pasta; os títulos do sumário foram conferidos página por página com `pdftotext`. O commit e7102a7 junta o sumário e as legendas desta tarefa com o PDF da T9.
 
 ### T9 Gerar de novo o PDF do manual
 
@@ -421,7 +421,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 - **Gate:** `.docs/guias/gerar-pdfs.sh manual-do-painel` sem erro; `ls -l .docs/guias/manual-do-painel.pdf` com até 10 MB; páginas e destinos do sumário conferidos no leitor de PDF; `git status --short` sem `guia-configuracao-do-bot.pdf` nem `documento-do-software.pdf`.
 - **Modelo:** economico
 - **Commit:** `Docs :bulb: [#174] Gera de novo o PDF do manual do painel`
-- **Status:** feita, commits e7102a7 e 2ef7c7e (PDF com a captura nova da figura 18). Gate: o gerador rodou sem erro; o PDF tem 38 páginas, cerca de 5,0 MB e 28 figuras; o sumário foi conferido com `pdftotext` sem nenhuma diferença; nenhum outro PDF mudou.
+- **Status:** feita, commits e7102a7 e 2ef7c7e (PDF com a captura nova da figura 18). Gate: o gerador rodou sem erro; o PDF tem 38 páginas, cerca de 5,0 MB e 28 figuras; o sumário foi conferido com `pdftotext` sem nenhuma diferença; nenhum outro PDF mudou. O commit e7102a7 junta o PDF desta tarefa com o sumário e as legendas da T8.
 
 ### T10 [P] Atualizar a memória do time sobre Horários
 
@@ -471,3 +471,4 @@ Nenhuma.
 - **D-U-08. "Testes de borda extras" continua nos pendentes da regra 08?** Resposta do usuário: sim, continua.
 - **D-U-09. Atualizar também a memória sobre Relatórios, Sessões, Dashboard e WhatsApp?** Resposta do usuário: não. Só a memória de Horários é atualizada.
 - **D-U-10. Arquitetura, rastreabilidade do desafio e documento do software.** Resposta do usuário: arquitetura e rastreabilidade são do Megumi (dev-doc na #70) e saem do escopo, com nota de coordenação para combinar os trechos de Sessões e Dashboard; o documento do software não muda e fica listado como desatualizado em Riscos.
+- **D-U-11. Figuras 17 e 18 com altura diferente da combinada na RN-13.** Resposta do usuário, em 22/11/2026: aceita. A figura 17 ficou com 974 × 838, porque o texto novo é mais curto, e a figura 18 com 2060 × 952, porque mostra 2 bloqueios fictícios e o formulário de período. A largura não mudou, e as imagens não serão refeitas.
