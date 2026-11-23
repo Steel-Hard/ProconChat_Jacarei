@@ -12,8 +12,9 @@
 | Arquivo | Conteúdo |
 |---|---|
 | [README.md](README.md) | Placar, tarefas concluídas com datas, tarefas em aberto, itens fora da sprint e riscos |
+| [burndown.md](burndown.md) · [burndown.svg](burndown.svg) | Gráfico, série diária e leitura do burndown |
 
-**Burndown: pendente.** Não há registro de quando cada issue foi para "In progress" no board, e quase todas têm a etiqueta `SPRINT 3` desde a criação (27/09 e 19/10, no horário de Brasília). Sem esses dados, uma curva diária seria inventada, então o gráfico não foi gerado.
+![Burndown da Sprint 3](burndown.svg)
 
 ---
 
@@ -24,9 +25,9 @@
 | Issues com a etiqueta `SPRINT 3` | **27** |
 | Concluídas com entrega | **22** |
 | Fechadas sem entrega própria | **2 unificadas** (#122 na #121 e #120 na #118), **1 de validação sem roteiro nem resultado no GitHub** (#121) e **1 de organização, sem código** (#159, Feira de Projetos) |
-| Em aberto | **1** (#70, a issue de fechamento, aberta neste retrato) |
+| Em aberto | **0** (a #70, a issue de fechamento, fechou com o merge do PR #178 em 22/11, às 21:36) |
 
-27 = 22 concluídas com entrega + #121 + #159 + #122 + #120 + #70.
+27 = 22 concluídas com entrega + #121 + #159 + #122 + #120 + #70 (esta, fechada com a documentação). O burndown conta 25 issues: as 27 menos as duas unificadas (#122 e #120).
 
 Por tamanho (o tamanho declarado no corpo de cada issue, nas 22 concluídas com entrega):
 
@@ -45,7 +46,7 @@ Entradas no meio da sprint:
 
 ## 2. Tarefas concluídas
 
-Horários no fuso de Brasília. **Início** é o primeiro commit com `[#N]` na `develop` (nas #65, #126 e #127, o primeiro commit do PR, que não leva o número no título) (o histórico de status do board não registra "In progress"), e o trabalho real pode ter começado antes. **Fim** é o fechamento da issue. As colunas de responsável vêm do campo de responsáveis da issue.
+Horários no fuso de Brasília. **Início** é o primeiro commit com `[#N]` na `develop` (nas #65, #126, #127 e #128, o primeiro commit do PR, que não leva o número no título) (o histórico de status do board não registra "In progress"), e o trabalho real pode ter começado antes. **Fim** é o fechamento da issue. As colunas de responsável vêm do campo de responsáveis da issue.
 
 | # | Tarefa | Tamanho | Responsável | Início | Fim | PR |
 |---|---|---|---|---|---|---|
@@ -66,7 +67,7 @@ Horários no fuso de Brasília. **Início** é o primeiro commit com `[#N]` na `
 | #126 | Frontend: calendário semanal, atribuir, corrigir registro e observações | M | felipe-sant, claudsaints | 07/11 15:18 | 17/11 19:19 | #155, #161 |
 | #127 | Frontend: cancelar agendamento e modelos de mensagem na tela de WhatsApp | P | felipe-sant, claudsaints | 07/11 14:40 | 17/11 23:04 | #154, #163 |
 | #164 | Interruptor para ligar e desligar o aviso de cancelamento ao cidadão | M | felipe-sant | 17/11 23:06 | 18/11 08:25 | #165 |
-| #128 | Frontend: tela de Relatórios mínimos | M | claudsaints | 18/11 10:08 | 18/11 11:29 | #157 |
+| #128 | Frontend: tela de Relatórios mínimos | M | claudsaints | 09/11 20:00 | 18/11 11:29 | #157 |
 | #118 | Guias em PDF: configurar o bot (passagem para o PROCON) e documento do software | M | felipe-sant | 20/11 22:00 | 20/11 23:34 | #171 |
 | #124 | Frontend: tela de Conteúdo do chatbot | M | felipe-sant | 20/11 23:45 | 21/11 14:40 | #172 |
 | #119 | Manual em PDF das telas do painel | M | felipe-sant | 21/11 15:38 | 21/11 18:30 | #175 |
@@ -103,8 +104,7 @@ Issues sem a etiqueta `SPRINT 3`, a maioria com a etiqueta `Extra`, tratadas dur
 
 ## 3. Tarefas em aberto
 
-- **#70** Documentação final: README, arquitetura, rastreabilidade e fechamento da Sprint 3. É a issue que gera este documento.
-- Nenhuma issue de lacuna foi aberta: a conferência da rastreabilidade não deixou requisito parcial ([rastreabilidade](../../desafio/rastreabilidade.md)).
+Nenhuma. A #70, que gerou este documento, fechou com o merge do PR #178. Nenhuma issue de lacuna foi aberta: a conferência da rastreabilidade não deixou requisito parcial ([rastreabilidade](../../desafio/rastreabilidade.md)).
 
 ---
 
