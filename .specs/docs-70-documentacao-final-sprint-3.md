@@ -1,11 +1,12 @@
 # Documentação final da Sprint 3 (#70)
 
-> Status: em-andamento
+> Status: implementada
 > Tipo: funcionalidade
 > Tamanho: media
 > Branch: docs/70-documentacao-final-sprint-3
 > Criada em: 2026-11-22
 > Aprovada em: 2026-11-22
+> Implementada em: 2026-11-22. Revisão do reviewer (Kusakabe) aprovada no commit 9195ae8, sem achado em aberto. O CA-01 foi cumprido pela QA (Nobara).
 
 ## Objetivo
 
@@ -239,7 +240,7 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
   - a conferência de links;
   - `git status --short` mostra só `README.md`.
 - **Modelo:** padrao
-- **Status:** feita, commit 38b7457. Gate: sistema subido do zero sem `ollama` e `llm-pull`, painel respondeu 200 e a entrada com a conta Admin respondeu 200; conferência de links sem saída. O teste com o modelo de IA continua com a QA (CA-01). Ajuste da revisão (Kusakabe) em 2d75c7c (openssl, healthchecks, senha do Admin e endereço do painel), com a revisão das correções em andamento.
+- **Status:** feita, commit 38b7457. Gate: sistema subido do zero sem `ollama` e `llm-pull`, painel respondeu 200 e a entrada com a conta Admin respondeu 200; conferência de links sem saída. CA-01 cumprido pela QA (Nobara) em 22/11/2026: seguindo só o README, do zero e com o modelo de IA, todos os serviços subiram saudáveis, e o painel, a entrada com a conta Admin, a IA e o fluxo do chatbot funcionaram. Só a entrega da mensagem falhou, por falta do WhatsApp real, o que o README já avisa. As sugestões da QA ficaram para depois, por decisão do usuário. Ajuste da revisão (Kusakabe) em 2d75c7c (openssl, healthchecks, senha do Admin e endereço do painel), com a revisão das correções em andamento.
 
 ### T4 [P] Atualizar a arquitetura e o modelo de dados para o estado final
 
