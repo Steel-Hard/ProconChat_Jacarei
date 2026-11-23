@@ -207,7 +207,7 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 - **Teste:** nenhum (documentação).
 - **Gate:** cada número do placar conferido contra a lista do GitHub; a conferência de links; `git status --short` mostra só a pasta `sprint3`.
 - **Modelo:** padrao
-- **Status:** em-andamento. Commits 81b2ce2, 514e859 (redação das decisões de 22/11/2026) e d5e0f39 (datas no horário de Brasília e "Início" a partir do primeiro commit do PR). Bloqueio da revisão (Kusakabe) em aberto: a data da #18 no fechamento da Sprint 3 ainda está em UTC (CA-23). O Megumi está corrigindo.
+- **Status:** feita, commits 81b2ce2, 514e859 (redação das decisões de 22/11/2026), d5e0f39 (datas no horário de Brasília e "Início" a partir do primeiro commit do PR) e fe31f24 (data de criação da #18 corrigida para 31/08, às 22:16, no horário de Brasília). Foi reaberta duas vezes pela revisão (Kusakabe), e a revisão do último ajuste está em andamento.
 
 ### T3 [P] Conferir e completar a instalação no README
 
@@ -426,7 +426,7 @@ Cada parte de um arquivo tem um único dono, para que as tarefas `[P]` não mexa
 - **Teste:** nenhum (documentação).
 - **Gate:** cada trecho alterado aponta a sua fonte no código; `npm run format:check` em `src/frontend` (depois de `npm ci`, se faltar `node_modules`); a conferência de links; `git status --short` mostra só `src/frontend/README.md`.
 - **Modelo:** padrao
-- **Status:** em-andamento. Commit 8c3f236. Gate: links relativos conferidos em todos os arquivos alterados; `git status` limpo; `prettier --check` do README do painel passou. Bloqueio da revisão (Kusakabe) em aberto na linha 81 do README do painel. O Megumi está corrigindo.
+- **Status:** feita, commits 8c3f236 e c85f8ee (linha 81 do README do painel com Sessões e Dashboard como descartados). Gate: links relativos conferidos em todos os arquivos alterados; `git status` limpo; `prettier --check` do README do painel passou. A revisão do ajuste está em andamento.
 
 ## Dúvidas
 
