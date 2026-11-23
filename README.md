@@ -99,13 +99,12 @@ Detalhes em [`.docs/architecture/architecture.md`](.docs/architecture/architectu
 | :----: | :--------: | :--------: | :-------------: | :----------------------------------: | :-------------------: |
 |   1   | 10/08/2026 | 14/09/2026 | 🟢 Concluída | [Ver Gráfico](.docs/sprints/sprint1/burndown.svg) | [Ver](.docs/sprints/sprint1/README.md) |
 |   2   | 15/09/2026 | 19/10/2026 | 🟢 Concluída | [Ver Gráfico](.docs/sprints/sprint2/burndown.svg) | [Ver](.docs/sprints/sprint2/README.md) |
-|   3   | 20/10/2026 | 23/11/2026 | 🟢 Concluída | Pendente ([motivo](.docs/sprints/sprint3/README.md)) | [Ver](.docs/sprints/sprint3/README.md) |
+|   3   | 20/10/2026 | 23/11/2026 | 🟢 Concluída | [Ver Gráfico](.docs/sprints/sprint3/burndown.svg) | [Ver](.docs/sprints/sprint3/README.md) |
 
 > O gráfico e as tabelas de origem do burndown da Sprint 1 estão em
 > [`.docs/sprints/sprint1/05-burndown.md`](.docs/sprints/sprint1/05-burndown.md). Os da Sprint 2 (18 de 18
-> issues concluídas) estão em [`.docs/sprints/sprint2/burndown.md`](.docs/sprints/sprint2/burndown.md). O burndown da Sprint 3 ficou
-> pendente: não há registro de quando cada issue foi para "In progress" (veja o
-> [fechamento da Sprint 3](.docs/sprints/sprint3/README.md)).
+> issues concluídas) estão em [`.docs/sprints/sprint2/burndown.md`](.docs/sprints/sprint2/burndown.md). Os da Sprint 3 (25 issues
+> no escopo, todas concluídas) estão em [`.docs/sprints/sprint3/burndown.md`](.docs/sprints/sprint3/burndown.md).
 
 ---
 
