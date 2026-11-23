@@ -26,7 +26,6 @@ Chatbot de orientação ao consumidor via WhatsApp, desenvolvido para o PROCON d
 | [`guias/`](guias/) | Guias em PDF (texto-fonte em Markdown e PDF gerado): [configuração do bot](guias/guia-configuracao-do-bot.pdf), [documento do software](guias/documento-do-software.pdf) e [manual do painel](guias/manual-do-painel.pdf), com o que cada tela faz e o que cada permissão libera, além de visão geral, regras de dados e de IA, requisitos medidos, instalação e atualização. O [README da pasta](guias/README.md) explica como gerar os PDFs | Atual |
 | [`sprints/`](sprints/) | Fechamento das Sprints [1](sprints/sprint1/README.md), [2](sprints/sprint2/README.md) e [3](sprints/sprint3/README.md) | Atual |
 | [`historico/`](historico/) | Documentos superados, mantidos só para contexto | Não usar como referência |
-| [`../.specs/`](../.specs/) | Especificações das tarefas (regras, critérios de aceite e tarefas executáveis), uma por arquivo, escritas antes da implementação. Ficam no Git | Atual |
 
 ## Regras que valem em todo o sistema
 
