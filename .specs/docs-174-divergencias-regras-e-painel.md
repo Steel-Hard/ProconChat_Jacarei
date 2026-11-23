@@ -421,7 +421,7 @@ Commits: um commit por tarefa, só com os arquivos da tarefa, no padrão `Docs :
 - **Gate:** `.docs/guias/gerar-pdfs.sh manual-do-painel` sem erro; `ls -l .docs/guias/manual-do-painel.pdf` com até 10 MB; páginas e destinos do sumário conferidos no leitor de PDF; `git status --short` sem `guia-configuracao-do-bot.pdf` nem `documento-do-software.pdf`.
 - **Modelo:** economico
 - **Commit:** `Docs :bulb: [#174] Gera de novo o PDF do manual do painel`
-- **Status:** em-andamento. PDF gerado no commit e7102a7: 38 páginas, 5,0 MB e 28 figuras, e só o manual mudou. Será gerado de novo quando a Mai refizer as capturas com datas em pt-BR (T12).
+- **Status:** feita, commits e7102a7 e 2ef7c7e (PDF com a captura nova da figura 18). Gate: o gerador rodou sem erro; o PDF tem 38 páginas, cerca de 5,0 MB e 28 figuras; o sumário foi conferido com `pdftotext` sem nenhuma diferença; nenhum outro PDF mudou.
 
 ### T10 [P] Atualizar a memória do time sobre Horários
 
