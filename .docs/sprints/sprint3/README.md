@@ -39,7 +39,7 @@ Entradas no meio da sprint:
 
 - **#159** (Feira de Projetos): etiqueta `SPRINT 3` em 17/11.
 - **#164** (interruptor do aviso de cancelamento): criada e etiquetada em 17/11, às 23:05.
-- **#18** (teste ponta a ponta): veio da Sprint 1 (criada em 01/09) e recebeu a etiqueta `SPRINT 3` em 27/09, às 23:24, junto com as demais; foi concluída em 22/11.
+- **#18** (teste ponta a ponta): veio da Sprint 1 (criada em 31/08, às 22:16) e recebeu a etiqueta `SPRINT 3` em 27/09, às 23:24, junto com as demais; foi concluída em 22/11.
 
 ---
 
