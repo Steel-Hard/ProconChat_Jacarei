@@ -8,22 +8,33 @@ Produção: <https://3.150.166.93.sslip.io>. Operação e deploy: [`.docs/infra/
 Documentação do projeto: [`.docs/README.md`](.docs/README.md) (requisitos, decisões, regras das telas,
 arquitetura, banco e protótipo do painel).
 
-# Chatbot para Orientação ao Consumidor via WhatsApp
+**Chatbot para Orientação ao Consumidor via WhatsApp**
 
-<div align="center">
-<h1>
-<a href="#descrição">Descrição</a> || 
-<a href="#tecnologias">Tecnologias</a> || 
-<a href="#dev-team">Dev Team</a> || 
-<a href="#product-backlog">Product Backlog</a> || 
-<a href="#scrum">Scrum</a> || 
-<a href="#instalação">Instalação</a>
-</h1>
-</div>
+## Sumário
+
+- [Descrição](#descrição)
+- [Demonstração e fluxo do cidadão](#demonstração-e-fluxo-do-cidadão)
+- [Objetivos](#objetivos)
+- [Tecnologias](#tecnologias)
+- [Limites da entrega](#limites-da-entrega)
+- [Scrum](#scrum)
+- [Product Backlog](#product-backlog)
+- [Restrições do Projeto](#restrições-do-projeto)
+- [Definition of Done](#definition-of-done)
+- [User Stories](#user-stories)
+- [Guias de uso](#guias-de-uso)
+- [Instalação](#instalação)
+- [Testes e CI](#testes-e-ci)
+- [Operação e diagnóstico](#operação-e-diagnóstico)
+- [Documentação técnica](#documentação-técnica)
+- [Dev Team](#dev-team)
+- [Parceiro](#parceiro)
+- [Convenções de Commit](#convenções-de-commit)
+- [Licença](#licença)
 
 ---
 
-## 📝 Descrição
+## Descrição
 
 O **ProconChat Jacareí** é um projeto acadêmico desenvolvido no 6º
 semestre do curso de Desenvolvimento de Software Multiplataforma da
@@ -33,15 +44,15 @@ Defesa do Consumidor de Jacareí-SP**.
 O projeto tem como tema o desenvolvimento de um **Chatbot para
 Orientação ao Consumidor via WhatsApp**.
 
-A proposta é criar um sistema capaz de orientar cidadãos sobre direitos
+O sistema orienta cidadãos sobre direitos
 do consumidor, procedimentos de reclamação, prazos, documentos
-necessários e possíveis encaminhamentos. O chatbot deverá conduzir o
+necessários e possíveis encaminhamentos. O chatbot conduz o
 usuário por fluxos decisórios definidos pelo PROCON, apresentando
 perguntas e opções de forma estruturada e intuitiva.
 
-Ao final da interação, o sistema deverá gerar uma resposta orientadora
+Ao final do fluxo de orientação, o sistema gera uma resposta orientadora
 consolidada, indicando os próximos passos recomendados ao consumidor.
-Quando necessário, essa resposta poderá ser complementada por um
+Quando permitido pela pergunta, essa resposta pode ser complementada por um
 **modelo de linguagem (LLM)** utilizado exclusivamente para geração
 textual explicativa, sempre respeitando os limites e informações
 definidos pelo PROCON.
@@ -51,13 +62,40 @@ definidos pelo PROCON.
 > realizado pelo PROCON.
 
 Caso o chatbot não consiga solucionar adequadamente a dúvida do cidadão,
-o sistema deverá possibilitar o **agendamento de atendimento
+o sistema possibilita o **agendamento de atendimento
 presencial**, orientando também sobre possíveis documentos necessários
 para a consulta.
 
 ---
 
-## 🎯 Objetivos
+## Demonstração e fluxo do cidadão
+
+1. O cidadão entra em contato pelo WhatsApp e escolhe uma **categoria** e uma **pergunta**.
+2. O bot apresenta a orientação oficial, com os próximos passos e o aviso de caráter informativo.
+   Quando permitido e disponível, o LLM reescreve a explicação, identificada como "Gerado com auxílio de IA".
+3. O bot pergunta se a orientação resolveu a dúvida ou oferece atendimento presencial, conforme a pergunta.
+   Se a orientação não resolver, o cidadão também pode seguir para o agendamento.
+4. No agendamento, o cidadão informa quem comparecerá, nome e CPF, escolhe um horário disponível
+   e recebe a confirmação com protocolo e documentos necessários.
+
+Quem já tem um agendamento futuro encontra as opções **Remarcar**, **Cancelar** e **Tenho outra dúvida**.
+Perguntas fora do escopo recebem o encaminhamento correspondente, sem complemento por IA nem oferta de agendamento.
+As regras completas estão na [decisão sobre o fluxo da conversa](.docs/decisoes/008-fluxo-da-conversa-e-desfechos.md).
+
+<details>
+<summary>Ver capturas do painel: lista e calendário de agendamentos</summary>
+
+![Lista de agendamentos no painel](.docs/guias/images/manual-do-painel/04-agendamentos-lista.png)
+
+![Calendário semanal de agendamentos](.docs/guias/images/manual-do-painel/06-agendamentos-calendario.png)
+
+As capturas fazem parte do [manual do painel](.docs/guias/manual-do-painel.pdf), que apresenta as demais telas e permissões.
+
+</details>
+
+---
+
+## Objetivos
 
 O projeto busca:
 
@@ -78,7 +116,7 @@ O projeto busca:
 
 ---
 
-## 🛠️ Tecnologias
+## Tecnologias
 
 | Camada | Tecnologia | Estado |
 |---|---|---|
@@ -91,9 +129,34 @@ O projeto busca:
 
 Detalhes em [`.docs/architecture/architecture.md`](.docs/architecture/architecture.md).
 
+### Uso da IA e resposta oficial
+
+O Motor de Decisão define o fluxo e o conteúdo oficial. O LLM apenas reescreve a explicação,
+sem receber o telefone ou o texto digitado pelo cidadão. Se a IA estiver indisponível, ocupada,
+falhar ou exceder o tempo limite, o sistema usa a resposta oficial completa.
+
+O `compose.yaml` de desenvolvimento sobe o Ollama local. Na VM de produção, o modo padrão
+**documentado** é sem Ollama, por limitação de memória. A produção também pode usar um Ollama
+em outra máquina própria, pela rede privada, ou na própria VM quando houver memória suficiente.
+Isso não utiliza APIs externas de LLM. As opções e as configurações estão no
+[guia de produção](.docs/infra/deploy.md#provedor-tamanho-e-custo) e na
+[decisão sobre o complemento por IA](.docs/decisoes/009-complemento-por-llm.md).
+
 ---
 
-## 🔄 Scrum
+## Limites da entrega
+
+- O atendimento humano acontece **presencialmente**, mediante agendamento; não há transferência da
+  conversa para um atendente no WhatsApp ([decisão 011](.docs/decisoes/011-atendimento-humano-no-chat-nao-adotado.md)).
+- Os relatórios entregues são os **relatórios mínimos** de interações e agendamentos.
+  Exportação em PDF, Excel e CSV e gráficos extras ficaram fora da entrega
+  ([fechamento da Sprint 3](.docs/sprints/sprint3/README.md#4-riscos-e-o-que-ficou-de-fora)).
+- Dashboard e Sessões foram descartados por decisão do grupo
+  ([decisão 013](.docs/decisoes/013-telas-de-sessoes-e-dashboard-descartadas.md)).
+
+---
+
+## Scrum
 
 | Sprint |  Início  |    Fim    |     Status     |          📉 Burndown Chart          | Sprint Backlog/Review |
 | :----: | :--------: | :--------: | :-------------: | :----------------------------------: | :-------------------: |
@@ -108,7 +171,7 @@ Detalhes em [`.docs/architecture/architecture.md`](.docs/architecture/architectu
 
 ---
 
-## 📋 Product Backlog
+## Product Backlog
 
 | Número | Recurso Funcional         |                                  Síntese do Requisito                                  |   Status   |
 | :-----: | ------------------------- | :--------------------------------------------------------------------------------------: | :---------: |
@@ -139,7 +202,7 @@ Detalhes em [`.docs/architecture/architecture.md`](.docs/architecture/architectu
 
 ---
 
-## 🔒 Restrições do Projeto
+## Restrições do Projeto
 
 - A integração com o WhatsApp deverá ocorrer preferencialmente pela
   **WhatsApp Business Platform (Cloud API)**;
@@ -159,7 +222,7 @@ Detalhes em [`.docs/architecture/architecture.md`](.docs/architecture/architectu
 
 ---
 
-## ✅ Definition of Done
+## Definition of Done
 
 Uma entrega será considerada concluída quando:
 
@@ -173,15 +236,29 @@ Uma entrega será considerada concluída quando:
 
 ---
 
-## 📖 User Stories
+## User Stories
 
-As **User Stories** e seus respectivos critérios de aceitação serão
-definidos e refinados pela equipe durante o planejamento das Sprints,
-com base nos requisitos e fluxos decisórios fornecidos pelo PROCON.
+As tarefas e os critérios de aceitação foram acompanhados nas
+[issues do repositório](https://github.com/Steel-Hard/ProconChat_Jacarei/issues) e no
+[Project 6DSM](https://github.com/orgs/Steel-Hard/projects/2), com base nos requisitos e fluxos
+fornecidos pelo PROCON. A [rastreabilidade](.docs/desafio/rastreabilidade.md) relaciona os requisitos
+às entregas, e os fechamentos das sprints registram o resultado de cada período.
 
 ---
 
-## ⚙️ Instalação
+## Guias de uso
+
+| Guia | Para quem e para quê | PDF | Texto-fonte |
+|---|---|---|---|
+| Configuração do bot | Admin e equipe que prepara o WhatsApp, o webhook, os modelos e a privacidade | [Abrir PDF](.docs/guias/guia-configuracao-do-bot.pdf) | [Markdown](.docs/guias/guia-configuracao-do-bot.md) |
+| Manual do painel | Equipe do PROCON: telas, agendamentos, conteúdo e permissões | [Abrir PDF](.docs/guias/manual-do-painel.pdf) | [Markdown](.docs/guias/manual-do-painel.md) |
+| Documento do software | Equipe técnica: visão geral, requisitos, instalação e operação | [Abrir PDF](.docs/guias/documento-do-software.pdf) | [Markdown](.docs/guias/documento-do-software.md) |
+
+O [guia de geração dos PDFs](.docs/guias/README.md) explica como atualizar os arquivos a partir do Markdown.
+
+---
+
+## Instalação
 
 ### Pré-requisitos
 
@@ -229,6 +306,12 @@ como `Up`, e `migrate`, `seed` e `llm-pull` terminam sozinhos com código `0`. A
 pela proteção de origem. Entre com `ROOT_EMAIL` e `ROOT_PASSWORD`. Nesse modo não há HTTPS, e o WhatsApp real não entrega mensagens
 à máquina; para isso, use a produção ([`.docs/infra/deploy.md`](.docs/infra/deploy.md)).
 
+No ambiente HTTP local, use Chrome ou Firefox, conforme as
+[orientações de autenticação do frontend](src/frontend/README.md#autenticação-no-cliente).
+Os valores `ROOT_EMAIL` e `ROOT_PASSWORD` só criam o Admin enquanto essa conta não existe:
+alterar o `.env` depois não redefine o acesso. Consulte a
+[recuperação da senha do Admin](src/backend/README.md#conta-admin-e-redefinição-da-senha) quando necessário.
+
 Isso sobe, com um único comando, todo o ambiente do MVP:
 
 | Serviço         | Papel                                                              | Porta padrão (host) |
@@ -246,7 +329,85 @@ As variáveis sensíveis (senhas, tokens, segredos) vêm do `.env`. O `compose.y
 padrão de desenvolvimento para algumas delas (e nenhum para `ENCRYPTION_KEY`); no `compose.prod.yaml`
 todas são obrigatórias no `.env`. Veja `.env.example` para a lista completa.
 
-### Documentação detalhada por serviço
+Ao alterar `BACKEND_PORT`, ajuste também `VITE_API_URL` no `.env` e reconstrua o frontend
+com `docker compose up --build -d frontend`. A URL da API é incorporada no build, e o valor
+fixado no `.env.example` sobrepõe o padrão calculado pelo Compose.
+
+### Configuração após a instalação
+
+Para o uso real pelo WhatsApp, siga o [guia de configuração do bot](.docs/guias/guia-configuracao-do-bot.pdf):
+
+- Cadastre as credenciais da Meta no painel, teste a conexão e configure o webhook HTTPS.
+- Preencha os dados do controlador e de contato na aba **Privacidade** da tela de WhatsApp.
+  A página pública `/privacidade` apresenta esses dados e os prazos de guarda; o link entra na
+  saudação quando os campos necessários e a URL pública estão configurados.
+- Configure os modelos de mensagem aprovados na Meta antes de usar as notificações.
+  O **aviso de cancelamento** começa desligado e é ativado na tela **WhatsApp**.
+  O **lembrete de atendimento** também começa desligado e é configurado em **Horários de atendimento**.
+
+---
+
+## Testes e CI
+
+Para executar as verificações fora dos containers, use **Node.js 24**; no frontend, siga a versão
+de `src/frontend/.nvmrc`. Rode `npm ci` em cada diretório antes dos comandos correspondentes.
+O [workflow de CI](.github/workflows/ci.yml) executa as verificações nos PRs para `develop` e `main`.
+
+| Diretório | Verificações |
+|---|---|
+| `src/frontend` | `npm run format:check`, `npm run lint`, `npm run build`, `npm run test:run` |
+| `src/backend` | `npm run lint`, `npm run build`, `npm run typecheck:test`, `npm test` |
+| `src/gateway` | `npm run lint`, `npm run build`, `npm test` |
+
+As verificações com PostgreSQL real rodam a partir de `src/backend`:
+
+| Verificação | Comandos | Preparação adicional |
+|---|---|---|
+| Integração | `npm run test:integration` | `DB_URL` para um banco de testes separado, com migrations aplicadas |
+| Migrations e seed | `npm run test:db` | `DB_TEST_URL` e usuário com permissão para criar bancos temporários |
+| Ponta a ponta (E2E) | `npm run typecheck:e2e`, `npm run test:e2e` | `npm ci` também em `src/gateway`; `DB_URL` para um banco descartável com migrations aplicadas |
+
+O E2E cobre a orientação que termina em agendamento, a conclusão do atendimento pelo painel e o
+retorno do cidadão para remarcar ou cancelar. Ele exercita Gateway e Backend por HTTP, com a saída
+para a Meta simulada e a IA desligada; não automatiza o navegador. Use banco separado do ambiente
+de uso e não execute integração e E2E ao mesmo tempo no mesmo banco. O preparo completo e as
+variáveis necessárias estão no [README do backend](src/backend/README.md#como-rodar).
+
+---
+
+## Operação e diagnóstico
+
+Na raiz do repositório, com o `.env` configurado, estes comandos ajudam a conferir o ambiente local:
+
+```bash
+docker compose ps -a
+docker compose logs --tail=100 backend gateway postgres
+```
+
+Com as portas padrão, os endpoints de saúde são
+<http://localhost:3000/health> (backend) e <http://localhost:3001/health> (gateway).
+Eles ajudam a conferir se os serviços respondem, sem comprovar uma conversa completa com a Meta.
+
+Para parar e retomar os containers:
+
+```bash
+docker compose stop
+docker compose start
+```
+
+Os volumes `postgres_data` e `ollama_data` preservam o banco e o modelo ao parar os containers.
+Para aplicar alterações de código ou configuração, use `docker compose up --build`.
+
+| Necessidade | Guia |
+|---|---|
+| Recuperar o acesso ao Admin | [Redefinição da senha](src/backend/README.md#conta-admin-e-redefinição-da-senha) |
+| Entender falhas de login, credenciais e webhook | [Diagnóstico de produção](.docs/infra/deploy.md#diagnóstico) |
+| Fazer backup ou restaurar o banco de produção | [Backup e restauração](.docs/infra/deploy.md#backup-e-restauração) |
+| Atualizar a produção ou voltar à imagem anterior | [Deploy manual e rollback](.docs/infra/deploy.md#deploy-manual-e-rollback) |
+
+---
+
+## Documentação técnica
 
 - [`.docs/database/migrations.md`](.docs/database/migrations.md) — schema, migrations e como resetar o banco.
 - [`src/backend/README.md`](src/backend/README.md) — rodar o backend fora do Docker, rotas disponíveis, testes.
@@ -257,7 +418,7 @@ todas são obrigatórias no `.env`. Veja `.env.example` para a lista completa.
 
 ---
 
-## 👨‍💻 Dev Team
+## Dev Team
 
 |                 Nome                 |   Função   |                     GitHub                     |
 | :----------------------------------: | :-----------: | :--------------------------------------------: |
@@ -269,7 +430,7 @@ todas são obrigatórias no `.env`. Veja `.env.example` para a lista completa.
 |      Victor Hugo Dantas Carbajo      |   Dev Team   | [GitHub](https://github.com/Victor-Carbajo-DSM) |
 |  Vitor Francisco de Azevedo Zonzini  |   Dev Team   |      [GitHub](https://github.com/frevisto)      |
 
-## 🤝 Parceiro
+## Parceiro
 
 **PROCON --- Fundação de Proteção e Defesa do Consumidor de Jacareí-SP**
 
@@ -279,13 +440,13 @@ Multiplataforma da **FATEC Jacareí**.
 
 ---
 
-## 📌 Convenções de Commit
+## Convenções de Commit
 
 Os padrões de branch, commit e Pull Request estão em
 [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ---
 
-## 📄 Licença
+## Licença
 
 Distribuído sob a licença Apache 2.0. Veja [`LICENSE`](LICENSE).
